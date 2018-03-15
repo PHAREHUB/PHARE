@@ -11,6 +11,7 @@ endif()
 
 option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
+option(documentation "Add doxygen target to generate documentation" ON)
 
 find_program(Git git)
 
@@ -94,6 +95,38 @@ if (test)
 
   # Test subdirectory goes here
 endif()
+
+
+
+if (documentation)
+
+  find_package(Doxygen REQUIRED)
+
+  set(DOXYGEN_GENERATE_HTML NO)
+  set(DOXYGEN_GENERATE_LATEX NO)
+  set(DOXYGEN_GENERATE_XML YES)
+
+  doxygen_add_docs(
+    doxygen
+    ${CMAKE_SOURCE_DIR}/src  ${CMAKE_SOURCE_DIR}/tests
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+
+  set(doxy_dir ${CMAKE_CURRENT_BINARY_DIR}/xml)
+
+  set(DOC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pharead)
+
+  if (NOT EXISTS ${DOC_DIR})
+    execute_process(
+      COMMAND ${Git} clone https://hephaistos.lpp.polytechnique.fr/rhodecode/GIT_REPOSITORIES/LPP/phare/pharead
+                     ${DOC_DIR}
+      )
+  endif()
+
+  add_subdirectory(subprojects/pharead)
+
+
+endif(documentation)
 
 # Here goes src subdirectory
 
