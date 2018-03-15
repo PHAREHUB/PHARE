@@ -12,6 +12,7 @@ endif()
 option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
+option(cppcheck "Enable cppcheck xml report" ON)
 
 find_program(Git git)
 
@@ -22,6 +23,32 @@ set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+if (cppcheck)
+  find_program(Cppcheck cppcheck)
+  if (NOT Cppcheck-NOTFOUND)
+
+    add_custom_command(
+      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
+      COMMAND ${Cppcheck} --enable=all --std=c++11 --language=c++ --xml
+      --project=${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json 2> ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
+      )
+
+    add_custom_target(cppcheck-xml DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml)
+    find_program(Cppcheck-html cppcheck-htmlreport)
+    if (NOT Cppcheck-html-NOTFOUND)
+
+      add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cppcheckHtml/index.html
+        DEPENDS cppcheck-xml
+        COMMAND ${Cppcheck-html} --file=${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
+                                 --report-dir=${CMAKE_CURRENT_BINARY_DIR}/cppcheckHtml
+        )
+
+      add_custom_target(cppcheck-html DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cppcheckHtml/index.html)
+    endif()
+
+  endif()
+endif()
 
 if (test)
   set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
@@ -93,7 +120,8 @@ if (test)
     add_custom_target(coverage_report DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/out/index.html)
   endif()
 
-  # Test subdirectory goes here
+  add_subdirectory(tests/core/field)
+
 endif()
 
 
@@ -130,3 +158,5 @@ endif(documentation)
 
 # Here goes src subdirectory
 
+add_subdirectory(src/core)
+add_subdirectory(src/amr)
