@@ -13,6 +13,7 @@ option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
 option(cppcheck "Enable cppcheck xml report" ON)
+option(samrai-build "Build samrai" OFF)
 
 find_program(Git git)
 
@@ -49,6 +50,44 @@ if (cppcheck)
 
   endif()
 endif()
+
+if (samrai-build)
+
+  set(SAMRAI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/samrai)
+  set(SAMRAI_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/samrai)
+
+  if (NOT EXISTS ${SAMRAI_DIR})
+    execute_process(
+      COMMAND ${Git} clone https://github.com/monwarez/SAMRAI ${SAMRAI_DIR} --branch add-install --recursive
+      )
+  endif()
+
+ file(MAKE_DIRECTORY ${SAMRAI_BIN})
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} ${SAMRAI_DIR} -G "Unix Makefiles"
+    -DENABLE_FRUIT=OFF -DENABLE_OPENMP=OFF
+    -DENABLE_TESTS=OFF -DCMAKE_INSTALL_PREFIX=${SAMRAI_BIN}
+    WORKING_DIRECTORY ${SAMRAI_BIN}
+    )
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} .
+    WORKING_DIRECTORY ${SAMRAI_BIN}
+    )
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} --build . --target all
+
+    WORKING_DIRECTORY ${SAMRAI_BIN})
+
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} --build . --target install
+    WORKING_DIRECTORY ${SAMRAI_BIN}
+    )
+
+  set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH} ${SAMRAI_BIN}/share/SAMRAI/cmake/")
+
+endif()
+
+find_package(SAMRAI REQUIRED)
 
 if (test)
   set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
@@ -121,6 +160,7 @@ if (test)
   endif()
 
   add_subdirectory(tests/core/field)
+  add_subdirectory(tests/amr/tools/buffer)
 
 endif()
 

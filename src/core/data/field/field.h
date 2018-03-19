@@ -13,5 +13,5 @@ private:
 public:
     uint32_t size() const { return size_; }
 };
-}
+} // namespace PHARE
 #endif
