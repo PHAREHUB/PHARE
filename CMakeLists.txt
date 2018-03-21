@@ -8,6 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
 endif()
 
+set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
@@ -15,8 +16,13 @@ option(documentation "Add doxygen target to generate documentation" ON)
 option(cppcheck "Enable cppcheck xml report" ON)
 option(samrai-build "Build samrai" OFF)
 
+option(asan "build with asan support" OFF)
+option(ubsan "build with ubsan support" OFF)
+option(msan "build with msan support" OFF)
+
 find_program(Git git)
 
+include(CheckCXXCompilerFlag)
 
 find_package (PythonInterp  3.0 REQUIRED)
 
@@ -24,6 +30,10 @@ set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+
+#*******************************************************************************
+#* Cppcheck option
+#*******************************************************************************
 if (cppcheck)
   find_program(Cppcheck cppcheck)
   if (NOT Cppcheck-NOTFOUND)
@@ -51,6 +61,9 @@ if (cppcheck)
   endif()
 endif()
 
+#*******************************************************************************
+#* SAMRAI build option
+#*******************************************************************************
 if (samrai-build)
 
   set(SAMRAI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/samrai)
@@ -89,6 +102,11 @@ endif()
 
 find_package(SAMRAI REQUIRED)
 
+
+
+#*******************************************************************************
+#* Test and coverage option
+#*******************************************************************************
 if (test)
   set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
 
@@ -164,8 +182,17 @@ if (test)
 
 endif()
 
+#*******************************************************************************
+#* Here the Core and AMR lib
+#*******************************************************************************
+
+add_subdirectory(src/core)
+add_subdirectory(src/amr)
 
 
+#*******************************************************************************
+#* Documentation option
+#*******************************************************************************
 if (documentation)
 
   find_package(Doxygen REQUIRED)
@@ -196,7 +223,4 @@ if (documentation)
 
 endif(documentation)
 
-# Here goes src subdirectory
 
-add_subdirectory(src/core)
-add_subdirectory(src/amr)

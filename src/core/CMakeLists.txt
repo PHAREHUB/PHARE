@@ -14,3 +14,5 @@ target_include_directories(phare_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include/phare/core>)
 
+include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
+

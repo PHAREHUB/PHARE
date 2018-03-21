@@ -19,3 +19,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PUBLIC phare_core)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${SAMRAI_LIBRARIES})
+
+include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
