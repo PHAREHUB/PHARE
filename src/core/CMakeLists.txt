@@ -2,16 +2,16 @@ cmake_minimum_required(VERSION 3.3)
 project(phare_core)
 
 set( SOURCES_INC
+     data/electromag/electromag.h
      data/field/field.h
-     data/vecfield/vecfield.h
+     data/grid/gridlayout.h
      data/ndarray/ndarray_vector.h
+     data/particles/particle.h
      data/particles/particle_array.h
      data/species/particle_pack.h
-     data/particles/particle.h
-     data/grid/gridlayout.h
-     data/electromag/electromag.h
-     numerics/interpolator/interpolator.h
+     data/vecfield/vecfield.h
      hybrid/hybrid_quantities.h
+     numerics/interpolator/interpolator.h
    )
 
  set( SOURCES_CPP
@@ -20,6 +20,7 @@ set( SOURCES_INC
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})
+
 target_include_directories(phare_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include/phare/core>)

@@ -1,0 +1,29 @@
+#ifndef PHARE_TESTS_AMR_TOOLS_BUFFER_BASIC_HIERARCHY_H
+#define PHARE_TESTS_AMR_TOOLS_BUFFER_BASIC_HIERARCHY_H
+
+#include <SAMRAI/geom/CartesianGridGeometry.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/pdat/CellVariable.h>
+#include <SAMRAI/tbox/InputManager.h>
+
+#include <memory>
+
+class BasicHierarchy
+{
+public:
+    explicit BasicHierarchy(std::string const &inputFile);
+
+
+    std::shared_ptr<SAMRAI::tbox::Database> inputDatabase;
+    std::shared_ptr<SAMRAI::tbox::Database> patchHierarchyDatabase;
+    SAMRAI::tbox::Dimension dimension;
+
+    std::shared_ptr<SAMRAI::geom::CartesianGridGeometry> gridGeometry;
+
+    std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy;
+
+
+    void init();
+};
+
+#endif

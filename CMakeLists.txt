@@ -158,7 +158,7 @@ if (test)
                     --output-file ${CMAKE_CURRENT_BINARY_DIR}/coverage.info        # and we merge them in coverage.info
 
        COMMAND lcov --remove ${CMAKE_CURRENT_BINARY_DIR}/coverage.info             # From coverage.info, we remove data
-                    '/usr/include/*' 'googletest/*' 'tests/*' '*/SAMRAI/*'         # that contain the pattern on this line
+                    '/usr/include/*' '*/googletest/*' '*/tests/*' '*/SAMRAI/*'     # that contain the pattern on this line
                     --output-file ${CMAKE_CURRENT_BINARY_DIR}/filtered.info        # and put it in filtered.info
 
        COMMAND genhtml --ignore-errors source                                      # Since we remove data from coverage
@@ -177,12 +177,17 @@ if (test)
     add_custom_target(coverage_report DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/out/index.html)
   endif()
 
+<<<<<<< HEAD
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/amr/tools/buffer)
+=======
+  add_subdirectory(tests/core/field)
+  add_subdirectory(tests/amr/tools/resources_manager)
+>>>>>>> Add resources manager
 
 endif()
 
@@ -200,7 +205,6 @@ add_subdirectory(src/amr)
 if (documentation)
   find_package(Doxygen REQUIRED)
 
-  set(DOXYGEN_GENERATE_HTML NO)
   set(DOXYGEN_GENERATE_LATEX NO)
   set(DOXYGEN_GENERATE_XML YES)
 
@@ -210,7 +214,7 @@ if (documentation)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 
-  set(doxy_dir ${CMAKE_CURRENT_BINARY_DIR}/xml)
+  #set(doxy_dir ${CMAKE_CURRENT_BINARY_DIR}/xml)
 
   set(DOC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pharead)
 
