@@ -167,7 +167,7 @@ if (test)
                                                                                    # source files.
                        --prefix ${CMAKE_CURRENT_SOURCE_DIR}                        # Here we set the prefix of the repository
                        --keep-descriptions --frames --show-details --legend        # Some options for esthetic
-                       --output-directory ${CMAKE_CURRENT_BINARY_DIR}/out          # Html output will be here 
+                       --output-directory ${CMAKE_CURRENT_BINARY_DIR}/out          # Html output will be here
                        ${CMAKE_CURRENT_BINARY_DIR}/filtered.info                   # Tracefiles used (the filtered one)
 
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -177,7 +177,9 @@ if (test)
     add_custom_target(coverage_report DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/out/index.html)
   endif()
 
-  add_subdirectory(tests/core/field)
+  add_subdirectory(tests/core/data/ndarray)
+  add_subdirectory(tests/core/data/field)
+  add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/amr/tools/buffer)
 
 endif()
