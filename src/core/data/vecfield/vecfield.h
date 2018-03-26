@@ -70,6 +70,8 @@ public:
 
     std::string const& name() { return name_; }
 
+    using field_impl = NdArrayImpl;
+
     enum class Component { X, Y, Z };
 
     Field<NdArrayImpl, typename PhysicalQuantity::Quantity>& getComponent(Component component)
