@@ -27,14 +27,14 @@ public:
     VecField& operator=(VecField const& source) = delete;
     VecField& operator=(VecField&& source) = default;
 
-    VecField(std::string const& name, std::array<PhysicalQuantity, 3> physQties)
+    VecField(std::string const& name, typename PhysicalQuantity::Quantity physQty)
         : name_{name}
-        , physQties_{physQties}
+        , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
         , componentNames_{{name + "_x", name + "_y", name + "_z"}}
     {
     }
 
-    using pair_type = std::vector<std::pair<std::string, PhysicalQuantity>>;
+    using pair_type = std::vector<std::pair<std::string, typename PhysicalQuantity::Quantity>>;
 
     pair_type buffersField() const
     {
@@ -44,7 +44,8 @@ public:
     }
 
 
-    void setBuffer(std::string const& bufferName, Field<NdArrayImpl, PhysicalQuantity>* field)
+    void setBuffer(std::string const& bufferName,
+                   Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* field)
     {
         if (bufferName == componentNames_[0])
         {
@@ -71,7 +72,7 @@ public:
 
     enum class Component { X, Y, Z };
 
-    Field<NdArrayImpl, PhysicalQuantity>& getComponent(Component component)
+    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>& getComponent(Component component)
     {
         switch (component)
         {
@@ -81,7 +82,8 @@ public:
         }
     }
 
-    Field<NdArrayImpl, PhysicalQuantity> const& getComponent(Component component) const
+    Field<NdArrayImpl, typename PhysicalQuantity::Quantity> const&
+    getComponent(Component component) const
     {
         switch (component)
         {
@@ -94,11 +96,11 @@ public:
 
 private:
     std::string name_ = "No Name";
-    std::array<PhysicalQuantity, 3> physQties_;
+    std::array<typename PhysicalQuantity::Quantity, 3> physQties_;
     std::array<std::string, 3> componentNames_;
-    Field<NdArrayImpl, PhysicalQuantity>* xComponent_ = nullptr;
-    Field<NdArrayImpl, PhysicalQuantity>* yComponent_ = nullptr;
-    Field<NdArrayImpl, PhysicalQuantity>* zComponent_ = nullptr;
+    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* xComponent_ = nullptr;
+    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* yComponent_ = nullptr;
+    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* zComponent_ = nullptr;
 };
 
 } // namespace PHARE

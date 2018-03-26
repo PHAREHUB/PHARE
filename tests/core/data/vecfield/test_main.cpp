@@ -23,13 +23,15 @@ class VecFieldGeneric : public ::testing::Test
 {
 public:
     VecFieldGeneric()
-        : vf2{vf2_name, {{HybridQuantity::Bx, HybridQuantity::By, HybridQuantity::Bz}}}
+        : vf2{vf2_name,
+              {{HybridQuantity::Quantity::Bx, HybridQuantity::Quantity::By,
+                HybridQuantity::Quantity::Bz}}}
     {
     }
 
 protected:
     std::string vf2_name = "vf";
-    VecField<NdArrayImpl, HybridQuantity> vf2;
+    VecField<NdArrayImpl, HybridQuantity::Quantity> vf2;
 };
 
 using NdArrays = ::testing::Types<NdArrayVector1D<>, NdArrayVector2D<>, NdArrayVector3D<>>;
@@ -44,18 +46,18 @@ class VecFieldTest : public ::testing::Test
 {
 public:
     VecFieldTest()
-        : bx1d_{"field", HybridQuantity::Bx, nx}
-        , by1d_{"field", HybridQuantity::By, nx}
-        , bz1d_{"field", HybridQuantity::Bz, nx}
-        , bx2d_{"field", HybridQuantity::Bx, nx, ny}
-        , by2d_{"field", HybridQuantity::By, nx, ny}
-        , bz2d_{"field", HybridQuantity::Bz, nx, ny}
-        , bx3d_{"field", HybridQuantity::Bz, nx, ny, nz}
-        , by3d_{"field", HybridQuantity::Bz, nx, ny, nz}
-        , bz3d_{"field", HybridQuantity::Bz, nx, ny, nz}
-        , B1D_{"B1D", {{HybridQuantity::Bx, HybridQuantity::By, HybridQuantity::Bz}}}
-        , B2D_{"B2D", {{HybridQuantity::Bx, HybridQuantity::By, HybridQuantity::Bz}}}
-        , B3D_{"B3D", {{HybridQuantity::Bx, HybridQuantity::By, HybridQuantity::Bz}}}
+        : bx1d_{"field", HybridQuantity::Quantity::Bx, nx}
+        , by1d_{"field", HybridQuantity::Quantity::By, nx}
+        , bz1d_{"field", HybridQuantity::Quantity::Bz, nx}
+        , bx2d_{"field", HybridQuantity::Quantity::Bx, nx, ny}
+        , by2d_{"field", HybridQuantity::Quantity::By, nx, ny}
+        , bz2d_{"field", HybridQuantity::Quantity::Bz, nx, ny}
+        , bx3d_{"field", HybridQuantity::Quantity::Bx, nx, ny, nz}
+        , by3d_{"field", HybridQuantity::Quantity::By, nx, ny, nz}
+        , bz3d_{"field", HybridQuantity::Quantity::Bz, nx, ny, nz}
+        , B1D_{"B1D", HybridQuantity::Quantity::B}
+        , B2D_{"B2D", HybridQuantity::Quantity::B}
+        , B3D_{"B3D", HybridQuantity::Quantity::B}
     {
     }
 
@@ -93,17 +95,17 @@ protected:
     static const int nx;
     static const int ny;
     static const int nz;
-    Field<NdArrayVector1D<>, HybridQuantity> bx1d_;
-    Field<NdArrayVector1D<>, HybridQuantity> by1d_;
-    Field<NdArrayVector1D<>, HybridQuantity> bz1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> bx1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> by1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> bz1d_;
 
-    Field<NdArrayVector2D<>, HybridQuantity> bx2d_;
-    Field<NdArrayVector2D<>, HybridQuantity> by2d_;
-    Field<NdArrayVector2D<>, HybridQuantity> bz2d_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> bx2d_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> by2d_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> bz2d_;
 
-    Field<NdArrayVector3D<>, HybridQuantity> bx3d_;
-    Field<NdArrayVector3D<>, HybridQuantity> by3d_;
-    Field<NdArrayVector3D<>, HybridQuantity> bz3d_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> bx3d_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> by3d_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> bz3d_;
 
     VecField<NdArrayVector1D<>, HybridQuantity> B1D_;
     VecField<NdArrayVector2D<>, HybridQuantity> B2D_;
@@ -233,17 +235,17 @@ TEST_F(VecFieldTest, PhysicalQuantities)
     auto pairs2D = B2D_.buffersField();
     auto pairs3D = B3D_.buffersField();
 
-    EXPECT_EQ(HybridQuantity::Bx, pairs1D[0].second);
-    EXPECT_EQ(HybridQuantity::By, pairs1D[1].second);
-    EXPECT_EQ(HybridQuantity::Bz, pairs1D[2].second);
+    EXPECT_EQ(HybridQuantity::Quantity::Bx, pairs1D[0].second);
+    EXPECT_EQ(HybridQuantity::Quantity::By, pairs1D[1].second);
+    EXPECT_EQ(HybridQuantity::Quantity::Bz, pairs1D[2].second);
 
-    EXPECT_EQ(HybridQuantity::Bx, pairs2D[0].second);
-    EXPECT_EQ(HybridQuantity::By, pairs2D[1].second);
-    EXPECT_EQ(HybridQuantity::Bz, pairs2D[2].second);
+    EXPECT_EQ(HybridQuantity::Quantity::Bx, pairs2D[0].second);
+    EXPECT_EQ(HybridQuantity::Quantity::By, pairs2D[1].second);
+    EXPECT_EQ(HybridQuantity::Quantity::Bz, pairs2D[2].second);
 
-    EXPECT_EQ(HybridQuantity::Bx, pairs3D[0].second);
-    EXPECT_EQ(HybridQuantity::By, pairs3D[1].second);
-    EXPECT_EQ(HybridQuantity::Bz, pairs3D[2].second);
+    EXPECT_EQ(HybridQuantity::Quantity::Bx, pairs3D[0].second);
+    EXPECT_EQ(HybridQuantity::Quantity::By, pairs3D[1].second);
+    EXPECT_EQ(HybridQuantity::Quantity::Bz, pairs3D[2].second);
 }
 
 
