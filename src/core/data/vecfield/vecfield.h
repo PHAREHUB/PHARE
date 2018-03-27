@@ -67,6 +67,11 @@ public:
         return xComponent_ != nullptr && yComponent_ != nullptr && zComponent_ != nullptr;
     }
 
+    bool isSettable() const
+    {
+        return xComponent_ == nullptr && yComponent_ == nullptr && zComponent_ == nullptr;
+    }
+
 
     std::string const& name() { return name_; }
 

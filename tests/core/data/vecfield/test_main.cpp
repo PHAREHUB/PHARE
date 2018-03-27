@@ -135,6 +135,24 @@ TEST_F(VecFieldTest, isNotInitiallyUsable3D)
 }
 
 
+TEST_F(VecFieldTest, isSettableInitially1D)
+{
+    EXPECT_TRUE(B1D_.isSettable());
+}
+
+TEST_F(VecFieldTest, isSettableInitially2D)
+{
+    EXPECT_TRUE(B2D_.isSettable());
+}
+
+
+TEST_F(VecFieldTest, isSettableInitially3D)
+{
+    EXPECT_TRUE(B3D_.isSettable());
+}
+
+
+
 TEST_F(VecFieldTest, IsUsableAfterSet1D)
 {
     this->setBuffers();
@@ -158,6 +176,31 @@ TEST_F(VecFieldTest, IsUsableAfterSet3D)
     EXPECT_TRUE(B3D_.isUsable());
     this->unsetBuffers();
 }
+
+
+TEST_F(VecFieldTest, isNotSettableAfterSet1D)
+{
+    this->setBuffers();
+    EXPECT_FALSE(B1D_.isSettable());
+    this->unsetBuffers();
+}
+
+TEST_F(VecFieldTest, isNotSettableAfterSet2D)
+{
+    this->setBuffers();
+    EXPECT_FALSE(B2D_.isSettable());
+    this->unsetBuffers();
+}
+
+
+TEST_F(VecFieldTest, isNotSettableAfterSet3D)
+{
+    this->setBuffers();
+    EXPECT_FALSE(B3D_.isSettable());
+    this->unsetBuffers();
+}
+
+
 
 
 TEST_F(VecFieldTest, SizeIsOkAfterSet1D)
