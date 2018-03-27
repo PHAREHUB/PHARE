@@ -1,7 +1,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include <core/data/ndarray/ndarray_vector.h>
+#include <random>
 #include <string>
+
+#include <core/data/ndarray/ndarray_vector.h>
 
 
 using PHARE::NdArrayVector1D;
@@ -99,7 +101,116 @@ TEST(NdArray3DTest, ArrayCanBeReadOnly)
     EXPECT_EQ(24, ref(10, 8, 5));
 }
 
+MATCHER_P(FloatNearPointwise, tol, "Out of range")
+{
+    return (std::get<0>(arg) > std::get<1>(arg) - tol && std::get<0>(arg) < std::get<1>(arg) + tol);
+}
 
+TEST(NdArray1DTest, AccessWholeArray)
+{
+    auto nx = 20;
+    NdArrayVector1D<> array1d{nx};
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> dis(1.0, 2.0);
+    std::vector<double> numbers(array1d.size());
+    for (auto& v : numbers)
+    {
+        v = dis(gen);
+    }
+
+    for (int i = 0; i < static_cast<int>(array1d.size()); ++i)
+    {
+        array1d(i) = numbers[static_cast<std::vector<double>::size_type>(i)];
+    }
+
+    // TODO find better way to compare...
+
+    for (int i = 0; i < static_cast<int>(array1d.size()); ++i)
+    {
+        EXPECT_DOUBLE_EQ(numbers[static_cast<std::vector<double>::size_type>(i)], array1d(i));
+    }
+}
+
+
+
+
+TEST(NdArray2DTest, AccessWholeArray)
+{
+    auto nx = 20;
+    auto ny = 10;
+    NdArrayVector2D<> array2d{nx, ny};
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> dis(1.0, 2.0);
+    std::vector<double> numbers(array2d.size());
+    for (auto& v : numbers)
+    {
+        v = dis(gen);
+    }
+
+    std::vector<double>::size_type idx = 0;
+    for (int i = 0; i < nx; ++i)
+    {
+        for (int j = 0; j < ny; ++j)
+        {
+            array2d(i, j) = numbers[idx++];
+        }
+    }
+
+    // TODO find better way to compare...
+    idx = 0;
+    for (int i = 0; i < nx; ++i)
+    {
+        for (int j = 0; j < ny; ++j)
+        {
+            EXPECT_DOUBLE_EQ(numbers[idx++], array2d(i, j));
+        }
+    }
+}
+
+
+
+TEST(NdArray3DTest, AccessWholeArray)
+{
+    auto nx = 20;
+    auto ny = 10;
+    auto nz = 13;
+    NdArrayVector3D<> array3d{nx, ny, nz};
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> dis(1.0, 2.0);
+    std::vector<double> numbers(array3d.size());
+    for (auto& v : numbers)
+    {
+        v = dis(gen);
+    }
+
+    std::vector<double>::size_type idx = 0;
+    for (int i = 0; i < nx; ++i)
+    {
+        for (int j = 0; j < ny; ++j)
+        {
+            for (int k = 0; k < nz; ++k)
+            {
+                array3d(i, j, k) = numbers[idx++];
+            }
+        }
+    }
+
+    // TODO find better way to compare...
+    idx = 0;
+    for (int i = 0; i < nx; ++i)
+    {
+        for (int j = 0; j < ny; ++j)
+        {
+            for (int k = 0; k < nz; ++k)
+            {
+                EXPECT_DOUBLE_EQ(numbers[idx++], array3d(i, j, k));
+            }
+        }
+    }
+}
 
 int main(int argc, char** argv)
 {
