@@ -14,9 +14,9 @@ namespace PHARE
 template<typename DataType = double>
 class NdArrayVectorBase
 {
-public:
+protected:
     NdArrayVectorBase() = delete;
-    NdArrayVectorBase(std::size_t size)
+    explicit NdArrayVectorBase(std::size_t size)
         : data_(size)
     {
     }
@@ -26,6 +26,9 @@ public:
     NdArrayVectorBase& operator=(NdArrayVectorBase const& source) = default;
     NdArrayVectorBase& operator=(NdArrayVectorBase&& source) = default;
 
+    std::vector<DataType> data_;
+
+public:
     //! user can check data_type to know of which type the elements are
     using data_type = DataType;
 
@@ -35,9 +38,6 @@ public:
         auto s = data_.size();
         return static_cast<std::size_t>(s);
     }
-
-protected:
-    std::vector<DataType> data_;
 };
 
 
@@ -103,11 +103,14 @@ public:
     DataType& operator()(int i, int j) { return this->data_[j + ny_ * i]; }
 
     //! read only access. See read/write.
-    DataType const& operator()(int i, int j) const { return this->data_[j + ny_ * i]; }
+    DataType const& operator()(int i, int j) const { return this->data_[linearIt(i, j)]; }
 
     static const int dimension = 2;
 
 private:
+    int constexpr linearIt(int i, int j) const { return j + ny_ * i; }
+
+
     int nx_ = 0;
     int ny_ = 0;
 };
@@ -138,14 +141,12 @@ public:
 
 
     DataType& operator()(int i, int j, int k) { return this->data_[k + nz_ * (j + ny_ * i)]; }
-    DataType const& operator()(int i, int j, int k) const
-    {
-        return this->data_[k + nz_ * (j + ny_ * i)];
-    }
+    DataType const& operator()(int i, int j, int k) const { return this->data_[linearIt(i, j, k)]; }
 
     static const int dimension = 3;
 
 private:
+    int constexpr linearIt(int i, int j, int k) const { return k + nz_ * (j + ny_ * i); }
     int nx_ = 0;
     int ny_ = 0;
     int nz_ = 0;
