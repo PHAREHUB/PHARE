@@ -180,6 +180,7 @@ if (test)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/core/data/vecfield)
+  add_subdirectory(tests/core/data/particles)
   add_subdirectory(tests/amr/tools/buffer)
 
 endif()

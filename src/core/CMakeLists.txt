@@ -5,6 +5,9 @@ set( SOURCES_INC
      data/field/field.h
      data/vecfield/vecfield.h
      data/ndarray/ndarray_vector.h
+     data/particles/particle_array.h
+     data/species/particle_pack.h
+     data/particles/particle.h
      hybrid/hybrid_quantities.h
    )
 
