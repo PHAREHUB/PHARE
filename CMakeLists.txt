@@ -197,7 +197,6 @@ add_subdirectory(src/amr)
 #* Documentation option
 #*******************************************************************************
 if (documentation)
-
   find_package(Doxygen REQUIRED)
 
   set(DOXYGEN_GENERATE_HTML NO)
