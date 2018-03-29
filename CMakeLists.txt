@@ -177,17 +177,13 @@ if (test)
     add_custom_target(coverage_report DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/out/index.html)
   endif()
 
-<<<<<<< HEAD
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/amr/tools/buffer)
-=======
-  add_subdirectory(tests/core/field)
   add_subdirectory(tests/amr/tools/resources_manager)
->>>>>>> Add resources manager
 
 endif()
 
