@@ -21,20 +21,20 @@ namespace PHARE
  * TODO: add the active mechanism
  */
 template<typename ResourcesManager, typename... ResourcesUsers>
-class ResourcesGuards
+class ResourcesGuard
 {
 private:
-    template<typename NullOrResourcePtr, typename ResourcesUser>
-    void setResources_(NullOrResourcePtr nullOrResourcePtr, ResourcesUser& resourcesUser) const
+    template<typename RequestedPtr, typename ResourcesUser>
+    void setResources_(RequestedPtr requestedPtr, ResourcesUser& resourcesUser) const
     {
-        resourcesManager_.setResources(resourcesUser, nullOrResourcePtr, patch_);
+        resourcesManager_.setResources(resourcesUser, requestedPtr, patch_);
     }
-    template<typename NullOrResourcePtr, typename ResourcesUser, typename... ResourcesUserTail>
-    void setResources_(NullOrResourcePtr nullOrResourcePtr, ResourcesUser& resourcesUser,
+    template<typename RequestedPtr, typename ResourcesUser, typename... ResourcesUserTail>
+    void setResources_(RequestedPtr requestedPtr, ResourcesUser& resourcesUser,
                        ResourcesUserTail&... resourcesUsers) const
     {
-        setResources_(nullOrResourcePtr, resourcesUser);
-        setResources_(nullOrResourcePtr, resourcesUsers...);
+        setResources_(requestedPtr, resourcesUser);
+        setResources_(requestedPtr, resourcesUsers...);
     }
 
 
@@ -54,15 +54,15 @@ public:
      *  \param[in] resourcesManager
      *  \param[in,out] resourcesUsers
      */
-    ResourcesGuards(SAMRAI::hier::Patch const& patch, ResourcesManager const& resourcesManager,
-                    ResourcesUsers&... resourcesUsers)
+    ResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesManager const& resourcesManager,
+                   ResourcesUsers&... resourcesUsers)
         : resourcesUsers_{resourcesUsers...}
         , patch_{patch}
         , resourcesManager_{resourcesManager}
     {
         setResources_(UseResourcePtr{}, resourcesUsers...);
     }
-    ~ResourcesGuards()
+    ~ResourcesGuard()
     {
         // Here we want to do a loop on the tuple : resourcesUsers_
         // we will do it in a recursive way, first with indexes we get a vector like that
@@ -75,12 +75,12 @@ public:
     }
 
     // We just need the move constructor for using ResourceManager::createResourcesGuards
-    ResourcesGuards(ResourcesGuards&&) = default;
+    ResourcesGuard(ResourcesGuard&&) = default;
 
-    ResourcesGuards()                       = delete;
-    ResourcesGuards(ResourcesGuards const&) = delete;
-    ResourcesGuards& operator=(ResourcesGuards const& source) = delete;
-    ResourcesGuards& operator=(ResourcesGuards&&) = delete;
+    ResourcesGuard()                      = delete;
+    ResourcesGuard(ResourcesGuard const&) = delete;
+    ResourcesGuard& operator=(ResourcesGuard const& source) = delete;
+    ResourcesGuard& operator=(ResourcesGuard&&) = delete;
 
 private:
     std::tuple<ResourcesUsers&...> resourcesUsers_;

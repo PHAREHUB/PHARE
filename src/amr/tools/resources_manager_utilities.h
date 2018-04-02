@@ -41,9 +41,8 @@ struct has_field<ResourcesUser, tryToInstanciate<decltype(
  *
  */
 template<typename ResourcesUser>
-struct has_particles<
-    ResourcesUser,
-    tryToInstanciate<decltype(std::declval<ResourcesUser>().getParticlesNamesAndQuantities())>>
+struct has_particles<ResourcesUser, tryToInstanciate<decltype(
+                                        std::declval<ResourcesUser>().getParticleArrayNames())>>
     : std::true_type
 {
 };
@@ -76,12 +75,16 @@ using isFieldType
                            && !has_sub_resources<ResourcesUser>::value,
                        dummy::type>;
 
+
+
 /** \brief isParticlesType will detect if ResourcesUser expose only particles */
 template<typename ResourcesUser>
 using isParticlesType
     = std::enable_if_t<!has_field<ResourcesUser>::value && has_particles<ResourcesUser>::value
                            && !has_sub_resources<ResourcesUser>::value,
                        dummy::type>;
+
+
 
 /** \brief isSubResourcesType will detect if ResourcesUser expose only sub resources */
 template<typename ResourcesUser>
@@ -90,12 +93,16 @@ using isSubResourcesType
                            && has_sub_resources<ResourcesUser>::value,
                        dummy::type>;
 
+
+
 /** \brief isFieldAndParticlesType will detect if ResourcesUser expose only Field and Particles */
 template<typename ResourcesUser>
 using isFieldAndParticlesType
     = std::enable_if_t<has_field<ResourcesUser>::value && has_particles<ResourcesUser>::value
                            && !has_sub_resources<ResourcesUser>::value,
                        dummy::type>;
+
+
 
 /** \brief isFieldAndSubResourcesType will detect if ResourcesUser expose only Field and sub
  * resources */
@@ -104,6 +111,8 @@ using isFieldAndSubResourcesType
     = std::enable_if_t<has_field<ResourcesUser>::value && !has_particles<ResourcesUser>::value
                            && has_sub_resources<ResourcesUser>::value,
                        dummy::type>;
+
+
 
 #if PARTICLES_AND_SUB_RESOURCES_EXIST
 template<typename ResourcesUser>
@@ -125,19 +134,23 @@ using isAllType
 struct UseResourcePtr
 {
 };
+
+
 /** UseNullPtr is used to select a nullptr with the correct type */
 struct UseNullPtr
 {
 };
 
-template<typename NullOrResourcePtr>
-using ifWantNullPointer = std::enable_if_t<
-    std::is_same<typename std::remove_reference<NullOrResourcePtr>::type, UseNullPtr>::value,
+
+template<typename RequestedPtr>
+using ifNullPtr = std::enable_if_t<
+    std::is_same<typename std::remove_reference<RequestedPtr>::type, UseNullPtr>::value,
     dummy::type>;
 
-template<typename NullOrResourcePtr>
-using ifWantRessourcePointer = std::enable_if_t<
-    std::is_same<typename std::remove_reference<NullOrResourcePtr>::type, UseResourcePtr>::value,
+
+template<typename RequestedPtr>
+using ifResourcePtr = std::enable_if_t<
+    std::is_same<typename std::remove_reference<RequestedPtr>::type, UseResourcePtr>::value,
     dummy::type>;
 
 

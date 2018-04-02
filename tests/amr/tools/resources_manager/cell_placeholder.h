@@ -31,11 +31,11 @@ public:
         , hq_{hq}
     {
     }
-    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity>> names_and_quantities;
+    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity>> resources_properties;
 
     using field_impl = double;
 
-    names_and_quantities getFieldNamesAndQuantities() const { return {{name_, hq_}}; }
+    resources_properties getFieldNamesAndQuantities() const { return {{name_, hq_}}; }
 
     void setResources(std::string const resourcesManagerName, field_impl *data)
     {

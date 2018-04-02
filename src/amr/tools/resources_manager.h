@@ -151,8 +151,7 @@ public:
     template<typename ResourcesUser, isParticlesType<ResourcesUser> = dummy::value>
     void registerResources(ResourcesUser const& obj)
     {
-        registerResources_(obj, ParticlesType<ResourcesUser>{},
-                           obj.getParticlesNamesAndQuantities());
+        registerResources_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames());
     }
 
 
@@ -171,8 +170,7 @@ public:
     void registerResources(ResourcesUser const& obj)
     {
         registerResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities());
-        registerResources_(obj, ParticlesType<ResourcesUser>{},
-                           obj.getParticlesNamesAndQuantities());
+        registerResources_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames());
     }
 
 
@@ -230,7 +228,7 @@ public:
     void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
                       SAMRAI::hier::Patch const& patch) const
     {
-        setResourcesVariadic_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
+        setSubResources_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
     }
 
 
@@ -257,7 +255,7 @@ public:
         setResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(), patch,
                       nullOrResourcePtr);
 
-        setResourcesVariadic_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
+        setSubResources_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
     }
 
 
@@ -298,7 +296,7 @@ public:
     template<typename ResourcesUser, isSubResourcesType<ResourcesUser> = dummy::value>
     void allocate(ResourcesUser const& obj, SAMRAI::hier::Patch& patch) const
     {
-        allocateVariadic_(patch, obj.getSubResourcesObject());
+        allocateSubResources_(patch, obj.getSubResourcesObject());
     }
 
 
@@ -315,7 +313,7 @@ public:
     void allocate(ResourcesUser const& obj, SAMRAI::hier::Patch& patch) const
     {
         allocate_(obj, obj.getFieldNamesAndQuantities(), patch);
-        allocateVariadic_(patch, obj.getSubResourcesObject());
+        allocateSubResources_(patch, obj.getSubResourcesObject());
     }
 
 
@@ -339,26 +337,26 @@ public:
 
     // This is a helper that allow use simple as
     // auto guard = createResourcesGuards(patch, obj1, obj2, ...);
-
+    /** \brief make a ResourceGuard to set resources to all passed objects
+     */
     template<typename... ResourcesUsers>
     constexpr ResourcesGuards<ResourcesManager, ResourcesUsers...>
-    createResourcesGuards(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resoucesUsers)
+    makeResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resoucesUsers)
     {
         return ResourcesGuards<ResourcesManager, ResourcesUsers...>{patch, *this, resoucesUsers...};
     }
 
 private:
-    // The function getPointer_ is the one that depending on NullOrResourcePtr will choose to return
-    // the real pointer or a nullptr to the correct type. Note that it is mandatory to return
-    // a nullptr of correct type, otherwise the call of ResourcesUser.setResources(name,nullptr)
-    // will be undefined. To accomplish that, ResourcesType will have to provides the type of the
-    // internal data (which is known by core)
+    // The function getResourcesPointer_ is the one that depending
+    // on NullOrResourcePtr will choose to return
+    // the real pointer or a nullptr to the correct type.
 
-    /** \brief Return a pointer to the patch data instantied in the patch
+    /** \brief Returns a pointer to the patch data instantiated in the patch
+     * is used by getResourcesPointer_ when user code wants the pointer to the data
      */
     template<typename ResourceType>
-    auto getResourcePointer_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
-                             SAMRAI::hier::Patch const& patch) const
+    auto getPatchData_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
+                       SAMRAI::hier::Patch const& patch) const
     {
         auto patchData = patch.getPatchData(resourcesVariableInfo.variable, context_);
         return (std::dynamic_pointer_cast<typename ResourceType::data_type>(patchData))
@@ -367,7 +365,11 @@ private:
 
 
 
-
+    /** \brief returns a nullptr of correct type for the call to
+     *  ResourcesUser.setResources(name,nullptr) not to be undefined.
+     * To accomplish that, ResourcesType will have to provides the type of the
+     * internal data (which is known by core)
+     */
     template<typename ResourceType>
     constexpr auto static getNullPointer_(ResourceType resourceType)
     {
@@ -376,21 +378,25 @@ private:
 
 
 
-    template<typename ResourceType, typename NullOrResourcePtr,
-             ifWantRessourcePointer<NullOrResourcePtr> = dummy::value>
-    auto getPointer_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
-                     SAMRAI::hier::Patch const& patch, NullOrResourcePtr which) const
+    /** \brief this specialization of getResourcesPointer_ is used when
+     * the client code wants to get a pointer to a patch data resource
+     */
+    template<typename ResourceType, typename RequestedPtr,
+             ifResourcePtr<RequestedPtr> = dummy::value>
+    auto getResourcesPointer_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
+                              SAMRAI::hier::Patch const& patch) const
     {
-        return getResourcePointer_(resourceType, resourcesVariableInfo, patch);
+        return getPatchData_(resourceType, resourcesVariableInfo, patch);
     }
 
 
 
-
-    template<typename ResourceType, typename NullOrResourcePtr,
-             ifWantNullPointer<NullOrResourcePtr> = dummy::value>
-    auto getPointer_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
-                     SAMRAI::hier::Patch const& patch, NullOrResourcePtr which) const
+    /** \brief this specialization of getResourcesPointer_ is used when the client
+     * code wants to get a nullptr
+     */
+    template<typename ResourceType, typename RequestedPtr, ifNullPtr<RequestedPtr> = dummy::value>
+    auto getResourcesPointer_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
+                              SAMRAI::hier::Patch const& patch) const
     {
         (void)resourcesVariableInfo;
         (void)patch;
@@ -399,8 +405,8 @@ private:
 
 
 
-    template<typename ResourcesUser, typename... ResourcesUserTails>
-    void registerSubResources_(ResourcesUser& resource, ResourcesUserTails&... resources)
+    template<typename ResourcesUser, typename... ResourcesUserTail>
+    void registerSubResources_(ResourcesUser& resource, ResourcesUserTail&... resources)
     {
         registerResources(resource);
         registerSubResources_(resources...);
@@ -409,24 +415,23 @@ private:
 
 
 
-    template<typename NullOrResourcePtr, typename ResourcesUser, typename... ResourcesUserTails>
-    void setResourcesVariadic_(NullOrResourcePtr nullOrResourcePtr,
-                               SAMRAI::hier::Patch const& patch, ResourcesUser obj,
-                               ResourcesUserTails&... objs) const
+    template<typename NullOrResourcePtr, typename ResourcesUser, typename... ResourcesUserTail>
+    void setSubResources_(NullOrResourcePtr nullOrResourcePtr, SAMRAI::hier::Patch const& patch,
+                          ResourcesUser obj, ResourcesUserTail&... objs) const
     {
         setResources(obj, nullOrResourcePtr, patch);
-        setResourcesVariadic_(nullOrResourcePtr, patch, objs...);
+        setSubResources_(nullOrResourcePtr, patch, objs...);
     }
 
 
 
 
     template<typename ResourcesUser, typename... ResourcesUserTails>
-    void allocateVariadic_(SAMRAI::hier::Patch const& patch, ResourcesUser obj,
-                           ResourcesUserTails&... objs)
+    void allocateSubResources_(SAMRAI::hier::Patch const& patch, ResourcesUser obj,
+                               ResourcesUserTails&... objs)
     {
         allocate(obj, patch);
-        allocateVariadic_(patch, objs...);
+        allocateSubResources_(patch, objs...);
     }
 
 
@@ -436,12 +441,12 @@ private:
      */
     template<typename ResourcesUser, typename ResourcesType>
     void registerResources_(ResourcesUser const& obj, ResourcesType resourceType,
-                            typename ResourcesUser::names_and_quantities const& namesAndQuantities)
+                            typename ResourcesUser::resources_properties const& resourcesProperties)
     {
-        for (auto const& nameAndQuantity : namesAndQuantities)
+        for (auto const& properties : resourcesProperties)
         {
-            std::string const& resourcesName = nameAndQuantity.first;
-            auto const& qty                  = nameAndQuantity.second;
+            std::string const& resourcesName = properties.first;
+            auto const& qty                  = properties.second;
 
             ResourcesInfo resources;
             resources.variable = std::make_shared<typename ResourcesType::variable_type>(
@@ -450,7 +455,7 @@ private:
             resources.id = variableDatabase_->registerVariableAndContext(
                 resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-            nameToressourceInfo_[resourcesName] = resources;
+            nameToResourceInfo_[resourcesName] = resources;
         }
     }
 
@@ -459,19 +464,19 @@ private:
     /** \brief setResources_ aims at setting ResourcesUser pointers to the
      * appropriate data on the Patch or to reset them to nullptr.
      */
-    template<typename ResourcesUser, typename ResourcesType, typename NullOrResourcePtr>
+    template<typename ResourcesUser, typename ResourcesType, typename RequestedPtr>
     void setResources_(ResourcesUser& obj, ResourcesType resourceType,
-                       typename ResourcesUser::names_and_quantities const& namesAndQuantities,
-                       SAMRAI::hier::Patch const& patch, NullOrResourcePtr nullOrResourcePtr) const
+                       typename ResourcesUser::resources_properties const& resourcesProperties,
+                       SAMRAI::hier::Patch const& patch, RequestedPtr) const
     {
-        for (auto const& nameAndQuantity : namesAndQuantities)
+        for (auto const& properties : resourcesProperties)
         {
-            std::string const& resourcesName = nameAndQuantity.first;
-            auto const& resourceInfoIt       = nameToressourceInfo_.find(resourcesName);
-            if (resourceInfoIt != nameToressourceInfo_.end())
+            std::string const& resourcesName = properties.first;
+            auto const& resourceInfoIt       = nameToResourceInfo_.find(resourcesName);
+            if (resourceInfoIt != nameToResourceInfo_.end())
             {
-                auto data
-                    = getPointer_(resourceType, resourceInfoIt->second, patch, nullOrResourcePtr);
+                auto data = getResourcesPointer_<ResourcesType, RequestedPtr>(
+                    resourceType, resourceInfoIt->second, patch);
                 obj.setResources(resourcesName, data);
             }
             else
@@ -487,14 +492,14 @@ private:
     //! \brief Allocate the data on the given level
     template<typename ResourcesUser>
     void allocate_(ResourcesUser const& obj,
-                   typename ResourcesUser::names_and_quantities const& namesAndQuantities,
+                   typename ResourcesUser::resources_properties const& resourcesProperties,
                    SAMRAI::hier::Patch& patch) const
     {
-        for (auto const& nameAndQuantity : namesAndQuantities)
+        for (auto const& properties : resourcesProperties)
         {
-            std::string const& resourcesName  = nameAndQuantity.first;
-            auto const& resourceVariablesInfo = nameToressourceInfo_.find(resourcesName);
-            if (resourceVariablesInfo != nameToressourceInfo_.end())
+            std::string const& resourcesName  = properties.first;
+            auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
+            if (resourceVariablesInfo != nameToResourceInfo_.end())
             {
                 patch.allocatePatchData(resourceVariablesInfo->second.id);
             }
@@ -510,7 +515,7 @@ private:
     SAMRAI::hier::VariableDatabase* variableDatabase_;
     std::shared_ptr<SAMRAI::hier::VariableContext> context_;
     SAMRAI::tbox::Dimension dimension_;
-    std::map<std::string, ResourcesInfo> nameToressourceInfo_;
+    std::map<std::string, ResourcesInfo> nameToResourceInfo_;
 }; // namespace PHARE
 
 } // namespace PHARE

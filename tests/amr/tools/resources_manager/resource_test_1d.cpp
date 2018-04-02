@@ -40,7 +40,7 @@ TEST_P(ResourcesManagerTest1D, FieldPointerCanBeSet)
         auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
         for (auto const &patch : *patchLevel)
         {
-            auto guards = resourcesManager.createResourcesGuards(*patch, field);
+            auto guards = resourcesManager.makeResourcesGuard(*patch, field);
             EXPECT_TRUE(field.isValid());
         }
     }
