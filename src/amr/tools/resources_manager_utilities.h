@@ -62,34 +62,40 @@ struct has_sub_resources<ResourcesUser, tryToInstanciate<decltype(
 };
 
 
+struct dummy
+{
+    using type              = int;
+    static const type value = 0;
+};
+
 
 /** \brief isFieldType will detect if ResourcesUser expose only Field */
 template<typename ResourcesUser>
 using isFieldType
     = std::enable_if_t<has_field<ResourcesUser>::value && !has_particles<ResourcesUser>::value
                            && !has_sub_resources<ResourcesUser>::value,
-                       std::true_type>;
+                       dummy::type>;
 
 /** \brief isParticlesType will detect if ResourcesUser expose only particles */
 template<typename ResourcesUser>
 using isParticlesType
     = std::enable_if_t<!has_field<ResourcesUser>::value && has_particles<ResourcesUser>::value
                            && !has_sub_resources<ResourcesUser>::value,
-                       std::true_type>;
+                       dummy::type>;
 
 /** \brief isSubResourcesType will detect if ResourcesUser expose only sub resources */
 template<typename ResourcesUser>
 using isSubResourcesType
     = std::enable_if_t<!has_field<ResourcesUser>::value && !has_particles<ResourcesUser>::value
                            && has_sub_resources<ResourcesUser>::value,
-                       std::true_type>;
+                       dummy::type>;
 
 /** \brief isFieldAndParticlesType will detect if ResourcesUser expose only Field and Particles */
 template<typename ResourcesUser>
 using isFieldAndParticlesType
     = std::enable_if_t<has_field<ResourcesUser>::value && has_particles<ResourcesUser>::value
                            && !has_sub_resources<ResourcesUser>::value,
-                       std::true_type>;
+                       dummy::type>;
 
 /** \brief isFieldAndSubResourcesType will detect if ResourcesUser expose only Field and sub
  * resources */
@@ -97,7 +103,7 @@ template<typename ResourcesUser>
 using isFieldAndSubResourcesType
     = std::enable_if_t<has_field<ResourcesUser>::value && !has_particles<ResourcesUser>::value
                            && has_sub_resources<ResourcesUser>::value,
-                       std::true_type>;
+                       dummy::type>;
 
 #if PARTICLES_AND_SUB_RESOURCES_EXIST
 template<typename ResourcesUser>
@@ -127,12 +133,12 @@ struct UseNullPtr
 template<typename NullOrResourcePtr>
 using ifWantNullPointer = std::enable_if_t<
     std::is_same<typename std::remove_reference<NullOrResourcePtr>::type, UseNullPtr>::value,
-    std::true_type>;
+    dummy::type>;
 
 template<typename NullOrResourcePtr>
 using ifWantRessourcePointer = std::enable_if_t<
     std::is_same<typename std::remove_reference<NullOrResourcePtr>::type, UseResourcePtr>::value,
-    std::true_type>;
+    dummy::type>;
 
 
 
