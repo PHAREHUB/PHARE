@@ -340,10 +340,10 @@ public:
     /** \brief make a ResourceGuard to set resources to all passed objects
      */
     template<typename... ResourcesUsers>
-    constexpr ResourcesGuards<ResourcesManager, ResourcesUsers...>
+    constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
     makeResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resoucesUsers)
     {
-        return ResourcesGuards<ResourcesManager, ResourcesUsers...>{patch, *this, resoucesUsers...};
+        return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this, resoucesUsers...};
     }
 
 private:
