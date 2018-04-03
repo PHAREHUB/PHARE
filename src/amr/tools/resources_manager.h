@@ -36,6 +36,16 @@ struct ParticlesType
     using particles_impl = typename Impl::particles_impl;
 };
 
+template<typename ResourceUser, typename ResourcesType>
+using ifField = std::enable_if_t<std::is_same<typename std::remove_reference<ResourcesType>::type,
+                                              FieldType<ResourceUser>>::value,
+                                 dummy::type>;
+
+template<typename ResourceUser, typename ResourcesType>
+using ifParticles
+    = std::enable_if_t<std::is_same<typename std::remove_reference<ResourcesType>::type,
+                                    ParticlesType<ResourceUser>>::value,
+                       dummy::type>;
 
 /**
  * \brief ResourcesInfo gathers the information associated to a resource
@@ -92,7 +102,7 @@ struct ResourcesInfo
  * - registerResources() : these methods are used by code that wants to register
  * resources of a ResourcesUser.
  *
- * - setResources() : these methods are used by code that wants to retrieve a pointer
+ * - setResources_() : these methods are used by code that wants to retrieve a pointer
  * to an already registered resource. After calling this method passing a ResourcesUser
  * and a Patch, the ResourcesUser has its internal pointers pointing to the resource
  * lying on the given Patch. These methods are typically used while looping over the
@@ -142,7 +152,8 @@ public:
     template<typename ResourcesUser, isFieldType<ResourcesUser> = dummy::value>
     void registerResources(ResourcesUser const& obj)
     {
-        registerResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities());
+        registerResources_<ResourcesUser, FieldType<ResourcesUser>>(
+            obj.getFieldNamesAndQuantities());
     }
 
 
@@ -151,7 +162,8 @@ public:
     template<typename ResourcesUser, isParticlesType<ResourcesUser> = dummy::value>
     void registerResources(ResourcesUser const& obj)
     {
-        registerResources_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames());
+        registerResources_<ResourcesUser, ParticlesType<ResourcesUser>>(
+            obj.getParticleArrayNames());
     }
 
 
@@ -169,8 +181,11 @@ public:
     template<typename ResourcesUser, isFieldAndParticlesType<ResourcesUser> = dummy::value>
     void registerResources(ResourcesUser const& obj)
     {
-        registerResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities());
-        registerResources_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames());
+        registerResources_<ResourcesUser, FieldType<ResourcesUser>>(
+            obj.getFieldNamesAndQuantities());
+
+        registerResources_<ResourcesUser, ParticlesType<ResourcesUser>>(
+            obj.getParticleArrayNames());
     }
 
 
@@ -179,7 +194,8 @@ public:
     template<typename ResourcesUser, isFieldAndSubResourcesType<ResourcesUser> = dummy::value>
     void registerResources(ResourcesUser const& obj)
     {
-        registerResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities());
+        registerResources_<ResourcesUser, FieldType<ResourcesUser>>(
+            obj.getFieldNamesAndQuantities());
         registerSubResources_(obj.getSubResourcesObject());
     }
 
@@ -187,91 +203,14 @@ public:
 
 
 #if PARTICLES_AND_SUB_RESOURCES_EXIST
-    template<typename ResourcesUser>
-    void registerResources(ResourcesUser const& obj,
-                           isParticlesAndSubResourcesType<ResourcesUser> = std::true_type{})
+    template<typename ResourcesUser, isParticlesAndSubResourcesType<ResourcesUser> = dummy::value>
+    void registerResources(ResourcesUser const& obj)
     {
     }
 #endif
 #if FIELD_PARTICLES_AND_SUB_RESOURCES_EXIST
-    template<typename ResourcesUser>
-    void registerResources(ResourcesUser const& obj, isAllType<ResourcesUser> = std::true_type{})
-    {
-    }
-#endif
-
-
-
-    template<typename ResourcesUser, typename NullOrResourcePtr,
-             isFieldType<ResourcesUser> = dummy::value>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch) const
-    {
-        setResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(), patch,
-                      nullOrResourcePtr);
-    }
-
-
-
-    template<typename ResourcesUser, typename NullOrResourcePtr,
-             isParticlesType<ResourcesUser> = dummy::value>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch) const
-    {
-        setResources_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames(), patch,
-                      nullOrResourcePtr);
-    }
-
-
-    template<typename ResourcesUser, typename NullOrResourcePtr,
-             isSubResourcesType<ResourcesUser> = dummy::value>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch) const
-    {
-        setSubResources_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
-    }
-
-
-
-    template<typename ResourcesUser, typename NullOrResourcePtr,
-             isFieldAndParticlesType<ResourcesUser> = dummy::value>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch) const
-    {
-        setResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(), patch,
-                      nullOrResourcePtr);
-
-        setResources_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames(), patch,
-                      nullOrResourcePtr);
-    }
-
-
-
-    template<typename ResourcesUser, typename NullOrResourcePtr>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch,
-                      isFieldAndSubResourcesType<ResourcesUser> = std::true_type{}) const
-    {
-        setResources_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(), patch,
-                      nullOrResourcePtr);
-
-        setSubResources_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
-    }
-
-
-#if PARTICLES_AND_SUB_RESOURCES_EXIST
-    template<typename ResourcesUser, typename NullOrResourcePtr>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch,
-                      isParticlesAndSubResourcesType<ResourcesUser> = std::true_type{}) const
-    {
-    }
-#endif
-#if FIELD_PARTICLES_AND_SUB_RESOURCES_EXIST
-    template<typename ResourcesUser, typename NullOrResourcePtr>
-    void setResources(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
-                      SAMRAI::hier::Patch const& patch,
-                      isAllType<ResourcesUser> = std::true_type{}) const
+    template<typename ResourcesUser, isAllType<ResourcesUser> = dummy::value>
+    void registerResources(ResourcesUser const& obj)
     {
     }
 #endif
@@ -389,6 +328,80 @@ private:
         return getPatchData_(resourceType, resourcesVariableInfo, patch);
     }
 
+    template<typename ResourcesUser, typename NullOrResourcePtr,
+             isFieldType<ResourcesUser> = dummy::value>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch) const
+    {
+        setResourcesInternal_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(),
+                              patch, nullOrResourcePtr);
+    }
+
+
+
+    template<typename ResourcesUser, typename NullOrResourcePtr,
+             isParticlesType<ResourcesUser> = dummy::value>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch) const
+    {
+        setResourcesInternal_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames(),
+                              patch, nullOrResourcePtr);
+    }
+
+
+    template<typename ResourcesUser, typename NullOrResourcePtr,
+             isSubResourcesType<ResourcesUser> = dummy::value>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch) const
+    {
+        setSubResourcesInternal_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
+    }
+
+
+
+    template<typename ResourcesUser, typename NullOrResourcePtr,
+             isFieldAndParticlesType<ResourcesUser> = dummy::value>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch) const
+    {
+        setResourcesInternal_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(),
+                              patch, nullOrResourcePtr);
+
+        setResourcesInternal_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames(),
+                              patch, nullOrResourcePtr);
+    }
+
+
+
+    template<typename ResourcesUser, typename NullOrResourcePtr>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch,
+                       isFieldAndSubResourcesType<ResourcesUser> = std::true_type{}) const
+    {
+        setResourcesInternal_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(),
+                              patch, nullOrResourcePtr);
+
+        setSubResourcesInternal_(nullOrResourcePtr, patch, obj.getSubResourcesObject());
+    }
+
+
+#if PARTICLES_AND_SUB_RESOURCES_EXIST
+    template<typename ResourcesUser, typename NullOrResourcePtr>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch,
+                       isParticlesAndSubResourcesType<ResourcesUser> = std::true_type{}) const
+    {
+    }
+#endif
+#if FIELD_PARTICLES_AND_SUB_RESOURCES_EXIST
+    template<typename ResourcesUser, typename NullOrResourcePtr>
+    void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+                       SAMRAI::hier::Patch const& patch,
+                       isAllType<ResourcesUser> = std::true_type{}) const
+    {
+    }
+#endif
+
 
 
     /** \brief this specialization of getResourcesPointer_ is used when the client
@@ -439,9 +452,9 @@ private:
 
     /** \brief Register a collection of resources
      */
-    template<typename ResourcesUser, typename ResourcesType>
-    void registerResources_(ResourcesUser const& obj, ResourcesType resourceType,
-                            typename ResourcesUser::resources_properties const& resourcesProperties)
+    template<typename ResourcesUser, typename ResourcesType,
+             ifField<ResourcesUser, ResourcesType> = dummy::value>
+    void registerResources_(typename ResourcesUser::resources_properties const& resourcesProperties)
     {
         for (auto const& properties : resourcesProperties)
         {
@@ -455,19 +468,37 @@ private:
             resources.id = variableDatabase_->registerVariableAndContext(
                 resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-            nameToResourceInfo_[resourcesName] = resources;
+            nameToResourceInfo_.emplace(resourcesName, resources);
+        }
+    }
+
+    template<typename ResourcesUser, typename ResourcesType,
+             ifParticles<ResourcesUser, ResourcesType> = dummy::value>
+    void registerResources_(typename ResourcesUser::resources_properties const& resourcesProperties)
+    {
+        for (auto const& resourcesName : resourcesProperties)
+        {
+            ResourcesInfo resources;
+            resources.variable = std::make_shared<typename ResourcesType::variable_type>(
+                dimension_, resourcesName);
+
+            resources.id = variableDatabase_->registerVariableAndContext(
+                resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+
+            nameToResourceInfo_.emplace(resourcesName, resources);
         }
     }
 
 
 
-    /** \brief setResources_ aims at setting ResourcesUser pointers to the
+    /** \brief setResourcesInternal_ aims at setting ResourcesUser pointers to the
      * appropriate data on the Patch or to reset them to nullptr.
      */
     template<typename ResourcesUser, typename ResourcesType, typename RequestedPtr>
-    void setResources_(ResourcesUser& obj, ResourcesType resourceType,
-                       typename ResourcesUser::resources_properties const& resourcesProperties,
-                       SAMRAI::hier::Patch const& patch, RequestedPtr) const
+    void
+    setResourcesInternal_(ResourcesUser& obj, ResourcesType resourceType,
+                          typename ResourcesUser::resources_properties const& resourcesProperties,
+                          SAMRAI::hier::Patch const& patch, RequestedPtr) const
     {
         for (auto const& properties : resourcesProperties)
         {
@@ -516,6 +547,9 @@ private:
     std::shared_ptr<SAMRAI::hier::VariableContext> context_;
     SAMRAI::tbox::Dimension dimension_;
     std::map<std::string, ResourcesInfo> nameToResourceInfo_;
+
+    template<typename ResourcesManager, typename... ResourcesUsers>
+    friend class ResourcesGuard;
 }; // namespace PHARE
 
 } // namespace PHARE

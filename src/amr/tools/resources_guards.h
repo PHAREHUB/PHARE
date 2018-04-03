@@ -27,7 +27,7 @@ private:
     template<typename RequestedPtr, typename ResourcesUser>
     void setResources_(RequestedPtr requestedPtr, ResourcesUser& resourcesUser) const
     {
-        resourcesManager_.setResources(resourcesUser, requestedPtr, patch_);
+        resourcesManager_.setResources_(resourcesUser, requestedPtr, patch_);
     }
     template<typename RequestedPtr, typename ResourcesUser, typename... ResourcesUserTail>
     void setResources_(RequestedPtr requestedPtr, ResourcesUser& resourcesUser,
