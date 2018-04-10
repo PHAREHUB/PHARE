@@ -234,28 +234,28 @@ TEST_F(VecFieldTest, SizeIsOkAfterSet3D)
 
 TEST_F(VecFieldTest, HasThreeBuffers1D)
 {
-    auto pairs = B1D_.buffersField();
+    auto pairs = B1D_.getFieldNamesAndQuantities();
     EXPECT_EQ(3, pairs.size());
 }
 
 TEST_F(VecFieldTest, HasThreeBuffers2D)
 {
-    auto pairs = B2D_.buffersField();
+    auto pairs = B2D_.getFieldNamesAndQuantities();
     EXPECT_EQ(3, pairs.size());
 }
 
 TEST_F(VecFieldTest, HasThreeBuffers3D)
 {
-    auto pairs = B3D_.buffersField();
+    auto pairs = B3D_.getFieldNamesAndQuantities();
     EXPECT_EQ(3, pairs.size());
 }
 
 
 TEST_F(VecFieldTest, ComponentNames)
 {
-    auto pairs1D = B1D_.buffersField();
-    auto pairs2D = B2D_.buffersField();
-    auto pairs3D = B3D_.buffersField();
+    auto pairs1D = B1D_.getFieldNamesAndQuantities();
+    auto pairs2D = B2D_.getFieldNamesAndQuantities();
+    auto pairs3D = B3D_.getFieldNamesAndQuantities();
 
     EXPECT_EQ(B1D_.name() + "_x", pairs1D[0].first);
     EXPECT_EQ(B1D_.name() + "_y", pairs1D[1].first);
@@ -274,9 +274,9 @@ TEST_F(VecFieldTest, ComponentNames)
 
 TEST_F(VecFieldTest, PhysicalQuantities)
 {
-    auto pairs1D = B1D_.buffersField();
-    auto pairs2D = B2D_.buffersField();
-    auto pairs3D = B3D_.buffersField();
+    auto pairs1D = B1D_.getFieldNamesAndQuantities();
+    auto pairs2D = B2D_.getFieldNamesAndQuantities();
+    auto pairs3D = B3D_.getFieldNamesAndQuantities();
 
     EXPECT_EQ(HybridQuantity::Quantity::Bx, pairs1D[0].second);
     EXPECT_EQ(HybridQuantity::Quantity::By, pairs1D[1].second);

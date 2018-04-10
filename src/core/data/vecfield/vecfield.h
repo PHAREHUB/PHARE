@@ -34,9 +34,12 @@ public:
     {
     }
 
-    using pair_type = std::vector<std::pair<std::string, typename PhysicalQuantity::Quantity>>;
+    using resources_properties
+        = std::vector<std::pair<std::string, typename PhysicalQuantity::Quantity>>;
 
-    pair_type buffersField() const
+    using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Quantity>;
+
+    resources_properties getFieldNamesAndQuantities() const
     {
         return {{std::make_pair(componentNames_[0], physQties_[0]),
                  std::make_pair(componentNames_[1], physQties_[1]),
@@ -44,8 +47,7 @@ public:
     }
 
 
-    void setBuffer(std::string const& bufferName,
-                   Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* field)
+    void setBuffer(std::string const& bufferName, field_type* field)
     {
         if (bufferName == componentNames_[0])
         {
@@ -75,7 +77,7 @@ public:
 
     std::string const& name() { return name_; }
 
-    using field_impl = NdArrayImpl;
+    // using field_impl = NdArrayImpl;
 
     enum class Component { X, Y, Z };
 
@@ -105,9 +107,9 @@ private:
     std::string name_ = "No Name";
     std::array<typename PhysicalQuantity::Quantity, 3> physQties_;
     std::array<std::string, 3> componentNames_;
-    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* xComponent_ = nullptr;
-    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* yComponent_ = nullptr;
-    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>* zComponent_ = nullptr;
+    field_type* xComponent_ = nullptr;
+    field_type* yComponent_ = nullptr;
+    field_type* zComponent_ = nullptr;
 };
 
 } // namespace PHARE
