@@ -13,21 +13,16 @@
 #include "cell_placeholder.h"
 #include "resource_test_1d.h"
 
-std::string inputBase;
-
 
 
 int main(int argc, char **argv)
 {
-    if (argc > 1)
-    {
-        inputBase = std::string{argv[1]};
-    }
+    ::testing::InitGoogleTest(&argc, argv);
+
     SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
     SAMRAI::tbox::SAMRAIManager::initialize();
     SAMRAI::tbox::SAMRAIManager::startup();
 
-    ::testing::InitGoogleTest(&argc, argv);
 
     int testResult = RUN_ALL_TESTS();
 

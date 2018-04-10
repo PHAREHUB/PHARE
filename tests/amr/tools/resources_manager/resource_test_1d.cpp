@@ -1,12 +1,11 @@
 #include "resource_test_1d.h"
 
-using PHARE::HybridQuantity;
-using PHARE::ResourcesManager;
 
-
-
+namespace PHARE
+{
 void ResourcesManagerTest1D::SetUp()
 {
+    auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
     hierarchy->init();
 
@@ -48,7 +47,7 @@ TEST_P(ResourcesManagerTest1D, FieldPointerCanBeSet)
 }
 
 
-ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuantity hq)
+ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuantity::Quantity hq)
 {
     ResourcesManagerTest1DParam rc;
     rc.field = std::make_shared<PlaceHolder::CellField>(name, hq);
@@ -56,11 +55,13 @@ ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuant
 }
 
 INSTANTIATE_TEST_CASE_P(ResourcesManager, ResourcesManagerTest1D,
-                        ::testing::ValuesIn({createResources("Ex", HybridQuantity::Ex),
-                                             createResources("Ey", HybridQuantity::Ey),
-                                             createResources("Ez", HybridQuantity::Ez),
-                                             createResources("Bx", HybridQuantity::Bx),
-                                             createResources("By", HybridQuantity::By),
-                                             createResources("Bz", HybridQuantity::Bz)
+                        ::testing::ValuesIn({createResources("Ex", HybridQuantity::Quantity::Ex),
+                                             createResources("Ey", HybridQuantity::Quantity::Ey),
+                                             createResources("Ez", HybridQuantity::Quantity::Ez),
+                                             createResources("Bx", HybridQuantity::Quantity::Bx),
+                                             createResources("By", HybridQuantity::Quantity::By),
+                                             createResources("Bz", HybridQuantity::Quantity::Bz)
 
                         }));
+
+} // namespace PHARE

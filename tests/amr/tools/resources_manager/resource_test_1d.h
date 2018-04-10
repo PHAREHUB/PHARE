@@ -8,10 +8,12 @@
 #include "cell_placeholder.h"
 #include "tools/resources_manager.h"
 
+#include "input_config.h"
+
 #include <memory>
 
-extern std::string inputBase;
-
+namespace PHARE
+{
 struct ResourcesManagerTest1DParam
 {
     std::shared_ptr<PlaceHolder::CellField> field;
@@ -28,6 +30,8 @@ public:
     std::unique_ptr<BasicHierarchy> hierarchy;
     ResourcesManagerTest1DParam param;
 
-    PHARE::ResourcesManager resourcesManager{"yee", SAMRAI::tbox::Dimension{1}};
+    ResourcesManager resourcesManager{"yee", SAMRAI::tbox::Dimension{1}};
 };
+
+} // namespace PHARE
 #endif

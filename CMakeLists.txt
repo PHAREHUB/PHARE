@@ -119,6 +119,7 @@ if (test)
 
   enable_testing()
 
+
   if (coverage)
     # For coverage  data we need to have zero optimization  and
     # to set special flags
@@ -182,7 +183,6 @@ if (test)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)
   add_subdirectory(tests/core/numerics/interpolator)
-  add_subdirectory(tests/amr/tools/buffer)
   add_subdirectory(tests/amr/tools/resources_manager)
 
 endif()

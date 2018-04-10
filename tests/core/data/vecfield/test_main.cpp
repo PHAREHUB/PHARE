@@ -3,10 +3,10 @@
 
 #include <string>
 
-#include <core/data/field/field.h>
-#include <core/data/ndarray/ndarray_vector.h>
-#include <core/data/vecfield/vecfield.h>
-#include <core/hybrid/hybrid_quantities.h>
+#include "data/field/field.h"
+#include "data/ndarray/ndarray_vector.h"
+#include "data/vecfield/vecfield.h"
+#include "hybrid/hybrid_quantities.h"
 
 
 using PHARE::Component;
