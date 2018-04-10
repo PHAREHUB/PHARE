@@ -9,6 +9,7 @@
 #include <core/hybrid/hybrid_quantities.h>
 
 
+using PHARE::Component;
 using PHARE::Field;
 using PHARE::HybridQuantity;
 using PHARE::NdArrayVector1D;
@@ -206,9 +207,9 @@ TEST_F(VecFieldTest, isNotSettableAfterSet3D)
 TEST_F(VecFieldTest, SizeIsOkAfterSet1D)
 {
     this->setBuffers();
-    EXPECT_EQ(nx, B1D_.getComponent(decltype(B1D_)::Component::X).size());
-    EXPECT_EQ(nx, B1D_.getComponent(decltype(B1D_)::Component::Y).size());
-    EXPECT_EQ(nx, B1D_.getComponent(decltype(B1D_)::Component::Z).size());
+    EXPECT_EQ(nx, B1D_.getComponent(Component::X).size());
+    EXPECT_EQ(nx, B1D_.getComponent(Component::Y).size());
+    EXPECT_EQ(nx, B1D_.getComponent(Component::Z).size());
     this->unsetBuffers();
 }
 
@@ -216,9 +217,9 @@ TEST_F(VecFieldTest, SizeIsOkAfterSet1D)
 TEST_F(VecFieldTest, SizeIsOkAfterSet2D)
 {
     this->setBuffers();
-    EXPECT_EQ(nx * ny, B2D_.getComponent(decltype(B2D_)::Component::X).size());
-    EXPECT_EQ(nx * ny, B2D_.getComponent(decltype(B2D_)::Component::Y).size());
-    EXPECT_EQ(nx * ny, B2D_.getComponent(decltype(B2D_)::Component::Z).size());
+    EXPECT_EQ(nx * ny, B2D_.getComponent(Component::X).size());
+    EXPECT_EQ(nx * ny, B2D_.getComponent(Component::Y).size());
+    EXPECT_EQ(nx * ny, B2D_.getComponent(Component::Z).size());
     this->unsetBuffers();
 }
 
@@ -226,9 +227,9 @@ TEST_F(VecFieldTest, SizeIsOkAfterSet2D)
 TEST_F(VecFieldTest, SizeIsOkAfterSet3D)
 {
     this->setBuffers();
-    EXPECT_EQ(nx * ny * nz, B3D_.getComponent(decltype(B3D_)::Component::X).size());
-    EXPECT_EQ(nx * ny * nz, B3D_.getComponent(decltype(B3D_)::Component::Y).size());
-    EXPECT_EQ(nx * ny * nz, B3D_.getComponent(decltype(B3D_)::Component::Z).size());
+    EXPECT_EQ(nx * ny * nz, B3D_.getComponent(Component::X).size());
+    EXPECT_EQ(nx * ny * nz, B3D_.getComponent(Component::Y).size());
+    EXPECT_EQ(nx * ny * nz, B3D_.getComponent(Component::Z).size());
     this->unsetBuffers();
 }
 

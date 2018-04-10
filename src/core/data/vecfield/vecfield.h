@@ -9,6 +9,9 @@
 
 namespace PHARE
 {
+enum class Component { X, Y, Z };
+
+
 //! VecField represents a vector field
 /** VecField objects encapsulate 3 Field pointers to the data, one per component.
  *  A VecField object is usable, i.e. can give access to its data, only when
@@ -79,7 +82,6 @@ public:
 
     // using field_impl = NdArrayImpl;
 
-    enum class Component { X, Y, Z };
 
     Field<NdArrayImpl, typename PhysicalQuantity::Quantity>& getComponent(Component component)
     {

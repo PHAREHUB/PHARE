@@ -4,11 +4,12 @@
 #include <core/data/particles/particle_array.h>
 #include <string>
 
+using PHARE::Particle;
 
 class ParticleTest : public ::testing::Test
 {
 protected:
-    Particle part;
+    Particle<3> part;
 
 public:
     ParticleTest()
