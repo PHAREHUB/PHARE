@@ -16,11 +16,19 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include/phare/amr>)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  $<BUILD_INTERFACE:${SAMRAI_INCLUDE_DIRS}>)
 
-
-target_link_libraries(${PROJECT_NAME} PUBLIC phare_core)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${SAMRAI_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  phare_core
+  SAMRAI_algs
+  SAMRAI_appu
+  SAMRAI_geom
+  SAMRAI_hier
+  SAMRAI_math
+  SAMRAI_mesh
+  SAMRAI_pdat
+  SAMRAI_solv
+  SAMRAI_tbox
+  SAMRAI_xfer
+  )
 
 include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
