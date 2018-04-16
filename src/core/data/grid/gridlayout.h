@@ -21,11 +21,11 @@ constexpr int centering2int(Centering c)
 // mock for a GridLayout
 // here all that matters is that GridLayout is able to give me
 // at compile time the centering of a given HybridQuantity
-template<LayoutType, std::size_t Dim>
+template<LayoutType, std::size_t dim>
 class GridLayout
 {
 public:
-    static constexpr std::array<Centering, Dim> centering(HybridQuantity::Quantity qty);
+    static constexpr std::array<Centering, dim> centering(HybridQuantity::Quantity qty);
 };
 
 

@@ -1,8 +1,10 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_H
 
-#include <data/particles/particle_array.h>
+#include "data/particles/particle_array.h"
 
+namespace PHARE
+{
 //! ParticlePack is used to pack three ParticleArray together
 /**
  * For conveniency, particles are often stored in arrays specific to their
@@ -11,12 +13,14 @@
  * boundaries, and interior particles are those within the patch physical domain.
  * ParticlesPack conveniently store the three arrays together.
  */
+template<std::size_t dim>
 struct ParticlesPack
 {
-    ParticleArray interior;
-    ParticleArray ghost;
-    ParticleArray incoming;
+    ParticleArray<dim> interior;
+    ParticleArray<dim> ghost;
+    ParticleArray<dim> incoming;
 };
 
+} // namespace PHARE
 
 #endif // PARTICLE_PACK_H

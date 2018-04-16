@@ -12,11 +12,14 @@ set( SOURCES_INC
      data/vecfield/vecfield.h
      hybrid/hybrid_quantities.h
      numerics/interpolator/interpolator.h
+     utilities/range/range.h
+     utilities/box/box.h
+     utilities/particle_selector/particle_selector.h
+     utilities/point/point.h
    )
 
  set( SOURCES_CPP
       data/ndarray/ndarray_vector.cpp
-     # numerics/interpolator/interpolator.cpp
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})

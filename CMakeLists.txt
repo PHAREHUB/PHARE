@@ -178,12 +178,16 @@ if (test)
     add_custom_target(coverage_report DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/out/index.html)
   endif()
 
+
+  add_subdirectory(tests/amr/tools/resources_manager)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)
+  add_subdirectory(tests/core/utilities/box)
+  add_subdirectory(tests/core/utilities/particle_selector)
+  add_subdirectory(tests/core/utilities/range)
   add_subdirectory(tests/core/numerics/interpolator)
-  add_subdirectory(tests/amr/tools/resources_manager)
 
 endif()
 

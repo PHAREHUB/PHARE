@@ -129,7 +129,7 @@ public:
 
 //! Interpol performs the interpolation of a field using precomputed weights at
 //! indices starting at startIndex. The class is templated by the Dimensionality
-template<std::size_t Dim>
+template<std::size_t dim>
 class Interpol
 {
 };
@@ -259,7 +259,7 @@ public:
 /** \brief Interpolator is used to perform particle-mesh interpolations using
  * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
  */
-template<std::size_t Dim, std::size_t InterpOrder, LayoutType LT>
+template<std::size_t dim, std::size_t InterpOrder, LayoutType LT>
 class Interpolator : private Weighter<InterpOrder>
 {
 public:
@@ -267,7 +267,7 @@ public:
      *
      * For each particle :
      *  - The function first calculates the startIndex and weights for interpolation at
-     * order InterpOrder and in dimension Dim for dual and primal nodes
+     * order InterpOrder and in dimension dim for dual and primal nodes
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
@@ -278,8 +278,8 @@ public:
         // dual field interpolation and puts this at the corresponding location
         // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
         // is offseted compared to primal ones.
-        auto indexAndWeightDual = [this](Particle<Dim> const& part) {
-            for (auto iDim = 0u; iDim < Dim; ++iDim)
+        auto indexAndWeightDual = [this](Particle<dim> const& part) {
+            for (auto iDim = 0u; iDim < dim; ++iDim)
             {
                 double normalizedPos
                     = part.iCell[iDim] + part.delta[iDim] + dualOffset(InterpOrder);
@@ -294,8 +294,8 @@ public:
         };
 
         // does the same as above but for a primal field
-        auto indexAndWeightPrimal = [this](Particle<Dim> const& part) {
-            for (auto iDim = 0u; iDim < Dim; ++iDim)
+        auto indexAndWeightPrimal = [this](Particle<dim> const& part) {
+            for (auto iDim = 0u; iDim < dim; ++iDim)
             {
                 double normalizedPos = part.iCell[iDim] + part.delta[iDim];
 
@@ -315,12 +315,12 @@ public:
         auto const& By = Em.B.getComponent(Component::Y);
         auto const& Bz = Em.B.getComponent(Component::Z);
 
-        auto const ExCentering = GridLayout<LT, Dim>::centering(HybridQuantity::Quantity::Ex);
-        auto const EyCentering = GridLayout<LT, Dim>::centering(HybridQuantity::Quantity::Ey);
-        auto const EzCentering = GridLayout<LT, Dim>::centering(HybridQuantity::Quantity::Ez);
-        auto const BxCentering = GridLayout<LT, Dim>::centering(HybridQuantity::Quantity::Bx);
-        auto const ByCentering = GridLayout<LT, Dim>::centering(HybridQuantity::Quantity::By);
-        auto const BzCentering = GridLayout<LT, Dim>::centering(HybridQuantity::Quantity::Bz);
+        auto const ExCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Ex);
+        auto const EyCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Ey);
+        auto const EzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Ez);
+        auto const BxCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Bx);
+        auto const ByCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::By);
+        auto const BzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Bz);
 
 
         // for each particle, first calculate the startIndex and weights
@@ -345,14 +345,14 @@ public:
 
 
 private:
-    static_assert(Dim <= 3 && Dim > 0 && InterpOrder >= 1 && InterpOrder <= 3, "error");
+    static_assert(dim <= 3 && dim > 0 && InterpOrder >= 1 && InterpOrder <= 3, "error");
 
     Weighter<InterpOrder> weightComputer_;
-    Interpol<Dim> interpol_;
+    Interpol<dim> interpol_;
 
     // array[dual/primal][dim]
-    std::array<std::array<int, Dim>, 2> startIndex;
-    std::array<std::array<std::array<double, nbrPointsSupport(InterpOrder)>, Dim>, 2> weights;
+    std::array<std::array<int, dim>, 2> startIndex;
+    std::array<std::array<std::array<double, nbrPointsSupport(InterpOrder)>, dim>, 2> weights;
 
     /**
      * @brief dualOffset returns the offset by which changing the

@@ -1,44 +1,17 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 
+#include "utilities/point/point.h"
 
 #include <array>
-
-/*
-struct Particle
-{
-    double weight{0};
-    double charge{0};
-
-    double Ex = 0, Ey = 0, Ez = 0; //! electric field seen by the particle
-    double Bx = 0, By = 0, Bz = 0; //! magnetic field seen by the particle
-
-    std::array<double, 3> v    = {{0, 0, 0}}; //! velocity
-    std::array<float, 3> delta = {{0, 0, 0}}; //! normalized position within a cell (in [0,1[)
-    std::array<int, 3> iCell   = {{0, 0, 0}}; //! cell index in the three directions
+#include <type_traits>
 
 
-    Particle()                       = default;
-    Particle(Particle const& source) = default;
-    Particle(Particle&& source)      = default;
-    Particle& operator=(Particle const& source) = default;
-    Particle& operator=(Particle&& source) = default;
 
-    Particle(double weight, double charge, std::array<int, 3> iCell, std::array<float, 3> delta,
-             std::array<double, 3> v)
-        : weight{weight}
-        , charge{charge}
-        , v{v}
-        , delta{delta}
-        , iCell{iCell}
-    {
-    }
-};
-*/
 
 namespace PHARE
 {
-template<std::size_t Dim>
+template<std::size_t dim>
 struct Particle
 {
 };
@@ -57,7 +30,12 @@ struct Particle<1>
 
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
+
+    static const std::size_t dimension;
 };
+
+
+const std::size_t Particle<1>::dimension = 1;
 
 
 
@@ -73,7 +51,11 @@ struct Particle<2>
 
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
+
+    static const std::size_t dimension;
 };
+
+const std::size_t Particle<2>::dimension = 2;
 
 
 template<>
@@ -88,7 +70,37 @@ struct Particle<3>
 
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
+
+    static const std::size_t dimension;
 };
+
+
+const std::size_t Particle<3>::dimension = 3;
+
+
+
+
+template<typename Particle>
+auto cellAsPoint(Particle const& particle)
+{
+    return Point<int, Particle::dimension>{particle.iCell};
+}
+
+
+
+template<typename Particle, typename MeshSizes, typename Point>
+auto positionAsPoint(Particle const& particle, MeshSizes mesh, Point origin)
+{
+    Point position;
+
+    for (auto iDim = 0u; iDim < Particle::dimension; ++iDim)
+    {
+        position[iDim] = origin[iDim] + (particle.iCell[iDim] + particle.delta[iDim]) * mesh[iDim];
+    }
+    return position;
+}
+
+
 
 } // namespace PHARE
 
