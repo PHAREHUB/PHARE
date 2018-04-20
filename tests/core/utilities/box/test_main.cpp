@@ -12,6 +12,17 @@ using PHARE::isIn;
 using PHARE::Point;
 
 
+TEST(PointInBox, worksForNegativeCells)
+{
+    Point<int, 3> point{-1, 4, 3};
+    Box<int, 3> box{Point<int, 3>{-1, 0, 0}, Point<int, 3>{0, 10, 10}};
+    std::vector<Box<int, 3>> boxes{std::move(box)};
+    EXPECT_TRUE(isIn(point, boxes));
+}
+
+
+
+
 TEST(PointInBox, returnTrueIfPointInBox)
 {
     Point<int, 3> point{1, 2, 3};
