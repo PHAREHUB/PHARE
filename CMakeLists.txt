@@ -162,6 +162,10 @@ if (test)
 
 
   add_subdirectory(tests/amr/data/particles)
+  add_subdirectory(tests/amr/field_data)
+  add_subdirectory(tests/amr/field_geometry)
+  add_subdirectory(tests/amr/field_overlap)
+  add_subdirectory(tests/amr/field_variable)
   add_subdirectory(tests/amr/tools/resources_manager)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)

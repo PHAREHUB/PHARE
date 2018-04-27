@@ -6,6 +6,11 @@ set( SOURCES_INC
      data/particles/particles_data_factory.h
      data/particles/particles_variable.h
      tools/utils_amr.h
+     data/field/field_data.h
+     data/field/field_data_factory.h
+     data/field/field_geometry.h
+     data/field/field_overlap.h
+     data/field/field_variable.h
      tools/resources_manager.h
      tools/resources_manager_utilities.h
      tools/resources_guards.h
