@@ -174,6 +174,7 @@ if (test)
   add_subdirectory(tests/core/utilities/index)
   add_subdirectory(tests/core/numerics/boundary_condition)
   add_subdirectory(tests/core/numerics/interpolator)
+  add_subdirectory(tests/core/numerics/pusher)
 
 endif()
 

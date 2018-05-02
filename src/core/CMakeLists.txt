@@ -16,8 +16,9 @@ set( SOURCES_INC
      data/vecfield/vecfield.h
      data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h
-     numerics/interpolator/interpolator.h
      numerics/boundary_condition/boundary_condition.h
+     numerics/interpolator/interpolator.h
+     numerics/pusher/boris.h
      utilities/box/box.h
      utilities/constants.h
      utilities/index/index.h
