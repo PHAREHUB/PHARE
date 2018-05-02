@@ -172,6 +172,7 @@ if (test)
   add_subdirectory(tests/core/utilities/partitionner)
   add_subdirectory(tests/core/utilities/range)
   add_subdirectory(tests/core/utilities/index)
+  add_subdirectory(tests/core/numerics/boundary_condition)
   add_subdirectory(tests/core/numerics/interpolator)
 
 endif()

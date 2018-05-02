@@ -6,7 +6,6 @@
 
 namespace PHARE
 {
-
 template<typename ResourcesUser, typename Attempt = void>
 struct has_field : std::false_type
 {
@@ -59,6 +58,7 @@ struct has_sub_resources<ResourcesUser, tryToInstanciate<decltype(
     : std::true_type
 {
 };
+
 
 
 

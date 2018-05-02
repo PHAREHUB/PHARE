@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "utilities/meta/meta_utilities.h"
+#include "utilities/particle_selector/particle_selector.h"
 
 namespace PHARE
 {
