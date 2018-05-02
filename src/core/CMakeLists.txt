@@ -14,6 +14,7 @@ set( SOURCES_INC
      data/particles/particle_array.h
      data/species/particle_pack.h
      data/vecfield/vecfield.h
+     data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h
      numerics/interpolator/interpolator.h
      utilities/constants.h

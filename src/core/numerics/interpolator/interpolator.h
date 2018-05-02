@@ -4,11 +4,8 @@
 #include <array>
 #include <cstddef>
 
-#include <data/electromag/electromag.h>
-#include <data/field/field.h>
-#include <data/grid/gridlayout.h>
-#include <data/particles/particle.h>
-#include <data/vecfield/vecfield.h>
+#include "data/grid/gridlayout.h"
+#include "data/vecfield/vecfield_component.h"
 
 namespace PHARE
 {
@@ -148,9 +145,8 @@ public:
      * \param[in] startIndex is the first of the order+1 indices where to interpolate the field
      * \param[in] weights are the order+1 weights used for the interpolation
      */
-    template<typename NdArrayImpl, typename PhysicalQuantity, typename Array1, typename Array2>
-    inline double operator()(Field<NdArrayImpl, PhysicalQuantity> const& field,
-                             std::array<QtyCentering, 1> const& fieldCentering,
+    template<typename Field, typename Array1, typename Array2>
+    inline double operator()(Field const& field, std::array<QtyCentering, 1> const& fieldCentering,
                              Array1 const& startIndex, Array2 const& weights)
     {
         auto particleField      = 0.;
@@ -180,9 +176,9 @@ public:
      * both directions \param[in] weights are the order+1 weights used for the interpolation in both
      * directions
      */
-    template<typename NdArrayImpl, typename PhysicalQuantity, typename Array1, typename Array2>
-    inline double operator()(Field<NdArrayImpl, PhysicalQuantity> const& field,
-                             std::array<QtyCentering, 2> const& fieldCentering,
+
+    template<typename Field, typename Array1, typename Array2>
+    inline double operator()(Field const& field, std::array<QtyCentering, 2> const& fieldCentering,
                              Array1 const& startIndex, Array2 const& weights)
     {
         auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
@@ -221,9 +217,8 @@ public:
      * the 3 directions \param[in] weights are the order+1 weights used for the interpolation in the
      * 3 directions
      */
-    template<typename NdArrayImpl, typename PhysicalQuantity, typename Array1, typename Array2>
-    inline double operator()(Field<NdArrayImpl, PhysicalQuantity> const& field,
-                             std::array<QtyCentering, 3> const& fieldCentering,
+    template<typename Field, typename Array1, typename Array2>
+    inline double operator()(Field const& field, std::array<QtyCentering, 3> const& fieldCentering,
                              Array1 const& startIndex, Array2 const& weights)
     {
         auto const& xStartIndex = startIndex[static_cast<std::size_t>(fieldCentering[0])][0];
@@ -278,7 +273,7 @@ public:
         // dual field interpolation and puts this at the corresponding location
         // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
         // is offseted compared to primal ones.
-        auto indexAndWeightDual = [this](Particle<dim> const& part) {
+        auto indexAndWeightDual = [this](auto const& part) {
             for (auto iDim = 0u; iDim < dim; ++iDim)
             {
                 double normalizedPos
@@ -294,7 +289,7 @@ public:
         };
 
         // does the same as above but for a primal field
-        auto indexAndWeightPrimal = [this](Particle<dim> const& part) {
+        auto indexAndWeightPrimal = [this](auto const& part) {
             for (auto iDim = 0u; iDim < dim; ++iDim)
             {
                 double normalizedPos = part.iCell[iDim] + part.delta[iDim];

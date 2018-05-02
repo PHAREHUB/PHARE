@@ -5,13 +5,10 @@
 #include <utility>
 
 #include "data/field/field.h"
-
+#include "vecfield_component.h"
 
 namespace PHARE
 {
-enum class Component { X, Y, Z };
-
-
 //! VecField represents a vector field
 /** VecField objects encapsulate 3 Field pointers to the data, one per component.
  *  A VecField object is usable, i.e. can give access to its data, only when
