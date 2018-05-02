@@ -3,6 +3,8 @@
 
 #include <vector>
 
+#include "utilities/meta/meta_utilities.h"
+
 namespace PHARE
 {
 /** A Partitionner taks a range of Particles and a container of boxes
@@ -25,7 +27,7 @@ namespace PHARE
  * are leaving the patch but not through physical boundaries.
  *
  */
-template<typename ParticleIterator, typename BoxContainer>
+template<typename ParticleIterator, typename BoxContainer, is_iterable<BoxContainer> = dummy::value>
 auto partitionner(ParticleIterator begin, ParticleIterator end, BoxContainer boxes)
 {
     std::vector<ParticleIterator> iterators;

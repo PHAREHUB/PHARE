@@ -25,34 +25,11 @@ struct Box
 
 
 
-template<typename ResourcesUser, typename Attempt = void>
-struct has_size_method : std::false_type
-{
-};
-
-
-
-/** \brief is_container is a traits that permit to check if a Box or a BoxContainer
- * is passed as template argument
- */
-template<typename BoxContainerCandidate>
-struct has_size_method<BoxContainerCandidate,
-                       tryToInstanciate<decltype(std::declval<BoxContainerCandidate>().size())>>
-    : std::true_type
-{
-};
-
-
-template<typename BoxContainerCandidate>
-using isAContainer = std::enable_if_t<has_size_method<BoxContainerCandidate>::value, dummy::type>;
-
-
-
 /** this overload of isIn takes a Point and a Container of boxes
  * and returns true if the Point is at least in one of the boxes.
  * Returns occurs at the first box the point is in.
  */
-template<typename Point, typename BoxContainer, isAContainer<BoxContainer> = dummy::value>
+template<typename Point, typename BoxContainer, is_iterable<BoxContainer> = dummy::value>
 bool isIn(Point const& point, BoxContainer const& boxes)
 {
     if (boxes.size() == 0)
