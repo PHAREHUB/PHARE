@@ -2,10 +2,10 @@
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_H
 #include <type_traits>
 
+#include "utilities/meta/meta_utilities.h"
+
 namespace PHARE
 {
-template<typename...>
-using tryToInstanciate = void;
 
 template<typename ResourcesUser, typename Attempt = void>
 struct has_field : std::false_type
@@ -60,12 +60,6 @@ struct has_sub_resources<ResourcesUser, tryToInstanciate<decltype(
 {
 };
 
-
-struct dummy
-{
-    using type              = int;
-    static const type value = 0;
-};
 
 
 /** \brief isFieldType will detect if ResourcesUser expose only Field */

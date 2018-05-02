@@ -20,7 +20,9 @@ set( SOURCES_INC
      utilities/box/box.h
      utilities/constants.h
      utilities/index/index.h
+     utilities/meta/meta_utilities.h
      utilities/particle_selector/particle_selector.h
+     utilities/partitionner/partitionner.h
      utilities/point/point.h
      utilities/range/range.h
      utilities/types.h
