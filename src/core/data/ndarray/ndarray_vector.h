@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -58,6 +59,12 @@ public:
     {
     }
 
+    explicit NdArrayVector1D(std::array<std::size_t, 1> const& nCell)
+        : NdArrayVectorBase<DataType>(nCell[0])
+        , nx_{static_cast<int>(nCell[0])}
+    {
+    }
+
     NdArrayVector1D()                              = delete;
     NdArrayVector1D(NdArrayVector1D const& source) = default;
     NdArrayVector1D(NdArrayVector1D&& source)      = default;
@@ -90,6 +97,13 @@ public:
         : NdArrayVectorBase<DataType>(nx * ny)
         , nx_{nx}
         , ny_{ny}
+    {
+    }
+
+    explicit NdArrayVector2D(std::array<std::size_t, 2> const& nbCell)
+        : NdArrayVectorBase<DataType>(nbCell[0] * nbCell[1])
+        , nx_{static_cast<int>(nbCell[0])}
+        , ny_{static_cast<int>(nbCell[1])}
     {
     }
 
@@ -129,6 +143,14 @@ public:
         , nx_{nx}
         , ny_{ny}
         , nz_{nz}
+    {
+    }
+
+    explicit NdArrayVector3D(std::array<std::size_t, 3> const& nbCell)
+        : NdArrayVectorBase<DataType>(nbCell[0] * nbCell[1] * nbCell[2])
+        , nx_{static_cast<int>(nbCell[0])}
+        , ny_{static_cast<int>(nbCell[1])}
+        , nz_{static_cast<int>(nbCell[2])}
     {
     }
 

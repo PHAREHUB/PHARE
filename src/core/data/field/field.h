@@ -2,6 +2,7 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BASE_H
 #define PHARE_CORE_DATA_FIELD_FIELD_BASE_H
 
+#include <array>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -35,6 +36,14 @@ public:
         , qty_{qty}
     {
         static_assert(sizeof...(Dims) == NdArrayImpl::dimension, "Invalid dimension");
+    }
+
+    template<std::size_t dim, typename Index>
+    Field(std::string name, PhysicalQuantity qty, std::array<Index, dim> const& dims)
+        : NdArrayImpl{dims}
+        , name_{std::move(name)}
+        , qty_{qty}
+    {
     }
 
     std::string name() const { return name_; }
