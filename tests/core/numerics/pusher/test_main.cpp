@@ -61,6 +61,12 @@ Trajectory readExpectedTrajectory()
     return traj;
 }
 
+
+// this is a mock of a true Interpolator
+// we hard-code the fields that the particles will see to the value used
+// in the python script that generates a trajectory
+// this way, we don't need a proper Electromag, VecField, Field etc. objects
+// to test the pusher.
 class Interpolator
 {
 public:
@@ -80,10 +86,14 @@ public:
 };
 
 
+// mock of electromag just so that the Pusher gives something to
+// the Interpolator
 class Electromag
 {
 };
 
+
+// with this mock, all particles are found inside
 class DummySelector
 {
 public:
@@ -305,7 +315,6 @@ TEST_F(APusher1D, trajectoryIsOk)
 
     EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
 }
-
 
 
 
