@@ -2,8 +2,8 @@
 #include "gtest/gtest.h"
 #include <string>
 
-#include "core/data/particles/particle.h"
-#include "core/data/particles/particle_array.h"
+#include "data/particles/particle.h"
+#include "data/particles/particle_array.h"
 #include "utilities/point/point.h"
 
 using PHARE::cellAsPoint;

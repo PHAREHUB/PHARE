@@ -13,8 +13,8 @@ template<typename VecFieldT>
 struct Electromag
 {
     Electromag(std::string name)
-        : E{name + "_E", HybridQuantity::Quantity::E}
-        , B{name + "_B", HybridQuantity::Quantity::B}
+        : E{name + "_E", HybridQuantity::Vector::E}
+        , B{name + "_B", HybridQuantity::Vector::B}
     {
     }
     VecFieldT E;

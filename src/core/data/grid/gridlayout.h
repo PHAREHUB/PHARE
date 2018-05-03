@@ -8,12 +8,12 @@
 
 namespace PHARE
 {
-enum class Centering { primal, dual };
+enum class QtyCentering { primal, dual };
 
-enum LayoutType { Yee, Normal };
+enum Layout { Yee, Normal };
 
 
-constexpr int centering2int(Centering c)
+constexpr int centering2int(QtyCentering c)
 {
     return static_cast<int>(c);
 }
@@ -21,11 +21,11 @@ constexpr int centering2int(Centering c)
 // mock for a GridLayout
 // here all that matters is that GridLayout is able to give me
 // at compile time the centering of a given HybridQuantity
-template<LayoutType, std::size_t dim>
+template<Layout, std::size_t dim>
 class GridLayout
 {
 public:
-    static constexpr std::array<Centering, dim> centering(HybridQuantity::Quantity qty);
+    static constexpr std::array<QtyCentering, dim> centering(HybridQuantity::Scalar qty);
 };
 
 
@@ -33,52 +33,52 @@ public:
 // in all three directions. A priori this should be inlined/optimized
 // at compile time
 template<>
-constexpr std::array<Centering, 3> GridLayout<Yee, 3>::centering(HybridQuantity::Quantity qty)
+constexpr std::array<QtyCentering, 3> GridLayout<Yee, 3>::centering(HybridQuantity::Scalar qty)
 {
     switch (qty)
     {
-        case HybridQuantity::Quantity::Ex:
-            return {{Centering::dual, Centering::primal, Centering::primal}};
-        case HybridQuantity::Quantity::Ey:
-            return {{Centering::primal, Centering::dual, Centering::primal}};
-        case HybridQuantity::Quantity::Ez:
-            return {{Centering::primal, Centering::primal, Centering::dual}};
-        case HybridQuantity::Quantity::Bx:
-            return {{Centering::primal, Centering::dual, Centering::dual}};
-        case HybridQuantity::Quantity::By:
-            return {{Centering::dual, Centering::primal, Centering::dual}};
-        case HybridQuantity::Quantity::Bz:
-            return {{Centering::dual, Centering::dual, Centering::primal}};
+        case HybridQuantity::Scalar::Ex:
+            return {{QtyCentering::dual, QtyCentering::primal, QtyCentering::primal}};
+        case HybridQuantity::Scalar::Ey:
+            return {{QtyCentering::primal, QtyCentering::dual, QtyCentering::primal}};
+        case HybridQuantity::Scalar::Ez:
+            return {{QtyCentering::primal, QtyCentering::primal, QtyCentering::dual}};
+        case HybridQuantity::Scalar::Bx:
+            return {{QtyCentering::primal, QtyCentering::dual, QtyCentering::dual}};
+        case HybridQuantity::Scalar::By:
+            return {{QtyCentering::dual, QtyCentering::primal, QtyCentering::dual}};
+        case HybridQuantity::Scalar::Bz:
+            return {{QtyCentering::dual, QtyCentering::dual, QtyCentering::primal}};
     }
 }
 
 
 template<>
-constexpr std::array<Centering, 2> GridLayout<Yee, 2>::centering(HybridQuantity::Quantity qty)
+constexpr std::array<QtyCentering, 2> GridLayout<Yee, 2>::centering(HybridQuantity::Scalar qty)
 {
     switch (qty)
     {
-        case HybridQuantity::Quantity::Ex: return {Centering::dual, Centering::primal};
-        case HybridQuantity::Quantity::Ey: return {Centering::primal, Centering::dual};
-        case HybridQuantity::Quantity::Ez: return {Centering::primal, Centering::primal};
-        case HybridQuantity::Quantity::Bx: return {Centering::primal, Centering::dual};
-        case HybridQuantity::Quantity::By: return {Centering::dual, Centering::primal};
-        case HybridQuantity::Quantity::Bz: return {Centering::dual, Centering::dual};
+        case HybridQuantity::Scalar::Ex: return {QtyCentering::dual, QtyCentering::primal};
+        case HybridQuantity::Scalar::Ey: return {QtyCentering::primal, QtyCentering::dual};
+        case HybridQuantity::Scalar::Ez: return {QtyCentering::primal, QtyCentering::primal};
+        case HybridQuantity::Scalar::Bx: return {QtyCentering::primal, QtyCentering::dual};
+        case HybridQuantity::Scalar::By: return {QtyCentering::dual, QtyCentering::primal};
+        case HybridQuantity::Scalar::Bz: return {QtyCentering::dual, QtyCentering::dual};
     }
 }
 
 
 template<>
-constexpr std::array<Centering, 1> GridLayout<Yee, 1>::centering(HybridQuantity::Quantity qty)
+constexpr std::array<QtyCentering, 1> GridLayout<Yee, 1>::centering(HybridQuantity::Scalar qty)
 {
     switch (qty)
     {
-        case HybridQuantity::Quantity::Ex: return {Centering::dual};
-        case HybridQuantity::Quantity::Ey: return {Centering::primal};
-        case HybridQuantity::Quantity::Ez: return {Centering::primal};
-        case HybridQuantity::Quantity::Bx: return {Centering::primal};
-        case HybridQuantity::Quantity::By: return {Centering::dual};
-        case HybridQuantity::Quantity::Bz: return {Centering::dual};
+        case HybridQuantity::Scalar::Ex: return {QtyCentering::dual};
+        case HybridQuantity::Scalar::Ey: return {QtyCentering::primal};
+        case HybridQuantity::Scalar::Ez: return {QtyCentering::primal};
+        case HybridQuantity::Scalar::Bx: return {QtyCentering::primal};
+        case HybridQuantity::Scalar::By: return {QtyCentering::dual};
+        case HybridQuantity::Scalar::Bz: return {QtyCentering::dual};
     }
 }
 

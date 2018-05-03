@@ -47,7 +47,7 @@ TEST_P(ResourcesManagerTest1D, FieldPointerCanBeSet)
 }
 
 
-ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuantity::Quantity hq)
+ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuantity::Scalar hq)
 {
     ResourcesManagerTest1DParam rc;
     rc.field = std::make_shared<PlaceHolder::CellField>(name, hq);
@@ -55,12 +55,12 @@ ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuant
 }
 
 INSTANTIATE_TEST_CASE_P(ResourcesManager, ResourcesManagerTest1D,
-                        ::testing::ValuesIn({createResources("Ex", HybridQuantity::Quantity::Ex),
-                                             createResources("Ey", HybridQuantity::Quantity::Ey),
-                                             createResources("Ez", HybridQuantity::Quantity::Ez),
-                                             createResources("Bx", HybridQuantity::Quantity::Bx),
-                                             createResources("By", HybridQuantity::Quantity::By),
-                                             createResources("Bz", HybridQuantity::Quantity::Bz)
+                        ::testing::ValuesIn({createResources("Ex", HybridQuantity::Scalar::Ex),
+                                             createResources("Ey", HybridQuantity::Scalar::Ey),
+                                             createResources("Ez", HybridQuantity::Scalar::Ez),
+                                             createResources("Bx", HybridQuantity::Scalar::Bx),
+                                             createResources("By", HybridQuantity::Scalar::By),
+                                             createResources("Bz", HybridQuantity::Scalar::Bz)
 
                         }));
 

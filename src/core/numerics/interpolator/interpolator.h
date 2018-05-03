@@ -150,7 +150,7 @@ public:
      */
     template<typename NdArrayImpl, typename PhysicalQuantity, typename Array1, typename Array2>
     inline double operator()(Field<NdArrayImpl, PhysicalQuantity> const& field,
-                             std::array<Centering, 1> const& fieldCentering,
+                             std::array<QtyCentering, 1> const& fieldCentering,
                              Array1 const& startIndex, Array2 const& weights)
     {
         auto particleField      = 0.;
@@ -182,7 +182,7 @@ public:
      */
     template<typename NdArrayImpl, typename PhysicalQuantity, typename Array1, typename Array2>
     inline double operator()(Field<NdArrayImpl, PhysicalQuantity> const& field,
-                             std::array<Centering, 2> const& fieldCentering,
+                             std::array<QtyCentering, 2> const& fieldCentering,
                              Array1 const& startIndex, Array2 const& weights)
     {
         auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
@@ -223,7 +223,7 @@ public:
      */
     template<typename NdArrayImpl, typename PhysicalQuantity, typename Array1, typename Array2>
     inline double operator()(Field<NdArrayImpl, PhysicalQuantity> const& field,
-                             std::array<Centering, 3> const& fieldCentering,
+                             std::array<QtyCentering, 3> const& fieldCentering,
                              Array1 const& startIndex, Array2 const& weights)
     {
         auto const& xStartIndex = startIndex[static_cast<std::size_t>(fieldCentering[0])][0];
@@ -259,7 +259,7 @@ public:
 /** \brief Interpolator is used to perform particle-mesh interpolations using
  * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
  */
-template<std::size_t dim, std::size_t InterpOrder, LayoutType LT>
+template<std::size_t dim, std::size_t InterpOrder, Layout LT>
 class Interpolator : private Weighter<InterpOrder>
 {
 public:
@@ -284,12 +284,12 @@ public:
                 double normalizedPos
                     = part.iCell[iDim] + part.delta[iDim] + dualOffset(InterpOrder);
 
-                startIndex[centering2int(Centering::dual)][iDim]
+                startIndex[centering2int(QtyCentering::dual)][iDim]
                     = computeStartIndex<InterpOrder>(normalizedPos);
 
                 weightComputer_.computeWeight(normalizedPos,
-                                              startIndex[centering2int(Centering::dual)][iDim],
-                                              weights[centering2int(Centering::dual)][iDim]);
+                                              startIndex[centering2int(QtyCentering::dual)][iDim],
+                                              weights[centering2int(QtyCentering::dual)][iDim]);
             }
         };
 
@@ -299,12 +299,12 @@ public:
             {
                 double normalizedPos = part.iCell[iDim] + part.delta[iDim];
 
-                startIndex[centering2int(Centering::primal)][iDim]
+                startIndex[centering2int(QtyCentering::primal)][iDim]
                     = computeStartIndex<InterpOrder>(normalizedPos);
 
                 weightComputer_.computeWeight(normalizedPos,
-                                              startIndex[centering2int(Centering::primal)][iDim],
-                                              weights[centering2int(Centering::primal)][iDim]);
+                                              startIndex[centering2int(QtyCentering::primal)][iDim],
+                                              weights[centering2int(QtyCentering::primal)][iDim]);
             }
         };
 
@@ -315,12 +315,12 @@ public:
         auto const& By = Em.B.getComponent(Component::Y);
         auto const& Bz = Em.B.getComponent(Component::Z);
 
-        auto const ExCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Ex);
-        auto const EyCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Ey);
-        auto const EzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Ez);
-        auto const BxCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Bx);
-        auto const ByCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::By);
-        auto const BzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Quantity::Bz);
+        auto const ExCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Ex);
+        auto const EyCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Ey);
+        auto const EzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Ez);
+        auto const BxCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Bx);
+        auto const ByCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::By);
+        auto const BzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Bz);
 
 
         // for each particle, first calculate the startIndex and weights

@@ -22,7 +22,7 @@ using PHARE::computeStartIndex;
 using PHARE::Electromag;
 using PHARE::Field;
 using PHARE::HybridQuantity;
-using PHARE::LayoutType;
+using PHARE::Layout;
 using PHARE::nbrPointsSupport;
 using PHARE::NdArrayVector1D;
 using PHARE::NdArrayVector2D;
@@ -188,12 +188,12 @@ public:
 
     static constexpr int nx = 50;
 
-    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> bx1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> by1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> bz1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> ex1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> ey1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Quantity> ez1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> by1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bz1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> ex1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> ey1d_;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> ez1d_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -205,12 +205,12 @@ public:
     A1DInterpolator()
         : em{"EM"}
         , particles(5)
-        , bx1d_{"field", HybridQuantity::Quantity::Bx, nx}
-        , by1d_{"field", HybridQuantity::Quantity::By, nx}
-        , bz1d_{"field", HybridQuantity::Quantity::Bz, nx}
-        , ex1d_{"field", HybridQuantity::Quantity::Ex, nx}
-        , ey1d_{"field", HybridQuantity::Quantity::Ey, nx}
-        , ez1d_{"field", HybridQuantity::Quantity::Ez, nx}
+        , bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
+        , by1d_{"field", HybridQuantity::Scalar::By, nx}
+        , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
+        , ex1d_{"field", HybridQuantity::Scalar::Ex, nx}
+        , ey1d_{"field", HybridQuantity::Scalar::Ey, nx}
+        , ez1d_{"field", HybridQuantity::Scalar::Ez, nx}
     {
         for (auto ix = 0; ix < nx; ++ix)
         {
@@ -234,9 +234,9 @@ public:
 
 
 
-using Interpolators1D = ::testing::Types<PHARE::Interpolator<1, 1, LayoutType::Yee>,
-                                         PHARE::Interpolator<1, 2, LayoutType::Yee>,
-                                         PHARE::Interpolator<1, 3, LayoutType::Yee>>;
+using Interpolators1D = ::testing::Types<PHARE::Interpolator<1, 1, Layout::Yee>,
+                                         PHARE::Interpolator<1, 2, Layout::Yee>,
+                                         PHARE::Interpolator<1, 3, Layout::Yee>>;
 
 TYPED_TEST_CASE(A1DInterpolator, Interpolators1D);
 
@@ -301,12 +301,12 @@ public:
     static constexpr int nx = 50;
     static constexpr int ny = 50;
 
-    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> bx_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> by_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> bz_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> ex_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> ey_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Quantity> ez_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bx_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> by_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bz_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> ex_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> ey_;
+    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> ez_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -318,12 +318,12 @@ public:
     A2DInterpolator()
         : em{"EM"}
         , particles(5)
-        , bx_{"field", HybridQuantity::Quantity::Bx, nx, ny}
-        , by_{"field", HybridQuantity::Quantity::By, nx, ny}
-        , bz_{"field", HybridQuantity::Quantity::Bz, nx, ny}
-        , ex_{"field", HybridQuantity::Quantity::Ex, nx, ny}
-        , ey_{"field", HybridQuantity::Quantity::Ey, nx, ny}
-        , ez_{"field", HybridQuantity::Quantity::Ez, nx, ny}
+        , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny}
+        , by_{"field", HybridQuantity::Scalar::By, nx, ny}
+        , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny}
+        , ex_{"field", HybridQuantity::Scalar::Ex, nx, ny}
+        , ey_{"field", HybridQuantity::Scalar::Ey, nx, ny}
+        , ez_{"field", HybridQuantity::Scalar::Ez, nx, ny}
     {
         for (auto ix = 0; ix < nx; ++ix)
         {
@@ -349,9 +349,9 @@ public:
 
 
 
-using Interpolators2D = ::testing::Types<PHARE::Interpolator<2, 1, LayoutType::Yee>,
-                                         PHARE::Interpolator<2, 2, LayoutType::Yee>,
-                                         PHARE::Interpolator<2, 3, LayoutType::Yee>>;
+using Interpolators2D = ::testing::Types<PHARE::Interpolator<2, 1, Layout::Yee>,
+                                         PHARE::Interpolator<2, 2, Layout::Yee>,
+                                         PHARE::Interpolator<2, 3, Layout::Yee>>;
 
 TYPED_TEST_CASE(A2DInterpolator, Interpolators2D);
 
@@ -417,12 +417,12 @@ public:
     static constexpr int ny = 50;
     static constexpr int nz = 50;
 
-    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> bx_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> by_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> bz_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> ex_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> ey_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Quantity> ez_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bx_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> by_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bz_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> ex_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> ey_;
+    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> ez_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -434,12 +434,12 @@ public:
     A3DInterpolator()
         : em{"EM"}
         , particles(5)
-        , bx_{"field", HybridQuantity::Quantity::Bx, nx, ny, nz}
-        , by_{"field", HybridQuantity::Quantity::By, nx, ny, nz}
-        , bz_{"field", HybridQuantity::Quantity::Bz, nx, ny, nz}
-        , ex_{"field", HybridQuantity::Quantity::Ex, nx, ny, nz}
-        , ey_{"field", HybridQuantity::Quantity::Ey, nx, ny, nz}
-        , ez_{"field", HybridQuantity::Quantity::Ez, nx, ny, nz}
+        , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny, nz}
+        , by_{"field", HybridQuantity::Scalar::By, nx, ny, nz}
+        , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny, nz}
+        , ex_{"field", HybridQuantity::Scalar::Ex, nx, ny, nz}
+        , ey_{"field", HybridQuantity::Scalar::Ey, nx, ny, nz}
+        , ez_{"field", HybridQuantity::Scalar::Ez, nx, ny, nz}
     {
         for (auto ix = 0; ix < nx; ++ix)
         {
@@ -468,9 +468,9 @@ public:
 
 
 
-using Interpolators3D = ::testing::Types<PHARE::Interpolator<3, 1, LayoutType::Yee>,
-                                         PHARE::Interpolator<3, 2, LayoutType::Yee>,
-                                         PHARE::Interpolator<3, 3, LayoutType::Yee>>;
+using Interpolators3D = ::testing::Types<PHARE::Interpolator<3, 1, Layout::Yee>,
+                                         PHARE::Interpolator<3, 2, Layout::Yee>,
+                                         PHARE::Interpolator<3, 3, Layout::Yee>>;
 
 TYPED_TEST_CASE(A3DInterpolator, Interpolators3D);
 

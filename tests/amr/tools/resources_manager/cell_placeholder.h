@@ -16,7 +16,7 @@ class CellVariable : public SAMRAI::pdat::CellVariable<T>
 {
 public:
     CellVariable(SAMRAI::tbox::Dimension const &dimension, std::string const &name,
-                 PHARE::HybridQuantity::Quantity qty, std::string const &layoutType)
+                 PHARE::HybridQuantity::Scalar qty, std::string const &layoutType)
         : SAMRAI::pdat::CellVariable<T>(dimension, name)
     {
     }
@@ -25,13 +25,13 @@ public:
 class CellField
 {
 public:
-    CellField(std::string const name, PHARE::HybridQuantity::Quantity hq)
+    CellField(std::string const name, PHARE::HybridQuantity::Scalar hq)
         : name_{name}
         , data_{nullptr}
         , hq_{hq}
     {
     }
-    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity::Quantity>>
+    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity::Scalar>>
         resources_properties;
 
     using field_impl = double;
@@ -58,7 +58,7 @@ public:
 private:
     std::string name_;
     field_impl *data_;
-    PHARE::HybridQuantity::Quantity hq_;
+    PHARE::HybridQuantity::Scalar hq_;
 };
 } // namespace PlaceHolder
 

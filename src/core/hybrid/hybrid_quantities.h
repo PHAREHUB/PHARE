@@ -10,48 +10,30 @@ namespace PHARE
 class HybridQuantity
 {
 public:
-    enum class Quantity {
-        B,
-        Bx,
-        By,
-        Bz,
-        E,
-        Ex,
-        Ey,
-        Ez,
-        J,
-        Jx,
-        Jy,
-        Jz,
-        rho,
-        V,
-        Vx,
-        Vy,
-        Vz,
-        P,
-        count
-    };
+    enum class Scalar { Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, rho, Vx, Vy, Vz, P, count };
 
-    static constexpr std::array<Quantity, 3> componentsQuantities(Quantity qty)
+    enum class Vector { B, E, J, V };
+
+    static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
     {
-        if (qty == Quantity::B)
+        if (qty == Vector::B)
         {
-            return {{Quantity::Bx, Quantity::By, Quantity::Bz}};
+            return {{Scalar::Bx, Scalar::By, Scalar::Bz}};
         }
 
-        else if (qty == Quantity::E)
+        else if (qty == Vector::E)
         {
-            return {{Quantity::Ex, Quantity::Ey, Quantity::Ez}};
+            return {{Scalar::Ex, Scalar::Ey, Scalar::Ez}};
         }
 
-        else if (qty == Quantity::J)
+        else if (qty == Vector::J)
         {
-            return {{Quantity::Jx, Quantity::Jy, Quantity::Jz}};
+            return {{Scalar::Jx, Scalar::Jy, Scalar::Jz}};
         }
 
-        else if (qty == Quantity::V)
+        else if (qty == Vector::V)
         {
-            return {{Quantity::Vx, Quantity::Vy, Quantity::Vz}};
+            return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
         }
     }
 };

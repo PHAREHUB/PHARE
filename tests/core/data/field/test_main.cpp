@@ -17,13 +17,13 @@ class GenericField1D : public ::testing::Test
 {
 public:
     GenericField1D()
-        : f{"test", PHARE::HybridQuantity::Quantity::rho, nx}
+        : f{"test", PHARE::HybridQuantity::Scalar::rho, nx}
     {
     }
 
 protected:
     const int nx = 10;
-    Field<NdArrayImpl, PHARE::HybridQuantity::Quantity> f;
+    Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
 };
 
 
@@ -32,14 +32,14 @@ class GenericField2D : public ::testing::Test
 {
 public:
     GenericField2D()
-        : f{"test", PHARE::HybridQuantity::Quantity::rho, nx, ny}
+        : f{"test", PHARE::HybridQuantity::Scalar::rho, nx, ny}
     {
     }
 
 protected:
     const int nx = 10;
     const int ny = 12;
-    Field<NdArrayImpl, PHARE::HybridQuantity::Quantity> f;
+    Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
 };
 
 
@@ -48,7 +48,7 @@ class GenericField3D : public ::testing::Test
 {
 public:
     GenericField3D()
-        : f{"test", PHARE::HybridQuantity::Quantity::rho, nx, ny, nz}
+        : f{"test", PHARE::HybridQuantity::Scalar::rho, nx, ny, nz}
     {
     }
 
@@ -56,7 +56,7 @@ protected:
     const int nx = 10;
     const int ny = 12;
     const int nz = 12;
-    Field<NdArrayImpl, PHARE::HybridQuantity::Quantity> f;
+    Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
 };
 
 
@@ -154,17 +154,17 @@ TYPED_TEST(GenericField3D, returnName)
 
 TYPED_TEST(GenericField1D, physiscalQuantity)
 {
-    EXPECT_EQ(PHARE::HybridQuantity::Quantity::rho, this->f.physicalQuantity());
+    EXPECT_EQ(PHARE::HybridQuantity::Scalar::rho, this->f.physicalQuantity());
 }
 
 TYPED_TEST(GenericField2D, physiscalQuantity)
 {
-    EXPECT_EQ(PHARE::HybridQuantity::Quantity::rho, this->f.physicalQuantity());
+    EXPECT_EQ(PHARE::HybridQuantity::Scalar::rho, this->f.physicalQuantity());
 }
 
 TYPED_TEST(GenericField3D, physiscalQuantity)
 {
-    EXPECT_EQ(PHARE::HybridQuantity::Quantity::rho, this->f.physicalQuantity());
+    EXPECT_EQ(PHARE::HybridQuantity::Scalar::rho, this->f.physicalQuantity());
 }
 
 

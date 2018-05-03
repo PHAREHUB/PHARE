@@ -30,7 +30,7 @@ public:
     VecField& operator=(VecField const& source) = delete;
     VecField& operator=(VecField&& source) = default;
 
-    VecField(std::string const& name, typename PhysicalQuantity::Quantity physQty)
+    VecField(std::string const& name, typename PhysicalQuantity::Vector physQty)
         : name_{name}
         , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
         , componentNames_{{name + "_x", name + "_y", name + "_z"}}
@@ -38,9 +38,9 @@ public:
     }
 
     using resources_properties
-        = std::vector<std::pair<std::string, typename PhysicalQuantity::Quantity>>;
+        = std::vector<std::pair<std::string, typename PhysicalQuantity::Scalar>>;
 
-    using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Quantity>;
+    using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
     resources_properties getFieldNamesAndQuantities() const
     {
@@ -83,7 +83,7 @@ public:
     // using field_impl = NdArrayImpl;
 
 
-    Field<NdArrayImpl, typename PhysicalQuantity::Quantity>& getComponent(Component component)
+    Field<NdArrayImpl, typename PhysicalQuantity::Scalar>& getComponent(Component component)
     {
         switch (component)
         {
@@ -93,7 +93,7 @@ public:
         }
     }
 
-    Field<NdArrayImpl, typename PhysicalQuantity::Quantity> const&
+    Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
     getComponent(Component component) const
     {
         switch (component)
@@ -107,7 +107,7 @@ public:
 
 private:
     std::string name_ = "No Name";
-    std::array<typename PhysicalQuantity::Quantity, 3> physQties_;
+    std::array<typename PhysicalQuantity::Scalar, 3> physQties_;
     std::array<std::string, 3> componentNames_;
     field_type* xComponent_ = nullptr;
     field_type* yComponent_ = nullptr;
