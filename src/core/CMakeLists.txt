@@ -5,6 +5,10 @@ set( SOURCES_INC
      data/electromag/electromag.h
      data/field/field.h
      data/grid/gridlayout.h
+     data/grid/gridlayoutdefs.h
+     data/grid/gridlayoutimpl.h
+     data/grid/gridlayoutimplinternals.h
+     data/grid/gridlayoutimplyee.h
      data/ndarray/ndarray_vector.h
      data/particles/particle.h
      data/particles/particle_array.h
@@ -12,14 +16,16 @@ set( SOURCES_INC
      data/vecfield/vecfield.h
      hybrid/hybrid_quantities.h
      numerics/interpolator/interpolator.h
+     utilities/constants.h
+     utilities/types.h
      utilities/range/range.h
      utilities/box/box.h
      utilities/particle_selector/particle_selector.h
      utilities/point/point.h
    )
 
- set( SOURCES_CPP
-      data/ndarray/ndarray_vector.cpp
+set( SOURCES_CPP
+     data/ndarray/ndarray_vector.cpp
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})
