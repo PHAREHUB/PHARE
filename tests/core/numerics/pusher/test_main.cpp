@@ -79,15 +79,9 @@ public:
     }
 };
 
-class VecField
-{
-};
 
 class Electromag
 {
-public:
-    VecField E;
-    VecField B;
 };
 
 class DummySelector
@@ -106,6 +100,7 @@ public:
     template<typename ParticleIterator>
     ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator end)
     {
+        return end;
     }
 };
 
@@ -119,14 +114,14 @@ public:
         , particlesOut(1)
         , pusher{std::make_unique<BorisPusher<3>>()}
         , mass{1}
-        , dt{0.05}
+        , dt{0.0001}
         , tstart{0}
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
     {
         particlesIn[0].charge = 1;
         particlesIn[0].iCell  = {{5, 5, 5}}; // arbitrary we don't care
-        particlesIn[0].v      = {{0, 1, 0}};
+        particlesIn[0].v      = {{0, 10., 0}};
         particlesIn[0].delta  = {{0.0, 0.0, 0.0}};
     }
 
@@ -157,29 +152,32 @@ TEST_F(APusher3D, trajectoryIsOk)
 
     auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
     auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
 
     std::vector<float> x(nt);
     std::vector<float> y(nt);
     std::vector<float> z(nt);
 
-    double dx = 0.1;
-    double dy = 0.1;
-    double dz = 0.1;
+    double dx = 0.05;
+    double dy = 0.05;
+    double dz = 0.05;
 
     pusher->setMeshAndTimeStep({{dx, dy, dz}}, dt);
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, bc);
-
         x[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
         y[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
         z[i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dz);
+
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, bc);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
-    EXPECT_THAT(traj.x, ::testing::Pointwise(::testing::DoubleNear(1e-5), x));
-    EXPECT_THAT(traj.y, ::testing::Pointwise(::testing::DoubleNear(1e-5), y));
-    EXPECT_THAT(traj.z, ::testing::Pointwise(::testing::DoubleNear(1e-5), z));
+    EXPECT_THAT(x, ::testing::Pointwise(::testing::DoubleNear(1e-5), traj.x));
+    EXPECT_THAT(y, ::testing::Pointwise(::testing::DoubleNear(1e-5), traj.y));
+    EXPECT_THAT(z, ::testing::Pointwise(::testing::DoubleNear(1e-5), traj.z));
 }
 
 

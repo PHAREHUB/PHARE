@@ -5,32 +5,113 @@
 #include <cmath>
 #include <cstddef>
 
+#include "utilities/range/range.h"
 
+namespace PHARE
+{
 template<std::size_t dim>
 class BorisPusher
 {
 public:
+    /** Move all particles in rangeIn from t=n to t=n+1 and store their new
+     * position in rangeOut.
+     *
+     * Particles in rangeOut are placed according to the return of the ParticleSelector.
+     * Particles for which the selector retuns true are placed before those for which it
+     * is false. The pivot is the iterator separating the two parts. Here it is assumed
+     * the selector returns true for particles staying in the patch and false otherwise.
+     *
+     * move() assumes that particles in rangeIn and those in rangeOut have the same
+     * state upon entering the function.
+     *
+     * @param rangeIn : range of iterators on particles at time t=n to be pushed
+     * @param rangeOut: output range of iterators on particles at t=n+1. rangeOut
+     * must have the same size as rangeIn (nbrParticles(rangeIn) == nbrParticles(rangeOut).
+     * @param E: electric vector field used to accelerate particles
+     * @param B: magnetic vector field used to accelerate particles
+     * @param selector : used to place particles in rangeOut.
+     * @param bc : physical boundary condition. Manage particles that intersect with a physical
+     * domain bounday.
+     *
+     * @return the function returns an ParticleArray::iterator on the first particle
+     * for which the selector returns false. The selector returns true for Particles
+     * in range [rangeOut.begin, pivot[, and false for those in [pivot,rangeOut.end[
+     */
     template<typename ParticleRange, typename Electromag, typename Interpolator,
              typename ParticleSelector, typename BoundaryCondition>
-    auto move(ParticleRange rangeIn, ParticleRange rangeOut, Electromag const& em, double mass,
-              Interpolator& interpolator, ParticleSelector const& selector, BoundaryCondition&& bc)
+    auto move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
+              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
+              BoundaryCondition&& bc)
     {
-        auto firstLeaving
-            = pushStep_(rangeIn.begin(), rangeIn.end(), rangeOut.begin(), rangeOut.end(), selector);
+        // push the particles of half a step
+        // rangeIn : t=n, rangeOut : t=n+1/Z
+        // get a pointer on the first particle of rangeOut that leaves the patch
+        auto firstLeaving = pushStep_(rangeIn, rangeOut, particleIsNotLeaving);
 
+        // apply boundary condition on the particles in [firstLeaving, rangeOut.end[
+        // that actually leave through a physical boundary condition
+        // get a pointer on the new end of rangeOut. Particles passed newEnd
+        // are those that have left the patch through a non-physical boundary
+        // they should be discarded now
         auto newEnd = bc.applyOutgoingParticleBC(firstLeaving, rangeOut.end());
-        interpolator(rangeOut.begin(), rangeOut.end(), em);
+
+        rangeOut = makeRange(rangeOut.begin(), std::move(newEnd));
+
+        // get electromagnetic fields interpolated on the particles of rangeOut
+        // stop at newEnd.
+        interpolator(rangeOut.begin(), rangeOut.end(), emFields);
+
+        // get the particle velocity from t=n to t=n+1
+        accelerate_(rangeOut, rangeOut, mass);
+
+        // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
+        // and get a pointer to the first leaving particle
+        firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving);
+
+        // apply BC on the leaving particles that leave through physical BC
+        // and get pointer on new End, discarding particles leaving elsewhere
+        newEnd = bc.applyOutgoingParticleBC(firstLeaving, rangeOut.end());
+
+        rangeOut = makeRange(rangeOut.begin(), std::move(newEnd));
+
+        return rangeOut.end();
     }
 
 
 
+    /** this overload of move() is used for particles for which one knows that
+     * they will not need a boundary condition treatment. Particles in rangeOut
+     * are sorted according to whether they are detected as leaving
+     *
+     * This overload is typically used to push particles outside the domain, like
+     * ghost particles.
+     */
     template<typename ParticleRange, typename Electromag, typename Interpolator,
              typename ParticleSelector>
-    auto move(ParticleRange rangeIn, ParticleRange rangeOut, Electromag const& EM, double mass,
-              Interpolator& interpolator, ParticleSelector const& selector)
+    auto move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
+              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving)
     {
-        auto pivot
-            = pushStep_(rangeIn.begin(), rangeIn.end(), rangeOut.begin(), rangeOut.end(), selector);
+        // push the particles of half a step
+        // rangeIn : t=n, rangeOut : t=n+1/Z
+        // get a pointer on the first particle of rangeOut that leaves the patch
+        auto firstLeaving = pushStep_(rangeIn, rangeOut, particleIsNotLeaving);
+
+        rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
+
+        // get electromagnetic fields interpolated on the particles of rangeOut
+        // stop at newEnd.
+        interpolator(rangeOut.begin(), rangeOut.end(), emFields);
+
+        // get the particle velocity from t=n to t=n+1
+        accelerate_(rangeOut, rangeOut, mass);
+
+        // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
+        // and get a pointer to the first leaving particle
+        firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving);
+
+        rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
+
+        return rangeOut.end();
     }
 
 
@@ -38,9 +119,10 @@ public:
     void setMeshAndTimeStep(std::array<double, dim> ms, double ts)
     {
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
-                       [ts](double& x) { return 0.5 * x / ts; });
+                       [ts](double& x) { return 0.5 * ts / x; });
         dt_ = ts;
     }
+
 
 
 private:
@@ -48,91 +130,94 @@ private:
      *
      */
     template<typename ParticleIter>
-    void advancePosition_(ParticleIter partIn, ParticleIter partOut)
+    void advancePosition_(ParticleIter const& partIn, ParticleIter& partOut)
     {
         // push the particle
         for (std::size_t iDim = 0; iDim < dim; ++iDim)
         {
             float delta
-                = partIn.delta[iDim] + static_cast<float>(halfDtOverDl_[iDim] * partOut.v[iDim]);
+                = partIn.delta[iDim] + static_cast<float>(halfDtOverDl_[iDim] * partIn.v[iDim]);
 
             float iCell         = std::floor(delta);
-            partIn.delta[iDim]  = delta - iCell;
+            partOut.delta[iDim] = delta - iCell;
             partOut.iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);
         }
     }
 
 
 
-    template<typename ParticleIterIn, typename ParticleIterOut, typename ParticleSelector>
-    ParticleIterOut pushStep_(ParticleIterIn firstIn, ParticleIterIn lastIn,
-                              ParticleIterOut firstOut, ParticleIterOut lastOut,
-                              ParticleSelector const& selector)
+    /** advance the particles in rangeIn of half a time step and store them
+     * in rangeOut.
+     * @return the function returns and iterator on the first leaving particle, as
+     * detected by the ParticleSelector
+     */
+    template<typename ParticleRangeIn, typename ParticleRangeOut, typename ParticleSelector>
+    auto pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut,
+                   ParticleSelector const& particleIsNotLeaving)
     {
-        auto pivot = lastOut;
-        --pivot;
-        auto pivotNext = lastOut;
+        auto swapee = rangeOut.end();
+        --swapee;
+        auto newEnd = rangeOut.end();
 
-        ParticleIterOut currentOut{firstOut};
+        auto currentOut = rangeOut.begin();
 
-        for (auto& currentIn = firstIn; currentIn != lastIn; ++currentIn)
+        for (auto currentIn : rangeIn)
         {
             // push the particle
-            advancePosition_(*currentIn, *currentOut);
+            advancePosition_(currentIn, *currentOut);
 
-            if (!selector(*currentOut))
-            {
-                // if the particle satisfies the predicate
-                // swap it with the pivot
-                // and decrement the pivot
-
-                std::swap(*currentOut, *pivot);
-                --pivotNext;
-                --pivot;
-            }
-            else
+            if (particleIsNotLeaving(*currentOut))
             {
                 // we advance the output iterator
                 // only if currentOut has not been
                 // swapped
                 ++currentOut;
             }
+            else
+            {
+                // if the particle satisfies the predicate
+                // swap it with the swapee
+                // and decrement the swapee
+
+                std::swap(*currentOut, *swapee);
+                --newEnd;
+                --swapee;
+            }
         }
 
         // now all particles have been pushed
         // those not satisfying the predicate after the push
-        // are found in [pivotNext:end[
-        // those for which pred is true are in [firstOut,pivotNext[
-        return pivotNext;
+        // are found in [newEnd:end[
+        // those for which pred is true are in [firstOut,newEnd[
+        return newEnd;
     }
 
 
 
 
-    template<typename ParticleIterIn, typename ParticleIterOut>
-    void pushVelocity_(ParticleIterIn firstIn, ParticleIterIn lastIn, ParticleIterOut firstOut,
-                       ParticleIterOut lastOut, double mass)
+    template<typename ParticleRangeIn, typename ParticleRangeOut>
+    void accelerate_(ParticleRangeIn inputParticles, ParticleRangeOut outputParticles, double mass)
     {
         double dto2m = 0.5 * dt_ / mass;
 
-        ParticleIterOut currentOut = firstOut;
+        auto currentOut = outputParticles.begin();
 
-        for (auto& currentIn = firstIn; currentIn != lastIn; ++currentIn, ++currentOut)
+        for (auto currentIn : inputParticles)
         {
-            double coef1 = currentIn->charge * dto2m;
+            double coef1 = currentIn.charge * dto2m;
 
             // We now apply the 3 steps of the BORIS PUSHER
 
             // 1st half push of the electric field
-            double velx1 = currentIn->v[0] + coef1 * currentIn->Ex;
-            double vely1 = currentIn->v[1] + coef1 * currentIn->Ey;
-            double velz1 = currentIn->v[2] + coef1 * currentIn->Ez;
+            double velx1 = currentIn.v[0] + coef1 * currentIn.Ex;
+            double vely1 = currentIn.v[1] + coef1 * currentIn.Ey;
+            double velz1 = currentIn.v[2] + coef1 * currentIn.Ez;
 
 
             // preparing variables for magnetic rotation
-            double const rx = coef1 * currentIn->Bx;
-            double const ry = coef1 * currentIn->By;
-            double const rz = coef1 * currentIn->Bz;
+            double const rx = coef1 * currentIn.Bx;
+            double const ry = coef1 * currentIn.By;
+            double const rz = coef1 * currentIn.Bz;
 
             double const rx2  = rx * rx;
             double const ry2  = ry * ry;
@@ -164,14 +249,16 @@ private:
 
 
             // 2nd half push of the electric field
-            velx1 = velx2 + coef1 * currentIn->Ex;
-            vely1 = vely2 + coef1 * currentIn->Ey;
-            velz1 = velz2 + coef1 * currentIn->Ez;
+            velx1 = velx2 + coef1 * currentIn.Ex;
+            vely1 = vely2 + coef1 * currentIn.Ey;
+            velz1 = velz2 + coef1 * currentIn.Ez;
 
             // Update particle velocity
             currentOut->v[0] = velx1;
             currentOut->v[1] = vely1;
             currentOut->v[2] = velz1;
+
+            ++currentOut;
         }
     }
 
@@ -181,6 +268,8 @@ private:
     std::array<double, dim> halfDtOverDl_;
     double dt_;
 };
+
+} // namespace PHARE
 
 
 #endif

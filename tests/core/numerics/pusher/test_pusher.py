@@ -47,12 +47,12 @@ def deriv(vec, t0, q, m):
 def main():
     path = sys.argv[1]
 
-    rv0 = [0,0,0,0,1,0]
+    rv0 = [0.25,0.25,0.25,0.,10.,0.]
     q   = 1
     m   = 1
     tstart = 0.
     tend   = 10.
-    dt = 0.05
+    dt = 0.0001
     nt = int((tend-tstart)/dt)+1
     t      = np.arange(0,nt*dt, dt)
 
