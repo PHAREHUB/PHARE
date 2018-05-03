@@ -19,3 +19,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 
+
+include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

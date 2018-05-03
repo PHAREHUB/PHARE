@@ -30,12 +30,12 @@ elseif (ubsan)
 
 elseif(msan)
 
-  set(MSAN_FLAGS "-fsanitize=memory ")
+  set(MSAN_FLAGS "-fsanitize=memory")
   set(CMAKE_REQUIRED_FLAGS ${MSAN_FLAGS})
-  check_cxx_compiler_flag(-fsanitize=memory MEMORY_SANITIZER)
+  check_cxx_compiler_flag(${MSAN_FLAGS} MEMORY_SANITIZER)
 
   if (${MEMORY_SANITIZER})
-    target_compile_options(${PROJECT_NAME} PUBLIC ${MSAN_FLAGS} -fno-omit-frame-pointer)
+    target_compile_options(${PROJECT_NAME} PUBLIC ${MSAN_FLAGS} )
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS ${MSAN_FLAGS})
   else ()
     message(FATAL_ERROR "Your compiler: ${CMAKE_CXX_COMPILER_ID} seems to not support msan flags")

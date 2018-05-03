@@ -21,3 +21,5 @@ add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 add_custom_command(TARGET test-interpolator
                    POST_BUILD
                    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/interpolator_test.py ${CMAKE_CURRENT_BINARY_DIR})
+
+include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
