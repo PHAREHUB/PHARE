@@ -116,6 +116,10 @@ public:
 
 
 
+    /**
+     * @brief setMeshAndTimeStep allows to let the pusher know what is the mesh
+     * size and time step in the domain where particles are to be pushed.
+     */
     void setMeshAndTimeStep(std::array<double, dim> ms, double ts)
     {
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
@@ -126,8 +130,7 @@ public:
 
 
 private:
-    /**
-     *
+    /** move the particle partIn of half a time step and store it in partOut
      */
     template<typename ParticleIter>
     void advancePosition_(ParticleIter const& partIn, ParticleIter& partOut)
@@ -195,6 +198,8 @@ private:
 
 
 
+    /** Accelerate the particles in rangeIn and put the new velocity in rangeOut
+     */
     template<typename ParticleRangeIn, typename ParticleRangeOut>
     void accelerate_(ParticleRangeIn inputParticles, ParticleRangeOut outputParticles, double mass)
     {
