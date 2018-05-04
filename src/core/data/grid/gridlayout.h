@@ -83,6 +83,7 @@ public:
     }
 
 
+    GridLayout(GridLayout&& source) = default;
 
 
     /**
