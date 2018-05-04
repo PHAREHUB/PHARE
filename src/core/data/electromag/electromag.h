@@ -12,7 +12,7 @@ namespace PHARE
 template<typename VecFieldT>
 struct Electromag
 {
-    Electromag(std::string name)
+    explicit Electromag(std::string name)
         : E{name + "_E", HybridQuantity::Vector::E}
         , B{name + "_B", HybridQuantity::Vector::B}
     {
