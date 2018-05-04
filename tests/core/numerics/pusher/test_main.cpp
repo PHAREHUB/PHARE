@@ -4,12 +4,14 @@
 #include <cstddef>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
 
 #include "data/particles/particle_array.h"
 #include "numerics/pusher/boris.h"
+#include "utilities/particle_selector/particle_selector.h"
 #include "utilities/range/range.h"
 
 using namespace PHARE;
@@ -315,6 +317,79 @@ TEST_F(APusher1D, trajectoryIsOk)
 
     EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
 }
+
+
+
+
+class APusherWithLeavingParticles : public ::testing::Test
+{
+public:
+    APusherWithLeavingParticles()
+        : particlesIn(1000)
+        , pusher{std::make_unique<BorisPusher<1>>()}
+        , mass{1}
+        , dt{0.0001}
+        , tstart{0}
+        , tend{10}
+        , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
+        , domain{Point<int, 1>{0}, Point<int, 1>{1}}
+        , selector{domain}
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, 1);
+        std::uniform_real_distribution<float> delta(0, 1);
+
+        for (auto& part : particlesIn)
+        {
+            part.charge = 1;
+            part.v      = {{0, 10., 0.}};
+            part.delta  = {{delta(gen)}};
+            part.iCell  = {{dis(gen)}};
+        }
+        pusher->setMeshAndTimeStep({{dx}}, dt);
+    }
+
+
+protected:
+    ParticleArray<1> particlesIn;
+    std::unique_ptr<BorisPusher<1>> pusher;
+    double mass;
+    double dt;
+    double tstart;
+    double tend;
+    std::size_t nt;
+    Electromag em;
+    Interpolator interpolator;
+    Box<int, 1> domain;
+    ParticleSelector<Box<int, 1>> selector;
+    double dx = 0.05;
+};
+
+
+
+
+TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
+{
+    auto rangeIn = makeRange(std::begin(particlesIn), std::end(particlesIn));
+
+    auto newEnd = std::end(particlesIn);
+
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        newEnd = pusher->move(rangeIn, rangeIn, em, mass, interpolator, selector);
+        if (newEnd != std::end(particlesIn))
+        {
+            std::cout << "stopping itnegration at i = " << i << "\n";
+            std::cout << std::distance(std::begin(particlesIn), newEnd) << " in domain\n";
+            std::cout << std::distance(newEnd, std::end(particlesIn)) << " leaving\n";
+            break;
+        }
+    }
+    EXPECT_TRUE(std::none_of(newEnd, std::end(particlesIn), selector));
+    EXPECT_TRUE(std::all_of(std::begin(particlesIn), newEnd, selector));
+}
+
 
 
 
