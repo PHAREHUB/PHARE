@@ -10,7 +10,9 @@
 #include <vector>
 
 #include "data/particles/particle_array.h"
+#include "numerics/boundary_condition/boundary_condition.h"
 #include "numerics/pusher/boris.h"
+#include "numerics/pusher/pusher_factory.h"
 #include "utilities/particle_selector/particle_selector.h"
 #include "utilities/range/range.h"
 
@@ -106,8 +108,8 @@ public:
     }
 };
 
-/*
-class BoundaryCondition
+
+/*class BoundaryCondition
 {
 public:
     template<typename ParticleIterator>
@@ -125,7 +127,9 @@ public:
         : expectedTrajectory{readExpectedTrajectory()}
         , particlesIn(1)
         , particlesOut(1)
-        , pusher{std::make_unique<BorisPusher<3>>()}
+        , pusher{std::make_unique<
+              BorisPusher<3, ParticleArray<3>::iterator, Electromag, Interpolator, DummySelector,
+                          BoundaryCondition<3, 1>>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -147,7 +151,9 @@ protected:
     Trajectory expectedTrajectory;
     ParticleArray<3> particlesIn;
     ParticleArray<3> particlesOut;
-    std::unique_ptr<BorisPusher<3>> pusher;
+    std::unique_ptr<BorisPusher<3, ParticleArray<3>::iterator, Electromag, Interpolator,
+                                DummySelector, BoundaryCondition<3, 1>>>
+        pusher;
     double mass;
     double dt;
     double tstart;
@@ -198,7 +204,9 @@ public:
         : expectedTrajectory{readExpectedTrajectory()}
         , particlesIn(1)
         , particlesOut(1)
-        , pusher{std::make_unique<BorisPusher<2>>()}
+        , pusher{std::make_unique<
+              BorisPusher<2, ParticleArray<2>::iterator, Electromag, Interpolator, DummySelector,
+                          BoundaryCondition<2, 1>>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -219,7 +227,9 @@ protected:
     Trajectory expectedTrajectory;
     ParticleArray<2> particlesIn;
     ParticleArray<2> particlesOut;
-    std::unique_ptr<BorisPusher<2>> pusher;
+    std::unique_ptr<BorisPusher<2, ParticleArray<2>::iterator, Electromag, Interpolator,
+                                DummySelector, BoundaryCondition<2, 1>>>
+        pusher;
     double mass;
     double dt;
     double tstart;
@@ -265,7 +275,9 @@ public:
         : expectedTrajectory{readExpectedTrajectory()}
         , particlesIn(1)
         , particlesOut(1)
-        , pusher{std::make_unique<BorisPusher<1>>()}
+        , pusher{std::make_unique<
+              BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator, DummySelector,
+                          BoundaryCondition<1, 1>>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -285,7 +297,9 @@ protected:
     Trajectory expectedTrajectory;
     ParticleArray<1> particlesIn;
     ParticleArray<1> particlesOut;
-    std::unique_ptr<BorisPusher<1>> pusher;
+    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+                                DummySelector, BoundaryCondition<1, 1>>>
+        pusher;
     double mass;
     double dt;
     double tstart;
@@ -326,7 +340,11 @@ class APusherWithLeavingParticles : public ::testing::Test
 public:
     APusherWithLeavingParticles()
         : particlesIn(1000)
-        , pusher{std::make_unique<BorisPusher<1>>()}
+        , particlesOut1(1000)
+        , particlesOut2(1000)
+        , pusher{std::make_unique<
+              BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+                          ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -353,7 +371,11 @@ public:
 
 protected:
     ParticleArray<1> particlesIn;
-    std::unique_ptr<BorisPusher<1>> pusher;
+    ParticleArray<1> particlesOut1;
+    ParticleArray<1> particlesOut2;
+    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+                                ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>>>
+        pusher;
     double mass;
     double dt;
     double tstart;
@@ -363,6 +385,7 @@ protected:
     Interpolator interpolator;
     Box<int, 1> domain;
     ParticleSelector<Box<int, 1>> selector;
+    BoundaryCondition<1, 1> bc;
     double dx = 0.05;
 };
 
@@ -380,7 +403,7 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
         newEnd = pusher->move(rangeIn, rangeIn, em, mass, interpolator, selector);
         if (newEnd != std::end(particlesIn))
         {
-            std::cout << "stopping itnegration at i = " << i << "\n";
+            std::cout << "stopping integration at i = " << i << "\n";
             std::cout << std::distance(std::begin(particlesIn), newEnd) << " in domain\n";
             std::cout << std::distance(newEnd, std::end(particlesIn)) << " leaving\n";
             break;
@@ -390,6 +413,51 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
     EXPECT_TRUE(std::all_of(std::begin(particlesIn), newEnd, selector));
 }
 
+
+
+TEST_F(APusherWithLeavingParticles, bcReturnsSamePointerAsPusherIfNoBoundaryParticles)
+{
+    auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
+    auto rangeOut1 = makeRange(std::begin(particlesOut1), std::end(particlesOut1));
+    auto rangeOut2 = makeRange(std::begin(particlesOut2), std::end(particlesOut2));
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut1.begin());
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut2.begin());
+
+    auto newEndWithBC    = std::end(particlesOut1);
+    auto newEndWithoutBC = std::end(particlesOut2);
+
+    bc.setBoundaryBoxes(std::vector<Box<int, 1>>{});
+
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        newEndWithBC    = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc);
+        newEndWithoutBC = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector);
+        auto s2         = rangeOut2.size();
+        auto s1         = rangeOut1.size();
+        auto s          = rangeIn.size();
+
+        if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
+        {
+            std::cout << "stopping integration at i = " << i << "\n";
+            std::cout << std::distance(std::begin(particlesIn), newEndWithBC) << " in domain\n";
+            std::cout << std::distance(newEndWithBC, std::end(particlesIn)) << " leaving\n";
+            break;
+        }
+    }
+    EXPECT_EQ(newEndWithBC, newEndWithoutBC);
+    // EXPECT_TRUE(std::all_of(std::begin(particlesIn), newEnd, selector));
+}
+
+
+
+
+TEST(APusherFactory, canReturnABorisPusher)
+{
+    auto pusher = PusherFactory::makePusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+                                            DummySelector, BoundaryCondition<1, 1>>("boris");
+
+    EXPECT_NE(nullptr, pusher);
+}
 
 
 

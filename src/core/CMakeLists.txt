@@ -19,6 +19,8 @@ set( SOURCES_INC
      numerics/boundary_condition/boundary_condition.h
      numerics/interpolator/interpolator.h
      numerics/pusher/boris.h
+     numerics/pusher/pusher.h
+     numerics/pusher/pusher_factory.h
      utilities/box/box.h
      utilities/constants.h
      utilities/index/index.h

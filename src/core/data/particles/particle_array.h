@@ -11,7 +11,7 @@ namespace PHARE
 {
 template<std::size_t dim>
 using ParticleArray = std::vector<Particle<dim>>;
-}
+} // namespace PHARE
 
 
 #endif

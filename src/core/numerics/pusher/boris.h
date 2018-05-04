@@ -5,43 +5,25 @@
 #include <cmath>
 #include <cstddef>
 
+#include "numerics/pusher/pusher.h"
 #include "utilities/range/range.h"
 
 namespace PHARE
 {
-template<std::size_t dim>
-class BorisPusher
+template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
+         typename ParticleSelector, typename BoundaryCondition>
+class BorisPusher : public Pusher<dim, ParticleIterator, Electromag, Interpolator, ParticleSelector,
+                                  BoundaryCondition>
 {
 public:
-    /** Move all particles in rangeIn from t=n to t=n+1 and store their new
-     * position in rangeOut.
-     *
-     * Particles in rangeOut are placed according to the return of the ParticleSelector.
-     * Particles for which the selector retuns true are placed before those for which it
-     * is false. The pivot is the iterator separating the two parts. Here it is assumed
-     * the selector returns true for particles staying in the patch and false otherwise.
-     *
-     * move() assumes that particles in rangeIn and those in rangeOut have the same
-     * state upon entering the function.
-     *
-     * @param rangeIn : range of iterators on particles at time t=n to be pushed
-     * @param rangeOut: output range of iterators on particles at t=n+1. rangeOut
-     * must have the same size as rangeIn (nbrParticles(rangeIn) == nbrParticles(rangeOut).
-     * @param E: electric vector field used to accelerate particles
-     * @param B: magnetic vector field used to accelerate particles
-     * @param selector : used to place particles in rangeOut.
-     * @param bc : physical boundary condition. Manage particles that intersect with a physical
-     * domain bounday.
-     *
-     * @return the function returns an ParticleArray::iterator on the first particle
-     * for which the selector returns false. The selector returns true for Particles
-     * in range [rangeOut.begin, pivot[, and false for those in [pivot,rangeOut.end[
-     */
-    template<typename ParticleRange, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition>
-    auto move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
-              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-              BoundaryCondition&& bc)
+    using ParticleRange = Range<ParticleIterator>;
+
+    /** see Pusher::move() domentation*/
+    virtual ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
+                                  Electromag const& emFields, double mass,
+                                  Interpolator& interpolator,
+                                  ParticleSelector const& particleIsNotLeaving,
+                                  BoundaryCondition& bc) override
     {
         // push the particles of half a step
         // rangeIn : t=n, rangeOut : t=n+1/Z
@@ -78,18 +60,11 @@ public:
     }
 
 
-
-    /** this overload of move() is used for particles for which one knows that
-     * they will not need a boundary condition treatment. Particles in rangeOut
-     * are sorted according to whether they are detected as leaving
-     *
-     * This overload is typically used to push particles outside the domain, like
-     * ghost particles.
-     */
-    template<typename ParticleRange, typename Electromag, typename Interpolator,
-             typename ParticleSelector>
-    auto move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
-              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving)
+    /** see Pusher::move() domentation*/
+    virtual decltype(std::declval<ParticleRange>().end())
+    move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
+         double mass, Interpolator& interpolator,
+         ParticleSelector const& particleIsNotLeaving) override
     {
         // push the particles of half a step
         // rangeIn : t=n, rangeOut : t=n+1/Z
@@ -115,12 +90,8 @@ public:
     }
 
 
-
-    /**
-     * @brief setMeshAndTimeStep allows to let the pusher know what is the mesh
-     * size and time step in the domain where particles are to be pushed.
-     */
-    void setMeshAndTimeStep(std::array<double, dim> ms, double ts)
+    /** see Pusher::move() domentation*/
+    virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) override
     {
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
                        [ts](double& x) { return 0.5 * ts / x; });
@@ -154,7 +125,7 @@ private:
      * @return the function returns and iterator on the first leaving particle, as
      * detected by the ParticleSelector
      */
-    template<typename ParticleRangeIn, typename ParticleRangeOut, typename ParticleSelector>
+    template<typename ParticleRangeIn, typename ParticleRangeOut>
     auto pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut,
                    ParticleSelector const& particleIsNotLeaving)
     {
@@ -207,7 +178,7 @@ private:
 
         auto currentOut = outputParticles.begin();
 
-        for (auto currentIn : inputParticles)
+        for (auto const& currentIn : inputParticles)
         {
             double coef1 = currentIn.charge * dto2m;
 
@@ -273,6 +244,8 @@ private:
     std::array<double, dim> halfDtOverDl_;
     double dt_;
 };
+
+
 
 } // namespace PHARE
 
