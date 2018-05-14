@@ -38,8 +38,8 @@ public:
         static_assert(sizeof...(Dims) == NdArrayImpl::dimension, "Invalid dimension");
     }
 
-    template<std::size_t dim, typename Index>
-    Field(std::string name, PhysicalQuantity qty, std::array<Index, dim> const& dims)
+    template<std::size_t dim>
+    Field(std::string name, PhysicalQuantity qty, std::array<uint32_t, dim> const& dims)
         : NdArrayImpl{dims}
         , name_{std::move(name)}
         , qty_{qty}

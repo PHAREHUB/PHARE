@@ -59,7 +59,7 @@ public:
     {
     }
 
-    explicit NdArrayVector1D(std::array<std::size_t, 1> const& nCell)
+    explicit NdArrayVector1D(std::array<uint32_t, 1> const& nCell)
         : NdArrayVectorBase<DataType>(nCell[0])
         , nx_{static_cast<int>(nCell[0])}
     {
@@ -100,7 +100,7 @@ public:
     {
     }
 
-    explicit NdArrayVector2D(std::array<std::size_t, 2> const& nbCell)
+    explicit NdArrayVector2D(std::array<uint32_t, 2> const& nbCell)
         : NdArrayVectorBase<DataType>(nbCell[0] * nbCell[1])
         , nx_{static_cast<int>(nbCell[0])}
         , ny_{static_cast<int>(nbCell[1])}
@@ -146,7 +146,7 @@ public:
     {
     }
 
-    explicit NdArrayVector3D(std::array<std::size_t, 3> const& nbCell)
+    explicit NdArrayVector3D(std::array<uint32_t, 3> const& nbCell)
         : NdArrayVectorBase<DataType>(nbCell[0] * nbCell[1] * nbCell[2])
         , nx_{static_cast<int>(nbCell[0])}
         , ny_{static_cast<int>(nbCell[1])}
