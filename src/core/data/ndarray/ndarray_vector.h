@@ -53,7 +53,7 @@ class NdArrayVector1D : public NdArrayVectorBase<DataType>
 {
 public:
     //! builds an NdArrayVector1D by specifying its number of elements
-    explicit NdArrayVector1D(int nx)
+    explicit NdArrayVector1D(uint32_t nx)
         : NdArrayVectorBase<DataType>(nx)
         , nx_{nx}
     {
@@ -61,7 +61,7 @@ public:
 
     explicit NdArrayVector1D(std::array<uint32_t, 1> const& nCell)
         : NdArrayVectorBase<DataType>(nCell[0])
-        , nx_{static_cast<int>(nCell[0])}
+        , nx_{nCell[0]}
     {
     }
 
@@ -72,13 +72,13 @@ public:
     NdArrayVector1D& operator=(NdArrayVector1D&& source) = default;
 
     //! read/write access operator
-    DataType& operator()(int i) { return this->data_[i]; }
-    DataType const& operator()(int i) const { return this->data_[i]; }
+    DataType& operator()(uint32_t i) { return this->data_[i]; }
+    DataType const& operator()(uint32_t i) const { return this->data_[i]; }
 
     static const int dimension = 1;
 
 private:
-    int nx_ = 0;
+    uint32_t nx_ = 0;
 };
 
 
@@ -93,7 +93,7 @@ class NdArrayVector2D : public NdArrayVectorBase<DataType>
 {
 public:
     //! build a NdArrayVector2D specifying its number of elements in the 1st and 2nd dims.
-    NdArrayVector2D(int nx, int ny)
+    NdArrayVector2D(uint32_t nx, uint32_t ny)
         : NdArrayVectorBase<DataType>(nx * ny)
         , nx_{nx}
         , ny_{ny}
@@ -102,8 +102,8 @@ public:
 
     explicit NdArrayVector2D(std::array<uint32_t, 2> const& nbCell)
         : NdArrayVectorBase<DataType>(nbCell[0] * nbCell[1])
-        , nx_{static_cast<int>(nbCell[0])}
-        , ny_{static_cast<int>(nbCell[1])}
+        , nx_{nbCell[0]}
+        , ny_{nbCell[1]}
     {
     }
 
@@ -114,10 +114,10 @@ public:
     NdArrayVector2D& operator=(NdArrayVector2D&& source) = default;
 
     //! read/write data access operator returns C-ordered data.
-    DataType& operator()(int i, int j) { return this->data_[j + ny_ * i]; }
+    DataType& operator()(uint32_t i, uint32_t j) { return this->data_[j + ny_ * i]; }
 
     //! read only access. See read/write.
-    DataType const& operator()(int i, int j) const { return this->data_[linearIt(i, j)]; }
+    DataType const& operator()(uint32_t i, uint32_t j) const { return this->data_[linearIt(i, j)]; }
 
     static const int dimension = 2;
 
@@ -125,8 +125,8 @@ private:
     int constexpr linearIt(int i, int j) const { return j + ny_ * i; }
 
 
-    int nx_ = 0;
-    int ny_ = 0;
+    uint32_t nx_ = 0;
+    uint32_t ny_ = 0;
 };
 
 
@@ -138,7 +138,7 @@ template<typename DataType = double>
 class NdArrayVector3D : public NdArrayVectorBase<DataType>
 {
 public:
-    NdArrayVector3D(int nx, int ny, int nz)
+    NdArrayVector3D(uint32_t nx, uint32_t ny, uint32_t nz)
         : NdArrayVectorBase<DataType>(nx * ny * nz)
         , nx_{nx}
         , ny_{ny}
@@ -148,9 +148,9 @@ public:
 
     explicit NdArrayVector3D(std::array<uint32_t, 3> const& nbCell)
         : NdArrayVectorBase<DataType>(nbCell[0] * nbCell[1] * nbCell[2])
-        , nx_{static_cast<int>(nbCell[0])}
-        , ny_{static_cast<int>(nbCell[1])}
-        , nz_{static_cast<int>(nbCell[2])}
+        , nx_{nbCell[0]}
+        , ny_{nbCell[1]}
+        , nz_{nbCell[2]}
     {
     }
 
@@ -162,16 +162,25 @@ public:
     NdArrayVector3D& operator=(NdArrayVector3D&& source) = default;
 
 
-    DataType& operator()(int i, int j, int k) { return this->data_[k + nz_ * (j + ny_ * i)]; }
-    DataType const& operator()(int i, int j, int k) const { return this->data_[linearIt(i, j, k)]; }
+    DataType& operator()(uint32_t i, uint32_t j, uint32_t k)
+    {
+        return this->data_[k + nz_ * (j + ny_ * i)];
+    }
+    DataType const& operator()(uint32_t i, uint32_t j, uint32_t k) const
+    {
+        return this->data_[linearIt(i, j, k)];
+    }
 
     static const int dimension = 3;
 
 private:
-    int constexpr linearIt(int i, int j, int k) const { return k + nz_ * (j + ny_ * i); }
-    int nx_ = 0;
-    int ny_ = 0;
-    int nz_ = 0;
+    int constexpr linearIt(uint32_t i, uint32_t j, uint32_t k) const
+    {
+        return k + nz_ * (j + ny_ * i);
+    }
+    uint32_t nx_ = 0;
+    uint32_t ny_ = 0;
+    uint32_t nz_ = 0;
 };
 
 

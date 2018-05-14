@@ -186,7 +186,7 @@ public:
     PHARE::ParticleArray<1> particles;
     InterpolatorT interp;
 
-    static constexpr int nx = 50;
+    static constexpr uint32_t nx = 50;
 
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> by1d_;
@@ -212,7 +212,7 @@ public:
         , ey1d_{"field", HybridQuantity::Scalar::Ey, nx}
         , ez1d_{"field", HybridQuantity::Scalar::Ez, nx}
     {
-        for (auto ix = 0; ix < nx; ++ix)
+        for (auto ix = 0u; ix < nx; ++ix)
         {
             bx1d_(ix) = bx0;
             by1d_(ix) = by0;
@@ -226,7 +226,7 @@ public:
         for (auto& part : particles)
         {
             part.iCell[0] = 5;
-            part.delta[0] = 0.32;
+            part.delta[0] = 0.32f;
         }
     }
 };
@@ -298,8 +298,8 @@ public:
     PHARE::ParticleArray<2> particles;
     InterpolatorT interp;
 
-    static constexpr int nx = 50;
-    static constexpr int ny = 50;
+    static constexpr uint32_t nx = 50;
+    static constexpr uint32_t ny = 50;
 
     Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bx_;
     Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> by_;
@@ -325,9 +325,9 @@ public:
         , ey_{"field", HybridQuantity::Scalar::Ey, nx, ny}
         , ez_{"field", HybridQuantity::Scalar::Ez, nx, ny}
     {
-        for (auto ix = 0; ix < nx; ++ix)
+        for (auto ix = 0u; ix < nx; ++ix)
         {
-            for (auto iy = 0; iy < ny; ++iy)
+            for (auto iy = 0u; iy < ny; ++iy)
             {
                 bx_(ix, iy) = bx0;
                 by_(ix, iy) = by0;
@@ -341,7 +341,7 @@ public:
         for (auto& part : particles)
         {
             part.iCell[0] = 5;
-            part.delta[0] = 0.32;
+            part.delta[0] = 0.32f;
         }
     }
 };
@@ -413,9 +413,9 @@ public:
     PHARE::ParticleArray<3> particles;
     InterpolatorT interp;
 
-    static constexpr int nx = 50;
-    static constexpr int ny = 50;
-    static constexpr int nz = 50;
+    static constexpr uint32_t nx = 50;
+    static constexpr uint32_t ny = 50;
+    static constexpr uint32_t nz = 50;
 
     Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bx_;
     Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> by_;
@@ -441,11 +441,11 @@ public:
         , ey_{"field", HybridQuantity::Scalar::Ey, nx, ny, nz}
         , ez_{"field", HybridQuantity::Scalar::Ez, nx, ny, nz}
     {
-        for (auto ix = 0; ix < nx; ++ix)
+        for (auto ix = 0u; ix < nx; ++ix)
         {
-            for (auto iy = 0; iy < ny; ++iy)
+            for (auto iy = 0u; iy < ny; ++iy)
             {
-                for (auto iz = 0; iz < nz; ++iz)
+                for (auto iz = 0u; iz < nz; ++iz)
                 {
                     bx_(ix, iy, iz) = bx0;
                     by_(ix, iy, iz) = by0;
@@ -460,7 +460,7 @@ public:
         for (auto& part : particles)
         {
             part.iCell[0] = 5;
-            part.delta[0] = 0.32;
+            part.delta[0] = 0.32f;
         }
     }
 };

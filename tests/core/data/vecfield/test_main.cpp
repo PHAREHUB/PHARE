@@ -93,9 +93,9 @@ protected:
         B3D_.setBuffer("B3D_z", nullptr);
     }
 
-    static const int nx;
-    static const int ny;
-    static const int nz;
+    static const uint32_t nx;
+    static const uint32_t ny;
+    static const uint32_t nz;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> by1d_;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bz1d_;
@@ -113,9 +113,9 @@ protected:
     VecField<NdArrayVector3D<>, HybridQuantity> B3D_;
 };
 
-const int VecFieldTest::nx = 10;
-const int VecFieldTest::ny = 20;
-const int VecFieldTest::nz = 30;
+const uint32_t VecFieldTest::nx = 10;
+const uint32_t VecFieldTest::ny = 20;
+const uint32_t VecFieldTest::nz = 30;
 
 
 TEST_F(VecFieldTest, isNotInitiallyUsable1D)

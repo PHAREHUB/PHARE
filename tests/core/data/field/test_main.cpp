@@ -3,6 +3,7 @@
 #include <core/data/field/field.h>
 #include <core/data/ndarray/ndarray_vector.h>
 #include <core/hybrid/hybrid_quantities.h>
+#include <ctype.h>
 #include <string>
 
 using PHARE::Field;
@@ -22,7 +23,7 @@ public:
     }
 
 protected:
-    const int nx = 10;
+    const uint32_t nx = 10;
     Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
 };
 
@@ -37,8 +38,8 @@ public:
     }
 
 protected:
-    const int nx = 10;
-    const int ny = 12;
+    const uint32_t nx = 10u;
+    const uint32_t ny = 12u;
     Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
 };
 
@@ -53,9 +54,9 @@ public:
     }
 
 protected:
-    const int nx = 10;
-    const int ny = 12;
-    const int nz = 12;
+    const uint32_t nx = 10;
+    const uint32_t ny = 12;
+    const uint32_t nz = 12;
     Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
 };
 
@@ -119,7 +120,7 @@ TYPED_TEST(GenericField1D, CanBeReadOnly)
 
 TYPED_TEST(GenericField2D, CanBeReadOnly)
 {
-    this->f(3, 8) = 8.4;
+    this->f(3, 8)   = 8.4;
     auto const& ref = this->f;
     EXPECT_FLOAT_EQ(8.4, ref(3, 8));
 }
@@ -128,7 +129,7 @@ TYPED_TEST(GenericField2D, CanBeReadOnly)
 TYPED_TEST(GenericField3D, CanBeReadOnly)
 {
     this->f(3, 8, 2) = 84.48;
-    auto const& ref = this->f;
+    auto const& ref  = this->f;
     EXPECT_FLOAT_EQ(84.48, ref(3, 8, 2));
 }
 

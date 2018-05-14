@@ -14,15 +14,15 @@ using PHARE::NdArrayVector3D;
 
 TEST(NdArray1DTest, SizeIsOkAfterNonEmptyCreation)
 {
-    auto size = 10;
+    auto size = 10u;
     NdArrayVector1D<> array1d{size};
     EXPECT_EQ(size, array1d.size());
 }
 
 TEST(NdArray2DTest, SizeIsOkAfterNonEmptyCreation)
 {
-    auto nx   = 12;
-    auto ny   = 24;
+    auto nx   = 12u;
+    auto ny   = 24u;
     auto size = nx * ny;
     NdArrayVector2D<> array2d{nx, ny};
     EXPECT_EQ(size, array2d.size());
@@ -31,9 +31,9 @@ TEST(NdArray2DTest, SizeIsOkAfterNonEmptyCreation)
 
 TEST(NdArray3DTest, SizeIsOkAfterNonEmptyCreation)
 {
-    auto nx   = 12;
-    auto ny   = 24;
-    auto nz   = 103;
+    auto nx   = 12u;
+    auto ny   = 24u;
+    auto nz   = 103u;
     auto size = nx * ny * nz;
     NdArrayVector3D<> array3d{nx, ny, nz};
     EXPECT_EQ(size, array3d.size());
@@ -42,7 +42,7 @@ TEST(NdArray3DTest, SizeIsOkAfterNonEmptyCreation)
 
 TEST(NdArray1DTest, IsModifiable)
 {
-    auto nx = 12;
+    auto nx = 12u;
     NdArrayVector1D<> array1d{nx};
     array1d(10) = 24;
     EXPECT_EQ(24, array1d(10));
@@ -50,7 +50,7 @@ TEST(NdArray1DTest, IsModifiable)
 
 TEST(NdArray1DTest, ArrayCanBeReadOnly)
 {
-    auto nx = 12;
+    auto nx = 12u;
     NdArrayVector1D<> array1d{nx};
     array1d(10)                  = 24;
     NdArrayVector1D<> const& ref = array1d;
@@ -60,8 +60,8 @@ TEST(NdArray1DTest, ArrayCanBeReadOnly)
 
 TEST(NdArray2DTest, IsModifiable)
 {
-    auto nx = 12;
-    auto ny = 32;
+    auto nx = 12u;
+    auto ny = 32u;
     NdArrayVector2D<> array2d{nx, ny};
     array2d(10, 8) = 24;
     EXPECT_EQ(24, array2d(10, 8));
@@ -70,10 +70,10 @@ TEST(NdArray2DTest, IsModifiable)
 
 TEST(NdArray2DTest, ArrayCanBeReadOnly)
 {
-    auto nx = 12;
-    auto ny = 87;
+    auto nx = 12u;
+    auto ny = 87u;
     NdArrayVector2D<> array2d{nx, ny};
-    array2d(10, 2) = 24;
+    array2d(10, 2)               = 24;
     NdArrayVector2D<> const& ref = array2d;
     EXPECT_EQ(24, ref(10, 2));
 }
@@ -81,9 +81,9 @@ TEST(NdArray2DTest, ArrayCanBeReadOnly)
 
 TEST(NdArray3DTest, IsModifiable)
 {
-    auto nx = 12;
-    auto ny = 32;
-    auto nz = 13;
+    auto nx = 12u;
+    auto ny = 32u;
+    auto nz = 13u;
     NdArrayVector3D<> array3d{nx, ny, nz};
     array3d(10, 8, 5) = 24;
     EXPECT_EQ(24, array3d(10, 8, 5));
@@ -92,11 +92,11 @@ TEST(NdArray3DTest, IsModifiable)
 
 TEST(NdArray3DTest, ArrayCanBeReadOnly)
 {
-    auto nx = 12;
-    auto ny = 32;
-    auto nz = 13;
+    auto nx = 12u;
+    auto ny = 32u;
+    auto nz = 13u;
     NdArrayVector3D<> array3d{nx, ny, nz};
-    array3d(10, 8, 5) = 24;
+    array3d(10, 8, 5)            = 24;
     NdArrayVector3D<> const& ref = array3d;
     EXPECT_EQ(24, ref(10, 8, 5));
 }
@@ -108,7 +108,7 @@ MATCHER_P(FloatNearPointwise, tol, "Out of range")
 
 TEST(NdArray1DTest, AccessWholeArray)
 {
-    auto nx = 20;
+    auto nx = 20u;
     NdArrayVector1D<> array1d{nx};
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
@@ -137,8 +137,8 @@ TEST(NdArray1DTest, AccessWholeArray)
 
 TEST(NdArray2DTest, AccessWholeArray)
 {
-    auto nx = 20;
-    auto ny = 10;
+    auto nx = 20u;
+    auto ny = 10u;
     NdArrayVector2D<> array2d{nx, ny};
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
@@ -173,9 +173,9 @@ TEST(NdArray2DTest, AccessWholeArray)
 
 TEST(NdArray3DTest, AccessWholeArray)
 {
-    auto nx = 20;
-    auto ny = 10;
-    auto nz = 13;
+    auto nx = 20u;
+    auto ny = 10u;
+    auto nz = 13u;
     NdArrayVector3D<> array3d{nx, ny, nz};
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
