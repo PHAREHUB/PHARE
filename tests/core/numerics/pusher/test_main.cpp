@@ -109,15 +109,6 @@ public:
 };
 
 
-/*class BoundaryCondition
-{
-public:
-    template<typename ParticleIterator>
-    ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator end)
-    {
-        return end;
-    }
-};*/
 
 
 class APusher3D : public ::testing::Test
@@ -173,30 +164,6 @@ protected:
 
 
 
-TEST_F(APusher3D, trajectoryIsOk)
-{
-    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
-    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
-
-    for (decltype(nt) i = 0; i < nt; ++i)
-    {
-        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
-        yActual[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
-        zActual[i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dz);
-
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector);
-
-        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
-    }
-
-    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
-    EXPECT_THAT(yActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
-    EXPECT_THAT(zActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.z));
-}
-
-
-
 class APusher2D : public ::testing::Test
 {
 public:
@@ -246,27 +213,6 @@ protected:
 
 
 
-TEST_F(APusher2D, trajectoryIsOk)
-{
-    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
-    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
-
-    for (decltype(nt) i = 0; i < nt; ++i)
-    {
-        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
-        yActual[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
-
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector);
-
-        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
-    }
-
-    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
-    EXPECT_THAT(yActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
-}
-
-
 
 class APusher1D : public ::testing::Test
 {
@@ -314,6 +260,54 @@ protected:
 
 
 
+
+TEST_F(APusher3D, trajectoryIsOk)
+{
+    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
+    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
+
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
+        yActual[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
+        zActual[i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dz);
+
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
+    }
+
+    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
+    EXPECT_THAT(yActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
+    EXPECT_THAT(zActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.z));
+}
+
+
+
+
+TEST_F(APusher2D, trajectoryIsOk)
+{
+    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
+    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
+
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
+        yActual[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
+
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
+    }
+
+    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
+    EXPECT_THAT(yActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
+}
+
+
+
 TEST_F(APusher1D, trajectoryIsOk)
 {
     auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
@@ -334,7 +328,10 @@ TEST_F(APusher1D, trajectoryIsOk)
 
 
 
-
+// the idea of this test is to create a 1D domain [0,1[, push the particles
+// until the newEnd returned by the pusher is != the original end, which means
+// some particles are out. Then we test the properties of the particles that leave
+// and those that stay.
 class APusherWithLeavingParticles : public ::testing::Test
 {
 public:
@@ -415,7 +412,7 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 
 
 
-TEST_F(APusherWithLeavingParticles, bcReturnsSamePointerAsPusherIfNoBoundaryParticles)
+TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsSameNbrOfStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
     auto rangeOut1 = makeRange(std::begin(particlesOut1), std::end(particlesOut1));
@@ -439,15 +436,62 @@ TEST_F(APusherWithLeavingParticles, bcReturnsSamePointerAsPusherIfNoBoundaryPart
         if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
         {
             std::cout << "stopping integration at i = " << i << "\n";
-            std::cout << std::distance(std::begin(particlesIn), newEndWithBC) << " in domain\n";
-            std::cout << std::distance(newEndWithBC, std::end(particlesIn)) << " leaving\n";
+            std::cout << std::distance(std::begin(particlesOut1), newEndWithBC) << " in domain\n";
+            std::cout << std::distance(newEndWithBC, std::end(particlesOut1)) << " leaving\n";
             break;
         }
     }
-    EXPECT_EQ(newEndWithBC, newEndWithoutBC);
-    // EXPECT_TRUE(std::all_of(std::begin(particlesIn), newEnd, selector));
+    auto d1 = std::distance(std::begin(particlesOut1), newEndWithBC);
+    auto d2 = std::distance(std::begin(particlesOut2), newEndWithoutBC);
+    EXPECT_EQ(d1, d2);
 }
 
+
+
+
+TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsReturnEqualStayingParticles)
+{
+    auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
+    auto rangeOut1 = makeRange(std::begin(particlesOut1), std::end(particlesOut1));
+    auto rangeOut2 = makeRange(std::begin(particlesOut2), std::end(particlesOut2));
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut1.begin());
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut2.begin());
+
+    auto newEndWithBC    = std::end(particlesOut1);
+    auto newEndWithoutBC = std::end(particlesOut2);
+
+    bc.setBoundaryBoxes(std::vector<Box<int, 1>>{});
+
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        newEndWithBC    = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc);
+        newEndWithoutBC = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector);
+        auto s2         = rangeOut2.size();
+        auto s1         = rangeOut1.size();
+        auto s          = rangeIn.size();
+
+        if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
+        {
+            std::cout << "stopping integration at i = " << i << "\n";
+            std::cout << std::distance(std::begin(particlesOut1), newEndWithBC) << " in domain\n";
+            std::cout << std::distance(newEndWithBC, std::end(particlesOut1)) << " leaving\n";
+            break;
+        }
+    }
+    auto part1 = std::begin(particlesOut1);
+    auto part2 = std::begin(particlesOut2);
+
+    for (; part1 < newEndWithBC, part2 < newEndWithoutBC; ++part1, ++part2)
+    {
+        EXPECT_FLOAT_EQ(part1->delta[0], part2->delta[0]);
+        EXPECT_FLOAT_EQ(part1->delta[1], part2->delta[1]);
+        EXPECT_FLOAT_EQ(part1->delta[2], part2->delta[2]);
+
+        EXPECT_DOUBLE_EQ(part1->v[0], part2->v[0]);
+        EXPECT_DOUBLE_EQ(part1->v[1], part2->v[1]);
+        EXPECT_DOUBLE_EQ(part1->v[2], part2->v[2]);
+    }
+}
 
 
 
