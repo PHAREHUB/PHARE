@@ -41,14 +41,11 @@ class AmpereImpl<GridLayout, 1> : public AmpereImplInternals<GridLayout>
 {
     static_assert(GridLayout::dimension == 1, "Error: Passed non-1D GridLayout to 1D AmpereImpl");
 
-private:
-    GridLayout layout_;
-
 public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        layout_.deriv();
+        this->layout_->deriv();
         std::cout << "solving ampere\n";
     }
 };
@@ -60,14 +57,11 @@ class AmpereImpl<GridLayout, 2> : public AmpereImplInternals<GridLayout>
 {
     static_assert(GridLayout::dimension == 2, "Error: Passed non-2D GridLayout to 2D AmpereImpl");
 
-private:
-    GridLayout layout_;
-
 public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        layout_.deriv();
+        this->layout_.deriv();
         std::cout << "solving ampere2D\n";
     }
 };
@@ -79,14 +73,11 @@ class AmpereImpl<GridLayout, 3> : public AmpereImplInternals<GridLayout>
 {
     static_assert(GridLayout::dimension == 3, "Error: Passed non-3D GridLayout to 3D AmpereImpl");
 
-private:
-    GridLayout layout_;
-
 public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        layout_.deriv();
+        this->layout_.deriv();
         std::cout << "solving ampere3D\n";
     }
 };
@@ -117,7 +108,7 @@ public:
 
     void setLayout(GridLayout *layout) { impl_.setLayout(layout); }
 };
-}
+} // namespace PHARE
 
 
 
