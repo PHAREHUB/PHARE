@@ -20,6 +20,7 @@ set( SOURCES_INC
      numerics/pusher/boris.h
      numerics/pusher/pusher.h
      numerics/pusher/pusher_factory.h
+     numerics/ampere/ampere.h
      utilities/box/box.h
      utilities/constants.h
      utilities/index/index.h

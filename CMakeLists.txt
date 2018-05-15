@@ -176,6 +176,7 @@ if (test)
   add_subdirectory(tests/core/numerics/boundary_condition)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/core/numerics/pusher)
+  add_subdirectory(tests/core/numerics/ampere)
 
 endif()
 
