@@ -17,12 +17,13 @@ set( SOURCES_INC
      data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h
      numerics/interpolator/interpolator.h
-     utilities/constants.h
-     utilities/types.h
-     utilities/range/range.h
      utilities/box/box.h
+     utilities/constants.h
+     utilities/index/index.h
      utilities/particle_selector/particle_selector.h
      utilities/point/point.h
+     utilities/range/range.h
+     utilities/types.h
    )
 
 set( SOURCES_CPP

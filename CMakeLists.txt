@@ -170,6 +170,7 @@ if (test)
   add_subdirectory(tests/core/utilities/box)
   add_subdirectory(tests/core/utilities/particle_selector)
   add_subdirectory(tests/core/utilities/range)
+  add_subdirectory(tests/core/utilities/index)
   add_subdirectory(tests/core/numerics/interpolator)
 
 endif()
