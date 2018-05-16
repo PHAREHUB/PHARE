@@ -11,10 +11,10 @@
 
 namespace PHARE
 {
-template<Layout layoutType, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 struct GridLayoutFieldCenteringParam
 {
-    GridLayoutTestParam<layoutType, dim> base;
+    GridLayoutTestParam<GridLayoutImpl, dim, interpOrder> base;
 
     std::vector<std::array<uint32, dim>> iCellForCentering;
     std::vector<std::array<double, dim>> expectedPosition;
@@ -64,10 +64,10 @@ struct GridLayoutFieldCenteringParam
 };
 
 
-template<Layout layout, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 auto createFieldCenteringParam()
 {
-    std::vector<GridLayoutFieldCenteringParam<layout, dim>> params;
+    std::vector<GridLayoutFieldCenteringParam<GridLayoutImpl, dim, interpOrder>> params;
 
     std::string summaryName{"fieldCoords_summary"};
     std::string valueName{"fieldCoords_values"};
@@ -96,7 +96,7 @@ auto createFieldCenteringParam()
 
     while (!summary.eof())
     {
-        int currentOrder{0};
+        // int currentOrder{0};
         std::string quantity;
 
 
@@ -108,7 +108,7 @@ auto createFieldCenteringParam()
 
         std::array<double, dim> origin;
 
-        summary >> currentOrder;
+        // summary >> currentOrder;
         summary >> quantity;
 
         if (summary.eof() || summary.bad())
@@ -123,8 +123,8 @@ auto createFieldCenteringParam()
         params.emplace_back();
 
         // NOTE: before c++17 Point{origin} cannot deduce the corect type
-        params.back().base = createParam<layout, dim>(layoutName, currentOrder, dl, nbCell,
-                                                      Point<double, dim>{origin});
+        params.back().base
+            = createParam<GridLayoutImpl, dim, interpOrder>(dl, nbCell, Point<double, dim>{origin});
 
         auto quantityIt = namesToQuantity.find(quantity);
         if (quantityIt != namesToQuantity.end())
@@ -135,21 +135,16 @@ auto createFieldCenteringParam()
 
     while (!value.eof())
     {
-        int order{0};
         std::string quantity;
-
         std::array<uint32, dim> icell;
         std::array<double, dim> realPosition;
 
-
-        value >> order;
         value >> quantity;
 
         if (value.eof() || value.bad())
             break;
 
         writeToArray(value, icell);
-
         writeToArray(value, realPosition);
 
         auto quantityIt = namesToQuantity.find(quantity);
@@ -157,7 +152,7 @@ auto createFieldCenteringParam()
         {
             auto hqIndex = static_cast<int>(quantityIt->second);
 
-            auto& param = params[(order - 1) * numberOfQuantities + hqIndex];
+            auto& param = params[(interpOrder - 1) * numberOfQuantities + hqIndex]; // TODO what??
 
             param.iCellForCentering.push_back(icell);
             param.expectedPosition.push_back(realPosition);

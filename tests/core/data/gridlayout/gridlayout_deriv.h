@@ -5,13 +5,16 @@
 #include "gridlayout_base_params.h"
 #include "gridlayout_params.h"
 #include "gridlayout_utilities.h"
+#endif
+
+#if 0
 
 namespace PHARE
 {
-template<Layout layoutType, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 struct GridLayoutDerivParam
 {
-    GridLayoutTestParam<layoutType, dim> base;
+    GridLayoutTestParam<GridLayoutImpl, dim, interpOrder> base;
 
     std::vector<std::array<uint32, dim>> iCell;
 
@@ -49,10 +52,10 @@ struct GridLayoutDerivParam
 
 
 
-template<Layout layout, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 auto createDerivParam()
 {
-    std::vector<GridLayoutDerivParam<layout, dim>> params;
+    std::vector<GridLayoutDerivParam<GridLayoutImpl, dim, interpOrder>> params;
 
     std::string summaryName{"deriv_summary"};
     std::string valueName{"deriv_values"};
@@ -97,10 +100,8 @@ auto createDerivParam()
 
     while (!summary.eof())
     {
-        int currentOrder{0};
         std::string quantity;
         std::string derivedQuantity;
-
 
         std::array<uint32, dim> nbCell;
         std::array<double, dim> dl;
@@ -113,7 +114,6 @@ auto createDerivParam()
 
         std::array<double, dim> origin;
 
-        summary >> currentOrder;
         summary >> quantity;
         summary >> derivedQuantity;
 
@@ -144,8 +144,8 @@ auto createDerivParam()
         params.emplace_back();
 
         // NOTE: before c++17 Point{origin} cannot deduce the corect type
-        params.back().base = createParam<layout, dim>(layoutName, currentOrder, dl, nbCell,
-                                                      Point<double, dim>{origin});
+        params.back().base = createParam<GridLayoutImpl, dim, interpOrder>(
+            layoutName, dl, nbCell, Point<double, dim>{origin});
 
 
         auto quantityIt = namesToQuantity.find(quantity);
@@ -161,14 +161,10 @@ auto createDerivParam()
 
     while (!value.eof())
     {
-        int order{0};
         std::string quantity;
-
         std::array<uint32, dim> icell;
-
         double functionValue;
 
-        value >> order;
         value >> quantity;
 
         if (value.eof() || value.bad())
@@ -187,8 +183,7 @@ auto createDerivParam()
             if (hqIndexIt != quantityToIndex.end())
                 hqIndex = hqIndexIt->second;
 
-            auto &param = params[(order - 1) * numberOfQuantities + hqIndex];
-
+            auto &param = params[(interpOrder - 1) * numberOfQuantities + hqIndex];
 
             param.iCell.push_back(icell);
             param.fieldValues.push_back(functionValue);
@@ -196,14 +191,10 @@ auto createDerivParam()
     }
     while (!derived.eof())
     {
-        int order{0};
         std::string derivQuantity;
-
         std::array<uint32, dim> icell;
-
         double functionDeriv;
 
-        derived >> order;
         derived >> derivQuantity;
 
         if (value.eof() || value.bad())
@@ -227,8 +218,7 @@ auto createDerivParam()
             /* if (functionIndexIt != functionNameToIndex.end()) */
             /* { */
             /*     std::size_t numberOfFunction = functionNameToIndex.size(); */
-            auto &param = params[(order - 1) * numberOfQuantities + hqIndex];
-
+            auto &param = params[(interpOrder - 1) * numberOfQuantities + hqIndex];
 
             param.iCellDeriv.push_back(icell);
             param.expectedDeriv.push_back(functionDeriv);
@@ -246,5 +236,4 @@ auto createDerivParam()
 
 
 } // namespace PHARE
-
 #endif

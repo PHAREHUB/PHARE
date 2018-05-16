@@ -5,6 +5,7 @@
 #include <cstddef>
 
 #include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "data/vecfield/vecfield_component.h"
 
 namespace PHARE
@@ -310,12 +311,24 @@ public:
         auto const& By = Em.B.getComponent(Component::Y);
         auto const& Bz = Em.B.getComponent(Component::Z);
 
-        auto const ExCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Ex);
-        auto const EyCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Ey);
-        auto const EzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Ez);
-        auto const BxCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Bx);
-        auto const ByCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::By);
-        auto const BzCentering = GridLayout<LT, dim>::centering(HybridQuantity::Scalar::Bz);
+        auto const ExCentering
+            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
+                HybridQuantity::Scalar::Ex);
+        auto const EyCentering
+            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
+                HybridQuantity::Scalar::Ey);
+        auto const EzCentering
+            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
+                HybridQuantity::Scalar::Ez);
+        auto const BxCentering
+            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
+                HybridQuantity::Scalar::Bx);
+        auto const ByCentering
+            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
+                HybridQuantity::Scalar::By);
+        auto const BzCentering
+            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
+                HybridQuantity::Scalar::Bz);
 
 
         // for each particle, first calculate the startIndex and weights

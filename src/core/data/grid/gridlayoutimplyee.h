@@ -4,9 +4,6 @@
 
 
 #include "gridlayoutdefs.h"
-#include "gridlayoutimpl.h"
-#include "gridlayoutimplinternals.h"
-
 #include "hybrid/hybrid_quantities.h"
 #include "utilities/constants.h"
 #include "utilities/types.h"
@@ -28,17 +25,15 @@ namespace PHARE
  * - physical coordinate given a field and a primal point (ix, iy, iz)
  * - cell centered coordinate given a primal point (ix, iy, iz)
  */
-template<std::size_t dim>
-class GridLayoutImpl<Layout::Yee, dim>
-    : private GridLayoutImplInternals<GridLayoutImpl<Layout::Yee, dim>, dim>
+template<std::size_t dim, std::size_t interpOrder>
+class GridLayoutImplYee
 {
-    friend class GridLayoutImplInternals<GridLayoutImpl<Layout::Yee, dim>, dim>;
-
     // ------------------------------------------------------------------------
     //                              PRIVATE
     // ------------------------------------------------------------------------
-private:
-    void initLinearCombinations_();
+public:
+    /*
+    void constexpr initLinearCombinations_();
 
     LinearCombination momentsToEx_;
     LinearCombination momentsToEy_;
@@ -52,6 +47,7 @@ private:
     LinearCombination ExToMoment_;
     LinearCombination EyToMoment_;
     LinearCombination EzToMoment_;
+    */
 
     /**
      * @brief GridLayoutImpl<Selector<Layout,Layout::Yee>,dim>::initLayoutCentering_ initialize the
@@ -92,6 +88,9 @@ private:
 
         return hybridQtyCentering;
     }
+
+
+
     //! says for each HybridQuantity::Quantity whether it is primal or dual, in each direction
     constexpr const static std::array<std::array<QtyCentering, NBR_COMPO>,
                                       static_cast<std::size_t>(HybridQuantity::Scalar::count)>
@@ -103,305 +102,204 @@ private:
     //                          PUBLIC INTERFACE
     // ------------------------------------------------------------------------
 public:
-    GridLayoutImpl(std::array<double, dim> const& dx, std::array<uint32, dim> const& nbrCells,
-                   Point<double, dim> const& origin, uint32 interpOrder);
-
-
-    ~GridLayoutImpl() = default;
-
-    constexpr static uint32 nbDimensions() { return dim; }
-
-
     constexpr static std::array<QtyCentering, dim>
-    centering(HybridQuantity::Scalar const& hybridQuantity);
+    centering(HybridQuantity::Scalar const& hybridQuantity)
+    {
+        constexpr gridDataT gridData_{};
+        if constexpr (dim == 1)
+        {
+            switch (hybridQuantity)
+            {
+                case HybridQuantity::Scalar::Bx:
+                    return {{hybridQtyCentering_[gridData_.iBx][gridData_.idirX]}};
+                case HybridQuantity::Scalar::By:
+                    return {{hybridQtyCentering_[gridData_.iBy][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Bz:
+                    return {{hybridQtyCentering_[gridData_.iBz][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Ex:
+                    return {{hybridQtyCentering_[gridData_.iEx][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Ey:
+                    return {{hybridQtyCentering_[gridData_.iEy][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Ez:
+                    return {{hybridQtyCentering_[gridData_.iEz][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Jx:
+                    return {{hybridQtyCentering_[gridData_.iJx][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Jy:
+                    return {{hybridQtyCentering_[gridData_.iJy][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Jz:
+                    return {{hybridQtyCentering_[gridData_.iJz][gridData_.idirX]}};
+                case HybridQuantity::Scalar::rho:
+                    return {{hybridQtyCentering_[gridData_.irho][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Vx:
+                    return {{hybridQtyCentering_[gridData_.iVx][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Vy:
+                    return {{hybridQtyCentering_[gridData_.iVy][gridData_.idirX]}};
+                case HybridQuantity::Scalar::Vz:
+                    return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX]}};
+                case HybridQuantity::Scalar::P:
+                    return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX]}};
+                default: throw std::runtime_error("Wrong hybridQuantity");
+            }
+        }
+
+        else if constexpr (dim == 2)
+        {
+            switch (hybridQuantity)
+            {
+                case HybridQuantity::Scalar::Bx:
+                    return {{hybridQtyCentering_[gridData_.iBx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iBx][gridData_.idirY]}};
+                case HybridQuantity::Scalar::By:
+                    return {{hybridQtyCentering_[gridData_.iBy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iBy][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Bz:
+                    return {{hybridQtyCentering_[gridData_.iBz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iBz][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Ex:
+                    return {{hybridQtyCentering_[gridData_.iEx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iEx][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Ey:
+                    return {{hybridQtyCentering_[gridData_.iEy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iEy][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Ez:
+                    return {{hybridQtyCentering_[gridData_.iEz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iEz][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Jx:
+                    return {{hybridQtyCentering_[gridData_.iJx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iJx][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Jy:
+                    return {{hybridQtyCentering_[gridData_.iJy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iJy][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Jz:
+                    return {{hybridQtyCentering_[gridData_.iJz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iJz][gridData_.idirY]}};
+                case HybridQuantity::Scalar::rho:
+                    return {{hybridQtyCentering_[gridData_.irho][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.irho][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Vx:
+                    return {{hybridQtyCentering_[gridData_.iVx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iVx][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Vy:
+                    return {{hybridQtyCentering_[gridData_.iVy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iVy][gridData_.idirY]}};
+                case HybridQuantity::Scalar::Vz:
+                    return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iVz][gridData_.idirY]}};
+                case HybridQuantity::Scalar::P:
+                    return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iP][gridData_.idirY]}};
+                default: throw std::runtime_error("Wrong hybridQuantity");
+            }
+        }
+
+        else if constexpr (dim == 3)
+        {
+            switch (hybridQuantity)
+            {
+                case HybridQuantity::Scalar::Bx:
+                    return {{hybridQtyCentering_[gridData_.iBx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iBx][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iBx][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::By:
+                    return {{hybridQtyCentering_[gridData_.iBy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iBy][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iBy][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Bz:
+                    return {{hybridQtyCentering_[gridData_.iBz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iBz][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iBz][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Ex:
+                    return {{hybridQtyCentering_[gridData_.iEx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iEx][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iEx][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Ey:
+                    return {{hybridQtyCentering_[gridData_.iEy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iEy][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iEy][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Ez:
+                    return {{hybridQtyCentering_[gridData_.iEz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iEz][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iEz][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Jx:
+                    return {{hybridQtyCentering_[gridData_.iJx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iJx][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iJx][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Jy:
+                    return {{hybridQtyCentering_[gridData_.iJy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iJy][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iJy][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Jz:
+                    return {{hybridQtyCentering_[gridData_.iJz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iJz][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iJz][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::rho:
+                    return {{hybridQtyCentering_[gridData_.irho][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.irho][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.irho][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Vx:
+                    return {{hybridQtyCentering_[gridData_.iVx][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iVx][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iVx][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Vy:
+                    return {{hybridQtyCentering_[gridData_.iVy][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iVy][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iVy][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::Vz:
+                    return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iVz][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iVz][gridData_.idirZ]}};
+                case HybridQuantity::Scalar::P:
+                    return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
+                             hybridQtyCentering_[gridData_.iP][gridData_.idirY],
+                             hybridQtyCentering_[gridData_.iP][gridData_.idirZ]}};
+                default: throw std::runtime_error("Wrong hybridQuantity");
+            }
+        }
+    }
 
 
+    /*
 
-    // start and end index used in computing loops
-    uint32 physicalStartIndex(QtyCentering centering, Direction direction) const;
-    uint32 physicalStartIndex(HybridQuantity::Scalar const& hybridQuantity,
-                              Direction direction) const;
-    template<typename NdArrayImpl>
-    uint32 physicalStartIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                              Direction direction) const;
+        LinearCombination const& momentsToEx() const;
+        LinearCombination const& momentsToEy() const;
+        LinearCombination const& momentsToEz() const;
 
-    uint32 physicalEndIndex(QtyCentering centering, Direction direction) const;
-    uint32 physicalEndIndex(HybridQuantity::Scalar const& hybridQuantity,
-                            Direction direction) const;
-    template<typename NdArrayImpl>
-    uint32 physicalEndIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                            Direction direction) const;
+        LinearCombination const& ByToEx() const;
+        LinearCombination const& ByToEz() const;
 
+        LinearCombination const& BxToEy() const;
+        LinearCombination const& BxToEz() const;
 
-    uint32 ghostStartIndex(QtyCentering centering, Direction direction) const;
-    uint32 ghostStartIndex(HybridQuantity::Scalar const& hybridQuantity, Direction direction) const;
-    template<typename NdArrayImpl>
-    uint32 ghostStartIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                           Direction direction) const;
+        LinearCombination const& BzToEx() const;
+        LinearCombination const& BzToEy() const;
 
-    uint32 ghostEndIndex(QtyCentering centering, Direction direction) const;
-    uint32 ghostEndIndex(HybridQuantity::Scalar const& hybridQuantity, Direction direction) const;
-    template<typename NdArrayImpl>
-    uint32 ghostEndIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                         Direction direction) const;
-
-
-
-    template<typename NdArrayImpl>
-    void deriv1D(Field<NdArrayImpl, HybridQuantity::Scalar> const& operand,
-                 Field<NdArrayImpl, HybridQuantity::Scalar>& derivative) const;
-
-    std::array<uint32, dim> allocSize(HybridQuantity::Scalar qtyType) const;
-
-    std::array<uint32, dim> allocSizeDerived(HybridQuantity::Scalar qty, Direction dir) const;
-
-    template<typename NdArrayImpl, typename... Indexes>
-    Point<double, dim> fieldNodeCoordinates(const Field<NdArrayImpl, HybridQuantity::Scalar>& field,
-                                            const Point<double, dim>& origin,
-                                            Indexes... index) const;
-
-    template<typename... Indexes>
-    Point<double, dim> cellCenteredCoordinates(Indexes... index) const;
-
-    template<typename NdArrayImpl>
-    QtyCentering fieldCentering(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                                Direction dir) const;
-
-    uint32 nbrGhostNodes(QtyCentering centering) const;
-
-    template<typename NdArrayImpl>
-    std::array<uint32, dim>
-    nbrPhysicalNodes(Field<NdArrayImpl, HybridQuantity::Scalar> const& field);
-
-    std::array<uint32, dim> nbrPhysicalNodes(HybridQuantity::Scalar hybQty) const;
-
-    LinearCombination const& momentsToEx() const;
-    LinearCombination const& momentsToEy() const;
-    LinearCombination const& momentsToEz() const;
-
-    LinearCombination const& ByToEx() const;
-    LinearCombination const& ByToEz() const;
-
-    LinearCombination const& BxToEy() const;
-    LinearCombination const& BxToEz() const;
-
-    LinearCombination const& BzToEx() const;
-    LinearCombination const& BzToEy() const;
-
-    LinearCombination const& ExToMoment() const;
-    LinearCombination const& EyToMoment() const;
-    LinearCombination const& EzToMoment() const;
+        LinearCombination const& ExToMoment() const;
+        LinearCombination const& EyToMoment() const;
+        LinearCombination const& EzToMoment() const;*/
 };
 
 
+/*
 
-
-template<std::size_t dim>
-GridLayoutImpl<Layout::Yee, dim>::GridLayoutImpl(std::array<double, dim> const& dx,
-                                                 std::array<uint32, dim> const& nbrCells,
-                                                 Point<double, dim> const& origin,
-                                                 uint32 interpOrder)
-    : GridLayoutImplInternals<GridLayoutImpl<Layout::Yee, dim>, dim>(dx, nbrCells, interpOrder,
-                                                                     origin)
-{
-    constexpr gridDataT gridData{};
-    this->initPhysicalStart(gridData);
-
-    this->initPhysicalEnd(gridData);
-    this->initGhostEnd(gridData);
-    this->initLinearCombinations_();
-}
-
-
-
-template<>
-constexpr std::array<QtyCentering, 1>
-GridLayoutImpl<Layout::Yee, 1>::centering(HybridQuantity::Scalar const& hybridQuantity)
-{
-    constexpr gridDataT gridData_{};
-    switch (hybridQuantity)
-    {
-        case HybridQuantity::Scalar::Bx:
-            return {{hybridQtyCentering_[gridData_.iBx][gridData_.idirX]}};
-        case HybridQuantity::Scalar::By:
-            return {{hybridQtyCentering_[gridData_.iBy][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Bz:
-            return {{hybridQtyCentering_[gridData_.iBz][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Ex:
-            return {{hybridQtyCentering_[gridData_.iEx][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Ey:
-            return {{hybridQtyCentering_[gridData_.iEy][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Ez:
-            return {{hybridQtyCentering_[gridData_.iEz][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Jx:
-            return {{hybridQtyCentering_[gridData_.iJx][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Jy:
-            return {{hybridQtyCentering_[gridData_.iJy][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Jz:
-            return {{hybridQtyCentering_[gridData_.iJz][gridData_.idirX]}};
-        case HybridQuantity::Scalar::rho:
-            return {{hybridQtyCentering_[gridData_.irho][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Vx:
-            return {{hybridQtyCentering_[gridData_.iVx][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Vy:
-            return {{hybridQtyCentering_[gridData_.iVy][gridData_.idirX]}};
-        case HybridQuantity::Scalar::Vz:
-            return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX]}};
-        case HybridQuantity::Scalar::P:
-            return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX]}};
-        default: throw std::runtime_error("Wrong hybridQuantity");
-    }
-}
-template<>
-constexpr std::array<QtyCentering, 2>
-GridLayoutImpl<Layout::Yee, 2>::centering(HybridQuantity::Scalar const& hybridQuantity)
-{
-    constexpr gridDataT gridData_{};
-    switch (hybridQuantity)
-    {
-        case HybridQuantity::Scalar::Bx:
-            return {{hybridQtyCentering_[gridData_.iBx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iBx][gridData_.idirY]}};
-        case HybridQuantity::Scalar::By:
-            return {{hybridQtyCentering_[gridData_.iBy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iBy][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Bz:
-            return {{hybridQtyCentering_[gridData_.iBz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iBz][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Ex:
-            return {{hybridQtyCentering_[gridData_.iEx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iEx][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Ey:
-            return {{hybridQtyCentering_[gridData_.iEy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iEy][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Ez:
-            return {{hybridQtyCentering_[gridData_.iEz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iEz][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Jx:
-            return {{hybridQtyCentering_[gridData_.iJx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iJx][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Jy:
-            return {{hybridQtyCentering_[gridData_.iJy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iJy][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Jz:
-            return {{hybridQtyCentering_[gridData_.iJz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iJz][gridData_.idirY]}};
-        case HybridQuantity::Scalar::rho:
-            return {{hybridQtyCentering_[gridData_.irho][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.irho][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Vx:
-            return {{hybridQtyCentering_[gridData_.iVx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iVx][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Vy:
-            return {{hybridQtyCentering_[gridData_.iVy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iVy][gridData_.idirY]}};
-        case HybridQuantity::Scalar::Vz:
-            return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iVz][gridData_.idirY]}};
-        case HybridQuantity::Scalar::P:
-            return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iP][gridData_.idirY]}};
-        default: throw std::runtime_error("Wrong hybridQuantity");
-    }
-}
-
-
-
-
-template<>
-constexpr std::array<QtyCentering, 3>
-GridLayoutImpl<Layout::Yee, 3>::centering(HybridQuantity::Scalar const& hybridQuantity)
-{
-    constexpr gridDataT gridData_{};
-    switch (hybridQuantity)
-    {
-        case HybridQuantity::Scalar::Bx:
-            return {{hybridQtyCentering_[gridData_.iBx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iBx][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iBx][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::By:
-            return {{hybridQtyCentering_[gridData_.iBy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iBy][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iBy][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Bz:
-            return {{hybridQtyCentering_[gridData_.iBz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iBz][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iBz][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Ex:
-            return {{hybridQtyCentering_[gridData_.iEx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iEx][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iEx][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Ey:
-            return {{hybridQtyCentering_[gridData_.iEy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iEy][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iEy][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Ez:
-            return {{hybridQtyCentering_[gridData_.iEz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iEz][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iEz][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Jx:
-            return {{hybridQtyCentering_[gridData_.iJx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iJx][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iJx][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Jy:
-            return {{hybridQtyCentering_[gridData_.iJy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iJy][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iJy][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Jz:
-            return {{hybridQtyCentering_[gridData_.iJz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iJz][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iJz][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::rho:
-            return {{hybridQtyCentering_[gridData_.irho][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.irho][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.irho][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Vx:
-            return {{hybridQtyCentering_[gridData_.iVx][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iVx][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iVx][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Vy:
-            return {{hybridQtyCentering_[gridData_.iVy][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iVy][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iVy][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::Vz:
-            return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iVz][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iVz][gridData_.idirZ]}};
-        case HybridQuantity::Scalar::P:
-            return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
-                     hybridQtyCentering_[gridData_.iP][gridData_.idirY],
-                     hybridQtyCentering_[gridData_.iP][gridData_.idirZ]}};
-        default: throw std::runtime_error("Wrong hybridQuantity");
-    }
-}
-
-
-
-
-template<std::size_t dim>
-void GridLayoutImpl<Layout::Yee, dim>::initLinearCombinations_()
+template<std::size_t dim, std::size_t interpOrder>
+void constexpr GridLayoutImpl<dim, interpOrder>::initLinearCombinations_()
 {
     // cf https://hephaistos.lpp.polytechnique.fr/redmine/projects/hyb-par/wiki/Ohm
     // for how to calculate coefficients and shift indexes.
 
-    int dualToPrimal;
-    int primalTodual;
+    int dualToPrimal = 0;
+    int primalTodual = 0;
 
-    if (this->interpOrder_ == 1 || this->interpOrder_ == 2 || this->interpOrder_ == 4)
+    if constexpr (interpOrder == 1 || interpOrder == 2 || interpOrder == 4)
     {
         dualToPrimal = -1;
         primalTodual = 1;
     }
-    else if (this->interpOrder_ == 3)
+    else if constexpr (interpOrder == 3)
     {
         dualToPrimal = 1;
         primalTodual = -1;
     }
-    else
-    {
-        throw std::runtime_error("GridLayout Yee cannot be initialized: wrong interpolation order");
-    }
-
 
     WeightPoint P1;
     WeightPoint P2;
@@ -627,216 +525,6 @@ void GridLayoutImpl<Layout::Yee, dim>::initLinearCombinations_()
 
 
 template<std::size_t dim>
-std::array<uint32, dim>
-GridLayoutImpl<Layout::Yee, dim>::allocSize(HybridQuantity::Scalar qty) const
-{
-    return this->allocSize_(qty);
-}
-
-
-
-
-// TODO : WARNING 1st order only
-// Can it be moved to ImplInternals?
-template<std::size_t dim>
-std::array<uint32, dim>
-GridLayoutImpl<Layout::Yee, dim>::allocSizeDerived(HybridQuantity::Scalar qty, Direction dir) const
-{
-    return this->allocSizeDerived_(qty, dir);
-}
-
-
-
-
-// start and end index used in computing loops
-template<std::size_t dim>
-uint32 GridLayoutImpl<Layout::Yee, dim>::physicalStartIndex(QtyCentering centering,
-                                                            Direction direction) const
-{
-    return this->physicalStartIndex_(centering, direction);
-}
-
-
-template<std::size_t dim>
-uint32
-GridLayoutImpl<Layout::Yee, dim>::physicalStartIndex(HybridQuantity::Scalar const& hybridQuantity,
-                                                     Direction direction) const
-{
-    return this->physicalStartIndex_(hybridQuantity, direction);
-}
-
-template<std::size_t dim>
-template<typename NdArrayImpl>
-uint32 GridLayoutImpl<Layout::Yee, dim>::physicalStartIndex(
-    Field<NdArrayImpl, HybridQuantity::Scalar> const& field, Direction direction) const
-{
-    return this->physicalStartIndex_(field, direction);
-}
-
-
-template<std::size_t dim>
-uint32 GridLayoutImpl<Layout::Yee, dim>::physicalEndIndex(QtyCentering centering,
-                                                          Direction direction) const
-{
-    return this->physicalEndIndex_(centering, direction);
-}
-
-
-template<std::size_t dim>
-uint32
-GridLayoutImpl<Layout::Yee, dim>::physicalEndIndex(HybridQuantity::Scalar const& hybridQuantity,
-                                                   Direction direction) const
-{
-    return this->physicalEndIndex_(hybridQuantity, direction);
-}
-
-
-template<std::size_t dim>
-template<typename NdArrayImpl>
-uint32 GridLayoutImpl<Layout::Yee, dim>::physicalEndIndex(
-    Field<NdArrayImpl, HybridQuantity::Scalar> const& field, Direction direction) const
-{
-    return this->physicalEndIndex_(field, direction);
-}
-
-
-template<std::size_t dim>
-uint32 GridLayoutImpl<Layout::Yee, dim>::ghostStartIndex(QtyCentering centering,
-                                                         Direction direction) const
-{
-    // should we directly return 0 and remove ghostStartIndex_ ?
-    return this->ghostStartIndex_(centering, direction);
-}
-
-template<std::size_t dim>
-uint32
-GridLayoutImpl<Layout::Yee, dim>::ghostStartIndex(HybridQuantity::Scalar const& hybridQuantity,
-                                                  Direction direction) const
-{
-    // should we directly return 0 and remove ghostStartIndex_ ?
-    return this->ghostStartIndex_(hybridQuantity, direction);
-}
-
-template<std::size_t dim>
-template<typename NdArrayImpl>
-uint32 GridLayoutImpl<Layout::Yee, dim>::ghostStartIndex(
-    Field<NdArrayImpl, HybridQuantity::Scalar> const& field, Direction direction) const
-{
-    // should we directly return 0 and remove ghostStartIndex_ ?
-    return this->ghostStartIndex_(field, direction);
-}
-
-
-
-template<std::size_t dim>
-uint32 GridLayoutImpl<Layout::Yee, dim>::ghostEndIndex(QtyCentering centering,
-                                                       Direction direction) const
-{
-    return this->ghostEndIndex_(centering, direction);
-}
-
-template<std::size_t dim>
-uint32 GridLayoutImpl<Layout::Yee, dim>::ghostEndIndex(HybridQuantity::Scalar const& hybridQuantity,
-                                                       Direction direction) const
-{
-    return this->ghostEndIndex_(hybridQuantity, direction);
-}
-
-
-
-template<std::size_t dim>
-template<typename NdArrayImpl>
-uint32 GridLayoutImpl<Layout::Yee, dim>::ghostEndIndex(
-    Field<NdArrayImpl, HybridQuantity::Scalar> const& field, Direction direction) const
-{
-    return this->ghostEndIndex_(field, direction);
-}
-
-
-template<std::size_t dim>
-template<typename NdArrayImpl, typename... Indexes>
-Point<double, dim> GridLayoutImpl<Layout::Yee, dim>::fieldNodeCoordinates(
-    const Field<NdArrayImpl, HybridQuantity::Scalar>& field, const Point<double, dim>& origin,
-    Indexes... index) const
-{
-    return this->fieldNodeCoordinates_(field, origin, index...);
-}
-
-
-
-
-template<std::size_t dim>
-template<typename... Indexes>
-Point<double, dim> GridLayoutImpl<Layout::Yee, dim>::cellCenteredCoordinates(Indexes... index) const
-{
-    return this->cellCenteredCoordinates_(index...);
-}
-
-
-
-template<std::size_t dim>
-template<typename NdArrayImpl>
-QtyCentering GridLayoutImpl<Layout::Yee, dim>::fieldCentering(
-    Field<NdArrayImpl, HybridQuantity::Scalar> const& field, Direction dir) const
-{
-    return this->fieldCentering_(field, dir);
-}
-
-
-template<std::size_t dim>
-uint32 GridLayoutImpl<Layout::Yee, dim>::nbrGhostNodes(QtyCentering centering) const
-{
-    return this->nbrGhosts(centering);
-}
-
-
-
-
-template<std::size_t dim>
-std::array<uint32, dim>
-GridLayoutImpl<Layout::Yee, dim>::nbrPhysicalNodes(HybridQuantity::Scalar hybQty) const
-{
-    std::array<QtyCentering, dim> centerings;
-
-    for (std::size_t iDir = 0; iDir < dim; ++iDir)
-    {
-        centerings[iDir] = this->hybridQtyCentering_[static_cast<uint32>(hybQty)][iDir];
-    }
-
-    return this->physicalNodeNbrFromCentering_(centerings);
-}
-
-
-
-
-/**
- * @brief GridLayoutImpl<Selector<Layout,Layout::Yee>,dim>::deriv1D It was decided to compute the
- * derivative on the entire physical domain.
- * In the case of Maxwell Ampere (dual centering of the operand),
- * it will therefore be necessary to get the values
- * of the operand outside the physical domain before applying
- * Maxwell Ampere
- *
- * @param operand is always primal in the case of Maxwell Faraday
- * rotational operator (dEz/dy, dEy/dz, dEx/dz, dEz/dx, dEy/dx, dEx/dy)
- * operand is always dual in the case of Maxwell Ampere
- * rotational operator (dBz/dy, dBy/dz, dBx/dz, dBz/dx, dBy/dx, dBx/dy)
- *
- * @param derivative
- */
-template<std::size_t dim>
-template<typename NdArrayImpl>
-void GridLayoutImpl<Layout::Yee, dim>::deriv1D(
-    Field<NdArrayImpl, HybridQuantity::Scalar> const& operand,
-    Field<NdArrayImpl, HybridQuantity::Scalar>& derivative) const
-{
-    this->deriv1D_(operand, derivative);
-}
-
-
-
-
-template<std::size_t dim>
 LinearCombination const& GridLayoutImpl<Layout::Yee, dim>::momentsToEx() const
 {
     return this->momentsToEx_;
@@ -913,6 +601,10 @@ LinearCombination const& GridLayoutImpl<Layout::Yee, dim>::EzToMoment() const
 {
     return this->EzToMoment_;
 }
+
+*/
+
+
 } // namespace PHARE
 
 

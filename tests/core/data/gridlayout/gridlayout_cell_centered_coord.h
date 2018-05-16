@@ -12,10 +12,10 @@
 
 namespace PHARE
 {
-template<Layout layoutType, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 struct GridLayoutCellCenteringParam
 {
-    GridLayoutTestParam<layoutType, dim> base;
+    GridLayoutTestParam<GridLayoutImpl, dim, interpOrder> base;
 
     std::vector<std::array<uint32, dim>> iCellForCentering;
     std::vector<std::array<double, dim>> expectedPosition;
@@ -61,10 +61,10 @@ struct GridLayoutCellCenteringParam
 };
 
 
-template<Layout layout, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 auto createCellCenteringParam()
 {
-    std::vector<GridLayoutCellCenteringParam<layout, dim>> params;
+    std::vector<GridLayoutCellCenteringParam<GridLayoutImpl, dim, interpOrder>> params;
 
     std::string summaryName{"centeredCoords_summary"};
     std::string valueName{"centeredCoords_values"};
@@ -116,30 +116,23 @@ auto createCellCenteringParam()
         params.emplace_back();
 
         // NOTE: before c++17 Point{origin} cannot deduce the corect type
-        params.back().base = createParam<layout, dim>(layoutName, currentOrder, dl, nbCell,
-                                                      Point<double, dim>{origin});
+        params.back().base
+            = createParam<GridLayoutImpl, dim, interpOrder>(dl, nbCell, Point<double, dim>{origin});
     }
-
 
 
     while (!value.eof())
     {
-        int order{0};
-
         std::array<uint32, dim> icell;
         std::array<double, dim> realPosition;
-
-        value >> order;
 
         if (value.eof() || value.bad())
             break;
 
         writeToArray(value, icell);
-
         writeToArray(value, realPosition);
 
-
-        auto& param = params[order - 1];
+        auto& param = params[interpOrder - 1];
 
         param.iCellForCentering.push_back(icell);
         param.expectedPosition.push_back(realPosition);

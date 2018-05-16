@@ -9,16 +9,15 @@
 
 namespace PHARE
 {
-template<Layout layoutType, std::size_t dim>
+template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 struct GridLayoutTestParam
 {
-    std::shared_ptr<GridLayout<layoutType, dim>> layout;
+    std::shared_ptr<GridLayout<GridLayoutImpl, dim, interpOrder>> layout;
 
     std::array<double, dim> dxdydz;
     std::array<uint32, dim> nbCellXYZ;
 
     Point<double, dim> origin;
-    uint32 interpOrder;
 
     HybridQuantity::Scalar currentQuantity;
 

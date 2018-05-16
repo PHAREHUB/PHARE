@@ -12,7 +12,16 @@ enum class Direction { X, Y, Z };
 enum class QtyCentering { primal, dual };
 
 
+struct WeightPoint
+{
+    int32 ix, iy, iz;
+    double coef;
+};
 
+
+using LinearCombination = std::vector<WeightPoint>;
+
+enum class Layout { Yee };
 
 /**
  * @brief gridDataT provides constants used to initialize:

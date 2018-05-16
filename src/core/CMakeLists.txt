@@ -4,10 +4,9 @@ project(phare_core)
 set( SOURCES_INC
      data/electromag/electromag.h
      data/field/field.h
-     data/grid/gridlayout.h
      data/grid/gridlayoutdefs.h
-     data/grid/gridlayoutimpl.h
-     data/grid/gridlayoutimplinternals.h
+     data/grid/gridlayout.h
+     data/grid/gridlayout_impl.h
      data/grid/gridlayoutimplyee.h
      data/ndarray/ndarray_vector.h
      data/particles/particle.h
