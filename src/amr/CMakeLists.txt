@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.3)
 project(phare_amr)
 
 set( SOURCES_INC
+     data/particles/particles_data.h
      tools/resources_manager.h
      tools/resources_manager_utilities.h
      tools/resources_guards.h

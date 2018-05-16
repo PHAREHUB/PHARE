@@ -161,6 +161,7 @@ if (test)
   endif()
 
 
+  add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/tools/resources_manager)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
