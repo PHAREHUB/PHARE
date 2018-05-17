@@ -88,29 +88,34 @@ def main(path='./'):
 
     baseName = 'allocSizes'
 
-    out_1D = open(os.path.join(path, baseName + '_1d.txt'), 'w')
-    out_2D = open(os.path.join(path, baseName + '_2d.txt'), 'w')
-    out_3D = open(os.path.join(path, baseName + '_3d.txt'), 'w')
+    #out_1D = open(os.path.join(path, baseName + '_1d.txt'), 'w')
+    #out_2D = open(os.path.join(path, baseName + '_2d.txt'), 'w')
+    #out_3D = open(os.path.join(path, baseName + '_3d.txt'), 'w')
 
-    outFiles = [out_1D, out_2D, out_3D]
+    outFilenameBase = os.path.join(path, baseName)
+    outFiles = []
 
     for interpOrder in interpOrders:
-        for dim,outFile,nbrCellX,nbrCellY,nbrCellZ, dx,dy,dz in zip(nbDimsList, outFiles,nbrCellXList,nbrCellYList,
-                                                                    nbrCellZList,dxList,dyList,dzList):
+        filenames = [outFilenameBase + '_'+ str(dim) + 'd_O' + str(interpOrder)+'.txt' for dim in nbDimsList]
+        outFiles.append([open(f,'w') for f in filenames])
+
+    for interpOrder, outFilesDim in zip(interpOrders, outFiles):
+        for dim, outFile, nbrCellX, nbrCellY,nbrCellZ, dx,dy,dz in zip(nbDimsList, outFilesDim,
+                            nbrCellXList,
+                            nbrCellYList,
+                            nbrCellZList,
+                            dxList,dyList,dzList):
+
 
             params = AllocParams(dim,interpOrder)
-
             params.setNbrCell(nbrCellX,nbrCellY,nbrCellZ)
             params.setDl(dx,dy,dz)
 
-
             for quantity in quantities:
-
 
                 params.setAlloc(quantity,gl)
 
-
-                outString =  "{} {} {} {} {} {}\n".format( interpOrder,
+                outString =  "{} {} {} {} {}\n".format(
                                quantities.index(quantity),
                                params.nbrCell,
                                params.dl,
@@ -122,8 +127,9 @@ def main(path='./'):
 
                 outFile.write(outString)
 
-    for file  in outFiles:
-        file.close()
+    for files  in outFiles:
+        for f in files:
+            f.close()
 
 
 

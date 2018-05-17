@@ -58,7 +58,8 @@ auto createAllocSizeParam()
     std::string baseName{"allocSizes"};
 
 
-    std::string fullName{path + baseName + "_" + std::to_string(dim) + "d.txt"};
+    std::string fullName{path + baseName + "_" + std::to_string(dim) + "d_O"
+                         + std::to_string(interpOrder) + ".txt"};
     std::ifstream inputFile{fullName};
 
 
