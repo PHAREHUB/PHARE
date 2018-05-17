@@ -133,22 +133,25 @@ def main(path='./'):
 
     # ------------------------------
 
-    outSummary1D = open(os.path.join(path,"centeredCoords_summary_1d.txt"), "w")
-    outSummary2D = open(os.path.join(path,"centeredCoords_summary_2d.txt"), "w")
-    outSummary3D = open(os.path.join(path,"centeredCoords_summary_3d.txt"), "w")
 
-    outSummaries =[outSummary1D, outSummary2D, outSummary3D]
+    baseNameSummary = "centeredCoords_summary"
+    baseNameValues  = "centeredCoords_values"
 
-    outActualValues1D = open(os.path.join(path,"centeredCoords_values_1d.txt"), "w")
-    outActualValues2D = open(os.path.join(path,"centeredCoords_values_2d.txt"), "w")
-    outActualValues3D = open(os.path.join(path,"centeredCoords_values_3d.txt"), "w")
-
-    outActualValuesFiles = [outActualValues1D, outActualValues2D, outActualValues3D]
+    outFilenameBaseSummary = os.path.join(path, baseNameSummary)
+    outFilenameBaseValues = os.path.join(path, baseNameValues)
+    outSummaries = []
+    outValues    = []
 
     for interpOrder in interpOrders:
-        for dimension,outSummary, outValues,nbrCellX,nbrCellY,\
-            nbrCellZ,dx,dy,dz in zip(nbDimsList, outSummaries,
-                                     outActualValuesFiles,
+        filenamesSum = [outFilenameBaseSummary + '_'+ str(dim) + 'd_O' + str(interpOrder)+'.txt' for dim in nbDimsList]
+        filenamesVal = [outFilenameBaseValues + '_'+ str(dim) + 'd_O' + str(interpOrder)+'.txt' for dim in nbDimsList]
+        outSummaries.append([open(f,'w') for f in filenamesSum])
+        outValues.append([open(f,'w') for f in filenamesVal])
+
+
+    for interpOrder, outFilesSumDim, outFilesValDim in zip(interpOrders, outSummaries, outValues):
+        for dimension,outFileS, outFileV,nbrCellX,nbrCellY,\
+            nbrCellZ,dx,dy,dz in zip(nbDimsList, outFilesSumDim, outFilesValDim,
                                      nbrCellXList,nbrCellYList,
                                      nbrCellZList,dxList,dyList,
                                      dzList):
@@ -162,8 +165,7 @@ def main(path='./'):
             params.setCoord(gl, originPosition, centering)
 
 
-            summaryBasePart = "{} {} {} ".format(
-                               params.interpOrder,
+            summaryBasePart = "{} {} ".format(
                                params.nbrCell,
                                params.dl)
 
@@ -178,19 +180,18 @@ def main(path='./'):
             outSummaryString = utilities.removeTupleFormat(outSummaryString)
 
 
-            outSummary.write(outSummaryString)
+            outFileS.write(outSummaryString)
 
 
 
             if dimension == 1:
                 for position in np.arange(params.iStart, params.iEnd + 1):
-                    outValuesString = "{} {} {}\n".format(
-                            params.interpOrder,
+                    outValuesString = "{} {}\n".format(
                             position,
                             centeredCoords(position, params.iStart,params.dl, params.origin)
                         )
 
-                    outValues.write(utilities.removeTupleFormat(outValuesString))
+                    outFileV.write(utilities.removeTupleFormat(outValuesString))
 
             elif dimension == 2:
                 for positionX in np.arange(params.iStart[0], params.iEnd[0] + 1):
@@ -201,13 +202,12 @@ def main(path='./'):
                                     centeredCoords(positionY, params.iStart[1], params.dl[1],
                                                    params.origin[1]))
 
-                        outValuesString = "{} {} {}\n".format(
-                            params.interpOrder,
+                        outValuesString = "{} {}\n".format(
                             position,
                             centered
                         )
 
-                        outValues.write(utilities.removeTupleFormat(outValuesString))
+                        outFileV.write(utilities.removeTupleFormat(outValuesString))
 
             elif dimension == 3:
                 for positionX in np.arange(params.iStart[0], params.iEnd[0] + 1):
@@ -222,20 +222,20 @@ def main(path='./'):
                                         centeredCoords(positionZ, params.iStart[2], params.dl[2],
                                                        params.origin[2]))
 
-                            outValuesString = "{} {} {}\n".format(
-                                params.interpOrder,
+                            outValuesString = "{} {}\n".format(
                                 position,
                                 centered
                             )
 
-                            outValues.write(utilities.removeTupleFormat(outValuesString))
+                            outFileV.write(utilities.removeTupleFormat(outValuesString))
 
 
 
 
-    for outSummary,outValues in zip(outSummaries, outActualValuesFiles):
-        outSummary.close()
-        outValues.close()
+    for outFilesSumDim,outFilesValDim in zip(outSummaries, outValues):
+        for f1,f2 in zip(outFilesSumDim, outFilesValDim):
+            f1.close()
+            f2.close()
 
 
 if __name__ == "__main__":

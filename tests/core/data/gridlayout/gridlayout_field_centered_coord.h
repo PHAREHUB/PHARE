@@ -74,8 +74,10 @@ auto createFieldCenteringParam()
 
     std::string path{"./"};
 
-    std::string summaryPath{path + summaryName + "_" + std::to_string(dim) + "d.txt"};
-    std::string valuePath{path + valueName + "_" + std::to_string(dim) + "d.txt"};
+    std::string summaryPath{path + summaryName + "_" + std::to_string(dim) + "d_O"
+                            + std::to_string(interpOrder) + ".txt"};
+    std::string valuePath{path + valueName + "_" + std::to_string(dim) + "d_O"
+                          + std::to_string(interpOrder) + ".txt"};
 
     std::ifstream summary{summaryPath};
     std::ifstream value{valuePath};
@@ -96,9 +98,7 @@ auto createFieldCenteringParam()
 
     while (!summary.eof())
     {
-        // int currentOrder{0};
         std::string quantity;
-
 
         std::array<uint32, dim> nbCell;
         std::array<double, dim> dl;
@@ -108,7 +108,6 @@ auto createFieldCenteringParam()
 
         std::array<double, dim> origin;
 
-        // summary >> currentOrder;
         summary >> quantity;
 
         if (summary.eof() || summary.bad())
@@ -152,7 +151,7 @@ auto createFieldCenteringParam()
         {
             auto hqIndex = static_cast<int>(quantityIt->second);
 
-            auto& param = params[(interpOrder - 1) * numberOfQuantities + hqIndex]; // TODO what??
+            auto& param = params[hqIndex];
 
             param.iCellForCentering.push_back(icell);
             param.expectedPosition.push_back(realPosition);

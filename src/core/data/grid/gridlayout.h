@@ -113,8 +113,8 @@ public:
             = physicalStartIndexTable_[iprimal][data.idirX] + nbrPhysicalCells_[data.idirX];
 
 
-        physicalEndIndexTable_[idual][data.idirX] = physicalStartIndexTable_[idual][data.idirX]
-                                                    + nbrPhysicalCells_[data.idirX] - dualOffset();
+        physicalEndIndexTable[idual][data.idirX] = physicalStartIndexTable_[idual][data.idirX]
+                                                   + nbrPhysicalCells_[data.idirX] - dualOffset();
 
         if constexpr (dim > 1)
         {

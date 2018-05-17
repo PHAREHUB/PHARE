@@ -11,6 +11,7 @@
 #include <cassert>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <string>
 #include <type_traits>
 

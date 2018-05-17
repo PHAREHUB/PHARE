@@ -1,6 +1,9 @@
 #ifndef PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_BASE_PARAMS_H
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_BASE_PARAMS_H
 
+#include <memory>
+
+
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/ndarray/ndarray_vector.h"

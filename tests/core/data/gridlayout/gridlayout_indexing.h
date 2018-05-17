@@ -67,7 +67,8 @@ auto createIndexingParam()
     std::string baseName{"gridIndexing"};
 
 
-    std::string fullName{path + baseName + "_" + std::to_string(dim) + "d.txt"};
+    std::string fullName{path + baseName + "_" + std::to_string(dim) + "d_O"
+                         + std::to_string(interpOrder) + ".txt"};
     std::ifstream inputFile{fullName};
 
 
@@ -82,12 +83,10 @@ auto createIndexingParam()
 
     while (!inputFile.eof())
     {
-        // uint32 interpOrder{0};
         uint32 iQuantity;
         std::array<uint32, dim> numberCells;
         std::array<double, dim> dl;
 
-        // inputFile >> interpOrder;
         inputFile >> iQuantity;
 
         if (inputFile.eof() || inputFile.bad())

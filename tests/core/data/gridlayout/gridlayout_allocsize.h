@@ -74,12 +74,10 @@ auto createAllocSizeParam()
 
     while (!inputFile.eof())
     {
-        // uint32 interpOrder{0};
         uint32 iQuantity;
         std::array<uint32, dim> numberCells;
         std::array<double, dim> dl;
 
-        // inputFile >> interpOrder;
         inputFile >> iQuantity;
 
 

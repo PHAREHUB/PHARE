@@ -71,8 +71,10 @@ auto createCellCenteringParam()
 
     std::string path{"./"};
 
-    std::string summaryPath{path + summaryName + "_" + std::to_string(dim) + "d.txt"};
-    std::string valuePath{path + valueName + "_" + std::to_string(dim) + "d.txt"};
+    std::string summaryPath{path + summaryName + "_" + std::to_string(dim) + "d_O"
+                            + std::to_string(interpOrder) + ".txt"};
+    std::string valuePath{path + valueName + "_" + std::to_string(dim) + "d_O"
+                          + std::to_string(interpOrder) + ".txt"};
 
     std::ifstream summary{summaryPath};
     std::ifstream value{valuePath};
@@ -88,37 +90,28 @@ auto createCellCenteringParam()
         {"Vx", HybridQuantity::Scalar::Vx}, {"Vy", HybridQuantity::Scalar::Vy},
         {"Vz", HybridQuantity::Scalar::Vz}, {"P", HybridQuantity::Scalar::P}};
 
+    std::array<uint32, dim> nbCell;
+    std::array<double, dim> dl;
 
-    while (!summary.eof())
-    {
-        int currentOrder{0};
+    std::array<uint32, dim> iStart;
+    std::array<uint32, dim> iEnd;
+
+    std::array<double, dim> origin;
+
+    writeToArray(summary, nbCell);
+    writeToArray(summary, dl);
+    writeToArray(summary, iStart);
+    writeToArray(summary, iEnd);
+    writeToArray(summary, origin);
 
 
-        std::array<uint32, dim> nbCell;
-        std::array<double, dim> dl;
 
-        std::array<uint32, dim> iStart;
-        std::array<uint32, dim> iEnd;
+    params.emplace_back();
 
-        std::array<double, dim> origin;
+    // NOTE: c++17 : Point{origin}, C++14 : Point<double, dim>{origin}
+    params.back().base
+        = createParam<GridLayoutImpl, dim, interpOrder>(dl, nbCell, Point<double, dim>{origin});
 
-        summary >> currentOrder;
-
-        if (summary.eof() || summary.bad())
-            break;
-
-        writeToArray(summary, nbCell);
-        writeToArray(summary, dl);
-        writeToArray(summary, iStart);
-        writeToArray(summary, iEnd);
-        writeToArray(summary, origin);
-
-        params.emplace_back();
-
-        // NOTE: before c++17 Point{origin} cannot deduce the corect type
-        params.back().base
-            = createParam<GridLayoutImpl, dim, interpOrder>(dl, nbCell, Point<double, dim>{origin});
-    }
 
 
     while (!value.eof())
@@ -132,7 +125,7 @@ auto createCellCenteringParam()
         writeToArray(value, icell);
         writeToArray(value, realPosition);
 
-        auto& param = params[interpOrder - 1];
+        auto& param = params[0];
 
         param.iCellForCentering.push_back(icell);
         param.expectedPosition.push_back(realPosition);

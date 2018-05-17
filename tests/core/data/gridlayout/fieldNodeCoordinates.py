@@ -81,24 +81,23 @@ def main(path='./'):
     # TODO: FieldCoords and CenteredCoords share a common base, refactor this
 
 
-    outSummary1D = open(os.path.join(path,"fieldCoords_summary_1d.txt"), "w")
-    outSummary2D = open(os.path.join(path,"fieldCoords_summary_2d.txt"), "w")
-    outSummary3D = open(os.path.join(path,"fieldCoords_summary_3d.txt"), "w")
+    baseNameSummary = "fieldCoords_summary"
+    baseNameValues  = "fieldCoords_values"
 
-    outSummaries =[outSummary1D, outSummary2D, outSummary3D]
-
-    outActualValues1D = open(os.path.join(path,"fieldCoords_values_1d.txt"), "w")
-    outActualValues2D = open(os.path.join(path,"fieldCoords_values_2d.txt"), "w")
-    outActualValues3D = open(os.path.join(path,"fieldCoords_values_3d.txt"), "w")
-
-    outActualValuesFiles = [outActualValues1D, outActualValues2D, outActualValues3D]
-
-
+    outFilenameBaseSummary = os.path.join(path, baseNameSummary)
+    outFilenameBaseValues = os.path.join(path, baseNameValues)
+    outSummaries = []
+    outValues    = []
 
     for interpOrder in interpOrders:
-        for dimension,outSummary, outValues,nbrCellX,nbrCellY,\
-            nbrCellZ,dx,dy,dz in zip(nbDimsList, outSummaries,
-                                     outActualValuesFiles,
+        filenamesSum = [outFilenameBaseSummary + '_'+ str(dim) + 'd_O' + str(interpOrder)+'.txt' for dim in nbDimsList]
+        filenamesVal = [outFilenameBaseValues + '_'+ str(dim) + 'd_O' + str(interpOrder)+'.txt' for dim in nbDimsList]
+        outSummaries.append([open(f,'w') for f in filenamesSum])
+        outValues.append([open(f,'w') for f in filenamesVal])
+
+    for interpOrder, outFilesSumDim, outFilesValDim in zip(interpOrders, outSummaries, outValues):
+        for dimension,outFileS, outFileV,nbrCellX,nbrCellY,\
+            nbrCellZ,dx,dy,dz in zip(nbDimsList, outFilesSumDim, outFilesValDim,
                                      nbrCellXList,nbrCellYList,
                                      nbrCellZList,dxList,dyList,
                                      dzList):
@@ -114,8 +113,7 @@ def main(path='./'):
                 params.setCoord(gl, originPosition, centering)
 
 
-                summaryBasePart = "{} {} {} {} ".format(
-                    params.interpOrder,
+                summaryBasePart = "{} {} {} ".format(
                     quantity,
                     params.nbrCell,
                     params.dl)
@@ -131,20 +129,19 @@ def main(path='./'):
                 outSummaryString = utilities.removeTupleFormat(outSummaryString)
 
 
-                outSummary.write(outSummaryString)
+                outFileS.write(outSummaryString)
 
 
 
                 if dimension == 1:
                     for position in np.arange(params.iStart, params.iEnd + 1):
-                        outValuesString = "{} {} {} {}\n".format(
-                            params.interpOrder,
+                        outValuesString = "{} {} {}\n".format(
                             quantity,
                             position,
                             fieldCoords(position, params.iStart,quantity,'X',params.dl, params.origin)
                         )
 
-                        outValues.write(utilities.removeTupleFormat(outValuesString))
+                        outFileV.write(utilities.removeTupleFormat(outValuesString))
 
                 elif dimension == 2:
                     for positionX in np.arange(params.iStart[0], params.iEnd[0] + 1):
@@ -155,14 +152,13 @@ def main(path='./'):
                                         fieldCoords(positionY, params.iStart[1],quantity,'Y', params.dl[1],
                                                        params.origin[1]))
 
-                            outValuesString = "{} {} {} {}\n".format(
-                                params.interpOrder,
+                            outValuesString = "{} {} {}\n".format(
                                 quantity,
                                 position,
                                 centered
                             )
 
-                            outValues.write(utilities.removeTupleFormat(outValuesString))
+                            outFileV.write(utilities.removeTupleFormat(outValuesString))
 
                 elif dimension == 3:
                     for positionX in np.arange(params.iStart[0], params.iEnd[0] + 1):
@@ -177,21 +173,21 @@ def main(path='./'):
                                             fieldCoords(positionZ, params.iStart[2],quantity,'Z', params.dl[2],
                                                            params.origin[2]))
 
-                                outValuesString = "{} {} {} {}\n".format(
-                                    params.interpOrder,
+                                outValuesString = "{} {} {}\n".format(
                                     quantity,
                                     position,
                                     centered
                                 )
 
-                                outValues.write(utilities.removeTupleFormat(outValuesString))
+                                outFileV.write(utilities.removeTupleFormat(outValuesString))
 
 
 
 
-    for outSummary,outValues in zip(outSummaries, outActualValuesFiles):
-        outSummary.close()
-        outValues.close()
+    for outFilesSumDim,outFilesValDim in zip(outSummaries, outValues):
+        for f1, f2 in zip(outFilesSumDim, outFilesValDim):
+            f1.close()
+            f2.close()
 
 
 
