@@ -5,7 +5,6 @@
 #include <cstddef>
 
 #include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
 #include "data/vecfield/vecfield_component.h"
 
 namespace PHARE
@@ -255,8 +254,8 @@ public:
 /** \brief Interpolator is used to perform particle-mesh interpolations using
  * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
  */
-template<std::size_t dim, std::size_t InterpOrder, Layout LT>
-class Interpolator : private Weighter<InterpOrder>
+template<typename GridLayout>
+class Interpolator : private Weighter<GridLayout::interp_order>
 {
 public:
     /**\brief interpolate electromagnetic fields on all particles in the range
@@ -275,13 +274,13 @@ public:
         // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
         // is offseted compared to primal ones.
         auto indexAndWeightDual = [this](auto const& part) {
-            for (auto iDim = 0u; iDim < dim; ++iDim)
+            for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
             {
                 double normalizedPos
-                    = part.iCell[iDim] + part.delta[iDim] + dualOffset(InterpOrder);
+                    = part.iCell[iDim] + part.delta[iDim] + dualOffset(GridLayout::interp_order);
 
                 startIndex[centering2int(QtyCentering::dual)][iDim]
-                    = computeStartIndex<InterpOrder>(normalizedPos);
+                    = computeStartIndex<GridLayout::interp_order>(normalizedPos);
 
                 weightComputer_.computeWeight(normalizedPos,
                                               startIndex[centering2int(QtyCentering::dual)][iDim],
@@ -291,12 +290,12 @@ public:
 
         // does the same as above but for a primal field
         auto indexAndWeightPrimal = [this](auto const& part) {
-            for (auto iDim = 0u; iDim < dim; ++iDim)
+            for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
             {
                 double normalizedPos = part.iCell[iDim] + part.delta[iDim];
 
                 startIndex[centering2int(QtyCentering::primal)][iDim]
-                    = computeStartIndex<InterpOrder>(normalizedPos);
+                    = computeStartIndex<GridLayout::interp_order>(normalizedPos);
 
                 weightComputer_.computeWeight(normalizedPos,
                                               startIndex[centering2int(QtyCentering::primal)][iDim],
@@ -311,24 +310,12 @@ public:
         auto const& By = Em.B.getComponent(Component::Y);
         auto const& Bz = Em.B.getComponent(Component::Z);
 
-        auto const ExCentering
-            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
-                HybridQuantity::Scalar::Ex);
-        auto const EyCentering
-            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
-                HybridQuantity::Scalar::Ey);
-        auto const EzCentering
-            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
-                HybridQuantity::Scalar::Ez);
-        auto const BxCentering
-            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
-                HybridQuantity::Scalar::Bx);
-        auto const ByCentering
-            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
-                HybridQuantity::Scalar::By);
-        auto const BzCentering
-            = GridLayout<GridLayoutImplYee<dim, InterpOrder>, dim, InterpOrder>::centering(
-                HybridQuantity::Scalar::Bz);
+        auto const ExCentering = GridLayout::centering(HybridQuantity::Scalar::Ex);
+        auto const EyCentering = GridLayout::centering(HybridQuantity::Scalar::Ey);
+        auto const EzCentering = GridLayout::centering(HybridQuantity::Scalar::Ez);
+        auto const BxCentering = GridLayout::centering(HybridQuantity::Scalar::Bx);
+        auto const ByCentering = GridLayout::centering(HybridQuantity::Scalar::By);
+        auto const BzCentering = GridLayout::centering(HybridQuantity::Scalar::Bz);
 
 
         // for each particle, first calculate the startIndex and weights
@@ -353,14 +340,19 @@ public:
 
 
 private:
-    static_assert(dim <= 3 && dim > 0 && InterpOrder >= 1 && InterpOrder <= 3, "error");
+    static_assert(GridLayout::dimension <= 3 && GridLayout::dimension > 0
+                      && GridLayout::interp_order >= 1 && GridLayout::interp_order <= 3,
+                  "error");
 
-    Weighter<InterpOrder> weightComputer_;
-    Interpol<dim> interpol_;
+    Weighter<GridLayout::interp_order> weightComputer_;
+    Interpol<GridLayout::dimension> interpol_;
 
     // array[dual/primal][dim]
-    std::array<std::array<int, dim>, 2> startIndex;
-    std::array<std::array<std::array<double, nbrPointsSupport(InterpOrder)>, dim>, 2> weights;
+    std::array<std::array<int, GridLayout::dimension>, 2> startIndex;
+    std::array<std::array<std::array<double, nbrPointsSupport(GridLayout::interp_order)>,
+                          GridLayout::dimension>,
+               2>
+        weights;
 
     /**
      * @brief dualOffset returns the offset by which changing the

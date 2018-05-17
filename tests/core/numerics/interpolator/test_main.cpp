@@ -8,6 +8,7 @@
 #include <fstream>
 #include <random>
 
+#include "core/data/grid/gridlayout_impl.h"
 #include <core/data/electromag/electromag.h>
 #include <core/data/field/field.h>
 #include <core/data/ndarray/ndarray_vector.h>
@@ -18,18 +19,7 @@
 #include <numerics/interpolator/interpolator.h>
 
 
-using PHARE::computeStartIndex;
-using PHARE::Electromag;
-using PHARE::Field;
-using PHARE::HybridQuantity;
-using PHARE::Layout;
-using PHARE::nbrPointsSupport;
-using PHARE::NdArrayVector1D;
-using PHARE::NdArrayVector2D;
-using PHARE::NdArrayVector3D;
-using PHARE::Particle;
-using PHARE::VecField;
-using PHARE::Weighter;
+using namespace PHARE;
 
 
 
@@ -234,9 +224,9 @@ public:
 
 
 
-using Interpolators1D = ::testing::Types<PHARE::Interpolator<1, 1, Layout::Yee>,
-                                         PHARE::Interpolator<1, 2, Layout::Yee>,
-                                         PHARE::Interpolator<1, 3, Layout::Yee>>;
+using Interpolators1D = ::testing::Types<PHARE::Interpolator<GridLayoutImplYee<1, 1>>,
+                                         PHARE::Interpolator<GridLayoutImplYee<1, 2>>,
+                                         PHARE::Interpolator<GridLayoutImplYee<1, 3>>>;
 
 TYPED_TEST_CASE(A1DInterpolator, Interpolators1D);
 
@@ -349,9 +339,9 @@ public:
 
 
 
-using Interpolators2D = ::testing::Types<PHARE::Interpolator<2, 1, Layout::Yee>,
-                                         PHARE::Interpolator<2, 2, Layout::Yee>,
-                                         PHARE::Interpolator<2, 3, Layout::Yee>>;
+using Interpolators2D = ::testing::Types<PHARE::Interpolator<GridLayoutImplYee<2, 1>>,
+                                         PHARE::Interpolator<GridLayoutImplYee<2, 2>>,
+                                         PHARE::Interpolator<GridLayoutImplYee<2, 3>>>;
 
 TYPED_TEST_CASE(A2DInterpolator, Interpolators2D);
 
@@ -468,9 +458,9 @@ public:
 
 
 
-using Interpolators3D = ::testing::Types<PHARE::Interpolator<3, 1, Layout::Yee>,
-                                         PHARE::Interpolator<3, 2, Layout::Yee>,
-                                         PHARE::Interpolator<3, 3, Layout::Yee>>;
+using Interpolators3D = ::testing::Types<PHARE::Interpolator<GridLayoutImplYee<3, 1>>,
+                                         PHARE::Interpolator<GridLayoutImplYee<3, 2>>,
+                                         PHARE::Interpolator<GridLayoutImplYee<3, 3>>>;
 
 TYPED_TEST_CASE(A3DInterpolator, Interpolators3D);
 

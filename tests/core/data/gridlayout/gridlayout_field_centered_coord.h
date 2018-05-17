@@ -11,15 +11,14 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 struct GridLayoutFieldCenteringParam
 {
-    GridLayoutTestParam<GridLayoutImpl, dim, interpOrder> base;
+    GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::vector<std::array<uint32, dim>> iCellForCentering;
-    std::vector<std::array<double, dim>> expectedPosition;
-
-    std::vector<std::array<double, dim>> actualPosition;
+    std::vector<std::array<uint32, GridLayoutImpl::dimension>> iCellForCentering;
+    std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
+    std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
 
     template<typename Array, std::size_t... I>
     auto fieldCoord_impl(Array const& array, std::index_sequence<I...>)
@@ -47,12 +46,12 @@ struct GridLayoutFieldCenteringParam
 
         for (auto&& iCell : iCellForCentering)
         {
-            Point<double, dim> pos;
+            Point<double, GridLayoutImpl::dimension> pos;
             pos = fieldCoord(iCell);
 
-            std::array<double, dim> actualPos;
+            std::array<double, GridLayoutImpl::dimension> actualPos;
 
-            for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            for (std::size_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
             {
                 actualPos[iDim] = pos[iDim];
             }
@@ -64,20 +63,20 @@ struct GridLayoutFieldCenteringParam
 };
 
 
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 auto createFieldCenteringParam()
 {
-    std::vector<GridLayoutFieldCenteringParam<GridLayoutImpl, dim, interpOrder>> params;
+    std::vector<GridLayoutFieldCenteringParam<GridLayoutImpl>> params;
 
     std::string summaryName{"fieldCoords_summary"};
     std::string valueName{"fieldCoords_values"};
 
     std::string path{"./"};
 
-    std::string summaryPath{path + summaryName + "_" + std::to_string(dim) + "d_O"
-                            + std::to_string(interpOrder) + ".txt"};
-    std::string valuePath{path + valueName + "_" + std::to_string(dim) + "d_O"
-                          + std::to_string(interpOrder) + ".txt"};
+    std::string summaryPath{path + summaryName + "_" + std::to_string(GridLayoutImpl::dimension)
+                            + "d_O" + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
+    std::string valuePath{path + valueName + "_" + std::to_string(GridLayoutImpl::dimension) + "d_O"
+                          + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
 
     std::ifstream summary{summaryPath};
     std::ifstream value{valuePath};
@@ -94,19 +93,17 @@ auto createFieldCenteringParam()
         {"Vz", HybridQuantity::Scalar::Vz}, {"P", HybridQuantity::Scalar::P}};
 
 
-    constexpr uint32 numberOfQuantities{14};
+    // constexpr uint32 numberOfQuantities{14};
 
     while (!summary.eof())
     {
         std::string quantity;
 
-        std::array<uint32, dim> nbCell;
-        std::array<double, dim> dl;
-
-        std::array<uint32, dim> iStart;
-        std::array<uint32, dim> iEnd;
-
-        std::array<double, dim> origin;
+        std::array<uint32, GridLayoutImpl::dimension> nbCell;
+        std::array<double, GridLayoutImpl::dimension> dl;
+        std::array<uint32, GridLayoutImpl::dimension> iStart;
+        std::array<uint32, GridLayoutImpl::dimension> iEnd;
+        std::array<double, GridLayoutImpl::dimension> origin;
 
         summary >> quantity;
 
@@ -122,8 +119,8 @@ auto createFieldCenteringParam()
         params.emplace_back();
 
         // NOTE: before c++17 Point{origin} cannot deduce the corect type
-        params.back().base
-            = createParam<GridLayoutImpl, dim, interpOrder>(dl, nbCell, Point<double, dim>{origin});
+        params.back().base = createParam<GridLayoutImpl>(
+            dl, nbCell, Point<double, GridLayoutImpl::dimension>{origin});
 
         auto quantityIt = namesToQuantity.find(quantity);
         if (quantityIt != namesToQuantity.end())
@@ -135,8 +132,8 @@ auto createFieldCenteringParam()
     while (!value.eof())
     {
         std::string quantity;
-        std::array<uint32, dim> icell;
-        std::array<double, dim> realPosition;
+        std::array<uint32, GridLayoutImpl::dimension> icell;
+        std::array<double, GridLayoutImpl::dimension> realPosition;
 
         value >> quantity;
 

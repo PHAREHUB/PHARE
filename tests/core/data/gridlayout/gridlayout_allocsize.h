@@ -17,16 +17,16 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 struct GridLayoutAllocSizeParam
 {
-    GridLayoutTestParam<GridLayoutImpl, dim, interpOrder> base;
+    GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::array<uint32, dim> expectedAllocSize;
-    std::array<uint32, dim> expectedAllocSizeDerived;
+    std::array<uint32, GridLayoutImpl::dimension> expectedAllocSize;
+    std::array<uint32, GridLayoutImpl::dimension> expectedAllocSizeDerived;
 
-    std::array<uint32, dim> actualAllocSize;
-    std::array<uint32, dim> actualAllocSizeDerived;
+    std::array<uint32, GridLayoutImpl::dimension> actualAllocSize;
+    std::array<uint32, GridLayoutImpl::dimension> actualAllocSizeDerived;
 
 
     void init()
@@ -37,11 +37,11 @@ struct GridLayoutAllocSizeParam
         actualAllocSize = layout->allocSize(currentQuantity);
 
         actualAllocSizeDerived[0] = layout->allocSizeDerived(currentQuantity, Direction::X)[0];
-        if (dim > 1)
+        if (GridLayoutImpl::dimension > 1)
         {
             actualAllocSizeDerived[1] = layout->allocSizeDerived(currentQuantity, Direction::Y)[1];
         }
-        if (dim > 2)
+        if (GridLayoutImpl::dimension > 2)
         {
             actualAllocSizeDerived[2] = layout->allocSizeDerived(currentQuantity, Direction::Z)[2];
         }
@@ -49,17 +49,17 @@ struct GridLayoutAllocSizeParam
 };
 
 
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 auto createAllocSizeParam()
 {
-    std::vector<GridLayoutAllocSizeParam<GridLayoutImpl, dim, interpOrder>> params;
+    std::vector<GridLayoutAllocSizeParam<GridLayoutImpl>> params;
 
     std::string path{"./"};
     std::string baseName{"allocSizes"};
 
 
-    std::string fullName{path + baseName + "_" + std::to_string(dim) + "d_O"
-                         + std::to_string(interpOrder) + ".txt"};
+    std::string fullName{path + baseName + "_" + std::to_string(GridLayoutImpl::dimension) + "d_O"
+                         + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
     std::ifstream inputFile{fullName};
 
 
@@ -75,8 +75,8 @@ auto createAllocSizeParam()
     while (!inputFile.eof())
     {
         uint32 iQuantity;
-        std::array<uint32, dim> numberCells;
-        std::array<double, dim> dl;
+        std::array<uint32, GridLayoutImpl::dimension> numberCells;
+        std::array<double, GridLayoutImpl::dimension> dl;
 
         inputFile >> iQuantity;
 
@@ -88,8 +88,8 @@ auto createAllocSizeParam()
         writeToArray(inputFile, dl);
 
         params.emplace_back();
-        params.back().base
-            = createParam<GridLayoutImpl, dim, interpOrder>(dl, numberCells, Point<double, dim>{});
+        params.back().base = createParam<GridLayoutImpl>(
+            dl, numberCells, Point<double, GridLayoutImpl::dimension>{});
 
         writeToArray(inputFile, params.back().expectedAllocSize);
         writeToArray(inputFile, params.back().expectedAllocSizeDerived);

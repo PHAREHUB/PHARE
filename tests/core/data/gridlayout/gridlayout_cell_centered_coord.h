@@ -12,15 +12,15 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 struct GridLayoutCellCenteringParam
 {
-    GridLayoutTestParam<GridLayoutImpl, dim, interpOrder> base;
+    GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::vector<std::array<uint32, dim>> iCellForCentering;
-    std::vector<std::array<double, dim>> expectedPosition;
+    std::vector<std::array<uint32, GridLayoutImpl::dimension>> iCellForCentering;
+    std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
 
-    std::vector<std::array<double, dim>> actualPosition;
+    std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
 
     template<typename Array, std::size_t... I>
     auto cellCenteredCoord_impl(Array const& array, std::index_sequence<I...>)
@@ -44,12 +44,12 @@ struct GridLayoutCellCenteringParam
 
         for (auto&& iCell : iCellForCentering)
         {
-            Point<double, dim> pos;
+            Point<double, GridLayoutImpl::dimension> pos;
             pos = cellCenteredCoord(iCell);
 
-            std::array<double, dim> actualPos;
+            std::array<double, GridLayoutImpl::dimension> actualPos;
 
-            for (std::size_t iDim = 0; iDim < dim; ++iDim)
+            for (std::size_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
             {
                 actualPos[iDim] = pos[iDim];
             }
@@ -61,20 +61,20 @@ struct GridLayoutCellCenteringParam
 };
 
 
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 auto createCellCenteringParam()
 {
-    std::vector<GridLayoutCellCenteringParam<GridLayoutImpl, dim, interpOrder>> params;
+    std::vector<GridLayoutCellCenteringParam<GridLayoutImpl>> params;
 
     std::string summaryName{"centeredCoords_summary"};
     std::string valueName{"centeredCoords_values"};
 
     std::string path{"./"};
 
-    std::string summaryPath{path + summaryName + "_" + std::to_string(dim) + "d_O"
-                            + std::to_string(interpOrder) + ".txt"};
-    std::string valuePath{path + valueName + "_" + std::to_string(dim) + "d_O"
-                          + std::to_string(interpOrder) + ".txt"};
+    std::string summaryPath{path + summaryName + "_" + std::to_string(GridLayoutImpl::dimension)
+                            + "d_O" + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
+    std::string valuePath{path + valueName + "_" + std::to_string(GridLayoutImpl::dimension) + "d_O"
+                          + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
 
     std::ifstream summary{summaryPath};
     std::ifstream value{valuePath};
@@ -90,13 +90,13 @@ auto createCellCenteringParam()
         {"Vx", HybridQuantity::Scalar::Vx}, {"Vy", HybridQuantity::Scalar::Vy},
         {"Vz", HybridQuantity::Scalar::Vz}, {"P", HybridQuantity::Scalar::P}};
 
-    std::array<uint32, dim> nbCell;
-    std::array<double, dim> dl;
+    std::array<uint32, GridLayoutImpl::dimension> nbCell;
+    std::array<double, GridLayoutImpl::dimension> dl;
 
-    std::array<uint32, dim> iStart;
-    std::array<uint32, dim> iEnd;
+    std::array<uint32, GridLayoutImpl::dimension> iStart;
+    std::array<uint32, GridLayoutImpl::dimension> iEnd;
 
-    std::array<double, dim> origin;
+    std::array<double, GridLayoutImpl::dimension> origin;
 
     writeToArray(summary, nbCell);
     writeToArray(summary, dl);
@@ -110,14 +110,14 @@ auto createCellCenteringParam()
 
     // NOTE: c++17 : Point{origin}, C++14 : Point<double, dim>{origin}
     params.back().base
-        = createParam<GridLayoutImpl, dim, interpOrder>(dl, nbCell, Point<double, dim>{origin});
+        = createParam<GridLayoutImpl>(dl, nbCell, Point<double, GridLayoutImpl::dimension>{origin});
 
 
 
     while (!value.eof())
     {
-        std::array<uint32, dim> icell;
-        std::array<double, dim> realPosition;
+        std::array<uint32, GridLayoutImpl::dimension> icell;
+        std::array<double, GridLayoutImpl::dimension> realPosition;
 
         if (value.eof() || value.bad())
             break;

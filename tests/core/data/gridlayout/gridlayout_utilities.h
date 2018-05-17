@@ -12,17 +12,17 @@ struct SelectorDim
 {
 };
 
-inline NdArrayVector1D<> getNdArrayVecImpl(SelectorDim<1> dim)
+inline NdArrayVector1D<> getNdArrayVecImpl(SelectorDim<1>)
 {
     return NdArrayVector1D<>{0};
 }
 
-inline NdArrayVector2D<> getNdArrayVecImpl(SelectorDim<2> dim)
+inline NdArrayVector2D<> getNdArrayVecImpl(SelectorDim<2>)
 {
     return NdArrayVector2D<>{0, 0};
 }
 
-inline NdArrayVector3D<> getNdArrayVecImpl(SelectorDim<3> dim)
+inline NdArrayVector3D<> getNdArrayVecImpl(SelectorDim<3>)
 {
     return NdArrayVector3D<>{0, 0, 0};
 }

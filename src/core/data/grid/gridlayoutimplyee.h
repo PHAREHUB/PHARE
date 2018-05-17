@@ -32,6 +32,9 @@ class GridLayoutImplYee
     //                              PRIVATE
     // ------------------------------------------------------------------------
 public:
+    static constexpr std::size_t dimension    = dim;
+    static constexpr std::size_t interp_order = interpOrder;
+
     /*
     void constexpr initLinearCombinations_();
 

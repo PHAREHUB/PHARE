@@ -12,9 +12,8 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder,
-         template<typename, std::size_t, std::size_t> typename Param>
-class GridLayoutTest : public ::testing::TestWithParam<Param<GridLayoutImpl, dim, interpOrder>>
+template<typename GridLayoutImpl, template<typename> typename Param>
+class GridLayoutTest : public ::testing::TestWithParam<Param<GridLayoutImpl>>
 {
 public:
     GridLayoutTest() = default;
@@ -22,7 +21,7 @@ public:
     virtual void TearDown() override {}
     virtual void SetUp() override { param = this->GetParam(); }
 
-    Param<GridLayoutImpl, dim, interpOrder> param;
+    Param<GridLayoutImpl> param;
 };
 
 

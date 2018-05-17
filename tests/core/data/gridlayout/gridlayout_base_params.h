@@ -12,10 +12,12 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 struct GridLayoutTestParam
 {
-    std::shared_ptr<GridLayout<GridLayoutImpl, dim, interpOrder>> layout;
+    std::shared_ptr<GridLayout<GridLayoutImpl>> layout;
+    static constexpr std::size_t dim         = GridLayoutImpl::dimension;
+    static constexpr std::size_t interpOrder = GridLayoutImpl::interp_order;
 
     std::array<double, dim> dxdydz;
     std::array<uint32, dim> nbCellXYZ;

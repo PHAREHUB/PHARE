@@ -33,7 +33,7 @@ constexpr int centering2int(QtyCentering c)
  * a primal or dual centering. The only thing GridLayout
  *
  */
-template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
+template<typename GridLayoutImpl>
 class GridLayout
 {
     // ------------------------------------------------------------------------
@@ -41,26 +41,31 @@ class GridLayout
     //
     // this code will be shared by all concrete of GridLayoutImpl*
     // ------------------------------------------------------------------------
+private:
+    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
+    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+
 public:
     /* uint32 static constexpr nbdims_{GridLayoutImpl::getDimensions()}; */
     // uint32 constexpr static nbdims_{dim};
-    std::array<double, dim> meshSize_;
-    Point<double, dim> origin_;
-    std::array<uint32, dim> nbrPhysicalCells_;
+    std::array<double, dimension> meshSize_;
+    Point<double, dimension> origin_;
+    std::array<uint32, dimension> nbrPhysicalCells_;
 
     static constexpr gridDataT data{};
 
 
 
     // stores key indices in each direction (3) for primal and dual nodes (2)
-    std::array<std::array<uint32, dim>, 2> physicalStartIndexTable_;
-    std::array<std::array<uint32, dim>, 2> physicalEndIndexTable_;
-    std::array<std::array<uint32, dim>, 2> ghostEndIndexTable_;
+    std::array<std::array<uint32, dimension>, 2> physicalStartIndexTable_;
+    std::array<std::array<uint32, dimension>, 2> physicalEndIndexTable_;
+    std::array<std::array<uint32, dimension>, 2> ghostEndIndexTable_;
 
-    std::array<double, dim> odxdydz_;
+    std::array<double, dimension> odxdydz_;
 
-    GridLayout(std::array<double, dim> const& meshSize, std::array<uint32, dim> const& nbrCells,
-               Point<double, dim> const& origin)
+    GridLayout(std::array<double, dimension> const& meshSize,
+               std::array<uint32, dimension> const& nbrCells,
+               Point<double, dimension> const& origin)
         : meshSize_{meshSize}
         , origin_{origin}
         , nbrPhysicalCells_{nbrCells}
@@ -72,7 +77,7 @@ public:
 
     auto initPhysicalStart()
     {
-        std::array<std::array<uint32, dim>, 2> physicalStartIndexTable;
+        std::array<std::array<uint32, dimension>, 2> physicalStartIndexTable;
 
         uint32 iprimal = static_cast<uint32>(data.primal);
         uint32 idual   = static_cast<uint32>(data.dual);
@@ -80,12 +85,12 @@ public:
         physicalStartIndexTable[iprimal][data.idirX] = nbrPrimalGhosts();
         physicalStartIndexTable[idual][data.idirX]   = nbrDualGhosts();
 
-        if constexpr (dim > 1)
+        if constexpr (dimension > 1)
         {
             physicalStartIndexTable[iprimal][data.idirY] = nbrPrimalGhosts();
             physicalStartIndexTable[idual][data.idirY]   = nbrDualGhosts();
 
-            if constexpr (dim > 2)
+            if constexpr (dimension > 2)
             {
                 physicalStartIndexTable[iprimal][data.idirZ] = nbrPrimalGhosts();
                 physicalStartIndexTable[idual][data.idirZ]   = nbrDualGhosts();
@@ -104,7 +109,7 @@ public:
      */
     auto initPhysicalEnd()
     {
-        std::array<std::array<uint32, dim>, 2> physicalEndIndexTable;
+        std::array<std::array<uint32, dimension>, 2> physicalEndIndexTable;
 
         uint32 iprimal = static_cast<uint32>(data.primal);
         uint32 idual   = static_cast<uint32>(data.dual);
@@ -116,7 +121,7 @@ public:
         physicalEndIndexTable[idual][data.idirX] = physicalStartIndexTable_[idual][data.idirX]
                                                    + nbrPhysicalCells_[data.idirX] - dualOffset();
 
-        if constexpr (dim > 1)
+        if constexpr (dimension > 1)
         {
             physicalEndIndexTable[iprimal][data.idirY]
                 = physicalStartIndexTable_[iprimal][data.idirY] + nbrPhysicalCells_[data.idirY];
@@ -125,7 +130,7 @@ public:
                                                        + nbrPhysicalCells_[data.idirY]
                                                        - dualOffset();
 
-            if constexpr (dim > 2)
+            if constexpr (dimension > 2)
             {
                 physicalEndIndexTable[iprimal][data.idirZ]
                     = physicalStartIndexTable_[iprimal][data.idirZ] + nbrPhysicalCells_[data.idirZ];
@@ -148,7 +153,7 @@ public:
      */
     auto initGhostEnd()
     {
-        std::array<std::array<uint32, dim>, 2> ghostEndIndexTable;
+        std::array<std::array<uint32, dimension>, 2> ghostEndIndexTable;
 
         uint32 iprimal = static_cast<uint32>(data.primal);
         uint32 idual   = static_cast<uint32>(data.dual);
@@ -159,7 +164,7 @@ public:
         ghostEndIndexTable[idual][data.idirX]
             = physicalEndIndexTable_[idual][data.idirX] + nbrDualGhosts();
 
-        if constexpr (dim > 1)
+        if constexpr (dimension > 1)
         {
             ghostEndIndexTable[iprimal][data.idirY]
                 = physicalEndIndexTable_[iprimal][data.idirY] + nbrPrimalGhosts();
@@ -167,7 +172,7 @@ public:
             ghostEndIndexTable[idual][data.idirY]
                 = physicalEndIndexTable_[idual][data.idirY] + nbrDualGhosts();
 
-            if constexpr (dim > 2)
+            if constexpr (dimension > 2)
             {
                 ghostEndIndexTable[iprimal][data.idirZ]
                     = physicalEndIndexTable_[iprimal][data.idirZ] + nbrPrimalGhosts();
@@ -186,13 +191,13 @@ public:
      * @brief origin return the lower point of the grid described by the GridLayout
      * in physical coordinates
      */
-    Point<double, dim> origin() const { return origin_; }
+    Point<double, dimension> origin() const { return origin_; }
 
 
     /**
      * @brief returns the mesh size in the 'dim' dimensions
      */
-    std::array<double, dim> meshSize() const { return meshSize_; }
+    std::array<double, dimension> meshSize() const { return meshSize_; }
 
 
     double inverseMeshSize(Direction direction) const noexcept
@@ -201,14 +206,14 @@ public:
     }
 
 
-    std::array<double, dim> inverseMeshSize() const noexcept { return odxdydz_; }
+    std::array<double, dimension> inverseMeshSize() const noexcept { return odxdydz_; }
 
 
-    std::array<uint32, dim> nbrCells() const { return nbrPhysicalCells_; }
+    std::array<uint32, dimension> nbrCells() const { return nbrPhysicalCells_; }
 
 
 
-    uint32 nbDimensions() const { return dim; }
+    uint32 nbDimensions() const { return dimension; }
 
 
 
@@ -228,7 +233,7 @@ public:
      *
      * @param ghostParameter, corresponds to the interpolation order
      */
-    template<std::size_t order                         = interpOrder,
+    template<std::size_t order                         = interp_order,
              std::enable_if_t<order == 1, dummy::type> = dummy::value>
     uint32 constexpr nbrDualGhosts() const
     {
@@ -236,13 +241,11 @@ public:
            for particle/mesh interactions. However one ghost node is required
            for calculating Laplacians so we add one.
         */
-        // nbrPrimalGhosts_ = static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
-        // nbrDualGhosts_   = static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
-        return static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
+        return static_cast<uint32>((interp_order + 1) / 2.);
     }
 
 
-    template<std::size_t order                         = interpOrder,
+    template<std::size_t order                         = interp_order,
              std::enable_if_t<order == 1, dummy::type> = dummy::value>
     uint32 constexpr nbrPrimalGhosts() const
     {
@@ -250,9 +253,7 @@ public:
            for particle/mesh interactions. However one ghost node is required
            for calculating Laplacians so we add one.
         */
-        // nbrPrimalGhosts_ = static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
-        // nbrDualGhosts_   = static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
-        return static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
+        return static_cast<uint32>((interp_order + 1) / 2.);
     }
 
 
@@ -267,22 +268,22 @@ public:
      *
      * @param ghostParameter, corresponds to the interpolation order
      */
-    template<std::size_t order                          = interpOrder,
+    template<std::size_t order                          = interp_order,
              std::enable_if_t<(order > 1), dummy::type> = dummy::value>
     uint32 constexpr nbrDualGhosts() const
     {
         /* for interpolation order larger than 1, there is at least 1 primal ghost
            node so Laplacians can be calculated OK */
-        return static_cast<uint32>(std::floor((interpOrder + 1) / 2.));
+        return static_cast<uint32>((interp_order + 1) / 2.);
     }
 
-    template<std::size_t order                          = interpOrder,
+    template<std::size_t order                          = interp_order,
              std::enable_if_t<(order > 1), dummy::type> = dummy::value>
     uint32 constexpr nbrPrimalGhosts() const
     {
         /* for interpolation order larger than 1, there is at least 1 primal ghost
            node so Laplacians can be calculated OK */
-        return static_cast<uint32>(std::floor(interpOrder / 2.));
+        return static_cast<uint32>(interp_order / 2.);
         ;
     }
 
@@ -425,11 +426,11 @@ public:
      * the desired field-centered coordinate
      */
     template<typename NdArrayImpl, typename... Indexes>
-    Point<double, dim> fieldNodeCoordinates(const Field<NdArrayImpl, HybridQuantity::Scalar>& field,
-                                            const Point<double, dim>& origin,
-                                            Indexes... index) const
+    Point<double, dimension>
+    fieldNodeCoordinates(const Field<NdArrayImpl, HybridQuantity::Scalar>& field,
+                         const Point<double, dimension>& origin, Indexes... index) const
     {
-        static_assert(sizeof...(Indexes) == dim,
+        static_assert(sizeof...(Indexes) == dimension,
                       "Error dimension does not match number of arguments");
 
 
@@ -439,11 +440,11 @@ public:
 
         auto constexpr hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
 
-        Point<int32, dim> coord{static_cast<int32>(index)...};
+        Point<int32, dimension> coord{static_cast<int32>(index)...};
 
-        Point<double, dim> position;
+        Point<double, dimension> position;
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             double halfCell = 0.0;
 
@@ -476,9 +477,9 @@ public:
 
 
     template<typename... Indexes>
-    Point<double, dim> cellCenteredCoordinates(Indexes... index) const
+    Point<double, dimension> cellCenteredCoordinates(Indexes... index) const
     {
-        static_assert(sizeof...(Indexes) == dim,
+        static_assert(sizeof...(Indexes) == dimension,
                       "Error dimension does not match number of arguments");
 
         uint32 constexpr iPrimal = static_cast<uint32>(QtyCentering::primal);
@@ -488,11 +489,11 @@ public:
         // cell center physical coordinates,
         // because this point is located on the dual mesh
 
-        Point<uint32, dim> coord(index...);
+        Point<uint32, dimension> coord(index...);
 
-        Point<double, dim> physicalPosition;
+        Point<double, dimension> physicalPosition;
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             auto iStart = physicalStartIndexTable_[iPrimal][iDir];
 
@@ -502,22 +503,6 @@ public:
         }
 
         return physicalPosition;
-
-        // uint32 idirX   = static_cast<uint32>(Direction::X);
-        // uint32 idirY   = static_cast<uint32>(Direction::Y);
-        // uint32 idirZ   = static_cast<uint32>(Direction::Z);
-        // uint32 iprimal = static_cast<uint32>(QtyCentering::primal);
-
-        // uint32 ixStart = physicalStartIndexTable_[iprimal][idirX];
-        // uint32 iyStart = physicalStartIndexTable_[iprimal][idirY];
-        // uint32 izStart = physicalStartIndexTable_[iprimal][idirZ];
-
-
-        // double x = ((ix - ixStart) + halfCell) * dx_ + origin_.x;
-        // double y = ((iy - iyStart) + halfCell) * dy_ + origin_.y;
-        // double z = ((iz - izStart) + halfCell) * dz_ + origin_.z;
-
-        // return Point<double, dim>(physicalPosition);
     }
 
 
@@ -573,7 +558,7 @@ public:
     /**
      * @brief returns the centering of all hybrid quantities in all directions
      */
-    constexpr static std::array<QtyCentering, dim>
+    constexpr static std::array<QtyCentering, dimension>
     centering(HybridQuantity::Scalar const& hybridQuantity)
     {
         return GridLayoutImpl::centering(hybridQuantity);
@@ -587,7 +572,7 @@ public:
      * @return An std::array<uint32, dim> object, containing the size to which allocate arrays
      * of an HybridQuantity::Quantity 'qty' in every directions.
      */
-    std::array<uint32, dim> allocSize(HybridQuantity::Scalar qty) const
+    std::array<uint32, dimension> allocSize(HybridQuantity::Scalar qty) const
     {
         uint32 iQty = static_cast<uint32>(qty);
 
@@ -597,9 +582,9 @@ public:
 
         auto constexpr hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
 
-        std::array<QtyCentering, dim> qtyCentering;
+        std::array<QtyCentering, dimension> qtyCentering;
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             qtyCentering[iDir] = hybridQtyCentering[iQty][iDir];
         }
@@ -609,7 +594,7 @@ public:
 
 
 
-    std::array<uint32, dim> allocSizeDerived(HybridQuantity::Scalar qty, Direction dir) const
+    std::array<uint32, dimension> allocSizeDerived(HybridQuantity::Scalar qty, Direction dir) const
     {
         uint32 iDerivedDir = static_cast<uint32>(dir);
         uint32 iQty        = static_cast<uint32>(qty);
@@ -619,9 +604,9 @@ public:
 
         auto constexpr hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
 
-        std::array<QtyCentering, dim> qtyCenterings;
+        std::array<QtyCentering, dimension> qtyCenterings;
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             qtyCenterings[iDir] = hybridQtyCentering[iQty][iDir];
         }
@@ -654,11 +639,11 @@ public:
 
 
 
-    std::array<uint32, dim> nbrPhysicalNodes(HybridQuantity::Scalar hybQty) const
+    std::array<uint32, dimension> nbrPhysicalNodes(HybridQuantity::Scalar hybQty) const
     {
-        std::array<QtyCentering, dim> centerings;
+        std::array<QtyCentering, dimension> centerings;
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             centerings[iDir]
                 = GridLayoutImpl::hybridQtyCentering_[static_cast<uint32>(hybQty)][iDir];
@@ -692,12 +677,12 @@ public:
 
 
 private:
-    std::array<uint32, dim>
-    physicalNodeNbrFromCentering_(std::array<QtyCentering, dim> const& qtyCenterings) const
+    std::array<uint32, dimension>
+    physicalNodeNbrFromCentering_(std::array<QtyCentering, dimension> const& qtyCenterings) const
     {
-        std::array<uint32, dim> nodeNbr;
+        std::array<uint32, dimension> nodeNbr;
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             nodeNbr[iDir] = nbrPhysicalCells_[iDir] + 1
                             - ((qtyCenterings[iDir] == QtyCentering::dual) ? dualOffset() : 0);
@@ -715,12 +700,12 @@ private:
      * The calculation is easy : there are nbrPhysicalCells + 1 nodes in the domain
      * + 2 times the number of ghost nodes.
      */
-    std::array<uint32, dim>
-    nodeNbrFromCentering_(std::array<QtyCentering, dim> const& qtyCenterings) const
+    std::array<uint32, dimension>
+    nodeNbrFromCentering_(std::array<QtyCentering, dimension> const& qtyCenterings) const
     {
-        std::array<uint32, dim> nbrNodes = physicalNodeNbrFromCentering_(qtyCenterings);
+        std::array<uint32, dimension> nbrNodes = physicalNodeNbrFromCentering_(qtyCenterings);
 
-        for (std::size_t iDir = 0; iDir < dim; ++iDir)
+        for (std::size_t iDir = 0; iDir < dimension; ++iDir)
         {
             nbrNodes[iDir] += 2 * nbrGhosts(qtyCenterings[iDir]);
         }
@@ -747,6 +732,7 @@ private:
  *
  * @param derivative
  */
+#if 0
 template<typename GridLayoutImpl, std::size_t dim, std::size_t interpOrder>
 template<typename NdArrayImpl>
 void GridLayout<GridLayoutImpl, dim, interpOrder>::deriv1D_(
@@ -781,7 +767,7 @@ void GridLayout<GridLayoutImpl, dim, interpOrder>::deriv1D_(
         ++iOp;
     }
 }
-
+#endif
 
 
 
