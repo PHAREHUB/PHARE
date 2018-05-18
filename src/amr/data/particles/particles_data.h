@@ -2,7 +2,9 @@
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_H
 
 #include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
+#include <SAMRAI/pdat/CellOverlap.h>
 
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
@@ -29,7 +31,7 @@ public:
         const ParticlesData* pSource = dynamic_cast<const ParticlesData*>(&source);
         if (pSource != nullptr)
         {
-            SAMRAI::hier::Box const& sourceBox      = pSource->getGhostBox();
+            SAMRAI::hier::Box const& sourceBox      = pSource->getBox();
             SAMRAI::hier::Box const& destinationBox = getGhostBox();
             SAMRAI::hier::Box intersectionBox{sourceBox * destinationBox};
             if (!intersectionBox.empty())
@@ -48,12 +50,59 @@ public:
 
     virtual void copy2(SAMRAI::hier::PatchData& destination) const final
     {
-        throw std::runtime_error("Not Implemented Yet");
+        throw std::runtime_error("Cannot cast");
     }
     virtual void copy(SAMRAI::hier::PatchData const& source,
                       SAMRAI::hier::BoxOverlap const& overlap) final
     {
-        throw std::runtime_error("Not Implemented Yet");
+        const ParticlesData* pSource = dynamic_cast<const ParticlesData*>(&source);
+        const SAMRAI::pdat::CellOverlap* pOverlap
+            = dynamic_cast<const SAMRAI::pdat::CellOverlap*>(&overlap);
+        if ((pSource != nullptr) && (pOverlap != nullptr))
+        {
+            SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+            if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
+            {
+                SAMRAI::hier::BoxContainer const& boxList = pOverlap->getDestinationBoxContainer();
+                for (auto const& box : boxList)
+                {
+                    SAMRAI::hier::Box sourceBox      = pSource->getBox();
+                    SAMRAI::hier::Box destinationBox = this->getGhostBox();
+                    SAMRAI::hier::Box intersectionBox{sourceBox.getDim()};
+
+                    if (transformation.getOffset() == SAMRAI::hier::IntVector::getZero(box.getDim())
+                        && transformation.getBeginBlock() == transformation.getEndBlock())
+                    {
+                        intersectionBox = box * sourceBox * destinationBox;
+
+                        if (!intersectionBox.empty())
+                        {
+                            copy_(sourceBox, destinationBox, intersectionBox, *pSource);
+                        }
+                    }
+                    else
+                    {
+                        SAMRAI::hier::Box transformedSource{sourceBox};
+                        transformation.transform(transformedSource);
+                        intersectionBox = box * transformedSource * destinationBox;
+
+                        if (!intersectionBox.empty())
+                        {
+                            copyWithTransform_(sourceBox, transformedSource, destinationBox,
+                                               intersectionBox, transformation, *pSource);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                throw std::runtime_error("copy with rotate not implemented");
+            }
+        }
+        else
+        {
+            source.copy2(*this, overlap);
+        }
     }
 
     virtual void copy2(SAMRAI::hier::PatchData& destination,
@@ -99,11 +148,32 @@ private:
     void copy_(SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
                SAMRAI::hier::Box const& intersectionBox, ParticlesData const& source)
     {
-        SAMRAI::hier::IntVector shift{sourceBox.lower() - destinationBox.lower()};
+        SAMRAI::hier::IntVector shift{sourceBox.lower() - destinationBox.lower()
+                                      - getGhostCellWidth()};
         SAMRAI::hier::Box intersectLocalSource{intersectionBox};
 
         intersectLocalSource.setLower(intersectionBox.lower() - sourceBox.lower());
         intersectLocalSource.setUpper(intersectionBox.upper() - sourceBox.lower());
+
+        copy_(source, shift, intersectLocalSource);
+    }
+
+    void copyWithTransform_(SAMRAI::hier::Box const& sourceBox,
+                            SAMRAI::hier::Box const& transformedSource,
+                            SAMRAI::hier::Box const& destinationBox,
+                            SAMRAI::hier::Box const& intersectionBox,
+                            SAMRAI::hier::Transformation const& transformation,
+                            ParticlesData const& source)
+    {
+        SAMRAI::hier::IntVector shift{transformation.getOffset()};
+        SAMRAI::hier::Box intersectLocalSource{intersectionBox};
+
+        transformation.inverseTransform(intersectLocalSource);
+
+        intersectLocalSource.setLower(intersectLocalSource.lower() - sourceBox.lower());
+        intersectLocalSource.setUpper(intersectLocalSource.upper() - sourceBox.lower());
+
+        shift += sourceBox.lower();
 
         copy_(source, shift, intersectLocalSource);
     }

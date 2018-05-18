@@ -23,14 +23,6 @@ struct AParticlesData1D : public testing::Test
     SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
 };
 
-TEST_F(AParticlesData1D, HaveNoParticlesAtCreation)
-{
-    ParticlesData<1> pDat{domain0, ghost};
-
-    EXPECT_THAT(pDat.interior.size(), Eq(0));
-    EXPECT_THAT(pDat.ghost.size(), Eq(0));
-    EXPECT_THAT(pDat.incoming.size(), Eq(0));
-}
 
 
 TEST_F(AParticlesData1D, PreserveVelocityWhenCopying)
