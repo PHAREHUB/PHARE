@@ -675,6 +675,19 @@ public:
 
 
 
+    auto static constexpr momentsToEx() { return GridLayoutImpl::momentsToEx(); }
+    auto static constexpr momentsToEy() { return GridLayoutImpl::momentsToEy(); }
+    auto static constexpr momentsToEz() { return GridLayoutImpl::momentsToEz(); }
+    auto static constexpr ExToMoments() { return GridLayoutImpl::ExToMoments(); }
+    auto static constexpr EyToMoments() { return GridLayoutImpl::EyToMoments(); }
+    auto static constexpr EzToMoments() { return GridLayoutImpl::EzToMoments(); }
+    auto static constexpr ByToEx() { return GridLayoutImpl::ByToEx(); }
+    auto static constexpr BzToEx() { return GridLayoutImpl::BzToEx(); }
+    auto static constexpr BxToEy() { return GridLayoutImpl::BxToEy(); }
+    auto static constexpr BzToEy() { return GridLayoutImpl::BzToEy(); }
+    auto static constexpr BxToEz() { return GridLayoutImpl::BxToEz(); }
+    auto static constexpr ByToEz() { return GridLayoutImpl::ByToEz(); }
+
 
 private:
     std::array<uint32, dimension>

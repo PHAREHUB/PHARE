@@ -1,8 +1,10 @@
 #ifndef PHARE_CORE_GRID_GRIDLAYOUTDEFS_H
 #define PHARE_CORE_GRID_GRIDLAYOUTDEFS_H
 
+#include <cstddef>
 
 #include "hybrid/hybrid_quantities.h"
+#include "utilities/point/point.h"
 #include "utilities/types.h"
 
 namespace PHARE
@@ -12,14 +14,21 @@ enum class Direction { X, Y, Z };
 enum class QtyCentering { primal, dual };
 
 
+template<std::size_t dim>
 struct WeightPoint
 {
-    int32 ix, iy, iz;
+    constexpr WeightPoint(Point<int, dim> point, double coef)
+        : indexes{std::move(point)}
+        , coef{coef}
+    {
+    }
+
+    Point<int, dim> indexes;
     double coef;
 };
 
 
-using LinearCombination = std::vector<WeightPoint>;
+// using LinearCombination = std::vector<WeightPoint>;
 
 enum class Layout { Yee };
 

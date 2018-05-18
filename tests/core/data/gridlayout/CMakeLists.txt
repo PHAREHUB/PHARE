@@ -12,6 +12,7 @@ set(SOURCES_INC
   gridlayout_params.h
   gridlayout_test.h
   gridlayout_utilities.h
+  test_linear_combinaisons_yee.h
    )
 
 set(SOURCES_CPP
@@ -20,6 +21,7 @@ set(SOURCES_CPP
   gridlayout_deriv.cpp
   gridlayout_field_centered_coord.cpp
   gridlayout_indexing.cpp
+  test_linear_combinaisons_yee.cpp
   test_main.cpp
    )
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
