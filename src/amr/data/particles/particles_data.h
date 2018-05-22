@@ -121,8 +121,15 @@ public:
 
     virtual size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
     {
-        throw std::runtime_error("Not Implemented Yet");
+        SAMRAI::pdat::CellOverlap const* pOverlap{
+            dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
+
+        std::size_t numberParticles = countNumberParticlesIn_(*pOverlap);
+
+        return SAMRAI::tbox::MemoryUtilities::align(numberParticles * sizeof(ParticleArray<dim>));
     }
+
+
 
 
     virtual void packStream(SAMRAI::tbox::MessageStream& stream,
@@ -212,6 +219,54 @@ private:
 
 
     void shiftParticle_(SAMRAI::hier::IntVector const& shift, Particle<dim>& particle) const;
+
+
+    std::size_t countNumberParticlesIn_(SAMRAI::pdat::CellOverlap const& overlap) const
+    {
+        std::size_t numberParticles = 0;
+
+        if (overlap.isOverlapEmpty())
+        {
+            return numberParticles;
+        }
+
+        auto const& boxes = overlap.getDestinationBoxContainer();
+
+        for (auto const& box : boxes)
+        {
+            SAMRAI::hier::Box finalBox{box};
+            SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
+            transformation.transform(finalBox);
+            SAMRAI::hier::Box intersectionBox{finalBox * getBox()};
+
+            numberParticles += countNumberParticlesIn_(intersectionBox);
+        }
+
+
+        return numberParticles;
+    }
+
+    std::size_t countNumberParticlesIn_(SAMRAI::hier::Box const& box) const
+    {
+        std::size_t numberParticles{0};
+
+        SAMRAI::hier::Box localSource{box};
+
+        auto const& sourceBox = getBox();
+
+        localSource.setLower(box.lower() - sourceBox.lower());
+        localSource.setUpper(box.upper() - sourceBox.upper());
+
+        for (auto const& particle : interior)
+        {
+            if (isInBox_(localSource, particle))
+            {
+                ++numberParticles;
+            }
+        }
+
+        return numberParticles;
+    }
 };
 
 
