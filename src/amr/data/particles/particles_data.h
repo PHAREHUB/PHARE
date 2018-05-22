@@ -5,6 +5,9 @@
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/pdat/CellOverlap.h>
+#include <SAMRAI/tbox/MemoryUtilities.h>
+
+#include <numeric>
 
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
@@ -120,6 +123,8 @@ public:
     {
         throw std::runtime_error("Not Implemented Yet");
     }
+
+
     virtual void packStream(SAMRAI::tbox::MessageStream& stream,
                             SAMRAI::hier::BoxOverlap const& overlap) const final
     {
@@ -203,17 +208,17 @@ private:
     }
 
 
-    bool isInBox_(SAMRAI::hier::Box const& box, Particle<dim> const& particle);
+    bool isInBox_(SAMRAI::hier::Box const& box, Particle<dim> const& particle) const;
 
 
-    void shiftParticle_(SAMRAI::hier::IntVector const& shift, Particle<dim>& particle);
+    void shiftParticle_(SAMRAI::hier::IntVector const& shift, Particle<dim>& particle) const;
 };
 
 
 
 
 template<>
-bool ParticlesData<1>::isInBox_(SAMRAI::hier::Box const& box, Particle<1> const& particle)
+bool ParticlesData<1>::isInBox_(SAMRAI::hier::Box const& box, Particle<1> const& particle) const
 {
     auto const& iCell = particle.iCell;
 
@@ -228,7 +233,7 @@ bool ParticlesData<1>::isInBox_(SAMRAI::hier::Box const& box, Particle<1> const&
 }
 
 template<>
-bool ParticlesData<2>::isInBox_(SAMRAI::hier::Box const& box, Particle<2> const& particle)
+bool ParticlesData<2>::isInBox_(SAMRAI::hier::Box const& box, Particle<2> const& particle) const
 {
     auto const& iCell = particle.iCell;
 
@@ -247,7 +252,7 @@ bool ParticlesData<2>::isInBox_(SAMRAI::hier::Box const& box, Particle<2> const&
 }
 
 template<>
-bool ParticlesData<3>::isInBox_(SAMRAI::hier::Box const& box, Particle<3> const& particle)
+bool ParticlesData<3>::isInBox_(SAMRAI::hier::Box const& box, Particle<3> const& particle) const
 {
     auto const& iCell = particle.iCell;
 
@@ -269,19 +274,22 @@ bool ParticlesData<3>::isInBox_(SAMRAI::hier::Box const& box, Particle<3> const&
 }
 
 template<>
-void ParticlesData<1>::shiftParticle_(SAMRAI::hier::IntVector const& shift, Particle<1>& particle)
+void ParticlesData<1>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
+                                      Particle<1>& particle) const
 {
     particle.iCell[0] += shift[0];
 }
 
 template<>
-void ParticlesData<2>::shiftParticle_(SAMRAI::hier::IntVector const& shift, Particle<2>& particle)
+void ParticlesData<2>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
+                                      Particle<2>& particle) const
 {
     particle.iCell[0] += shift[0];
     particle.iCell[1] += shift[1];
 }
 template<>
-void ParticlesData<3>::shiftParticle_(SAMRAI::hier::IntVector const& shift, Particle<3>& particle)
+void ParticlesData<3>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
+                                      Particle<3>& particle) const
 {
     particle.iCell[0] += shift[0];
     particle.iCell[1] += shift[1];
