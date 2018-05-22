@@ -135,13 +135,95 @@ public:
     virtual void packStream(SAMRAI::tbox::MessageStream& stream,
                             SAMRAI::hier::BoxOverlap const& overlap) const final
     {
-        throw std::runtime_error("Not Implemented Yet");
+        SAMRAI::pdat::CellOverlap const* pOverlap{
+            dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
+
+        TBOX_ASSERT(pOverlap != nullptr);
+
+        std::vector<Particle<dim>> specie;
+
+        if (pOverlap->isOverlapEmpty())
+        {
+            constexpr std::size_t zero = 0;
+            stream << zero;
+        }
+        else
+        {
+            SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+            if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
+            {
+                SAMRAI::hier::BoxContainer const& boxContainer
+                    = pOverlap->getDestinationBoxContainer();
+                for (auto const& destinationBox : boxContainer)
+                {
+                    auto const& sourceBox = getBox();
+
+                    SAMRAI::hier::Box transformedSource{sourceBox};
+                    transformation.transform(transformedSource);
+
+                    SAMRAI::hier::Box intersectionBox{transformedSource * destinationBox};
+
+                    pack_(specie, intersectionBox, sourceBox, transformation);
+                }
+            }
+            stream << specie.size();
+            stream.pack(specie.data(), specie.size());
+        }
     }
 
     virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
                               SAMRAI::hier::BoxOverlap const& overlap) final
     {
-        throw std::runtime_error("Not Implemented Yet");
+        SAMRAI::pdat::CellOverlap const* pOverlap
+            = dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap);
+        TBOX_ASSERT(pOverlap != nullptr);
+
+        std::vector<Particle<dim>> specie;
+
+        if (!pOverlap->isOverlapEmpty())
+        {
+            size_t numberParticles = 0;
+            stream >> numberParticles;
+            specie.resize(numberParticles);
+            stream.unpack(specie.data(), numberParticles);
+
+            SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+            if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
+            {
+                SAMRAI::hier::BoxContainer const& boxContainer
+                    = pOverlap->getDestinationBoxContainer();
+                for (auto const& box : boxContainer)
+                {
+                    SAMRAI::hier::Box unpackBox{box};
+                    SAMRAI::hier::Box intersect{unpackBox * getGhostBox() * box};
+
+                    auto const& shift = transformation.getOffset();
+
+
+                    SAMRAI::hier::Box intersectLocalSource{intersect};
+
+                    transformation.inverseTransform(intersectLocalSource);
+
+                    for (auto const& particle : specie)
+                    {
+                        if (isInBox_(intersectLocalSource, particle))
+                        {
+                            auto shiftedParticle{particle};
+                            shiftParticle_(shift, shiftedParticle);
+
+                            if (isInBox_(interiorBox_, shiftedParticle))
+                            {
+                                interior.push_back(std::move(shiftedParticle));
+                            }
+                            else
+                            {
+                                ghost.push_back(std::move(shiftedParticle));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -266,6 +348,32 @@ private:
         }
 
         return numberParticles;
+    }
+
+    void pack_(std::vector<Particle<dim>>& buffer, SAMRAI::hier::Box const& intersectionBox,
+               SAMRAI::hier::Box const& sourceBox,
+               SAMRAI::hier::Transformation const& transformation) const
+    {
+        SAMRAI::hier::Box localSource{intersectionBox};
+
+        transformation.inverseTransform(localSource);
+
+
+        localSource.setLower(localSource.lower() - sourceBox.lower());
+        localSource.setUpper(localSource.upper() - sourceBox.lower());
+
+        auto const& shift = sourceBox.lower();
+
+
+        for (auto const& particle : interior)
+        {
+            if (isInBox_(localSource, particle))
+            {
+                auto shiftedParticle{particle};
+                shiftParticle_(shift, shiftedParticle);
+                buffer.push_back(shiftedParticle);
+            }
+        }
     }
 };
 

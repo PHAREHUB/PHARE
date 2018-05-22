@@ -65,7 +65,7 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{15}};
+    particle1.iCell = {{5}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -96,7 +96,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{15}};
+    particle1.iCell = {{5}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -128,7 +128,7 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{14}};
+    particle1.iCell = {{4}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -154,7 +154,7 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{15}};
+    particle1.iCell = {{5}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -180,7 +180,7 @@ TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{15}};
+    particle1.iCell = {{5}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
