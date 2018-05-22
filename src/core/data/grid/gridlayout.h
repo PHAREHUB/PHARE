@@ -11,9 +11,9 @@
 #include "gridlayoutdefs.h"
 #include "hybrid/hybrid_quantities.h"
 #include "utilities/constants.h"
+#include "utilities/index/index.h"
 #include "utilities/point/point.h"
 #include "utilities/types.h"
-
 
 
 namespace PHARE
@@ -61,7 +61,7 @@ public:
     std::array<std::array<uint32, dimension>, 2> physicalEndIndexTable_;
     std::array<std::array<uint32, dimension>, 2> ghostEndIndexTable_;
 
-    std::array<double, dimension> odxdydz_;
+    std::array<double, dimension> inverseMeshSize_;
 
     GridLayout(std::array<double, dimension> const& meshSize,
                std::array<uint32, dimension> const& nbrCells,
@@ -73,6 +73,15 @@ public:
         , physicalEndIndexTable_{initPhysicalEnd()}
         , ghostEndIndexTable_{initGhostEnd()}
     {
+        inverseMeshSize_[0] = 1. / meshSize_[0];
+        if constexpr (dimension > 1)
+        {
+            inverseMeshSize_[1] = 1. / meshSize_[1];
+            if constexpr (dimension > 2)
+            {
+                inverseMeshSize_[2] = 1. / meshSize_[2];
+            }
+        }
     }
 
     auto initPhysicalStart()
@@ -202,11 +211,11 @@ public:
 
     double inverseMeshSize(Direction direction) const noexcept
     {
-        return odxdydz_[static_cast<uint32>(direction)];
+        return inverseMeshSize_[static_cast<uint32>(direction)];
     }
 
 
-    std::array<double, dimension> inverseMeshSize() const noexcept { return odxdydz_; }
+    std::array<double, dimension> inverseMeshSize() const noexcept { return inverseMeshSize_; }
 
 
     std::array<uint32, dimension> nbrCells() const { return nbrPhysicalCells_; }
@@ -671,6 +680,159 @@ public:
         QtyCentering newCentering = changeCentering(hybridQtyCentering[iField][idir]);
 
         return newCentering;
+    }
+
+
+    constexpr auto nextPrimal(int dualIndex)
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return dualIndex + 1;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return dualIndex;
+        }
+    }
+
+    constexpr auto prevPrimal(int dualIndex)
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return dualIndex;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return dualIndex - 1;
+        }
+    }
+
+
+
+    constexpr auto nextDual(int primalIndex)
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return primalIndex;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return primalIndex + 1;
+        }
+    }
+
+
+    constexpr auto prevDual(int primalIndex)
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return primalIndex;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return primalIndex - 1;
+        }
+    }
+
+
+    template<typename Field, typename DirectionTag>
+    auto deriv(Field const& operand, MeshIndex<Field::dimension> index, DirectionTag)
+    {
+        constexpr auto fieldCentering = centering(operand.physicalQuantity());
+
+        if constexpr (Field::dimension == 1)
+        {
+            if constexpr (fieldCentering[0] == QtyCentering::dual)
+            {
+                return inverseMeshSize_[0] * operand(nextPrimal(index.i))
+                       - operand(prevPrimal(index.i));
+            }
+
+            else if constexpr (fieldCentering[0] == QtyCentering::primal)
+            {
+                return inverseMeshSize_[0] * operand(nextDual(index.i))
+                       - operand(prevDual(index.i));
+            }
+        }
+        if constexpr (Field::dimension == 2)
+        {
+            if constexpr (DirectionTag::direction == Direction::X)
+            {
+                if constexpr (fieldCentering[0] == QtyCentering::dual)
+                {
+                    return inverseMeshSize_[0] * operand(index.i, nextPrimal(index.j))
+                           - operand(prevPrimal(index.j));
+                }
+
+                else if constexpr (fieldCentering[0] == QtyCentering::primal)
+                {
+                    return inverseMeshSize_[0] * operand(index.i, nextDual(index.j))
+                           - operand(index.i, prevDual(index.j));
+                }
+            }
+            else if constexpr (DirectionTag::direction == Direction::Y)
+            {
+                if constexpr (fieldCentering[1] == QtyCentering::dual)
+                {
+                    return inverseMeshSize_[1] * operand(index.i, nextPrimal(index.j))
+                           - operand(index.i, prevPrimal(index.j));
+                }
+
+                else if constexpr (fieldCentering[1] == QtyCentering::primal)
+                {
+                    return inverseMeshSize_[1] * operand(index.i, nextDual(index.j))
+                           - operand(prevDual(index.j));
+                }
+            }
+        }
+
+
+        if constexpr (Field::dimension == 3)
+        {
+            if constexpr (DirectionTag::direction == Direction::X)
+            {
+                if constexpr (fieldCentering[0] == QtyCentering::dual)
+                {
+                    return inverseMeshSize_[0] * operand(nextPrimal(index.i), index.j, index.k)
+                           - operand(prevPrimal(index.i), index.j, index.k);
+                }
+
+                else if constexpr (fieldCentering[0] == QtyCentering::primal)
+                {
+                    return inverseMeshSize_[0] * operand(nextDual(index.i), index.j, index.k)
+                           - operand(prevDual(index.i), index.j, index.k);
+                }
+            }
+            else if constexpr (DirectionTag::direction == Direction::Y)
+            {
+                if constexpr (fieldCentering[1] == QtyCentering::dual)
+                {
+                    return inverseMeshSize_[1] * operand(index.i, nextPrimal(index.j), index.k)
+                           - operand(index.i, prevPrimal(index.j), index.k);
+                }
+
+                else if constexpr (fieldCentering[1] == QtyCentering::primal)
+                {
+                    return inverseMeshSize_[1] * operand(index.i, nextDual(index.j), index.k)
+                           - operand(index.i, prevDual(index.j), index.k);
+                }
+            }
+
+            else if constexpr (DirectionTag::direction == Direction::Z)
+            {
+                if constexpr (fieldCentering[2] == QtyCentering::dual)
+                {
+                    return inverseMeshSize_[2] * operand(index.i, index.j, nextPrimal(index.k))
+                           - operand(index.i, index.j, prevPrimal(index.k));
+                }
+
+                else if constexpr (fieldCentering[2] == QtyCentering::primal)
+                {
+                    return inverseMeshSize_[2] * operand(index.i, index.j, nextDual(index.k))
+                           - operand(index.i, index.j, prevDual(index.i));
+                }
+            } // 3D directionZ
+        }     // 3D
     }
 
 

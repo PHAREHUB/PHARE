@@ -1,26 +1,25 @@
 #include "gridlayout_deriv.h"
 #include "gridlayout_params.h"
 #include "gridlayout_test.h"
-/*
-namespace PHARE
+
+
+#include "gridlayout_deriv.h"
+
+TEST_F(a1DDerivative, DXBY1D)
 {
-using GridLayoutTestYee1D = GridLayoutTest<Layout::Yee, 1, GridLayoutDerivParam>;
+    auto layout        = GridLayout<GridLayoutImplYee<1, 1>>{{{0.1}}, {{50}}, Point<double, 1>{0.}};
+    auto expDerValue   = read("dxBy_interpOrder_1.txt");
+    auto psi_d         = layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto pei_d         = layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    constexpr auto dir = Direction::X;
 
-using GridLayoutDeriv1D = GridLayoutTestYee1D;
-
-
-TEST_P(GridLayoutDeriv1D, DerivIsOK)
-{
-    for (std::size_t ix = 0; ix < param.expectedDeriv.size(); ++ix)
+    auto centering = layout.centering(By.physicalQuantity());
+    if (centering[0] == QtyCentering::dual)
     {
-        auto const& index = param.iCellDeriv[ix];
-        EXPECT_DOUBLE_EQ((*param.derivedField)(index[0]), param.expectedDeriv[ix]);
+        for (auto ix = psi_d; ix <= pei_d; ++ix)
+        {
+            auto localDerivative = layout.deriv(By, make_index(ix), DirectionTag<Direction::X>{});
+            EXPECT_DOUBLE_EQ(expDerValue[ix], localDerivative);
+        }
     }
 }
-
-
-INSTANTIATE_TEST_CASE_P(DerivTest, GridLayoutDeriv1D,
-                        ::testing::ValuesIn(createDerivParam<Layout::Yee, 1>()));
-
-} // namespace PHARE
-*/

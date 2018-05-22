@@ -76,6 +76,7 @@ public:
     DataType const& operator()(uint32_t i) const { return this->data_[i]; }
 
     static const int dimension = 1;
+    using type                 = DataType;
 
 private:
     uint32_t nx_ = 0;
@@ -120,6 +121,7 @@ public:
     DataType const& operator()(uint32_t i, uint32_t j) const { return this->data_[linearIt(i, j)]; }
 
     static const int dimension = 2;
+    using type                 = DataType;
 
 private:
     int constexpr linearIt(int i, int j) const { return j + ny_ * i; }
@@ -172,6 +174,7 @@ public:
     }
 
     static const int dimension = 3;
+    using type                 = DataType;
 
 private:
     int constexpr linearIt(uint32_t i, uint32_t j, uint32_t k) const

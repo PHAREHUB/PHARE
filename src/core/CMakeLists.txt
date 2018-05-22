@@ -33,6 +33,7 @@ set( SOURCES_INC
 
 set( SOURCES_CPP
      data/ndarray/ndarray_vector.cpp
+     utilities/index/index.cpp
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})

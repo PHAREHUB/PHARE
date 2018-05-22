@@ -48,7 +48,10 @@ public:
 
     std::string name() const { return name_; }
 
-    PhysicalQuantity physicalQuantity() const { return qty_; }
+    constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
+
+    using type = typename NdArrayImpl::type;
+    static constexpr int dimension{NdArrayImpl::dimension};
 
 private:
     std::string name_{"No Name"};

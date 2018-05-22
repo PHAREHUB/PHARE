@@ -11,6 +11,30 @@ namespace PHARE
 {
 enum class Direction { X, Y, Z };
 
+template<Direction value>
+struct DirectionTag
+{
+};
+
+template<>
+struct DirectionTag<Direction::X>
+{
+    static const auto direction = Direction::X;
+};
+
+template<>
+struct DirectionTag<Direction::Y>
+{
+    static const auto direction = Direction::X;
+};
+
+template<>
+struct DirectionTag<Direction::Z>
+{
+    static const auto direction = Direction::X;
+};
+
+
 enum class QtyCentering { primal, dual };
 
 

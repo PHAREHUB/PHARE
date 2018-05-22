@@ -5,14 +5,14 @@ import gridIndexing
 import cellCenteredCoordinates
 import fieldNodeCoordinates
 import test_linear_combinaisons_yee
-import deriv
+import test_deriv
 
 def main():
     allocSizes.main('./')
     gridIndexing.main('./')
     cellCenteredCoordinates.main('./')
     fieldNodeCoordinates.main('./')
-    deriv.main('./')
+    test_deriv.main('./')
     test_linear_combinaisons_yee.main("./")
 
 
