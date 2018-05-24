@@ -6,6 +6,7 @@
 
 #include "data/field/field.h"
 #include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "gridlayout_base_params.h"
 #include "gridlayout_params.h"
 #include "gridlayout_utilities.h"
@@ -27,19 +28,22 @@ std::vector<double> read(std::string filename)
 
 
 
-/*
+template<typename GridLayoutImpl>
 class a1DDerivative : public ::testing::Test
 {
 protected:
+    GridLayout<GridLayoutImpl> layout;
     Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> By;
 
 public:
     a1DDerivative()
-        : By{"By", PHARE::HybridQuantity::Scalar::By, 50}
+        : layout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+        , By{"By", PHARE::HybridQuantity::Scalar::By,
+             layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
     {
     }
 };
-*/
+
 
 
 

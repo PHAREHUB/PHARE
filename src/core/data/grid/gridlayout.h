@@ -759,11 +759,10 @@ public:
 
 
 
-#if 0
     template<typename Field, typename DirectionTag>
     auto deriv(Field const& operand, MeshIndex<Field::dimension> index, DirectionTag)
     {
-        constexpr auto fieldCentering = centering(operand.physicalQuantity());
+        auto fieldCentering = centering(operand.physicalQuantity());
 
         if constexpr (Field::dimension == 1)
         {
@@ -811,7 +810,7 @@ public:
             }
         }
     }
-#endif
+
 
 
     auto static constexpr momentsToEx() { return GridLayoutImpl::momentsToEx(); }
