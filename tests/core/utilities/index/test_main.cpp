@@ -28,9 +28,9 @@ TEST(AnIndex, isZerobyDefault)
 
 TEST(AnIndex, canBeConstructedWithMakeIndex)
 {
-    auto idx1 = make_index(10, QtyCentering::dual);
-    auto idx2 = make_index(10, 11, QtyCentering::dual);
-    auto idx3 = make_index(10, 11, 12, QtyCentering::dual);
+    auto idx1 = make_index(10);
+    auto idx2 = make_index(10, 11);
+    auto idx3 = make_index(10, 11, 12);
 
     EXPECT_EQ(10, idx1.i);
 

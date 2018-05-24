@@ -35,7 +35,7 @@ struct DirectionTag<Direction::Z>
 };
 
 
-enum class QtyCentering { primal, dual };
+enum class QtyCentering { primal = 0, dual = 1 };
 
 
 template<std::size_t dim>

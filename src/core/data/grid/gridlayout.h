@@ -45,9 +45,61 @@ private:
     static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
 
+
+
+    constexpr static auto nextPrimal_()
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return 0;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return 1;
+        }
+    }
+
+    constexpr static auto prevPrimal_()
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return -1;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return 0;
+        }
+    }
+
+
+
+    constexpr static auto nextDual_()
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return 1;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return 0;
+        }
+    }
+
+
+    constexpr static auto prevDual_()
+    {
+        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
+        {
+            return 0;
+        }
+        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
+        {
+            return -1;
+        }
+    }
+
+
 public:
-    /* uint32 static constexpr nbdims_{GridLayoutImpl::getDimensions()}; */
-    // uint32 constexpr static nbdims_{dim};
     std::array<double, dimension> meshSize_;
     Point<double, dimension> origin_;
     std::array<uint32, dimension> nbrPhysicalCells_;
@@ -60,6 +112,14 @@ public:
     std::array<std::array<uint32, dimension>, 2> physicalStartIndexTable_;
     std::array<std::array<uint32, dimension>, 2> physicalEndIndexTable_;
     std::array<std::array<uint32, dimension>, 2> ghostEndIndexTable_;
+
+
+    // this constexpr initialization only works if primal==0 and dual==1
+    // this is defined in gridlayoutdefs.h don't change it because these
+    // arrays will be accessed with [primal] and [dual] indexes.
+    constexpr static std::array<int, 2> nextIndexTable_{{nextPrimal_(), nextDual_()}};
+    constexpr static std::array<int, 2> prevIndexTable_{{prevPrimal_(), prevDual_()}};
+
 
     std::array<double, dimension> inverseMeshSize_;
 
@@ -83,6 +143,8 @@ public:
             }
         }
     }
+
+
 
     auto initPhysicalStart()
     {
@@ -244,7 +306,7 @@ public:
      */
     template<std::size_t order                         = interp_order,
              std::enable_if_t<order == 1, dummy::type> = dummy::value>
-    uint32 constexpr nbrDualGhosts() const
+    uint32 static constexpr nbrDualGhosts()
     {
         /* for first order Interpolation, there is no primal ghost node neeeded
            for particle/mesh interactions. However one ghost node is required
@@ -256,7 +318,7 @@ public:
 
     template<std::size_t order                         = interp_order,
              std::enable_if_t<order == 1, dummy::type> = dummy::value>
-    uint32 constexpr nbrPrimalGhosts() const
+    uint32 static constexpr nbrPrimalGhosts()
     {
         /* for first order Interpolation, there is no primal ghost node neeeded
            for particle/mesh interactions. However one ghost node is required
@@ -279,7 +341,7 @@ public:
      */
     template<std::size_t order                          = interp_order,
              std::enable_if_t<(order > 1), dummy::type> = dummy::value>
-    uint32 constexpr nbrDualGhosts() const
+    uint32 static constexpr nbrDualGhosts()
     {
         /* for interpolation order larger than 1, there is at least 1 primal ghost
            node so Laplacians can be calculated OK */
@@ -288,12 +350,11 @@ public:
 
     template<std::size_t order                          = interp_order,
              std::enable_if_t<(order > 1), dummy::type> = dummy::value>
-    uint32 constexpr nbrPrimalGhosts() const
+    uint32 static constexpr nbrPrimalGhosts()
     {
         /* for interpolation order larger than 1, there is at least 1 primal ghost
            node so Laplacians can be calculated OK */
         return static_cast<uint32>(interp_order / 2.);
-        ;
     }
 
 
@@ -520,7 +581,7 @@ public:
      * @param centering QtyCentering::primal or QtyCentering::dual
      * @return the number of ghost nodes on each side of the mesh for a given centering
      */
-    uint32 constexpr nbrGhosts(QtyCentering centering) const
+    uint32 static nbrGhosts(QtyCentering centering)
     {
         uint32 nbrGhosts = nbrPrimalGhosts();
 
@@ -683,58 +744,22 @@ public:
     }
 
 
-    constexpr auto nextPrimal(int dualIndex)
+
+
+    auto static nextIndex(QtyCentering centering, uint32 i)
     {
-        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
-        {
-            return dualIndex + 1;
-        }
-        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
-        {
-            return dualIndex;
-        }
+        return i + nextIndexTable_[centering2int(centering)];
     }
 
-    constexpr auto prevPrimal(int dualIndex)
+
+    auto static prevIndex(QtyCentering centering, uint32 i)
     {
-        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
-        {
-            return dualIndex;
-        }
-        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
-        {
-            return dualIndex - 1;
-        }
+        return i + prevIndexTable_[centering2int(centering)];
     }
 
 
 
-    constexpr auto nextDual(int primalIndex)
-    {
-        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
-        {
-            return primalIndex;
-        }
-        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
-        {
-            return primalIndex + 1;
-        }
-    }
-
-
-    constexpr auto prevDual(int primalIndex)
-    {
-        if constexpr (nbrDualGhosts() > nbrPrimalGhosts())
-        {
-            return primalIndex;
-        }
-        else if constexpr (nbrDualGhosts() == nbrPrimalGhosts())
-        {
-            return primalIndex - 1;
-        }
-    }
-
-
+#if 0
     template<typename Field, typename DirectionTag>
     auto deriv(Field const& operand, MeshIndex<Field::dimension> index, DirectionTag)
     {
@@ -742,99 +767,51 @@ public:
 
         if constexpr (Field::dimension == 1)
         {
-            if constexpr (fieldCentering[0] == QtyCentering::dual)
-            {
-                return inverseMeshSize_[0] * operand(nextPrimal(index.i))
-                       - operand(prevPrimal(index.i));
-            }
-
-            else if constexpr (fieldCentering[0] == QtyCentering::primal)
-            {
-                return inverseMeshSize_[0] * operand(nextDual(index.i))
-                       - operand(prevDual(index.i));
-            }
+            return inverseMeshSize_[0]
+                   * (operand(nextIndex(fieldCentering[0], index.i))
+                      - operand(prevIndex(fieldCentering[0], index.i)));
         }
+
         if constexpr (Field::dimension == 2)
         {
             if constexpr (DirectionTag::direction == Direction::X)
             {
-                if constexpr (fieldCentering[0] == QtyCentering::dual)
-                {
-                    return inverseMeshSize_[0] * operand(index.i, nextPrimal(index.j))
-                           - operand(prevPrimal(index.j));
-                }
-
-                else if constexpr (fieldCentering[0] == QtyCentering::primal)
-                {
-                    return inverseMeshSize_[0] * operand(index.i, nextDual(index.j))
-                           - operand(index.i, prevDual(index.j));
-                }
+                auto next = operand(nextIndex(fieldCentering[0], index.i), index.j);
+                auto prev = operand(prevIndex(fieldCentering[0], index.i), index.j);
+                return inverseMeshSize_[0] * (next - prev);
             }
-            else if constexpr (DirectionTag::direction == Direction::Y)
-            {
-                if constexpr (fieldCentering[1] == QtyCentering::dual)
-                {
-                    return inverseMeshSize_[1] * operand(index.i, nextPrimal(index.j))
-                           - operand(index.i, prevPrimal(index.j));
-                }
 
-                else if constexpr (fieldCentering[1] == QtyCentering::primal)
-                {
-                    return inverseMeshSize_[1] * operand(index.i, nextDual(index.j))
-                           - operand(prevDual(index.j));
-                }
+            if constexpr (DirectionTag::direction == Direction::Y)
+            {
+                auto next = operand(index.i, nextIndex(fieldCentering[1], index.j));
+                auto prev = operand(index.i, prevIndex(fieldCentering[1], index.j));
+                return inverseMeshSize_[1] * (next - prev);
             }
         }
-
-
         if constexpr (Field::dimension == 3)
         {
             if constexpr (DirectionTag::direction == Direction::X)
             {
-                if constexpr (fieldCentering[0] == QtyCentering::dual)
-                {
-                    return inverseMeshSize_[0] * operand(nextPrimal(index.i), index.j, index.k)
-                           - operand(prevPrimal(index.i), index.j, index.k);
-                }
-
-                else if constexpr (fieldCentering[0] == QtyCentering::primal)
-                {
-                    return inverseMeshSize_[0] * operand(nextDual(index.i), index.j, index.k)
-                           - operand(prevDual(index.i), index.j, index.k);
-                }
-            }
-            else if constexpr (DirectionTag::direction == Direction::Y)
-            {
-                if constexpr (fieldCentering[1] == QtyCentering::dual)
-                {
-                    return inverseMeshSize_[1] * operand(index.i, nextPrimal(index.j), index.k)
-                           - operand(index.i, prevPrimal(index.j), index.k);
-                }
-
-                else if constexpr (fieldCentering[1] == QtyCentering::primal)
-                {
-                    return inverseMeshSize_[1] * operand(index.i, nextDual(index.j), index.k)
-                           - operand(index.i, prevDual(index.j), index.k);
-                }
+                auto next = operand(nextIndex(fieldCentering[0], index.i), index.j, index.k);
+                auto prev = operand(prevIndex(fieldCentering[0], index.i), index.j, index.k);
+                return inverseMeshSize_[0] * (next - prev);
             }
 
-            else if constexpr (DirectionTag::direction == Direction::Z)
+            if constexpr (DirectionTag::direction == Direction::Y)
             {
-                if constexpr (fieldCentering[2] == QtyCentering::dual)
-                {
-                    return inverseMeshSize_[2] * operand(index.i, index.j, nextPrimal(index.k))
-                           - operand(index.i, index.j, prevPrimal(index.k));
-                }
-
-                else if constexpr (fieldCentering[2] == QtyCentering::primal)
-                {
-                    return inverseMeshSize_[2] * operand(index.i, index.j, nextDual(index.k))
-                           - operand(index.i, index.j, prevDual(index.i));
-                }
-            } // 3D directionZ
-        }     // 3D
+                auto next = operand(index.i, nextIndex(fieldCentering[1], index.j), index.k);
+                auto prev = operand(index.i, prevIndex(fieldCentering[1], index.j), index.k);
+                return inverseMeshSize_[1] * (next - prev);
+            }
+            if constexpr (DirectionTag::direction == Direction::Z)
+            {
+                auto next = operand(index.i, index.j, nextIndex(fieldCentering[2], index.k));
+                auto prev = operand(index.i, index.j, prevIndex(fieldCentering[2], index.k));
+                return inverseMeshSize_[2] * (next - prev);
+            }
+        }
     }
-
+#endif
 
 
     auto static constexpr momentsToEx() { return GridLayoutImpl::momentsToEx(); }
