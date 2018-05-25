@@ -746,15 +746,15 @@ public:
 
 
 
-    auto static nextIndex(QtyCentering centering, uint32 i)
+    auto static nextIndex(QtyCentering derivativeCntering, uint32 indexCenter)
     {
-        return i + nextIndexTable_[centering2int(centering)];
+        return indexCenter + nextIndexTable_[centering2int(derivativeCntering)];
     }
 
 
-    auto static prevIndex(QtyCentering centering, uint32 i)
+    auto static prevIndex(QtyCentering derivativeCentering, uint32 indexCenter)
     {
-        return i + prevIndexTable_[centering2int(centering)];
+        return indexCenter + prevIndexTable_[centering2int(derivativeCentering)];
     }
 
 
@@ -766,24 +766,31 @@ public:
 
         if constexpr (Field::dimension == 1)
         {
-            return inverseMeshSize_[0]
-                   * (operand(nextIndex(fieldCentering[0], index.i))
-                      - operand(prevIndex(fieldCentering[0], index.i)));
+            // nextIndex(nextIndexCentering, localFieldIndex)
+            // auto derivativeCentering = changeCentering(fieldCentering[0]);
+            auto ip  = nextIndex(fieldCentering[0], index.i);
+            auto im  = prevIndex(fieldCentering[0], index.i);
+            auto der = inverseMeshSize_[0]
+                       * (operand(nextIndex(fieldCentering[0], index.i))
+                          - operand(prevIndex(fieldCentering[0], index.i)));
+            return der;
         }
 
         if constexpr (Field::dimension == 2)
         {
             if constexpr (DirectionTag::direction == Direction::X)
             {
-                auto next = operand(nextIndex(fieldCentering[0], index.i), index.j);
-                auto prev = operand(prevIndex(fieldCentering[0], index.i), index.j);
+                auto derivativeCentering = changeCentering(fieldCentering[0]);
+                auto next = operand(nextIndex(derivativeCentering, index.i), index.j);
+                auto prev = operand(prevIndex(derivativeCentering, index.i), index.j);
                 return inverseMeshSize_[0] * (next - prev);
             }
 
             if constexpr (DirectionTag::direction == Direction::Y)
             {
-                auto next = operand(index.i, nextIndex(fieldCentering[1], index.j));
-                auto prev = operand(index.i, prevIndex(fieldCentering[1], index.j));
+                auto derivativeCentering = changeCentering(fieldCentering[1]);
+                auto next = operand(index.i, nextIndex(derivativeCentering, index.j));
+                auto prev = operand(index.i, prevIndex(derivativeCentering, index.j));
                 return inverseMeshSize_[1] * (next - prev);
             }
         }
@@ -791,21 +798,24 @@ public:
         {
             if constexpr (DirectionTag::direction == Direction::X)
             {
-                auto next = operand(nextIndex(fieldCentering[0], index.i), index.j, index.k);
-                auto prev = operand(prevIndex(fieldCentering[0], index.i), index.j, index.k);
+                auto derivativeCentering = changeCentering(fieldCentering[0]);
+                auto next = operand(nextIndex(derivativeCentering, index.i), index.j, index.k);
+                auto prev = operand(prevIndex(derivativeCentering, index.i), index.j, index.k);
                 return inverseMeshSize_[0] * (next - prev);
             }
 
             if constexpr (DirectionTag::direction == Direction::Y)
             {
-                auto next = operand(index.i, nextIndex(fieldCentering[1], index.j), index.k);
-                auto prev = operand(index.i, prevIndex(fieldCentering[1], index.j), index.k);
+                auto derivativeCentering = changeCentering(fieldCentering[1]);
+                auto next = operand(index.i, nextIndex(derivativeCentering, index.j), index.k);
+                auto prev = operand(index.i, prevIndex(derivativeCentering, index.j), index.k);
                 return inverseMeshSize_[1] * (next - prev);
             }
             if constexpr (DirectionTag::direction == Direction::Z)
             {
-                auto next = operand(index.i, index.j, nextIndex(fieldCentering[2], index.k));
-                auto prev = operand(index.i, index.j, prevIndex(fieldCentering[2], index.k));
+                auto derivativeCentering = changeCentering(fieldCentering[2]);
+                auto next = operand(index.i, index.j, nextIndex(derivativeCentering, index.k));
+                auto prev = operand(index.i, index.j, prevIndex(derivativeCentering, index.k));
                 return inverseMeshSize_[2] * (next - prev);
             }
         }

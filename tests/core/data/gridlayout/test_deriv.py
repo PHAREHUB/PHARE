@@ -61,7 +61,6 @@ def test_deriv1D(path):
         np.savetxt(os.path.join(path,filename_dxBy), dxBy, delimiter=" ")
         np.savetxt(os.path.join(path,filename_dxEz), dxEz, delimiter=" ")
 
-        return By,Ez,dxBy, dxEz, x_primal, x_dual, psi_d, pei_d, psi_p, pei_p
 
 
 def main(path='./'):

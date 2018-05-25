@@ -33,13 +33,17 @@ class a1DDerivative : public ::testing::Test
 {
 protected:
     GridLayout<GridLayoutImpl> layout;
+    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
     Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> By;
+    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Ez;
 
 public:
     a1DDerivative()
-        : layout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+        : layout{{{0.1}}, {50}, Point<double, 1>{0.}}
         , By{"By", PHARE::HybridQuantity::Scalar::By,
              layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
+        , Ez{"Ez", PHARE::HybridQuantity::Scalar::Ez,
+             layout.allocSize(PHARE::HybridQuantity::Scalar::Ez)}
     {
     }
 };
