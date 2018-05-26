@@ -503,7 +503,6 @@ public:
 
 
 
-
     /**
      * @brief GridLayout<GridLayoutImpl::dim>::allocSize_
      * @return An std::array<uint32, dim> object, containing the size to which allocate arrays
@@ -868,7 +867,6 @@ private:
 
         return nbrNodes;
     }
-
 
 
     auto initPhysicalStart_()
