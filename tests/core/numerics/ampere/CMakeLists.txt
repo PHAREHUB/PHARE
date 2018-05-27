@@ -18,8 +18,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   gmock)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
-#add_custom_command(TARGET test-ampere
-#                   POST_BUILD
-#                   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_ampere.py ${CMAKE_CURRENT_BINARY_DIR})
+add_custom_command(TARGET test-ampere
+                   POST_BUILD
+                   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_ampere.py ${CMAKE_CURRENT_BINARY_DIR})
 
 include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

@@ -56,10 +56,11 @@ public:
         auto &Jy = J.getComponent(Component::Y);
         auto &Jz = J.getComponent(Component::Z);
 
-        auto const &Bx = J.getComponent(Component::X);
-        auto const &By = J.getComponent(Component::Y);
-        auto const &Bz = J.getComponent(Component::Z);
+        auto const &Bx = B.getComponent(Component::X);
+        auto const &By = B.getComponent(Component::Y);
+        auto const &Bz = B.getComponent(Component::Z);
 
+        auto q = Jx.physicalQuantity();
         // Direction should not be in gridlayoutdef but i utilities somehow
         auto start = this->layout_->physicalStartIndex(Jy, Direction::X);
         auto end   = this->layout_->physicalEndIndex(Jy, Direction::X);
