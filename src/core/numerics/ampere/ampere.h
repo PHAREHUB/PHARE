@@ -10,12 +10,26 @@
 
 namespace PHARE
 {
+/** @brief Actual implementation of the Ampere equation
+ *
+ * This implementation is used by the Ampere object to calculate the current density J.
+ * It is templated by the layout and the dimension so specialized template actually do the job
+ *
+ */
 template<typename GridLayout, std::size_t dim>
 class AmpereImpl
 {
 };
 
 
+/** @brief Base class for AmpereImpl specialized classes
+ * to factorize the code that deals with the GridLayout.
+ *
+ * The purpose of this class is to store the GridLayout
+ * pointer of Ampere, and propose the interface to check
+ * whether it's been set or not.
+ *
+ */
 template<typename GridLayout>
 class AmpereImplInternals
 {
@@ -23,8 +37,15 @@ protected:
     GridLayout *layout_{nullptr};
 
 public:
+    /**
+     * @brief hasLayoutSet returns true if the Layout has been set
+     */
     bool hasLayoutSet() const { return (layout_ == nullptr) ? false : true; }
 
+
+    /**
+     * @brief setLayout is used to give Ampere a pointer to a gridlayout
+     */
     void setLayout(GridLayout *layout)
     {
         if (layout_ != nullptr)
@@ -40,6 +61,8 @@ public:
 };
 
 
+/** @brief 1D specialization of the ampere equation solver implementation
+ */
 template<typename GridLayout>
 class AmpereImpl<GridLayout, 1> : public AmpereImplInternals<GridLayout>
 {
