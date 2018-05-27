@@ -124,8 +124,31 @@ public:
 
 TEST_F(Ampere1DTest, ampere1DCalculatedOk)
 {
+    auto filename_jy = std::string{"jy_yee_1D_order1.txt"};
+    auto filename_jz = std::string{"jz_yee_1D_order1.txt"};
+    auto expectedJy  = read(filename_jy);
+    auto expectedJz  = read(filename_jz);
+
+    auto gei_d = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+
+    for (auto ix = 0u; ix <= gei_d; ++ix)
+    {
+        auto point = this->layout.fieldNodeCoordinates(By, Point<double, 1>{0.}, ix);
+        By(ix)     = std::cos(2 * M_PI / 5. * point[0]);
+        Bz(ix)     = std::sin(2 * M_PI / 5. * point[0]);
+    }
+
     ampere.setLayout(&layout);
     ampere(B, J);
+
+    auto psi_p = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto pei_p = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+
+    for (auto ix = psi_p; ix <= pei_p; ++ix)
+    {
+        EXPECT_THAT(Jy(ix), ::testing::DoubleNear((expectedJy[ix]), 1e-12));
+        EXPECT_THAT(Jz(ix), ::testing::DoubleNear((expectedJz[ix]), 1e-12));
+    }
 }
 
 
