@@ -5,7 +5,10 @@ set( SOURCES_INC
      data/particles/particles_data.h
      data/particles/particles_data_factory.h
      data/particles/particles_variable.h
+     data/coarsening/field_coarsen.h
+     data/coarsening/field_coarsen.cpp
      data/field/field_data.h
+     data/field/field_data_coarsen.h
      data/field/field_data_factory.h
      data/field/field_geometry.h
      data/field/field_overlap.h

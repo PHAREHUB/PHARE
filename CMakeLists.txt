@@ -162,6 +162,7 @@ if (test)
   endif()
 
 
+  add_subdirectory(tests/amr/data/coarsen)
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/copy_pack)
   add_subdirectory(tests/amr/data/field/geometry)

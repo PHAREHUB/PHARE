@@ -1,11 +1,13 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef PHARE_AMR_UTILS_H
+#define PHARE_AMR_UTILS_H
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
 
+#include "utilities/constants.h"
+#include "utilities/point/point.h"
 
 
 namespace PHARE
@@ -51,6 +53,27 @@ SAMRAI::hier::IntVector AMRToLocal(SAMRAI::hier::Box const& referenceAMRBox);
  * local index relative to referenceAMRBox
  */
 SAMRAI::hier::IntVector localToAMR(SAMRAI::hier::Box const& referenceAMRBox);
+
+
+/**
+ * @brief AMRToLocal returns a local index relative to the referenceAMRBox lower bound
+ *
+ */
+template<std::size_t dimension>
+Point<int, dimension> AMRToLocal(Point<int, dimension> index,
+                                 SAMRAI::hier::Box const& referenceAMRBox)
+{
+    index[dirX] = index[dirX] - referenceAMRBox.lower(dirX);
+    if constexpr (dimension > 1)
+    {
+        index[dirY] = index[dirY] - referenceAMRBox.lower(dirY);
+    }
+    if constexpr (dimension > 2)
+    {
+        index[dirZ] = index[dirZ] - referenceAMRBox.lower(dirZ);
+    }
+    return index;
+}
 
 } // namespace PHARE
 

@@ -1,0 +1,187 @@
+#ifndef PHARE_FIELD_DATA_COARSEN_H
+#define PHARE_FIELD_DATA_COARSEN_H
+
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/IntVector.h>
+
+#include "data/coarsening/field_coarsen.h"
+#include "data/field/field_data.h"
+#include "data/field/field_geometry.h"
+#include "utilities/constants.h"
+#include "utilities/point/point.h"
+
+namespace PHARE
+{
+//
+//
+template<typename GridLayoutImpl, typename FieldImpl,
+         typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
+class FieldDataCoarsen : public SAMRAI::hier::CoarsenOperator
+{
+public:
+    static constexpr std::size_t dimension = GridLayoutImpl::dimension;
+
+    explicit FieldDataCoarsen(std::string const& name)
+        : SAMRAI::hier::CoarsenOperator(name)
+    {
+    }
+
+    FieldDataCoarsen()                        = delete;
+    FieldDataCoarsen(FieldDataCoarsen const&) = default;
+    FieldDataCoarsen(FieldDataCoarsen&&)      = default;
+    FieldDataCoarsen& operator=(FieldDataCoarsen const&) = default;
+
+
+    virtual ~FieldDataCoarsen() = default;
+
+
+
+
+    /** @brief return the priority of the operator
+     *  this return 0, meaning that this operator
+     * have the most priority
+     */
+    int getOperatorPriority() const override { return 0; }
+
+
+
+
+    /** @brief Return the stencil width associated with the coarsening operator.
+     *
+     *  The SAMRAI transfer routines guarantee that the source patch will contain
+     * sufficient ghostCell data surrounding the interior to satisfy the stencil
+     * width requirements for each coarsening operator.
+     *
+     */
+    SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
+    {
+        return SAMRAI::hier::IntVector::getOne(dim);
+    }
+
+
+
+
+    /** @brief given a coarseBox, coarse data from the fine patch on the intersection of this box
+     * and the box of the destination (the box of the coarse patch).
+     *
+     * This method will extract fieldData from the two patches, and then
+     * get the Field and GridLayout encapsulated into the fieldData.
+     * With the help of FieldGeometry, transform the coarseBox to the correct index.
+     * After that we can now create FieldCoarsen with the indexAndWeight implementation selected.
+     * Finnaly loop over the indexes in the box, and apply the coarsening defined in FieldCoarsen
+     * operator
+     *
+     */
+    void coarsen(SAMRAI::hier::Patch& coarse, SAMRAI::hier::Patch const& fine,
+                 int const destinationComponent, int const sourceComponent,
+                 SAMRAI::hier::Box const& coarseBox,
+                 SAMRAI::hier::IntVector const& ratio) const override
+    {
+        auto coarseFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+            coarse.getPatchData(destinationComponent));
+        auto const fineFieldData
+            = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl> const>(
+                fine.getPatchData(sourceComponent));
+
+        if (!coarseFieldData || !fineFieldData)
+        {
+            throw std::runtime_error("cannot to FieldData");
+        }
+
+        // We get layout from the fieldData
+        auto const& destinationLayout = coarseFieldData->gridLayout;
+        auto const& sourceLayout      = fineFieldData->gridLayout;
+
+        // We get field from the fieldData
+        auto& destinationField  = coarseFieldData->field;
+        auto const& sourceField = fineFieldData->field;
+
+        // we assume that quantity are the same
+        // note that an assertion will be raised
+        // in coarseIt operator
+        auto const& qty = destinationField.physicalQuantity();
+
+
+        bool const withGhost{true};
+
+        // We get different boxes : destination , source, restrictBoxes
+        // and transform them in the correct indexing.
+        auto destinationBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+            coarse.getBox(), qty, destinationLayout, withGhost);
+
+        auto sourceBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+            fine.getBox(), qty, sourceLayout, withGhost);
+
+        auto restrictBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+            coarseBox, qty, destinationLayout, !withGhost);
+
+        // finnaly we compute the intersection
+        auto intersectionBox = destinationBox * restrictBox;
+
+
+
+
+        // We can now create the coarsening operator
+        CoarseField<dimension> coarseIt{destinationLayout.centering(qty), sourceBox, destinationBox,
+                                        ratio};
+
+        // now we can loop over the intersection box
+
+        Point<int, dimension> lower;
+        Point<int, dimension> upper;
+
+        lower[dirX] = intersectionBox.lower(dirX);
+        upper[dirX] = intersectionBox.upper(dirX);
+
+        if constexpr (dimension > 1)
+        {
+            lower[dirY] = intersectionBox.lower[dirY];
+            upper[dirY] = intersectionBox.upper[dirY];
+        }
+        if constexpr (dimension > 2)
+        {
+            lower[dirZ] = intersectionBox.lower[dirZ];
+            upper[dirZ] = intersectionBox.upper[dirZ];
+        }
+
+        if constexpr (dimension == 1)
+        {
+            for (int iStartX = lower[dirX]; iStartX <= upper[dirX]; ++iStartX)
+            {
+                coarseIt(sourceField, destinationField, {{iStartX}});
+            }
+        }
+        else if constexpr (dimension == 2)
+        {
+            for (int iStartX = lower[dirX]; iStartX <= upper[dirX]; ++iStartX)
+            {
+                for (int iStartY = lower[dirY]; iStartY <= upper[dirY]; ++iStartY)
+                {
+                    coarseIt(sourceField, destinationField, {{iStartX, iStartY}});
+                }
+            }
+        }
+        else if constexpr (dimension == 3)
+        {
+            for (int iStartX = lower[dirX]; iStartX <= upper[dirX]; ++iStartX)
+            {
+                for (int iStartY = lower[dirY]; iStartY <= upper[dirY]; ++iStartY)
+                {
+                    for (int iStartZ = lower[dirZ]; iStartZ <= upper[dirZ]; ++iStartZ)
+
+                    {
+                        coarseIt(sourceField, destinationField, {{iStartX, iStartY, iStartZ}});
+                    }
+                }
+            }
+        }
+    }
+
+
+private:
+};
+} // namespace PHARE
+
+
+#endif
