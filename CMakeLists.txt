@@ -177,6 +177,7 @@ if (test)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/core/numerics/pusher)
   add_subdirectory(tests/core/numerics/ampere)
+  add_subdirectory(tests/core/numerics/faraday)
 
 endif()
 
