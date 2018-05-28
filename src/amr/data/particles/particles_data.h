@@ -111,13 +111,10 @@ public:
     virtual void copy2(SAMRAI::hier::PatchData& destination,
                        SAMRAI::hier::BoxOverlap const& overlap) const final
     {
-        throw std::runtime_error("Not Implemented Yet");
+        throw std::runtime_error("Cannot cast");
     }
 
-    virtual bool canEstimateStreamSizeFromBox() const final
-    {
-        throw std::runtime_error("Not Implemented Yet");
-    }
+    virtual bool canEstimateStreamSizeFromBox() const final { return false; }
 
     virtual size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
     {
