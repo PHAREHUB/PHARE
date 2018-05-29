@@ -44,12 +44,14 @@ struct AParticlesData1D : public testing::Test
         std::make_shared<SAMRAI::pdat::CellGeometry>(patch1.getBox(), ghost)};
 
 
-    SAMRAI::hier::Box srcMask{pDat1.getBox()};
+    SAMRAI::hier::Box srcMask{pDat1.getGhostBox()};
     SAMRAI::hier::Box fillBox{pDat0.getGhostBox()};
 
     bool overwriteInterior{true};
 
-    SAMRAI::hier::Transformation transformation{(domain0.lower() - domain1.upper())};
+    SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(dimension)};
+
+    SAMRAI::hier::Transformation transformation{domain0.lower() - domain1.upper() - oneIndex};
 
 
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
@@ -82,8 +84,8 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
 
     pDat0.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.interior.size(), Eq(1));
-    ASSERT_THAT(pDat0.interior[0].v, Eq(particle1.v));
+    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
+    ASSERT_THAT(pDat0.ghost[0].v, Eq(particle1.v));
 }
 
 TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
@@ -117,8 +119,8 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
     std::array<int, 1> expectediCell{0};
 
 
-    ASSERT_THAT(pDat0.interior.size(), Eq(1));
-    ASSERT_THAT(pDat0.interior[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
+    ASSERT_THAT(pDat0.ghost[0].iCell, Eq(expectediCell));
 }
 
 TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
@@ -128,11 +130,11 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{4}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
-    pDat1.interior.push_back(particle1);
+    pDat1.ghost.push_back(particle1);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -144,7 +146,7 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 
     pDat0.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
+    ASSERT_THAT(pDat0.interior.size(), Eq(1));
 }
 
 TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
@@ -170,8 +172,8 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 
     pDat0.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.interior.size(), Eq(1));
-    ASSERT_THAT(pDat0.interior[0].weight, Eq(particle1.weight));
+    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
+    ASSERT_THAT(pDat0.ghost[0].weight, Eq(particle1.weight));
 }
 TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
 {
@@ -196,8 +198,8 @@ TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
 
     pDat0.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.interior.size(), Eq(1));
-    ASSERT_THAT(pDat0.interior[0].charge, Eq(particle1.charge));
+    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
+    ASSERT_THAT(pDat0.ghost[0].charge, Eq(particle1.charge));
 }
 
 int main(int argc, char **argv)

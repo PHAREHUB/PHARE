@@ -160,7 +160,7 @@ public:
                     = pOverlap->getDestinationBoxContainer();
                 for (auto const& destinationBox : boxContainer)
                 {
-                    auto const& sourceBox = getBox();
+                    auto const& sourceBox = getGhostBox();
 
                     SAMRAI::hier::Box transformedSource{sourceBox};
                     transformation.transform(transformedSource);
@@ -201,26 +201,28 @@ public:
                     SAMRAI::hier::Box unpackBox{box};
                     SAMRAI::hier::Box intersect{unpackBox * getGhostBox() * box};
 
-                    auto const& shift = transformation.getOffset();
-
 
                     SAMRAI::hier::Box intersectLocalSource{intersect};
 
-                    transformation.inverseTransform(intersectLocalSource);
+
+                    auto const& ghostWidth = getGhostCellWidth();
+
 
                     for (auto const& particle : specie)
                     {
                         if (isInBox_(intersectLocalSource, particle))
                         {
                             auto shiftedParticle{particle};
-                            shiftParticle_(shift, shiftedParticle);
+
 
                             if (isInBox_(interiorBox_, shiftedParticle))
                             {
+                                shiftParticle_(ghostWidth, shiftedParticle);
                                 interior.push_back(std::move(shiftedParticle));
                             }
                             else
                             {
+                                shiftParticle_(ghostWidth, shiftedParticle);
                                 ghost.push_back(std::move(shiftedParticle));
                             }
                         }
@@ -378,22 +380,37 @@ private:
     {
         SAMRAI::hier::Box localSource{intersectionBox};
 
+
         transformation.inverseTransform(localSource);
 
-
-        localSource.setLower(localSource.lower() - sourceBox.lower());
-        localSource.setUpper(localSource.upper() - sourceBox.lower());
-
-        auto const& shift = sourceBox.lower();
+        SAMRAI::hier::IntVector shift{transformation.getOffset()};
 
 
-        for (auto const& particle : interior)
+        SAMRAI::hier::IntVector const one{
+            SAMRAI::hier::IntVector::getOne(SAMRAI::tbox::Dimension{dim})};
+
+        SAMRAI::hier::Index const oneIndex{
+            SAMRAI::hier::IntVector::getOne(SAMRAI::tbox::Dimension{dim})};
+
+        localSource.setLower(localSource.lower() - sourceBox.lower() - oneIndex);
+        localSource.setUpper(localSource.upper() - sourceBox.lower() - oneIndex);
+
+        shift += sourceBox.lower();
+        shift += one;
+
+
+        std::array<decltype(interior) const*, 2> particlesArray{&interior, &ghost};
+
+        for (auto const& sourceParticlesArray : particlesArray)
         {
-            if (isInBox_(localSource, particle))
+            for (auto const& particle : *sourceParticlesArray)
             {
-                auto shiftedParticle{particle};
-                shiftParticle_(shift, shiftedParticle);
-                buffer.push_back(shiftedParticle);
+                if (isInBox_(localSource, particle))
+                {
+                    auto shiftedParticle{particle};
+                    shiftParticle_(shift, shiftedParticle);
+                    buffer.push_back(shiftedParticle);
+                }
             }
         }
     }
