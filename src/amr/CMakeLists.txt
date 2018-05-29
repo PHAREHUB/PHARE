@@ -4,6 +4,7 @@ project(phare_amr)
 set( SOURCES_INC
      data/particles/particles_data.h
      data/particles/particles_data_factory.h
+     data/particles/particles_variable.h
      tools/resources_manager.h
      tools/resources_manager_utilities.h
      tools/resources_guards.h
