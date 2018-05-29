@@ -15,27 +15,33 @@
 #include "data/field/field_data.h"
 #include "data/field/field_overlap.h"
 #include "data/field/field_variable.h"
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "utilities/point/point.h"
 
 namespace PHARE
 {
-template<Layout layout, std::size_t dim, std::size_t interpOrder, typename FieldImpl>
+template<typename GridLayoutImpl, typename FieldImpl>
 struct FieldDataTestParam
 {
     FieldDataTestParam(std::string const& name, HybridQuantity::Scalar quantity,
                        SAMRAI::hier::Patch& patch_0, SAMRAI::hier::Patch& patch_1)
-        : field0Variable{name + std::string("_0"), true, quantity}
-        , field1Variable{name + std::string("_1"), true, quantity}
+        : field0Variable{name + std::string("_0"), quantity}
+        , field1Variable{name + std::string("_1"), quantity}
         , field0Factory{field0Variable.getPatchDataFactory()}
         , field1Factory{field1Variable.getPatchDataFactory()}
         , patch0{patch_0}
         , patch1{patch_1}
         , field0Geom{field0Factory->getBoxGeometry(patch0.getBox())}
         , field1Geom{field1Factory->getBoxGeometry(patch1.getBox())}
-        , field0Data{std::dynamic_pointer_cast<FieldData<layout, dim, interpOrder, FieldImpl>>(
+        , field0Data{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
               field0Factory->allocate(patch0))}
-        , field1Data{std::dynamic_pointer_cast<FieldData<layout, dim, interpOrder, FieldImpl>>(
+        , field1Data{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
               field1Factory->allocate(patch1))}
+    {
+        resetValues();
+    }
+    void resetValues()
     {
         auto& field0 = field0Data->field;
         auto& field1 = field1Data->field;
@@ -57,8 +63,8 @@ struct FieldDataTestParam
             field1(ix) = 1.0;
         }
     }
-    FieldVariable<layout, dim, interpOrder, FieldImpl> field0Variable;
-    FieldVariable<layout, dim, interpOrder, FieldImpl> field1Variable;
+    FieldVariable<GridLayoutImpl, FieldImpl> field0Variable;
+    FieldVariable<GridLayoutImpl, FieldImpl> field1Variable;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> field0Factory;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> field1Factory;
 
@@ -68,8 +74,8 @@ struct FieldDataTestParam
     std::shared_ptr<SAMRAI::hier::BoxGeometry> field0Geom;
     std::shared_ptr<SAMRAI::hier::BoxGeometry> field1Geom;
 
-    std::shared_ptr<FieldData<layout, dim, interpOrder, FieldImpl>> field0Data;
-    std::shared_ptr<FieldData<layout, dim, interpOrder, FieldImpl>> field1Data;
+    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> field0Data;
+    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> field1Data;
 };
 
 struct Patches1D
@@ -88,7 +94,7 @@ struct Patches1D
     double patch0_lo{0.};
     double patch0_hi{0.1};
 
-    double patch1_lo{0.1};
+    double patch1_lo{0.05};
     double patch1_hi{0.2};
 
 
@@ -142,7 +148,7 @@ struct AFieldData1DCenteredOnEx : public ::testing::Test
     std::shared_ptr<SAMRAI::pdat::CellData<double>> cell1Data;
     AFieldData1DCenteredOnEx()
     {
-        ghosts[0] = param.field0Data->gridLayout.nbrGhostNodes(
+        ghosts[0] = param.field0Data->gridLayout.nbrGhosts(
             param.field0Data->gridLayout.centering(quantity)[0]);
         cell0Factory = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
         cell1Factory = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
@@ -183,7 +189,7 @@ struct AFieldData1DCenteredOnEy : public ::testing::Test
     std::shared_ptr<SAMRAI::pdat::NodeData<double>> node1Data;
     AFieldData1DCenteredOnEy()
     {
-        ghosts[0] = param.field0Data->gridLayout.nbrGhostNodes(
+        ghosts[0] = param.field0Data->gridLayout.nbrGhosts(
             param.field0Data->gridLayout.centering(quantity)[0]);
         node0Factory = std::make_shared<SAMRAI::pdat::NodeDataFactory<double>>(1, ghosts, true);
         node1Factory = std::make_shared<SAMRAI::pdat::NodeDataFactory<double>>(1, ghosts, true);

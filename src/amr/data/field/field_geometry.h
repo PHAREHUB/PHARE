@@ -3,21 +3,28 @@
 
 #include <SAMRAI/hier/BoxGeometry.h>
 
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "field_overlap.h"
 #include "utilities/types.h"
 
 namespace PHARE
 {
-template<std::size_t dim, typename GridLayout, typename PhysicalQuantity>
+template<typename GridLayoutImpl, typename PhysicalQuantity>
 class FieldGeometry : public SAMRAI::hier::BoxGeometry
 {
 public:
+    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
+    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+
     /** \brief Construct a FieldGeometry on a region, for a specific quantity,
      * with a temporary gridlayout
      */
-    FieldGeometry(SAMRAI::hier::Box const& box, GridLayout layout, PhysicalQuantity qty)
-        : box_{box}
+    FieldGeometry(SAMRAI::hier::Box const& box, GridLayout<GridLayoutImpl> layout,
+                  PhysicalQuantity qty)
+        : box_{toFieldBox(box, qty, layout)}
+        , interiorBox_{toFieldBox(box, qty, layout, false)}
         , layout_{std::move(layout)}
         , quantity_{qty}
     {
@@ -78,7 +85,7 @@ public:
             destinationBox.push_back(fieldBox);
         }
 
-        return std::make_shared<FieldOverlap<dim>>(destinationBox, offset);
+        return std::make_shared<FieldOverlap<dimension>>(destinationBox, offset);
     }
 
 
@@ -91,7 +98,8 @@ public:
      * @withGhost true if we want to include the ghost nodes in the field box.
      */
     static SAMRAI::hier::Box toFieldBox(SAMRAI::hier::Box box, PhysicalQuantity qty,
-                                        GridLayout const& layout, bool withGhost = true)
+                                        GridLayout<GridLayoutImpl> const& layout,
+                                        bool withGhost = true)
     {
         SAMRAI::hier::IntVector lower = box.lower();
         constexpr std::uint32_t dirX{0};
@@ -130,7 +138,7 @@ public:
             box.setLower(dirX, lower[dirX]);
             box.setUpper(dirX, xEnd - xStart + lower[dirX]);
 
-            if (dim > 1)
+            if (dimension > 1)
             {
                 uint32 yStart = layout.physicalStartIndex(qty, Direction::Y);
                 uint32 yEnd   = layout.physicalEndIndex(qty, Direction::Y);
@@ -138,7 +146,7 @@ public:
                 box.setLower(dirY, lower[dirY]);
                 box.setUpper(dirY, yEnd - yStart + lower[dirY]);
             }
-            if (dim > 2)
+            if (dimension > 2)
             {
                 uint32 zStart = layout.physicalStartIndex(qty, Direction::Z);
                 uint32 zEnd   = layout.physicalEndIndex(qty, Direction::Z);
@@ -152,18 +160,18 @@ public:
 
         else
         {
-            auto const& centering = GridLayout::centering(qty);
+            auto const& centering = GridLayout<GridLayoutImpl>::centering(qty);
 
             SAMRAI::hier::IntVector shift(box.getDim());
-            shift[dirX] = layout.nbrGhostNodes(centering[dirX]);
+            shift[dirX] = layout.nbrGhosts(centering[dirX]);
 
-            if (dim > 1)
+            if (dimension > 1)
             {
-                shift[dirY] = layout.nbrGhostNodes(centering[dirY]);
+                shift[dirY] = layout.nbrGhosts(centering[dirY]);
             }
-            if (dim > 2)
+            if (dimension > 2)
             {
-                shift[dirZ] = layout.nbrGhostNodes(centering[dirZ]);
+                shift[dirZ] = layout.nbrGhosts(centering[dirZ]);
             }
 
             lower = lower - shift;
@@ -174,7 +182,7 @@ public:
             box.setLower(dirX, lower[dirX]);
             box.setUpper(dirX, xEnd - xStart + lower[dirX]);
 
-            if (dim > 1)
+            if (dimension > 1)
             {
                 uint32 yStart = layout.ghostStartIndex(qty, Direction::Y);
                 uint32 yEnd   = layout.ghostEndIndex(qty, Direction::Y);
@@ -182,7 +190,7 @@ public:
                 box.setLower(dirY, lower[dirY]);
                 box.setUpper(dirY, yEnd - yStart + lower[dirY]);
             }
-            if (dim > 2)
+            if (dimension > 2)
             {
                 uint32 zStart = layout.ghostStartIndex(qty, Direction::Z);
                 uint32 zEnd   = layout.ghostEndIndex(qty, Direction::Z);
@@ -199,11 +207,21 @@ public:
 
 private:
     SAMRAI::hier::Box box_;
-    GridLayout layout_;
+    SAMRAI::hier::Box interiorBox_;
+    GridLayout<GridLayoutImpl> layout_;
     PhysicalQuantity quantity_;
 
 
 
+    /*** \brief Compute destination box representing the intersection of two geometry
+     *
+     *   \param destinationBoxes BoxContainer that will be filled of box
+     *   \param sourceGeometry represent the geometry of the source data
+     *   \param sourceMask restrict the portion concerned by the source data
+     *   \param fillBox restrict the portion where data will be put on the destination
+     *   \param destinationRestrictBoxes container of box that will restrict the intersection
+     *
+     */
     void computeDestinationBoxes_(SAMRAI::hier::BoxContainer& destinationBoxes,
                                   FieldGeometry const& sourceGeometry,
                                   SAMRAI::hier::Box const& sourceMask,
@@ -243,16 +261,17 @@ private:
         GridLayout sourceShiftLayout = layoutFromBox_(sourceShift, sourceGeometry.layout_);
         GridLayout fillBoxLayout     = layoutFromBox_(fillBox, layout_);
 
-        SAMRAI::hier::Box const destinationField{toFieldBox(box_, quantity_, layout_)};
-        SAMRAI::hier::Box const sourceField{
+        auto const& destinationBox = box_;
+        SAMRAI::hier::Box const sourceBox{
             toFieldBox(sourceShift, quantity_, sourceShiftLayout, !withGhosts)};
-        SAMRAI::hier::Box const fillField{toFieldBox(fillBox, quantity_, fillBoxLayout)};
+        SAMRAI::hier::Box const fillField{
+            toFieldBox(fillBox, quantity_, fillBoxLayout, !withGhosts)};
 
 
         // now we have all boxes shifted and translated to field boxes
         // let's compute the interesection of them all.
 
-        SAMRAI::hier::Box const together(destinationField * sourceField * fillField);
+        SAMRAI::hier::Box const together(destinationBox * sourceBox * fillField);
 
 
         // if the interesection is not empty we either push it into the container
@@ -266,8 +285,7 @@ private:
             }
             else
             {
-                SAMRAI::hier::Box interiorBox(toFieldBox(box_, quantity_, layout_, !withGhosts));
-                destinationBoxes.removeIntersections(together, interiorBox);
+                destinationBoxes.removeIntersections(together, interiorBox_);
             }
         }
 
@@ -304,21 +322,21 @@ private:
                                                      fillBox, overwriteInterior, sourceOffset,
                                                      destinationRestrictBoxes);
 
-        return std::make_shared<FieldOverlap<dim>>(destinationBox, sourceOffset);
+        return std::make_shared<FieldOverlap<dimension>>(destinationBox, sourceOffset);
     }
 
 
 
-    GridLayout layoutFromBox_(SAMRAI::hier::Box const& box, GridLayout const& layout) const
+    GridLayout<GridLayoutImpl> layoutFromBox_(SAMRAI::hier::Box const& box,
+                                              GridLayout<GridLayoutImpl> const& layout) const
     {
-        std::array<uint32, dim> nbCell;
-        for (std::size_t iDim = 0; iDim < dim; ++iDim)
+        std::array<uint32, dimension> nbCell;
+        for (std::size_t iDim = 0; iDim < dimension; ++iDim)
         {
             nbCell[iDim] = static_cast<uint32>(box.numberCells(iDim));
         }
 
-        return GridLayout(layout.dxdydz(), nbCell, layout.layoutName(), layout.origin(),
-                          layout.order());
+        return GridLayout<GridLayoutImpl>(layout.meshSize(), nbCell, layout.origin());
     }
 };
 

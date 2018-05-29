@@ -6,26 +6,29 @@
 #include <utility>
 
 #include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "field_data_factory.h"
 
 namespace PHARE
 {
-template<Layout layout, std::size_t dim, std::size_t interpOrder, typename FieldImpl,
+template<typename GridLayoutImpl, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
 class FieldVariable : public SAMRAI::hier::Variable
 {
 public:
+    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
+    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+
     /** \brief Construct a new variable with an unique name, and a specific PhysicalQuantity
      *
      *  FieldVariable represent a data on a patch, it does not contain the data itself,
      *  after creation, one need to register it with a context : see registerVariableAndContext.
      */
-    // TODO : make fineboundary optional
-    FieldVariable(std::string const& name, bool fineBoundaryRepresentsVariable,
-                  PhysicalQuantity qty)
+    FieldVariable(std::string const& name, PhysicalQuantity qty,
+                  bool fineBoundaryRepresentsVariable = true)
         : SAMRAI::hier::Variable(
               name,
-              std::make_shared<FieldDataFactory<layout, dim, interpOrder, FieldImpl>>(
+              std::make_shared<FieldDataFactory<GridLayoutImpl, FieldImpl>>(
                   fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name, qty))
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
         , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
@@ -54,7 +57,7 @@ private:
 
     bool computeDataLivesOnPatchBorder_(PhysicalQuantity qty)
     {
-        auto const& centering = GridLayout<layout, dim>::centering(qty);
+        auto const& centering = GridLayout<GridLayoutImpl>::centering(qty);
 
 
         for (auto const& qtyCentering : centering)

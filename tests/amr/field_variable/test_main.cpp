@@ -7,6 +7,7 @@
 #include "data/field/field.h"
 #include "data/field/field_variable.h"
 #include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "data/ndarray/ndarray_vector.h"
 
 namespace PHARE
@@ -39,9 +40,10 @@ using TestWithQuantityThatLivesOnPatchBoundary1D = FieldVariableTest1D;
 
 TEST_P(TestWithQuantityThatLivesOnPatchBoundary1D, ThatActualDataLivesOnPatchBoundary)
 {
-    auto fieldVariable = std::make_shared<
-        FieldVariable<Layout::Yee, 1, 1, Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
-        param.qtyName, true, param.qty);
+    auto fieldVariable
+        = std::make_shared<FieldVariable<GridLayoutImplYee<1, 1>,
+                                         Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
+            param.qtyName, param.qty);
 
     EXPECT_TRUE(fieldVariable->dataLivesOnPatchBorder());
 }
@@ -50,9 +52,10 @@ using TestWithQuantityThatLivesInsidePatchBoundary1D = FieldVariableTest1D;
 
 TEST_P(TestWithQuantityThatLivesInsidePatchBoundary1D, ThatActualDataLivesInsidePatchBoundary)
 {
-    auto fieldVariable = std::make_shared<
-        FieldVariable<Layout::Yee, 1, 1, Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
-        param.qtyName, true, param.qty);
+    auto fieldVariable
+        = std::make_shared<FieldVariable<GridLayoutImplYee<1, 1>,
+                                         Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
+            param.qtyName, param.qty);
 
     EXPECT_FALSE(fieldVariable->dataLivesOnPatchBorder());
 }

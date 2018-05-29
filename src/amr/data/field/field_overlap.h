@@ -13,7 +13,7 @@ namespace PHARE
  *  It will contain the exact form of the overlap between two patch for a fieldData with the same
  * quantity. It will also store any transformation between a source and destination patch.
  */
-template<std::size_t dim>
+template<std::size_t dimension>
 class FieldOverlap : public SAMRAI::hier::BoxOverlap
 {
 public:

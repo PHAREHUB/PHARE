@@ -9,6 +9,9 @@
 
 #include "data/field/field_geometry.h"
 #include "data/field/field_variable.h"
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
+
 
 using testing::Eq;
 
@@ -16,27 +19,27 @@ namespace PHARE
 {
 using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
-template<Layout layout, std::size_t dim, std::size_t interpOrder, typename FieldImpl>
+template<typename GridLayoutImpl, typename FieldImpl>
 struct FieldGeometryParam
 {
     FieldGeometryParam(std::string const& name, HybridQuantity::Scalar quantity,
                        SAMRAI::hier::Patch& patch_0, SAMRAI::hier::Patch& patch_1)
-        : field0Variable{name + std::string("_0"), true, quantity}
-        , field1Variable{name + std::string("_1"), true, quantity}
+        : field0Variable{name + std::string("_0"), quantity}
+        , field1Variable{name + std::string("_1"), quantity}
         , field0Factory{field0Variable.getPatchDataFactory()}
         , field1Factory{field1Variable.getPatchDataFactory()}
         , patch0{patch_0}
         , patch1{patch_1}
         , field0Geom{field0Factory->getBoxGeometry(patch0.getBox())}
         , field1Geom{field1Factory->getBoxGeometry(patch1.getBox())}
-        , field0Data{std::dynamic_pointer_cast<FieldData<layout, dim, interpOrder, FieldImpl>>(
+        , field0Data{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
               field0Factory->allocate(patch0))}
-        , field1Data{std::dynamic_pointer_cast<FieldData<layout, dim, interpOrder, FieldImpl>>(
+        , field1Data{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
               field1Factory->allocate(patch1))}
     {
     }
-    FieldVariable<layout, dim, interpOrder, FieldImpl> field0Variable;
-    FieldVariable<layout, dim, interpOrder, FieldImpl> field1Variable;
+    FieldVariable<GridLayoutImpl, FieldImpl> field0Variable;
+    FieldVariable<GridLayoutImpl, FieldImpl> field1Variable;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> field0Factory;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> field1Factory;
 
@@ -46,8 +49,8 @@ struct FieldGeometryParam
     std::shared_ptr<SAMRAI::hier::BoxGeometry> field0Geom;
     std::shared_ptr<SAMRAI::hier::BoxGeometry> field1Geom;
 
-    std::shared_ptr<FieldData<layout, dim, interpOrder, FieldImpl>> field0Data;
-    std::shared_ptr<FieldData<layout, dim, interpOrder, FieldImpl>> field1Data;
+    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> field0Data;
+    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> field1Data;
 };
 
 
@@ -133,10 +136,10 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     auto ghosts = SAMRAI::hier::IntVector::getZero(dim);
 
 
-    // TDOD: static nbrghost
+    // TODO: static nbrghost
 
 
-    ghosts[0] = layout0.nbrGhostNodes(centering[0]);
+    ghosts[0] = layout0.nbrGhosts(centering[0]);
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> cell0Geom
         = std::make_shared<SAMRAI::pdat::CellGeometry>(patch0.getBox(), ghosts);
@@ -149,11 +152,11 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     int lower = 6;
     int upper = 9;
 
-    if (layout0.order() == 2)
+    if (layout0.interp_order == 2)
     {
         upper = 15;
     }
-    else if (layout0.order() == 3)
+    else if (layout0.interp_order == 3)
     {
         upper = 20;
     }
@@ -203,8 +206,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     auto& patch0 = patch1d.patch0;
     auto& patch1 = patch1d.patch1;
 
-    FieldGeometryParam<Layout::Yee, 1, 1, Field1D> param{"Ey", HybridQuantity::Scalar::Ey, patch0,
-                                                         patch1};
+    TypeParam param{"Ey", HybridQuantity::Scalar::Ey, patch0, patch1};
 
     auto& layout0 = param.field0Data->gridLayout;
 
@@ -212,7 +214,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
     auto ghosts = SAMRAI::hier::IntVector::getZero(dim);
 
-    ghosts[0] = layout0.nbrGhostNodes(centering[0]);
+    ghosts[0] = layout0.nbrGhosts(centering[0]);
 
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> node0Geom
@@ -224,11 +226,11 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     int lower = 6;
     int upper = 9;
 
-    if (layout0.order() == 2)
+    if (layout0.interp_order == 2)
     {
         upper = 15;
     }
-    else if (layout0.order() == 3)
+    else if (layout0.interp_order == 3)
     {
         upper = 20;
     }
@@ -265,9 +267,9 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
 REGISTER_TYPED_TEST_CASE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
 
-using FieldGeometryTest1DOrder1 = FieldGeometryParam<Layout::Yee, 1, 1, Field1D>;
-using FieldGeometryTest1DOrder2 = FieldGeometryParam<Layout::Yee, 1, 2, Field1D>;
-using FieldGeometryTest1DOrder3 = FieldGeometryParam<Layout::Yee, 1, 3, Field1D>;
+using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayoutImplYee<1, 1>, Field1D>;
+using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayoutImplYee<1, 2>, Field1D>;
+using FieldGeometryTest1DOrder3 = FieldGeometryParam<GridLayoutImplYee<1, 3>, Field1D>;
 
 using FieldGeometry1DTestList
     = ::testing::Types<FieldGeometryTest1DOrder1, FieldGeometryTest1DOrder2,

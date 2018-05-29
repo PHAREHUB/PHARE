@@ -9,6 +9,7 @@
 
 #include "data/field/field_data.h"
 #include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "field_data_test_param.h"
 #include "utilities/point/point.h"
 
@@ -19,9 +20,9 @@ namespace PHARE
 {
 using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
-using FieldDataTest1DOrder1 = FieldDataTestParam<Layout::Yee, 1, 1, Field1D>;
-using FieldDataTest1DOrder2 = FieldDataTestParam<Layout::Yee, 1, 2, Field1D>;
-using FieldDataTest1DOrder3 = FieldDataTestParam<Layout::Yee, 1, 3, Field1D>;
+using FieldDataTest1DOrder1 = FieldDataTestParam<GridLayoutImplYee<1, 1>, Field1D>;
+using FieldDataTest1DOrder2 = FieldDataTestParam<GridLayoutImplYee<1, 2>, Field1D>;
+using FieldDataTest1DOrder3 = FieldDataTestParam<GridLayoutImplYee<1, 3>, Field1D>;
 
 using FieldDataTestList
     = ::testing::Types<FieldDataTest1DOrder1, FieldDataTest1DOrder2, FieldDataTest1DOrder3>;
