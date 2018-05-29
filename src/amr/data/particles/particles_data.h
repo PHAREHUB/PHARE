@@ -33,6 +33,7 @@ public:
     ParticlesData& operator=(ParticlesData const&) = delete;
 
     // SAMRAI interface
+
     virtual void copy(SAMRAI::hier::PatchData const& source) final
     {
         TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
@@ -40,7 +41,7 @@ public:
         const ParticlesData* pSource = dynamic_cast<const ParticlesData*>(&source);
         if (pSource != nullptr)
         {
-            SAMRAI::hier::Box const& sourceBox      = pSource->getBox();
+            SAMRAI::hier::Box const& sourceBox      = pSource->getGhostBox();
             SAMRAI::hier::Box const& destinationBox = getGhostBox();
             SAMRAI::hier::Box intersectionBox{sourceBox * destinationBox};
             if (!intersectionBox.empty())
@@ -245,8 +246,9 @@ private:
     void copy_(SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
                SAMRAI::hier::Box const& intersectionBox, ParticlesData const& source)
     {
-        SAMRAI::hier::IntVector shift{sourceBox.lower() - destinationBox.lower()
-                                      - getGhostCellWidth()};
+        SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(SAMRAI::tbox::Dimension{dim})};
+
+        SAMRAI::hier::IntVector shift{sourceBox.lower() - destinationBox.lower() - oneIndex};
         SAMRAI::hier::Box intersectLocalSource{intersectionBox};
 
         intersectLocalSource.setLower(intersectionBox.lower() - sourceBox.lower());

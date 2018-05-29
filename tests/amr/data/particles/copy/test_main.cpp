@@ -64,7 +64,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopying)
 
     pDat0.copy(pDat1);
 
-    // patch0 start at 1 , patch1 start at 3
+    // patch0 physical start at 1 , patch1 physical start at 3
     // so the origin of patch 1 in patch0 coordinate
     // is 2. Since particle1 start at the origin of patch1,
     // it will be shifted to 2
@@ -82,12 +82,12 @@ TEST_F(AParticlesData1D, CopyInTheCorrectBuffer)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    // iCell = 3, originPatch1=3
+    // iCell = 4, originPatch1=2
     // so final particle position = 6
     // patch0 interior is from 1 to 5
     // ghost extend it to 6
 
-    particle1.iCell = {{3}};
+    particle1.iCell = {{4}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
