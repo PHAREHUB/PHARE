@@ -76,7 +76,7 @@ public:
                 SAMRAI::hier::BoxContainer const& boxList = pOverlap->getDestinationBoxContainer();
                 for (auto const& box : boxList)
                 {
-                    SAMRAI::hier::Box sourceBox      = pSource->getBox();
+                    SAMRAI::hier::Box sourceBox      = pSource->getGhostBox();
                     SAMRAI::hier::Box destinationBox = this->getGhostBox();
                     SAMRAI::hier::Box intersectionBox{sourceBox.getDim()};
 
@@ -268,11 +268,19 @@ private:
         SAMRAI::hier::Box intersectLocalSource{intersectionBox};
 
         transformation.inverseTransform(intersectLocalSource);
+        SAMRAI::hier::IntVector const one{
+            SAMRAI::hier::IntVector::getOne(SAMRAI::tbox::Dimension{dim})};
 
-        intersectLocalSource.setLower(intersectLocalSource.lower() - sourceBox.lower());
-        intersectLocalSource.setUpper(intersectLocalSource.upper() - sourceBox.lower());
+        SAMRAI::hier::IntVector const two{SAMRAI::tbox::Dimension{dim}, 2};
+
+        SAMRAI::hier::Index oneIndexShift{one};
+
+
+        intersectLocalSource.setLower(intersectLocalSource.lower() - sourceBox.lower() - one);
+        intersectLocalSource.setUpper(intersectLocalSource.upper() - sourceBox.lower() - one);
 
         shift += sourceBox.lower();
+        shift += one;
 
         copy_(source, shift, intersectLocalSource);
     }
@@ -281,21 +289,30 @@ private:
     void copy_(ParticlesData const& source, SAMRAI::hier::IntVector const& shiftToDestination,
                SAMRAI::hier::Box const& localSource)
     {
-        for (auto const& particle : source.interior)
+        std::array<decltype(source.interior) const*, 2> particlesArray{&source.interior,
+                                                                       &source.ghost};
+        auto const& ghostWidth = source.getGhostCellWidth();
+
+        for (auto const& sourceParticlesArray : particlesArray)
         {
-            if (isInBox_(localSource, particle))
+            for (auto const& particle : *sourceParticlesArray)
             {
-                auto shiftedParticle{particle};
-
-                shiftParticle_(shiftToDestination, shiftedParticle);
-
-                if (isInBox_(interiorBox_, shiftedParticle))
+                if (isInBox_(localSource, particle))
                 {
-                    interior.push_back(std::move(shiftedParticle));
-                }
-                else
-                {
-                    ghost.push_back(std::move(shiftedParticle));
+                    auto shiftedParticle{particle};
+
+                    shiftParticle_(shiftToDestination, shiftedParticle);
+
+                    if (isInBox_(interiorBox_, shiftedParticle))
+                    {
+                        shiftParticle_(ghostWidth, shiftedParticle);
+                        interior.push_back(std::move(shiftedParticle));
+                    }
+                    else
+                    {
+                        shiftParticle_(ghostWidth, shiftedParticle);
+                        ghost.push_back(std::move(shiftedParticle));
+                    }
                 }
             }
         }
