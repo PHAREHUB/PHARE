@@ -26,6 +26,12 @@ public:
         interiorBox_.setUpper(interiorBox_.upper() - box.lower());
     }
 
+    ParticlesData()                     = delete;
+    ParticlesData(ParticlesData const&) = delete;
+    ParticlesData(ParticlesData&&)      = default;
+
+    ParticlesData& operator=(ParticlesData const&) = delete;
+
     // SAMRAI interface
     virtual void copy(SAMRAI::hier::PatchData const& source) final
     {
