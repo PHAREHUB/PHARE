@@ -129,7 +129,7 @@ public:
 
     std::size_t getSizeOfMemory(SAMRAI::hier::Box const& box) const final
     {
-        // TODO: this calculus assume that we don't need more memory than
+        // TODO: this calculus assumes that we don't need more memory than
         //       alignedMemory(nx*ny*nz*sizeof(double)) + alignedMemory(baseSize)
 
         std::array<double, dim> dl;
@@ -138,9 +138,9 @@ public:
 
         for (std::size_t iDim = 0; iDim < dim; ++iDim)
         {
-            dl[iDim]     = 0.01;
-            nbCell[iDim] = box.numberCells(iDim);
+            dl[iDim]     = 0.01; // some value that is not used anyway
             origin[iDim] = 0;
+            nbCell[iDim] = box.numberCells(iDim);
         }
 
         const std::size_t baseField = SAMRAI::tbox::MemoryUtilities::align(
@@ -157,7 +157,7 @@ public:
             data *= nCell;
         }
 
-        data *= sizeof(double);
+        data *= sizeof(double); // TODO ----> FieldImpl::type
 
 
 
@@ -179,8 +179,8 @@ public:
     bool validCopyTo(std::shared_ptr<SAMRAI::hier::PatchDataFactory> const&
                          destinationPatchDataFactory) const final
     {
-        auto fieldDataFactory = std::dynamic_pointer_cast<std::remove_reference_t<decltype(*this)>>(
-            destinationPatchDataFactory);
+        auto fieldDataFactory
+            = std::dynamic_pointer_cast<FieldDataFactory>(destinationPatchDataFactory);
         return (fieldDataFactory != nullptr);
     }
 
@@ -190,7 +190,8 @@ private:
     bool const fineBoundaryRepresentsVariable_;
     bool const dataLivesOnPatchBorder_;
     PhysicalQuantity const quantity_;
-    std::string const layoutName_{"yee"}; // not sure that gridlayout still needs a name
+    std::string const layoutName_{
+        "yee"}; // not sure that gridlayout still needs a name // TODO  indeed budy
     std::string name_;
 };
 

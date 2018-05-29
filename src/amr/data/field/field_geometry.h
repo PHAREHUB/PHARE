@@ -84,6 +84,12 @@ public:
 
 
 
+    /**
+     * @brief toFieldBox takes an AMR cell-centered box and creates a box
+     * that is adequate for the specified quantity. The layout is used to know
+     * the centering, nbr of ghosts of the specified quantity.
+     * @withGhost true if we want to include the ghost nodes in the field box.
+     */
     static SAMRAI::hier::Box toFieldBox(SAMRAI::hier::Box box, PhysicalQuantity qty,
                                         GridLayout const& layout, bool withGhost = true)
     {
@@ -92,7 +98,59 @@ public:
         constexpr std::uint32_t dirY{1};
         constexpr std::uint32_t dirZ{2};
 
-        if (withGhost)
+        // lower/upper of 'box' are AMR cell-centered coordinates
+
+        // we want a box that starts at lower
+        // the upper index is
+
+        // example:
+        // . = primal node
+        // x = dual node
+        // here we have nbrGhost = 1 for both
+
+        //     0     1     2     3     4     5     6        (local dual Index)
+        //  0     1     2     3     4     5     6     7     (local primal Index)
+        //  .  x  |  x  .  x  .  x  .  x  .  x  |  x  .
+        //           ^
+        //         box.lower (AMR index)
+
+        // for primal = AMR upper index will be box.lower + 6 (pei) -1(psi) = 5 without ghosts
+        // for dual = AMR upper index will be  box.lower + 5(pei) - 1(psi) = lower+ 4 without ghosts
+
+        // with ghosts :
+        // box.lower must be shifted left to move to the first ghost node
+        // box.upper is still box.lower + end-start, end &start of ghosts
+
+
+        if (!withGhost)
+        {
+            uint32 xStart = layout.physicalStartIndex(qty, Direction::X);
+            uint32 xEnd   = layout.physicalEndIndex(qty, Direction::X);
+
+            box.setLower(dirX, lower[dirX]);
+            box.setUpper(dirX, xEnd - xStart + lower[dirX]);
+
+            if (dim > 1)
+            {
+                uint32 yStart = layout.physicalStartIndex(qty, Direction::Y);
+                uint32 yEnd   = layout.physicalEndIndex(qty, Direction::Y);
+
+                box.setLower(dirY, lower[dirY]);
+                box.setUpper(dirY, yEnd - yStart + lower[dirY]);
+            }
+            if (dim > 2)
+            {
+                uint32 zStart = layout.physicalStartIndex(qty, Direction::Z);
+                uint32 zEnd   = layout.physicalEndIndex(qty, Direction::Z);
+
+                box.setLower(dirZ, lower[dirZ]);
+                box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
+            }
+        } // end withGhosts
+
+
+
+        else
         {
             auto const& centering = GridLayout::centering(qty);
 
@@ -133,31 +191,6 @@ public:
                 box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
             }
         }
-        else
-        {
-            uint32 xStart = layout.physicalStartIndex(qty, Direction::X);
-            uint32 xEnd   = layout.physicalEndIndex(qty, Direction::X);
-
-            box.setLower(dirX, lower[dirX]);
-            box.setUpper(dirX, xEnd - xStart + lower[dirX]);
-
-            if (dim > 1)
-            {
-                uint32 yStart = layout.physicalStartIndex(qty, Direction::Y);
-                uint32 yEnd   = layout.physicalEndIndex(qty, Direction::Y);
-
-                box.setLower(dirY, lower[dirY]);
-                box.setUpper(dirY, yEnd - yStart + lower[dirY]);
-            }
-            if (dim > 2)
-            {
-                uint32 zStart = layout.physicalStartIndex(qty, Direction::Z);
-                uint32 zEnd   = layout.physicalEndIndex(qty, Direction::Z);
-
-                box.setLower(dirZ, lower[dirZ]);
-                box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
-            }
-        }
 
         return box;
     }
@@ -179,35 +212,62 @@ private:
                                   SAMRAI::hier::BoxContainer const& destinationRestrictBoxes
                                   = SAMRAI::hier::BoxContainer()) const
     {
+        // we have three boxes :
+        // - the sourceBox : the is where the data is to be taken from
+        // - the destinationBox : this is the whole box on the "destination"
+        // - the fillBox: this is a restriction of the destinationBox
+
+        // all these boxes are in AMR (cell-centered) indexes.
+        // we need to translate them into boxes describing the proper field layout.
+        // (for instance, a cell-centered box is not adequatly describing a node centered
+        // quantity).
+
+        // the destinationsBoxes is to be filled with:
+        // the intersection of the sourceBox, the destinationBox and the fillBox
+        // with potential restrictionBoxes.
+        // In case we don't want to fill interior nodes, we remove the interior
+        // of the destination box, from the above intersection, which may result
+        // in adding multiple boxes into the container.
+
+
+        // the sourceMask is a restriction of the sourceBox
+        // so we need to intersect it with the sourceBox, then to apply a transformation
+        // to account for the periodicity
         SAMRAI::hier::Box sourceShift = sourceGeometry.box_ * sourceMask;
+        sourceOffset.transform(sourceShift);
+
+
+        // ok let's get the boxes for the fields from cell-centered boxes now
+        bool withGhosts = true;
 
         GridLayout sourceShiftLayout = layoutFromBox_(sourceShift, sourceGeometry.layout_);
         GridLayout fillBoxLayout     = layoutFromBox_(fillBox, layout_);
 
-        sourceOffset.transform(sourceShift);
+        SAMRAI::hier::Box const destinationField{toFieldBox(box_, quantity_, layout_)};
+        SAMRAI::hier::Box const sourceField{
+            toFieldBox(sourceShift, quantity_, sourceShiftLayout, !withGhosts)};
+        SAMRAI::hier::Box const fillField{toFieldBox(fillBox, quantity_, fillBoxLayout)};
 
-        SAMRAI::hier::Box const destinationField(toFieldBox(box_, quantity_, layout_));
 
+        // now we have all boxes shifted and translated to field boxes
+        // let's compute the interesection of them all.
 
-        // When we use an overlap, we want to copy data from the interior of source,
-        // to the ghost of the destination, and if overwriteInterior is true , to the
-        // interior;
-
-        SAMRAI::hier::Box const sourceField(
-            toFieldBox(sourceShift, quantity_, sourceShiftLayout, false));
-        SAMRAI::hier::Box const fillField(toFieldBox(fillBox, quantity_, fillBoxLayout));
         SAMRAI::hier::Box const together(destinationField * sourceField * fillField);
 
+
+        // if the interesection is not empty we either push it into the container
+        // if we don't want to fill the interior we remove it from the intersection
+        // which may add multiple boxes to the container.
         if (!together.empty())
         {
-            if (!overwriteInterior)
+            if (overwriteInterior)
             {
-                SAMRAI::hier::Box interiorBox(toFieldBox(box_, quantity_, layout_, false));
-                destinationBoxes.removeIntersections(together, interiorBox);
+                destinationBoxes.push_back(together);
             }
             else
             {
-                destinationBoxes.push_back(together);
+                SAMRAI::hier::Box interiorBox(toFieldBox(box_, quantity_, layout_, !withGhosts));
+                destinationBoxes.removeIntersections(together, interiorBox);
             }
         }
 
@@ -219,13 +279,19 @@ private:
             {
                 restrictBoxes.push_back(toFieldBox(*box, quantity_, layoutFromBox_(*box, layout_)));
             }
+
+            // will only keep of together the boxes that interesect the restrictions
             destinationBoxes.intersectBoxes(restrictBoxes);
         }
     }
 
 
 
-
+    /**
+     * @brief doOverlap_ will return a field overlap from the source to the dest
+     * geometry. This function makes this overlap by calculating the (possibly multiple)
+     * destination box(es) and the transformation from source to dest.
+     */
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
     doOverlap_(FieldGeometry const& destinationGeometry, FieldGeometry const& sourceGeometry,
                SAMRAI::hier::Box const& sourceMask, SAMRAI::hier::Box const& fillBox,

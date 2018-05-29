@@ -5,6 +5,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <SAMRAI/pdat/CellData.h>
+#include <SAMRAI/pdat/CellDataFactory.h>
+#include <SAMRAI/pdat/CellVariable.h>
+#include <SAMRAI/pdat/NodeData.h>
+#include <SAMRAI/pdat/NodeDataFactory.h>
+#include <SAMRAI/pdat/NodeVariable.h>
+
 #include "data/field/field_data.h"
 #include "data/field/field_overlap.h"
 #include "data/field/field_variable.h"
@@ -65,7 +72,7 @@ struct FieldDataTestParam
     std::shared_ptr<FieldData<layout, dim, interpOrder, FieldImpl>> field1Data;
 };
 
-struct PatchGeometry1D
+struct Patches1D
 {
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
@@ -102,7 +109,7 @@ struct PatchGeometry1D
     SAMRAI::hier::Patch patch0{box0, patchDescriptor};
     SAMRAI::hier::Patch patch1{box1, patchDescriptor};
 
-    PatchGeometry1D()
+    Patches1D()
     {
         patch0.setPatchGeometry(patch0Geom);
         patch1.setPatchGeometry(patch1Geom);
@@ -116,7 +123,7 @@ struct AFieldData1DCenteredOnEx : public ::testing::Test
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
 
-    PatchGeometry1D patch1d;
+    Patches1D patch1d;
 
     HybridQuantity::Scalar quantity{HybridQuantity::Scalar::Ex};
     std::string name{"Ex"};
@@ -157,7 +164,7 @@ struct AFieldData1DCenteredOnEy : public ::testing::Test
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
 
-    PatchGeometry1D patch1d;
+    Patches1D patch1d;
 
     HybridQuantity::Scalar quantity{HybridQuantity::Scalar::Ey};
     std::string name{"Ey"};

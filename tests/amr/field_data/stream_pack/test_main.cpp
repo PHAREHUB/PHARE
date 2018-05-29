@@ -73,10 +73,11 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, PackStreamLikeACellData)
     SAMRAI::hier::Box fillBox{SAMRAI::hier::Index{this->dim, lower},
                               SAMRAI::hier::Index{this->dim, upper}, this->blockId};
 
-    bool overwriteInterior{true};
+    bool overwriteInterior{true}; // TODO do true and false
 
     SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(this->dim)};
 
+    // TODO add multiple restrictions boxes
     auto fieldOverlap
         = std::dynamic_pointer_cast<FieldOverlap<1>>(param.field0Geom->calculateOverlap(
             *param.field1Geom, srcMask, fillBox, overwriteInterior, transformation));

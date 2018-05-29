@@ -189,7 +189,8 @@ public:
         FieldOverlap<dim> const* fieldOverlap = dynamic_cast<FieldOverlap<dim> const*>(&overlap);
         TBOX_ASSERT(fieldOverlap != nullptr);
 
-        size_t size = 0;
+        size_t size      = 0;
+        size_t totalSize = 0;
 
         if (fieldOverlap->isOverlapEmpty())
         {
@@ -216,13 +217,13 @@ public:
                 size *= finalBox.numberCells(iDir);
             }
 
-            size *= sizeof(double);
+            // size *= sizeof(double);
             // At the end we will make sure that the size correspond to an aligned memory
             // since it will be the max memory used
-            size = SAMRAI::tbox::MemoryUtilities::align(size);
+            totalSize += size;
         }
-
-        return size;
+        totalSize = SAMRAI::tbox::MemoryUtilities::align(totalSize * sizeof(double));
+        return totalSize;
     }
 
 
@@ -240,7 +241,7 @@ public:
         // and the other without, so that getDataStreamSize will call the one without the
         // transformation and here we will call the one with the transformation
 
-        /* size_t expectedSize = getDataStreamSize(overlap) / sizeof(double); */
+        /* TODO size_t expectedSize = getDataStreamSize(overlap) / sizeof(double); */
         std::vector<double> buffer;
         /* buffer.reserve(expectedSize); */
 
@@ -273,7 +274,7 @@ public:
                 internals_.packImpl(buffer, source, packBox, sourceBox);
             }
         }
-
+        // throw, we don't do rotations in phare....
 
         // Once we have fill the buffer, we send it on the stream
         stream.pack(buffer.data(), buffer.size());

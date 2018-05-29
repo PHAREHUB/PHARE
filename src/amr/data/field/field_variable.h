@@ -20,6 +20,7 @@ public:
      *  FieldVariable represent a data on a patch, it does not contain the data itself,
      *  after creation, one need to register it with a context : see registerVariableAndContext.
      */
+    // TODO : make fineboundary optional
     FieldVariable(std::string const& name, bool fineBoundaryRepresentsVariable,
                   PhysicalQuantity qty)
         : SAMRAI::hier::Variable(
@@ -32,7 +33,9 @@ public:
     }
 
 
-
+    // The fine boundary representation boolean argument indicates which values (either coarse or
+    // fine) take precedence at coarse-fine mesh boundaries during coarsen and refine operations.
+    // The default is that fine data values take precedence on coarse-fine interfaces.
     bool fineBoundaryRepresentsVariable() const final { return fineBoundaryRepresentsVariable_; }
 
 

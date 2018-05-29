@@ -6,6 +6,7 @@ set( SOURCES_INC
   field_data_test_param.h
   )
 set ( SOURCES_CPP
+    field_data_test_param.cpp
   )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

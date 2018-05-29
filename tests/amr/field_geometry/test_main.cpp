@@ -50,7 +50,10 @@ struct FieldGeometryParam
     std::shared_ptr<FieldData<layout, dim, interpOrder, FieldImpl>> field1Data;
 };
 
-struct PatchGeometry1D
+
+
+
+struct Patches1D
 {
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
@@ -66,10 +69,12 @@ struct PatchGeometry1D
     double patch0_lo{0.};
     double patch0_hi{0.1};
 
-    double patch1_lo{0.1};
+    double patch1_lo{0.05};
     double patch1_hi{0.2};
 
 
+    // create the patch geometry saying the patch does NOT touch a boundary
+    // in either of the two directions of dim (==1)
     SAMRAI::hier::PatchGeometry::TwoDimBool touchesRegular{dim, false};
 
     std::shared_ptr<SAMRAI::geom::CartesianPatchGeometry> patch0Geom{
@@ -87,17 +92,23 @@ struct PatchGeometry1D
     SAMRAI::hier::Patch patch0{box0, patchDescriptor};
     SAMRAI::hier::Patch patch1{box1, patchDescriptor};
 
-    PatchGeometry1D()
+    Patches1D()
     {
         patch0.setPatchGeometry(patch0Geom);
         patch1.setPatchGeometry(patch1Geom);
     }
 };
 
+
+
+
 template<typename T>
 struct FieldGeometry1D : public ::testing::Test
 {
 };
+
+
+
 
 TYPED_TEST_CASE_P(FieldGeometry1D);
 
@@ -107,10 +118,10 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     SAMRAI::hier::BlockId blockId{0};
 
 
-    PatchGeometry1D patch1d;
+    Patches1D patches1d;
 
-    auto& patch0 = patch1d.patch0;
-    auto& patch1 = patch1d.patch1;
+    auto& patch0 = patches1d.patch0;
+    auto& patch1 = patches1d.patch1;
 
     TypeParam param{"Ex", HybridQuantity::Scalar::Ex, patch0, patch1};
 
@@ -121,6 +132,10 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
 
     auto ghosts = SAMRAI::hier::IntVector::getZero(dim);
 
+
+    // TDOD: static nbrghost
+
+
     ghosts[0] = layout0.nbrGhostNodes(centering[0]);
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> cell0Geom
@@ -129,6 +144,8 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     std::shared_ptr<SAMRAI::hier::BoxGeometry> cell1Geom
         = std::make_shared<SAMRAI::pdat::CellGeometry>(patch1.getBox(), ghosts);
 
+
+    // TODO: rethink this
     int lower = 6;
     int upper = 9;
 
@@ -141,30 +158,39 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
         upper = 20;
     }
 
+    // TODO : test with also some restrictions
+
     SAMRAI::hier::Box srcMask{SAMRAI::hier::Index{dim, lower}, SAMRAI::hier::Index{dim, upper},
                               blockId};
     SAMRAI::hier::Box fillBox{SAMRAI::hier::Index{dim, lower}, SAMRAI::hier::Index{dim, upper},
                               blockId};
 
-    bool overwriteInterior{true};
+    std::array<bool, 2> overwritePossibility{{false, true}};
 
-    SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(dim)};
+    for (auto overwriteInterior : overwritePossibility)
+    {
+        SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(dim)};
 
-    auto fieldOverlap
-        = std::dynamic_pointer_cast<FieldOverlap<1>>(param.field0Geom->calculateOverlap(
-            *param.field1Geom, srcMask, fillBox, overwriteInterior, transformation));
+        auto fieldOverlap
+            = std::dynamic_pointer_cast<FieldOverlap<1>>(param.field0Geom->calculateOverlap(
+                *param.field1Geom, srcMask, fillBox, overwriteInterior, transformation));
 
-    auto cellOverlap
-        = std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(cell0Geom->calculateOverlap(
-            *cell1Geom, srcMask, fillBox, overwriteInterior, transformation));
+        auto cellOverlap
 
-    EXPECT_THAT(fieldOverlap->isOverlapEmpty(), Eq(cellOverlap->isOverlapEmpty()));
+            = std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(cell0Geom->calculateOverlap(
+                *cell1Geom, srcMask, fillBox, overwriteInterior, transformation));
 
-    auto fieldDestBoxes = fieldOverlap->getDestinationBoxContainer();
-    auto cellDestBoxes  = cellOverlap->getDestinationBoxContainer();
+        EXPECT_THAT(fieldOverlap->isOverlapEmpty(), Eq(cellOverlap->isOverlapEmpty()));
 
-    EXPECT_THAT(fieldDestBoxes, Eq(cellDestBoxes));
+        auto fieldDestBoxes = fieldOverlap->getDestinationBoxContainer();
+        auto cellDestBoxes  = cellOverlap->getDestinationBoxContainer();
+
+        EXPECT_THAT(fieldDestBoxes, Eq(cellDestBoxes));
+    }
 }
+
+
+
 
 TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 {
@@ -172,7 +198,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     SAMRAI::hier::BlockId blockId{0};
 
 
-    PatchGeometry1D patch1d;
+    Patches1D patch1d;
 
     auto& patch0 = patch1d.patch0;
     auto& patch1 = patch1d.patch1;
@@ -212,25 +238,31 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     SAMRAI::hier::Box fillBox{SAMRAI::hier::Index{dim, lower}, SAMRAI::hier::Index{dim, upper},
                               blockId};
 
-    bool overwriteInterior{true};
+    std::array<bool, 2> overwritePossibility{{false, true}};
 
-    SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(dim)};
+    for (auto overwriteInterior : overwritePossibility)
+    {
+        SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(dim)};
 
-    auto fieldOverlap
-        = std::dynamic_pointer_cast<FieldOverlap<1>>(param.field0Geom->calculateOverlap(
-            *param.field1Geom, srcMask, fillBox, overwriteInterior, transformation));
+        auto fieldOverlap
+            = std::dynamic_pointer_cast<FieldOverlap<1>>(param.field0Geom->calculateOverlap(
+                *param.field1Geom, srcMask, fillBox, overwriteInterior, transformation));
 
-    auto nodeOverlap
-        = std::dynamic_pointer_cast<SAMRAI::pdat::NodeOverlap>(node0Geom->calculateOverlap(
-            *node1Geom, srcMask, fillBox, overwriteInterior, transformation));
+        auto nodeOverlap
+            = std::dynamic_pointer_cast<SAMRAI::pdat::NodeOverlap>(node0Geom->calculateOverlap(
+                *node1Geom, srcMask, fillBox, overwriteInterior, transformation));
 
-    EXPECT_THAT(fieldOverlap->isOverlapEmpty(), Eq(nodeOverlap->isOverlapEmpty()));
+        EXPECT_THAT(fieldOverlap->isOverlapEmpty(), Eq(nodeOverlap->isOverlapEmpty()));
 
-    auto fieldDestBoxes = fieldOverlap->getDestinationBoxContainer();
-    auto nodeDestBoxes  = nodeOverlap->getDestinationBoxContainer();
+        auto fieldDestBoxes = fieldOverlap->getDestinationBoxContainer();
+        auto nodeDestBoxes  = nodeOverlap->getDestinationBoxContainer();
 
-    EXPECT_THAT(fieldDestBoxes, Eq(nodeDestBoxes));
+        EXPECT_THAT(fieldDestBoxes, Eq(nodeDestBoxes));
+    }
 }
+
+
+
 REGISTER_TYPED_TEST_CASE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
 
 using FieldGeometryTest1DOrder1 = FieldGeometryParam<Layout::Yee, 1, 1, Field1D>;
