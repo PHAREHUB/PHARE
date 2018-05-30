@@ -67,7 +67,7 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -98,7 +98,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -146,8 +146,11 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 
     pDat0.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.interior.size(), Eq(1));
+    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
 }
+
+
+
 
 TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 {
@@ -156,7 +159,7 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -175,6 +178,10 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
     ASSERT_THAT(pDat0.ghost.size(), Eq(1));
     ASSERT_THAT(pDat0.ghost[0].weight, Eq(particle1.weight));
 }
+
+
+
+
 TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
 {
     Particle<1> particle1;
@@ -182,7 +189,7 @@ TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 

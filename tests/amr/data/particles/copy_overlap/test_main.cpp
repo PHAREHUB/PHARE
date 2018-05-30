@@ -73,7 +73,7 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
 
     particle.weight = 1.0;
     particle.charge = 1.0;
-    particle.iCell  = {{5}};
+    particle.iCell  = {{6}};
     particle.v      = {{1.0, 1.0, 1.0}};
 
     sourcePdat.interior.push_back(particle);
@@ -100,7 +100,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {{1.0, 1.0, 1.0}};
 
@@ -120,19 +120,36 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
 
 
 
-TEST_F(AParticlesData1D, CopyInTheCorrectBufferWithPeriodics)
+TEST_F(AParticlesData1D, CopyBorderSourceParticlesIntoDestGhostWithPeriodics)
 {
     Particle<1> particle1;
 
     particle1.weight = 1.0;
     particle1.charge = 1.0;
+    particle1.iCell  = {{6}};
+    particle1.v      = {{1.0, 1.0, 1.0}};
 
-    particle1.iCell = {{6}};
-
-    particle1.v = {{1.0, 1.0, 1.0}};
 
     sourcePdat.ghost.push_back(particle1);
+    destPdat.copy(sourcePdat, *cellOverlap);
 
+    ASSERT_THAT(destPdat.ghost.size(), Eq(1));
+}
+
+
+
+
+TEST_F(AParticlesData1D, CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
+{
+    Particle<1> particle1;
+
+    particle1.weight = 1.0;
+    particle1.charge = 1.0;
+    particle1.iCell  = {{7}};
+    particle1.v      = {{1.0, 1.0, 1.0}};
+
+
+    sourcePdat.ghost.push_back(particle1);
     destPdat.copy(sourcePdat, *cellOverlap);
 
     ASSERT_THAT(destPdat.interior.size(), Eq(1));
@@ -148,7 +165,7 @@ TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
@@ -169,7 +186,7 @@ TEST_F(AParticlesData1D, PreserveChargeWhenCopyingWithPeriodics)
     particle1.weight = 1.0;
     particle1.charge = 1.0;
 
-    particle1.iCell = {{5}};
+    particle1.iCell = {{6}};
 
     particle1.v = {1.0, 1.0, 1.0};
 
