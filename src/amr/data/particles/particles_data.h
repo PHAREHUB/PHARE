@@ -20,17 +20,25 @@ class ParticlesData : public SAMRAI::hier::PatchData
 public:
     ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
         : SAMRAI::hier::PatchData::PatchData(box, ghost)
-        , interiorBox_{box}
+        , interiorLocalBox_{box}
     {
-        interiorBox_.setLower(interiorBox_.lower() - interiorBox_.lower());
-        interiorBox_.setUpper(interiorBox_.upper() - box.lower());
+        interiorLocalBox_.setLower(interiorLocalBox_.lower() - interiorLocalBox_.lower());
+        interiorLocalBox_.setUpper(interiorLocalBox_.upper() - box.lower());
     }
+
+
+
 
     ParticlesData()                     = delete;
     ParticlesData(ParticlesData const&) = delete;
     ParticlesData(ParticlesData&&)      = default;
 
+
+
     ParticlesData& operator=(ParticlesData const&) = delete;
+
+
+
 
     // SAMRAI interface
 
@@ -44,6 +52,8 @@ public:
             SAMRAI::hier::Box const& sourceBox      = pSource->getGhostBox();
             SAMRAI::hier::Box const& destinationBox = getGhostBox();
             SAMRAI::hier::Box intersectionBox{sourceBox * destinationBox};
+
+
             if (!intersectionBox.empty())
             {
                 copy_(sourceBox, destinationBox, intersectionBox, *pSource);
@@ -62,48 +72,79 @@ public:
     {
         throw std::runtime_error("Cannot cast");
     }
+
+
+
+
+    bool offsetIsZero(SAMRAI::hier::Transformation const& transformation)
+    {
+        auto const& offset = transformation.getOffset();
+        auto dimension     = offset.getDim();
+        return transformation.getOffset() == SAMRAI::hier::IntVector::getZero(dimension);
+    }
+
+
+
+
+    bool isSameBlock(SAMRAI::hier::Transformation const& transformation)
+    {
+        return transformation.getBeginBlock() == transformation.getEndBlock();
+    }
+
+
+
+
     virtual void copy(SAMRAI::hier::PatchData const& source,
                       SAMRAI::hier::BoxOverlap const& overlap) final
     {
         const ParticlesData* pSource = dynamic_cast<const ParticlesData*>(&source);
         const SAMRAI::pdat::CellOverlap* pOverlap
             = dynamic_cast<const SAMRAI::pdat::CellOverlap*>(&overlap);
+
+
         if ((pSource != nullptr) && (pOverlap != nullptr))
         {
             SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
             {
                 SAMRAI::hier::BoxContainer const& boxList = pOverlap->getDestinationBoxContainer();
-                for (auto const& box : boxList)
+                for (auto const& overlapBox : boxList)
                 {
                     SAMRAI::hier::Box sourceBox      = pSource->getGhostBox();
                     SAMRAI::hier::Box destinationBox = this->getGhostBox();
                     SAMRAI::hier::Box intersectionBox{sourceBox.getDim()};
 
-                    if (transformation.getOffset() == SAMRAI::hier::IntVector::getZero(box.getDim())
-                        && transformation.getBeginBlock() == transformation.getEndBlock())
+                    if (isSameBlock(transformation))
                     {
-                        intersectionBox = box * sourceBox * destinationBox;
-
-                        if (!intersectionBox.empty())
+                        if (offsetIsZero(transformation))
                         {
-                            copy_(sourceBox, destinationBox, intersectionBox, *pSource);
+                            intersectionBox = overlapBox * sourceBox * destinationBox;
+
+                            if (!intersectionBox.empty())
+                            {
+                                copy_(sourceBox, destinationBox, intersectionBox, *pSource);
+                            }
+                        }
+                        else
+                        {
+                            SAMRAI::hier::Box shiftedSourceBox{sourceBox};
+                            transformation.transform(shiftedSourceBox);
+                            intersectionBox = overlapBox * shiftedSourceBox * destinationBox;
+
+                            if (!intersectionBox.empty())
+                            {
+                                copyWithTransform_(sourceBox, intersectionBox, transformation,
+                                                   *pSource);
+                            }
                         }
                     }
                     else
                     {
-                        SAMRAI::hier::Box transformedSource{sourceBox};
-                        transformation.transform(transformedSource);
-                        intersectionBox = box * transformedSource * destinationBox;
-
-                        if (!intersectionBox.empty())
-                        {
-                            copyWithTransform_(sourceBox, transformedSource, destinationBox,
-                                               intersectionBox, transformation, *pSource);
-                        }
+                        std::runtime_error("Error - multiblock hierarchies not handled");
                     }
-                }
-            }
+
+                } // end loop over boxes
+            }     // end no rotate
             else
             {
                 throw std::runtime_error("copy with rotate not implemented");
@@ -115,13 +156,22 @@ public:
         }
     }
 
+
+
+
     virtual void copy2(SAMRAI::hier::PatchData& destination,
                        SAMRAI::hier::BoxOverlap const& overlap) const final
     {
         throw std::runtime_error("Cannot cast");
     }
 
+
+
+
     virtual bool canEstimateStreamSizeFromBox() const final { return false; }
+
+
+
 
     virtual size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
     {
@@ -175,6 +225,9 @@ public:
         }
     }
 
+
+
+
     virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
                               SAMRAI::hier::BoxOverlap const& overlap) final
     {
@@ -214,8 +267,7 @@ public:
                         {
                             auto shiftedParticle{particle};
 
-
-                            if (isInBox_(interiorBox_, shiftedParticle))
+                            if (isInBox_(interiorLocalBox_, shiftedParticle))
                             {
                                 shiftParticle_(ghostWidth, shiftedParticle);
                                 interior.push_back(std::move(shiftedParticle));
@@ -226,10 +278,10 @@ public:
                                 ghost.push_back(std::move(shiftedParticle));
                             }
                         }
-                    }
-                }
-            }
-        }
+                    } // end species loop
+                }     // end box loop
+            }         // end no rotation
+        }             // end overlap not empty
     }
 
 
@@ -237,14 +289,29 @@ public:
 
     ParticleArray<dim> interior;
     ParticleArray<dim> ghost;
-    ParticleArray<dim> incoming;
+    ParticleArray<dim> coarseToFine;
 
 
 
     // Private
 private:
-    SAMRAI::hier::Box interiorBox_;
+    SAMRAI::hier::Box interiorLocalBox_;
 
+
+
+    /**
+     * @brief copy_ prepares the number of cells by which the particle will be shifted
+     * Note that the source and destination boxes are GHOST boxes and the ghost width
+     * for particle data is one cell (no particle can exit the domain by more than one cell)
+     * Thus, the local index of the lower
+     *
+     *
+     * @param sourceBox is the source box in AMR cell-centered index space
+     * @param destinationBox is the destination box in AMR cell-centered index space
+     * @param intersectionBox is the intersection between source and destination box, in AMR
+     * cell-centered index space
+     * @param source is the ParticleData patchData from which particles are to be copied into this.
+     */
     void copy_(SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
                SAMRAI::hier::Box const& intersectionBox, ParticlesData const& source)
     {
@@ -259,33 +326,34 @@ private:
         copy_(source, shift, intersectLocalSource);
     }
 
+
+
+
     void copyWithTransform_(SAMRAI::hier::Box const& sourceBox,
-                            SAMRAI::hier::Box const& transformedSource,
-                            SAMRAI::hier::Box const& destinationBox,
                             SAMRAI::hier::Box const& intersectionBox,
                             SAMRAI::hier::Transformation const& transformation,
                             ParticlesData const& source)
     {
-        SAMRAI::hier::IntVector shift{transformation.getOffset()};
+        SAMRAI::hier::IntVector particleIndexShift{transformation.getOffset()};
         SAMRAI::hier::Box intersectLocalSource{intersectionBox};
 
         transformation.inverseTransform(intersectLocalSource);
+
         SAMRAI::hier::IntVector const one{
             SAMRAI::hier::IntVector::getOne(SAMRAI::tbox::Dimension{dim})};
 
-        SAMRAI::hier::IntVector const two{SAMRAI::tbox::Dimension{dim}, 2};
-
         SAMRAI::hier::Index oneIndexShift{one};
-
 
         intersectLocalSource.setLower(intersectLocalSource.lower() - sourceBox.lower() - one);
         intersectLocalSource.setUpper(intersectLocalSource.upper() - sourceBox.lower() - one);
 
-        shift += sourceBox.lower();
-        shift += one;
+        particleIndexShift += sourceBox.lower();
+        particleIndexShift += one;
 
-        copy_(source, shift, intersectLocalSource);
+        copy_(source, particleIndexShift, intersectLocalSource);
     }
+
+
 
 
     void copy_(ParticlesData const& source, SAMRAI::hier::IntVector const& shiftToDestination,
@@ -305,7 +373,8 @@ private:
 
                     shiftParticle_(shiftToDestination, shiftedParticle);
 
-                    if (isInBox_(interiorBox_, shiftedParticle))
+                    // TODO isInBox existe déja on peut pas l'utiliser ?
+                    if (isInBox_(interiorLocalBox_, shiftedParticle))
                     {
                         shiftParticle_(ghostWidth, shiftedParticle);
                         interior.push_back(std::move(shiftedParticle));

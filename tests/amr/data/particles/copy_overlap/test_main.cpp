@@ -20,72 +20,80 @@ struct AParticlesData1D : public testing::Test
     SAMRAI::tbox::Dimension dimension{1};
     SAMRAI::hier::BlockId blockId{0};
 
-    SAMRAI::hier::Box domain0{SAMRAI::hier::Index{dimension, 0}, SAMRAI::hier::Index{dimension, 5},
-                              blockId};
+    SAMRAI::hier::Box destDomain{SAMRAI::hier::Index{dimension, 0},
+                                 SAMRAI::hier::Index{dimension, 5}, blockId};
 
-    SAMRAI::hier::Box domain1{SAMRAI::hier::Index{dimension, 10},
-                              SAMRAI::hier::Index{dimension, 15}, blockId};
+    SAMRAI::hier::Box sourceDomain{SAMRAI::hier::Index{dimension, 10},
+                                   SAMRAI::hier::Index{dimension, 15}, blockId};
 
     SAMRAI::hier::IntVector ghost{dimension, 1};
 
     std::shared_ptr<SAMRAI::hier::PatchDescriptor> patchDescriptor{
         std::make_shared<SAMRAI::hier::PatchDescriptor>()};
 
-    SAMRAI::hier::Patch patch0{domain0, patchDescriptor};
-    SAMRAI::hier::Patch patch1{domain1, patchDescriptor};
+    SAMRAI::hier::Patch destPatch{destDomain, patchDescriptor};
+    SAMRAI::hier::Patch sourcePatch{sourceDomain, patchDescriptor};
 
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
-
-    std::shared_ptr<SAMRAI::hier::BoxGeometry> particles0Geom{
-        std::make_shared<SAMRAI::pdat::CellGeometry>(patch0.getBox(), ghost)};
-
-    std::shared_ptr<SAMRAI::hier::BoxGeometry> particles1Geom{
-        std::make_shared<SAMRAI::pdat::CellGeometry>(patch1.getBox(), ghost)};
+    ParticlesData<1> destPdat{destDomain, ghost};
+    ParticlesData<1> sourcePdat{sourceDomain, ghost};
 
 
-    SAMRAI::hier::Box srcMask{pDat1.getGhostBox()};
-    SAMRAI::hier::Box fillBox{pDat0.getGhostBox()};
+    std::shared_ptr<SAMRAI::hier::BoxGeometry> destGeom{
+        std::make_shared<SAMRAI::pdat::CellGeometry>(destPatch.getBox(), ghost)};
+
+
+    std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceGeom{
+        std::make_shared<SAMRAI::pdat::CellGeometry>(sourcePatch.getBox(), ghost)};
+
+
+    SAMRAI::hier::Box srcMask{sourcePdat.getGhostBox()};
+    SAMRAI::hier::Box fillBox{destPdat.getGhostBox()};
 
     bool overwriteInterior{true};
 
+    // we want the last cell of source (cell AMR 15) to be on top of the
+    // ghost cell of dest (cell AMR -1)
+    // so the formula is dest.lower() - source.upper() - 1
     SAMRAI::hier::Transformation transformation{
-        (domain0.lower() - domain1.upper()
+        (destDomain.lower() - sourceDomain.upper()
          - SAMRAI::hier::Index{SAMRAI::hier::IntVector::getOne(dimension)})};
 
 
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
-        std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(particles0Geom->calculateOverlap(
-            *particles1Geom, srcMask, fillBox, overwriteInterior, transformation))};
+        std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
+            *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 };
+
+
 
 
 TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
 {
-    Particle<1> particle1;
+    Particle<1> particle;
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
+    particle.weight = 1.0;
+    particle.charge = 1.0;
+    particle.iCell  = {{5}};
+    particle.v      = {{1.0, 1.0, 1.0}};
 
-    particle1.iCell = {{5}};
+    sourcePdat.interior.push_back(particle);
 
-    particle1.v = {1.0, 1.0, 1.0};
-
-    pDat1.interior.push_back(particle1);
-
-    pDat0.copy(pDat1, *cellOverlap);
+    destPdat.copy(sourcePdat, *cellOverlap);
 
     // ghost start of pach1 is 9, so iCell 0 and 5 correspond to 15.
     // cell 15 correspond to ghost of patch0
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
-    ASSERT_THAT(pDat0.ghost[0].v, Eq(particle1.v));
+    ASSERT_THAT(destPdat.ghost.size(), Eq(1));
+    ASSERT_THAT(destPdat.ghost[0].v, Eq(particle.v));
 }
+
+
+
 
 TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> pDat0{destDomain, ghost};
+    ParticlesData<1> pDat1{sourceDomain, ghost};
 
     Particle<1> particle1;
 
@@ -94,20 +102,23 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
 
     particle1.iCell = {{5}};
 
-    particle1.v = {1.0, 1.0, 1.0};
+    particle1.v = {{1.0, 1.0, 1.0}};
 
-    pDat1.interior.push_back(particle1);
+    sourcePdat.interior.push_back(particle1);
 
-    pDat0.copy(pDat1, *cellOverlap);
+    destPdat.copy(sourcePdat, *cellOverlap);
 
     // patch0 start at 0 , patch1 start at 10
     // with periodics condition, we have -1 equivalent to 15
-    std::array<int, 1> expectediCell{0};
+    std::array<int, 1> expectediCell{{0}};
 
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
-    ASSERT_THAT(pDat0.ghost[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destPdat.ghost.size(), Eq(1));
+    ASSERT_THAT(destPdat.ghost[0].iCell, Eq(expectediCell));
 }
+
+
+
 
 TEST_F(AParticlesData1D, CopyInTheCorrectBufferWithPeriodics)
 {
@@ -118,14 +129,17 @@ TEST_F(AParticlesData1D, CopyInTheCorrectBufferWithPeriodics)
 
     particle1.iCell = {{6}};
 
-    particle1.v = {1.0, 1.0, 1.0};
+    particle1.v = {{1.0, 1.0, 1.0}};
 
-    pDat1.ghost.push_back(particle1);
+    sourcePdat.ghost.push_back(particle1);
 
-    pDat0.copy(pDat1, *cellOverlap);
+    destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(pDat0.interior.size(), Eq(1));
+    ASSERT_THAT(destPdat.interior.size(), Eq(1));
 }
+
+
+
 
 TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
 {
@@ -138,12 +152,16 @@ TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
 
     particle1.v = {1.0, 1.0, 1.0};
 
-    pDat1.interior.push_back(particle1);
+    sourcePdat.interior.push_back(particle1);
 
-    pDat0.copy(pDat1, *cellOverlap);
+    destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost[0].weight, Eq(particle1.weight));
+    ASSERT_THAT(destPdat.ghost[0].weight, Eq(particle1.weight));
 }
+
+
+
+
 TEST_F(AParticlesData1D, PreserveChargeWhenCopyingWithPeriodics)
 {
     Particle<1> particle1;
@@ -155,12 +173,15 @@ TEST_F(AParticlesData1D, PreserveChargeWhenCopyingWithPeriodics)
 
     particle1.v = {1.0, 1.0, 1.0};
 
-    pDat1.interior.push_back(particle1);
+    sourcePdat.interior.push_back(particle1);
 
-    pDat0.copy(pDat1, *cellOverlap);
+    destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost[0].charge, Eq(particle1.charge));
+    ASSERT_THAT(destPdat.ghost[0].charge, Eq(particle1.charge));
 }
+
+
+
 
 int main(int argc, char **argv)
 {

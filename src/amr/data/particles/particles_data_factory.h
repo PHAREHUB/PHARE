@@ -31,7 +31,7 @@ public:
     virtual std::shared_ptr<SAMRAI::hier::PatchDataFactory>
     cloneFactory(SAMRAI::hier::IntVector const&) final
     {
-        return std::make_shared<ParticlesDataFactory>(d_ghosts, fineBoundaryRepresentsVariable);
+        return std::make_shared<ParticlesDataFactory>(d_ghosts, fineBoundaryRepresentsVariable_);
     }
 
     virtual std::shared_ptr<SAMRAI::hier::PatchData>

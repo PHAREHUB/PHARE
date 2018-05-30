@@ -46,6 +46,9 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenCopying)
     ASSERT_THAT(pDat0.interior[0].v, Eq(particle1.v));
 }
 
+
+
+
 TEST_F(AParticlesData1D, ShiftTheiCellWhenCopying)
 {
     ParticlesData<1> pDat0{domain0, ghost};
@@ -72,6 +75,10 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopying)
 
     ASSERT_THAT(pDat0.interior[0].iCell, Eq(expectediCell));
 }
+
+
+
+
 TEST_F(AParticlesData1D, CopyInTheCorrectBuffer)
 {
     ParticlesData<1> pDat0{domain0, ghost};
@@ -97,6 +104,10 @@ TEST_F(AParticlesData1D, CopyInTheCorrectBuffer)
 
     ASSERT_THAT(pDat0.ghost.size(), Eq(1));
 }
+
+
+
+
 TEST_F(AParticlesData1D, PreserveWeightWhenCopying)
 {
     ParticlesData<1> pDat0{domain0, ghost};
@@ -117,6 +128,10 @@ TEST_F(AParticlesData1D, PreserveWeightWhenCopying)
 
     ASSERT_THAT(pDat0.interior[0].weight, Eq(particle1.weight));
 }
+
+
+
+
 TEST_F(AParticlesData1D, PreserveChargeWhenCopying)
 {
     ParticlesData<1> pDat0{domain0, ghost};
@@ -138,7 +153,10 @@ TEST_F(AParticlesData1D, PreserveChargeWhenCopying)
     ASSERT_THAT(pDat0.interior[0].charge, Eq(particle1.charge));
 }
 
-TEST_F(AParticlesData1D, DoNothingForParticleOutOfGhostRegionWhenCopying)
+
+
+
+TEST_F(AParticlesData1D, DoesNothingForParticleOutOfGhostRegionWhenCopying)
 {
     ParticlesData<1> pDat0{domain0, ghost};
     ParticlesData<1> pDat1{domain1, ghost};
@@ -158,8 +176,10 @@ TEST_F(AParticlesData1D, DoNothingForParticleOutOfGhostRegionWhenCopying)
 
     EXPECT_THAT(pDat0.ghost.size(), Eq(0));
     EXPECT_THAT(pDat0.interior.size(), Eq(0));
-    EXPECT_THAT(pDat0.incoming.size(), Eq(0));
+    EXPECT_THAT(pDat0.coarseToFine.size(), Eq(0));
 }
+
+
 
 
 int main(int argc, char **argv)
