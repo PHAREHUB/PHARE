@@ -25,8 +25,6 @@ public:
         , interiorLocalBox_{SAMRAI::hier::Index{box.getDim(), 0} + ghost, box.upper() - box.lower(),
                             box.getBlockId()}
     {
-        // interiorLocalBox_.setLower(interiorLocalBox_.lower() - box.lower());
-        // interiorLocalBox_.setUpper(interiorLocalBox_.upper() - box.lower());
     }
 
 
@@ -55,7 +53,6 @@ public:
             SAMRAI::hier::Box const& sourceGhostBox = pSource->getGhostBox();
             SAMRAI::hier::Box const& myGhostBox     = getGhostBox();
             SAMRAI::hier::Box intersectionBox{sourceGhostBox * myGhostBox};
-
 
             if (!intersectionBox.empty())
             {
@@ -189,6 +186,44 @@ public:
 
 
 
+    /**
+     * @brief packStream is the function that takes particles from our particles arrays
+     * that lie in the boxes of the given overlap, and pack them to a stream.
+     *
+     * Streaming particles means that we have to take particles with iCell on a local source index
+     * space , communicate them, and load them at destination with iCell on a destination local
+     * index space. To do that we need to:
+     *
+     * 1- translate source iCell to source AMR index space
+     * 2- Apply the offset to shift this AMR index on top of the destination cells
+     * 3- pack and communicate particles
+     * 4- move back iCell from the shifted AMR index space to the local destination index space
+     *
+     * Note that step 2 could be done upon reception of the pack, we chose to do it before.
+     *
+     * Thus, by convention, the local iCell of the packed particles is translated to the
+     * destination AMR index space, i.e. it is moved to AMR space and shifted by the
+     * offset transformation given in the overlap.
+     *
+     * example : say we have an AMR domain [0,15] with two patches P1[0,5] and P2[10,15]
+     * with periodic boundaries. AMR index 15 is thus equivalent to AMR index -1, and 16 to 0
+     *
+     * Say we have one ghost cell.
+     *
+     * A particle on patch P2 with local iCell == 7 is thus on AMR index 16
+     * we want to stream it to P1.
+     *
+     * moving local iCell 7 to AMR means iCell = 16
+     * applying offset P2-->P1 means iCell becomes 0 (16 - offset_P2P1=16)
+     *
+     * at this point we pack it, SAMRAI communicates it to destination
+     * in unpack we get iCell = 0
+     *
+     * then we move it from AMR to P1 local means iCell becomes 1
+     * at this point with iCell=1 we know the particle should be placed into the interior particle
+     * buffer
+     *
+     */
     virtual void packStream(SAMRAI::tbox::MessageStream& stream,
                             SAMRAI::hier::BoxOverlap const& overlap) const final
     {
@@ -235,6 +270,18 @@ public:
 
 
 
+    /**
+     * @brief unpackStream is the function that unpacks a stream of particles to our particle
+     * arrays.
+     *
+     * We get a stream and an overlap. The overlap contains boxes where to put particles and
+     * transformation from source to destination AMR indexes.
+     *
+     * By convention chosen in patckStream, packed particles have their iCell in our AMR index
+     * space. This means that before putting them into our local arrays, we need to apply
+     * AMRToLocal() to get the proper shift to apply to them
+     *
+     */
     virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
                               SAMRAI::hier::BoxOverlap const& overlap) final
     {
@@ -246,29 +293,56 @@ public:
 
         if (!pOverlap->isOverlapEmpty())
         {
+            // unpack particles into a particle array
             size_t numberParticles = 0;
             stream >> numberParticles;
             particleArray.resize(numberParticles);
             stream.unpack(particleArray.data(), numberParticles);
 
+            // ok now our goal is to put the particles we have just unpacked
+            // into the particleData and in the proper particleArray : interior or ghost
+
             SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
             {
-                SAMRAI::hier::BoxContainer const& boxContainer
+                // we loop over all boxes in the overlap
+                // we have to first take the intersection of each of these boxes
+                // with our ghostBox. This is where unpacked particles should go.
+
+                SAMRAI::hier::BoxContainer const& destinationBoxes
                     = pOverlap->getDestinationBoxContainer();
-                for (auto const& box : boxContainer)
+
+
+                for (auto const& box : destinationBoxes)
                 {
-                    // SAMRAI::hier::Box unpackBox{box};
+                    // our goal here is :
+                    // 1/ to check if the each particle is in the intersect of the overlap boxes and
+                    // our ghostBox 2/ if yes, check if these particles should go within the
+                    // interior array or ghost array
+
+                    // first we need to calculate the intersect between our ghostBox and the
+                    // overlapBox these and the resulting intersect are in AMR index space unpacked
+                    // particles have their iCell in our AMR index space. we could :
+                    //  1- compare their iCell with the intersect right away, if within shit them to
+                    //  local indexing and push them in proper array
+                    // or
+                    // 2- translate the intersect from  AMR to local indexing, shift the particles
+                    // from AMR to local, and do the comparison in local index space and then push
+                    // them in the proper array
+
                     auto const intersect = getGhostBox() * box;
-                    // SAMRAI::hier::Box intersectLocalSource{intersect};
+
+
+                    // we chose first option, so get the intersect in local index space
+                    // and get the vector to shift a particle from our AMR space to local index
+                    // space
                     auto intersectLocalSource = AMRToLocal(intersect, getGhostBox());
-
-
-                    auto particleShift = AMRToLocal(getGhostBox());
-
+                    auto particleShift        = AMRToLocal(getGhostBox());
 
                     for (auto const& particle : particleArray)
                     {
+                        // shift the particle to local index space
+                        // and if it is in intersection, decide in which array to push it.
                         auto shiftedParticle{particle};
                         shiftParticle_(particleShift, shiftedParticle);
 
@@ -291,7 +365,8 @@ public:
 
 
     // Core interface
-
+    // these particles arrays are public because core module is free to use
+    // them easily
     ParticleArray<dim> interior;
     ParticleArray<dim> ghost;
     ParticleArray<dim> coarseToFine;
@@ -300,6 +375,9 @@ public:
 
     // Private
 private:
+    //! interiorLocalBox_ is the box, in local index space, that goes from the first to the last
+    //! cell in our patch physical domain, i.e. "from dual physical start index to dual physical end
+    //! index"
     SAMRAI::hier::Box interiorLocalBox_;
 
 
@@ -324,26 +402,19 @@ private:
 
 
 
-    /**
-     * @brief copy_ prepares the number of cells by which the particle will be shifted
-     * Note that the source and destination boxes are GHOST boxes and the ghost width
-     * for particle data is one cell (no particle can exit the domain by more than one cell)
-     * Thus, the local index of the lower
-     *
-     *
-     * @param sourceBox is the source box in AMR cell-centered index space
-     * @param destinationBox is the destination box in AMR cell-centered index space
-     * @param intersectionBox is the intersection between source and destination box, in AMR
-     * cell-centered index space
-     * @param source is the ParticleData patchData from which particles are to be copied into this.
-     */
-    void copy_(SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
-               SAMRAI::hier::Box const& intersectionBox, ParticlesData const& source)
+    void copy_(SAMRAI::hier::Box const& sourceGhostBox,
+               SAMRAI::hier::Box const& destinationGhostBox,
+               SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
     {
-        SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(SAMRAI::tbox::Dimension{dim})};
-        SAMRAI::hier::IntVector shift{sourceBox.lower() - destinationBox.lower() /*- oneIndex*/};
-        SAMRAI::hier::Box intersectionLocalSource = AMRToLocal(intersectionBox, sourceBox);
-        copy_(source, shift, intersectionLocalSource);
+        // at this point indersectionBox is in AMR index space
+        // we need to translate it to local source index space to copy_
+        SAMRAI::hier::Box intersectionLocalSource = AMRToLocal(intersectionBox, sourceGhostBox);
+
+        // copy_ also needs the vector to shift particles from source local indexing to destination
+        // local indexing
+        auto particleShift = particleCellShift(sourceGhostBox, destinationGhostBox);
+
+        copy_(sourceData, particleShift, intersectionLocalSource);
     }
 
 
@@ -364,8 +435,25 @@ private:
     }
 
 
+    /**
+     * @brief particleCellShift returns the vector to shift particle iCell from local source
+     * indexing to destination source indexing when there is no offset in AMR index between source
+     * and destination boxes
+     */
+    SAMRAI::hier::IntVector particleCellShift(SAMRAI::hier::Box const& sourceGhostBox,
+                                              SAMRAI::hier::Box const& destGhostBox)
+    {
+        auto particleCellShift = localToAMR(sourceGhostBox);
+        particleCellShift += AMRToLocal(this->getGhostBox());
+        return particleCellShift;
+    }
 
 
+    /**
+     * @brief particleCellShift returns the vector to shift particle iCell from local source
+     * indexing to destination source indexing with an offset in AMR indexing between source and
+     * destination boxes
+     */
     SAMRAI::hier::IntVector particleCellShift(SAMRAI::hier::Box const& sourceGhostBox,
                                               SAMRAI::hier::Transformation const& transformation,
                                               SAMRAI::hier::Box const& destGhostBox)
@@ -396,23 +484,32 @@ private:
 
 
 
-
-    void copy_(ParticlesData const& source, SAMRAI::hier::IntVector const& shiftToDestination,
-               SAMRAI::hier::Box const& localSource)
+    /**
+     * @brief copy_ this overload takes the source patch data, the box in local source indexing
+     * where to select particles to copy, and the vector to shift their iCell to our (destination)
+     * local indexing and copy them to our local particle buffers.
+     */
+    void copy_(ParticlesData const& sourceData,
+               SAMRAI::hier::IntVector const& shiftParticleCellToDest,
+               SAMRAI::hier::Box const& localSourceSelectionBox)
     {
-        std::array<decltype(source.interior) const*, 2> particlesArray{&source.interior,
-                                                                       &source.ghost};
-        auto const& ghostWidth = source.getGhostCellWidth();
+        std::array<decltype(sourceData.interior) const*, 2> particlesArrays{&sourceData.interior,
+                                                                            &sourceData.ghost};
 
-        for (auto const& sourceParticlesArray : particlesArray)
+        // loop over both interior and ghost source particle buffers
+        // for each of their particles, check they should be copied (they should be intersection)
+        // and if they do, check into which of our particle buffers it should be copied into.
+        // beware the before checking wether it is inside our domain or not, we must
+        // translate their iCell from local source indexing to our local indexing.
+        for (auto const& sourceParticlesArray : particlesArrays)
         {
             for (auto const& particle : *sourceParticlesArray)
             {
-                if (isInBox_(localSource, particle))
+                if (isInBox_(localSourceSelectionBox, particle))
                 {
                     auto shiftedParticle{particle};
 
-                    shiftParticle_(shiftToDestination, shiftedParticle);
+                    shiftParticle_(shiftParticleCellToDest, shiftedParticle);
 
                     // TODO isInBox existe déja on peut pas l'utiliser ?
                     if (isInBox_(interiorLocalBox_, shiftedParticle))
