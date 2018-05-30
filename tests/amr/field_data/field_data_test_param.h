@@ -2,6 +2,7 @@
 #define PHARE_TESTS_AMR_FIELD_DATA_FIELD_DATA_TEST_PARAM_H
 
 
+#include <cmath>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -26,56 +27,95 @@ struct FieldDataTestParam
 {
     FieldDataTestParam(std::string const& name, HybridQuantity::Scalar quantity,
                        SAMRAI::hier::Patch& patch_0, SAMRAI::hier::Patch& patch_1)
-        : field0Variable{name + std::string("_0"), quantity}
-        , field1Variable{name + std::string("_1"), quantity}
-        , field0Factory{field0Variable.getPatchDataFactory()}
-        , field1Factory{field1Variable.getPatchDataFactory()}
-        , patch0{patch_0}
-        , patch1{patch_1}
-        , field0Geom{field0Factory->getBoxGeometry(patch0.getBox())}
-        , field1Geom{field1Factory->getBoxGeometry(patch1.getBox())}
-        , field0Data{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
-              field0Factory->allocate(patch0))}
-        , field1Data{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
-              field1Factory->allocate(patch1))}
+        : fieldDestinationVariable{name + std::string("_0"), quantity}
+        , fieldSourceVariable{name + std::string("_1"), quantity}
+        , fieldDestinationFactory{fieldDestinationVariable.getPatchDataFactory()}
+        , fieldSourceFactory{fieldSourceVariable.getPatchDataFactory()}
+        , destinationPatch{patch_0}
+        , sourcePatch{patch_1}
+        , destinationFieldGeometry{fieldDestinationFactory->getBoxGeometry(
+              destinationPatch.getBox())}
+        , sourceFieldGeometry{fieldSourceFactory->getBoxGeometry(sourcePatch.getBox())}
+        , destinationFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+              fieldDestinationFactory->allocate(destinationPatch))}
+        , sourceFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+              fieldSourceFactory->allocate(sourcePatch))}
     {
         resetValues();
     }
+
+
+
+    /** @brief reset the values of field source and destination
+     */
     void resetValues()
     {
-        auto& field0 = field0Data->field;
-        auto& field1 = field1Data->field;
+        auto& fieldDestination = destinationFieldData->field;
+        auto& fieldSource      = sourceFieldData->field;
 
 
-        auto iStart = field0Data->gridLayout.ghostStartIndex(field0, Direction::X);
-        auto iEnd   = field0Data->gridLayout.ghostEndIndex(field0, Direction::X);
+        auto iStart
+            = destinationFieldData->gridLayout.ghostStartIndex(fieldDestination, Direction::X);
+        auto iEnd = destinationFieldData->gridLayout.ghostEndIndex(fieldDestination, Direction::X);
 
         for (auto ix = iStart; ix <= iEnd; ++ix)
         {
-            field0(ix) = 0.0;
+            fieldDestination(ix) = destinationFill(ix);
         }
 
-        iStart = field1Data->gridLayout.ghostStartIndex(field1, Direction::X);
-        iEnd   = field1Data->gridLayout.ghostEndIndex(field1, Direction::X);
+        iStart = sourceFieldData->gridLayout.ghostStartIndex(fieldSource, Direction::X);
+        iEnd   = sourceFieldData->gridLayout.ghostEndIndex(fieldSource, Direction::X);
 
         for (auto ix = iStart; ix <= iEnd; ++ix)
         {
-            field1(ix) = 1.0;
+            fieldSource(ix) = sourceFill(ix);
         }
     }
-    FieldVariable<GridLayoutImpl, FieldImpl> field0Variable;
-    FieldVariable<GridLayoutImpl, FieldImpl> field1Variable;
-    std::shared_ptr<SAMRAI::hier::PatchDataFactory> field0Factory;
-    std::shared_ptr<SAMRAI::hier::PatchDataFactory> field1Factory;
 
-    SAMRAI::hier::Patch& patch0;
-    SAMRAI::hier::Patch& patch1;
 
-    std::shared_ptr<SAMRAI::hier::BoxGeometry> field0Geom;
-    std::shared_ptr<SAMRAI::hier::BoxGeometry> field1Geom;
 
-    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> field0Data;
-    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> field1Data;
+
+    double sourceFill(int iCell)
+    {
+        auto& sourceLayout = sourceFieldData->gridLayout;
+        auto& sourceField  = sourceFieldData->field;
+
+        auto origin   = sourceLayout.origin();
+        auto position = sourceLayout.fieldNodeCoordinates(sourceField, origin, iCell);
+
+        return std::cos(position[0]);
+    }
+
+
+
+
+    double destinationFill(int iCell)
+    {
+        auto& destinationLayout = destinationFieldData->gridLayout;
+        auto& destinationField  = destinationFieldData->field;
+
+        auto origin   = destinationLayout.origin();
+        auto position = destinationLayout.fieldNodeCoordinates(destinationField, origin, iCell);
+
+        return std::sin(position[0]);
+    }
+
+
+
+    FieldVariable<GridLayoutImpl, FieldImpl> fieldDestinationVariable;
+    FieldVariable<GridLayoutImpl, FieldImpl> fieldSourceVariable;
+
+    std::shared_ptr<SAMRAI::hier::PatchDataFactory> fieldDestinationFactory;
+    std::shared_ptr<SAMRAI::hier::PatchDataFactory> fieldSourceFactory;
+
+    SAMRAI::hier::Patch& destinationPatch;
+    SAMRAI::hier::Patch& sourcePatch;
+
+    std::shared_ptr<SAMRAI::hier::BoxGeometry> destinationFieldGeometry;
+    std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceFieldGeometry;
+
+    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> destinationFieldData;
+    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> sourceFieldData;
 };
 
 struct Patches1D
@@ -84,41 +124,48 @@ struct Patches1D
     SAMRAI::hier::BlockId blockId{0};
 
 
-    SAMRAI::hier::Box box0{SAMRAI::hier::Index(dim, 0), SAMRAI::hier::Index(dim, 10), blockId};
-    SAMRAI::hier::Box box1{SAMRAI::hier::Index(dim, 5), SAMRAI::hier::Index(dim, 20), blockId};
+    SAMRAI::hier::Box destinationBoxPatchDomain{SAMRAI::hier::Index(dim, 0),
+                                                SAMRAI::hier::Index(dim, 10), blockId};
+
+    SAMRAI::hier::Box sourceBoxPatchDomain{SAMRAI::hier::Index(dim, 5),
+                                           SAMRAI::hier::Index(dim, 20), blockId};
 
     std::shared_ptr<SAMRAI::hier::PatchDescriptor> patchDescriptor{
         std::make_shared<SAMRAI::hier::PatchDescriptor>()};
 
-    double dx{0.01};
-    double patch0_lo{0.};
-    double patch0_hi{0.1};
 
-    double patch1_lo{0.05};
-    double patch1_hi{0.2};
+    double dx{0.01};
+    double patchDestinationLower{0.};
+    double patchDestinationUpper{0.1};
+
+    double patchSourceLower{0.05};
+    double patchSourceUpper{0.2};
 
 
     SAMRAI::hier::PatchGeometry::TwoDimBool touchesRegular{dim, false};
 
-    std::shared_ptr<SAMRAI::geom::CartesianPatchGeometry> patch0Geom{
-        std::make_shared<SAMRAI::geom::CartesianPatchGeometry>(SAMRAI::hier::IntVector::getOne(dim),
-                                                               touchesRegular, blockId, &dx,
-                                                               &patch0_lo, &patch0_hi)};
+    std::shared_ptr<SAMRAI::geom::CartesianPatchGeometry> destinationPatchGeometry{
+        std::make_shared<SAMRAI::geom::CartesianPatchGeometry>(
+            SAMRAI::hier::IntVector::getOne(dim), touchesRegular, blockId, &dx,
+            &patchDestinationLower, &patchDestinationUpper)};
 
-    std::shared_ptr<SAMRAI::geom::CartesianPatchGeometry> patch1Geom{
-        std::make_shared<SAMRAI::geom::CartesianPatchGeometry>(SAMRAI::hier::IntVector::getOne(dim),
-                                                               touchesRegular, blockId, &dx,
-                                                               &patch1_lo, &patch1_hi)};
+    std::shared_ptr<SAMRAI::geom::CartesianPatchGeometry> sourcePatchGeometry{
+        std::make_shared<SAMRAI::geom::CartesianPatchGeometry>(
+            SAMRAI::hier::IntVector::getOne(dim), touchesRegular, blockId, &dx, &patchSourceLower,
+            &patchSourceUpper)};
 
 
 
-    SAMRAI::hier::Patch patch0{box0, patchDescriptor};
-    SAMRAI::hier::Patch patch1{box1, patchDescriptor};
+    SAMRAI::hier::Patch destinationPatch{destinationBoxPatchDomain, patchDescriptor};
+    SAMRAI::hier::Patch sourcePatch{sourceBoxPatchDomain, patchDescriptor};
+
+
+
 
     Patches1D()
     {
-        patch0.setPatchGeometry(patch0Geom);
-        patch1.setPatchGeometry(patch1Geom);
+        destinationPatch.setPatchGeometry(destinationPatchGeometry);
+        sourcePatch.setPatchGeometry(sourcePatchGeometry);
     }
 };
 
@@ -134,30 +181,35 @@ struct AFieldData1DCenteredOnEx : public ::testing::Test
     HybridQuantity::Scalar quantity{HybridQuantity::Scalar::Ex};
     std::string name{"Ex"};
 
-    T param{name, quantity, patch1d.patch0, patch1d.patch1};
+    T param{name, quantity, patch1d.destinationPatch, patch1d.sourcePatch};
 
 
     SAMRAI::hier::IntVector ghosts{SAMRAI::hier::IntVector::getZero(this->dim)};
 
 
-    std::shared_ptr<SAMRAI::pdat::CellDataFactory<double>> cell0Factory;
-    std::shared_ptr<SAMRAI::pdat::CellDataFactory<double>> cell1Factory;
+    std::shared_ptr<SAMRAI::pdat::CellDataFactory<double>> destinationCellFactory;
+    std::shared_ptr<SAMRAI::pdat::CellDataFactory<double>> sourceCellFactory;
 
-    std::shared_ptr<SAMRAI::pdat::CellData<double>> cell0Data;
 
-    std::shared_ptr<SAMRAI::pdat::CellData<double>> cell1Data;
+
+    std::shared_ptr<SAMRAI::pdat::CellData<double>> destinationCellData;
+    std::shared_ptr<SAMRAI::pdat::CellData<double>> sourceCellData;
+
+
+
+
     AFieldData1DCenteredOnEx()
     {
-        ghosts[0] = param.field0Data->gridLayout.nbrGhosts(
-            param.field0Data->gridLayout.centering(quantity)[0]);
-        cell0Factory = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
-        cell1Factory = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
+        ghosts[0] = param.destinationFieldData->gridLayout.nbrGhosts(
+            param.destinationFieldData->gridLayout.centering(quantity)[0]);
+        destinationCellFactory = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
+        sourceCellFactory      = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
 
-        cell0Data = std::dynamic_pointer_cast<SAMRAI::pdat::CellData<double>>(
-            cell0Factory->allocate(patch1d.patch0));
+        destinationCellData = std::dynamic_pointer_cast<SAMRAI::pdat::CellData<double>>(
+            destinationCellFactory->allocate(patch1d.destinationPatch));
 
-        cell1Data = std::dynamic_pointer_cast<SAMRAI::pdat::CellData<double>>(
-            cell1Factory->allocate(patch1d.patch1));
+        sourceCellData = std::dynamic_pointer_cast<SAMRAI::pdat::CellData<double>>(
+            sourceCellFactory->allocate(patch1d.sourcePatch));
     }
 };
 
@@ -175,32 +227,52 @@ struct AFieldData1DCenteredOnEy : public ::testing::Test
     HybridQuantity::Scalar quantity{HybridQuantity::Scalar::Ey};
     std::string name{"Ey"};
 
-    T param{name, quantity, patch1d.patch0, patch1d.patch1};
+    T param{name, quantity, patch1d.destinationPatch, patch1d.sourcePatch};
 
 
     SAMRAI::hier::IntVector ghosts{SAMRAI::hier::IntVector::getZero(this->dim)};
 
 
-    std::shared_ptr<SAMRAI::pdat::NodeDataFactory<double>> node0Factory;
-    std::shared_ptr<SAMRAI::pdat::NodeDataFactory<double>> node1Factory;
+    std::shared_ptr<SAMRAI::pdat::NodeDataFactory<double>> destinationNodeFactory;
+    std::shared_ptr<SAMRAI::pdat::NodeDataFactory<double>> sourceNodeFactory;
 
-    std::shared_ptr<SAMRAI::pdat::NodeData<double>> node0Data;
 
-    std::shared_ptr<SAMRAI::pdat::NodeData<double>> node1Data;
+
+    std::shared_ptr<SAMRAI::pdat::NodeData<double>> destinationNodeData;
+    std::shared_ptr<SAMRAI::pdat::NodeData<double>> sourceNodeData;
+
+
+
     AFieldData1DCenteredOnEy()
     {
-        ghosts[0] = param.field0Data->gridLayout.nbrGhosts(
-            param.field0Data->gridLayout.centering(quantity)[0]);
-        node0Factory = std::make_shared<SAMRAI::pdat::NodeDataFactory<double>>(1, ghosts, true);
-        node1Factory = std::make_shared<SAMRAI::pdat::NodeDataFactory<double>>(1, ghosts, true);
+        ghosts[0] = param.destinationFieldData->gridLayout.nbrGhosts(
+            param.destinationFieldData->gridLayout.centering(quantity)[0]);
+        destinationNodeFactory
+            = std::make_shared<SAMRAI::pdat::NodeDataFactory<double>>(1, ghosts, true);
+        sourceNodeFactory
+            = std::make_shared<SAMRAI::pdat::NodeDataFactory<double>>(1, ghosts, true);
 
-        node0Data = std::dynamic_pointer_cast<SAMRAI::pdat::NodeData<double>>(
-            node0Factory->allocate(patch1d.patch0));
+        destinationNodeData = std::dynamic_pointer_cast<SAMRAI::pdat::NodeData<double>>(
+            destinationNodeFactory->allocate(patch1d.destinationPatch));
 
-        node1Data = std::dynamic_pointer_cast<SAMRAI::pdat::NodeData<double>>(
-            node1Factory->allocate(patch1d.patch1));
+        sourceNodeData = std::dynamic_pointer_cast<SAMRAI::pdat::NodeData<double>>(
+            sourceNodeFactory->allocate(patch1d.sourcePatch));
     }
 };
+
+
+// Using used later in test
+
+using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
+
+using FieldDataTest1DOrder1 = FieldDataTestParam<GridLayoutImplYee<1, 1>, Field1D>;
+using FieldDataTest1DOrder2 = FieldDataTestParam<GridLayoutImplYee<1, 2>, Field1D>;
+using FieldDataTest1DOrder3 = FieldDataTestParam<GridLayoutImplYee<1, 3>, Field1D>;
+
+using FieldDataTestList
+    = ::testing::Types<FieldDataTest1DOrder1, FieldDataTest1DOrder2, FieldDataTest1DOrder3>;
+
+
 
 } // namespace PHARE
 #endif

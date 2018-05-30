@@ -80,6 +80,8 @@ public:
             // First step is to translate the AMR box into GridLayout index space
             // to accomplish that we get the interior box, from the FieldData.
             // and we call toFieldBox with the parameter withGhost = true.
+            // note that we could have stored the ghost box of the field data at
+            // creation
 
             SAMRAI::hier::Box sourceBox
                 = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(

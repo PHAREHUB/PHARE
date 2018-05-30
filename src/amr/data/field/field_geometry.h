@@ -154,7 +154,7 @@ public:
                 box.setLower(dirZ, lower[dirZ]);
                 box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
             }
-        } // end withGhosts
+        } // end withoutGhosts
 
 
 
@@ -295,7 +295,8 @@ private:
             for (auto box = destinationRestrictBoxes.begin(); box != destinationRestrictBoxes.end();
                  ++box)
             {
-                restrictBoxes.push_back(toFieldBox(*box, quantity_, layoutFromBox_(*box, layout_)));
+                restrictBoxes.push_back(
+                    toFieldBox(*box, quantity_, layoutFromBox_(*box, layout_), !withGhosts));
             }
 
             // will only keep of together the boxes that interesect the restrictions
