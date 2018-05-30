@@ -5,12 +5,14 @@ set( SOURCES_INC
      data/particles/particles_data.h
      data/particles/particles_data_factory.h
      data/particles/particles_variable.h
+     data/particles/utils.h
      tools/resources_manager.h
      tools/resources_manager_utilities.h
      tools/resources_guards.h
    )
 set( SOURCES_CPP
      tools/resources_manager.cpp
+     data/particles/utils.cpp
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

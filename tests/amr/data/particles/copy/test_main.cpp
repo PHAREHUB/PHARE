@@ -14,11 +14,11 @@ struct AParticlesData1D : public testing::Test
     SAMRAI::tbox::Dimension dimension{1};
     SAMRAI::hier::BlockId blockId{0};
 
-    SAMRAI::hier::Box domain0{SAMRAI::hier::Index{dimension, 1}, SAMRAI::hier::Index{dimension, 5},
-                              blockId};
+    SAMRAI::hier::Box destDomain{SAMRAI::hier::Index{dimension, 1},
+                                 SAMRAI::hier::Index{dimension, 5}, blockId};
 
-    SAMRAI::hier::Box domain1{SAMRAI::hier::Index{dimension, 3}, SAMRAI::hier::Index{dimension, 10},
-                              blockId};
+    SAMRAI::hier::Box sourceDomain{SAMRAI::hier::Index{dimension, 3},
+                                   SAMRAI::hier::Index{dimension, 10}, blockId};
 
     SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
 };
@@ -27,23 +27,21 @@ struct AParticlesData1D : public testing::Test
 
 TEST_F(AParticlesData1D, PreserveVelocityWhenCopying)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> destData{destDomain, ghost};
+    ParticlesData<1> sourceData{sourceDomain, ghost};
+    Particle<1> particle;
 
-    Particle<1> particle1;
+    particle.weight = 1.0;
+    particle.charge = 1.0;
+    particle.v      = {1.0, 1.0, 1.0};
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
+    particle.iCell = {{0}};
 
-    particle1.iCell = {{0}};
+    sourceData.interior.push_back(particle);
 
-    particle1.v = {1.0, 1.0, 1.0};
+    destData.copy(sourceData);
 
-    pDat1.interior.push_back(particle1);
-
-    pDat0.copy(pDat1);
-
-    ASSERT_THAT(pDat0.interior[0].v, Eq(particle1.v));
+    ASSERT_THAT(destData.interior[0].v, Eq(particle.v));
 }
 
 
@@ -51,21 +49,20 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenCopying)
 
 TEST_F(AParticlesData1D, ShiftTheiCellWhenCopying)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> destData{destDomain, ghost};
+    ParticlesData<1> sourceData{sourceDomain, ghost};
 
-    Particle<1> particle1;
+    Particle<1> particle;
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
+    particle.weight = 1.0;
+    particle.charge = 1.0;
+    particle.v      = {1.0, 1.0, 1.0};
 
-    particle1.iCell = {{0}};
+    particle.iCell = {{0}};
 
-    particle1.v = {1.0, 1.0, 1.0};
+    sourceData.interior.push_back(particle);
 
-    pDat1.interior.push_back(particle1);
-
-    pDat0.copy(pDat1);
+    destData.copy(sourceData);
 
     // patch0 physical start at 1 , patch1 physical start at 3
     // so the origin of patch 1 in patch0 coordinate
@@ -73,7 +70,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopying)
     // it will be shifted to 2
     std::array<int, 1> expectediCell{2};
 
-    ASSERT_THAT(pDat0.interior[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.interior[0].iCell, Eq(expectediCell));
 }
 
 
@@ -110,23 +107,22 @@ TEST_F(AParticlesData1D, CopyInTheCorrectBuffer)
 
 TEST_F(AParticlesData1D, PreserveWeightWhenCopying)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> destData{destDomain, ghost};
+    ParticlesData<1> sourceData{sourceDomain, ghost};
 
-    Particle<1> particle1;
+    Particle<1> particle;
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
+    particle.weight = 1.0;
+    particle.charge = 1.0;
+    particle.v      = {1.0, 1.0, 1.0};
 
-    particle1.iCell = {{0}};
+    particle.iCell = {{0}};
 
-    particle1.v = {1.0, 1.0, 1.0};
+    sourceData.interior.push_back(particle);
 
-    pDat1.interior.push_back(particle1);
+    destData.copy(sourceData);
 
-    pDat0.copy(pDat1);
-
-    ASSERT_THAT(pDat0.interior[0].weight, Eq(particle1.weight));
+    ASSERT_THAT(destData.interior[0].weight, Eq(particle.weight));
 }
 
 
@@ -134,23 +130,22 @@ TEST_F(AParticlesData1D, PreserveWeightWhenCopying)
 
 TEST_F(AParticlesData1D, PreserveChargeWhenCopying)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> destData{destDomain, ghost};
+    ParticlesData<1> sourceData{sourceDomain, ghost};
 
-    Particle<1> particle1;
+    Particle<1> particle;
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
+    particle.weight = 1.0;
+    particle.charge = 1.0;
+    particle.v      = {1.0, 1.0, 1.0};
 
-    particle1.iCell = {{0}};
+    particle.iCell = {{0}};
 
-    particle1.v = {1.0, 1.0, 1.0};
+    sourceData.interior.push_back(particle);
 
-    pDat1.interior.push_back(particle1);
+    destData.copy(sourceData);
 
-    pDat0.copy(pDat1);
-
-    ASSERT_THAT(pDat0.interior[0].charge, Eq(particle1.charge));
+    ASSERT_THAT(destData.interior[0].charge, Eq(particle.charge));
 }
 
 
@@ -158,25 +153,24 @@ TEST_F(AParticlesData1D, PreserveChargeWhenCopying)
 
 TEST_F(AParticlesData1D, DoesNothingForParticleOutOfGhostRegionWhenCopying)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> destData{destDomain, ghost};
+    ParticlesData<1> sourceData{sourceDomain, ghost};
 
-    Particle<1> particle1;
+    Particle<1> particle;
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
+    particle.weight = 1.0;
+    particle.charge = 1.0;
+    particle.v      = {1.0, 1.0, 1.0};
 
-    particle1.iCell = {{8}};
+    particle.iCell = {{8}};
 
-    particle1.v = {1.0, 1.0, 1.0};
+    sourceData.interior.push_back(particle);
 
-    pDat1.interior.push_back(particle1);
+    destData.copy(sourceData);
 
-    pDat0.copy(pDat1);
-
-    EXPECT_THAT(pDat0.ghost.size(), Eq(0));
-    EXPECT_THAT(pDat0.interior.size(), Eq(0));
-    EXPECT_THAT(pDat0.coarseToFine.size(), Eq(0));
+    EXPECT_THAT(destData.ghost.size(), Eq(0));
+    EXPECT_THAT(destData.interior.size(), Eq(0));
+    EXPECT_THAT(destData.coarseToFine.size(), Eq(0));
 }
 
 

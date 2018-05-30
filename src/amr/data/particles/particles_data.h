@@ -13,6 +13,7 @@
 
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
+#include "utils.h"
 
 namespace PHARE
 {
@@ -43,6 +44,19 @@ public:
 
     // SAMRAI interface
 
+
+    /**
+     * @brief copy takes a source PatchData and tries to copy its particles
+     * in our particle arrays where the source ghostbox and our ghost box overlap
+     *
+     *
+     * this function just hands the source ghost box, our ghost box and their
+     * intersection to a private copy_
+     *
+     * We follow the procedure suggested by SAMRAI PatchDatas. If by anychance
+     * the source PatchData was not a ParticleData like we are, we'd give ourselves
+     * to its copy2 function, assuming it can copy its source content into us.
+     */
     virtual void copy(SAMRAI::hier::PatchData const& source) final
     {
         TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
@@ -52,7 +66,7 @@ public:
         {
             SAMRAI::hier::Box const& sourceGhostBox = pSource->getGhostBox();
             SAMRAI::hier::Box const& myGhostBox     = getGhostBox();
-            SAMRAI::hier::Box intersectionBox{sourceGhostBox * myGhostBox};
+            const SAMRAI::hier::Box intersectionBox{sourceGhostBox * myGhostBox};
 
             if (!intersectionBox.empty())
             {
@@ -67,28 +81,14 @@ public:
 
 
 
-
+    /**
+     * @brief our copy2 will be called by a PatchData if a ParticleData was
+     * given to be copied into another kind of PatchData. Here we chose that
+     * copy2 throws unconditiionnally.
+     */
     virtual void copy2(SAMRAI::hier::PatchData& destination) const final
     {
         throw std::runtime_error("Cannot cast");
-    }
-
-
-
-
-    bool offsetIsZero(SAMRAI::hier::Transformation const& transformation)
-    {
-        auto const& offset = transformation.getOffset();
-        auto dimension     = offset.getDim();
-        return transformation.getOffset() == SAMRAI::hier::IntVector::getZero(dimension);
-    }
-
-
-
-
-    bool isSameBlock(SAMRAI::hier::Transformation const& transformation)
-    {
-        return transformation.getBeginBlock() == transformation.getEndBlock();
     }
 
 
@@ -373,31 +373,11 @@ public:
 
 
 
-    // Private
 private:
     //! interiorLocalBox_ is the box, in local index space, that goes from the first to the last
     //! cell in our patch physical domain, i.e. "from dual physical start index to dual physical end
     //! index"
     SAMRAI::hier::Box interiorLocalBox_;
-
-
-    void AMRToLocal(SAMRAI::hier::Box& AMRBox, SAMRAI::hier::Box const& referenceAMR)
-    {
-        AMRBox.setLower(AMRBox.lower() - referenceAMR.lower());
-        AMRBox.setUpper(AMRBox.upper() - referenceAMR.lower());
-    }
-
-
-
-
-    SAMRAI::hier::Box AMRToLocal(SAMRAI::hier::Box const& AMRBox,
-                                 SAMRAI::hier::Box const& referenceAMR) const
-    {
-        SAMRAI::hier::Box localBox{AMRBox};
-        localBox.setLower(AMRBox.lower() - referenceAMR.lower());
-        localBox.setUpper(AMRBox.upper() - referenceAMR.lower());
-        return localBox;
-    }
 
 
 
@@ -412,7 +392,7 @@ private:
 
         // copy_ also needs the vector to shift particles from source local indexing to destination
         // local indexing
-        auto particleShift = particleCellShift(sourceGhostBox, destinationGhostBox);
+        auto particleShift = particleCellShift_(sourceGhostBox, destinationGhostBox);
 
         copy_(sourceData, particleShift, intersectionLocalSource);
     }
@@ -420,31 +400,16 @@ private:
 
 
 
-    SAMRAI::hier::IntVector localToAMR(SAMRAI::hier::Box const& referenceAMRBox)
-    {
-        return SAMRAI::hier::IntVector{referenceAMRBox.lower()};
-    }
-
-
-
-
-    SAMRAI::hier::IntVector AMRToLocal(SAMRAI::hier::Box const& referenceAMRBox)
-    {
-        SAMRAI::hier::Index zero{SAMRAI::tbox::Dimension{dim}, 0};
-        return SAMRAI::hier::IntVector{zero - referenceAMRBox.lower()};
-    }
-
-
     /**
      * @brief particleCellShift returns the vector to shift particle iCell from local source
      * indexing to destination source indexing when there is no offset in AMR index between source
      * and destination boxes
      */
-    SAMRAI::hier::IntVector particleCellShift(SAMRAI::hier::Box const& sourceGhostBox,
-                                              SAMRAI::hier::Box const& destGhostBox)
+    SAMRAI::hier::IntVector particleCellShift_(SAMRAI::hier::Box const& sourceGhostBox,
+                                               SAMRAI::hier::Box const& destGhostBox)
     {
         auto particleCellShift = localToAMR(sourceGhostBox);
-        particleCellShift += AMRToLocal(this->getGhostBox());
+        particleCellShift += AMRToLocal(destGhostBox);
         return particleCellShift;
     }
 
@@ -454,9 +419,9 @@ private:
      * indexing to destination source indexing with an offset in AMR indexing between source and
      * destination boxes
      */
-    SAMRAI::hier::IntVector particleCellShift(SAMRAI::hier::Box const& sourceGhostBox,
-                                              SAMRAI::hier::Transformation const& transformation,
-                                              SAMRAI::hier::Box const& destGhostBox)
+    SAMRAI::hier::IntVector particleCellShift_(SAMRAI::hier::Box const& sourceGhostBox,
+                                               SAMRAI::hier::Transformation const& transformation,
+                                               SAMRAI::hier::Box const& destGhostBox)
     {
         auto particleCellShift = localToAMR(sourceGhostBox);
         particleCellShift += transformation.getOffset();
@@ -472,7 +437,8 @@ private:
                             SAMRAI::hier::Transformation const& transformation,
                             ParticlesData const& sourceData)
     {
-        auto particleShift = particleCellShift(sourceGhostBox, transformation, this->getGhostBox());
+        auto particleShift
+            = particleCellShift_(sourceGhostBox, transformation, this->getGhostBox());
 
         SAMRAI::hier::Box localSourceSelectionBox = AMRToLocal(intersectionBox, sourceGhostBox);
 
@@ -539,7 +505,10 @@ private:
 
 
 
-
+    /**
+     * @brief countNumberParticlesIn_ counts the number of interior particles that lie
+     * within the boxes of an overlap
+     */
     std::size_t countNumberParticlesIn_(SAMRAI::pdat::CellOverlap const& overlap) const
     {
         std::size_t numberParticles = 0;
@@ -553,37 +522,36 @@ private:
 
         for (auto const& box : boxes)
         {
-            SAMRAI::hier::Box finalBox{box};
+            SAMRAI::hier::Box shiftedBox{box};
             SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
-            transformation.transform(finalBox);
-            SAMRAI::hier::Box intersectionBox{finalBox * getBox()};
+            transformation.transform(shiftedBox);
+            SAMRAI::hier::Box intersectionBox{shiftedBox * getBox()};
 
             numberParticles += countNumberParticlesIn_(intersectionBox);
         }
-
-
         return numberParticles;
     }
 
+
+    /**
+     * @brief countNumberParticlesIn_ returns the number of interior particles within a given box
+     *
+     * the box given is in AMR index space so the function first needs to put it in
+     * local indexing relative to the domain box
+     */
     std::size_t countNumberParticlesIn_(SAMRAI::hier::Box const& box) const
     {
         std::size_t numberParticles{0};
 
-        SAMRAI::hier::Box localSource{box};
-
-        auto const& sourceBox = getBox();
-
-        localSource.setLower(box.lower() - sourceBox.lower());
-        localSource.setUpper(box.upper() - sourceBox.upper());
+        auto localSourceBox = AMRToLocal(box, getBox());
 
         for (auto const& particle : interior)
         {
-            if (isInBox_(localSource, particle))
+            if (isInBox_(localSourceBox, particle))
             {
                 ++numberParticles;
             }
         }
-
         return numberParticles;
     }
 
@@ -620,7 +588,7 @@ private:
         // and move the shifted AMR index to local index space
         auto localSelectionSourceBox{intersectionBox};
         transformation.inverseTransform(localSelectionSourceBox);
-        localSelectionSourceBox = AMRToLocal(localSelectionSourceBox, sourceBox);
+        AMRToLocal(localSelectionSourceBox, sourceBox);
 
         // now it is possible to compare localSelectionSourceBox indexing and
         // particle.iCell on source patch data to select those in the intersection.
