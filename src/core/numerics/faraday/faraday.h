@@ -114,14 +114,14 @@ public:
 template<typename GridLayout>
 class FaradayImpl<GridLayout, 2> : public FaradayImplInternals<GridLayout>
 {
-    static_assert(GridLayout::dimension == 2, "Error: Passed non-2D GridLayout to 2D AmpereImpl");
+    static_assert(GridLayout::dimension == 2, "Error: Passed non-2D GridLayout to 2D FaradayImpl");
 
 public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        this->layout_.deriv();
-        std::cout << "solving ampere2D\n";
+        // this->layout_.deriv();
+        throw std::runtime_error("Faraday 2D not implemented yet");
     }
 };
 
@@ -130,14 +130,14 @@ public:
 template<typename GridLayout>
 class FaradayImpl<GridLayout, 3> : public FaradayImplInternals<GridLayout>
 {
-    static_assert(GridLayout::dimension == 3, "Error: Passed non-3D GridLayout to 3D AmpereImpl");
+    static_assert(GridLayout::dimension == 3, "Error: Passed non-3D GridLayout to 3D FaradayImpl");
 
 public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        this->layout_.deriv();
-        std::cout << "solving ampere3D\n";
+        // this->layout_.deriv();
+        throw std::runtime_error("Faraday 3D not implemented yet");
     }
 };
 
