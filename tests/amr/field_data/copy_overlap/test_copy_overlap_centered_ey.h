@@ -44,10 +44,10 @@ struct Setup1DCenteredOnEy
         std::array<bool, 2> overwritePossibilites{{true, false}};
 
         // For overwriteInterior in (true,false):
-        // fill source data at 1, destination at 0
+        // fill source data with cos , destination with sin
         // compute the overlap from srcMask,destinationMask, transformation
         // that will be used for the copy
-        // then copy the patch 1 to the patch 0 with both nodeData and fieldData
+        // then copy the source patch to the destination patch with both nodeData and fieldData
         // finnaly compare nodeData and fieldData
 
         for (auto overwriteInterior : overwritePossibilites)
@@ -66,8 +66,12 @@ struct Setup1DCenteredOnEy
             auto& sourceField      = testReference.param.sourceFieldData->field;
 
 
+            // As usual we will fill the destination and source with the help of
+            // two different function (here: cos , and sin)
             double* destinationNodeStart = testReference.destinationNodeData->getPointer();
 
+            // Since our data match a NodeData we can use our gridlayout to get correct
+            // boundary
             auto iStart = testReference.param.destinationFieldData->gridLayout.ghostStartIndex(
                 destinationField, Direction::X);
             auto iEnd = testReference.param.destinationFieldData->gridLayout.ghostEndIndex(
@@ -93,6 +97,9 @@ struct Setup1DCenteredOnEy
 
 
 
+            // We have set our data, now is time to perform a copy with overlap
+            // for both FieldData and CellData
+
 
             testReference.param.destinationFieldData->copy(*testReference.param.sourceFieldData,
                                                            *fieldOverlap);
@@ -104,6 +111,9 @@ struct Setup1DCenteredOnEy
             iEnd = testReference.param.destinationFieldData->gridLayout.ghostEndIndex(
                 destinationField, Direction::X);
 
+
+            // Data has been copied, now is time to check that we have the same values as
+            // the CellData
 
             double const* nodeDataStart = testReference.destinationNodeData->getPointer();
             for (auto ix = iStart; ix <= iEnd; ++ix)

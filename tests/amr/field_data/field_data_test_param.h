@@ -75,6 +75,9 @@ struct FieldDataTestParam
 
 
 
+    /**
+     * @brief fill the source with a cosinus given the real position
+     */
     double sourceFill(int iCell)
     {
         auto& sourceLayout = sourceFieldData->gridLayout;
@@ -88,7 +91,9 @@ struct FieldDataTestParam
 
 
 
-
+    /**
+     * @brief fill the destination with a sinus given the real position
+     */
     double destinationFill(int iCell)
     {
         auto& destinationLayout = destinationFieldData->gridLayout;

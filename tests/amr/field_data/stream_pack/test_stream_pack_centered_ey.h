@@ -43,6 +43,14 @@ struct Setup1DCenteredOnEy
     {
         std::array<bool, 2> overwritePossibilites{{true, false}};
 
+
+        // For overwriteInterior in (true,false):
+        // fill source data with cos , destination with sin
+        // compute the overlap from srcMask,destinationMask, transformation
+        // that will be used for the transfert
+        // then transmit the source patch to the destination patch with both nodeData and fieldData
+        // finnaly compare nodeData and fieldData
+
         for (auto overwriteInterior : overwritePossibilites)
         {
             auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap<1>>(
@@ -59,8 +67,13 @@ struct Setup1DCenteredOnEy
             auto& sourceField      = testReference.param.sourceFieldData->field;
 
 
+            // As usual we will fill the destination and source with the help of
+            // two different function (here: cos , and sin)
             double* destinationNodeStart = testReference.destinationNodeData->getPointer();
 
+
+            // Since our data match a NodeData we can use our gridlayout to get correct
+            // boundary
             auto iStart = testReference.param.destinationFieldData->gridLayout.ghostStartIndex(
                 destinationField, Direction::X);
             auto iEnd = testReference.param.destinationFieldData->gridLayout.ghostEndIndex(
@@ -84,6 +97,9 @@ struct Setup1DCenteredOnEy
                 sourceNodeStart[ix] = testReference.param.sourceFill(ix);
             }
 
+            // We have set our data, now is time to packStream into a messageStream
+            // for both FieldData and NodeData, and read from it to fill another
+            // data
 
             SAMRAI::tbox::MessageStream fieldStream;
             testReference.param.sourceFieldData->packStream(fieldStream, *fieldOverlap);
@@ -111,6 +127,8 @@ struct Setup1DCenteredOnEy
                 destinationField, Direction::X);
 
 
+            // Data has been transfered, now is time to check that we have the same values as
+            // the NodeData
             double const* nodeDataStart = testReference.destinationNodeData->getPointer();
             for (auto ix = iStart; ix <= iEnd; ++ix)
             {

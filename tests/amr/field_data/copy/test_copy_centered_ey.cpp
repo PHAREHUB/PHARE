@@ -10,12 +10,21 @@ TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy);
 
 TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
 {
+    // Here we want to copy data from one patch (source)
+    // to another patch (destination)
+    // we will use 2 different function to fill them
+    // sourceFill for the source patch and destinationFill
+    // for the destination
+
     auto& destinationField = this->param.destinationFieldData->field;
     auto& sourceField      = this->param.sourceFieldData->field;
 
 
+    // we get a pointer to the data (including the ghost region)
     double* destinationNodeStart = this->destinationNodeData->getPointer();
 
+    // since our data is supposed to match a NodeData, we can use our gridlayout
+    // to get the correct index within the cellData
     auto iStart = this->param.destinationFieldData->gridLayout.ghostStartIndex(destinationField,
                                                                                Direction::X);
     auto iEnd   = this->param.destinationFieldData->gridLayout.ghostEndIndex(destinationField,
@@ -38,6 +47,8 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
     }
 
 
+    // After correctly initializing our data (note that for fieldData it was already performed upon
+    // parameter construction)
     this->param.destinationFieldData->copy(*this->param.sourceFieldData);
 
     this->destinationNodeData->copy(*(this->sourceNodeData));
@@ -49,6 +60,8 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
 
 
     double const* nodeDataStart = this->destinationNodeData->getPointer();
+
+    // finnaly we want to check if we have the same values
     for (auto ix = iStart; ix <= iEnd; ++ix)
     {
         EXPECT_THAT(destinationField(ix), Eq(nodeDataStart[ix]));
