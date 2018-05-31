@@ -78,11 +78,11 @@ struct AParticlesData1D : public testing::Test
 TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
 {
     particle.iCell = {{6}};
-    sourcePdat.interior.push_back(particle);
+    sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghost.size(), Eq(1));
-    ASSERT_THAT(destPdat.ghost[0].v, Eq(particle.v));
+    ASSERT_THAT(destPdat.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destPdat.ghostParticles[0].v, Eq(particle.v));
 }
 
 
@@ -91,13 +91,13 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
 TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
 {
     particle.iCell = {{6}};
-    sourcePdat.interior.push_back(particle);
+    sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
     std::array<int, 1> expectediCell{{0}};
 
-    ASSERT_THAT(destPdat.ghost.size(), Eq(1));
-    ASSERT_THAT(destPdat.ghost[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destPdat.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destPdat.ghostParticles[0].iCell, Eq(expectediCell));
 }
 
 
@@ -107,10 +107,10 @@ TEST_F(AParticlesData1D, CopyBorderSourceParticlesIntoDestGhostWithPeriodics)
 {
     particle.iCell = {{6}};
 
-    sourcePdat.ghost.push_back(particle);
+    sourcePdat.ghostParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghost.size(), Eq(1));
+    ASSERT_THAT(destPdat.ghostParticles.size(), Eq(1));
 }
 
 
@@ -119,10 +119,10 @@ TEST_F(AParticlesData1D, CopyBorderSourceParticlesIntoDestGhostWithPeriodics)
 TEST_F(AParticlesData1D, CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
 {
     particle.iCell = {{7}};
-    sourcePdat.ghost.push_back(particle);
+    sourcePdat.ghostParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.interior.size(), Eq(1));
+    ASSERT_THAT(destPdat.domainParticles.size(), Eq(1));
 }
 
 
@@ -131,10 +131,10 @@ TEST_F(AParticlesData1D, CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
 TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
 {
     particle.iCell = {{6}};
-    sourcePdat.interior.push_back(particle);
+    sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghost[0].weight, Eq(particle.weight));
+    ASSERT_THAT(destPdat.ghostParticles[0].weight, Eq(particle.weight));
 }
 
 
@@ -143,10 +143,10 @@ TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
 TEST_F(AParticlesData1D, PreserveChargeWhenCopyingWithPeriodics)
 {
     particle.iCell = {{6}};
-    sourcePdat.interior.push_back(particle);
+    sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghost[0].charge, Eq(particle.charge));
+    ASSERT_THAT(destPdat.ghostParticles[0].charge, Eq(particle.charge));
 }
 
 

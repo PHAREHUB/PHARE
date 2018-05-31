@@ -77,7 +77,7 @@ struct AParticlesData1D : public testing::Test
 TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
 {
     particle.iCell = {{6}};
-    sourceData.interior.push_back(particle);
+    sourceData.domainParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -89,8 +89,8 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(destData.ghost.size(), Eq(1));
-    ASSERT_THAT(destData.ghost[0].v, Eq(particle.v));
+    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.ghostParticles[0].v, Eq(particle.v));
 }
 
 
@@ -100,7 +100,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
 {
     particle.iCell = {{6}};
 
-    sourceData.interior.push_back(particle);
+    sourceData.domainParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -117,8 +117,8 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
     std::array<int, 1> expectediCell{0};
 
 
-    ASSERT_THAT(destData.ghost.size(), Eq(1));
-    ASSERT_THAT(destData.ghost[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.ghostParticles[0].iCell, Eq(expectediCell));
 }
 
 
@@ -128,7 +128,7 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 {
     particle.iCell = {{6}};
 
-    sourceData.ghost.push_back(particle);
+    sourceData.ghostParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -140,7 +140,7 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(destData.ghost.size(), Eq(1));
+    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
 }
 
 
@@ -150,7 +150,7 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 {
     particle.iCell = {{6}};
 
-    sourceData.interior.push_back(particle);
+    sourceData.domainParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -162,8 +162,8 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(destData.ghost.size(), Eq(1));
-    ASSERT_THAT(destData.ghost[0].weight, Eq(particle.weight));
+    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.ghostParticles[0].weight, Eq(particle.weight));
 }
 
 
@@ -172,7 +172,7 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
 {
     particle.iCell = {{6}};
-    sourceData.interior.push_back(particle);
+    sourceData.domainParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -184,8 +184,8 @@ TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(destData.ghost.size(), Eq(1));
-    ASSERT_THAT(destData.ghost[0].charge, Eq(particle.charge));
+    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.ghostParticles[0].charge, Eq(particle.charge));
 }
 
 
