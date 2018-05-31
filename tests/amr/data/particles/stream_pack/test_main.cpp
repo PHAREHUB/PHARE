@@ -20,133 +20,127 @@ struct AParticlesData1D : public testing::Test
     SAMRAI::tbox::Dimension dimension{1};
     SAMRAI::hier::BlockId blockId{0};
 
-    SAMRAI::hier::Box domain0{SAMRAI::hier::Index{dimension, 0}, SAMRAI::hier::Index{dimension, 5},
-                              blockId};
+    SAMRAI::hier::Box destDomain{SAMRAI::hier::Index{dimension, 0},
+                                 SAMRAI::hier::Index{dimension, 5}, blockId};
 
-    SAMRAI::hier::Box domain1{SAMRAI::hier::Index{dimension, 10},
-                              SAMRAI::hier::Index{dimension, 15}, blockId};
+    SAMRAI::hier::Box sourceDomain{SAMRAI::hier::Index{dimension, 10},
+                                   SAMRAI::hier::Index{dimension, 15}, blockId};
 
     SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
 
     std::shared_ptr<SAMRAI::hier::PatchDescriptor> patchDescriptor{
         std::make_shared<SAMRAI::hier::PatchDescriptor>()};
 
-    SAMRAI::hier::Patch patch0{domain0, patchDescriptor};
-    SAMRAI::hier::Patch patch1{domain1, patchDescriptor};
+    SAMRAI::hier::Patch destPatch{destDomain, patchDescriptor};
+    SAMRAI::hier::Patch sourcePatch{sourceDomain, patchDescriptor};
 
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    ParticlesData<1> destData{destDomain, ghost};
+    ParticlesData<1> sourceData{sourceDomain, ghost};
 
-    std::shared_ptr<SAMRAI::hier::BoxGeometry> particles0Geom{
-        std::make_shared<SAMRAI::pdat::CellGeometry>(patch0.getBox(), ghost)};
+    std::shared_ptr<SAMRAI::hier::BoxGeometry> destGeom{
+        std::make_shared<SAMRAI::pdat::CellGeometry>(destPatch.getBox(), ghost)};
 
-    std::shared_ptr<SAMRAI::hier::BoxGeometry> particles1Geom{
-        std::make_shared<SAMRAI::pdat::CellGeometry>(patch1.getBox(), ghost)};
+    std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceGeom{
+        std::make_shared<SAMRAI::pdat::CellGeometry>(sourcePatch.getBox(), ghost)};
 
 
-    SAMRAI::hier::Box srcMask{pDat1.getGhostBox()};
-    SAMRAI::hier::Box fillBox{pDat0.getGhostBox()};
+    SAMRAI::hier::Box srcMask{sourceData.getGhostBox()};
+    SAMRAI::hier::Box fillBox{destData.getGhostBox()};
 
     bool overwriteInterior{true};
 
     SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(dimension)};
 
-    SAMRAI::hier::Transformation transformation{domain0.lower() - domain1.upper() - oneIndex};
+    SAMRAI::hier::Transformation transformation{destDomain.lower() - sourceDomain.upper()
+                                                - oneIndex};
 
 
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
-        std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(particles0Geom->calculateOverlap(
-            *particles1Geom, srcMask, fillBox, overwriteInterior, transformation))};
+        std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
+            *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
+
+
+    Particle<1> particle;
+
+
+    AParticlesData1D()
+    {
+        particle.weight = 1.0;
+        particle.charge = 1.0;
+        particle.v      = {1.0, 1.0, 1.0};
+    }
 };
+
+
 
 
 TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
 {
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    pDat1.interior.push_back(particle1);
-
+    particle.iCell = {{6}};
+    sourceData.interior.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
-    pDat1.packStream(particlesWriteStream, *cellOverlap);
+    sourceData.packStream(particlesWriteStream, *cellOverlap);
 
     SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
                                                     SAMRAI::tbox::MessageStream::Read,
                                                     particlesWriteStream.getBufferStart()};
 
-    pDat0.unpackStream(particlesReadStream, *cellOverlap);
+    destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
-    ASSERT_THAT(pDat0.ghost[0].v, Eq(particle1.v));
+    ASSERT_THAT(destData.ghost.size(), Eq(1));
+    ASSERT_THAT(destData.ghost[0].v, Eq(particle.v));
 }
+
+
+
 
 TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
 {
-    ParticlesData<1> pDat0{domain0, ghost};
-    ParticlesData<1> pDat1{domain1, ghost};
+    particle.iCell = {{6}};
 
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    pDat1.interior.push_back(particle1);
+    sourceData.interior.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
-    pDat1.packStream(particlesWriteStream, *cellOverlap);
+    sourceData.packStream(particlesWriteStream, *cellOverlap);
 
     SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
                                                     SAMRAI::tbox::MessageStream::Read,
                                                     particlesWriteStream.getBufferStart()};
 
-    pDat0.unpackStream(particlesReadStream, *cellOverlap);
+    destData.unpackStream(particlesReadStream, *cellOverlap);
 
     // patch0 start at 0 , patch1 start at 10
     // with periodics condition, we have 0 equivalent to 15
     std::array<int, 1> expectediCell{0};
 
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
-    ASSERT_THAT(pDat0.ghost[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.ghost.size(), Eq(1));
+    ASSERT_THAT(destData.ghost[0].iCell, Eq(expectediCell));
 }
+
+
+
 
 TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 {
-    Particle<1> particle1;
+    particle.iCell = {{6}};
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    pDat1.ghost.push_back(particle1);
+    sourceData.ghost.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
-    pDat1.packStream(particlesWriteStream, *cellOverlap);
+    sourceData.packStream(particlesWriteStream, *cellOverlap);
 
     SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
                                                     SAMRAI::tbox::MessageStream::Read,
                                                     particlesWriteStream.getBufferStart()};
 
-    pDat0.unpackStream(particlesReadStream, *cellOverlap);
+    destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
+    ASSERT_THAT(destData.ghost.size(), Eq(1));
 }
 
 
@@ -154,29 +148,22 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 
 TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 {
-    Particle<1> particle1;
+    particle.iCell = {{6}};
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    pDat1.interior.push_back(particle1);
+    sourceData.interior.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
-    pDat1.packStream(particlesWriteStream, *cellOverlap);
+    sourceData.packStream(particlesWriteStream, *cellOverlap);
 
     SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
                                                     SAMRAI::tbox::MessageStream::Read,
                                                     particlesWriteStream.getBufferStart()};
 
-    pDat0.unpackStream(particlesReadStream, *cellOverlap);
+    destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
-    ASSERT_THAT(pDat0.ghost[0].weight, Eq(particle1.weight));
+    ASSERT_THAT(destData.ghost.size(), Eq(1));
+    ASSERT_THAT(destData.ghost[0].weight, Eq(particle.weight));
 }
 
 
@@ -184,30 +171,25 @@ TEST_F(AParticlesData1D, PreserveWeightWhenPackingWithPeriodics)
 
 TEST_F(AParticlesData1D, PreserveChargeWhenPackingWithPeriodics)
 {
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    pDat1.interior.push_back(particle1);
+    particle.iCell = {{6}};
+    sourceData.interior.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
-    pDat1.packStream(particlesWriteStream, *cellOverlap);
+    sourceData.packStream(particlesWriteStream, *cellOverlap);
 
     SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
                                                     SAMRAI::tbox::MessageStream::Read,
                                                     particlesWriteStream.getBufferStart()};
 
-    pDat0.unpackStream(particlesReadStream, *cellOverlap);
+    destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(pDat0.ghost.size(), Eq(1));
-    ASSERT_THAT(pDat0.ghost[0].charge, Eq(particle1.charge));
+    ASSERT_THAT(destData.ghost.size(), Eq(1));
+    ASSERT_THAT(destData.ghost[0].charge, Eq(particle.charge));
 }
+
+
+
 
 int main(int argc, char **argv)
 {
