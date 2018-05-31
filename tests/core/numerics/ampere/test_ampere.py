@@ -1,6 +1,6 @@
 
-# the goal of this scrip is to generate a file for the ampere unit test
-# the file will contain expected values for the unit testself.
+# the goal of this script is to generate a file for the ampere unit test
+# the file will contain expected values for the unit test.
 
 # the code consists in calculating the curl of a function numerically 
 

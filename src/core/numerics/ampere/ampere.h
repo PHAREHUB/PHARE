@@ -72,7 +72,7 @@ public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        // Jx = 0
+        // Jx = dyBz - dzBy = 0
         // Jy = dzBx - dxBz = -dxBz
         // Jz = dxBy - dyBx = dxBy
         auto &Jx = J.getComponent(Component::X);
@@ -83,8 +83,7 @@ public:
         auto const &By = B.getComponent(Component::Y);
         auto const &Bz = B.getComponent(Component::Z);
 
-        auto q = Jx.physicalQuantity();
-        // Direction should not be in gridlayoutdef but i utilities somehow
+        // TODO Direction should not be in gridlayoutdef but in utilities somehow
         auto start = this->layout_->physicalStartIndex(Jy, Direction::X);
         auto end   = this->layout_->physicalEndIndex(Jy, Direction::X);
 
