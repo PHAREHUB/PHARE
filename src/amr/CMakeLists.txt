@@ -11,11 +11,13 @@ set( SOURCES_INC
      data/field/field_geometry.h
      data/field/field_overlap.h
      data/field/field_variable.h
+     tools/amr_utils.h
      tools/resources_manager.h
      tools/resources_manager_utilities.h
      tools/resources_guards.h
    )
 set( SOURCES_CPP
+     tools/amr_utils.cpp
      tools/resources_manager.cpp
      tools/utils_amr.cpp
    )

@@ -7,6 +7,7 @@
 
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
+#include "tools/amr_utils.h"
 
 #include "field_geometry.h"
 
@@ -308,6 +309,7 @@ private:
     {
         // First we represent the intersection that is defined in AMR space to the local space of
         // the source
+
         SAMRAI::hier::Box localSourceBox{AMRToLocal(intersectBox, sourceBox)};
 
         // Then we represent the intersection into the local space of the destination
