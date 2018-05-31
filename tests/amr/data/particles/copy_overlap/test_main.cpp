@@ -62,6 +62,14 @@ struct AParticlesData1D : public testing::Test
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
         std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
+    Particle<1> particle;
+
+    AParticlesData1D()
+    {
+        particle.weight = 1.0;
+        particle.charge = 1.0;
+        particle.v      = {{1.0, 1.0, 1.0}};
+    }
 };
 
 
@@ -69,19 +77,9 @@ struct AParticlesData1D : public testing::Test
 
 TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
 {
-    Particle<1> particle;
-
-    particle.weight = 1.0;
-    particle.charge = 1.0;
-    particle.iCell  = {{6}};
-    particle.v      = {{1.0, 1.0, 1.0}};
-
+    particle.iCell = {{6}};
     sourcePdat.interior.push_back(particle);
-
     destPdat.copy(sourcePdat, *cellOverlap);
-
-    // ghost start of pach1 is 9, so iCell 0 and 5 correspond to 15.
-    // cell 15 correspond to ghost of patch0
 
     ASSERT_THAT(destPdat.ghost.size(), Eq(1));
     ASSERT_THAT(destPdat.ghost[0].v, Eq(particle.v));
@@ -92,26 +90,11 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
 
 TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
 {
-    ParticlesData<1> pDat0{destDomain, ghost};
-    ParticlesData<1> pDat1{sourceDomain, ghost};
-
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {{1.0, 1.0, 1.0}};
-
-    sourcePdat.interior.push_back(particle1);
-
+    particle.iCell = {{6}};
+    sourcePdat.interior.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    // patch0 start at 0 , patch1 start at 10
-    // with periodics condition, we have -1 equivalent to 15
     std::array<int, 1> expectediCell{{0}};
-
 
     ASSERT_THAT(destPdat.ghost.size(), Eq(1));
     ASSERT_THAT(destPdat.ghost[0].iCell, Eq(expectediCell));
@@ -122,15 +105,9 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
 
 TEST_F(AParticlesData1D, CopyBorderSourceParticlesIntoDestGhostWithPeriodics)
 {
-    Particle<1> particle1;
+    particle.iCell = {{6}};
 
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-    particle1.iCell  = {{6}};
-    particle1.v      = {{1.0, 1.0, 1.0}};
-
-
-    sourcePdat.ghost.push_back(particle1);
+    sourcePdat.ghost.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
     ASSERT_THAT(destPdat.ghost.size(), Eq(1));
@@ -141,15 +118,8 @@ TEST_F(AParticlesData1D, CopyBorderSourceParticlesIntoDestGhostWithPeriodics)
 
 TEST_F(AParticlesData1D, CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
 {
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-    particle1.iCell  = {{7}};
-    particle1.v      = {{1.0, 1.0, 1.0}};
-
-
-    sourcePdat.ghost.push_back(particle1);
+    particle.iCell = {{7}};
+    sourcePdat.ghost.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
     ASSERT_THAT(destPdat.interior.size(), Eq(1));
@@ -160,20 +130,11 @@ TEST_F(AParticlesData1D, CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
 
 TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
 {
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    sourcePdat.interior.push_back(particle1);
-
+    particle.iCell = {{6}};
+    sourcePdat.interior.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghost[0].weight, Eq(particle1.weight));
+    ASSERT_THAT(destPdat.ghost[0].weight, Eq(particle.weight));
 }
 
 
@@ -181,20 +142,11 @@ TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
 
 TEST_F(AParticlesData1D, PreserveChargeWhenCopyingWithPeriodics)
 {
-    Particle<1> particle1;
-
-    particle1.weight = 1.0;
-    particle1.charge = 1.0;
-
-    particle1.iCell = {{6}};
-
-    particle1.v = {1.0, 1.0, 1.0};
-
-    sourcePdat.interior.push_back(particle1);
-
+    particle.iCell = {{6}};
+    sourcePdat.interior.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghost[0].charge, Eq(particle1.charge));
+    ASSERT_THAT(destPdat.ghost[0].charge, Eq(particle.charge));
 }
 
 
