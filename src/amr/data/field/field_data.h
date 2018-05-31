@@ -187,50 +187,7 @@ public:
      */
     size_t getDataStreamSize(const SAMRAI::hier::BoxOverlap& overlap) const final
     {
-        // The idea here is to tell SAMRAI the maximum memory will be used by our type
-        // on a given region.
-        // this version assume that there is no transformation needed to be applied.
-        // It will be the case where it is used with unpackStream.
-
-        FieldOverlap<dimension> const* fieldOverlap
-            = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
-        TBOX_ASSERT(fieldOverlap != nullptr);
-
-        size_t totalSize = 0;
-
-        if (fieldOverlap->isOverlapEmpty())
-        {
-            return 0u;
-        }
-
-        // TODO: see FieldDataFactory todo of the same function
-
-        SAMRAI::hier::BoxContainer const& boxContainer = fieldOverlap->getDestinationBoxContainer();
-
-        for (auto const& box : boxContainer)
-        {
-            // We compute the intersection between the box contained in the overlap
-            // with the ghostBox of the fieldData (toFieldBox , withGhost=true default parameter)
-            SAMRAI::hier::Box finalBox{box};
-            finalBox = finalBox
-                       * FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-                             getBox(), quantity_, gridLayout);
-
-            size_t size = 1;
-
-            for (uint32 iDir = 0; iDir < dimension; ++iDir)
-            {
-                size *= finalBox.numberCells(iDir);
-            }
-
-            // size *= sizeof(double);
-            // At the end we will make sure that the size correspond to an aligned memory
-            // since it will be the max memory used
-            totalSize += size;
-        }
-        totalSize
-            = SAMRAI::tbox::MemoryUtilities::align(totalSize * sizeof(typename FieldImpl::type));
-        return totalSize;
+        return getDataStreamSize_<false>(overlap);
     }
 
 
@@ -242,15 +199,10 @@ public:
     void packStream(SAMRAI::tbox::MessageStream& stream,
                     const SAMRAI::hier::BoxOverlap& overlap) const final
     {
-        // TODO: getDataStreamSize can only get the size of data when unpacking
-        // so we cannot use it with packStream.
-        // Note that we should refactor into two func, one with the overlap transformation
-        // and the other without, so that getDataStreamSize will call the one without the
-        // transformation and here we will call the one with the transformation
-
-        /* TODO size_t expectedSize = getDataStreamSize(overlap) / sizeof(double); */
+        // getDataStreamSize_<true> mean that we want to apply the transformation
+        size_t expectedSize = getDataStreamSize_<true>(overlap) / sizeof(double);
         std::vector<typename FieldImpl::type> buffer;
-        /* buffer.reserve(expectedSize); */
+        buffer.reserve(expectedSize);
 
         auto fieldOverlap = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
         TBOX_ASSERT(fieldOverlap != nullptr);
@@ -453,6 +405,62 @@ private:
         }
     }
 
+
+    /*** \brief Compute the maximum amount of memory needed to hold FieldData information on
+     * the specified overlap, this version work on the source, or the destination
+     * depending on withTransform parameter
+     */
+    template<bool withTransform>
+    size_t getDataStreamSize_(SAMRAI::hier::BoxOverlap const& overlap) const
+    {
+        // The idea here is to tell SAMRAI the maximum memory will be used by our type
+        // on a given region.
+
+        FieldOverlap<dimension> const* fieldOverlap
+            = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
+        TBOX_ASSERT(fieldOverlap != nullptr);
+
+        size_t totalSize = 0;
+
+        if (fieldOverlap->isOverlapEmpty())
+        {
+            return 0u;
+        }
+
+        // TODO: see FieldDataFactory todo of the same function
+
+        SAMRAI::hier::BoxContainer const& boxContainer = fieldOverlap->getDestinationBoxContainer();
+
+        for (auto const& box : boxContainer)
+        {
+            // We compute the intersection between the box contained in the overlap
+            // with the ghostBox of the fieldData (toFieldBox , withGhost=true default parameter)
+            SAMRAI::hier::Box finalBox{box};
+            // in case we want to apply the transformation, we do it here
+            if constexpr (withTransform)
+            {
+                auto const& transformation = fieldOverlap->getTransformation();
+                transformation.transform(finalBox);
+            }
+            finalBox = finalBox
+                       * FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+                             getBox(), quantity_, gridLayout);
+
+            size_t size = 1;
+
+            for (uint32 iDir = 0; iDir < dimension; ++iDir)
+            {
+                size *= finalBox.numberCells(iDir);
+            }
+
+            // At the end we will make sure that the size correspond to an aligned memory
+            // since it will be the max memory used
+            totalSize += size;
+        }
+        totalSize
+            = SAMRAI::tbox::MemoryUtilities::align(totalSize * sizeof(typename FieldImpl::type));
+        return totalSize;
+    }
 
 
     FieldDataInternals<GridLayoutImpl, dimension, FieldImpl, PhysicalQuantity> internals_;
