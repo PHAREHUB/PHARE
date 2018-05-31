@@ -113,8 +113,8 @@ public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        this->layout_.deriv();
-        std::cout << "solving ampere2D\n";
+        // this->layout_.deriv();
+        throw std::runtime_error("Ampere 2D not implemented yet");
     }
 };
 
@@ -129,8 +129,8 @@ public:
     template<typename VecField>
     void operator()(VecField const &B, VecField &J)
     {
-        this->layout_.deriv();
-        std::cout << "solving ampere3D\n";
+        // this->layout_.deriv();
+        throw std::runtime_error("Ampere 3D not implemented yet");
     }
 };
 
