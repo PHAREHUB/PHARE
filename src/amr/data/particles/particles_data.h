@@ -13,7 +13,7 @@
 
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
-#include "utils.h"
+#include "tools/utils_amr.h"
 
 namespace PHARE
 {
