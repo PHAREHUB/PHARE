@@ -42,6 +42,7 @@ public:
     std::shared_ptr<SAMRAI::hier::PatchDataFactory>
     cloneFactory(SAMRAI::hier::IntVector const& ghost) final
     {
+        (void)ghost;
         return std::make_shared<FieldDataFactory>(fineBoundaryRepresentsVariable_,
                                                   dataLivesOnPatchBorder_, name_, quantity_);
     }
@@ -150,7 +151,7 @@ public:
         const std::size_t baseField
             = SAMRAI::tbox::MemoryUtilities::align(sizeof(FieldData<GridLayoutImpl, FieldImpl>));
 
-        GridLayout<GridLayoutImpl> gridLayout(dl, nbCell, origin);
+        GridLayout<GridLayoutImpl> gridLayout{dl, nbCell, origin};
 
 
         auto const& allocSize = gridLayout.allocSize(quantity_);

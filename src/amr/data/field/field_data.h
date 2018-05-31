@@ -71,17 +71,17 @@ public:
         // error
 
         TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
+        TBOX_ASSERT(quantity_ == fieldSource->quantity_);
 
         auto fieldSource = dynamic_cast<FieldData const*>(&source);
 
 
         if (fieldSource != nullptr)
         {
-            // First step is to translate the AMR box into GridLayout index space
-            // to accomplish that we get the interior box, from the FieldData.
-            // and we call toFieldBox with the parameter withGhost = true.
-            // note that we could have stored the ghost box of the field data at
-            // creation
+            // First step is to translate the AMR box into proper index space of the given quantity_
+            // using the source gridlayout to accomplish that we get the interior box, from the
+            // FieldData. and we call toFieldBox (with the default parameter withGhost = true). note
+            // that we could have stored the ghost box of the field data at creation
 
             SAMRAI::hier::Box sourceBox
                 = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
@@ -92,7 +92,7 @@ public:
                 = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
                     this->getBox(), quantity_, this->gridLayout);
 
-            // Given the two box in correct space we just have to intersect them
+            // Given the two boxes in correct space we just have to intersect them
             SAMRAI::hier::Box intersectionBox = sourceBox * destinationBox;
 
             if (!intersectionBox.empty())
@@ -133,9 +133,9 @@ public:
     /*** \brief Copy data from the source into the destination using the designated overlap
      * descriptor.
      *
-     *   The overlap will contain information on which part have to be copied, and where it will be
-     * fill, in the destination. It will also give the necessary transformation to apply to the
-     * source, to perform the copy (ie : translation for periodics condition)
+     *   The overlap will contain AMR index space boxes on destination to be filled and also give
+     * the necessary transformation to apply to the source, to perform the copy (ie : translation
+     * for periodics condition)
      */
     void copy(const SAMRAI::hier::PatchData& source, const SAMRAI::hier::BoxOverlap& overlap) final
     {
@@ -308,16 +308,13 @@ private:
     {
         // First we represent the intersection that is defined in AMR space to the local space of
         // the source
-        SAMRAI::hier::Box localSourceBox(intersectBox.getDim());
-        localSourceBox.setLower(intersectBox.lower() - sourceBox.lower());
-        localSourceBox.setUpper(intersectBox.upper() - sourceBox.lower());
+        SAMRAI::hier::Box localSourceBox{AMRToLocal(intersectBox, sourceBox)};
 
         // Then we represent the intersection into the local space of the destination
-        SAMRAI::hier::Box localDestinationBox(intersectBox.getDim());
-        localDestinationBox.setLower(intersectBox.lower() - destinationBox.lower());
-        localDestinationBox.setUpper(intersectBox.upper() - destinationBox.lower());
+        SAMRAI::hier::Box localDestinationBox{AMRToLocal(intersectBox, destinationBox)};
 
-        // We can finnaly perform the copy of the element in the correct range
+
+        // We can finally perform the copy of the element in the correct range
         internals_.copyImpl(localSourceBox, fieldSource, localDestinationBox, fieldDestination);
     }
 
@@ -327,19 +324,11 @@ private:
     void copy_(FieldData const& source, FieldOverlap<dimension> const& overlap)
     {
         // Here the first step is to get the transformation from the overlap
-        // then we have two case (We  only allow translation transformation):
-        // case one: we  have a null translation
-        //          |
-        //          -> In this case we transform the box from the source, and from the destination
-        //             from AMR index to FieldData indexes (ie whether or not the quantity is primal
-        //             or not), and we also consider the ghost. After that we compute the
-        //             intersection with the source box, the destinationBox, and the box from the
-        //             destinationBoxContainer.
-        //
-        //
-        // case two: we have a non null translation
-        //          |
-        //          -> same as case one, except that we apply the transformation to the source box
+        // we transform the box from the source, and from the destination
+        // from AMR index to FieldData indexes (ie whether or not the quantity is primal
+        // or not), and we also consider the ghost. After that we compute the
+        // intersection with the source box, the destinationBox, and the box from the
+        // destinationBoxContainer.
 
 
         SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
@@ -351,48 +340,32 @@ private:
             SAMRAI::hier::IntVector const zeroOffset{
                 SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension{dimension})};
 
-            if (transformation.getOffset() == zeroOffset
-                && transformation.getBeginBlock() == transformation.getEndBlock())
+            if (transformation.getBeginBlock() == transformation.getEndBlock())
             {
                 for (auto const& box : boxList)
                 {
                     SAMRAI::hier::Box sourceBox
                         = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
                             source.getBox(), quantity_, source.gridLayout);
+
+
                     SAMRAI::hier::Box destinationBox
                         = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
                             this->getBox(), quantity_, this->gridLayout);
 
-                    SAMRAI::hier::Box intersectionBox{box * sourceBox * destinationBox};
 
-                    if (!intersectionBox.empty())
-                    {
-                        FieldImpl const& sourceField = source.field;
-                        FieldImpl& destinationField  = field;
-                        copy_(intersectionBox, sourceBox, destinationBox, source, sourceField,
-                              destinationField);
-                    }
-                }
-            }
-            else
-            {
-                for (auto const& box : boxList)
-                {
-                    SAMRAI::hier::Box sourceBox
-                        = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-                            source.getBox(), quantity_, source.gridLayout);
-                    SAMRAI::hier::Box destinationBox
-                        = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-                            this->getBox(), quantity_, this->gridLayout);
                     SAMRAI::hier::Box transformedSource{sourceBox};
                     transformation.transform(transformedSource);
 
+
                     SAMRAI::hier::Box intersectionBox{box * transformedSource * destinationBox};
+
 
                     if (!intersectionBox.empty())
                     {
                         FieldImpl const& sourceField = source.field;
                         FieldImpl& destinationField  = field;
+
                         copy_(intersectionBox, transformedSource, destinationBox, source,
                               sourceField, destinationField);
                     }
@@ -435,13 +408,14 @@ private:
         {
             // We compute the intersection between the box contained in the overlap
             // with the ghostBox of the fieldData (toFieldBox , withGhost=true default parameter)
-            SAMRAI::hier::Box finalBox{box};
             // in case we want to apply the transformation, we do it here
+            SAMRAI::hier::Box finalBox{box};
             if constexpr (withTransform)
             {
                 auto const& transformation = fieldOverlap->getTransformation();
                 transformation.transform(finalBox);
             }
+
             finalBox = finalBox
                        * FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
                              getBox(), quantity_, gridLayout);
@@ -477,11 +451,11 @@ public:
     void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
                   SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
     {
-        uint32 xSourceStart      = localSourceBox.lower(0);
-        uint32 xDestinationStart = localDestinationBox.lower(0);
+        uint32 xSourceStart      = static_cast<uint32>(localSourceBox.lower(0));
+        uint32 xDestinationStart = static_cast<uint32>(localDestinationBox.lower(0));
 
-        uint32 xSourceEnd      = localSourceBox.upper(0);
-        uint32 xDestinationEnd = localDestinationBox.upper(0);
+        uint32 xSourceEnd      = static_cast<uint32>(localSourceBox.upper(0));
+        uint32 xDestinationEnd = static_cast<uint32>(localDestinationBox.upper(0));
 
         for (uint32 xSource = xSourceStart, xDestination = xDestinationStart;
              xSource <= xSourceEnd && xDestination <= xDestinationEnd; ++xSource, ++xDestination)
@@ -532,17 +506,17 @@ public:
     void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
                   SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
     {
-        uint32 xSourceStart      = localSourceBox.lower(0);
-        uint32 xDestinationStart = localDestinationBox.lower(0);
+        uint32 xSourceStart      = static_cast<uint32>(localSourceBox.lower(0));
+        uint32 xDestinationStart = static_cast<uint32>(localDestinationBox.lower(0));
 
-        uint32 xSourceEnd      = localSourceBox.upper(0);
-        uint32 xDestinationEnd = localDestinationBox.upper(0);
+        uint32 xSourceEnd      = static_cast<uint32>(localSourceBox.upper(0));
+        uint32 xDestinationEnd = static_cast<uint32>(localDestinationBox.upper(0));
 
-        uint32 ySourceStart      = localSourceBox.lower(1);
-        uint32 yDestinationStart = localDestinationBox.lower(1);
+        uint32 ySourceStart      = static_cast<uint32>(localSourceBox.lower(1));
+        uint32 yDestinationStart = static_cast<uint32>(localDestinationBox.lower(1));
 
-        uint32 ySourceEnd      = localSourceBox.upper(1);
-        uint32 yDestinationEnd = localDestinationBox.upper(1);
+        uint32 ySourceEnd      = static_cast<uint32>(localSourceBox.upper(1));
+        uint32 yDestinationEnd = static_cast<uint32>(localDestinationBox.upper(1));
 
         for (uint32 xSource = xSourceStart, xDestination = xDestinationStart;
              xSource <= xSourceEnd && xDestination <= xDestinationEnd; ++xSource, ++xDestination)
@@ -611,23 +585,23 @@ public:
     void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
                   SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
     {
-        uint32 xSourceStart      = localSourceBox.lower(0);
-        uint32 xDestinationStart = localDestinationBox.lower(0);
+        uint32 xSourceStart      = static_cast<uint32>(localSourceBox.lower(0));
+        uint32 xDestinationStart = static_cast<uint32>(localDestinationBox.lower(0));
 
-        uint32 xSourceEnd      = localSourceBox.upper(0);
-        uint32 xDestinationEnd = localDestinationBox.upper(0);
+        uint32 xSourceEnd      = static_cast<uint32>(localSourceBox.upper(0));
+        uint32 xDestinationEnd = static_cast<uint32>(localDestinationBox.upper(0));
 
-        uint32 ySourceStart      = localSourceBox.lower(1);
-        uint32 yDestinationStart = localDestinationBox.lower(1);
+        uint32 ySourceStart      = static_cast<uint32>(localSourceBox.lower(1));
+        uint32 yDestinationStart = static_cast<uint32>(localDestinationBox.lower(1));
 
-        uint32 ySourceEnd      = localSourceBox.upper(1);
-        uint32 yDestinationEnd = localDestinationBox.upper(1);
+        uint32 ySourceEnd      = static_cast<uint32>(localSourceBox.upper(1));
+        uint32 yDestinationEnd = static_cast<uint32>(localDestinationBox.upper(1));
 
-        uint32 zSourceStart      = localSourceBox.lower(2);
-        uint32 zDestinationStart = localDestinationBox.lower(2);
+        uint32 zSourceStart      = static_cast<uint32>(localSourceBox.lower(2));
+        uint32 zDestinationStart = static_cast<uint32>(localDestinationBox.lower(2));
 
-        uint32 zSourceEnd      = localSourceBox.upper(2);
-        uint32 zDestinationEnd = localDestinationBox.upper(2);
+        uint32 zSourceEnd      = static_cast<uint32>(localSourceBox.upper(2));
+        uint32 zDestinationEnd = static_cast<uint32>(localDestinationBox.upper(2));
 
         for (uint32 xSource = xSourceStart, xDestination = xDestinationStart;
              xSource <= xSourceEnd && xDestination <= xDestinationEnd; ++xSource, ++xDestination)
