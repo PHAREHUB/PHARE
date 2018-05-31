@@ -17,6 +17,29 @@
 
 namespace PHARE
 {
+/** @brief ParticlesData is a concrete SAMRAI::hier::PatchData subclass to store Particle data
+ *
+ * This class encapsulates particle storage known by the module core, and by being derived
+ * from PatchData is compatible with the SAMRAI data management system.
+ *
+ * A ParticlesData encapsulates **three** different particle arrays:
+ *
+ * - domainParticles : these particles are those for which iCell is within the physical domain of
+ * the patch
+ *
+ * - ghostParticles: these particles are located within the ghost layer around the physical domain
+ * of the patch. We call the "ghost layer" the layer of ghostCellWidth just outside the physical
+ * domain of the patch, on borders that have neighbors patchs of the same level. Patch boundaries
+ * that are at the level boundary are not ghost layers but coarseToFine boundaries. All the
+ * particles in the ghost layer are exact clones of particles located on a neighbor patch of the
+ * same level. The ghost particles are getting here when then exit the neighbor patch, and can enter
+ * the patch.
+ *
+ * - coarseToFineParticles: these particles are located in a layer just passed the patch boundaries
+ * that also are level boundaries. These particles are getting here when there is a particle
+ * refinement from a coarser level
+ *
+ */
 template<std::size_t dim>
 class ParticlesData : public SAMRAI::hier::PatchData
 {
@@ -93,7 +116,11 @@ public:
 
 
 
-
+    /**
+     * @brief copy with an overlap. Does the copy as the other overload but this time
+     * the copy must account for the intersection with the boxes within the overlap
+     * The copy is done between the source patch data and myself
+     */
     virtual void copy(SAMRAI::hier::PatchData const& source,
                       SAMRAI::hier::BoxOverlap const& overlap) final
     {
@@ -110,30 +137,31 @@ public:
                 SAMRAI::hier::BoxContainer const& boxList = pOverlap->getDestinationBoxContainer();
                 for (auto const& overlapBox : boxList)
                 {
-                    SAMRAI::hier::Box sourceBox      = pSource->getGhostBox();
-                    SAMRAI::hier::Box destinationBox = this->getGhostBox();
-                    SAMRAI::hier::Box intersectionBox{sourceBox.getDim()};
+                    SAMRAI::hier::Box sourceGhostBox      = pSource->getGhostBox();
+                    SAMRAI::hier::Box destinationGhostBox = this->getGhostBox();
+                    SAMRAI::hier::Box intersectionBox{sourceGhostBox.getDim()};
 
                     if (isSameBlock(transformation))
                     {
                         if (offsetIsZero(transformation))
                         {
-                            intersectionBox = overlapBox * sourceBox * destinationBox;
+                            intersectionBox = overlapBox * sourceGhostBox * destinationGhostBox;
 
                             if (!intersectionBox.empty())
                             {
-                                copy_(sourceBox, destinationBox, intersectionBox, *pSource);
+                                copy_(sourceGhostBox, destinationGhostBox, intersectionBox,
+                                      *pSource);
                             }
                         }
                         else
                         {
-                            SAMRAI::hier::Box shiftedSourceBox{sourceBox};
+                            SAMRAI::hier::Box shiftedSourceBox{sourceGhostBox};
                             transformation.transform(shiftedSourceBox);
-                            intersectionBox = overlapBox * shiftedSourceBox * destinationBox;
+                            intersectionBox = overlapBox * shiftedSourceBox * destinationGhostBox;
 
                             if (!intersectionBox.empty())
                             {
-                                copyWithTransform_(sourceBox, intersectionBox, transformation,
+                                copyWithTransform_(sourceGhostBox, intersectionBox, transformation,
                                                    *pSource);
                             }
                         }
@@ -350,11 +378,11 @@ public:
                         {
                             if (isInBox_(interiorLocalBox_, shiftedParticle))
                             {
-                                interior.push_back(std::move(shiftedParticle));
+                                domainParticles.push_back(std::move(shiftedParticle));
                             }
                             else
                             {
-                                ghost.push_back(std::move(shiftedParticle));
+                                ghostParticles.push_back(std::move(shiftedParticle));
                             }
                         }
                     } // end species loop
@@ -367,9 +395,9 @@ public:
     // Core interface
     // these particles arrays are public because core module is free to use
     // them easily
-    ParticleArray<dim> interior;
-    ParticleArray<dim> ghost;
-    ParticleArray<dim> coarseToFine;
+    ParticleArray<dim> domainParticles;
+    ParticleArray<dim> ghostParticles;
+    ParticleArray<dim> coarseToFineParticles;
 
 
 
@@ -459,8 +487,8 @@ private:
                SAMRAI::hier::IntVector const& shiftParticleCellToDest,
                SAMRAI::hier::Box const& localSourceSelectionBox)
     {
-        std::array<decltype(sourceData.interior) const*, 2> particlesArrays{&sourceData.interior,
-                                                                            &sourceData.ghost};
+        std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
+            &sourceData.domainParticles, &sourceData.ghostParticles};
 
         // loop over both interior and ghost source particle buffers
         // for each of their particles, check they should be copied (they should be intersection)
@@ -481,12 +509,12 @@ private:
                     if (isInBox_(interiorLocalBox_, shiftedParticle))
                     {
                         // shiftParticle_(ghostWidth, shiftedParticle);
-                        interior.push_back(std::move(shiftedParticle));
+                        domainParticles.push_back(std::move(shiftedParticle));
                     }
                     else
                     {
                         // shiftParticle_(ghostWidth, shiftedParticle);
-                        ghost.push_back(std::move(shiftedParticle));
+                        ghostParticles.push_back(std::move(shiftedParticle));
                     }
                 }
             }
@@ -545,7 +573,7 @@ private:
 
         auto localSourceBox = AMRToLocal(box, getBox());
 
-        for (auto const& particle : interior)
+        for (auto const& particle : domainParticles)
         {
             if (isInBox_(localSourceBox, particle))
             {
@@ -595,7 +623,8 @@ private:
 
         // only the interior and ghost particles are to be copied
         // coarseToFine particles should not be copied.
-        std::array<decltype(interior) const*, 2> particlesArrays{&interior, &ghost};
+        std::array<decltype(domainParticles) const*, 2> particlesArrays{&domainParticles,
+                                                                        &ghostParticles};
 
         for (auto const& sourceParticlesArray : particlesArrays)
         {
