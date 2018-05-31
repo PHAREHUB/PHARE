@@ -2,8 +2,9 @@
 
 using testing::Eq;
 
-namespace PHARE
-{
+using namespace PHARE;
+
+
 TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy);
 
 
@@ -78,5 +79,3 @@ REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy, PackStreamLikeANodeData,
 
 INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
                               FieldDataTestList);
-
-} // namespace PHARE

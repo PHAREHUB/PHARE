@@ -20,8 +20,8 @@
 #include "data/grid/gridlayout_impl.h"
 #include "utilities/point/point.h"
 
-namespace PHARE
-{
+using namespace PHARE;
+
 template<typename GridLayoutImpl, typename FieldImpl>
 struct FieldDataTestParam
 {
@@ -274,5 +274,4 @@ using FieldDataTestList
 
 
 
-} // namespace PHARE
 #endif

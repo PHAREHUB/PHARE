@@ -13,8 +13,9 @@
 using testing::Eq;
 
 
-namespace PHARE
-{
+using namespace PHARE;
+
+
 template<typename T>
 struct Setup1DCenteredOnEx
 {
@@ -122,6 +123,5 @@ struct Setup1DCenteredOnEx
     }
 };
 
-} // namespace PHARE
 
 #endif

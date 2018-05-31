@@ -10,8 +10,10 @@
 
 using testing::Eq;
 
-namespace PHARE
-{
+using namespace PHARE;
+
+
+
 template<typename T>
 struct Setup1DCenteredOnEy
 {
@@ -112,6 +114,5 @@ struct Setup1DCenteredOnEy
         }
     }
 };
-} // namespace PHARE
 
 #endif

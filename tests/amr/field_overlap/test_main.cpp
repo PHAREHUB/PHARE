@@ -6,9 +6,8 @@
 
 #include "data/field/field_overlap.h"
 
-namespace PHARE
+using namespace PHARE;
 
-{
 TEST(FieldOverlapTest, OverlapIsNotEmpty)
 {
     SAMRAI::hier::BoxContainer bc;
@@ -40,7 +39,6 @@ TEST(FieldOverlapTest, OverlapSourceOffsetIsCorrect)
     EXPECT_EQ(sourceOffset, overlap.getSourceOffset());
 }
 
-} // namespace PHARE
 
 int main(int argc, char** argv)
 {

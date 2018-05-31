@@ -15,8 +15,8 @@
 
 using testing::Eq;
 
-namespace PHARE
-{
+using namespace PHARE;
+
 using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
 template<typename GridLayoutImpl, typename FieldImpl>
@@ -320,7 +320,6 @@ using FieldGeometry1DTestList
 
 INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, FieldGeometry1D, FieldGeometry1DTestList);
 
-} // namespace PHARE
 
 int main(int argc, char** argv)
 {

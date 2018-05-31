@@ -10,8 +10,10 @@
 #include "data/grid/gridlayout_impl.h"
 #include "data/ndarray/ndarray_vector.h"
 
-namespace PHARE
-{
+
+
+using namespace PHARE;
+
 struct FieldVariableTestParam1D
 {
 public:
@@ -92,7 +94,6 @@ INSTANTIATE_TEST_CASE_P(FieldVariable, TestWithQuantityThatLivesOnPatchBoundary1
 INSTANTIATE_TEST_CASE_P(FieldVariable, TestWithQuantityThatLivesInsidePatchBoundary1D,
                         ::testing::ValuesIn(createParams(quantityThatLivesInsidePatchBoundary1D)));
 
-} // namespace PHARE
 
 int main(int argc, char** argv)
 {

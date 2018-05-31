@@ -4,8 +4,9 @@
 #include <gtest/gtest.h>
 
 using testing::Eq;
-namespace PHARE
-{
+
+using namespace PHARE;
+
 TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx);
 
 TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyLikeACellData)
@@ -62,6 +63,3 @@ REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx, CopyLikeACellData);
 
 INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
                               FieldDataTestList);
-
-
-} // namespace PHARE
