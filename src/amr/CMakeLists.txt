@@ -5,7 +5,6 @@ set( SOURCES_INC
      data/particles/particles_data.h
      data/particles/particles_data_factory.h
      data/particles/particles_variable.h
-     tools/utils_amr.h
      data/field/field_data.h
      data/field/field_data_factory.h
      data/field/field_geometry.h
@@ -19,7 +18,6 @@ set( SOURCES_INC
 set( SOURCES_CPP
      tools/amr_utils.cpp
      tools/resources_manager.cpp
-     tools/utils_amr.cpp
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
