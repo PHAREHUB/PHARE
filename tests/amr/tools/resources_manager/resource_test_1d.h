@@ -12,8 +12,8 @@
 
 #include <memory>
 
-namespace PHARE
-{
+using namespace PHARE;
+
 struct ResourcesManagerTest1DParam
 {
     std::shared_ptr<PlaceHolder::CellField> field;
@@ -33,5 +33,5 @@ public:
     ResourcesManager resourcesManager{"yee", SAMRAI::tbox::Dimension{1}};
 };
 
-} // namespace PHARE
+
 #endif

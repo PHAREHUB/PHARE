@@ -1,8 +1,7 @@
 #include "resource_test_1d.h"
 
 
-namespace PHARE
-{
+
 void ResourcesManagerTest1D::SetUp()
 {
     auto s    = inputBase + std::string("/input/input_db_1d");
@@ -63,5 +62,3 @@ INSTANTIATE_TEST_CASE_P(ResourcesManager, ResourcesManagerTest1D,
                                              createResources("Bz", HybridQuantity::Scalar::Bz)
 
                         }));
-
-} // namespace PHARE
