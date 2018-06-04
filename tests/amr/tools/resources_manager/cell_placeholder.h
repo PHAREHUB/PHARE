@@ -31,8 +31,7 @@ public:
         , hq_{hq}
     {
     }
-    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity::Scalar>>
-        resources_properties;
+    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity::Scalar>> resources_properties;
 
     using field_impl = double;
 
@@ -63,7 +62,7 @@ private:
 } // namespace PlaceHolder
 
 template<>
-struct PHARE::FieldType<PlaceHolder::CellField>
+struct PHARE::UserFieldType<PlaceHolder::CellField>
 {
     using data_type         = SAMRAI::pdat::CellData<PlaceHolder::CellField::field_impl>;
     using variable_type     = PlaceHolder::CellVariable<PlaceHolder::CellField::field_impl>;

@@ -19,7 +19,7 @@ namespace PHARE
  * how to work with Field objects
  **/
 template<typename Impl>
-struct FieldType
+struct UserFieldType
 {
     using field_impl = typename Impl::field_impl;
 };
@@ -31,7 +31,7 @@ struct FieldType
  * the ResourceManager to work with Particle objects.
  */
 template<typename Impl>
-struct ParticlesType
+struct UserParticlesType
 {
     using particles_impl = typename Impl::particles_impl;
 };
@@ -41,14 +41,14 @@ struct ParticlesType
 
 template<typename ResourcesUser, typename ResourcesType>
 using isUserFieldType
-    = std::is_same<std::remove_reference_t<ResourcesType>, FieldType<ResourcesUser>>;
+    = std::is_same<std::remove_reference_t<ResourcesType>, UserFieldType<ResourcesUser>>;
 
 
 
 
 template<typename ResourcesUser, typename ResourcesType>
 using isUserParticleType = std::is_same<typename std::remove_reference<ResourcesType>::type,
-                                        ParticlesType<ResourcesUser>>;
+                                        UserParticlesType<ResourcesUser>>;
 
 
 
@@ -155,13 +155,13 @@ public:
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
-            registerResources_<ResourcesUser, FieldType<ResourcesUser>>(
+            registerResources_<ResourcesUser, UserFieldType<ResourcesUser>>(
                 obj.getFieldNamesAndQuantities());
         }
 
         if constexpr (has_particles<ResourcesUser>::value)
         {
-            registerResources_<ResourcesUser, ParticlesType<ResourcesUser>>(
+            registerResources_<ResourcesUser, UserParticlesType<ResourcesUser>>(
                 obj.getParticleArrayNames());
         }
 
@@ -275,14 +275,14 @@ private:
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
-            setResourcesInternal_(obj, FieldType<ResourcesUser>{}, obj.getFieldNamesAndQuantities(),
-                                  patch, nullOrResourcePtr);
+            setResourcesInternal_(obj, UserFieldType<ResourcesUser>{},
+                                  obj.getFieldNamesAndQuantities(), patch, nullOrResourcePtr);
         }
 
         if constexpr (has_particles<ResourcesUser>::value)
         {
-            setResourcesInternal_(obj, ParticlesType<ResourcesUser>{}, obj.getParticleArrayNames(),
-                                  patch, nullOrResourcePtr);
+            setResourcesInternal_(obj, UserParticlesType<ResourcesUser>{},
+                                  obj.getParticleArrayNames(), patch, nullOrResourcePtr);
         }
 
         if constexpr (has_sub_resources<ResourcesUser>::value)
