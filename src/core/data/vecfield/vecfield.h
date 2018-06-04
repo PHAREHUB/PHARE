@@ -9,11 +9,12 @@
 
 namespace PHARE
 {
-//! VecField represents a vector field
-/** VecField objects encapsulate 3 Field pointers to the data, one per component.
- *  A VecField object is usable, i.e. can give access to its data, only when
- *  isUsable() returns true. Typical usage of a VecField is to get the components
- *  and work with them.
+/** VecField objects represents a 3D vector field in PHARE.
+ *
+ *  VecField is a ResourcesUser. Like most data objects in PHARE, it does not
+ *  own its data, but has pointers to Field resources owned by the SAMRAI system.
+ *  Thus VecField has to satisfy the interface required by the ResourcesManager.
+ *
  *  VecField class is templated by the type of NdArray Field use and which
  *  physical quantities they represent.
  */
@@ -27,12 +28,25 @@ public:
     VecField& operator=(VecField const& source) = delete;
     VecField& operator=(VecField&& source) = default;
 
+
+
+    /**
+     * @brief builds a VecField from a name and for a specific vector physical quantity
+     * @param name is the name of the VecField, components are going to be called name_x, name_y and
+     * name_z
+     * @param physQty is any of the vector physical quantities available in PHARE
+     */
     VecField(std::string const& name, typename PhysicalQuantity::Vector physQty)
         : name_{name}
         , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
         , componentNames_{{name + "_x", name + "_y", name + "_z"}}
     {
     }
+
+
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
 
     struct VecFieldProperties
     {
@@ -79,29 +93,46 @@ public:
     }
 
 
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
     std::string const& name() { return name_; }
 
-    // using field_impl = NdArrayImpl;
 
 
     Field<NdArrayImpl, typename PhysicalQuantity::Scalar>& getComponent(Component component)
     {
-        switch (component)
+        if (isUsable())
         {
-            case Component::X: return *xComponent_;
-            case Component::Y: return *yComponent_;
-            case Component::Z: return *zComponent_;
+            switch (component)
+            {
+                case Component::X: return *xComponent_;
+                case Component::Y: return *yComponent_;
+                case Component::Z: return *zComponent_;
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Error - VecField not usable");
         }
     }
 
     Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
     getComponent(Component component) const
     {
-        switch (component)
+        if (isUsable())
         {
-            case Component::X: return *xComponent_;
-            case Component::Y: return *yComponent_;
-            case Component::Z: return *zComponent_;
+            switch (component)
+            {
+                case Component::X: return *xComponent_;
+                case Component::Y: return *yComponent_;
+                case Component::Z: return *zComponent_;
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Error - VecField not usable");
         }
     }
 
