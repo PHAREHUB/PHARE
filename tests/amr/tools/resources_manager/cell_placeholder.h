@@ -68,6 +68,8 @@ private:
 };
 } // namespace PlaceHolder
 
+
+/*
 template<>
 struct PHARE::UserFieldType<PlaceHolder::CellField>
 {
@@ -80,6 +82,6 @@ template<typename T>
 struct ParticlesType
 {
 };
-
+*/
 
 #endif

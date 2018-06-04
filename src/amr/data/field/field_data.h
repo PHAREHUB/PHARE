@@ -290,6 +290,10 @@ public:
 
 
 
+    FieldImpl* getPointer() { return &field; }
+
+
+
 
     GridLayout<GridLayoutImpl> gridLayout;
     FieldImpl field;

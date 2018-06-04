@@ -52,6 +52,7 @@ class GridLayout
 public:
     static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    using implT                               = GridLayoutImpl;
 
 
 

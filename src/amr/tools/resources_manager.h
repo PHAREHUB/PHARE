@@ -1,15 +1,17 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 
-#include "hybrid/hybrid_quantities.h"
-#include "resources_guards.h"
-#include "resources_manager_utilities.h"
+#include <map>
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/VariableDatabase.h>
 
+#include "field_resource.h"
+#include "hybrid/hybrid_quantities.h"
+#include "resources_guards.h"
+#include "resources_manager_utilities.h"
 
-#include <map>
+
 
 
 namespace PHARE
@@ -18,11 +20,6 @@ namespace PHARE
  * \brief FieldType gathers field type traits for ResourceManager to know
  * how to work with Field objects
  **/
-template<typename Impl>
-struct UserFieldType
-{
-    using field_impl = typename Impl::field_impl;
-};
 
 
 
@@ -33,15 +30,13 @@ struct UserFieldType
 template<typename Impl>
 struct UserParticlesType
 {
-    using particles_impl = typename Impl::particles_impl;
 };
 
 
 
-
-template<typename ResourcesUser, typename ResourcesType>
-using isUserFieldType
-    = std::is_same<std::remove_reference_t<ResourcesType>, UserFieldType<ResourcesUser>>;
+template<typename GridLayoutT, typename ResourcesUser, typename ResourcesType>
+using isUserFieldType = std::is_same<std::remove_reference_t<ResourcesType>,
+                                     UserFieldType<GridLayoutT, ResourcesUser>>;
 
 
 
@@ -117,14 +112,14 @@ struct ResourcesInfo
  * - allocate()
  *
  */
+template<typename GridLayoutT>
 class ResourcesManager
 {
 public:
     ResourcesManager() = delete;
 
-    ResourcesManager(std::string const& layoutType, SAMRAI::tbox::Dimension const& dim)
-        : gridLayout_{layoutType}
-        , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
+    ResourcesManager(SAMRAI::tbox::Dimension const& dim)
+        : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
         , context_{variableDatabase_->getContext(contextName_)}
         , dimension_{dim}
     {
@@ -155,7 +150,7 @@ public:
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
-            registerResources_<ResourcesUser, UserFieldType<ResourcesUser>>(
+            registerResources_<ResourcesUser, UserFieldType<GridLayoutT, ResourcesUser>>(
                 obj.getFieldNamesAndQuantities());
         }
 
@@ -242,7 +237,7 @@ private:
                        SAMRAI::hier::Patch const& patch) const
     {
         auto patchData = patch.getPatchData(resourcesVariableInfo.variable, context_);
-        return (std::dynamic_pointer_cast<typename ResourceType::data_type>(patchData))
+        return (std::dynamic_pointer_cast<typename ResourceType::patch_data_type>(patchData))
             ->getPointer();
     }
 
@@ -275,7 +270,7 @@ private:
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
-            setResourcesInternal_(obj, UserFieldType<ResourcesUser>{},
+            setResourcesInternal_(obj, UserFieldType<GridLayoutT, ResourcesUser>{},
                                   obj.getFieldNamesAndQuantities(), patch, nullOrResourcePtr);
         }
 
@@ -305,7 +300,7 @@ private:
     template<typename ResourcesUser, typename ResourcesType>
     void registerResources_(typename ResourcesUser::resources_properties const& resourcesProperties)
     {
-        if constexpr (isUserFieldType<ResourcesUser, ResourcesType>::value)
+        if constexpr (isUserFieldType<GridLayoutT, ResourcesUser, ResourcesType>::value)
         {
             for (auto const& properties : resourcesProperties)
             {
@@ -314,8 +309,8 @@ private:
 
                 // TODO re-thing the use of 'gridLayout_' here (== hard-coded "yee" !)
                 ResourcesInfo resources;
-                resources.variable = std::make_shared<typename ResourcesType::variable_type>(
-                    dimension_, resourcesName, qty, gridLayout_);
+                resources.variable
+                    = std::make_shared<typename ResourcesType::variable_type>(resourcesName, qty);
 
                 resources.id = variableDatabase_->registerVariableAndContext(
                     resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
@@ -360,7 +355,7 @@ private:
             {
                 auto data = getResourcesPointer_<ResourcesType, RequestedPtr>(
                     resourceType, resourceInfoIt->second, patch);
-                obj.setResources(resourcesName, data);
+                obj.setBuffer(resourcesName, data);
             }
             else
             {

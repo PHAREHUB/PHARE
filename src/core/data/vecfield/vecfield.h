@@ -34,18 +34,22 @@ public:
     {
     }
 
-    using resources_properties
-        = std::vector<std::pair<std::string, typename PhysicalQuantity::Scalar>>;
+    struct VecFieldProperties
+    {
+        std::string name;
+        typename PhysicalQuantity::Scalar qty;
+    };
+
+    using resources_properties = std::vector<VecFieldProperties>;
 
     using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
     resources_properties getFieldNamesAndQuantities() const
     {
-        return {{std::make_pair(componentNames_[0], physQties_[0]),
-                 std::make_pair(componentNames_[1], physQties_[1]),
-                 std::make_pair(componentNames_[2], physQties_[2])}};
+        return {{{componentNames_[0], physQties_[0]},
+                 {componentNames_[1], physQties_[1]},
+                 {componentNames_[2], physQties_[2]}}};
     }
-
 
     void setBuffer(std::string const& bufferName, field_type* field)
     {

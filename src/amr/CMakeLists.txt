@@ -10,6 +10,8 @@ set( SOURCES_INC
      data/field/field_geometry.h
      data/field/field_overlap.h
      data/field/field_variable.h
+     tools/field_resource.h
+     tools/particle_resource.h
      tools/amr_utils.h
      tools/resources_manager.h
      tools/resources_manager_utilities.h

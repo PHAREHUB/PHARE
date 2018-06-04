@@ -1,4 +1,6 @@
+
 #include "resource_test_1d.h"
+
 
 
 
@@ -11,7 +13,7 @@ void ResourcesManagerTest1D::SetUp()
     param = GetParam();
 
 
-    auto &field = *param.field;
+    auto &field = *param.vecfield;
 
     auto &patchHierarchy = hierarchy->hierarchy;
 
@@ -30,7 +32,7 @@ void ResourcesManagerTest1D::SetUp()
 
 TEST_P(ResourcesManagerTest1D, FieldPointerCanBeSet)
 {
-    auto &field          = *param.field;
+    auto &field          = *param.vecfield;
     auto &patchHierarchy = hierarchy->hierarchy;
 
     for (int iLevel = 0; iLevel < patchHierarchy->getNumberOfLevels(); ++iLevel)
@@ -39,17 +41,18 @@ TEST_P(ResourcesManagerTest1D, FieldPointerCanBeSet)
         for (auto const &patch : *patchLevel)
         {
             auto guards = resourcesManager.makeResourcesGuard(*patch, field);
-            EXPECT_TRUE(field.isValid());
+            EXPECT_TRUE(field.isUsable());
         }
     }
-    EXPECT_FALSE(field.isValid());
+    EXPECT_FALSE(field.isUsable());
 }
 
 
 ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuantity::Scalar hq)
 {
     ResourcesManagerTest1DParam rc;
-    rc.field = std::make_shared<PlaceHolder::CellField>(name, hq);
+    rc.vecfield = std::make_shared<VecField<NdArrayVector1D<>, HybridQuantity>>(
+        name, HybridQuantity::Vector::B);
     return rc;
 }
 

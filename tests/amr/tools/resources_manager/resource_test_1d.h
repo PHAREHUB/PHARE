@@ -1,22 +1,24 @@
 #ifndef PHARE_TESTS_AMR_TOOLS_RESSOURCE_RESSOURCE_TEST_1D_H
 #define PHARE_TESTS_AMR_TOOLS_RESSOURCE_RESSOURCE_TEST_1D_H
 
+#include <memory>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "basic_hierarchy.h"
 #include "cell_placeholder.h"
-#include "tools/resources_manager.h"
-
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
+#include "data/vecfield/vecfield.h"
 #include "input_config.h"
-
-#include <memory>
+#include "tools/resources_manager.h"
 
 using namespace PHARE;
 
 struct ResourcesManagerTest1DParam
 {
-    std::shared_ptr<PlaceHolder::CellField> field;
+    std::shared_ptr<VecField<NdArrayVector1D<>, HybridQuantity>> vecfield;
 };
 
 class ResourcesManagerTest1D : public ::testing::TestWithParam<ResourcesManagerTest1DParam>
@@ -30,7 +32,8 @@ public:
     std::unique_ptr<BasicHierarchy> hierarchy;
     ResourcesManagerTest1DParam param;
 
-    ResourcesManager resourcesManager{"yee", SAMRAI::tbox::Dimension{1}};
+    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager{
+        SAMRAI::tbox::Dimension{1}};
 };
 
 

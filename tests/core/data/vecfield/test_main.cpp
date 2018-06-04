@@ -258,17 +258,17 @@ TEST_F(VecFieldTest, ComponentNames)
     auto pairs2D = B2D_.getFieldNamesAndQuantities();
     auto pairs3D = B3D_.getFieldNamesAndQuantities();
 
-    EXPECT_EQ(B1D_.name() + "_x", pairs1D[0].first);
-    EXPECT_EQ(B1D_.name() + "_y", pairs1D[1].first);
-    EXPECT_EQ(B1D_.name() + "_z", pairs1D[2].first);
+    EXPECT_EQ(B1D_.name() + "_x", pairs1D[0].name);
+    EXPECT_EQ(B1D_.name() + "_y", pairs1D[1].name);
+    EXPECT_EQ(B1D_.name() + "_z", pairs1D[2].name);
 
-    EXPECT_EQ(B2D_.name() + "_x", pairs2D[0].first);
-    EXPECT_EQ(B2D_.name() + "_y", pairs2D[1].first);
-    EXPECT_EQ(B2D_.name() + "_z", pairs2D[2].first);
+    EXPECT_EQ(B2D_.name() + "_x", pairs2D[0].name);
+    EXPECT_EQ(B2D_.name() + "_y", pairs2D[1].name);
+    EXPECT_EQ(B2D_.name() + "_z", pairs2D[2].name);
 
-    EXPECT_EQ(B3D_.name() + "_x", pairs3D[0].first);
-    EXPECT_EQ(B3D_.name() + "_y", pairs3D[1].first);
-    EXPECT_EQ(B3D_.name() + "_z", pairs3D[2].first);
+    EXPECT_EQ(B3D_.name() + "_x", pairs3D[0].name);
+    EXPECT_EQ(B3D_.name() + "_y", pairs3D[1].name);
+    EXPECT_EQ(B3D_.name() + "_z", pairs3D[2].name);
 }
 
 
@@ -279,17 +279,17 @@ TEST_F(VecFieldTest, PhysicalQuantities)
     auto pairs2D = B2D_.getFieldNamesAndQuantities();
     auto pairs3D = B3D_.getFieldNamesAndQuantities();
 
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs1D[0].second);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs1D[1].second);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs1D[2].second);
+    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs1D[0].qty);
+    EXPECT_EQ(HybridQuantity::Scalar::By, pairs1D[1].qty);
+    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs1D[2].qty);
 
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs2D[0].second);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs2D[1].second);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs2D[2].second);
+    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs2D[0].qty);
+    EXPECT_EQ(HybridQuantity::Scalar::By, pairs2D[1].qty);
+    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs2D[2].qty);
 
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs3D[0].second);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs3D[1].second);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs3D[2].second);
+    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs3D[0].qty);
+    EXPECT_EQ(HybridQuantity::Scalar::By, pairs3D[1].qty);
+    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs3D[2].qty);
 }
 
 
