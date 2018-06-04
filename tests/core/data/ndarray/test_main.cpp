@@ -3,7 +3,7 @@
 #include <random>
 #include <string>
 
-#include <core/data/ndarray/ndarray_vector.h>
+#include "data/ndarray/ndarray_vector.h"
 
 
 using PHARE::NdArrayVector1D;

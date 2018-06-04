@@ -8,14 +8,14 @@
 #include <fstream>
 #include <random>
 
-#include "core/data/grid/gridlayout_impl.h"
-#include <core/data/electromag/electromag.h>
-#include <core/data/field/field.h>
-#include <core/data/ndarray/ndarray_vector.h>
-#include <core/data/particles/particle.h>
-#include <core/data/particles/particle_array.h>
-#include <core/data/vecfield/vecfield.h>
-#include <core/hybrid/hybrid_quantities.h>
+#include "data/electromag/electromag.h"
+#include "data/field/field.h"
+#include "data/grid/gridlayout_impl.h"
+#include "data/ndarray/ndarray_vector.h"
+#include "data/particles/particle.h"
+#include "data/particles/particle_array.h"
+#include "data/vecfield/vecfield.h"
+#include "hybrid/hybrid_quantities.h"
 #include <numerics/interpolator/interpolator.h>
 
 

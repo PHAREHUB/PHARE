@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "core/numerics/boundary_condition/boundary_condition.h"
 #include "data/particles/particle_array.h"
+#include "numerics/boundary_condition/boundary_condition.h"
 #include "utilities/box/box.h"
 
 

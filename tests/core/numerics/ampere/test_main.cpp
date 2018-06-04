@@ -5,12 +5,12 @@
 #include <memory>
 
 
-#include "core/numerics/ampere/ampere.h"
 #include "data/field/field.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield.h"
+#include "numerics/ampere/ampere.h"
 #include "utilities/index/index.h"
 
 using namespace PHARE;

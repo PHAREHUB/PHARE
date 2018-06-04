@@ -1,8 +1,8 @@
+#include "data/field/field.h"
+#include "data/ndarray/ndarray_vector.h"
+#include "hybrid/hybrid_quantities.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include <core/data/field/field.h>
-#include <core/data/ndarray/ndarray_vector.h>
-#include <core/hybrid/hybrid_quantities.h>
 #include <ctype.h>
 #include <string>
 
