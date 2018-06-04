@@ -38,7 +38,11 @@ public:
         , patch_{patch}
         , resourcesManager_{resourcesManager}
     {
-        setResources_(UseResourcePtr{}, resourcesUsers...);
+        std::apply(
+            [this](auto&... user) {
+                ((resourcesManager_.setResources_(user, UseResourcePtr{}, patch_)), ...);
+            },
+            resourcesUsers_);
     }
 
 
@@ -47,8 +51,11 @@ public:
     ~ResourcesGuard()
     {
         // set nullptr to all users in resourcesUsers_
-        std::apply([this](auto&... user) { ((setResources_(UseNullPtr{}, user)), ...); },
-                   resourcesUsers_);
+        std::apply(
+            [this](auto&... user) {
+                ((resourcesManager_.setResources_(user, UseNullPtr{}, patch_)), ...);
+            },
+            resourcesUsers_);
     }
 
 
@@ -67,24 +74,6 @@ private:
     std::tuple<ResourcesUsers&...> resourcesUsers_;
     SAMRAI::hier::Patch const& patch_;
     ResourcesManager const& resourcesManager_;
-
-private:
-    template<typename RequestedPtr, typename ResourcesUser>
-    void setResources_(RequestedPtr requestedPtr, ResourcesUser& resourcesUser) const
-    {
-        resourcesManager_.setResources_(resourcesUser, requestedPtr, patch_);
-    }
-
-
-
-
-    template<typename RequestedPtr, typename ResourcesUser, typename... ResourcesUserTail>
-    void setResources_(RequestedPtr requestedPtr, ResourcesUser& resourcesUser,
-                       ResourcesUserTail&... resourcesUsers) const
-    {
-        setResources_(requestedPtr, resourcesUser);
-        setResources_(requestedPtr, resourcesUsers...);
-    }
 };
 } // namespace PHARE
 #endif
