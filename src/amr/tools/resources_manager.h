@@ -309,8 +309,8 @@ private:
         {
             for (auto const& properties : resourcesProperties)
             {
-                std::string const& resourcesName = properties.first;
-                auto const& qty                  = properties.second;
+                std::string const& resourcesName = properties.name;
+                auto const& qty                  = properties.qty;
 
                 // TODO re-thing the use of 'gridLayout_' here (== hard-coded "yee" !)
                 ResourcesInfo resources;
@@ -326,16 +326,17 @@ private:
 
         if constexpr (isUserParticleType<ResourcesUser, ResourcesType>::value)
         {
-            for (auto const& resourcesName : resourcesProperties)
+            for (auto const& resources : resourcesProperties)
             {
-                ResourcesInfo resources;
-                resources.variable = std::make_shared<typename ResourcesType::variable_type>(
-                    dimension_, resourcesName);
+                auto const& name = resources.name;
+                ResourcesInfo info;
+                info.variable
+                    = std::make_shared<typename ResourcesType::variable_type>(dimension_, name);
 
                 resources.id = variableDatabase_->registerVariableAndContext(
                     resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                nameToResourceInfo_.emplace(resourcesName, resources);
+                nameToResourceInfo_.emplace(name, resources);
             }
         }
     }
@@ -353,7 +354,7 @@ private:
     {
         for (auto const& properties : resourcesProperties)
         {
-            std::string const& resourcesName = properties.first;
+            std::string const& resourcesName = properties.name;
             auto const& resourceInfoIt       = nameToResourceInfo_.find(resourcesName);
             if (resourceInfoIt != nameToResourceInfo_.end())
             {
@@ -379,7 +380,7 @@ private:
     {
         for (auto const& properties : resourcesProperties)
         {
-            std::string const& resourcesName  = properties.first;
+            std::string const& resourcesName  = properties.name;
             auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
             if (resourceVariablesInfo != nameToResourceInfo_.end())
             {

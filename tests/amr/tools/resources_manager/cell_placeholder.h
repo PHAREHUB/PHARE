@@ -31,7 +31,14 @@ public:
         , hq_{hq}
     {
     }
-    typedef std::vector<std::pair<std::string, PHARE::HybridQuantity::Scalar>> resources_properties;
+
+    struct CellFieldProperties
+    {
+        std::string name;
+        PHARE::HybridQuantity::Scalar qty;
+    };
+
+    typedef std::vector<CellFieldProperties> resources_properties;
 
     using field_impl = double;
 
