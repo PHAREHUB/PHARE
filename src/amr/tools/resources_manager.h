@@ -150,14 +150,12 @@ public:
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
-            registerResources_<ResourcesUser, UserFieldType<GridLayoutT, ResourcesUser>>(
-                obj.getFieldNamesAndQuantities());
+            registerResources_<ResourcesUser, UserFieldType<GridLayoutT, ResourcesUser>>(obj);
         }
 
         if constexpr (has_particles<ResourcesUser>::value)
         {
-            registerResources_<ResourcesUser, UserParticlesType<ResourcesUser>>(
-                obj.getParticleArrayNames());
+            registerResources_<ResourcesUser, UserParticlesType<ResourcesUser>>(obj);
         }
 
         if constexpr (has_sub_resources<ResourcesUser>::value)
@@ -298,16 +296,16 @@ private:
 
 
     template<typename ResourcesUser, typename ResourcesType>
-    void registerResources_(typename ResourcesUser::resources_properties const& resourcesProperties)
+    void registerResources_(ResourcesUser const& user)
     {
         if constexpr (isUserFieldType<GridLayoutT, ResourcesUser, ResourcesType>::value)
         {
+            auto const& resourcesProperties = user.getFieldNamesAndQuantities();
             for (auto const& properties : resourcesProperties)
             {
                 std::string const& resourcesName = properties.name;
                 auto const& qty                  = properties.qty;
 
-                // TODO re-thing the use of 'gridLayout_' here (== hard-coded "yee" !)
                 ResourcesInfo resources;
                 resources.variable
                     = std::make_shared<typename ResourcesType::variable_type>(resourcesName, qty);
@@ -321,6 +319,7 @@ private:
 
         if constexpr (isUserParticleType<ResourcesUser, ResourcesType>::value)
         {
+            auto const& resourcesProperties = user.getParticleArrayNames();
             for (auto const& resources : resourcesProperties)
             {
                 auto const& name = resources.name;
@@ -368,9 +367,8 @@ private:
 
 
     //! \brief Allocate the data on the given level
-    template<typename ResourcesUser>
-    void allocate_(ResourcesUser const& obj,
-                   typename ResourcesUser::resources_properties const& resourcesProperties,
+    template<typename ResourcesUser, typename ResourcesProperties>
+    void allocate_(ResourcesUser const& obj, ResourcesProperties const& resourcesProperties,
                    SAMRAI::hier::Patch& patch) const
     {
         for (auto const& properties : resourcesProperties)

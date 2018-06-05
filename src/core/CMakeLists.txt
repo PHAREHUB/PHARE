@@ -11,7 +11,8 @@ set( SOURCES_INC
      data/ndarray/ndarray_vector.h
      data/particles/particle.h
      data/particles/particle_array.h
-     data/species/particle_pack.h
+     data/ion_population/particle_pack.h
+     data/ion_population/ion_population.h
      data/vecfield/vecfield.h
      data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h
