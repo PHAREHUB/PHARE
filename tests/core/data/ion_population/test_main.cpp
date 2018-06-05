@@ -7,8 +7,11 @@
 
 
 #include "data/ion_population/ion_population.h"
+#include "hybrid/hybrid_quantities.h"
 
 using namespace PHARE;
+
+
 
 
 struct DummyParticleArray
@@ -23,13 +26,16 @@ struct DummyField
 
 struct DummyVecField
 {
+    static constexpr std::size_t dimension = 1;
+    using field_type                       = DummyField;
+    DummyVecField(std::string name, HybridQuantity::Vector v) {}
 };
 
 
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<DummyParticleArray, DummyField, DummyVecField> protons{"protons", 1.};
+    IonPopulation<DummyParticleArray, DummyVecField> protons{"protons", 1.};
     virtual ~AnIonPopulation();
 };
 
@@ -55,7 +61,7 @@ TEST_F(AnIonPopulation, hasAName)
 
 TEST_F(AnIonPopulation, isNonUsableUponConstruction)
 {
-    EXPECT_EQ(false, protons.isUsable());
+    EXPECT_FALSE(protons.isUsable());
 }
 
 
@@ -65,7 +71,7 @@ TEST_F(AnIonPopulation, isSettableIfNonUsable)
 {
     if (!protons.isUsable())
     {
-        EXPECT_EQ(true, protons.isSettable());
+        EXPECT_TRUE(protons.isSettable());
     }
 }
 
@@ -86,9 +92,9 @@ TEST_F(AnIonPopulation, isResourceUserAndHasGetParticleArrayNamesOK)
 {
     auto bufferNames = protons.getParticleArrayNames();
     EXPECT_EQ(3, bufferNames.size());
-    EXPECT_EQ(protons.name() + std::string{"_domain"}, bufferNames[0]);
-    EXPECT_EQ(protons.name() + std::string{"_ghost"}, bufferNames[1]);
-    EXPECT_EQ(protons.name() + std::string{"_coarseToFine"}, bufferNames[2]);
+    EXPECT_EQ(protons.name() + std::string{"_domain"}, bufferNames[0].name);
+    EXPECT_EQ(protons.name() + std::string{"_ghost"}, bufferNames[1].name);
+    EXPECT_EQ(protons.name() + std::string{"_coarseToFine"}, bufferNames[2].name);
 }
 
 

@@ -12,14 +12,15 @@ namespace PHARE
 /** @brief tells SAMRAI which kind of variable, patchdata are used for a Field Resource
  * also says the type of the actual data buffer
  */
-template<typename ResourcesUser>
+template<class ResourcesUser>
 struct UserParticleType
 {
-    using patch_data_type   = ParticlesData<ResourcesUser::dimension>;
-    using variable_type     = ParticlesVariable<ResourcesUser::dimension>;
-    using internal_type_ptr = typename ResourcesUser::particle_array_type*;
-};
+    static constexpr std::size_t dimension = ResourcesUser::dimension;
 
+    using variable_type     = ParticlesVariable<dimension>;
+    using patch_data_type   = ParticlesData<dimension>;
+    using internal_type_ptr = typename ResourcesUser::particle_resource_type*;
+};
 
 } // namespace PHARE
 

@@ -43,6 +43,7 @@ public:
     {
     }
 
+    static constexpr std::size_t dimension = NdArrayImpl::dimension;
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface

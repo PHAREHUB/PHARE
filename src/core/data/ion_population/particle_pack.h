@@ -13,12 +13,12 @@ namespace PHARE
  * boundaries, and interior particles are those within the patch physical domain.
  * ParticlesPack conveniently store the three arrays together.
  */
-template<std::size_t dim>
+template<typename ParticleArray>
 struct ParticlesPack
 {
-    ParticleArray<dim> interior;
-    ParticleArray<dim> ghost;
-    ParticleArray<dim> incoming;
+    ParticleArray* domainParticles;
+    ParticleArray* ghostParticles;
+    ParticleArray* coarseToFineParticles;
 };
 
 } // namespace PHARE

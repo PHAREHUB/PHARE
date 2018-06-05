@@ -8,19 +8,26 @@
 
 
 #include "hybrid/hybrid_quantities.h"
+#include "particle_pack.h"
 
 
 namespace PHARE
 {
-template<typename ParticleArray, typename Field, typename VecField>
+template<typename ParticleArray, typename VecField>
 class IonPopulation
 {
 public:
     IonPopulation(std::string name, double mass)
         : name_{std::move(name)}
         , mass_{mass}
+        , flux_{"flux", HybridQuantity::Vector::V}
     {
     }
+
+    using field_type                       = typename VecField::field_type;
+    static constexpr std::size_t dimension = VecField::dimension;
+    using particle_array_type              = ParticleArray;
+    using particle_resource_type           = ParticlesPack<ParticleArray>;
 
     double mass() const { return mass_; }
 
@@ -85,7 +92,7 @@ public:
     }
 
 
-    Field const& density() const
+    field_type const& density() const
     {
         if (isUsable())
         {
@@ -98,9 +105,9 @@ public:
     }
 
 
-    Field& density()
+    field_type& density()
     {
-        return const_cast<Field&>(static_cast<const IonPopulation*>(this)->density);
+        return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density);
     }
 
 
@@ -120,8 +127,6 @@ public:
     using MomentProperties = std::vector<MomentsProperty>;
 
 
-    using field_type = Field;
-
 
     MomentProperties getFieldNamesAndQuantities() const
     {
@@ -138,13 +143,44 @@ public:
     using ParticleProperties = std::vector<ParticleProperty>;
 
 
-    std::vector<std::string> getParticleArrayNames() const
+    ParticleProperties getParticleArrayNames() const
     {
         return {{{name_ + "_domain"}, {name_ + "_ghost"}, {name_ + "_coarseToFine"}}};
     }
 
 
-    auto getSubResourcesObject() const { return std::forward_as_tuple(flux); }
+    void setBuffer(std::string const& bufferName, ParticlesPack<ParticleArray>* pack)
+    {
+        if (pack != nullptr)
+        {
+            domainParticles_       = pack->domainParticles;
+            ghostParticles_        = pack->ghostParticles;
+            coarseToFineParticles_ = pack->coarseToFineParticles;
+        }
+        else
+        {
+            domainParticles_       = nullptr;
+            ghostParticles_        = nullptr;
+            coarseToFineParticles_ = nullptr;
+        }
+    }
+
+
+    void setBuffer(std::string const& bufferName, field_type* field)
+    {
+        if (bufferName == name_ + "_rho")
+        {
+            rho_ = field;
+        }
+        else
+        {
+            throw std::runtime_error("Error - invalid density buffer name");
+        }
+    }
+
+
+
+    auto getSubResourcesObject() { return std::forward_as_tuple(flux_); }
 
 
     //-------------------------------------------------------------------------
@@ -156,9 +192,9 @@ public:
 private:
     std::string name_;
     double mass_;
+    VecField flux_;
 
-    Field* rho_{nullptr};
-    VecField flux;
+    field_type* rho_{nullptr};
 
     ParticleArray* domainParticles_{nullptr};
     ParticleArray* ghostParticles_{nullptr};

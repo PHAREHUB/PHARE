@@ -7,34 +7,58 @@
 #include <gtest/gtest.h>
 
 #include "basic_hierarchy.h"
-#include "cell_placeholder.h"
+#include "data/field/field.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
+#include "data/ion_population/ion_population.h"
+#include "data/ndarray/ndarray_vector.h"
+#include "data/particles/particle_array.h"
 #include "data/vecfield/vecfield.h"
 #include "input_config.h"
 #include "tools/resources_manager.h"
 
+
 using namespace PHARE;
 
-struct ResourcesManagerTest1DParam
-{
-    std::shared_ptr<VecField<NdArrayVector1D<>, HybridQuantity>> vecfield;
-};
 
-class ResourcesManagerTest1D : public ::testing::TestWithParam<ResourcesManagerTest1DParam>
+
+
+template<typename ResourcesUsers>
+class aResourceUserCollection : public ::testing::Test
 {
 public:
-    ResourcesManagerTest1D() = default;
-
-    virtual void SetUp() override;
-    virtual void TearDown() override {}
-
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManagerTest1DParam param;
-
     ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager{
         SAMRAI::tbox::Dimension{1}};
+
+    ResourcesUsers users;
+
+    void SetUp()
+    {
+        auto s    = inputBase + std::string("/input/input_db_1d");
+        hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
+        hierarchy->init();
+
+        auto registerAndAllocate = [this](auto &resourcesUser) {
+            auto &patchHierarchy = hierarchy->hierarchy;
+
+            resourcesManager.registerResources(resourcesUser.user);
+
+            for (int iLevel = 0; iLevel < patchHierarchy->getNumberOfLevels(); ++iLevel)
+            {
+                auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
+                for (auto &patch : *patchLevel)
+                {
+                    resourcesManager.allocate(resourcesUser.user, *patch);
+                }
+            }
+        }; // end lambda
+
+        std::apply(registerAndAllocate, users);
+    }
 };
+
+
 
 
 #endif

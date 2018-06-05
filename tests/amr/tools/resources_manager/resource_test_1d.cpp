@@ -2,66 +2,66 @@
 #include "resource_test_1d.h"
 
 
+using VecField1D      = VecField<NdArrayVector1D<>, HybridQuantity>;
+using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D>;
 
 
-void ResourcesManagerTest1D::SetUp()
+
+
+struct IonPopulation1D_P
 {
-    auto s    = inputBase + std::string("/input/input_db_1d");
-    hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
-    hierarchy->init();
+    std::string name = "protons";
+    double mass      = 1.;
+    IonPopulation1D user{name, mass};
+};
 
-    param = GetParam();
+
+struct VecField1D_P
+{
+    std::string name = "B";
+    HybridQuantity::Vector qty{HybridQuantity::Vector::B};
+    VecField1D user{name, qty};
+};
 
 
-    auto &field = *param.vecfield;
 
-    auto &patchHierarchy = hierarchy->hierarchy;
+using IonPop1DOnly          = std::tuple<IonPopulation1D_P>;
+using VecField1DOnly        = std::tuple<VecField1D_P>;
+using VecField1DAndIonPop1D = std::tuple<VecField1D_P, IonPopulation1D_P>;
 
-    resourcesManager.registerResources(field);
 
-    for (int iLevel = 0; iLevel < patchHierarchy->getNumberOfLevels(); ++iLevel)
-    {
-        auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
-        for (auto &patch : *patchLevel)
+TYPED_TEST_CASE_P(aResourceUserCollection);
+
+
+
+
+TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
+{
+    TypeParam resourceUserCollection;
+
+    auto check = [this](auto &resourceUserPack) {
+        auto &hierarchy    = this->hierarchy->hierarchy;
+        auto &resourceUser = resourceUserPack.user;
+
+        for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
         {
-            resourcesManager.allocate(field, *patch);
+            auto patchLevel = hierarchy->getPatchLevel(iLevel);
+            for (auto const &patch : *patchLevel)
+            {
+                auto guard = this->resourcesManager.makeResourcesGuard(*patch, resourceUser);
+                EXPECT_TRUE(resourceUser.isUsable());
+            }
+            EXPECT_FALSE(resourceUser.isUsable());
         }
-    }
+    };
+
+    std::apply(check, resourceUserCollection);
 }
 
 
-TEST_P(ResourcesManagerTest1D, FieldPointerCanBeSet)
-{
-    auto &field          = *param.vecfield;
-    auto &patchHierarchy = hierarchy->hierarchy;
 
-    for (int iLevel = 0; iLevel < patchHierarchy->getNumberOfLevels(); ++iLevel)
-    {
-        auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
-        for (auto const &patch : *patchLevel)
-        {
-            auto guards = resourcesManager.makeResourcesGuard(*patch, field);
-            EXPECT_TRUE(field.isUsable());
-        }
-    }
-    EXPECT_FALSE(field.isUsable());
-}
+REGISTER_TYPED_TEST_CASE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
 
 
-ResourcesManagerTest1DParam createResources(std::string const &name, HybridQuantity::Scalar hq)
-{
-    ResourcesManagerTest1DParam rc;
-    rc.vecfield = std::make_shared<VecField<NdArrayVector1D<>, HybridQuantity>>(
-        name, HybridQuantity::Vector::B);
-    return rc;
-}
-
-INSTANTIATE_TEST_CASE_P(ResourcesManager, ResourcesManagerTest1D,
-                        ::testing::ValuesIn({createResources("Ex", HybridQuantity::Scalar::Ex),
-                                             createResources("Ey", HybridQuantity::Scalar::Ey),
-                                             createResources("Ez", HybridQuantity::Scalar::Ez),
-                                             createResources("Bx", HybridQuantity::Scalar::Bx),
-                                             createResources("By", HybridQuantity::Scalar::By),
-                                             createResources("Bz", HybridQuantity::Scalar::Bz)
-
-                        }));
+typedef ::testing::Types<IonPop1DOnly, VecField1DOnly> MyTypes;
+INSTANTIATE_TYPED_TEST_CASE_P(testResourcesManager, aResourceUserCollection, MyTypes);

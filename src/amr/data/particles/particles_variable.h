@@ -1,9 +1,9 @@
 #ifndef PHARE_PARTICLES_VARIABLE_H
 #define PHARE_PARTICLES_VARIABLE_H
 
-#include <SAMRAI/hier/Variable.h>
-
 #include "particles_data_factory.h"
+#include <SAMRAI/hier/Variable.h>
+#include <SAMRAI/tbox/Dimension.h>
 
 namespace PHARE
 {
@@ -11,8 +11,9 @@ template<std::size_t dim>
 class ParticlesVariable : public SAMRAI::hier::Variable
 {
 public:
-    ParticlesVariable(std::string const& name, bool fineBoundaryRepresentsVariable,
-                      SAMRAI::hier::IntVector ghost)
+    ParticlesVariable(std::string const& name, bool fineBoundaryRepresentsVariable = false,
+                      SAMRAI::hier::IntVector ghost
+                      = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{1}})
         : SAMRAI::hier::Variable{name, std::make_shared<ParticlesDataFactory<dim>>(
                                            ghost, fineBoundaryRepresentsVariable)}
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}

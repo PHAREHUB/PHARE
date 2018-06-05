@@ -11,6 +11,7 @@
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
 
+#include "data/ion_population/particle_pack.h"
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
 #include "tools/amr_utils.h"
@@ -46,6 +47,7 @@ class ParticlesData : public SAMRAI::hier::PatchData
 public:
     ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
         : SAMRAI::hier::PatchData::PatchData(box, ghost)
+        , pack{&domainParticles, &ghostParticles, &coarseToFineParticles}
         , interiorLocalBox_{SAMRAI::hier::Index{box.getDim(), 0} + ghost, box.upper() - box.lower(),
                             box.getBlockId()}
     {
@@ -392,12 +394,18 @@ public:
     }
 
 
+
+    ParticlesPack<ParticleArray<dim>>* getPointer() { return &pack; }
+
+
+
     // Core interface
     // these particles arrays are public because core module is free to use
     // them easily
     ParticleArray<dim> domainParticles;
     ParticleArray<dim> ghostParticles;
     ParticleArray<dim> coarseToFineParticles;
+    ParticlesPack<ParticleArray<dim>> pack;
 
 
 
@@ -639,13 +647,14 @@ private:
             }
         }
     }
-};
+}; // namespace PHARE
 
 
 
 
 template<>
-bool ParticlesData<1>::isInBox_(SAMRAI::hier::Box const& box, Particle<1> const& particle) const
+inline bool ParticlesData<1>::isInBox_(SAMRAI::hier::Box const& box,
+                                       Particle<1> const& particle) const
 {
     auto const& iCell = particle.iCell;
 
@@ -660,7 +669,8 @@ bool ParticlesData<1>::isInBox_(SAMRAI::hier::Box const& box, Particle<1> const&
 }
 
 template<>
-bool ParticlesData<2>::isInBox_(SAMRAI::hier::Box const& box, Particle<2> const& particle) const
+inline bool ParticlesData<2>::isInBox_(SAMRAI::hier::Box const& box,
+                                       Particle<2> const& particle) const
 {
     auto const& iCell = particle.iCell;
 
@@ -679,7 +689,8 @@ bool ParticlesData<2>::isInBox_(SAMRAI::hier::Box const& box, Particle<2> const&
 }
 
 template<>
-bool ParticlesData<3>::isInBox_(SAMRAI::hier::Box const& box, Particle<3> const& particle) const
+inline bool ParticlesData<3>::isInBox_(SAMRAI::hier::Box const& box,
+                                       Particle<3> const& particle) const
 {
     auto const& iCell = particle.iCell;
 
@@ -701,22 +712,22 @@ bool ParticlesData<3>::isInBox_(SAMRAI::hier::Box const& box, Particle<3> const&
 }
 
 template<>
-void ParticlesData<1>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
-                                      Particle<1>& particle) const
+inline void ParticlesData<1>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
+                                             Particle<1>& particle) const
 {
     particle.iCell[0] += shift[0];
 }
 
 template<>
-void ParticlesData<2>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
-                                      Particle<2>& particle) const
+inline void ParticlesData<2>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
+                                             Particle<2>& particle) const
 {
     particle.iCell[0] += shift[0];
     particle.iCell[1] += shift[1];
 }
 template<>
-void ParticlesData<3>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
-                                      Particle<3>& particle) const
+inline void ParticlesData<3>::shiftParticle_(SAMRAI::hier::IntVector const& shift,
+                                             Particle<3>& particle) const
 {
     particle.iCell[0] += shift[0];
     particle.iCell[1] += shift[1];

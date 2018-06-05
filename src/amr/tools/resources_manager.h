@@ -8,6 +8,7 @@
 
 #include "field_resource.h"
 #include "hybrid/hybrid_quantities.h"
+#include "particle_resource.h"
 #include "resources_guards.h"
 #include "resources_manager_utilities.h"
 
@@ -23,16 +24,6 @@ namespace PHARE
 
 
 
-/**
- * \brief Similarly to FieldType, ParticleType gathers particle type traits for
- * the ResourceManager to work with Particle objects.
- */
-template<typename Impl>
-struct UserParticlesType
-{
-};
-
-
 
 template<typename GridLayoutT, typename ResourcesUser, typename ResourcesType>
 using isUserFieldType = std::is_same<std::remove_reference_t<ResourcesType>,
@@ -43,7 +34,7 @@ using isUserFieldType = std::is_same<std::remove_reference_t<ResourcesType>,
 
 template<typename ResourcesUser, typename ResourcesType>
 using isUserParticleType = std::is_same<typename std::remove_reference<ResourcesType>::type,
-                                        UserParticlesType<ResourcesUser>>;
+                                        UserParticleType<ResourcesUser>>;
 
 
 
@@ -146,7 +137,7 @@ public:
      * elements
      */
     template<typename ResourcesUser>
-    void registerResources(ResourcesUser const& obj)
+    void registerResources(ResourcesUser& obj)
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
@@ -155,13 +146,13 @@ public:
 
         if constexpr (has_particles<ResourcesUser>::value)
         {
-            registerResources_<ResourcesUser, UserParticlesType<ResourcesUser>>(obj);
+            registerResources_<ResourcesUser, UserParticleType<ResourcesUser>>(obj);
         }
 
         if constexpr (has_sub_resources<ResourcesUser>::value)
         {
             // get a tuple here
-            auto& subResources = obj.getSubResourcesObject();
+            auto&& subResources = obj.getSubResourcesObject();
 
             // unpack the tuple subResources and apply for each element registerResources()
             // (recursively)
@@ -180,7 +171,7 @@ public:
      * we ask for them in a tuple, and recursively call allocate() for all of the unpacked elements
      */
     template<typename ResourcesUser>
-    void allocate(ResourcesUser const& obj, SAMRAI::hier::Patch& patch) const
+    void allocate(ResourcesUser& obj, SAMRAI::hier::Patch& patch) const
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
@@ -195,7 +186,7 @@ public:
         if constexpr (has_sub_resources<ResourcesUser>::value)
         {
             // get a tuple here
-            auto& subResources = obj.getSubResourcesObject();
+            auto&& subResources = obj.getSubResourcesObject();
 
             // unpack the tuple subResources and apply for each element registerResources()
             std::apply(
@@ -262,6 +253,7 @@ private:
 
 
 
+
     template<typename ResourcesUser, typename NullOrResourcePtr>
     void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
                        SAMRAI::hier::Patch const& patch) const
@@ -274,14 +266,14 @@ private:
 
         if constexpr (has_particles<ResourcesUser>::value)
         {
-            setResourcesInternal_(obj, UserParticlesType<ResourcesUser>{},
+            setResourcesInternal_(obj, UserParticleType<ResourcesUser>{},
                                   obj.getParticleArrayNames(), patch, nullOrResourcePtr);
         }
 
         if constexpr (has_sub_resources<ResourcesUser>::value)
         {
             // get a tuple here
-            auto& subResources = obj.getSubResourcesObject();
+            auto&& subResources = obj.getSubResourcesObject();
 
             // unpack the tuple subResources and apply for each element setResources_()
             std::apply(
@@ -306,14 +298,14 @@ private:
                 std::string const& resourcesName = properties.name;
                 auto const& qty                  = properties.qty;
 
-                ResourcesInfo resources;
-                resources.variable
+                ResourcesInfo info;
+                info.variable
                     = std::make_shared<typename ResourcesType::variable_type>(resourcesName, qty);
 
-                resources.id = variableDatabase_->registerVariableAndContext(
-                    resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+                info.id = variableDatabase_->registerVariableAndContext(
+                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                nameToResourceInfo_.emplace(resourcesName, resources);
+                nameToResourceInfo_.emplace(resourcesName, info);
             }
         }
 
@@ -323,14 +315,15 @@ private:
             for (auto const& resources : resourcesProperties)
             {
                 auto const& name = resources.name;
+
                 ResourcesInfo info;
-                info.variable
-                    = std::make_shared<typename ResourcesType::variable_type>(dimension_, name);
 
-                resources.id = variableDatabase_->registerVariableAndContext(
-                    resources.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+                info.variable = std::make_shared<typename ResourcesType::variable_type>(name);
 
-                nameToResourceInfo_.emplace(name, resources);
+                info.id = variableDatabase_->registerVariableAndContext(
+                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+
+                nameToResourceInfo_.emplace(name, info);
             }
         }
     }
@@ -340,11 +333,11 @@ private:
     /** \brief setResourcesInternal_ aims at setting ResourcesUser pointers to the
      * appropriate data on the Patch or to reset them to nullptr.
      */
-    template<typename ResourcesUser, typename ResourcesType, typename RequestedPtr>
-    void
-    setResourcesInternal_(ResourcesUser& obj, ResourcesType resourceType,
-                          typename ResourcesUser::resources_properties const& resourcesProperties,
-                          SAMRAI::hier::Patch const& patch, RequestedPtr) const
+    template<typename ResourcesUser, typename ResourcesType, typename ResourcesProperties,
+             typename RequestedPtr>
+    void setResourcesInternal_(ResourcesUser& obj, ResourcesType resourceType,
+                               ResourcesProperties const& resourcesProperties,
+                               SAMRAI::hier::Patch const& patch, RequestedPtr) const
     {
         for (auto const& properties : resourcesProperties)
         {
@@ -354,6 +347,7 @@ private:
             {
                 auto data = getResourcesPointer_<ResourcesType, RequestedPtr>(
                     resourceType, resourceInfoIt->second, patch);
+
                 obj.setBuffer(resourcesName, data);
             }
             else
