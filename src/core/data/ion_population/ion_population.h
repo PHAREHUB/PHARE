@@ -20,7 +20,7 @@ public:
     IonPopulation(std::string name, double mass)
         : name_{std::move(name)}
         , mass_{mass}
-        , flux_{"flux", HybridQuantity::Vector::V}
+        , flux_{name_ + "_flux", HybridQuantity::Vector::V}
     {
     }
 
@@ -36,17 +36,12 @@ public:
 
 
 
-    bool isUsable() const
-    {
-        return domainParticles_ != nullptr && ghostParticles_ != nullptr
-               && coarseToFineParticles_ != nullptr && rho_ != nullptr;
-    }
+    bool isUsable() const { return particles_ != nullptr && rho_ != nullptr && flux_.isUsable(); }
 
 
     bool isSettable() const
     {
-        return domainParticles_ == nullptr && ghostParticles_ == nullptr
-               && coarseToFineParticles_ == nullptr && rho_ == nullptr;
+        return particles_ == nullptr && rho_ == nullptr && flux_.isSettable();
     }
 
 
@@ -55,7 +50,7 @@ public:
     {
         if (isUsable())
         {
-            return *domainParticles_;
+            return *particles_->domainParticles;
         }
         else
         {
@@ -69,7 +64,7 @@ public:
     {
         if (isUsable())
         {
-            return *ghostParticles_;
+            return *particles_->ghostParticles;
         }
         else
         {
@@ -83,7 +78,7 @@ public:
     {
         if (isUsable())
         {
-            return *coarseToFineParticles_;
+            return *particles_->coarseToFineParticles;
         }
         else
         {
@@ -107,7 +102,7 @@ public:
 
     field_type& density()
     {
-        return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density);
+        return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
     }
 
 
@@ -140,30 +135,24 @@ public:
         std::string name;
     };
 
+
+
     using ParticleProperties = std::vector<ParticleProperty>;
 
+    ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
 
-    ParticleProperties getParticleArrayNames() const
-    {
-        return {{{name_ + "_domain"}, {name_ + "_ghost"}, {name_ + "_coarseToFine"}}};
-    }
+
 
 
     void setBuffer(std::string const& bufferName, ParticlesPack<ParticleArray>* pack)
     {
-        if (pack != nullptr)
-        {
-            domainParticles_       = pack->domainParticles;
-            ghostParticles_        = pack->ghostParticles;
-            coarseToFineParticles_ = pack->coarseToFineParticles;
-        }
+        if (bufferName == name_)
+            particles_ = pack;
         else
-        {
-            domainParticles_       = nullptr;
-            ghostParticles_        = nullptr;
-            coarseToFineParticles_ = nullptr;
-        }
+            throw std::runtime_error("Error - invalid particle resource name");
     }
+
+
 
 
     void setBuffer(std::string const& bufferName, field_type* field)
@@ -193,12 +182,8 @@ private:
     std::string name_;
     double mass_;
     VecField flux_;
-
     field_type* rho_{nullptr};
-
-    ParticleArray* domainParticles_{nullptr};
-    ParticleArray* ghostParticles_{nullptr};
-    ParticleArray* coarseToFineParticles_{nullptr};
+    ParticlesPack<ParticleArray>* particles_{nullptr};
 };
 
 } // namespace PHARE

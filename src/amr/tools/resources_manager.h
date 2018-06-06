@@ -312,9 +312,9 @@ private:
         if constexpr (isUserParticleType<ResourcesUser, ResourcesType>::value)
         {
             auto const& resourcesProperties = user.getParticleArrayNames();
-            for (auto const& resources : resourcesProperties)
+            for (auto const& properties : resourcesProperties)
             {
-                auto const& name = resources.name;
+                auto const& name = properties.name;
 
                 ResourcesInfo info;
 
@@ -381,7 +381,6 @@ private:
     }
 
     std::string contextName_{"default"};
-    std::string gridLayout_{"yee"};
     SAMRAI::hier::VariableDatabase* variableDatabase_;
     std::shared_ptr<SAMRAI::hier::VariableContext> context_;
     SAMRAI::tbox::Dimension dimension_;

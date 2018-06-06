@@ -647,7 +647,7 @@ private:
             }
         }
     }
-}; // namespace PHARE
+};
 
 
 
