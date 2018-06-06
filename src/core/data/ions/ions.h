@@ -17,6 +17,7 @@ public:
 
     Ions(std::string name)
         : name_{std::move(name)}
+        , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
     {
     }
 
@@ -47,6 +48,10 @@ public:
         return settable;
     }
 
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
 
     struct MomentsProperty
     {
@@ -63,16 +68,36 @@ public:
 
 
 
-    auto getSubResourcesObjet()
+    void setBuffer(std::string const& bufferName, field_type* field)
     {
-        //
+        if (bufferName == name_ + "_rho")
+        {
+            rho_ = field;
+        }
+        else
+        {
+            throw std::runtime_error("Error - invalid density buffer name");
+        }
     }
 
 
 
+    auto& getRuntimeResourcesUserList() { return populations_; }
+
+    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(bulkVelocity_); }
+
+
+
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
 private:
     std::string name_;
-    std::vector<IonPopulation> populations_;
+    field_type* rho_;
+    vecfield_type bulkVelocity_;
+    std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
+                                             // although only 1 Ions should exist.
 };
 } // namespace PHARE
 
