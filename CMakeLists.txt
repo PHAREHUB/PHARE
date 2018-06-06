@@ -75,7 +75,10 @@ if (NOT SAMRAI_FOUND)
       )
   endif()
 
+  option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
+
   add_subdirectory(${SAMRAI_SRCDIR})
+
 
 
 endif()
@@ -87,17 +90,15 @@ endif()
 #*******************************************************************************
 if (test)
 
-  if (SAMRAI_FOUND)
-      set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
+  set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
 
-      if (NOT EXISTS ${GOOGLE_TEST_DIR})
-        execute_process(
-          COMMAND ${Git} clone https://github.com/google/googletest ${GOOGLE_TEST_DIR}
-          )
-      endif()
-
-   add_subdirectory(subprojects/googletest)
+  if (NOT EXISTS ${GOOGLE_TEST_DIR})
+     execute_process(
+     COMMAND ${Git} clone https://github.com/google/googletest ${GOOGLE_TEST_DIR}
+     )
   endif()
+
+  add_subdirectory(subprojects/googletest)
 
   enable_testing()
 
