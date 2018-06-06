@@ -6,7 +6,6 @@ configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
   basic_hierarchy.h
-  cell_placeholder.h
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
   resource_test_1d.h
    )

@@ -152,7 +152,7 @@ public:
 
         if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
         {
-            auto& resourcesUsers = obj.getRuntimeResourcesUserList();
+            auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
             for (auto& resourcesUser : resourcesUsers)
             {
                 this->registerResources(resourcesUser);
@@ -196,7 +196,7 @@ public:
 
         if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
         {
-            auto& resourcesUsers = obj.getRuntimeResourcesUserList();
+            auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
             for (auto& resourcesUser : resourcesUsers)
             {
                 this->allocate(resourcesUser, patch);
@@ -293,7 +293,7 @@ private:
 
         if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
         {
-            auto& resourcesUsers = obj.getRuntimeResourcesUserList();
+            auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
             for (auto& resourcesUser : resourcesUsers)
             {
                 this->setResources_(resourcesUser, nullOrResourcePtr, patch);

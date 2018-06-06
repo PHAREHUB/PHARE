@@ -4,7 +4,7 @@
 
 using VecField1D      = VecField<NdArrayVector1D<>, HybridQuantity>;
 using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D>;
-
+using Ions1D          = Ions<IonPopulation1D>;
 
 
 
@@ -25,8 +25,16 @@ struct VecField1D_P
 
 
 
+struct Ions1D_P
+{
+    std::string name = "ionsTest";
+    Ions1D user{name};
+};
+
+
 using IonPop1DOnly          = std::tuple<IonPopulation1D_P>;
 using VecField1DOnly        = std::tuple<VecField1D_P>;
+using Ions1DOnly            = std::tuple<Ions1D_P>;
 using VecField1DAndIonPop1D = std::tuple<VecField1D_P, IonPopulation1D_P>;
 
 
@@ -63,5 +71,5 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 REGISTER_TYPED_TEST_CASE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
 
 
-typedef ::testing::Types<IonPop1DOnly, VecField1DOnly> MyTypes;
+typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly> MyTypes;
 INSTANTIATE_TYPED_TEST_CASE_P(testResourcesManager, aResourceUserCollection, MyTypes);

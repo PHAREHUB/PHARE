@@ -28,7 +28,7 @@ public:
 
     bool isUsable() const
     {
-        bool usable = false;
+        bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
         for (auto const& pop : populations_)
         {
             usable = usable && pop.isUsable();
@@ -40,7 +40,7 @@ public:
 
     bool isSettable() const
     {
-        bool settable = true;
+        bool settable = rho_ == nullptr && bulkVelocity_.isSettable();
         for (auto const& pop : populations_)
         {
             settable = settable && pop.isSettable();
@@ -61,9 +61,9 @@ public:
 
     using MomentProperties = std::vector<MomentsProperty>;
 
-    MomentProperties getFieldnamesAndQuantities() const
+    MomentProperties getFieldNamesAndQuantities() const
     {
-        return {{{name_ + "rho_", HybridQuantity::Scalar::rho}}};
+        return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
     }
 
 
@@ -82,7 +82,7 @@ public:
 
 
 
-    auto& getRuntimeResourcesUserList() { return populations_; }
+    std::vector<IonPopulation>& getRunTimeResourcesUserList() { return populations_; }
 
     auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(bulkVelocity_); }
 
@@ -94,7 +94,7 @@ public:
 
 private:
     std::string name_;
-    field_type* rho_;
+    field_type* rho_{nullptr};
     vecfield_type bulkVelocity_;
     std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
                                              // although only 1 Ions should exist.

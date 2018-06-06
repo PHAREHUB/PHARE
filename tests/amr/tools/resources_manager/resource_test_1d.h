@@ -11,6 +11,7 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "data/ion_population/ion_population.h"
+#include "data/ions/ions.h"
 #include "data/ndarray/ndarray_vector.h"
 #include "data/particles/particle_array.h"
 #include "data/vecfield/vecfield.h"
