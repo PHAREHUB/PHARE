@@ -106,7 +106,7 @@ TEST_F(AnIonPopulation, isResourceUserAndHasFieldNamesAndQuantitiesOK)
 
 TEST_F(AnIonPopulation, hasAVecFieldSubResource)
 {
-    DummyVecField const& vf = std::get<0>(protons.getSubResourcesObject());
+    DummyVecField const& vf = std::get<0>(protons.getCompileTimeResourcesUserList());
 }
 
 

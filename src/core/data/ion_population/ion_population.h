@@ -28,6 +28,7 @@ public:
     static constexpr std::size_t dimension = VecField::dimension;
     using particle_array_type              = ParticleArray;
     using particle_resource_type           = ParticlesPack<ParticleArray>;
+    using vecfield_type                    = VecField;
 
     double mass() const { return mass_; }
 
@@ -169,7 +170,7 @@ public:
 
 
 
-    auto getSubResourcesObject() { return std::forward_as_tuple(flux_); }
+    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(flux_); }
 
 
     //-------------------------------------------------------------------------

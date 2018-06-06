@@ -149,10 +149,21 @@ public:
             registerResources_<ResourcesUser, UserParticleType<ResourcesUser>>(obj);
         }
 
-        if constexpr (has_sub_resources<ResourcesUser>::value)
+
+        if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
+        {
+            auto& resourcesUsers = obj.getRuntimeResourcesUserList();
+            for (auto& resourcesUser : resourcesUsers)
+            {
+                this->registerResources(resourcesUser);
+            }
+        }
+
+
+        if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
         {
             // get a tuple here
-            auto&& subResources = obj.getSubResourcesObject();
+            auto&& subResources = obj.getCompileTimeResourcesUserList();
 
             // unpack the tuple subResources and apply for each element registerResources()
             // (recursively)
@@ -183,10 +194,19 @@ public:
             allocate_(obj, obj.getParticleArrayNames(), patch);
         }
 
-        if constexpr (has_sub_resources<ResourcesUser>::value)
+        if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
+        {
+            auto& resourcesUsers = obj.getRuntimeResourcesUserList();
+            for (auto& resourcesUser : resourcesUsers)
+            {
+                this->allocate(resourcesUser, patch);
+            }
+        }
+
+        if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
         {
             // get a tuple here
-            auto&& subResources = obj.getSubResourcesObject();
+            auto&& subResources = obj.getCompileTimeResourcesUserList();
 
             // unpack the tuple subResources and apply for each element registerResources()
             std::apply(
@@ -270,10 +290,21 @@ private:
                                   obj.getParticleArrayNames(), patch, nullOrResourcePtr);
         }
 
-        if constexpr (has_sub_resources<ResourcesUser>::value)
+
+        if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
+        {
+            auto& resourcesUsers = obj.getRuntimeResourcesUserList();
+            for (auto& resourcesUser : resourcesUsers)
+            {
+                this->setResources_(resourcesUser, nullOrResourcePtr, patch);
+            }
+        }
+
+
+        if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
         {
             // get a tuple here
-            auto&& subResources = obj.getSubResourcesObject();
+            auto&& subResources = obj.getCompileTimeResourcesUserList();
 
             // unpack the tuple subResources and apply for each element setResources_()
             std::apply(

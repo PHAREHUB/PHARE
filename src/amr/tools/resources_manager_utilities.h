@@ -21,6 +21,20 @@ struct has_sub_resources : std::false_type
 {
 };
 
+
+template<typename ResourcesUser, typename Attempt = void>
+struct has_runtime_subresourceuser_list : std::false_type
+{
+};
+
+
+template<typename ResourcesUser, typename Attempt = void>
+struct has_compiletime_subresourcesuser_list : std::false_type
+{
+};
+
+
+
 /** \brief has_field is a traits that permit to check if a ResourcesUser
  * has field
  *
@@ -52,9 +66,23 @@ struct has_particles<ResourcesUser, tryToInstanciate<decltype(
  * have other ResourcesUser
  *
  */
+
+
+
+
 template<typename ResourcesUser>
-struct has_sub_resources<ResourcesUser, tryToInstanciate<decltype(
-                                            std::declval<ResourcesUser>().getSubResourcesObject())>>
+struct has_runtime_subresourceuser_list<
+    ResourcesUser,
+    tryToInstanciate<decltype(std::declval<ResourcesUser>().getRunTimeResourcesUserList())>>
+    : std::true_type
+{
+};
+
+
+template<typename ResourcesUser>
+struct has_compiletime_subresourcesuser_list<
+    ResourcesUser,
+    tryToInstanciate<decltype(std::declval<ResourcesUser>().getCompileTimeResourcesUserList())>>
     : std::true_type
 {
 };
