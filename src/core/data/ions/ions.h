@@ -1,10 +1,13 @@
 #ifndef PHARE_IONS_H
 #define PHARE_IONS_H
 
+#include <algorithm>
+#include <functional>
 #include <iterator>
 
 #include "data/ion_population/ion_population.h"
 #include "hybrid/hybrid_quantities.h"
+#include "ion_initializer.h"
 
 namespace PHARE
 {
@@ -15,11 +18,90 @@ public:
     using field_type    = typename IonPopulation::field_type;
     using vecfield_type = typename IonPopulation::vecfield_type;
 
-    Ions(std::string name)
-        : name_{std::move(name)}
+    Ions(IonsInitializer<typename IonPopulation::particle_array_type> initializer)
+        : name_{std::move(initializer.name)}
         , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
+        , populations_{}
     {
+        populations_.reserve(initializer.nbrPopulations);
+        for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
+        {
+            populations_.push_back(
+                IonPopulation{initializer.names[ipop], initializer.masses[ipop]});
+        }
     }
+
+    /*
+        field_type& density()
+        {
+            if (isUsable())
+            {
+                return *rho_;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot access density data");
+            }
+        }*/
+
+    field_type const& density() const
+    {
+        if (isUsable())
+        {
+            return *rho_;
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot access density data");
+        }
+    }
+
+
+
+
+    /*vecfield_type& velocity()
+    {
+        if (isUsable())
+        {
+            return bulkVelocity_;
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot access velocity data");
+        }
+    }*/
+
+
+
+    vecfield_type const& velocity() const
+    {
+        if (isUsable())
+        {
+            return bulkVelocity_;
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot access velocity data");
+        }
+    }
+
+
+    void computeDensity()
+    {
+        rho_->zero();
+
+        for (auto const& pop : populations_)
+        {
+            // we sum over all nodes contiguously, including ghosts
+            // nodes. This is more efficient and easier to code as we don't
+            // have to account for the field dimensionality.
+
+            auto const& popDensity = pop.density();
+            std::transform(std::begin(rho_), std::end(rho_), std::begin(rho_),
+                           std::plus<typename field_type::type>{});
+        }
+    }
+
 
 
     auto begin() { return std::begin(populations_); }

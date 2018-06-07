@@ -1,11 +1,11 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_H
 
-#include "particle.h"
 
 #include <cstddef>
 #include <vector>
 
+#include "particle.h"
 
 namespace PHARE
 {

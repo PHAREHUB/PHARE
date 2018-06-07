@@ -14,6 +14,7 @@ set( SOURCES_INC
      data/ion_population/particle_pack.h
      data/ion_population/ion_population.h
      data/ions/ions.h
+     data/ions/ion_initializer.h
      data/vecfield/vecfield.h
      data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h

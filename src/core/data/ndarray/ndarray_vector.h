@@ -39,6 +39,23 @@ public:
         auto s = data_.size();
         return static_cast<std::size_t>(s);
     }
+
+
+
+    auto begin() const { return std::begin(data_); }
+    auto begin() { return std::begin(data_); }
+
+    auto end() { return std::end(data_); }
+    auto end() const { return std::end(data_); }
+
+
+    void zero()
+    {
+        for (auto& v : data_)
+        {
+            v = DataType{0};
+        }
+    }
 };
 
 

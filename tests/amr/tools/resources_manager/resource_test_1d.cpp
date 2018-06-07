@@ -27,8 +27,20 @@ struct VecField1D_P
 
 struct Ions1D_P
 {
-    std::string name = "ionsTest";
-    Ions1D user{name};
+    IonsInitializer<ParticleArray<1>> createInitializer()
+    {
+        IonsInitializer<ParticleArray<1>> initializer;
+
+        initializer.masses.push_back(1.);
+        initializer.names.push_back("protons");
+        initializer.nbrPopulations = 1;
+        initializer.name           = "TestIons";
+
+        return initializer;
+    }
+
+
+    Ions1D user{createInitializer()};
 };
 
 
