@@ -6,24 +6,12 @@
 #include <string>
 #include <vector>
 
-//#include "particleinitializer.h"
+
+#include "data/ions/particle_initializers/particle_initializer.h"
 #include "utilities/types.h"
 
 namespace PHARE
 {
-template<typename ParticleArray>
-class ParticleInitializer
-{
-protected:
-public:
-    virtual void loadParticles(ParticleArray& particles) const = 0;
-
-    virtual ~ParticleInitializer() = 0;
-};
-
-
-
-
 /**
  * @brief IonInitializer is need for Ions construction so that Ions
  *       may be initialized
@@ -40,11 +28,12 @@ public:
  *  - its name
  *
  */
-template<typename ParticleArray>
+template<typename ParticleArray, typename GridLayout>
 struct IonsInitializer
 {
     std::string name;
-    std::vector<std::unique_ptr<ParticleInitializer<ParticleArray>>> particleInitializers;
+    std::vector<std::unique_ptr<ParticleInitializer<ParticleArray, GridLayout>>>
+        particleInitializers;
     std::vector<double> masses;
     std::vector<std::string> names;
     uint32 nbrPopulations;

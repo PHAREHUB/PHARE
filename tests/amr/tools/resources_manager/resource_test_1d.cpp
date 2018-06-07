@@ -1,10 +1,13 @@
 
 #include "resource_test_1d.h"
 
+struct GridLayoutMock
+{
+};
 
 using VecField1D      = VecField<NdArrayVector1D<>, HybridQuantity>;
 using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D>;
-using Ions1D          = Ions<IonPopulation1D>;
+using Ions1D          = Ions<IonPopulation1D, GridLayoutMock>;
 
 
 
@@ -25,11 +28,12 @@ struct VecField1D_P
 
 
 
+
 struct Ions1D_P
 {
-    IonsInitializer<ParticleArray<1>> createInitializer()
+    IonsInitializer<ParticleArray<1>, GridLayoutMock> createInitializer()
     {
-        IonsInitializer<ParticleArray<1>> initializer;
+        IonsInitializer<ParticleArray<1>, GridLayoutMock> initializer;
 
         initializer.masses.push_back(1.);
         initializer.names.push_back("protons");

@@ -5,20 +5,20 @@
 #include <functional>
 #include <iterator>
 
-#include "data/ion_population/ion_population.h"
+#include "data/ions/ion_population/ion_population.h"
 #include "hybrid/hybrid_quantities.h"
 #include "ion_initializer.h"
 
 namespace PHARE
 {
-template<typename IonPopulation>
+template<typename IonPopulation, typename GridLayout>
 class Ions
 {
 public:
     using field_type    = typename IonPopulation::field_type;
     using vecfield_type = typename IonPopulation::vecfield_type;
 
-    Ions(IonsInitializer<typename IonPopulation::particle_array_type> initializer)
+    Ions(IonsInitializer<typename IonPopulation::particle_array_type, GridLayout> initializer)
         : name_{std::move(initializer.name)}
         , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
         , populations_{}

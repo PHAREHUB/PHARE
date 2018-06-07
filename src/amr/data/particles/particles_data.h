@@ -11,7 +11,7 @@
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
 
-#include "data/ion_population/particle_pack.h"
+#include "data/ions/ion_population/particle_pack.h"
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
 #include "tools/amr_utils.h"

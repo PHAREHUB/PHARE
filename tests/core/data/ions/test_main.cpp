@@ -2,11 +2,8 @@
 #include <type_traits>
 
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include "data/ion_population/ion_population.h"
 #include "data/ions/ion_initializer.h"
+#include "data/ions/ion_population/ion_population.h"
 #include "data/ions/ions.h"
 #include "data/ndarray/ndarray_vector.h"
 #include "data/particles/particle_array.h"
@@ -15,18 +12,25 @@
 
 
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
 
 using namespace PHARE;
 
-
+struct GridLayoutMock
+{
+};
 
 class theIons : public ::testing::Test
 {
 protected:
-    Ions<IonPopulation<ParticleArray<1>, VecField<NdArrayVector1D<>, HybridQuantity>>> ions;
-    IonsInitializer<ParticleArray<1>> createInitializer()
+    Ions<IonPopulation<ParticleArray<1>, VecField<NdArrayVector1D<>, HybridQuantity>>,
+         GridLayoutMock>
+        ions;
+    IonsInitializer<ParticleArray<1>, GridLayoutMock> createInitializer()
     {
-        IonsInitializer<ParticleArray<1>> initializer;
+        IonsInitializer<ParticleArray<1>, GridLayoutMock> initializer;
 
         initializer.masses.push_back(1.);
         initializer.names.push_back("protons");

@@ -11,10 +11,12 @@ set( SOURCES_INC
      data/ndarray/ndarray_vector.h
      data/particles/particle.h
      data/particles/particle_array.h
-     data/ion_population/particle_pack.h
-     data/ion_population/ion_population.h
+     data/ions/ion_population/particle_pack.h
+     data/ions/ion_population/ion_population.h
      data/ions/ions.h
      data/ions/ion_initializer.h
+     data/ions/particle_initializers/particle_initializer.h
+     data/ions/particle_initializers/fluid_particle_initializer.h
      data/vecfield/vecfield.h
      data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h

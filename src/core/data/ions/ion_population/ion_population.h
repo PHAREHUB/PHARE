@@ -46,6 +46,17 @@ public:
     }
 
 
+    auto nbrParticles() const
+    {
+        if (isUsable())
+        {
+            return particles_->domainParticles->size();
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot access to particles");
+        }
+    }
 
     ParticleArray& domainParticles()
     {
