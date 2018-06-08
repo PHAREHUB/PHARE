@@ -36,10 +36,12 @@ set( SOURCES_INC
      utilities/point/point.h
      utilities/range/range.h
      utilities/types.h
+     utilities/function/function.h
    )
 
 set( SOURCES_CPP
      data/ndarray/ndarray_vector.cpp
+     data/ions/particle_initializers/fluid_particle_initializer.cpp
      utilities/index/index.cpp
     )
 

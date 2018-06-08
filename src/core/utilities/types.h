@@ -3,6 +3,8 @@
 
 #include <array>
 #include <cinttypes>
+#include <cmath>
+#include <numeric>
 
 
 namespace PHARE
@@ -16,31 +18,23 @@ enum class Basis { Magnetic, Cartesian };
 
 
 
-// using ScalarFunction = double (*)(double x, double y, double z);
-// using VectorFunction = std::array<double, 3> (*)(double x, double y, double z);
 
-/**
- * @brief represents a function of 3D spatial coordinates returning a scalar
- */
-class ScalarFunction
+template<typename T>
+std::vector<T> arange(T start, T stop, T step = 1)
 {
-public:
-    virtual double operator()(double x, double y, double z) = 0;
+    std::vector<T> values;
+    for (T value = start; value < stop; value += step)
+        values.push_back(value);
+    return values;
+}
 
-    virtual ~ScalarFunction() = default;
-};
-
-
-/**
- * @brief represents a function of 3D spatial coordinates returning a vector
- */
-class VectorFunction
+template<typename T>
+T norm(std::array<T, 3> vec)
 {
-public:
-    virtual std::array<double, 3> operator()(double x, double y, double z) = 0;
+    auto squarreSum = std::inner_product(std::begin(vec), std::end(vec), std::begin(vec), 0.);
+    return std::sqrt(squarreSum);
+}
 
-    virtual ~VectorFunction() = default;
-};
 
 
 

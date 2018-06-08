@@ -14,6 +14,10 @@
 
 using namespace PHARE;
 
+double density(double x)
+{
+    return 1.;
+}
 
 
 class aFluidParticleInitializer1D : public ::testing::Test
