@@ -1,12 +1,6 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_PARAMS_H
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_PARAMS_H
 
-#include "data/grid/gridlayout.h"
-#include "gridlayout_base_params.h"
-#include "gridlayout_utilities.h"
-#include "utilities/point/point.h"
-
-
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -14,6 +8,14 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+
+
+#include "data/grid/gridlayout.h"
+#include "gridlayout_base_params.h"
+#include "gridlayout_utilities.h"
+#include "utilities/point/point.h"
+
+
 
 namespace PHARE
 {

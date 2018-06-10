@@ -1,5 +1,3 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 #include <string>
 
@@ -8,6 +6,8 @@
 #include "utilities/particle_selector/particle_selector.h"
 #include "utilities/point/point.h"
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using PHARE::Box;
 using PHARE::Particle;

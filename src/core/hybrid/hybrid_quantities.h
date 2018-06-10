@@ -35,6 +35,10 @@ public:
         {
             return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
         }
+        else
+        {
+            throw std::runtime_error("Error - invalid Vector");
+        }
     }
 };
 } // namespace PHARE

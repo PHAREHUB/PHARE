@@ -1,8 +1,6 @@
 #ifndef PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_DERIV_H
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_DERIV_H
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "data/field/field.h"
 #include "data/grid/gridlayout.h"
@@ -12,6 +10,8 @@
 #include "gridlayout_utilities.h"
 #include "hybrid/hybrid_quantities.h"
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using namespace PHARE;
 

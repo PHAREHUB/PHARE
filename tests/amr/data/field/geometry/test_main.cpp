@@ -4,14 +4,14 @@
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "data/field/field_geometry.h"
 #include "data/field/field_variable.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using testing::Eq;
 

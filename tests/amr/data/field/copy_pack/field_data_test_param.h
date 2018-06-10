@@ -3,8 +3,7 @@
 
 
 #include <cmath>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <string>
 
 #include <SAMRAI/pdat/CellData.h>
 #include <SAMRAI/pdat/CellDataFactory.h>
@@ -19,6 +18,9 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "utilities/point/point.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using namespace PHARE;
 

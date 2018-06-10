@@ -1,10 +1,13 @@
+
+#include <ctype.h>
+#include <string>
+
 #include "data/field/field.h"
 #include "data/ndarray/ndarray_vector.h"
 #include "hybrid/hybrid_quantities.h"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include <ctype.h>
-#include <string>
 
 using PHARE::Field;
 using PHARE::NdArrayVector1D;

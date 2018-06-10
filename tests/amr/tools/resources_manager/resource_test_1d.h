@@ -3,8 +3,6 @@
 
 #include <memory>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "basic_hierarchy.h"
 #include "data/field/field.h"
@@ -18,6 +16,8 @@
 #include "input_config.h"
 #include "tools/resources_manager.h"
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using namespace PHARE;
 

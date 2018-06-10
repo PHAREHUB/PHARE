@@ -1,11 +1,12 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 #include <string>
 #include <vector>
 
 #include "utilities/box/box.h"
 #include "utilities/point/point.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using PHARE::Box;
 using PHARE::isIn;

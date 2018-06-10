@@ -17,14 +17,10 @@ TYPED_TEST(a1DDerivative, DXBY1D)
     auto filename = std::string("dxBy_interpOrder_") + std::to_string(TestFixture::interp_order)
                     + std::string(".txt");
     auto expDerValue = read(filename);
-    auto psi_d       = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d       = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
     auto gei_d       = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
     auto psi_p = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-
-    constexpr auto dir = Direction::X;
 
     for (auto ix = 0; ix <= gei_d; ++ix)
     {
@@ -51,10 +47,7 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
     auto psi_d       = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
     auto pei_d       = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
     auto gei_p       = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    auto psi_p       = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p       = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-    constexpr auto dir = Direction::X;
 
     for (auto ix = 0; ix <= gei_p; ++ix)
     {

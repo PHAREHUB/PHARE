@@ -2,13 +2,14 @@
 #include <type_traits>
 
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 
 #include "data/ions/ion_population/ion_population.h"
 #include "data/particles/particle_array.h"
 #include "hybrid/hybrid_quantities.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using namespace PHARE;
 

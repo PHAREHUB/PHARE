@@ -1,15 +1,15 @@
 #ifndef PHARE_TEST_LINEAR_COMBINAISON_H
 #define PHARE_TEST_LINEAR_COMBINAISON_H
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <cstddef>
 #include <fstream>
 #include <vector>
 
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using namespace PHARE;
 

@@ -58,7 +58,7 @@ TEST_F(theIons, areAContainerOfIonPopulations)
     //
     for (auto& pop : ions)
     {
-        //
+        (void)pop;
     }
 }
 

@@ -1,18 +1,13 @@
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <SAMRAI/tbox/SAMRAIManager.h>
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
-
 #include <string>
 #include <utility>
 #include <vector>
 
-//#include "basic_hierarchy.h"
-//#include "cell_placeholder.h"
-//#include "resource_test_1d.h"
-//#include "tools/resources_manager.h"
+#include <SAMRAI/tbox/SAMRAIManager.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
 
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 
 int main(int argc, char **argv)

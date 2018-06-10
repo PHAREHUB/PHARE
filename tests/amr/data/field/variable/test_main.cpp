@@ -2,7 +2,7 @@
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 
 #include "data/field/field.h"
 #include "data/field/field_variable.h"

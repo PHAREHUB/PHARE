@@ -1,5 +1,3 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 #include <algorithm>
 #include <random>
@@ -11,6 +9,9 @@
 #include "utilities/particle_selector/particle_selector.h"
 #include "utilities/partitionner/partitionner.h"
 #include "utilities/point/point.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using PHARE::Box;
 using PHARE::makeSelector;

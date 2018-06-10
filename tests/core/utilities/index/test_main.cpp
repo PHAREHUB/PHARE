@@ -1,10 +1,11 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 #include <string>
 
 #include "data/grid/gridlayoutdefs.h"
 #include "utilities/index/index.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using namespace PHARE;
 

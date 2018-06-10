@@ -1,10 +1,10 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayoutimplyee.h"
+#include "gridlayout_test.h"
 #include "utilities/types.h"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-#include "gridlayout_test.h"
 
 
 int main(int argc, char** argv)

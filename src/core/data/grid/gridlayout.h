@@ -433,12 +433,9 @@ public:
 
         if constexpr (Field::dimension == 1)
         {
-            auto ip  = nextIndex(fieldCentering[dirX], index.i);
-            auto im  = prevIndex(fieldCentering[dirX], index.i);
-            auto der = inverseMeshSize_[dirX]
-                       * (operand(nextIndex(fieldCentering[dirX], index.i))
-                          - operand(prevIndex(fieldCentering[dirX], index.i)));
-            return der;
+            return inverseMeshSize_[dirX]
+                   * (operand(nextIndex(fieldCentering[dirX], index.i))
+                      - operand(prevIndex(fieldCentering[dirX], index.i)));
         }
 
         else if constexpr (Field::dimension == 2)

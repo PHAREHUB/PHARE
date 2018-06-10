@@ -5,7 +5,6 @@
 #include "data/grid/gridlayoutimplyee.h"
 #include "utilities/types.h"
 
-/* #include "gridlayout_params.h" */
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
