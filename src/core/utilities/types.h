@@ -5,6 +5,7 @@
 #include <cinttypes>
 #include <cmath>
 #include <numeric>
+#include <vector>
 
 
 namespace PHARE
