@@ -27,6 +27,9 @@ void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3
 
 
 
+/** @brief a FluidParticleInitializer is a ParticleInitializer that loads particles from a local
+ * Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
+ */
 template<typename ParticleArray, typename GridLayout>
 class FluidParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
 {
@@ -52,7 +55,9 @@ public:
 
 
 
-
+    /**
+     * @brief load particles in a ParticleArray in a domain defined by the given layout
+     */
     virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const override
     {
         if constexpr (dimension == 1)

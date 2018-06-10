@@ -37,15 +37,7 @@ std::array<double, 3> thermalvelocity(double x)
 
 
 
-/*
- * (std::unique_ptr<ScalarFunction<dimension>> density,
-                             std::unique_ptr<VectorFunction<dimension>> bulkVelocity,
-                             std::unique_ptr<VectorFunction<dimension>> thermalVelocity,
-                             double particleCharge, uint32 nbrParticlesPerCell,
-                             Basis basis = Basis::Cartesian,
-                             std::unique_ptr<VectorFunction<dimension>> magneticField = nullptr)
 
-                             */
 class aFluidParticleInitializer1D : public ::testing::Test
 {
 private:
@@ -58,7 +50,7 @@ public:
         , initializer{std::make_unique<FluidParticleInitializer<ParticleArrayT, GridLayoutT>>(
               std::make_unique<ScalarFunction<1>>(density),
               std::make_unique<VectorFunction<1>>(bulkVelocity),
-              std::make_unique<VectorFunction<1>>(thermalvelocity), 1., 100)}
+              std::make_unique<VectorFunction<1>>(thermalvelocity), 1., nbrParticlesPerCell)}
     {
         //
     }
@@ -66,6 +58,7 @@ public:
 
     GridLayoutT layout;
     ParticleArrayT particles;
+    uint32 nbrParticlesPerCell{1000};
     std::unique_ptr<FluidParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
 };
 
@@ -75,7 +68,7 @@ public:
 TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 {
     auto nbrCells             = layout.nbrCells();
-    auto expectedNbrParticles = 100 * nbrCells[0];
+    auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
     initializer->loadParticles(particles, layout);
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
