@@ -13,7 +13,8 @@
 #include "utilities/point/point.h"
 #include "utilities/types.h"
 
-
+namespace PHARE
+{
 void maxwellianVelocity(std::array<double, 3> V, std::array<double, 3> Vth,
                         std::mt19937_64 generator, std::array<double, 3>& partVelocity);
 
@@ -25,8 +26,7 @@ void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3
 
 
 
-namespace PHARE
-{
+
 template<typename ParticleArray, typename GridLayout>
 class FluidParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
 {
@@ -46,12 +46,35 @@ public:
         , particleCharge_{particleCharge}
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
-        , magneticField_{magneticField}
+        , magneticField_{std::move(magneticField)}
     {
     }
 
 
 
+
+    virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const override
+    {
+        if constexpr (dimension == 1)
+        {
+            loadParticles1D_(particles, layout);
+        }
+        else if constexpr (dimension == 2)
+        {
+            loadParticles2D_(particles, layout);
+        }
+        else if constexpr (dimension == 3)
+        {
+            loadParticles3D_(particles, layout);
+        }
+    }
+
+
+    virtual ~FluidParticleInitializer() = default;
+
+
+
+private:
     void loadParticles1D_(ParticleArray& particles, GridLayout const& layout) const
     {
         auto const meshSize = layout.meshSize();
@@ -327,34 +350,14 @@ public:
 
 
 
-    virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const override
-    {
-        if constexpr (dimension == 1)
-        {
-            loadParticles1D_(particles, layout);
-        }
-        else if constexpr (dimension == 2)
-        {
-            loadParticles2D_(particles, layout);
-        }
-        else if constexpr (dimension == 3)
-        {
-            loadParticles3D_(particles, layout);
-        }
-    }
-
-
-
-
-private:
     std::unique_ptr<ScalarFunction<dimension>> density_;
     std::unique_ptr<VectorFunction<dimension>> bulkVelocity_;
     std::unique_ptr<VectorFunction<dimension>> thermalVelocity_;
-    std::unique_ptr<VectorFunction<dimension>> magneticField_;
 
     double particleCharge_;
     uint32 nbrParticlePerCell_;
     Basis basis_;
+    std::unique_ptr<VectorFunction<dimension>> magneticField_;
 };
 
 } // namespace PHARE

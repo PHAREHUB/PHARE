@@ -1,7 +1,9 @@
 
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+//#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include <array>
 #include <random>
 
+#include "utilities/types.h"
 
 
 namespace PHARE

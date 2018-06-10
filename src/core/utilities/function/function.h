@@ -6,6 +6,7 @@
 #include <functional>
 
 
+
 template<typename R, std::size_t N>
 class Function
 {
@@ -16,6 +17,10 @@ template<typename R>
 class Function<R, 1>
 {
 public:
+    Function(std::function<R(double)> func)
+        : f{func}
+    {
+    }
     R operator()(double x) { return f(x); }
 
 private:
@@ -28,6 +33,10 @@ template<typename R>
 class Function<R, 2>
 {
 public:
+    Function(std::function<R(double, double)> func)
+        : f{func}
+    {
+    }
     R operator()(double x, double y) { return f(x, y); }
 
 private:
@@ -39,6 +48,10 @@ template<typename R>
 class Function<R, 3>
 {
 public:
+    Function(std::function<R(double, double, double)> func)
+        : f{func}
+    {
+    }
     R operator()(double x, double y, double z) { return f(x, y, z); }
 
 private:

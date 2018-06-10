@@ -6,6 +6,7 @@
 #include "data/grid/gridlayout_impl.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/particles/particle_array.h"
+#include "utilities/function/function.h"
 #include "utilities/point/point.h"
 
 #include "gmock/gmock.h"
@@ -14,12 +15,37 @@
 
 using namespace PHARE;
 
+
 double density(double x)
 {
     return 1.;
 }
 
 
+
+std::array<double, 3> bulkVelocity(double x)
+{
+    return {{1.0, 0., 0.}};
+}
+
+
+
+std::array<double, 3> thermalvelocity(double x)
+{
+    return {{0.2, 0.2, 0.2}};
+}
+
+
+
+/*
+ * (std::unique_ptr<ScalarFunction<dimension>> density,
+                             std::unique_ptr<VectorFunction<dimension>> bulkVelocity,
+                             std::unique_ptr<VectorFunction<dimension>> thermalVelocity,
+                             double particleCharge, uint32 nbrParticlesPerCell,
+                             Basis basis = Basis::Cartesian,
+                             std::unique_ptr<VectorFunction<dimension>> magneticField = nullptr)
+
+                             */
 class aFluidParticleInitializer1D : public ::testing::Test
 {
 private:
@@ -29,6 +55,10 @@ private:
 public:
     aFluidParticleInitializer1D()
         : layout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+        , initializer{std::make_unique<FluidParticleInitializer<ParticleArrayT, GridLayoutT>>(
+              std::make_unique<ScalarFunction<1>>(density),
+              std::make_unique<VectorFunction<1>>(bulkVelocity),
+              std::make_unique<VectorFunction<1>>(thermalvelocity), 1., 100)}
     {
         //
     }
@@ -45,7 +75,8 @@ public:
 TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 {
     auto nbrCells             = layout.nbrCells();
-    auto expectedNbrParticles = 0 * nbrCells[0];
+    auto expectedNbrParticles = 100 * nbrCells[0];
+    initializer->loadParticles(particles, layout);
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
 
