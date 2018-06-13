@@ -17,7 +17,7 @@ template<typename R>
 class Function<R, 1>
 {
 public:
-    Function(std::function<R(double)> func)
+    explicit Function(std::function<R(double)> func)
         : f{func}
     {
     }
@@ -33,7 +33,7 @@ template<typename R>
 class Function<R, 2>
 {
 public:
-    Function(std::function<R(double, double)> func)
+    explicit Function(std::function<R(double, double)> func)
         : f{func}
     {
     }
@@ -48,7 +48,7 @@ template<typename R>
 class Function<R, 3>
 {
 public:
-    Function(std::function<R(double, double, double)> func)
+    explicit Function(std::function<R(double, double, double)> func)
         : f{func}
     {
     }

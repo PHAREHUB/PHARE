@@ -18,11 +18,14 @@ public:
     using field_type    = typename IonPopulation::field_type;
     using vecfield_type = typename IonPopulation::vecfield_type;
 
-    Ions(IonsInitializer<typename IonPopulation::particle_array_type, GridLayout> initializer)
+    explicit Ions(
+        IonsInitializer<typename IonPopulation::particle_array_type, GridLayout> initializer)
         : name_{std::move(initializer.name)}
         , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
         , populations_{}
     {
+        // TODO IonPopulation constructor will need to take a ParticleInitializer
+        // from the vector in the initializer
         populations_.reserve(initializer.nbrPopulations);
         for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
         {
