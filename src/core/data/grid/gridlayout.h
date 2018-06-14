@@ -10,6 +10,7 @@
 #include "data/field/field.h"
 #include "gridlayoutdefs.h"
 #include "hybrid/hybrid_quantities.h"
+#include "utilities/algorithm.h"
 #include "utilities/constants.h"
 #include "utilities/index/index.h"
 #include "utilities/point/point.h"
@@ -796,7 +797,12 @@ private:
      * The formula is based only on the interpolation order, whch means only particle-mesh
      * interactions constrain the number of dual ghost nodes.
      */
-    auto constexpr static nbrDualGhosts_() { return static_cast<uint32>((interp_order + 1) / 2.); }
+    auto constexpr static nbrDualGhosts_()
+    {
+        uint32 constexpr nbrMinGhost{5};
+
+        return max<static_cast<uint32>((interp_order + 1) / 2.), nbrMinGhost>();
+    }
 
 
     /**
@@ -810,13 +816,14 @@ private:
      */
     auto constexpr static nbrPrimalGhosts_()
     {
+        uint32 constexpr nbrMinGhost{5};
         if constexpr (interp_order == 1)
         {
-            return nbrDualGhosts_();
+            return max<nbrDualGhosts_(), nbrMinGhost>();
         }
         else if constexpr (interp_order == 2 || interp_order == 3)
         {
-            return static_cast<uint32>(interp_order / 2.);
+            return max<static_cast<uint32>(interp_order / 2.), nbrMinGhost>();
         }
     }
 

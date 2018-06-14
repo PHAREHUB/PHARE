@@ -8,6 +8,7 @@
 
 #include <utility>
 
+#include "data/coarsening/field_coarsen.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "field_data.h"

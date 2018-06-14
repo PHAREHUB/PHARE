@@ -12,7 +12,7 @@ def sin(x,domainSize):
 def cos(x, domainSize):
     return np.cos((2*np.pi/domainSize)*x)
 
-functionList = [cos, sin]
+functionList = [cos,sin]
 
 def test_coarsen_field_1d_yee_linear(path):
 
@@ -39,12 +39,12 @@ def test_coarsen_field_1d_yee_linear(path):
     fineXStartIndex  =  18
     fineXEndIndex = fineXStartIndex + nbrCellXFine
 
-    ghostWidth = 1
+    ghostWidth = 5
     ratio = 2
 
     #
-    # for dual it is: extend the box of one element in left and right
-    # for primal it is : extend the box of one element in left an right, and add 1 to the right
+    # for dual it is: extend the box of ghostWidth element in left and right
+    # for primal it is : extend the box of ghostWidth element in left and right, and add 1 to the right
     #
     x_dual_fine = meshSizeFine * np.arange(fineXStartIndex-ghostWidth, fineXEndIndex+ghostWidth) + meshSizeFine/2.
     x_primal_fine = meshSizeFine * np.arange(fineXStartIndex-ghostWidth, fineXEndIndex+ghostWidth+1  )

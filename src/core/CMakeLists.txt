@@ -28,6 +28,7 @@ set( SOURCES_INC
      numerics/ampere/ampere.h
      numerics/faraday/faraday.h
      utilities/box/box.h
+     utilities/algorithm.h
      utilities/constants.h
      utilities/index/index.h
      utilities/meta/meta_utilities.h

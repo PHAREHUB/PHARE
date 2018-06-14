@@ -46,7 +46,7 @@ public:
         std::array<bool, dimension> evenRatio;
         std::array<int, dimension> halfRatio;
 
-        for (int iDir = dirX; iDir < dimension; ++iDir)
+        for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
             evenRatio[iDir] = ratio(iDir) % 2 == 0;
             halfRatio[iDir] = ratio(iDir) / 2;
@@ -54,7 +54,7 @@ public:
 
 
         // compute weights for each dimension;
-        for (int iDir = dirX; iDir < dimension; ++iDir)
+        for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
             if (centering[iDir] == QtyCentering::primal || !evenRatio[iDir])
             {
@@ -74,7 +74,7 @@ public:
         }
 
         // compute shift for each dimension
-        for (int iDir = dirX; iDir < dimension; ++iDir)
+        for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
             if (centering[iDir] == QtyCentering::primal)
             {
@@ -233,7 +233,7 @@ private:
     SAMRAI::hier::Box const fineBox_;
     SAMRAI::hier::Box const coarseBox_;
 
-    std::array<std::vector<double>, dimension> const weights_;
+    std::array<std::vector<double>, dimension> const& weights_;
 };
 
 

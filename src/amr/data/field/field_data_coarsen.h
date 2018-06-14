@@ -53,10 +53,12 @@ public:
      * sufficient ghostCell data surrounding the interior to satisfy the stencil
      * width requirements for each coarsening operator.
      *
+     * In our case, we allow a RF up to 10, so having 5 ghost width is sufficient
+     *
      */
     SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
-        return SAMRAI::hier::IntVector::getOne(dim);
+        return SAMRAI::hier::IntVector{dim, 5};
     }
 
 

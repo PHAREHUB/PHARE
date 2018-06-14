@@ -51,20 +51,22 @@ class GridLayout(object):
         return self.centering[direction][quantity]
 
     def nbrGhosts(self,interpOrder, centering):
+        minNbrGhost = 5
         if centering == 'primal':
             if interpOrder == 1:
-                return math.floor((interpOrder+1)/2)
+                return max(math.floor((interpOrder+1)/2), minNbrGhost)
             else:
-                return math.floor( interpOrder/2 )
+                return max(math.floor( interpOrder/2 ), minNbrGhost)
         else:
-            return math.floor( (interpOrder +1)/2 )
+            return max(math.floor( (interpOrder +1)/2 ), minNbrGhost)
 
 
     def nbrGhostsPrimal(self,interpOrder):
+        minNbrGhost = 5
         if interpOrder == 1:
-            return math.floor( (interpOrder+1)/2 )
+            return max(math.floor( (interpOrder+1)/2 ), minNbrGhost)
         else:
-            return math.floor( interpOrder/2 )
+            return max(math.floor( interpOrder/2 ), minNbrGhost)
 
 
 

@@ -2,11 +2,14 @@ cmake_minimum_required (VERSION 3.3)
 
 project(test-field-data-coarsen)
 
+configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
+
 
 set(SOURCES_INC
   test_field_data_coarsen.h
   test_linear_coarsen.h
   test_weighter_coarsen.h
+  ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
 set(SOURCES_CPP

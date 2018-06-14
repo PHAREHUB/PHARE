@@ -37,16 +37,15 @@ struct FieldCoarsenTestData
     Point<double, dimension> coarseOrigin{meshSizeCoarse[dirX] * coarseIndexesX[0]};
     Point<double, dimension> fineOrigin{meshSizeFine[dirX] * fineIndexesX[0]};
 
-    int ghostWidth{1};
-    int ratio{1};
+    int ghostWidth{5};
 
     std::array<std::uint32_t, dimension> nbrCellCoarse{40};
-    int exCoarseNbrCell{42};
-    int eyCoarseNbrCell{43};
+    int exCoarseNbrCell{40 + ghostWidth * 2};
+    int eyCoarseNbrCell{41 + ghostWidth * 2};
 
     std::array<std::uint32_t, dimension> nbrCellFine{20};
-    int exFineNbrCell{22};
-    int eyFineNbrCell{23};
+    int exFineNbrCell{20 + ghostWidth * 2};
+    int eyFineNbrCell{21 + ghostWidth * 2};
 
 
     std::shared_ptr<GridLayout<GridYee1DO1>> coarseLayout;

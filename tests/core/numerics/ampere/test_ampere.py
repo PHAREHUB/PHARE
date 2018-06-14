@@ -14,9 +14,13 @@ def test_ampere_yee1D(path):
     # since the derivative is tested for all interporders
     # we don't do ampere for all interporders, only for interporder=1
 
+    ghost = 5
+
     nbrCellsX = 50
-    dualAllocSize = 52
-    primalAllocSize = 53
+    dualAllocSize = nbrCellsX + 2* ghost
+    primalAllocSize = nbrCellsX + 1 + 2* ghost
+    startIndexX = 0
+    endIndexX = startIndexX + nbrCellsX
     meshSize=0.1
     xmax = 5.
 
@@ -24,13 +28,13 @@ def test_ampere_yee1D(path):
     Jy = np.zeros(primalAllocSize, dtype=np.float64)
     Jz = np.zeros(primalAllocSize, dtype=np.float64)
 
-    psi_p = 1
-    pei_p = 51
-    psi_d = 1
-    pei_d = 50
+    psi_p = ghost
+    pei_p = nbrCellsX + ghost
+    psi_d = ghost
+    pei_d = nbrCellsX + ghost -1
 
-    x_dual = meshSize*np.arange(dualAllocSize) - meshSize/2.
-    x_primal = meshSize*np.arange(primalAllocSize) - meshSize
+    x_dual = meshSize*np.arange(startIndexX - ghost, endIndexX + ghost) + meshSize/2.
+    x_primal = meshSize*np.arange(startIndexX -ghost, endIndexX + ghost + 1)
 
     By = np.cos(2*np.pi/xmax * x_dual)
     Bz = np.sin(2*np.pi/xmax * x_dual)
