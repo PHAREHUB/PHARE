@@ -25,13 +25,13 @@ struct DirectionTag<Direction::X>
 template<>
 struct DirectionTag<Direction::Y>
 {
-    static const auto direction = Direction::X;
+    static const auto direction = Direction::Y;
 };
 
 template<>
 struct DirectionTag<Direction::Z>
 {
-    static const auto direction = Direction::X;
+    static const auto direction = Direction::Z;
 };
 
 

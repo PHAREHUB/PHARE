@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import math
 
 class YeeCentering(object):
     def __init__(self):

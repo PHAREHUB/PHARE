@@ -50,5 +50,47 @@ public:
 
 
 
+template<typename GridLayoutImpl>
+class a2DDerivative : public ::testing::Test
+{
+protected:
+    GridLayout<GridLayoutImpl> layout;
+    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> By;
+    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Ez;
+
+public:
+    a2DDerivative()
+        : layout{{{0.1, 0.2}}, {50, 30}, Point<double, 2>{0., 0.}}
+        , By{"By", PHARE::HybridQuantity::Scalar::By,
+             layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
+        , Ez{"Ez", PHARE::HybridQuantity::Scalar::Ez,
+             layout.allocSize(PHARE::HybridQuantity::Scalar::Ez)}
+    {
+    }
+};
+
+
+
+template<typename GridLayoutImpl>
+class a3DDerivative : public ::testing::Test
+{
+protected:
+    GridLayout<GridLayoutImpl> layout;
+    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> By;
+    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Ez;
+
+public:
+    a3DDerivative()
+        : layout{{{0.1, 0.2, 0.3}}, {50, 30, 40}, Point<double, 3>{0., 0., 0.}}
+        , By{"By", PHARE::HybridQuantity::Scalar::By,
+             layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
+        , Ez{"Ez", PHARE::HybridQuantity::Scalar::Ez,
+             layout.allocSize(PHARE::HybridQuantity::Scalar::Ez)}
+    {
+    }
+};
+
 
 #endif

@@ -434,9 +434,9 @@ public:
 
         if constexpr (Field::dimension == 1)
         {
-            return inverseMeshSize_[dirX]
-                   * (operand(nextIndex(fieldCentering[dirX], index.i))
-                      - operand(prevIndex(fieldCentering[dirX], index.i)));
+            auto next = operand(nextIndex(fieldCentering[dirX], index.i));
+            auto prev = operand(prevIndex(fieldCentering[dirX], index.i));
+            return inverseMeshSize_[dirX] * (next - prev);
         }
 
         else if constexpr (Field::dimension == 2)
