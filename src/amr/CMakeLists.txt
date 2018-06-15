@@ -9,9 +9,11 @@ set( SOURCES_INC
      data/field/coarsening/field_coarsen.h
      data/field/field_data.h
      data/field/field_data_factory.h
+     data/field/field_data_linear_refine.h
      data/field/field_geometry.h
      data/field/field_overlap.h
      data/field/field_variable.h
+     data/refine/field_linear_refine.h
      tools/field_resource.h
      tools/particle_resource.h
      tools/amr_utils.h
@@ -20,6 +22,7 @@ set( SOURCES_INC
      tools/resources_guards.h
    )
 set( SOURCES_CPP
+     data/refine/field_linear_refine.cpp
      tools/amr_utils.cpp
      data/field/coarsening/field_coarsen.cpp
      tools/resources_manager.cpp
