@@ -22,12 +22,11 @@ class FieldDataCoarsen : public SAMRAI::hier::CoarsenOperator
 public:
     static constexpr std::size_t dimension = GridLayoutImpl::dimension;
 
-    explicit FieldDataCoarsen(std::string const& name)
-        : SAMRAI::hier::CoarsenOperator(name)
+    FieldDataCoarsen()
+        : SAMRAI::hier::CoarsenOperator("FieldDataCoarsenOperator")
     {
     }
 
-    FieldDataCoarsen()                        = delete;
     FieldDataCoarsen(FieldDataCoarsen const&) = default;
     FieldDataCoarsen(FieldDataCoarsen&&)      = default;
     FieldDataCoarsen& operator=(FieldDataCoarsen const&) = default;
@@ -115,8 +114,11 @@ public:
         auto sourceBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
             fine.getBox(), qty, sourceLayout, withGhost);
 
+        auto restrictLayout = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::layoutFromBox(
+            coarseBox, destinationLayout);
+
         auto restrictBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-            coarseBox, qty, destinationLayout, !withGhost);
+            coarseBox, qty, restrictLayout, !withGhost);
 
         // finnaly we compute the intersection
         auto intersectionBox = destinationBox * restrictBox;

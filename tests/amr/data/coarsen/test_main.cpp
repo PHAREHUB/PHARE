@@ -13,7 +13,7 @@
 #include <numeric>
 
 
-#include "test_field_data_coarsen.h"
+#include "test_basic_hierarchy.h"
 #include "test_linear_coarsen.h"
 #include "test_weighter_coarsen.h"
 

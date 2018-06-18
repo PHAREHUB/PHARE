@@ -27,7 +27,7 @@ public:
     FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
                      std::string const& name, PhysicalQuantity qty)
         : SAMRAI::hier::PatchDataFactory(
-              SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(dimension)))
+              SAMRAI::hier::IntVector(SAMRAI::tbox::Dimension(dimension), 5))
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
         , dataLivesOnPatchBorder_{dataLivesOnPatchBorder}
         , quantity_{qty}
@@ -98,7 +98,7 @@ public:
         // We finnaly make the FieldData with the correct parameter
 
         return std::make_shared<FieldData<GridLayoutImpl, FieldImpl>>(
-            domain, SAMRAI::hier::IntVector::getZero(dim), name_, dl, nbrCell, origin, quantity_);
+            domain, SAMRAI::hier::IntVector{dim, 5}, name_, dl, nbrCell, origin, quantity_);
     }
 
 

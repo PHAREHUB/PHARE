@@ -15,7 +15,7 @@ PatchHierarchy
     // vector of coarse ratio with dim dimension
     ratio_to_coarser
     {
-        level_1 =   2
+        level_1 =   10
     }
     largest_patch_size
     {
@@ -42,7 +42,7 @@ StandardTagAndInitialize
             tagging_method = "REFINE_BOXES"
             level_0
             {
-                boxes = [ (4) , (15)] , [ (15), (30)]
+                boxes = [ (4) , (15)] , [ (30), (50)]
             }
         }
     }
@@ -51,11 +51,5 @@ TileClustering
 {
 }
 GriddingAlgorithm
-{
-}
-BergerRigoutsos
-{
-}
-LoadBalancer
 {
 }

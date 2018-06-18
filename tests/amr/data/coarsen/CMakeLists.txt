@@ -6,14 +6,17 @@ configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 
 set(SOURCES_INC
-  test_field_data_coarsen.h
+  test_basic_hierarchy.h
   test_linear_coarsen.h
+  test_tag_strategy.h
   test_weighter_coarsen.h
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
 set(SOURCES_CPP
+  test_basic_hierarchy.cpp
   test_main.cpp
+  test_tag_strategy.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

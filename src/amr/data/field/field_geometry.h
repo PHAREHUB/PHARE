@@ -80,7 +80,7 @@ public:
 
         for (auto& box : boxes)
         {
-            GridLayout layout = layoutFromBox_(box, layout_);
+            GridLayout layout = layoutFromBox(box, layout_);
             SAMRAI::hier::Box fieldBox(toFieldBox(box, quantity_, layout, false));
             destinationBox.push_back(fieldBox);
         }
@@ -203,6 +203,17 @@ public:
         return box;
     }
 
+    static GridLayout<GridLayoutImpl> layoutFromBox(SAMRAI::hier::Box const& box,
+                                                    GridLayout<GridLayoutImpl> const& layout)
+    {
+        std::array<uint32, dimension> nbCell;
+        for (std::size_t iDim = 0; iDim < dimension; ++iDim)
+        {
+            nbCell[iDim] = static_cast<uint32>(box.numberCells(iDim));
+        }
+
+        return GridLayout<GridLayoutImpl>(layout.meshSize(), nbCell, layout.origin());
+    }
 
 
 private:
@@ -258,8 +269,8 @@ private:
         // ok let's get the boxes for the fields from cell-centered boxes now
         bool withGhosts = true;
 
-        GridLayout sourceShiftLayout = layoutFromBox_(sourceShift, sourceGeometry.layout_);
-        GridLayout fillBoxLayout     = layoutFromBox_(fillBox, layout_);
+        GridLayout sourceShiftLayout = layoutFromBox(sourceShift, sourceGeometry.layout_);
+        GridLayout fillBoxLayout     = layoutFromBox(fillBox, layout_);
 
         auto const& destinationBox = box_;
         SAMRAI::hier::Box const sourceBox{
@@ -296,7 +307,7 @@ private:
                  ++box)
             {
                 restrictBoxes.push_back(
-                    toFieldBox(*box, quantity_, layoutFromBox_(*box, layout_), !withGhosts));
+                    toFieldBox(*box, quantity_, layoutFromBox(*box, layout_), !withGhosts));
             }
 
             // will only keep of together the boxes that interesect the restrictions
@@ -324,20 +335,6 @@ private:
                                                      destinationRestrictBoxes);
 
         return std::make_shared<FieldOverlap<dimension>>(destinationBox, sourceOffset);
-    }
-
-
-
-    GridLayout<GridLayoutImpl> layoutFromBox_(SAMRAI::hier::Box const& box,
-                                              GridLayout<GridLayoutImpl> const& layout) const
-    {
-        std::array<uint32, dimension> nbCell;
-        for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-        {
-            nbCell[iDim] = static_cast<uint32>(box.numberCells(iDim));
-        }
-
-        return GridLayout<GridLayoutImpl>(layout.meshSize(), nbCell, layout.origin());
     }
 };
 

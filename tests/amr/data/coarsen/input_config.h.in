@@ -4,11 +4,8 @@
 #include <iostream>
 #include <string>
 
-namespace PHARE
-{
 
-  const std::string inputBase = "@CMAKE_CURRENT_SOURCE_DIR@/";
+const std::string inputBase = "@CMAKE_CURRENT_SOURCE_DIR@/";
 
-}
 
 #endif
