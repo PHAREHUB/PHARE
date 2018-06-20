@@ -108,8 +108,7 @@ public:
 
                 for (int iStartX = xLower; iStartX <= xUpper; ++iStartX)
                 {
-                    refineIt(sourceField, destinationField, sourceLayout, destinationLayout,
-                             {{iStartX}});
+                    refineIt(sourceField, destinationField, {{iStartX}});
                 }
             }
             else if constexpr (dimension == 2)
@@ -124,8 +123,7 @@ public:
                 {
                     for (int iStartY = yLower; iStartY <= yUpper; ++iStartY)
                     {
-                        refineIt(sourceField, destinationField, sourceLayout, destinationLayout,
-                                 {{iStartX, iStartY}});
+                        refineIt(sourceField, destinationField, {{iStartX, iStartY}});
                     }
                 }
             }
@@ -145,8 +143,7 @@ public:
                     {
                         for (int iStartZ = zLower; iStartZ <= zUpper; ++iStartZ)
                         {
-                            refineIt(sourceField, destinationField, sourceLayout, destinationLayout,
-                                     {{iStartX, iStartY, iStartZ}});
+                            refineIt(sourceField, destinationField, {{iStartX, iStartY, iStartZ}});
                         }
                     }
                 }

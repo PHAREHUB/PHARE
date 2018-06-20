@@ -26,7 +26,7 @@ public:
     FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
                      std::string const& name, PhysicalQuantity qty)
         : SAMRAI::hier::PatchDataFactory(
-              SAMRAI::hier::IntVector(SAMRAI::tbox::Dimension(dimension), 5))
+              SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), 5})
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
         , dataLivesOnPatchBorder_{dataLivesOnPatchBorder}
         , quantity_{qty}

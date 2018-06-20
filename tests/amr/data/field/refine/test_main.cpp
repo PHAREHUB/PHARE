@@ -11,6 +11,7 @@
 #include "data/refine/field_linear_refine.h"
 
 
+#include "test_basic_hierarchy.h"
 
 using namespace PHARE;
 
@@ -143,7 +144,7 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForDualEvenRat
 
         EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
 
-    } while (fineIndex[dirX] < 8);
+    } while (fineIndex[dirX] < 9);
 
     ++fineIndex[dirX]; //
 
@@ -191,7 +192,209 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForDualOddRati
 
     EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
 }
+// now the weights
+TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualOddRatio)
+{
+    std::size_t constexpr dimension{1};
 
+    std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+
+    auto weights = indexesAndWeights.getWeights();
+
+    auto const& xWeights = weights[dirX];
+
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 1.);
+
+    EXPECT_DOUBLE_EQ(xWeights[0][1], 1. - xWeights[4][1]);
+    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[3][1]);
+
+    EXPECT_DOUBLE_EQ(xWeights[5][1], 1. - xWeights[2][1]);
+}
+TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalOddRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::primal}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+
+    auto weights = indexesAndWeights.getWeights();
+
+    auto const& xWeights = weights[dirX];
+
+    EXPECT_DOUBLE_EQ(xWeights.front()[1], 0.);
+    EXPECT_DOUBLE_EQ(xWeights.back()[1], 1.);
+    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[4][1]);
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 1. - xWeights[3][1]);
+}
+TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualEvenRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+
+    auto weights = indexesAndWeights.getWeights();
+
+    auto const& xWeights = weights[dirX];
+    EXPECT_DOUBLE_EQ(xWeights[0][1], 1. - xWeights[5][1]);
+    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[4][1]);
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 1. - xWeights[3][1]);
+}
+TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalEvenRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::primal}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+
+    auto weights = indexesAndWeights.getWeights();
+
+    auto const& xWeights = weights[dirX];
+
+    EXPECT_DOUBLE_EQ(xWeights[0][1], 0.);
+    EXPECT_DOUBLE_EQ(xWeights[6][1], 1.);
+    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[5][1]);
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 1. - xWeights[4][1]);
+    EXPECT_DOUBLE_EQ(xWeights[3][1], 1. - xWeights[3][1]);
+}
+
+TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalEvenRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::primal}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+    Point<int, dimension> fineIndex{12};
+
+    auto iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+
+    int lastIndex = 6;
+
+    EXPECT_EQ(0, iWeight);
+
+    for (int i = 1; i < lastIndex; ++i)
+    {
+        ++fineIndex[dirX];
+        iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+        EXPECT_EQ(i, iWeight);
+    }
+
+
+    ++fineIndex[dirX];
+    iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+    EXPECT_EQ(0, iWeight);
+}
+TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalOddRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::primal}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+    Point<int, dimension> fineIndex{10};
+
+    auto iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+
+    int lastIndex = 5;
+
+    EXPECT_EQ(0, iWeight);
+
+    for (int i = 1; i < lastIndex; ++i)
+    {
+        ++fineIndex[dirX];
+        iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+        EXPECT_EQ(i, iWeight);
+    }
+
+
+    ++fineIndex[dirX];
+    iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+    EXPECT_EQ(0, iWeight);
+}
+TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualEvenRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+    Point<int, dimension> fineIndex{12};
+
+    auto iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+
+    int lastIndex = 6;
+
+    EXPECT_EQ(0, iWeight);
+
+    for (int i = 1; i < lastIndex; ++i)
+    {
+        ++fineIndex[dirX];
+        iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+        EXPECT_EQ(i, iWeight);
+    }
+
+
+    ++fineIndex[dirX];
+    iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+    EXPECT_EQ(0, iWeight);
+}
+TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualOddRatio)
+{
+    std::size_t constexpr dimension{1};
+
+    std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
+
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 7};
+
+    FieldLinearRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
+
+    Point<int, dimension> fineIndex{14};
+
+    auto iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+
+    int lastIndex = 7;
+
+    EXPECT_EQ(0, iWeight);
+
+    for (int i = 1; i < lastIndex; ++i)
+    {
+        ++fineIndex[dirX];
+        iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+        EXPECT_EQ(i, iWeight);
+    }
+
+
+    ++fineIndex[dirX];
+    iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
+    EXPECT_EQ(0, iWeight);
+}
 
 int main(int argc, char** argv)
 {

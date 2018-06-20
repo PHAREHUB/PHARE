@@ -1,11 +1,19 @@
 cmake_minimum_required (VERSION 3.3)
 project(test-field-refine)
 
+configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
+
+
 set(SOURCES_INC
+  test_basic_hierarchy.h
+  test_tag_strategy.h
+  ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
 set(SOURCES_CPP
+  test_basic_hierarchy.cpp
   test_main.cpp
+  test_tag_strategy.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
