@@ -111,7 +111,7 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
     // apply the coarse operation
 
 
-    basicHierarchy.coarseIt();
+    basicHierarchy.coarsify();
 
 
 
@@ -139,33 +139,33 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
 
             auto const& currentBox = patch->getBox();
 
-            auto box1 = currentBox;
-            auto box2 = currentBox;
+            auto coarseBox1 = currentBox;
+            auto coarseBox2 = currentBox;
 
 
             // Here the box are the one of the refine boxes tags
-            box1.setLower(dirX, 4);
-            box1.setUpper(dirX, 15);
+            coarseBox1.setLower(dirX, 4);
+            coarseBox1.setUpper(dirX, 15);
 
 
-            box2.setLower(dirX, 30);
-            box2.setUpper(dirX, 50);
+            coarseBox2.setLower(dirX, 30);
+            coarseBox2.setUpper(dirX, 50);
 
             bool const withGhost{true};
 
             auto box1Layout
-                = FieldGeometry<GridYee1DO1, decltype(qty)>::layoutFromBox(box1, layout);
+                = FieldGeometry<GridYee1DO1, decltype(qty)>::layoutFromBox(coarseBox1, layout);
             auto box2Layout
-                = FieldGeometry<GridYee1DO1, decltype(qty)>::layoutFromBox(box2, layout);
+                = FieldGeometry<GridYee1DO1, decltype(qty)>::layoutFromBox(coarseBox2, layout);
 
 
             // we have to consider them in "FieldGeometry space "
 
-            box1 = FieldGeometry<GridYee1DO1, decltype(qty)>::toFieldBox(box1, qty, box1Layout,
-                                                                         !withGhost);
+            coarseBox1 = FieldGeometry<GridYee1DO1, decltype(qty)>::toFieldBox(
+                coarseBox1, qty, box1Layout, !withGhost);
 
-            box2 = FieldGeometry<GridYee1DO1, decltype(qty)>::toFieldBox(box2, qty, box2Layout,
-                                                                         !withGhost);
+            coarseBox2 = FieldGeometry<GridYee1DO1, decltype(qty)>::toFieldBox(
+                coarseBox2, qty, box2Layout, !withGhost);
 
 
 
@@ -177,20 +177,20 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
                 fieldData->getBox(), qty, layout, withGhost);
 
 
-            auto const box1Restrict = fieldBox * box1;
-            auto const box2Restrict = fieldBox * box2;
+            auto const coarseBox1Restrict = fieldBox * coarseBox1;
+            auto const coarseBox2Restrict = fieldBox * coarseBox2;
 
             // We coarse value on the interior of the patch
 
-            bool const box1OverlapWithFine{box1.intersects(fieldBoxWithoutGhost)};
-            bool const box2OverlapWithFine{box2.intersects(fieldBoxWithoutGhost)};
+            bool const coarseBox1OverlapWithFine{coarseBox1.intersects(fieldBoxWithoutGhost)};
+            bool const coarseBox2OverlapWithFine{coarseBox2.intersects(fieldBoxWithoutGhost)};
 
-            bool const isOverlapWithFine = box1OverlapWithFine || box2OverlapWithFine;
+            bool const isOverlapWithFine = coarseBox1OverlapWithFine || coarseBox2OverlapWithFine;
 
 
-            auto localFieldBox1 = AMRToLocal(box1Restrict, fieldBox);
+            auto localCoarseFieldBox1 = AMRToLocal(coarseBox1Restrict, fieldBox);
 
-            auto localFieldBox2 = AMRToLocal(box2Restrict, fieldBox);
+            auto localCoarseFieldBox2 = AMRToLocal(coarseBox2Restrict, fieldBox);
 
 
             SAMRAI::tbox::Dimension dim{1};
@@ -201,11 +201,13 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
                 auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
 
 
-                auto isInBox1 = [&localFieldBox1, ix, &dim]() {
-                    return localFieldBox1.contains(SAMRAI::hier::Index{dim, static_cast<int>(ix)});
+                auto isInCoarseBox1 = [&localCoarseFieldBox1, ix, &dim]() {
+                    return localCoarseFieldBox1.contains(
+                        SAMRAI::hier::Index{dim, static_cast<int>(ix)});
                 };
-                auto isInBox2 = [&localFieldBox2, ix, &dim]() {
-                    return localFieldBox2.contains(SAMRAI::hier::Index{dim, static_cast<int>(ix)});
+                auto isInCoarseBox2 = [&localCoarseFieldBox2, ix, &dim]() {
+                    return localCoarseFieldBox2.contains(
+                        SAMRAI::hier::Index{dim, static_cast<int>(ix)});
                 };
 
                 auto inBoxExpectedTest = [&field, ix, &affineFill, &position]() {
@@ -216,16 +218,16 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
 
 
 
-                // so we want to know if both box1 and box2 intersect this patch
-                // in this case localFieldBox1 and localFieldBox2 have correct value
+                // so we want to know if both coarseBox1 and coarseBox2 intersect this patch
+                // in this case localCoarseFieldBox1 and localCoarseFieldBox2 have correct value
                 // for indexing with the field
-                if (box1OverlapWithFine && box2OverlapWithFine)
+                if (coarseBox1OverlapWithFine && coarseBox2OverlapWithFine)
                 {
-                    if (isInBox1())
+                    if (isInCoarseBox1())
                     {
                         inBoxExpectedTest();
                     }
-                    else if (isInBox2())
+                    else if (isInCoarseBox2())
                     {
                         inBoxExpectedTest();
                     }
@@ -238,9 +240,9 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
                 // we have to check the index with this particular box
                 else if (isOverlapWithFine)
                 {
-                    if (box1OverlapWithFine)
+                    if (coarseBox1OverlapWithFine)
                     {
-                        if (isInBox1())
+                        if (isInCoarseBox1())
                         {
                             inBoxExpectedTest();
                         }
@@ -251,7 +253,7 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
                     }
                     else
                     {
-                        if (isInBox2())
+                        if (isInCoarseBox2())
                         {
                             inBoxExpectedTest();
                         }

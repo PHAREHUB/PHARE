@@ -15,21 +15,22 @@ namespace PHARE
 {
 //
 //
-template<typename GridLayoutImpl, typename FieldImpl,
-         typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
+template<typename GridLayoutImpl, typename FieldT,
+         typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
 class FieldDataCoarsen : public SAMRAI::hier::CoarsenOperator
 {
 public:
     static constexpr std::size_t dimension = GridLayoutImpl::dimension;
-
+    static constexpr std::size_t maxRafinement{10};
     FieldDataCoarsen()
         : SAMRAI::hier::CoarsenOperator("FieldDataCoarsenOperator")
     {
     }
 
-    FieldDataCoarsen(FieldDataCoarsen const&) = default;
-    FieldDataCoarsen(FieldDataCoarsen&&)      = default;
-    FieldDataCoarsen& operator=(FieldDataCoarsen const&) = default;
+    FieldDataCoarsen(FieldDataCoarsen const&) = delete;
+    FieldDataCoarsen(FieldDataCoarsen&&)      = delete;
+    FieldDataCoarsen& operator=(FieldDataCoarsen const&) = delete;
+    FieldDataCoarsen&& operator=(FieldDataCoarsen&&) = delete;
 
 
     virtual ~FieldDataCoarsen() = default;
@@ -57,7 +58,7 @@ public:
      */
     SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
-        return SAMRAI::hier::IntVector{dim, 5};
+        return SAMRAI::hier::IntVector{dim, maxRafinement / 2};
     }
 
 
@@ -74,29 +75,29 @@ public:
      * operator
      *
      */
-    void coarsen(SAMRAI::hier::Patch& coarse, SAMRAI::hier::Patch const& fine,
+    void coarsen(SAMRAI::hier::Patch& destinationPatch, SAMRAI::hier::Patch const& sourcePatch,
                  int const destinationComponent, int const sourceComponent,
                  SAMRAI::hier::Box const& coarseBox,
                  SAMRAI::hier::IntVector const& ratio) const override
     {
-        auto coarseFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
-            coarse.getPatchData(destinationComponent));
-        auto const fineFieldData
-            = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl> const>(
-                fine.getPatchData(sourceComponent));
+        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT>>(
+            destinationPatch.getPatchData(destinationComponent));
+        auto const sourceFieldData
+            = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT> const>(
+                sourcePatch.getPatchData(sourceComponent));
 
-        if (!coarseFieldData || !fineFieldData)
+        if (!destinationFieldData || !sourceFieldData)
         {
             throw std::runtime_error("cannot to FieldData");
         }
 
         // We get layout from the fieldData
-        auto const& destinationLayout = coarseFieldData->gridLayout;
-        auto const& sourceLayout      = fineFieldData->gridLayout;
+        auto const& destinationLayout = destinationFieldData->gridLayout;
+        auto const& sourceLayout      = sourceFieldData->gridLayout;
 
         // We get field from the fieldData
-        auto& destinationField  = coarseFieldData->field;
-        auto const& sourceField = fineFieldData->field;
+        auto& destinationField  = destinationFieldData->field;
+        auto const& sourceField = sourceFieldData->field;
 
         // we assume that quantity are the same
         // note that an assertion will be raised
@@ -109,73 +110,73 @@ public:
         // We get different boxes : destination , source, restrictBoxes
         // and transform them in the correct indexing.
         auto destinationBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-            coarse.getBox(), qty, destinationLayout, withGhost);
+            destinationPatch.getBox(), qty, destinationLayout, withGhost);
 
         auto sourceBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-            fine.getBox(), qty, sourceLayout, withGhost);
+            sourcePatch.getBox(), qty, sourceLayout, withGhost);
 
-        auto restrictLayout = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::layoutFromBox(
+        auto coarseLayout = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::layoutFromBox(
             coarseBox, destinationLayout);
 
-        auto restrictBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-            coarseBox, qty, restrictLayout, !withGhost);
+        auto coarseFieldBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+            coarseBox, qty, coarseLayout, !withGhost);
 
         // finnaly we compute the intersection
-        auto intersectionBox = destinationBox * restrictBox;
+        auto intersectionBox = destinationBox * coarseFieldBox;
 
 
 
 
         // We can now create the coarsening operator
-        CoarseField<dimension> coarseIt{destinationLayout.centering(qty), sourceBox, destinationBox,
-                                        ratio};
+        CoarseField<dimension> coarsenIt{destinationLayout.centering(qty), sourceBox,
+                                         destinationBox, ratio};
 
         // now we can loop over the intersection box
 
-        Point<int, dimension> lower;
-        Point<int, dimension> upper;
+        Point<int, dimension> startIndex;
+        Point<int, dimension> endIndex;
 
-        lower[dirX] = intersectionBox.lower(dirX);
-        upper[dirX] = intersectionBox.upper(dirX);
+        startIndex[dirX] = intersectionBox.lower(dirX);
+        endIndex[dirX]   = intersectionBox.upper(dirX);
 
         if constexpr (dimension > 1)
         {
-            lower[dirY] = intersectionBox.lower[dirY];
-            upper[dirY] = intersectionBox.upper[dirY];
+            startIndex[dirY] = intersectionBox.lower[dirY];
+            endIndex[dirY]   = intersectionBox.upper[dirY];
         }
         if constexpr (dimension > 2)
         {
-            lower[dirZ] = intersectionBox.lower[dirZ];
-            upper[dirZ] = intersectionBox.upper[dirZ];
+            startIndex[dirZ] = intersectionBox.lower[dirZ];
+            endIndex[dirZ]   = intersectionBox.upper[dirZ];
         }
 
         if constexpr (dimension == 1)
         {
-            for (int ix = lower[dirX]; ix <= upper[dirX]; ++ix)
+            for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
             {
-                coarseIt(sourceField, destinationField, {{ix}});
+                coarsenIt(sourceField, destinationField, {{ix}});
             }
         }
         else if constexpr (dimension == 2)
         {
-            for (int iStartX = lower[dirX]; iStartX <= upper[dirX]; ++iStartX)
+            for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
             {
-                for (int iStartY = lower[dirY]; iStartY <= upper[dirY]; ++iStartY)
+                for (int iy = startIndex[dirY]; iy <= endIndex[dirY]; ++iy)
                 {
-                    coarseIt(sourceField, destinationField, {{iStartX, iStartY}});
+                    coarsenIt(sourceField, destinationField, {{ix, iy}});
                 }
             }
         }
         else if constexpr (dimension == 3)
         {
-            for (int iStartX = lower[dirX]; iStartX <= upper[dirX]; ++iStartX)
+            for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
             {
-                for (int iStartY = lower[dirY]; iStartY <= upper[dirY]; ++iStartY)
+                for (int iy = startIndex[dirY]; iy <= endIndex[dirY]; ++iy)
                 {
-                    for (int iStartZ = lower[dirZ]; iStartZ <= upper[dirZ]; ++iStartZ)
+                    for (int iz = startIndex[dirZ]; iz <= endIndex[dirZ]; ++iz)
 
                     {
-                        coarseIt(sourceField, destinationField, {{iStartX, iStartY, iStartZ}});
+                        coarsenIt(sourceField, destinationField, {{ix, iy, iz}});
                     }
                 }
             }

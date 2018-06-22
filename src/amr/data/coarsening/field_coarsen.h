@@ -59,9 +59,12 @@ public:
         // compute weights for each dimension;
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
-            if (centering[iDir] == QtyCentering::primal || !evenRatio[iDir])
+            // if we are primal with an evenRatio, we need 1 + 2*halfRatio = ratio + 1
+            // else we need ratio
+            // if we are dual with oddRatio , we need ratio
+            if (centering[iDir] == QtyCentering::primal && evenRatio[iDir])
             {
-                std::size_t const nbrPoints = 1 + 2 * static_cast<std::size_t>(halfRatio[iDir]);
+                std::size_t const nbrPoints = static_cast<std::size_t>(ratio(iDir)) + 1;
 
                 Weight weight{nbrPoints};
 
@@ -76,7 +79,10 @@ public:
             }
         }
 
-        // compute shift for each dimension
+        // Depending on the centering, the position of coarseIndex*fineIndex
+        // is different. Indeed for primal quantity we have it on the middle
+        // , so we need to perform a shift of - halfRatio to compute the first
+        // start index
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
             if (centering[iDir] == QtyCentering::primal)
@@ -90,19 +96,20 @@ public:
         }
     }
 
-    Point<int, dimension> computeStartIndexes(Point<int, dimension> coarseIndex)
+    Point<int, dimension> computeStartIndexes(Point<int, dimension> const& coarseIndex)
     {
-        coarseIndex[dirX] = coarseIndex[dirX] * this->ratio_(dirX) + shifts_[dirX];
+        Point<int, dimension> fineIndex{coarseIndex};
+        fineIndex[dirX] = coarseIndex[dirX] * this->ratio_(dirX) + shifts_[dirX];
         if constexpr (dimension > 1)
         {
-            coarseIndex[dirY] = coarseIndex[dirY] * this->ratio_(dirY) + shifts_[dirY];
+            fineIndex[dirY] = coarseIndex[dirY] * this->ratio_(dirY) + shifts_[dirY];
         }
         if constexpr (dimension > 2)
         {
-            coarseIndex[dirZ] = coarseIndex[dirZ] * this->ratio_(dirZ) + shifts_[dirZ];
+            fineIndex[dirZ] = coarseIndex[dirZ] * this->ratio_(dirZ) + shifts_[dirZ];
         }
 
-        return coarseIndex;
+        return fineIndex;
     }
 
 
@@ -116,6 +123,8 @@ private:
 };
 
 
+
+
 /** @brief Given a dimension, compute the coarsening
  * operation on one coarseIndex, using weights and indexes from
  * the IndexesAndWeights objects
@@ -126,11 +135,11 @@ class CoarseField
 {
 public:
     CoarseField(std::array<QtyCentering, dimension> const& centering,
-                SAMRAI::hier::Box const& fineBox, SAMRAI::hier::Box const& coarseBox,
+                SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
                 SAMRAI::hier::IntVector const& ratio)
         : indexesAndWeights_{centering, ratio}
-        , fineBox_{fineBox}
-        , coarseBox_{coarseBox}
+        , sourceBox_{sourceBox}
+        , destinationBox_{destinationBox}
         , weights_{indexesAndWeights_.getWeights()}
     {
     }
@@ -151,12 +160,12 @@ public:
 
         Point<int, dimension> fineStartIndex = indexesAndWeights_.computeStartIndexes(coarseIndex);
 
-        fineStartIndex = AMRToLocal(fineStartIndex, fineBox_);
+        fineStartIndex = AMRToLocal(fineStartIndex, sourceBox_);
 
 
-        coarseIndex = AMRToLocal(coarseIndex, coarseBox_);
+        coarseIndex = AMRToLocal(coarseIndex, destinationBox_);
 
-        double fieldWeight = 0.;
+        double coarseValue = 0.;
 
         if constexpr (dimension == 1)
         {
@@ -166,12 +175,12 @@ public:
             auto const& xWeights = weights_[dirX];
 
 
-            for (int ix = 0; ix < xWeights.size(); ++ix)
+            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
-                fieldWeight += fineField(xStartIndex + ix) * xWeights[ix];
+                coarseValue += fineField(xStartIndex + iShiftX) * xWeights[iShiftX];
             }
 
-            coarseField(coarseIndex[dirX]) = fieldWeight;
+            coarseField(coarseIndex[dirX]) = coarseValue;
         }
 
 
@@ -185,17 +194,18 @@ public:
             auto const& xWeights = weights_[dirX];
             auto const& yWeights = weights_[dirY];
 
-            for (int ix = 0; ix < xWeights.size(); ++ix)
+            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
                 double Yinterp = 0.;
-                for (int iy = 0; iy < yWeights.size(); ++iy)
+                for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
                 {
-                    Yinterp += fineField(xStartIndex + ix, yStartIndex + iy) * yWeights[iy];
+                    Yinterp += fineField(xStartIndex + iShiftX, yStartIndex + iShiftY)
+                               * yWeights[iShiftY];
                 }
 
-                fieldWeight += Yinterp * xWeights[ix];
+                coarseValue += Yinterp * xWeights[iShiftX];
             }
-            coarseField(coarseIndex[dirX], coarseIndex[dirY]) = fieldWeight;
+            coarseField(coarseIndex[dirX], coarseIndex[dirY]) = coarseValue;
         }
 
 
@@ -213,24 +223,25 @@ public:
 
 
 
-            for (int ix = 0; ix < xWeights.size(); ++ix)
+            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
                 double Yinterp = 0.;
 
-                for (int iy = 0; iy < yWeights.size(); ++iy)
+                for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
                 {
                     double Zinterp = 0.;
-                    for (auto iz = 0; iz < zWeights.size(); ++iz)
+                    for (std::size_t iShiftZ = 0; iShiftZ < zWeights.size(); ++iShiftZ)
                     {
-                        Zinterp += fineField(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                                   * zWeights[iz];
+                        Zinterp += fineField(xStartIndex + iShiftX, yStartIndex + iShiftY,
+                                             zStartIndex + iShiftZ)
+                                   * zWeights[iShiftZ];
                     }
-                    Yinterp += Zinterp * yWeights[iy];
+                    Yinterp += Zinterp * yWeights[iShiftY];
                 }
-                fieldWeight += Yinterp * xWeights[ix];
+                coarseValue += Yinterp * xWeights[iShiftX];
             }
 
-            coarseField(coarseIndex[dirX], coarseIndex[dirY], coarseIndex[dirZ]) = fieldWeight;
+            coarseField(coarseIndex[dirX], coarseIndex[dirY], coarseIndex[dirZ]) = coarseValue;
         }
     }
 
@@ -239,8 +250,8 @@ public:
 private:
     IndexesAndWeights<dimension> indexesAndWeights_;
 
-    SAMRAI::hier::Box const fineBox_;
-    SAMRAI::hier::Box const coarseBox_;
+    SAMRAI::hier::Box const sourceBox_;
+    SAMRAI::hier::Box const destinationBox_;
 
     std::array<std::vector<double>, dimension> const& weights_;
 };

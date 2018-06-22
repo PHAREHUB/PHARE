@@ -52,6 +52,7 @@ AWeighterData createWeighter(std::size_t nbrPoints)
 INSTANTIATE_TEST_CASE_P(TestWithMultipleWeightPointsThat, AWeighter,
                         testing::ValuesIn({createWeighter(2), createWeighter(3), createWeighter(4),
                                            createWeighter(5), createWeighter(6), createWeighter(7),
-                                           createWeighter(9), createWeighter(10)}));
+                                           createWeighter(8), createWeighter(9), createWeighter(10),
+                                           createWeighter(11)}));
 
 #endif
