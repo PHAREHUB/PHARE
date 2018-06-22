@@ -3,7 +3,8 @@
 
 
 #include "data/coarsening/field_coarsen.h"
-
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -95,6 +96,9 @@ struct FieldCoarsenTestData
     }
 };
 
+
+
+
 struct AFieldCoarsenOperator : public testing::TestWithParam<FieldCoarsenTestData>
 {
     void SetUp() override { param = GetParam(); }
@@ -103,6 +107,8 @@ struct AFieldCoarsenOperator : public testing::TestWithParam<FieldCoarsenTestDat
 
     double absError = 1.e-8;
 };
+
+
 
 
 TEST_P(AFieldCoarsenOperator, doTheExpectedCoarseningForEx)
@@ -122,18 +128,21 @@ TEST_P(AFieldCoarsenOperator, doTheExpectedCoarseningForEx)
     }
 }
 
+
+
+
 TEST_P(AFieldCoarsenOperator, doTheExpectedCoarseningForEy)
 {
     auto& layout = param.coarseLayout;
 
-    int iStartX = layout->ghostStartIndex(param.eyQuantity, Direction::X);
-    int iEndX   = layout->ghostEndIndex(param.eyQuantity, Direction::X);
+    auto iStartX = layout->ghostStartIndex(param.eyQuantity, Direction::X);
+    auto iEndX   = layout->ghostEndIndex(param.eyQuantity, Direction::X);
 
     auto const& eyCoarseValue         = *param.eyCoarseValue;
     auto const& expectedEyCoarseValue = *param.expectedEyCoarseValue;
 
 
-    for (int ix = iStartX; ix <= iEndX; ++ix)
+    for (auto ix = iStartX; ix <= iEndX; ++ix)
     {
         EXPECT_THAT(eyCoarseValue(ix), DoubleNear(expectedEyCoarseValue(ix), absError));
     }

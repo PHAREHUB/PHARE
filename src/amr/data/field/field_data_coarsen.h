@@ -151,9 +151,9 @@ public:
 
         if constexpr (dimension == 1)
         {
-            for (int iStartX = lower[dirX]; iStartX <= upper[dirX]; ++iStartX)
+            for (int ix = lower[dirX]; ix <= upper[dirX]; ++ix)
             {
-                coarseIt(sourceField, destinationField, {{iStartX}});
+                coarseIt(sourceField, destinationField, {{ix}});
             }
         }
         else if constexpr (dimension == 2)
@@ -181,9 +181,6 @@ public:
             }
         }
     }
-
-
-private:
 };
 } // namespace PHARE
 

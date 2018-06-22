@@ -35,6 +35,9 @@ private:
     void computeWeights_(std::size_t nbrPoints);
 };
 
+
+
+
 template<std::size_t dimension>
 class IndexesAndWeights
 {
@@ -170,6 +173,9 @@ public:
 
             coarseField(coarseIndex[dirX]) = fieldWeight;
         }
+
+
+
         else if constexpr (dimension == 2)
         {
             auto const& xStartIndex = fineStartIndex[dirX];
@@ -191,6 +197,9 @@ public:
             }
             coarseField(coarseIndex[dirX], coarseIndex[dirY]) = fieldWeight;
         }
+
+
+
         else if constexpr (dimension == 3)
         {
             auto const& xStartIndex = fineStartIndex[dirX];

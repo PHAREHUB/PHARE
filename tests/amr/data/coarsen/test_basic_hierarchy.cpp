@@ -33,6 +33,9 @@ protected:
 
 using ALinearFieldCoarsen1DO1 = ALinearFieldCoarsen<GridYee1DO1, Field1D>;
 
+
+
+
 TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
 {
     auto& basicHierarchy = *basicHierarchy_;

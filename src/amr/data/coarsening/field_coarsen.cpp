@@ -25,6 +25,9 @@ double Weight::findX_(std::size_t nbrPoints) const
     return x;
 }
 
+
+
+
 void Weight::computeWeights_(std::size_t nbrPoints)
 {
     weights_.resize(nbrPoints);
@@ -48,13 +51,17 @@ void Weight::computeWeights_(std::size_t nbrPoints)
             weights_[halfIndex + i] = 1. / (factor * x);
         }
     }
+
+
+
+
     else
     {
         auto const halfIndexRight = nbrPoints / 2;
         auto const halfIndexLeft  = halfIndexRight - 1;
 
-        weights_[halfIndexRight] = 1. / (x);
-        weights_[halfIndexLeft]  = 1. / (x);
+        weights_[halfIndexRight] = 1. / x;
+        weights_[halfIndexLeft]  = 1. / x;
 
         auto const halfNumberOfPointsLeft = (nbrPoints / 2) - 1;
 

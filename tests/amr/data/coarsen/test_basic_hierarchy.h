@@ -28,11 +28,11 @@ using namespace PHARE;
 
 /**
  * @brief  In this class we will create a hierarchy of two levels
- * the raffined level will be determined by the refined box defined
+ * the refined level will be determined by the refined box defined
  * in the input files. The creation of the patch is managed directly
  * by SAMRAI ( thus the use of a GriddingAlgorithm ). To be able to
  * use a GriddingAlgorithm, we have to implement a TagStrategy.
- * The one implemented do only one things : allocate data for each hybridQuantities
+ * The one implemented does only one thing : allocate data for each hybridQuantities
  * on each patch of a given level
  */
 template<typename GridLayoutT, typename FieldT,
@@ -84,7 +84,7 @@ public:
                                                                                                 //
         /* rho */
         , rho_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Rho", PhysicalQuantity::rho)}
-        //
+
         /* P */
         , p_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("P", PhysicalQuantity::P)}
 

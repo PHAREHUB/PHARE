@@ -1,7 +1,11 @@
 #ifndef PHARE_TEST_WEIGHTER_COARSEN_H
 #define PHARE_TEST_WEIGHTER_COARSEN_H
 
+#include <numeric>
+
 #include "data/coarsening/field_coarsen.h"
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
