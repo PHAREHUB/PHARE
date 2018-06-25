@@ -7,8 +7,8 @@
 #include <functional>
 #include <numeric>
 
-#include "data/field/field_data_linear_refine.h"
-#include "data/refine/field_linear_refine.h"
+#include "data/field/refine/field_data_linear_refine.h"
+#include "data/field/refine/field_linear_refine.h"
 
 
 #include "test_basic_hierarchy.h"

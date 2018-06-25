@@ -1,9 +1,9 @@
 #ifndef PHARE_FIELD_DATA_LINEAR_REFINE_H
 #define PHARE_FIELD_DATA_LINEAR_REFINE_H
 
-#include "data/refine/field_linear_refine.h"
-#include "field_data.h"
-#include "field_geometry.h"
+#include "data/field/field_data.h"
+#include "data/field/field_geometry.h"
+#include "field_linear_refine.h"
 
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/tbox/Dimension.h>
