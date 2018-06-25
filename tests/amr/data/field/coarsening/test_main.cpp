@@ -3,7 +3,7 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 
-#include "data/coarsening/field_coarsen.h"
+#include "data/field/coarsening/field_coarsen.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

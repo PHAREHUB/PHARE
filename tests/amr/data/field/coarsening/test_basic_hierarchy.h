@@ -2,7 +2,7 @@
 #define PHARE_TEST_BASIC_HIERARCHY_H
 
 
-#include "data/field/field_data_coarsen.h"
+#include "data/field/coarsening/field_data_coarsen.h"
 #include "data/field/field_variable.h"
 #include "test_tag_strategy.h"
 

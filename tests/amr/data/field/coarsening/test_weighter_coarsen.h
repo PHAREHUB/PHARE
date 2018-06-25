@@ -3,7 +3,7 @@
 
 #include <numeric>
 
-#include "data/coarsening/field_coarsen.h"
+#include "data/field/coarsening/field_coarsen.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 

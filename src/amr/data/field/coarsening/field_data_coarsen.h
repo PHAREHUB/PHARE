@@ -5,9 +5,9 @@
 #include <SAMRAI/hier/CoarsenOperator.h>
 #include <SAMRAI/hier/IntVector.h>
 
-#include "data/coarsening/field_coarsen.h"
 #include "data/field/field_data.h"
 #include "data/field/field_geometry.h"
+#include "field_coarsen.h"
 #include "utilities/constants.h"
 #include "utilities/point/point.h"
 
@@ -129,7 +129,7 @@ public:
 
         // We can now create the coarsening operator
         CoarsenField<dimension> coarsenIt{destinationLayout.centering(qty), sourceBox,
-                                         destinationBox, ratio};
+                                          destinationBox, ratio};
 
         // now we can loop over the intersection box
 

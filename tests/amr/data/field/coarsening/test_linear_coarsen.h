@@ -2,7 +2,7 @@
 #define PHARE_TEST_LINEAR_COARSEN_H
 
 
-#include "data/coarsening/field_coarsen.h"
+#include "data/field/coarsening/field_coarsen.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "gmock/gmock.h"
