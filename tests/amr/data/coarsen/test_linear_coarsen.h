@@ -282,9 +282,9 @@ std::vector<FieldCoarsenTestData> createParam()
         SAMRAI::hier::IntVector ratio{dim, 2};
 
 
-        CoarseField<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
+        CoarsenField<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
 
-        CoarseField<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
+        CoarsenField<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
 
 
 

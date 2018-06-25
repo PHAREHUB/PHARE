@@ -128,7 +128,7 @@ public:
 
 
         // We can now create the coarsening operator
-        CoarseField<dimension> coarsenIt{destinationLayout.centering(qty), sourceBox,
+        CoarsenField<dimension> coarsenIt{destinationLayout.centering(qty), sourceBox,
                                          destinationBox, ratio};
 
         // now we can loop over the intersection box

@@ -95,7 +95,7 @@ public:
      * @brief toFieldBox takes an AMR cell-centered box and creates a box
      * that is adequate for the specified quantity. The layout is used to know
      * the centering, nbr of ghosts of the specified quantity.
-     * @withGhost true if we want to include the ghost nodes in the field box.
+     * @param withGhost true if we want to include the ghost nodes in the field box.
      */
     static SAMRAI::hier::Box toFieldBox(SAMRAI::hier::Box box, PhysicalQuantity qty,
                                         GridLayout<GridLayoutImpl> const& layout,
@@ -132,24 +132,24 @@ public:
 
         if (!withGhost)
         {
-            uint32 xStart = layout.physicalStartIndex(qty, Direction::X);
-            uint32 xEnd   = layout.physicalEndIndex(qty, Direction::X);
+            int32 xStart = layout.physicalStartIndex(qty, Direction::X);
+            int32 xEnd   = layout.physicalEndIndex(qty, Direction::X);
 
             box.setLower(dirX, lower[dirX]);
             box.setUpper(dirX, xEnd - xStart + lower[dirX]);
 
             if (dimension > 1)
             {
-                uint32 yStart = layout.physicalStartIndex(qty, Direction::Y);
-                uint32 yEnd   = layout.physicalEndIndex(qty, Direction::Y);
+                int32 yStart = layout.physicalStartIndex(qty, Direction::Y);
+                int32 yEnd   = layout.physicalEndIndex(qty, Direction::Y);
 
                 box.setLower(dirY, lower[dirY]);
                 box.setUpper(dirY, yEnd - yStart + lower[dirY]);
             }
             if (dimension > 2)
             {
-                uint32 zStart = layout.physicalStartIndex(qty, Direction::Z);
-                uint32 zEnd   = layout.physicalEndIndex(qty, Direction::Z);
+                int32 zStart = layout.physicalStartIndex(qty, Direction::Z);
+                int32 zEnd   = layout.physicalEndIndex(qty, Direction::Z);
 
                 box.setLower(dirZ, lower[dirZ]);
                 box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
@@ -176,24 +176,24 @@ public:
 
             lower = lower - shift;
 
-            uint32 xStart = layout.ghostStartIndex(qty, Direction::X);
-            uint32 xEnd   = layout.ghostEndIndex(qty, Direction::X);
+            int32 xStart = layout.ghostStartIndex(qty, Direction::X);
+            int32 xEnd   = layout.ghostEndIndex(qty, Direction::X);
 
             box.setLower(dirX, lower[dirX]);
             box.setUpper(dirX, xEnd - xStart + lower[dirX]);
 
             if (dimension > 1)
             {
-                uint32 yStart = layout.ghostStartIndex(qty, Direction::Y);
-                uint32 yEnd   = layout.ghostEndIndex(qty, Direction::Y);
+                int32 yStart = layout.ghostStartIndex(qty, Direction::Y);
+                int32 yEnd   = layout.ghostEndIndex(qty, Direction::Y);
 
                 box.setLower(dirY, lower[dirY]);
                 box.setUpper(dirY, yEnd - yStart + lower[dirY]);
             }
             if (dimension > 2)
             {
-                uint32 zStart = layout.ghostStartIndex(qty, Direction::Z);
-                uint32 zEnd   = layout.ghostEndIndex(qty, Direction::Z);
+                int32 zStart = layout.ghostStartIndex(qty, Direction::Z);
+                int32 zEnd   = layout.ghostEndIndex(qty, Direction::Z);
 
                 box.setLower(dirZ, lower[dirZ]);
                 box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
@@ -203,6 +203,10 @@ public:
         return box;
     }
 
+    /**
+     * @brief The origin of the returned layout should NOT be used
+     * this is only to get start and end index for physical and ghost
+     */
     static GridLayout<GridLayoutImpl> layoutFromBox(SAMRAI::hier::Box const& box,
                                                     GridLayout<GridLayoutImpl> const& layout)
     {

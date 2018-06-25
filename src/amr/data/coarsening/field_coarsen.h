@@ -79,10 +79,9 @@ public:
             }
         }
 
-        // Depending on the centering, the position of coarseIndex*fineIndex
-        // is different. Indeed for primal quantity we have it on the middle
-        // , so we need to perform a shift of - halfRatio to compute the first
-        // start index
+        // In primal centering, coarseIndex*RF is RF/2 on the right of
+        // the startFineIndex, so we store -Rf/2 in shift to later add to cearseIndex*RF
+        // to get the startIndex
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
             if (centering[iDir] == QtyCentering::primal)
@@ -131,12 +130,12 @@ private:
  *
  */
 template<std::size_t dimension>
-class CoarseField
+class CoarsenField
 {
 public:
-    CoarseField(std::array<QtyCentering, dimension> const& centering,
-                SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
-                SAMRAI::hier::IntVector const& ratio)
+    CoarsenField(std::array<QtyCentering, dimension> const& centering,
+                 SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
+                 SAMRAI::hier::IntVector const& ratio)
         : indexesAndWeights_{centering, ratio}
         , sourceBox_{sourceBox}
         , destinationBox_{destinationBox}
