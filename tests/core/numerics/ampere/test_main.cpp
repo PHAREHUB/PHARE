@@ -114,7 +114,6 @@ class Ampere1DTest : public ::testing::Test
 {
 protected:
     using GridLayoutImpl = GridLayoutImplYee<1, 1>;
-    uint32 nbrCellsX     = 50;
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
 
