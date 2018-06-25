@@ -212,9 +212,9 @@ public:
             auto const& xWeights = weights_[dirX][iWeight[dirX]];
 
 
-            for (std::size_t ix = 0; ix < xWeights.size(); ++ix)
+            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
-                fieldWeight += sourceField(xStartIndex + ix) * xWeights[ix];
+                fieldWeight += sourceField(xStartIndex + iShiftX) * xWeights[iShiftX];
             }
 
 
@@ -230,14 +230,15 @@ public:
 
 
 
-            for (std::size_t ix = 0; ix < xWeights.size(); ++ix)
+            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
                 double Yinterp = 0.;
-                for (std::size_t iy = 0; iy < yWeights.size(); ++iy)
+                for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
                 {
-                    Yinterp += sourceField(xStartIndex + ix, yStartIndex + iy) * yWeights[iy];
+                    Yinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY)
+                               * yWeights[iShiftY];
                 }
-                fieldWeight += Yinterp * xWeights[ix];
+                fieldWeight += Yinterp * xWeights[iShiftX];
             }
 
             destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldWeight;
@@ -253,20 +254,21 @@ public:
             auto const& zWeights = weights_[dirY][iWeight[dirZ]];
 
 
-            for (std::size_t ix = 0; ix < xWeights.size(); ++ix)
+            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
                 double Yinterp = 0.;
-                for (std::size_t iy = 0; iy < yWeights.size(); ++iy)
+                for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
                 {
                     double Zinterp = 0.;
-                    for (std::size_t iz = 0; iz < zWeights.size(); ++iz)
+                    for (std::size_t iShiftZ = 0; iShiftZ < zWeights.size(); ++iShiftZ)
                     {
-                        Zinterp += sourceField(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                                   * zWeights[iz];
+                        Zinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY,
+                                               zStartIndex + iShiftZ)
+                                   * zWeights[iShiftZ];
                     }
-                    Yinterp += Zinterp * yWeights[iy];
+                    Yinterp += Zinterp * yWeights[iShiftY];
                 }
-                fieldWeight += Yinterp * xWeights[ix];
+                fieldWeight += Yinterp * xWeights[iShiftX];
             }
 
             destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldWeight;

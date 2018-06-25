@@ -129,10 +129,10 @@ public:
             int const cycle   = 0;
             double const time = 0.0;
 
-            SAMRAI::hier::BoxContainer box{};
-            auto reset = standardTag_->getUserSuppliedRefineBoxes(box, iLevel, cycle, time);
+            SAMRAI::hier::BoxContainer boxes{};
+            auto reset = standardTag_->getUserSuppliedRefineBoxes(boxes, iLevel, cycle, time);
             NULL_USE(reset);
-            if (!box.empty())
+            if (!boxes.empty())
             {
                 gridding_->makeFinerLevel(0, true, cycle, time, 0.0);
             }

@@ -103,47 +103,47 @@ public:
 
             if constexpr (dimension == 1)
             {
-                int xLower = intersectionBox.lower(dirX);
-                int xUpper = intersectionBox.upper(dirX);
+                int iStartX = intersectionBox.lower(dirX);
+                int iEndX   = intersectionBox.upper(dirX);
 
-                for (int iStartX = xLower; iStartX <= xUpper; ++iStartX)
+                for (int ix = iStartX; ix <= iEndX; ++ix)
                 {
-                    refineIt(sourceField, destinationField, {{iStartX}});
+                    refineIt(sourceField, destinationField, {{ix}});
                 }
             }
             else if constexpr (dimension == 2)
             {
-                int xLower = intersectionBox.lower(dirX);
-                int yLower = intersectionBox.lower(dirY);
+                int iStartX = intersectionBox.lower(dirX);
+                int iStartY = intersectionBox.lower(dirY);
 
-                int xUpper = intersectionBox.upper(dirX);
-                int yUpper = intersectionBox.upper(dirY);
+                int iEndX = intersectionBox.upper(dirX);
+                int iEndY = intersectionBox.upper(dirY);
 
-                for (int iStartX = xLower; iStartX <= xUpper; ++iStartX)
+                for (int ix = iStartX; ix <= iEndX; ++ix)
                 {
-                    for (int iStartY = yLower; iStartY <= yUpper; ++iStartY)
+                    for (int iy = iStartY; iy <= iEndY; ++iy)
                     {
-                        refineIt(sourceField, destinationField, {{iStartX, iStartY}});
+                        refineIt(sourceField, destinationField, {{ix, iy}});
                     }
                 }
             }
             else if constexpr (dimension == 3)
             {
-                int xLower = intersectionBox.lower(dirX);
-                int yLower = intersectionBox.lower(dirY);
-                int zLower = intersectionBox.lower(dirZ);
+                int iStartX = intersectionBox.lower(dirX);
+                int iStartY = intersectionBox.lower(dirY);
+                int iStartZ = intersectionBox.lower(dirZ);
 
-                int xUpper = intersectionBox.upper(dirX);
-                int yUpper = intersectionBox.upper(dirY);
-                int zUpper = intersectionBox.upper(dirZ);
+                int iEndX = intersectionBox.upper(dirX);
+                int iEndY = intersectionBox.upper(dirY);
+                int iEndZ = intersectionBox.upper(dirZ);
 
-                for (int iStartX = xLower; iStartX <= xUpper; ++iStartX)
+                for (int ix = iStartX; ix <= iEndX; ++ix)
                 {
-                    for (int iStartY = yLower; iStartY <= yUpper; ++iStartY)
+                    for (int iy = iStartY; iy <= iEndY; ++iy)
                     {
-                        for (int iStartZ = zLower; iStartZ <= zUpper; ++iStartZ)
+                        for (int iz = iStartZ; iz <= iEndZ; ++iz)
                         {
-                            refineIt(sourceField, destinationField, {{iStartX, iStartY, iStartZ}});
+                            refineIt(sourceField, destinationField, {{ix, iy, iz}});
                         }
                     }
                 }
