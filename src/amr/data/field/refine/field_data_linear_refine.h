@@ -150,8 +150,6 @@ public:
             }
         }
     }
-
-private:
 };
 
 } // namespace PHARE

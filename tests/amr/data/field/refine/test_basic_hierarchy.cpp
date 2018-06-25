@@ -31,7 +31,13 @@ protected:
     std::shared_ptr<BasicHierarchy<GridLayoutT, FieldT>> basicHierarchy_;
 };
 
+
+
+
 using ALinearFieldRefine1DO1 = ALinearFieldRefine<GridYee1DO1, Field1D>;
+
+
+
 
 TEST_P(ALinearFieldRefine1DO1, conserveLinearFunction)
 {

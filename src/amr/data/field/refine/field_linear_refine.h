@@ -65,29 +65,22 @@ public:
             // and distance for the right index
             // The number of points depends on the centering, for primal or odd ratio
             // it is ratio + 1 , for dual with evenRatio it is ratio
+            std::size_t nbrPoints;
             if (centering[iDir] == QtyCentering::primal || !evenRatio[iDir])
             {
-                std::size_t const nbrPoints = static_cast<std::size_t>(ratio(iDir)) + 1;
-
-                UniformIntervalPartitionWeight distances{centering[iDir], ratio(iDir), nbrPoints};
-
-                weights_[iDir].reserve(distances.getUniformDistances().size());
-                for (auto const& distance : distances.getUniformDistances())
-                {
-                    weights_[iDir].emplace_back(std::array<double, 2>{{1. - distance, distance}});
-                }
+                nbrPoints = static_cast<std::size_t>(ratio(iDir)) + 1;
             }
             else
             {
-                std::size_t const nbrPoints = static_cast<std::size_t>(ratio(iDir));
+                nbrPoints = static_cast<std::size_t>(ratio(iDir));
+            }
 
-                UniformIntervalPartitionWeight distances{centering[iDir], ratio(iDir), nbrPoints};
+            UniformIntervalPartitionWeight distances{centering[iDir], ratio(iDir), nbrPoints};
 
-                weights_[iDir].reserve(distances.getUniformDistances().size());
-                for (auto const& distance : distances.getUniformDistances())
-                {
-                    weights_[iDir].emplace_back(std::array<double, 2>{{1. - distance, distance}});
-                }
+            weights_[iDir].reserve(distances.getUniformDistances().size());
+            for (auto const& distance : distances.getUniformDistances())
+            {
+                weights_[iDir].emplace_back(std::array<double, 2>{{1. - distance, distance}});
             }
         }
 
@@ -107,6 +100,9 @@ public:
             }
         }
     }
+
+
+
 
     Point<int, dimension> computeStartIndexes(Point<int, dimension> fineIndex) const
     {
@@ -131,10 +127,16 @@ public:
         return coarseIndex;
     }
 
+
+
+
     std::array<std::vector<std::array<double, 2>>, dimension> const& getWeights() const
     {
         return weights_;
     }
+
+
+
 
     /** @brief Compute the index of weigths for a given fineIndex
      *
@@ -163,6 +165,9 @@ private:
     std::array<std::vector<std::array<double, 2>>, dimension> weights_;
     Point<double, dimension> shifts_;
 };
+
+
+
 
 template<std::size_t dimension>
 class FieldLinearRefine
@@ -203,7 +208,7 @@ public:
         coarseStartIndex = AMRToLocal(coarseStartIndex, coarseBox_);
         fineIndex        = AMRToLocal(fineIndex, fineBox_);
 
-        double fieldWeight = 0.;
+        double fieldValue = 0.;
 
         if constexpr (dimension == 1)
         {
@@ -214,11 +219,13 @@ public:
 
             for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
             {
-                fieldWeight += sourceField(xStartIndex + iShiftX) * xWeights[iShiftX];
+                fieldValue += sourceField(xStartIndex + iShiftX) * xWeights[iShiftX];
             }
 
 
-            destinationField(fineIndex[dirX]) = fieldWeight;
+            destinationField(fineIndex[dirX])
+                = fieldValue; // TODO : field should take a MeshIndex/Point (choose and kill the
+                              // other?)
         }
         else if constexpr (dimension == 2)
         {
@@ -238,10 +245,10 @@ public:
                     Yinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY)
                                * yWeights[iShiftY];
                 }
-                fieldWeight += Yinterp * xWeights[iShiftX];
+                fieldValue += Yinterp * xWeights[iShiftX];
             }
 
-            destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldWeight;
+            destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
         }
         else if constexpr (dimension == 3)
         {
@@ -268,10 +275,10 @@ public:
                     }
                     Yinterp += Zinterp * yWeights[iShiftY];
                 }
-                fieldWeight += Yinterp * xWeights[iShiftX];
+                fieldValue += Yinterp * xWeights[iShiftX];
             }
 
-            destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldWeight;
+            destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldValue;
         }
     }
 
