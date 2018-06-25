@@ -115,14 +115,14 @@ TEST_P(AFieldCoarsenOperator, doTheExpectedCoarseningForEx)
 {
     auto& layout = param.coarseLayout;
 
-    int iStartX = layout->ghostStartIndex(param.exQuantity, Direction::X);
-    int iEndX   = layout->ghostEndIndex(param.exQuantity, Direction::X);
+    auto iStartX = layout->ghostStartIndex(param.exQuantity, Direction::X);
+    auto iEndX   = layout->ghostEndIndex(param.exQuantity, Direction::X);
 
     auto const& exCoarseValue         = *param.exCoarseValue;
     auto const& expectedExCoarseValue = *param.expectedExCoarseValue;
 
 
-    for (int ix = iStartX; ix <= iEndX; ++ix)
+    for (auto ix = iStartX; ix <= iEndX; ++ix)
     {
         EXPECT_THAT(exCoarseValue(ix), DoubleNear(expectedExCoarseValue(ix), absError));
     }
@@ -196,7 +196,7 @@ std::vector<FieldCoarsenTestData> createParam()
         auto& expectedEyCoarseValue = *param.expectedEyCoarseValue;
 
 
-        for (int ix = 0; ix < param.exFineNbrCell; ++ix)
+        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.exFineNbrCell); ++ix)
         {
             double value;
             exFine >> value;
@@ -211,14 +211,14 @@ std::vector<FieldCoarsenTestData> createParam()
             break;
         }
 
-        for (int ix = 0; ix < param.eyFineNbrCell; ++ix)
+        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.eyFineNbrCell); ++ix)
         {
             double value;
             eyFine >> value;
             eyFineValue(ix) = value;
         }
 
-        for (int ix = 0; ix < param.exCoarseNbrCell; ++ix)
+        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.exCoarseNbrCell); ++ix)
         {
             double value;
 
@@ -228,7 +228,7 @@ std::vector<FieldCoarsenTestData> createParam()
             exCoarseAfterCoarsening >> value;
             expectedExCoarseValue(ix) = value;
         }
-        for (int ix = 0; ix < param.eyCoarseNbrCell; ++ix)
+        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.eyCoarseNbrCell); ++ix)
         {
             double value;
 
@@ -263,16 +263,20 @@ std::vector<FieldCoarsenTestData> createParam()
 
 
         fineBoxEx.setLower(dirX,
-                           param.fineIndexesX[0] - param.fineLayout->nbrGhosts(centeringEx[dirX]));
-        coarseBoxEx.setLower(dirX, param.coarseIndexesX[0]
-                                       - param.coarseLayout->nbrGhosts(centeringEx[dirX]));
+                           param.fineIndexesX[0]
+                               - static_cast<int>(param.fineLayout->nbrGhosts(centeringEx[dirX])));
+        coarseBoxEx.setLower(
+            dirX, param.coarseIndexesX[0]
+                      - static_cast<int>(param.coarseLayout->nbrGhosts(centeringEx[dirX])));
 
 
 
         fineBoxEy.setLower(dirX,
-                           param.fineIndexesX[0] - param.fineLayout->nbrGhosts(centeringEy[dirX]));
-        coarseBoxEy.setLower(dirX, param.coarseIndexesX[0]
-                                       - param.coarseLayout->nbrGhosts(centeringEy[dirX]));
+                           param.fineIndexesX[0]
+                               - static_cast<int>(param.fineLayout->nbrGhosts(centeringEy[dirX])));
+        coarseBoxEy.setLower(
+            dirX, param.coarseIndexesX[0]
+                      - static_cast<int>(param.coarseLayout->nbrGhosts(centeringEy[dirX])));
 
 
         SAMRAI::hier::IntVector ratio{dim, 2};

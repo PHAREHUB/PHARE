@@ -28,6 +28,7 @@ struct AWeighter : public testing::TestWithParam<AWeighterData>
 {
     void SetUp() override { param = GetParam(); }
 
+
     AWeighterData param;
 };
 
