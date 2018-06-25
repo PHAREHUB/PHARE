@@ -36,10 +36,9 @@ public:
     virtual ~TagStrategy() = default;
 
     void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                             int const levelNumber, double const initDataTime,
-                             bool const canBeRefined, bool const initialTime,
-                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
-                             = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
+                             int const levelNumber, double const, bool const, bool const,
+                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& = std::shared_ptr<
+                                 SAMRAI::hier::PatchLevel>(),
                              bool const allocateData = true) override
     {
         if (allocateData)
@@ -95,8 +94,8 @@ public:
         }
     }
 
-    void resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                     int const coarsestLevel, int const finestLevel) override
+    void resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const&,
+                                     int const, int const) override
     {
         // do nothing
     }

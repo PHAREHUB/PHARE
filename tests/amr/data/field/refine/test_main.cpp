@@ -18,6 +18,8 @@ using namespace PHARE;
 using GridYee1DO1 = GridLayoutImplYee<1, 1>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
+using testing::Eq;
+
 TEST(FieldDataLinearRefine, CanBeCreated)
 {
     FieldDataLinearRefine<GridYee1DO1, Field1D> linearRefine{};
@@ -291,7 +293,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalEvenRatio)
 
     int lastIndex = 6;
 
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 
     for (int i = 1; i < lastIndex; ++i)
     {
@@ -303,7 +305,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalEvenRatio)
 
     ++fineIndex[dirX];
     iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 }
 TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalOddRatio)
 {
@@ -321,7 +323,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalOddRatio)
 
     int lastIndex = 5;
 
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 
     for (int i = 1; i < lastIndex; ++i)
     {
@@ -333,7 +335,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForPrimalOddRatio)
 
     ++fineIndex[dirX];
     iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 }
 TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualEvenRatio)
 {
@@ -351,7 +353,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualEvenRatio)
 
     int lastIndex = 6;
 
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 
     for (int i = 1; i < lastIndex; ++i)
     {
@@ -363,7 +365,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualEvenRatio)
 
     ++fineIndex[dirX];
     iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 }
 TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualOddRatio)
 {
@@ -381,7 +383,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualOddRatio)
 
     int lastIndex = 7;
 
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 
     for (int i = 1; i < lastIndex; ++i)
     {
@@ -393,7 +395,7 @@ TEST(AFieldLinearIndexesAndWeights1D, giveACorrectiWeightForDualOddRatio)
 
     ++fineIndex[dirX];
     iWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
-    EXPECT_EQ(0, iWeight);
+    EXPECT_THAT(iWeight, Eq(0));
 }
 
 int main(int argc, char** argv)
