@@ -13,7 +13,7 @@ class ParticlesVariable : public SAMRAI::hier::Variable
 public:
     ParticlesVariable(std::string const& name, bool fineBoundaryRepresentsVariable = false,
                       SAMRAI::hier::IntVector ghost
-                      = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{1}})
+                      = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim}, 1})
         : SAMRAI::hier::Variable{name, std::make_shared<ParticlesDataFactory<dim>>(
                                            ghost, fineBoundaryRepresentsVariable)}
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}

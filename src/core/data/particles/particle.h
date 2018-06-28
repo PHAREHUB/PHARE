@@ -31,11 +31,11 @@ struct Particle<1>
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
 
-    static const std::size_t dimension;
+    static const std::size_t dimension = 1;
 };
 
 
-const std::size_t Particle<1>::dimension = 1;
+/* const std::size_t Particle<1>::dimension = 1; */
 
 
 
@@ -52,10 +52,10 @@ struct Particle<2>
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
 
-    static const std::size_t dimension;
+    static const std::size_t dimension = 2;
 };
 
-const std::size_t Particle<2>::dimension = 2;
+/* const std::size_t Particle<2>::dimension = 2; */
 
 
 template<>
@@ -71,11 +71,11 @@ struct Particle<3>
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
 
-    static const std::size_t dimension;
+    static const std::size_t dimension = 3;
 };
 
 
-const std::size_t Particle<3>::dimension = 3;
+/* const std::size_t Particle<3>::dimension = 3; */
 
 
 

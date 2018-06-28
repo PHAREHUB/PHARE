@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.3)
 project(phare_amr)
 
 set( SOURCES_INC
+     data/particles/refine/particles_data_split_on_coarse_boundary.h
      data/particles/particles_data.h
      data/particles/particles_data_factory.h
      data/particles/particles_variable.h
