@@ -37,7 +37,7 @@ using namespace PHARE;
  * root level, and finally the refine interpolation between root level
  * and the level 1
  */
-template<std::size_t dimension, std::size_t interpOrder>
+template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType splitType>
 class BasicHierarchy
 {
 public:
@@ -57,7 +57,7 @@ public:
      * a GriddingAlgorithm with the previous objects
      *
      */
-    explicit BasicHierarchy(int ratio, bool refineOnlyBorder = true)
+    explicit BasicHierarchy(int ratio)
         : ratio{SAMRAI::tbox::Dimension{dimension}, ratio}
         , inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
               inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
@@ -85,11 +85,11 @@ public:
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
         , refineOperator_{std::make_shared<
-              ParticlesDataSplitOnCoarseBoundary<dimension, interpOrder>>(refineOnlyBorder)}
+              ParticlesDataSplitOnCoarseBoundary<dimension, interpOrder, splitType>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,
-                                                                refineOnlyBorder)}
+                                                                splitType)}
         , standardTag_{std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
               "StandardTagAndInitialize", tagStrategy_.get(),
               inputDatabase_->getDatabase("StandardTagAndInitialize"))}

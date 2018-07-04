@@ -14,6 +14,7 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/particles/particles_data.h"
+#include "data/particles/refine/particles_data_split_on_coarse_boundary.h"
 #include "utilities/constants.h"
 #include "utilities/point/point.h"
 
@@ -30,10 +31,10 @@ class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 public:
     TagStrategy(std::map<std::string, int> const& dataToAllocate,
                 std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOperator,
-                bool refineOnlyBorder)
+                ParticlesDataSplitType splitType)
         : dataToAllocate_{dataToAllocate}
         , refineOp_{refineOperator}
-        , refineOnlyBorder_{refineOnlyBorder}
+        , refineOnlyBorder_{splitType}
     {
         for (auto const& nameToIds : dataToAllocate_)
         {
@@ -116,7 +117,7 @@ public:
         else
         {
             // create schedule
-            if (refineOnlyBorder_)
+            if (refineOnlyBorder_ == ParticlesDataSplitType::coarseBoundary)
             {
                 auto refineScheduleBorder = algorithm_.createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
@@ -124,7 +125,7 @@ public:
 
                 refineScheduleBorder->fillData(0.);
             }
-            else
+            else if (refineOnlyBorder_ == ParticlesDataSplitType::interior)
             {
                 auto refineScheduleInterior = algorithm_.createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
@@ -155,7 +156,7 @@ private:
     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp_;
     SAMRAI::xfer::RefineAlgorithm algorithm_;
 
-    bool const refineOnlyBorder_;
+    ParticlesDataSplitType const refineOnlyBorder_;
 };
 
 #endif

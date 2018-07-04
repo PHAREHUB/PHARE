@@ -17,14 +17,26 @@ std::size_t constexpr ghostWidthForParticles()
     return interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2;
 }
 
-template<std::size_t dim, std::size_t interpOrder>
+enum class ParticlesDataSplitType { coarseBoundary, interior, coarseBoundary1, coarseBoundary2 };
+
+std::string inline splitName(ParticlesDataSplitType splitType)
+{
+    switch (splitType)
+    {
+        case ParticlesDataSplitType::coarseBoundary: return "coarseBoundary";
+        case ParticlesDataSplitType::interior: return "interior";
+        case ParticlesDataSplitType::coarseBoundary1: return "coarseBoundary1";
+        case ParticlesDataSplitType::coarseBoundary2: return "coarseBoundary2";
+        default: throw std::runtime_error("End of enum class possible range");
+    }
+}
+
+template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType>
 class ParticlesDataSplitOnCoarseBoundary : public SAMRAI::hier::RefineOperator
 {
 public:
-    explicit ParticlesDataSplitOnCoarseBoundary(bool refineOnBorderOnly)
-        : SAMRAI::hier::RefineOperator{"ParticlesDataSplitOnCoarseBoundary_"
-                                       + std::to_string(refineOnBorderOnly)}
-        , refineOnBorderOnly_{refineOnBorderOnly}
+    ParticlesDataSplitOnCoarseBoundary()
+        : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName(splitType)}
     {
     }
 
@@ -81,14 +93,12 @@ public:
 
             auto localDestinationBox = destinationBox;
 
-            // TODO if constexpr in the future
-            if (refineOnBorderOnly_)
+            if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
             {
                 auto growthVector = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
                                                             ghostWidthForParticles<interpOrder>()};
 
                 sourceBox.grow(growthVector);
-                /* localDestinationBox.grow(growthVector); */
             }
 
             sourceBox = sourceBox * sourceGhostBox;
@@ -192,8 +202,9 @@ public:
                     = xLower[dirZ] + dx[dirZ] * (destinationBoxLocalToDomain.upper(dirZ) + 1);
             }
 
-            auto isCandidateForSplit = [&physicalLowerDestination, &physicalUpperDestination, dx,
-                                        xLower](auto const& particle) {
+            [[maybe_unused]] auto isCandidateForSplit = [&physicalLowerDestination,
+                                                         &physicalUpperDestination, dx,
+                                                         xLower](auto const& particle) {
                 if constexpr (dim == 1)
                 {
                     if constexpr (interpOrder == 1)
@@ -223,7 +234,7 @@ public:
 
 
 
-            if (refineOnBorderOnly_)
+            if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
             {
                 for (auto const& sourceParticlesArray : particlesArrays)
                 {
@@ -245,7 +256,7 @@ public:
                 }
             }
 
-            else
+            else if constexpr (splitType == ParticlesDataSplitType::interior)
             {
                 for (auto const& sourceParticlesArray : particlesArrays)
                 {
@@ -271,9 +282,6 @@ public:
             //
         }
     }
-
-private:
-    const bool refineOnBorderOnly_;
 };
 
 

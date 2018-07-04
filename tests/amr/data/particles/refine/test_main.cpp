@@ -27,7 +27,8 @@ TEST(AParticlesDataSplitDataOnCoarseBoundaryOperator,
     std::size_t constexpr dimension{1};
     std::size_t constexpr interpOrder{1};
     int const ratio = 2;
-    BasicHierarchy<dimension, interpOrder> basicHierarchy{ratio};
+    BasicHierarchy<dimension, interpOrder, ParticlesDataSplitType::coarseBoundary> basicHierarchy{
+        ratio};
 
 
     auto& hierarchy = basicHierarchy.getHierarchy();
@@ -108,8 +109,7 @@ TEST(AParticlesDataSplitDataOperator, canBeUsedWithAPatchLevelFillPatternToFillO
     int const ratio = 2;
 
 
-    bool refineOnlyInterior{true};
-    BasicHierarchy<dimension, interpOrder> basicHierarchy{ratio, !refineOnlyInterior};
+    BasicHierarchy<dimension, interpOrder, ParticlesDataSplitType::interior> basicHierarchy{ratio};
 
 
     auto& hierarchy = basicHierarchy.getHierarchy();
