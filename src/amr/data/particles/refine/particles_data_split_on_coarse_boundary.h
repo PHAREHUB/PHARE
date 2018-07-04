@@ -79,19 +79,24 @@ public:
         auto const sourceParticlesData
             = std::dynamic_pointer_cast<ParticlesData<dim>>(source.getPatchData(sourceComponent));
 
-        auto pGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
+        auto patchGeomDestination = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
             destination.getPatchGeometry());
+
+        auto patchGeomSource = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
+            source.getPatchGeometry());
 
 
 
         TBOX_ASSERT(destinationParticlesData);
         TBOX_ASSERT(sourceParticlesData);
-        TBOX_ASSERT(pGeom);
+        TBOX_ASSERT(patchGeomDestination);
+        TBOX_ASSERT(patchGeomSource);
+
 
 
 
         refine_(*destinationParticlesData, *sourceParticlesData, destinationFieldOverlap, ratio,
-                *pGeom);
+                *patchGeomDestination, *patchGeomSource);
     }
 
 
@@ -101,7 +106,8 @@ public:
                  ParticlesData<dim> const& sourceParticlesData,
                  SAMRAI::pdat::CellOverlap const& destinationFieldOverlap,
                  SAMRAI::hier::IntVector const& ratio,
-                 SAMRAI::geom::CartesianPatchGeometry const& pGeom) const
+                 SAMRAI::geom::CartesianPatchGeometry const& patchGeomDest,
+                 SAMRAI::geom::CartesianPatchGeometry const& patchGeomSource) const
     {
         auto const& destinationBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
@@ -228,8 +234,8 @@ public:
             // for that we need to consider the domainBox of the destinationPatchData as the
             // reference Box
 
-            auto* dx     = pGeom.getDx();
-            auto* xLower = pGeom.getXLower();
+            auto* dx     = patchGeomDest.getDx();
+            auto* xLower = patchGeomDest.getXLower();
 
             Point<double, dim> physicalLowerDestination;
             Point<double, dim> physicalUpperDestination;
