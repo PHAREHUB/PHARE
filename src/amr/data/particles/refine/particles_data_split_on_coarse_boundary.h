@@ -32,15 +32,15 @@ std::string inline splitName(ParticlesDataSplitType splitType)
 }
 
 template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType>
-class ParticlesDataSplitOnCoarseBoundary : public SAMRAI::hier::RefineOperator
+class ParticlesDataSplitOperator : public SAMRAI::hier::RefineOperator
 {
 public:
-    ParticlesDataSplitOnCoarseBoundary()
+    ParticlesDataSplitOperator()
         : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName(splitType)}
     {
     }
 
-    virtual ~ParticlesDataSplitOnCoarseBoundary() = default;
+    virtual ~ParticlesDataSplitOperator() = default;
 
     /** @brief a priority of 0 means that this operator
      * will be applied first
@@ -234,53 +234,36 @@ public:
 
 
 
-            if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
+            for (auto const& sourceParticlesArray : particlesArrays)
             {
-                for (auto const& sourceParticlesArray : particlesArrays)
+                for (auto const& particle : *sourceParticlesArray)
                 {
-                    for (auto const& particle : *sourceParticlesArray)
+                    //
+
+                    if (isInBox(particle, localSourceBox))
                     {
                         //
+                        auto shiftedParticle = particle;
+                        shiftParticle(shiftedParticle);
 
-                        if (isInBox(particle, localSourceBox))
+                        if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
                         {
-                            //
-                            auto shiftedParticle = particle;
-                            shiftParticle(shiftedParticle);
                             if (isCandidateForSplit(shiftedParticle))
                             {
                                 destinationCoarseBoundaryParticles.push_back(shiftedParticle);
                             }
                         }
-                    }
-                }
-            }
-
-            else if constexpr (splitType == ParticlesDataSplitType::interior)
-            {
-                for (auto const& sourceParticlesArray : particlesArrays)
-                {
-                    for (auto const& particle : *sourceParticlesArray)
-                    {
-                        //
-
-                        if (isInBox(particle, localSourceBox))
+                        else if constexpr (splitType == ParticlesDataSplitType::interior)
                         {
-                            //
-                            auto shiftedParticle = particle;
-                            shiftParticle(shiftedParticle);
-
                             if (isInBox(shiftedParticle, localDestinationBox))
                             {
                                 destinationDomainParticles.push_back(shiftedParticle);
                             }
                         }
-                    }
-                }
-            }
-
-            //
-        }
+                    } // is in source selected box
+                }     // loop on particle
+            }         // loop on particelesArrays
+        }             // loop on destination box
     }
 };
 

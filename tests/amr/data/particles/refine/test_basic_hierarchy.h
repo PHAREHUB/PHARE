@@ -85,7 +85,7 @@ public:
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
         , refineOperator_{std::make_shared<
-              ParticlesDataSplitOnCoarseBoundary<dimension, interpOrder, splitType>>()}
+              ParticlesDataSplitOperator<dimension, interpOrder, splitType>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,

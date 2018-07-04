@@ -34,7 +34,7 @@ public:
                 ParticlesDataSplitType splitType)
         : dataToAllocate_{dataToAllocate}
         , refineOp_{refineOperator}
-        , refineOnlyBorder_{splitType}
+        , splitType_{splitType}
     {
         for (auto const& nameToIds : dataToAllocate_)
         {
@@ -117,7 +117,7 @@ public:
         else
         {
             // create schedule
-            if (refineOnlyBorder_ == ParticlesDataSplitType::coarseBoundary)
+            if (splitType_ == ParticlesDataSplitType::coarseBoundary)
             {
                 auto refineScheduleBorder = algorithm_.createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
@@ -125,7 +125,7 @@ public:
 
                 refineScheduleBorder->fillData(0.);
             }
-            else if (refineOnlyBorder_ == ParticlesDataSplitType::interior)
+            else if (splitType_ == ParticlesDataSplitType::interior)
             {
                 auto refineScheduleInterior = algorithm_.createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
@@ -156,7 +156,7 @@ private:
     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp_;
     SAMRAI::xfer::RefineAlgorithm algorithm_;
 
-    ParticlesDataSplitType const refineOnlyBorder_;
+    ParticlesDataSplitType const splitType_;
 };
 
 #endif
