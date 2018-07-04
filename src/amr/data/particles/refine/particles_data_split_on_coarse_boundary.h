@@ -4,6 +4,7 @@
 #include "data/particles/particles_data.h"
 #include "tools/amr_utils.h"
 
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/pdat/CellOverlap.h>
@@ -68,8 +69,9 @@ public:
         auto& destinationCoarseBoundaryParticles = destinationParticlesData.coarseToFineParticles;
         auto& destinationDomainParticles         = destinationParticlesData.domainParticles;
 
-        auto const& sourceGhostBox      = sourceParticlesData.getGhostBox();
-        auto const& destinationGhostBox = destinationParticlesData.getGhostBox();
+        auto const& sourceGhostBox       = sourceParticlesData.getGhostBox();
+        auto const& destinationGhostBox  = destinationParticlesData.getGhostBox();
+        auto const& destinationDomainBox = destinationParticlesData.getBox();
 
         for (auto const& destinationBox : destinationBoxes)
         {
@@ -86,7 +88,7 @@ public:
                                                             ghostWidthForParticles<interpOrder>()};
 
                 sourceBox.grow(growthVector);
-                localDestinationBox.grow(growthVector);
+                /* localDestinationBox.grow(growthVector); */
             }
 
             sourceBox = sourceBox * sourceGhostBox;
@@ -129,30 +131,87 @@ public:
             };
 
             auto shiftParticle = [&sourceGhostBox, &destinationGhostBox, &ratio](auto& particle) {
-                auto const& lowerSourceGhostBox      = sourceGhostBox.lower();
-                auto const& lowerDestinationGhostBox = destinationGhostBox.lower();
+                particle.iCell = localToAMR(particle.iCell, sourceGhostBox);
+                particle.iCell = refinedPosition(particle.iCell, ratio);
+                particle.iCell = AMRToLocal(particle.iCell, destinationGhostBox);
 
-                auto shiftDirection = [&lowerSourceGhostBox, &ratio, &lowerDestinationGhostBox,
-                                       &particle](auto direction) {
-                    //
-                    particle.iCell[direction] += lowerSourceGhostBox(direction);
-                    particle.iCell[direction] *= ratio(direction);
-                    particle.iCell[direction] -= lowerDestinationGhostBox(direction);
 
-                    // TODO: this  will be replace with a split algorithm
-                    particle.iCell[direction]
-                        += static_cast<int>(particle.delta[direction] + 0.5) / 2;
+                auto shiftDeltaAndiCell = [&particle](auto direction) {
+                    // TODO find better
+                    constexpr double half = 0.5;
+                    if (particle.delta[direction] >= half)
+                    {
+                        ++particle.iCell[direction];
+                        particle.delta[direction] -= half;
+                    }
                 };
-                shiftDirection(dirX);
+
+                shiftDeltaAndiCell(dirX);
                 if constexpr (dim > 1)
                 {
-                    shiftDirection(dirY);
+                    shiftDeltaAndiCell(dirY);
                 }
                 if constexpr (dim > 2)
                 {
-                    shiftDirection(dirZ);
+                    shiftDeltaAndiCell(dirZ);
                 }
             };
+
+            auto pGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
+                destination.getPatchGeometry());
+
+            auto* dx     = pGeom->getDx();
+            auto* xLower = pGeom->getXLower();
+
+            Point<double, dim> physicalLowerDestination;
+            Point<double, dim> physicalUpperDestination;
+
+            auto destinationBoxLocalToDomain = AMRToLocal(
+                static_cast<std::add_const_t<decltype(destinationBox)>>(destinationBox),
+                destinationDomainBox);
+
+            physicalLowerDestination[dirX]
+                = xLower[dirX] + dx[dirX] * destinationBoxLocalToDomain.lower(dirX);
+            physicalUpperDestination[dirX]
+                = xLower[dirX] + dx[dirX] * (destinationBoxLocalToDomain.upper(dirX) + 1);
+
+            if constexpr (dim > 1)
+            {
+                physicalLowerDestination[dirY]
+                    = xLower[dirY] + dx[dirY] * destinationBoxLocalToDomain.lower(dirY);
+
+                physicalUpperDestination[dirY]
+                    = xLower[dirY] + dx[dirY] * (destinationBoxLocalToDomain.upper(dirY) + 1);
+            }
+            if constexpr (dim > 2)
+            {
+                physicalLowerDestination[dirZ]
+                    = xLower[dirZ] + dx[dirZ] * destinationBoxLocalToDomain.lower(dirZ);
+
+                physicalUpperDestination[dirZ]
+                    = xLower[dirZ] + dx[dirZ] * (destinationBoxLocalToDomain.upper(dirZ) + 1);
+            }
+
+            auto isCandidateForSplit = [&physicalLowerDestination, &physicalUpperDestination, dx,
+                                        xLower](auto const& particle) {
+                if constexpr (dim == 1)
+                {
+                    if constexpr (interpOrder == 1)
+                    {
+                        double maxDistanceX       = 0.5 * dx[dirX];
+                        double particlesPositionX = xLower[dirX] + particle.iCell[dirX] * dx[dirX]
+                                                    + particle.delta[dirX] * dx[dirX];
+                        double distanceFromLowerX
+                            = std::abs(particlesPositionX - physicalLowerDestination[dirX]);
+                        double distanceFromUpperX
+                            = std::abs(particlesPositionX - physicalUpperDestination[dirX]);
+
+                        return (distanceFromLowerX <= maxDistanceX
+                                || distanceFromUpperX <= maxDistanceX);
+                    }
+                }
+            };
+
 
             // Since we are in a temporary space, we may have to copy information
             // from ghost region as well. This operator will perform the split
@@ -161,25 +220,46 @@ public:
             std::array<std::remove_reference_t<decltype(sourceInteriorParticles)>*, 2>
                 particlesArrays{{&sourceInteriorParticles, &sourceGhostParticles}};
 
-            for (auto const& sourceParticlesArray : particlesArrays)
-            {
-                for (auto const& particle : *sourceParticlesArray)
-                {
-                    //
 
-                    if (isInBox(particle, localSourceBox))
+
+
+            if (refineOnBorderOnly_)
+            {
+                for (auto const& sourceParticlesArray : particlesArrays)
+                {
+                    for (auto const& particle : *sourceParticlesArray)
                     {
                         //
-                        auto shiftedParticle = particle;
-                        shiftParticle(shiftedParticle);
-                        if (isInBox(shiftedParticle, localDestinationBox))
+
+                        if (isInBox(particle, localSourceBox))
                         {
-                            // TODO replace with constexpr
-                            if (refineOnBorderOnly_)
+                            //
+                            auto shiftedParticle = particle;
+                            shiftParticle(shiftedParticle);
+                            if (isCandidateForSplit(shiftedParticle))
                             {
                                 destinationCoarseBoundaryParticles.push_back(shiftedParticle);
                             }
-                            else
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                for (auto const& sourceParticlesArray : particlesArrays)
+                {
+                    for (auto const& particle : *sourceParticlesArray)
+                    {
+                        //
+
+                        if (isInBox(particle, localSourceBox))
+                        {
+                            //
+                            auto shiftedParticle = particle;
+                            shiftParticle(shiftedParticle);
+
+                            if (isInBox(shiftedParticle, localDestinationBox))
                             {
                                 destinationDomainParticles.push_back(shiftedParticle);
                             }

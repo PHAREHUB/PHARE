@@ -61,8 +61,8 @@ SAMRAI::hier::IntVector localToAMR(SAMRAI::hier::Box const& referenceAMRBox);
  * @brief AMRToLocal returns a local index relative to the referenceAMRBox lower bound
  *
  */
-template<std::size_t dimension>
-Point<int, dimension> AMRToLocal(Point<int, dimension> index,
+template<std::size_t dimension, template<typename, std::size_t> typename Index>
+Index<int, dimension> AMRToLocal(Index<int, dimension> index,
                                  SAMRAI::hier::Box const& referenceAMRBox)
 {
     index[dirX] = index[dirX] - referenceAMRBox.lower(dirX);
@@ -76,6 +76,47 @@ Point<int, dimension> AMRToLocal(Point<int, dimension> index,
     }
     return index;
 }
+/**
+ * @brief localToAMR returns a amr index from a  relative index to the referenceAMRBox lower bound
+ *
+ */
+template<std::size_t dimension, template<typename, std::size_t> typename Index>
+Index<int, dimension> localToAMR(Index<int, dimension> index,
+                                 SAMRAI::hier::Box const& referenceAMRBox)
+{
+    index[dirX] = index[dirX] + referenceAMRBox.lower(dirX);
+    if constexpr (dimension > 1)
+    {
+        index[dirY] = index[dirY] + referenceAMRBox.lower(dirY);
+    }
+    if constexpr (dimension > 2)
+    {
+        index[dirZ] = index[dirZ] + referenceAMRBox.lower(dirZ);
+    }
+    return index;
+}
+
+/**
+ * @brief refinedPosition returns an index refined index with the given ratio
+ * bound
+ *
+ */
+template<std::size_t dimension, template<typename, std::size_t> typename Index>
+Index<int, dimension> refinedPosition(Index<int, dimension> index,
+                                      SAMRAI::hier::IntVector const& ratio)
+{
+    index[dirX] *= ratio(dirX);
+    if constexpr (dimension > 1)
+    {
+        index[dirY] *= ratio(dirY);
+    }
+    if constexpr (dimension > 2)
+    {
+        index[dirZ] *= ratio(dirZ);
+    }
+    return index;
+}
+
 
 } // namespace PHARE
 

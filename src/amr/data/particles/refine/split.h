@@ -145,25 +145,27 @@ public:
         for (uint32 refinedParticleIndex = 0; refinedParticleIndex < refinedParticlesNbr_;
              ++refinedParticleIndex)
         {
-            // the values for icell & delta are only working for 1 dim...
-            float weight = coarsePartOnRefinedGrid.weight * weights_[refinedParticleIndex];
-            int32 icell  = coarsePartOnRefinedGrid.icell[0];
-            float delta  = coarsePartOnRefinedGrid.delta[0]
-                          + deltasX_[refinedParticleIndex] * refinementFactor_;
+            if constexpr (dimension == 1)
+            {
+                // the values for icell & delta are only working for 1 dim...
+                float weight = coarsePartOnRefinedGrid.weight * weights_[refinedParticleIndex];
+                int32 icell  = coarsePartOnRefinedGrid.icell[0];
+                float delta  = coarsePartOnRefinedGrid.delta[0]
+                              + deltasX_[refinedParticleIndex] * refinementFactor_;
 
-            // weights & deltas are the only known values for the babies.
-            // so the icell values of each baby needs to be calculated
-            float integra = std::floor(delta);
-            delta -= integra;
-            icell += static_cast<int32>(integra);
+                // weights & deltas are the only known values for the babies.
+                // so the icell values of each baby needs to be calculated
+                float integra = std::floor(delta);
+                delta -= integra;
+                icell += static_cast<int32>(integra);
 
-            Particle newRefinedParticle(
-                weight, coarsePartOnRefinedGrid.charge,
-                {{icell, coarsePartOnRefinedGrid.icell[1], coarsePartOnRefinedGrid.icell[2]}},
-                {{delta, coarsePartOnRefinedGrid.delta[1], coarsePartOnRefinedGrid.delta[2]}},
-                coarsePartOnRefinedGrid.v);
-
-            refinedParticles.push_back(std::move(newRefinedParticle));
+                refinedParticles.emplace_back(weight, coarsePartOnRefinedGrid.charge, {{icell}},
+                                              {{delta}}, coarsePartOnRefinedGrid.v);
+            }
+            else if constexpr (dimension != 1)
+            {
+                static_assert("Only 1D is supported for split at the moment");
+            }
         }
     }
 };

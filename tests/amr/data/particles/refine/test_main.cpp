@@ -68,7 +68,7 @@ TEST(AParticlesDataSplitDataOnCoarseBoundaryOperator,
 
             // TODO : hard coded for interpOrder 1
 
-            expectedNumberOfParticles = nbrBound * (particlePerCell + particlePerCell / 2);
+            expectedNumberOfParticles = nbrBound * (particlePerCell / 2 + particlePerCell / 2);
 
 
             EXPECT_EQ(expectedNumberOfParticles, particlesData->coarseToFineParticles.size());
