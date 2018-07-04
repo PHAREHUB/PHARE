@@ -107,7 +107,7 @@ public:
                  SAMRAI::pdat::CellOverlap const& destinationFieldOverlap,
                  SAMRAI::hier::IntVector const& ratio,
                  SAMRAI::geom::CartesianPatchGeometry const& patchGeomDest,
-                 SAMRAI::geom::CartesianPatchGeometry const& patchGeomSource) const
+                 SAMRAI::geom::CartesianPatchGeometry const& patchGeomSrc) const
     {
         auto const& destinationBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
@@ -234,8 +234,10 @@ public:
             // for that we need to consider the domainBox of the destinationPatchData as the
             // reference Box
 
-            auto* dx     = patchGeomDest.getDx();
-            auto* xLower = patchGeomDest.getXLower();
+            auto* dxDest     = patchGeomDest.getDx();
+            auto* xLowerDest = patchGeomDest.getXLower();
+
+            auto* dxSrc = patchGeomSrc.getDx();
 
             Point<double, dim> physicalLowerDestination;
             Point<double, dim> physicalUpperDestination;
@@ -246,51 +248,54 @@ public:
 
             // TODO this formula is duplicated somewhere
             physicalLowerDestination[dirX]
-                = xLower[dirX] + dx[dirX] * destinationBoxLocalToDomain.lower(dirX);
+                = xLowerDest[dirX] + dxDest[dirX] * destinationBoxLocalToDomain.lower(dirX);
             physicalUpperDestination[dirX]
-                = xLower[dirX] + dx[dirX] * (destinationBoxLocalToDomain.upper(dirX) + 1);
+                = xLowerDest[dirX] + dxDest[dirX] * (destinationBoxLocalToDomain.upper(dirX) + 1);
 
             if constexpr (dim > 1)
             {
                 physicalLowerDestination[dirY]
-                    = xLower[dirY] + dx[dirY] * destinationBoxLocalToDomain.lower(dirY);
+                    = xLowerDest[dirY] + dxDest[dirY] * destinationBoxLocalToDomain.lower(dirY);
 
                 physicalUpperDestination[dirY]
-                    = xLower[dirY] + dx[dirY] * (destinationBoxLocalToDomain.upper(dirY) + 1);
+                    = xLowerDest[dirY]
+                      + dxDest[dirY] * (destinationBoxLocalToDomain.upper(dirY) + 1);
             }
             if constexpr (dim > 2)
             {
                 physicalLowerDestination[dirZ]
-                    = xLower[dirZ] + dx[dirZ] * destinationBoxLocalToDomain.lower(dirZ);
+                    = xLowerDest[dirZ] + dxDest[dirZ] * destinationBoxLocalToDomain.lower(dirZ);
 
                 physicalUpperDestination[dirZ]
-                    = xLower[dirZ] + dx[dirZ] * (destinationBoxLocalToDomain.upper(dirZ) + 1);
+                    = xLowerDest[dirZ]
+                      + dxDest[dirZ] * (destinationBoxLocalToDomain.upper(dirZ) + 1);
             }
 
             [[maybe_unused]] auto isCandidateForSplit
-                = [&physicalLowerDestination, &physicalUpperDestination, dx,
-                   xLower](auto const& particle) {
+                = [&physicalLowerDestination, &physicalUpperDestination, dxDest, xLowerDest,
+                   dxSrc](auto const& particle) {
                       if constexpr (dim == 1)
                       {
                           double maxDistanceX = 0;
 
                           if constexpr (interpOrder == 1)
                           {
-                              maxDistanceX = 0.5 * dx[dirX];
+                              maxDistanceX = ((interpOrder + 1) / 2.) * dxSrc[dirX];
                           }
                           else if constexpr (interpOrder == 2)
                           {
-                              maxDistanceX = (1.5 / 2) * dx[dirX];
+                              maxDistanceX = ((interpOrder + 1) / 2.) * dxSrc[dirX];
                           }
                           else if constexpr (interpOrder == 3)
                           {
-                              maxDistanceX = (3 / 2) * dx[dirX];
+                              maxDistanceX = ((interpOrder + 1) / 2.) * dxSrc[dirX];
                           }
                           static_assert(interpOrder >= 1 && interpOrder <= 3);
 
 
-                          double particlesPositionX = xLower[dirX] + particle.iCell[dirX] * dx[dirX]
-                                                      + particle.delta[dirX] * dx[dirX];
+                          double particlesPositionX = xLowerDest[dirX]
+                                                      + particle.iCell[dirX] * dxDest[dirX]
+                                                      + particle.delta[dirX] * dxDest[dirX];
                           double distanceFromLowerX
                               = std::abs(particlesPositionX - physicalLowerDestination[dirX]);
                           double distanceFromUpperX
@@ -301,12 +306,13 @@ public:
                       }
                   };
 
-            auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination, dx,
-                              xLower](auto const& particle) {
+            auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination, dxDest,
+                              xLowerDest](auto const& particle) {
                 if constexpr (dim == 1)
                 {
-                    double particlesPositionX = xLower[dirX] + particle.iCell[dirX] * dx[dirX]
-                                                + particle.delta[dirX] * dx[dirX];
+                    double particlesPositionX = xLowerDest[dirX]
+                                                + particle.iCell[dirX] * dxDest[dirX]
+                                                + particle.delta[dirX] * dxDest[dirX];
 
                     return particlesPositionX >= physicalLowerDestination[dirX]
                            && particlesPositionX <= physicalUpperDestination[dirX];
