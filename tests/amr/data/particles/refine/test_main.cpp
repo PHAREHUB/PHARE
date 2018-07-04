@@ -19,25 +19,37 @@ using namespace PHARE;
 
 
 
-
-TEST(AParticlesDataSplitDataOnCoarseBoundaryOperator,
-     canBeUsedWithAPatchLevelFillPatternToFillOnlyCoarseBoundary)
+template<std::size_t dimension_, std::size_t interpOrder_, int ratio_>
+struct Descriptors
 {
-    //
-    std::size_t constexpr dimension{1};
-    std::size_t constexpr interpOrder{1};
-    int const ratio = 2;
-    BasicHierarchy<dimension, interpOrder, ParticlesDataSplitType::coarseBoundary> basicHierarchy{
-        ratio};
+    static constexpr std::size_t dimension   = dimension_;
+    static constexpr std::size_t interpOrder = interpOrder_;
+    static constexpr int ratio               = ratio_;
+};
 
+template<typename T>
+struct AParticlesDataSplitOnCoarseBoundary : public ::testing::Test
+{
+    BasicHierarchy<T::dimension, T::interpOrder, ParticlesDataSplitType::coarseBoundary>
+        basicHierarchy{T::ratio};
+};
 
-    auto& hierarchy = basicHierarchy.getHierarchy();
+TYPED_TEST_CASE_P(AParticlesDataSplitOnCoarseBoundary);
+
+TYPED_TEST_P(AParticlesDataSplitOnCoarseBoundary,
+             canBeUsedWithAPatchLevelFillPatternToFillOnlyCoarseBoundary)
+{
+    auto constexpr dimension   = TypeParam::dimension;
+    auto constexpr ratio       = TypeParam::ratio;
+    auto constexpr interpOrder = TypeParam::interpOrder;
+
+    auto& hierarchy = this->basicHierarchy.getHierarchy();
 
     auto level = hierarchy.getPatchLevel(1);
 
     for (auto& patch : *level)
     {
-        for (auto const& speciesId : basicHierarchy.getVariables())
+        for (auto const& speciesId : this->basicHierarchy.getVariables())
         {
             auto const& dataId = speciesId.second;
 
@@ -59,7 +71,6 @@ TEST(AParticlesDataSplitDataOnCoarseBoundaryOperator,
 
             int expectedNumberOfParticles{0};
 
-            int const particlePerCell{2};
 
             auto const& ghostCellWidth = particlesData->getGhostCellWidth();
 
@@ -69,8 +80,18 @@ TEST(AParticlesDataSplitDataOnCoarseBoundaryOperator,
 
             // TODO : hard coded for interpOrder 1
 
-            expectedNumberOfParticles = nbrBound * (particlePerCell / 2 + particlePerCell / 2);
-
+            if constexpr (interpOrder == 1)
+            {
+                expectedNumberOfParticles = nbrBound * (0 + 1 + 1 + 0);
+            }
+            else if constexpr (interpOrder == 2)
+            {
+                expectedNumberOfParticles = nbrBound * (0 + 1 + 1 + 1 + 1);
+            }
+            else if constexpr (interpOrder == 3)
+            {
+                expectedNumberOfParticles = nbrBound * (1 + 1 + 1 + 1);
+            }
 
             EXPECT_EQ(expectedNumberOfParticles, particlesData->coarseToFineParticles.size());
 
@@ -96,8 +117,16 @@ TEST(AParticlesDataSplitDataOnCoarseBoundaryOperator,
         }
     }
 
-    basicHierarchy.TearDown();
+    this->basicHierarchy.TearDown();
 }
+
+REGISTER_TYPED_TEST_CASE_P(AParticlesDataSplitOnCoarseBoundary,
+                           canBeUsedWithAPatchLevelFillPatternToFillOnlyCoarseBoundary);
+
+typedef testing::Types<Descriptors<1, 1, 2>, Descriptors<1, 2, 2>, Descriptors<1, 3, 2>> MyTypes;
+
+INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AParticlesDataSplitOnCoarseBoundary,
+                              MyTypes);
 
 
 

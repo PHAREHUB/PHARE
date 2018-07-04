@@ -261,26 +261,39 @@ public:
                     = xLower[dirZ] + dx[dirZ] * (destinationBoxLocalToDomain.upper(dirZ) + 1);
             }
 
-            [[maybe_unused]] auto isCandidateForSplit = [&physicalLowerDestination,
-                                                         &physicalUpperDestination, dx,
-                                                         xLower](auto const& particle) {
-                if constexpr (dim == 1)
-                {
-                    if constexpr (interpOrder == 1)
-                    {
-                        double maxDistanceX       = 0.5 * dx[dirX];
-                        double particlesPositionX = xLower[dirX] + particle.iCell[dirX] * dx[dirX]
-                                                    + particle.delta[dirX] * dx[dirX];
-                        double distanceFromLowerX
-                            = std::abs(particlesPositionX - physicalLowerDestination[dirX]);
-                        double distanceFromUpperX
-                            = std::abs(particlesPositionX - physicalUpperDestination[dirX]);
+            [[maybe_unused]] auto isCandidateForSplit
+                = [&physicalLowerDestination, &physicalUpperDestination, dx,
+                   xLower](auto const& particle) {
+                      if constexpr (dim == 1)
+                      {
+                          double maxDistanceX = 0;
 
-                        return (distanceFromLowerX <= maxDistanceX
-                                || distanceFromUpperX <= maxDistanceX);
-                    }
-                }
-            };
+                          if constexpr (interpOrder == 1)
+                          {
+                              maxDistanceX = 0.5 * dx[dirX];
+                          }
+                          else if constexpr (interpOrder == 2)
+                          {
+                              maxDistanceX = (1.5 / 2) * dx[dirX];
+                          }
+                          else if constexpr (interpOrder == 3)
+                          {
+                              maxDistanceX = (3 / 2) * dx[dirX];
+                          }
+                          static_assert(interpOrder >= 1 && interpOrder <= 3);
+
+
+                          double particlesPositionX = xLower[dirX] + particle.iCell[dirX] * dx[dirX]
+                                                      + particle.delta[dirX] * dx[dirX];
+                          double distanceFromLowerX
+                              = std::abs(particlesPositionX - physicalLowerDestination[dirX]);
+                          double distanceFromUpperX
+                              = std::abs(particlesPositionX - physicalUpperDestination[dirX]);
+
+                          return (distanceFromLowerX <= maxDistanceX
+                                  || distanceFromUpperX <= maxDistanceX);
+                      }
+                  };
 
             auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination, dx,
                               xLower](auto const& particle) {
