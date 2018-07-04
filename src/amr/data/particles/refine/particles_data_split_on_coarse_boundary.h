@@ -22,24 +22,13 @@ std::size_t constexpr ghostWidthForParticles()
 
 enum class ParticlesDataSplitType { coarseBoundary, interior, coarseBoundary1, coarseBoundary2 };
 
-std::string inline splitName(ParticlesDataSplitType splitType)
-{
-    switch (splitType)
-    {
-        case ParticlesDataSplitType::coarseBoundary: return "coarseBoundary";
-        case ParticlesDataSplitType::interior: return "interior";
-        case ParticlesDataSplitType::coarseBoundary1: return "coarseBoundary1";
-        case ParticlesDataSplitType::coarseBoundary2: return "coarseBoundary2";
-        default: throw std::runtime_error("End of enum class possible range");
-    }
-}
 
 template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType>
 class ParticlesDataSplitOperator : public SAMRAI::hier::RefineOperator
 {
 public:
     ParticlesDataSplitOperator()
-        : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName(splitType)}
+        : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
     {
     }
 
@@ -100,6 +89,19 @@ public:
     }
 
 
+
+private:
+    std::string splitName_(ParticlesDataSplitType splitTypeUsed)
+    {
+        switch (splitTypeUsed)
+        {
+            case ParticlesDataSplitType::coarseBoundary: return "coarseBoundary";
+            case ParticlesDataSplitType::interior: return "interior";
+            case ParticlesDataSplitType::coarseBoundary1: return "coarseBoundary1";
+            case ParticlesDataSplitType::coarseBoundary2: return "coarseBoundary2";
+            default: throw std::runtime_error("End of enum class possible range");
+        }
+    }
 
 
     void refine_(ParticlesData<dim>& destinationParticlesData,
@@ -271,40 +273,59 @@ public:
                       + dxDest[dirZ] * (destinationBoxLocalToDomain.upper(dirZ) + 1);
             }
 
-            [[maybe_unused]] auto isCandidateForSplit
-                = [&physicalLowerDestination, &physicalUpperDestination, dxDest, xLowerDest,
-                   dxSrc](auto const& particle) {
-                      if constexpr (dim == 1)
-                      {
-                          double maxDistanceX = 0;
+            [[maybe_unused]] auto isCandidateForSplit = [&physicalLowerDestination,
+                                                         &physicalUpperDestination, dxDest,
+                                                         xLowerDest, dxSrc](auto const& particle) {
+                Point<double, dim> maxDistance;
 
-                          if constexpr (interpOrder == 1)
-                          {
-                              maxDistanceX = ((interpOrder + 1) / 2.) * dxSrc[dirX];
-                          }
-                          else if constexpr (interpOrder == 2)
-                          {
-                              maxDistanceX = ((interpOrder + 1) / 2.) * dxSrc[dirX];
-                          }
-                          else if constexpr (interpOrder == 3)
-                          {
-                              maxDistanceX = ((interpOrder + 1) / 2.) * dxSrc[dirX];
-                          }
-                          static_assert(interpOrder >= 1 && interpOrder <= 3);
+                Point<double, dim> particlesPosition;
+                Point<double, dim> distanceFromLower;
+                Point<double, dim> distanceFromUpper;
 
 
-                          double particlesPositionX = xLowerDest[dirX]
-                                                      + particle.iCell[dirX] * dxDest[dirX]
-                                                      + particle.delta[dirX] * dxDest[dirX];
-                          double distanceFromLowerX
-                              = std::abs(particlesPositionX - physicalLowerDestination[dirX]);
-                          double distanceFromUpperX
-                              = std::abs(particlesPositionX - physicalUpperDestination[dirX]);
+                if constexpr (interpOrder == 1)
+                {
+                    for (auto iDir = dirX; iDir < dim; ++iDir)
+                    {
+                        maxDistance[iDir] = ((interpOrder + 1) / 2.) * dxSrc[iDir];
+                    }
+                }
+                else if constexpr (interpOrder == 2)
+                {
+                    for (auto iDir = dirX; iDir < dim; ++iDir)
+                    {
+                        maxDistance[iDir] = ((interpOrder + 1) / 2.) * dxSrc[iDir];
+                    }
+                }
+                else if constexpr (interpOrder == 3)
+                {
+                    for (auto iDir = dirX; iDir < dim; ++iDir)
+                    {
+                        maxDistance[iDir] = ((interpOrder + 1) / 2.) * dxSrc[iDir];
+                    }
+                }
+                static_assert(interpOrder >= 1 && interpOrder <= 3);
 
-                          return (distanceFromLowerX <= maxDistanceX
-                                  || distanceFromUpperX <= maxDistanceX);
-                      }
-                  };
+
+                for (auto iDir = dirX; iDir < dim; ++iDir)
+                {
+                    particlesPosition[iDir] = xLowerDest[iDir] + particle.iCell[iDir] * dxDest[iDir]
+                                              + particle.delta[iDir] * dxDest[iDir];
+                    distanceFromLower[iDir]
+                        = std::abs(particlesPosition[iDir] - physicalLowerDestination[iDir]);
+                    distanceFromUpper[iDir]
+                        = std::abs(particlesPosition[iDir] - physicalUpperDestination[iDir]);
+                }
+
+                bool mustSplit = false;
+
+                for (auto iDir = dirX; iDir < dim; ++iDir)
+                {
+                    mustSplit = mustSplit || distanceFromLower[iDir] <= maxDistance[iDir]
+                                || distanceFromUpper[iDir] <= maxDistance[iDir];
+                }
+                return mustSplit;
+            };
 
             auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination, dxDest,
                               xLowerDest](auto const& particle) {
