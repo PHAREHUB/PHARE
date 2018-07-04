@@ -404,7 +404,12 @@ public:
     // them easily
     ParticleArray<dim> domainParticles;
     ParticleArray<dim> ghostParticles;
+
     ParticleArray<dim> coarseToFineParticles;
+
+    ParticleArray<dim> coarseToFineParticlesOld;
+    ParticleArray<dim> coarseToFineParticlesNew;
+
     ParticlesPack<ParticleArray<dim>> pack;
 
 

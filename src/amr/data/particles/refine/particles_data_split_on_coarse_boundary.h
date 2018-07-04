@@ -113,6 +113,11 @@ public:
         auto& destinationCoarseBoundaryParticles = destinationParticlesData.coarseToFineParticles;
         auto& destinationDomainParticles         = destinationParticlesData.domainParticles;
 
+        auto& destinationCoarseBoundaryOldParticles
+            = destinationParticlesData.coarseToFineParticlesOld;
+        auto& destinationCoarseBoundaryNewParticles
+            = destinationParticlesData.coarseToFineParticlesNew;
+
         auto const& sourceGhostBox       = sourceParticlesData.getGhostBox();
         auto const& destinationGhostBox  = destinationParticlesData.getGhostBox();
         auto const& destinationDomainBox = destinationParticlesData.getBox();
@@ -277,8 +282,8 @@ public:
                 }
             };
 
-            [[maybe_unused]] auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination,
-                                               dx, xLower](auto const& particle) {
+            auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination, dx,
+                              xLower](auto const& particle) {
                 if constexpr (dim == 1)
                 {
                     double particlesPositionX = xLower[dirX] + particle.iCell[dirX] * dx[dirX]
@@ -311,7 +316,12 @@ public:
                         auto shiftedParticle = particle;
                         shiftParticle(shiftedParticle);
 
-                        if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
+                        bool constexpr isCoarseBoundarySplitType
+                            = splitType == ParticlesDataSplitType::coarseBoundary
+                              || splitType == ParticlesDataSplitType::coarseBoundary1
+                              || splitType == ParticlesDataSplitType::coarseBoundary2;
+
+                        if constexpr (isCoarseBoundarySplitType)
                         {
                             if (isCandidateForSplit(shiftedParticle))
                             {
@@ -323,8 +333,28 @@ public:
                                 {
                                     if (isInSplit(splittedParticle))
                                     {
-                                        destinationCoarseBoundaryParticles.push_back(
-                                            splittedParticle);
+                                        if constexpr (splitType
+                                                      == ParticlesDataSplitType::coarseBoundary)
+                                        {
+                                            destinationCoarseBoundaryParticles.push_back(
+                                                splittedParticle);
+                                        }
+                                        else if constexpr (splitType
+                                                           == ParticlesDataSplitType::
+                                                                  coarseBoundary1)
+                                        {
+                                            //
+                                            destinationCoarseBoundaryOldParticles.push_back(
+                                                splittedParticle);
+                                        }
+                                        else if constexpr (splitType
+                                                           == ParticlesDataSplitType::
+                                                                  coarseBoundary2)
+                                        {
+                                            //
+                                            destinationCoarseBoundaryNewParticles.push_back(
+                                                splittedParticle);
+                                        }
                                     }
                                 }
                             }
