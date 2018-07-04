@@ -93,7 +93,7 @@ public:
                          iCellPos <= particlesGhostBox.upper(dirX); ++iCellPos)
                     {
                         float middle = 0.5;
-                        float delta  = 0.25;
+                        float delta  = 0.30;
 
                         Particle<dimension> particle;
 

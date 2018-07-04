@@ -138,7 +138,6 @@ public:
     ~Split() = default;
 
 
-    template<typename GridLayoutT>
     inline void operator()(Particle<dimension> const& coarsePartOnRefinedGrid,
                            std::vector<Particle<dimension>>& refinedParticles) const
     {
@@ -149,7 +148,7 @@ public:
             {
                 // the values for icell & delta are only working for 1 dim...
                 float weight = coarsePartOnRefinedGrid.weight * weights_[refinedParticleIndex];
-                int32 icell  = coarsePartOnRefinedGrid.icell[0];
+                int32 icell  = coarsePartOnRefinedGrid.iCell[0];
                 float delta  = coarsePartOnRefinedGrid.delta[0]
                               + deltasX_[refinedParticleIndex] * refinementFactor_;
 
@@ -159,8 +158,11 @@ public:
                 delta -= integra;
                 icell += static_cast<int32>(integra);
 
-                refinedParticles.emplace_back(weight, coarsePartOnRefinedGrid.charge, {{icell}},
-                                              {{delta}}, coarsePartOnRefinedGrid.v);
+                refinedParticles.push_back({weight,
+                                            coarsePartOnRefinedGrid.charge,
+                                            {{icell}},
+                                            {{delta}},
+                                            coarsePartOnRefinedGrid.v});
             }
             else if constexpr (dimension != 1)
             {

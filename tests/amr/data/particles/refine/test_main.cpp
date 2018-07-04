@@ -142,7 +142,9 @@ TEST(AParticlesDataSplitDataOperator, canBeUsedWithAPatchLevelFillPatternToFillO
 
             patchBox.coarsen(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension}, ratio});
 
-            expectedNumberOfParticles = particlePerCell * patchBox.numberCells(dirX);
+            // each particles split in two , but on the boundary we have one that left
+            // it is compensate by the ghost that split one in
+            expectedNumberOfParticles = 2 * particlePerCell * patchBox.numberCells(dirX);
 
 
             EXPECT_EQ(expectedNumberOfParticles, particlesData->domainParticles.size());
