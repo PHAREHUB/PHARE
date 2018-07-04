@@ -23,7 +23,8 @@ std::size_t constexpr ghostWidthForParticles()
 enum class ParticlesDataSplitType { coarseBoundary, interior, coarseBoundary1, coarseBoundary2 };
 
 
-template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType>
+template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
+         std::size_t refinedParticleNbr>
 class ParticlesDataSplitOperator : public SAMRAI::hier::RefineOperator
 {
 public:
@@ -130,10 +131,7 @@ private:
         auto const& destinationGhostBox  = destinationParticlesData.getGhostBox();
         auto const& destinationDomainBox = destinationParticlesData.getBox();
 
-        // For the moment this is just 1D
 
-        // TODO split 1D
-        constexpr uint32 refinedParticleNbr{2};
         Split<dim, interpOrder> split{static_cast<uint32>(ratio(dirX)), refinedParticleNbr};
 
         for (auto const& destinationBox : destinationBoxes)

@@ -37,7 +37,8 @@ using namespace PHARE;
  * root level, and finally the refine interpolation between root level
  * and the level 1
  */
-template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType splitType>
+template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType splitType,
+         std::size_t refinedParticlesNbr>
 class BasicHierarchy
 {
 public:
@@ -85,7 +86,7 @@ public:
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
         , refineOperator_{std::make_shared<
-              ParticlesDataSplitOperator<dimension, interpOrder, splitType>>()}
+              ParticlesDataSplitOperator<dimension, interpOrder, splitType, refinedParticlesNbr>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,

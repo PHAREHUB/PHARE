@@ -19,18 +19,21 @@ using namespace PHARE;
 
 
 
-template<std::size_t dimension_, std::size_t interpOrder_, int ratio_>
+template<std::size_t dimension_, std::size_t interpOrder_, int ratio_,
+         std::size_t refinedParticlesNbr_>
 struct Descriptors
 {
-    static constexpr std::size_t dimension   = dimension_;
-    static constexpr std::size_t interpOrder = interpOrder_;
-    static constexpr int ratio               = ratio_;
+    static constexpr std::size_t dimension           = dimension_;
+    static constexpr std::size_t interpOrder         = interpOrder_;
+    static constexpr int ratio                       = ratio_;
+    static constexpr std::size_t refinedParticlesNbr = refinedParticlesNbr_;
 };
 
 template<typename T>
 struct AParticlesDataSplitOnCoarseBoundary : public ::testing::Test
 {
-    BasicHierarchy<T::dimension, T::interpOrder, ParticlesDataSplitType::coarseBoundary>
+    BasicHierarchy<T::dimension, T::interpOrder, ParticlesDataSplitType::coarseBoundary,
+                   T::refinedParticlesNbr>
         basicHierarchy{T::ratio};
 };
 
@@ -39,9 +42,10 @@ TYPED_TEST_CASE_P(AParticlesDataSplitOnCoarseBoundary);
 TYPED_TEST_P(AParticlesDataSplitOnCoarseBoundary,
              canBeUsedWithAPatchLevelFillPatternToFillOnlyCoarseBoundary)
 {
-    auto constexpr dimension   = TypeParam::dimension;
-    auto constexpr ratio       = TypeParam::ratio;
-    auto constexpr interpOrder = TypeParam::interpOrder;
+    auto constexpr dimension           = TypeParam::dimension;
+    auto constexpr ratio               = TypeParam::ratio;
+    auto constexpr interpOrder         = TypeParam::interpOrder;
+    auto constexpr refinedParticlesNbr = TypeParam::refinedParticlesNbr;
 
     auto& hierarchy = this->basicHierarchy.getHierarchy();
 
@@ -78,19 +82,36 @@ TYPED_TEST_P(AParticlesDataSplitOnCoarseBoundary,
 
             constexpr std::size_t nbrBound{2};
 
-            // TODO : hard coded for interpOrder 1
 
-            if constexpr (interpOrder == 1)
+            if constexpr (refinedParticlesNbr == 2)
             {
-                expectedNumberOfParticles = nbrBound * (0 + 1 + 1 + 0);
+                if constexpr (interpOrder == 1)
+                {
+                    expectedNumberOfParticles = nbrBound * (0 + 1 + 1 + 0);
+                }
+                else if constexpr (interpOrder == 2)
+                {
+                    expectedNumberOfParticles = nbrBound * (0 + 1 + 1 + 1 + 1);
+                }
+                else if constexpr (interpOrder == 3)
+                {
+                    expectedNumberOfParticles = nbrBound * (1 + 1 + 1 + 1);
+                }
             }
-            else if constexpr (interpOrder == 2)
+            else if constexpr (refinedParticlesNbr == 3)
             {
-                expectedNumberOfParticles = nbrBound * (0 + 1 + 1 + 1 + 1);
-            }
-            else if constexpr (interpOrder == 3)
-            {
-                expectedNumberOfParticles = nbrBound * (1 + 1 + 1 + 1);
+                if constexpr (interpOrder == 1)
+                {
+                    expectedNumberOfParticles = nbrBound * (0 + 2 + 1 + 0);
+                }
+                else if constexpr (interpOrder == 2)
+                {
+                    expectedNumberOfParticles = nbrBound * (0 + 1 + 2 + 2 + 1);
+                }
+                else if constexpr (interpOrder == 3)
+                {
+                    expectedNumberOfParticles = nbrBound * (1 + 2 + 2 + 1);
+                }
             }
 
             EXPECT_EQ(expectedNumberOfParticles, particlesData->coarseToFineParticles.size());
@@ -123,25 +144,35 @@ TYPED_TEST_P(AParticlesDataSplitOnCoarseBoundary,
 REGISTER_TYPED_TEST_CASE_P(AParticlesDataSplitOnCoarseBoundary,
                            canBeUsedWithAPatchLevelFillPatternToFillOnlyCoarseBoundary);
 
-typedef testing::Types<Descriptors<1, 1, 2>, Descriptors<1, 2, 2>, Descriptors<1, 3, 2>> MyTypes;
+
+// dim , interpOrder, refinementFactor, nbrRefinedParticles
+typedef testing::Types<Descriptors<1, 1, 2, 2>, Descriptors<1, 2, 2, 2>, Descriptors<1, 3, 2, 2>,
+                       Descriptors<1, 1, 2, 3>, Descriptors<1, 2, 2, 3>, Descriptors<1, 3, 2, 3>>
+    MyTypes;
 
 INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AParticlesDataSplitOnCoarseBoundary,
                               MyTypes);
 
 
+template<typename T>
+struct AParticlesDataSplitOnInterior : public ::testing::Test
+{
+    BasicHierarchy<T::dimension, T::interpOrder, ParticlesDataSplitType::interior,
+                   T::refinedParticlesNbr>
+        basicHierarchy{T::ratio};
+};
 
-TEST(AParticlesDataSplitDataOperator, canBeUsedWithAPatchLevelFillPatternToFillOnlyInterior)
+TYPED_TEST_CASE_P(AParticlesDataSplitOnInterior);
+
+TYPED_TEST_P(AParticlesDataSplitOnInterior, canBeUsedWithAPatchLevelFillPatternToFillOnlyInterior)
 {
     //
-    std::size_t constexpr dimension{1};
-    std::size_t constexpr interpOrder{1};
-    int const ratio = 2;
+    auto constexpr dimension           = TypeParam::dimension;
+    auto constexpr ratio               = TypeParam::ratio;
+    auto constexpr refinedParticlesNbr = TypeParam::refinedParticlesNbr;
 
 
-    BasicHierarchy<dimension, interpOrder, ParticlesDataSplitType::interior> basicHierarchy{ratio};
-
-
-    auto& hierarchy = basicHierarchy.getHierarchy();
+    auto& hierarchy = this->basicHierarchy.getHierarchy();
 
     auto level = hierarchy.getPatchLevel(1);
 
@@ -150,7 +181,7 @@ TEST(AParticlesDataSplitDataOperator, canBeUsedWithAPatchLevelFillPatternToFillO
 
     for (auto& patch : *level)
     {
-        for (auto const& speciesId : basicHierarchy.getVariables())
+        for (auto const& speciesId : this->basicHierarchy.getVariables())
         {
             auto const& dataId = speciesId.second;
 
@@ -167,21 +198,38 @@ TEST(AParticlesDataSplitDataOperator, canBeUsedWithAPatchLevelFillPatternToFillO
             int const particlePerCell{2};
 
 
-            // TODO : hard coded for interpOrder 1
 
             patchBox.coarsen(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension}, ratio});
 
-            // each particles split in two , but on the boundary we have one that left
-            // it is compensate by the ghost that split one in
-            expectedNumberOfParticles = 2 * particlePerCell * patchBox.numberCells(dirX);
+            if constexpr (refinedParticlesNbr == 2)
+            {
+                // each particles split in two , but on the boundary we have one that left
+                // it is compensate by the ghost that split one in
+                expectedNumberOfParticles = 2 * particlePerCell * patchBox.numberCells(dirX);
+            }
+            else if constexpr (refinedParticlesNbr == 3)
+            {
+                // each particles split in three , but on the boundary we have one that left
+                // it is compensate by the ghost that split one in
 
+                expectedNumberOfParticles = 3 * particlePerCell * patchBox.numberCells(dirX);
+            }
 
             EXPECT_EQ(expectedNumberOfParticles, particlesData->domainParticles.size());
         }
     }
 
-    basicHierarchy.TearDown();
+    this->basicHierarchy.TearDown();
 }
+
+
+
+REGISTER_TYPED_TEST_CASE_P(AParticlesDataSplitOnInterior,
+                           canBeUsedWithAPatchLevelFillPatternToFillOnlyInterior);
+
+
+
+INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AParticlesDataSplitOnInterior, MyTypes);
 
 int main(int argc, char** argv)
 {
