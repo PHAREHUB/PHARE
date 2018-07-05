@@ -35,8 +35,6 @@ struct Particle<1>
 };
 
 
-/* const std::size_t Particle<1>::dimension = 1; */
-
 
 
 template<>
@@ -55,7 +53,6 @@ struct Particle<2>
     static const std::size_t dimension = 2;
 };
 
-/* const std::size_t Particle<2>::dimension = 2; */
 
 
 template<>
@@ -73,9 +70,6 @@ struct Particle<3>
 
     static const std::size_t dimension = 3;
 };
-
-
-/* const std::size_t Particle<3>::dimension = 3; */
 
 
 

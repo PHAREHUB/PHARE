@@ -24,7 +24,7 @@ private:
     std::vector<float> weights_;
     std::vector<uint32> iCellsX_;
     std::vector<float> deltasX_;
-    uint32 refinementFactor_;
+    Point<int32, dimension> refinementFactor_;
 
 
     // dimension = 1, refinement factor = 2, nbrOfBabies = 2
@@ -57,8 +57,8 @@ private:
 
 
 public:
-    Split(uint32 refineFactor, uint32 refinedParticlesNbr)
-        : refinedParticlesNbr_{refinedParticlesNbr}
+    Split(Point<int32, dimension> refineFactor, uint32 refinedParticlesNbr)
+        : refinedParticlesNbr_{std::move(refinedParticlesNbr)}
         , refinementFactor_{refineFactor}
     {
         deltasX_.assign(refinedParticlesNbr, 0);
@@ -66,70 +66,73 @@ public:
 
         std::vector<int> const& acceptedNbrOfBabies = tabNbrOfBabies_[interpOrder - 1];
 
-        if (ISNOTTABULATED(dimension, refineFactor))
+        for (auto iDim = 0u; iDim < dimension; ++iDim)
         {
-            std::cout << "dimension and/or refinement factor not tabulated" << std::endl;
-        }
-
-        else
-        {
-            if (std::find(acceptedNbrOfBabies.begin(), acceptedNbrOfBabies.end(),
-                          refinedParticlesNbr)
-                == acceptedNbrOfBabies.end())
+            if (ISNOTTABULATED(dimension, refineFactor[iDim]))
             {
-                std::cout << "# of babies for splitting not correct" << std::endl;
+                std::cout << "dimension and/or refinement factor not tabulated" << std::endl;
             }
 
             else
             {
-                // weights & deltas are coming from the tabulated values
-                switch (refinedParticlesNbr)
+                if (std::find(acceptedNbrOfBabies.begin(), acceptedNbrOfBabies.end(),
+                              refinedParticlesNbr)
+                    == acceptedNbrOfBabies.end())
                 {
-                    case 2:
-                        weights_[0] = tabD1RF2N02Weight_[interpOrder - 1];
-                        weights_[1] = tabD1RF2N02Weight_[interpOrder - 1];
+                    std::cout << "# of babies for splitting not correct" << std::endl;
+                }
 
-                        deltasX_[0] = -tabD1RF2N02Delta_[interpOrder - 1];
-                        deltasX_[1] = +tabD1RF2N02Delta_[interpOrder - 1];
-                        break;
+                else
+                {
+                    // weights & deltas are coming from the tabulated values
+                    switch (refinedParticlesNbr)
+                    {
+                        case 2:
+                            weights_[0] = tabD1RF2N02Weight_[interpOrder - 1];
+                            weights_[1] = tabD1RF2N02Weight_[interpOrder - 1];
 
-                    case 3:
-                        weights_[0] = tabD1RF2N03Weight_[0][interpOrder - 1];
-                        weights_[1] = tabD1RF2N03Weight_[1][interpOrder - 1];
-                        weights_[2] = tabD1RF2N03Weight_[1][interpOrder - 1];
+                            deltasX_[0] = -tabD1RF2N02Delta_[interpOrder - 1];
+                            deltasX_[1] = +tabD1RF2N02Delta_[interpOrder - 1];
+                            break;
 
-                        deltasX_[0] = 0.0;
-                        deltasX_[1] = -tabD1RF2N03Delta_[interpOrder - 1];
-                        deltasX_[2] = +tabD1RF2N03Delta_[interpOrder - 1];
-                        break;
+                        case 3:
+                            weights_[0] = tabD1RF2N03Weight_[0][interpOrder - 1];
+                            weights_[1] = tabD1RF2N03Weight_[1][interpOrder - 1];
+                            weights_[2] = tabD1RF2N03Weight_[1][interpOrder - 1];
 
-                    case 4:
-                        weights_[0] = tabD1RF2N04Weight_[0][interpOrder - 1];
-                        weights_[1] = tabD1RF2N04Weight_[0][interpOrder - 1];
-                        weights_[2] = tabD1RF2N04Weight_[1][interpOrder - 1];
-                        weights_[3] = tabD1RF2N04Weight_[1][interpOrder - 1];
+                            deltasX_[0] = 0.0;
+                            deltasX_[1] = -tabD1RF2N03Delta_[interpOrder - 1];
+                            deltasX_[2] = +tabD1RF2N03Delta_[interpOrder - 1];
+                            break;
 
-                        deltasX_[0] = -tabD1RF2N04Delta_[0][interpOrder - 1];
-                        deltasX_[1] = +tabD1RF2N04Delta_[0][interpOrder - 1];
-                        deltasX_[2] = -tabD1RF2N04Delta_[1][interpOrder - 1];
-                        deltasX_[3] = +tabD1RF2N04Delta_[1][interpOrder - 1];
-                        break;
+                        case 4:
+                            weights_[0] = tabD1RF2N04Weight_[0][interpOrder - 1];
+                            weights_[1] = tabD1RF2N04Weight_[0][interpOrder - 1];
+                            weights_[2] = tabD1RF2N04Weight_[1][interpOrder - 1];
+                            weights_[3] = tabD1RF2N04Weight_[1][interpOrder - 1];
 
-                    case 5:
-                        weights_[0] = tabD1RF2N05Weight_[0][interpOrder - 1];
-                        weights_[1] = tabD1RF2N05Weight_[1][interpOrder - 1];
-                        weights_[2] = tabD1RF2N05Weight_[1][interpOrder - 1];
-                        weights_[3] = tabD1RF2N05Weight_[2][interpOrder - 1];
-                        weights_[4] = tabD1RF2N05Weight_[2][interpOrder - 1];
+                            deltasX_[0] = -tabD1RF2N04Delta_[0][interpOrder - 1];
+                            deltasX_[1] = +tabD1RF2N04Delta_[0][interpOrder - 1];
+                            deltasX_[2] = -tabD1RF2N04Delta_[1][interpOrder - 1];
+                            deltasX_[3] = +tabD1RF2N04Delta_[1][interpOrder - 1];
+                            break;
 
-                        deltasX_[0] = 0.0;
-                        deltasX_[1] = -tabD1RF2N05Delta_[0][interpOrder - 1];
-                        deltasX_[2] = +tabD1RF2N05Delta_[0][interpOrder - 1];
-                        deltasX_[3] = -tabD1RF2N05Delta_[1][interpOrder - 1];
-                        deltasX_[4] = +tabD1RF2N05Delta_[1][interpOrder - 1];
-                        break;
+                        case 5:
+                            weights_[0] = tabD1RF2N05Weight_[0][interpOrder - 1];
+                            weights_[1] = tabD1RF2N05Weight_[1][interpOrder - 1];
+                            weights_[2] = tabD1RF2N05Weight_[1][interpOrder - 1];
+                            weights_[3] = tabD1RF2N05Weight_[2][interpOrder - 1];
+                            weights_[4] = tabD1RF2N05Weight_[2][interpOrder - 1];
 
-                    default: std::cout << "ta mere en short !" << std::endl;
+                            deltasX_[0] = 0.0;
+                            deltasX_[1] = -tabD1RF2N05Delta_[0][interpOrder - 1];
+                            deltasX_[2] = +tabD1RF2N05Delta_[0][interpOrder - 1];
+                            deltasX_[3] = -tabD1RF2N05Delta_[1][interpOrder - 1];
+                            deltasX_[4] = +tabD1RF2N05Delta_[1][interpOrder - 1];
+                            break;
+
+                        default: std::cout << "ta mere en short !" << std::endl;
+                    }
                 }
             }
         }
@@ -150,7 +153,7 @@ public:
                 float weight = coarsePartOnRefinedGrid.weight * weights_[refinedParticleIndex];
                 int32 icell  = coarsePartOnRefinedGrid.iCell[0];
                 float delta  = coarsePartOnRefinedGrid.delta[0]
-                              + deltasX_[refinedParticleIndex] * refinementFactor_;
+                              + deltasX_[refinedParticleIndex] * refinementFactor_[dirX];
 
                 // weights & deltas are the only known values for the babies.
                 // so the icell values of each baby needs to be calculated
@@ -164,7 +167,7 @@ public:
                                             {{delta}},
                                             coarsePartOnRefinedGrid.v});
             }
-            else if constexpr (dimension != 1)
+            else // unsupported dimension
             {
                 static_assert("Only 1D is supported for split at the moment");
             }

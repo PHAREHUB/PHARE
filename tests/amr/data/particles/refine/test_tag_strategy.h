@@ -14,7 +14,7 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/particles/particles_data.h"
-#include "data/particles/refine/particles_data_split_on_coarse_boundary.h"
+#include "data/particles/refine/particles_data_split.h"
 #include "utilities/constants.h"
 #include "utilities/point/point.h"
 
@@ -104,11 +104,25 @@ public:
                         particle.iCell[dirX] = iCellPos;
 
                         particle.delta[dirX] = middle - delta;
-
                         interior.push_back(particle);
 
                         particle.delta[dirX] = middle + delta;
+                        interior.push_back(particle);
 
+                        particle.delta[dirX] = middle;
+                        interior.push_back(particle);
+
+                        particle.delta[dirX] = middle - delta / 2;
+                        interior.push_back(particle);
+
+                        particle.delta[dirX] = middle + delta / 2;
+                        interior.push_back(particle);
+
+
+                        particle.delta[dirX] = middle - delta / 3;
+                        interior.push_back(particle);
+
+                        particle.delta[dirX] = middle + delta / 3;
                         interior.push_back(particle);
                     }
                 }
@@ -136,17 +150,13 @@ public:
         }
     }
 
+
+
+
     void resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const&,
                                      int const, int const) override
     {
         // do nothing
-    }
-
-    static double affineFill(Point<double, 1> position)
-    {
-        double a = 0.5;
-        double b = 2.0;
-        return a * position[dirX] + b;
     }
 
 

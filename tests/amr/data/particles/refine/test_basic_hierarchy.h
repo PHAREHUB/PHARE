@@ -3,7 +3,8 @@
 
 
 #include "data/particles/particles_variable.h"
-#include "data/particles/refine/particles_data_split_on_coarse_boundary.h"
+#include "data/particles/refine/particles_data_split.h"
+#include "data/particles/refine/split.h"
 #include "test_tag_strategy.h"
 
 
@@ -69,10 +70,6 @@ public:
               "specie1", true,
               SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
                                       ghostWidthForParticles<interpOrder>()})}
-        , specie2_{std::make_shared<ParticlesVariable<dimension>>(
-              "specie2", true,
-              SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
-                                      ghostWidthForParticles<interpOrder>()})}
 
         , context_{variableDatabase_->getContext("context")}
         , variablesIds_{getVariablesIds_()}
@@ -86,7 +83,8 @@ public:
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
         , refineOperator_{std::make_shared<
-              ParticlesDataSplitOperator<dimension, interpOrder, splitType, refinedParticlesNbr>>()}
+              ParticlesDataSplitOperator<dimension, interpOrder, splitType, refinedParticlesNbr,
+                                         Split<dimension, interpOrder>>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,
@@ -163,8 +161,6 @@ private:
 
         variablesIds.try_emplace("specie1", variableDatabase_->registerVariableAndContext(
                                                 specie1_, context_, ghostWidth));
-        variablesIds.try_emplace("specie2", variableDatabase_->registerVariableAndContext(
-                                                specie2_, context_, ghostWidth));
 
         return variablesIds;
     }
@@ -177,7 +173,6 @@ private:
     SAMRAI::hier::VariableDatabase* variableDatabase_;
 
     std::shared_ptr<ParticlesVariable<dimension>> specie1_;
-    std::shared_ptr<ParticlesVariable<dimension>> specie2_;
 
 
 
