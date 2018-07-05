@@ -327,15 +327,20 @@ private:
 
             auto isInSplit = [&physicalLowerDestination, &physicalUpperDestination, dxDest,
                               xLowerDest](auto const& particle) {
-                if constexpr (dim == 1)
-                {
-                    double particlesPositionX = xLowerDest[dirX]
-                                                + particle.iCell[dirX] * dxDest[dirX]
-                                                + particle.delta[dirX] * dxDest[dirX];
+                bool isIn{true};
 
-                    return particlesPositionX >= physicalLowerDestination[dirX]
-                           && particlesPositionX <= physicalUpperDestination[dirX];
+                for (auto iDir = dirX; iDir < dim; ++iDir)
+                {
+                    double particlesPosition = xLowerDest[iDir]
+                                               + particle.iCell[iDir] * dxDest[iDir]
+                                               + particle.delta[iDir] * dxDest[iDir];
+
+
+                    isIn = isIn
+                           && (particlesPosition >= physicalLowerDestination[iDir]
+                               && particlesPosition <= physicalUpperDestination[iDir]);
                 }
+                return isIn;
             };
 
             // Since we are in a temporary space, we may have to copy information
