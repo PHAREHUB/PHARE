@@ -223,30 +223,15 @@ private:
 
             for (auto iDir = dirX; iDir < dim; ++iDir)
             {
-                physicalBoxDestination.lower[iDir]
-                    = xLowerDest[iDir] + dxDest[iDir] * destinationBoxLocalToDomain.lower(iDir);
-
                 if constexpr (splitType == ParticlesDataSplitType::interior)
                 {
-                    if constexpr (interpOrder == 1)
-                    {
-                        physicalBoxDestination.upper[iDir]
-                            = xLowerDest[iDir]
-                              + dxDest[iDir]
-                                    * (destinationBoxLocalToDomain.upper(iDir) + 1
-                                       + ghostWidthForParticles<interpOrder>());
-                    }
-                    else if constexpr (interpOrder == 2 || interpOrder == 3)
-                    {
-                        physicalBoxDestination.upper[iDir]
-                            = xLowerDest[iDir]
-                              + dxDest[iDir]
-                                    * (destinationBoxLocalToDomain.upper(iDir) + 1
-                                       + ghostWidthForParticles<interpOrder>() + 1);
-                    }
+                    physicalBoxDestination.lower[iDir] = xLowerDest[iDir];
+                    physicalBoxDestination.upper[iDir] = patchGeomDest.getXUpper()[iDir];
                 }
                 else
                 {
+                    physicalBoxDestination.lower[iDir]
+                        = xLowerDest[iDir] + dxDest[iDir] * destinationBoxLocalToDomain.lower(iDir);
                     physicalBoxDestination.upper[iDir]
                         = xLowerDest[iDir]
                           + dxDest[iDir] * (destinationBoxLocalToDomain.upper(iDir) + 1);
@@ -290,6 +275,7 @@ private:
 
             auto isInSplit = [&physicalBoxDestination, dxDest, &originDest](auto const& particle) {
                 Point<double, dim> particlesPosition{positionAsPoint(particle, dxDest, originDest)};
+
                 return isIn(particlesPosition, physicalBoxDestination);
             };
 

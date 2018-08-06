@@ -334,6 +334,21 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
 
     auto* coarseDx = gridGeom->getDx();
 
+    Point<double, dimension> fineDx;
+    {
+        auto const& patch0 = hierarchy.getPatchLevel(1)->begin();
+        auto patchGeom     = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
+            patch0->getPatchGeometry());
+
+
+        auto* dx = patchGeom->getDx();
+
+        for (auto iDim = 0u; iDim < dimension; ++iDim)
+        {
+            fineDx[iDim] = dx[iDim];
+        }
+    }
+
 
     // the physical domain start at 0. and finish at 1.0
     // the first refine box is 4 , 15
@@ -346,16 +361,22 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
         double maxDistanceX = ((interpOrder) / 2.) * coarseDx[dirX];
 
 
-        for (auto const& fineIndex : std::array<std::array<int, 2>, 2>{{{8, 30}, {60, 100}}})
+        for (auto const& patch : *(hierarchy.getPatchLevel(1)))
         {
             Box<double, dimension> box;
 
             static_assert(interpOrder > 0 && interpOrder < 4,
                           "Error out of range for interpOrder test");
 
+            auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
+                patch->getPatchGeometry());
 
-            box.lower[dirX] = fineIndex[0] * coarseDx[dirX] / ratio;
-            box.upper[dirX] = (fineIndex[1] + 1) * coarseDx[dirX] / ratio;
+
+            auto* xLower = patchGeom->getXLower();
+            auto* xUpper = patchGeom->getXUpper();
+
+            box.lower[dirX] = xLower[dirX];
+            box.upper[dirX] = xUpper[dirX];
 
 
             boxes.push_back(box);
@@ -400,6 +421,7 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
         for (auto const& particle : particlesData->domainParticles)
         {
             //
+
             if (candidateToSplit(particle))
             {
                 Particle<dimension> fineParticle{particle};
@@ -411,23 +433,19 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
 
                 for (auto iDir = dirX; iDir < dimension; ++iDir)
                 {
-                    double fineDx = dx[iDir] / ratio;
-
-                    double normalizedPosition = particlePosition[iDir] / fineDx;
-                    fineParticle.iCell[iDir]  = static_cast<int>(normalizedPosition);
+                    double normalizedPos     = particlePosition[iDir] / fineDx[iDir];
+                    fineParticle.iCell[iDir] = static_cast<int>(normalizedPos);
                     fineParticle.delta[iDir]
-                        = static_cast<float>(normalizedPosition - fineParticle.iCell[iDir]);
+                        = static_cast<float>(normalizedPos - fineParticle.iCell[iDir]);
                 }
 
                 std::vector<Particle<dimension>> splittedParticles;
 
 
-                auto isInSplittedRegion = [&boxes, dx, dimension](auto const& particle) {
-                    Point<double, dimension> fineDx;
+                auto isInSplittedRegion = [&boxes, fineDx, dimension](auto const& particle) {
                     Point<double, dimension> origin;
                     for (auto iDir = dirX; iDir < dimension; ++iDir)
                     {
-                        fineDx[iDir] = dx[iDir] / ratio;
                         origin[iDir] = 0.;
                     }
 
@@ -445,9 +463,7 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
         }
     }
 
-    int const expectedNbrParticles{static_cast<int>(fineParticles.size())};
 
-    int countParticlesInInterior{0};
 
     SAMRAI::hier::IntVector ghostCellWidth{SAMRAI::tbox::Dimension{dimension}};
 
@@ -461,7 +477,6 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
         auto particlesData
             = std::dynamic_pointer_cast<ParticlesData<dimension>>(patch->getPatchData(dataId));
 
-        countParticlesInInterior += particlesData->domainParticles.size();
 
         auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
             patch->getPatchGeometry());
@@ -481,8 +496,8 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
 
             return positionAsPoint(particle, dx, origin);
         };
-        std::transform(std::begin(particlesData->coarseToFineParticles),
-                       std::end(particlesData->coarseToFineParticles),
+        std::transform(std::begin(particlesData->domainParticles),
+                       std::end(particlesData->domainParticles),
                        std::back_inserter(fineParticlesPositionFromFill), computePosition);
     }
 
@@ -490,12 +505,10 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
     // here the particle is considered on a single grid covering all the domain
     // That come from the fact that we do not use the fine level origin for the expected
     // particles (since we manually split them on the coarse level)
-    auto computePosition = [coarseDx, dimension](auto const& particle) {
-        Point<double, dimension> fineDx;
+    auto computePosition = [coarseDx, dimension, fineDx](auto const& particle) {
         Point<double, dimension> origin;
         for (auto iDir = dirX; iDir < dimension; ++iDir)
         {
-            fineDx[iDir] = coarseDx[iDir] / ratio;
             origin[iDir] = 0.;
         }
 
@@ -514,8 +527,6 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
     std::sort(std::begin(fineParticlesPositionFromFill), std::end(fineParticlesPositionFromFill),
               comparePosition);
 
-
-    EXPECT_EQ(expectedNbrParticles, countParticlesInInterior);
 
 
     for (std::size_t i = 0u; i < fineParticlesPositionFromFill.size(); ++i)
@@ -542,6 +553,25 @@ TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
                 EXPECT_NEAR(expectedPosition[indexToMatch][iDir],
                             fineParticlesPositionFromFill[i][iDir], epsilon);
             }
+        }
+    }
+
+    // We want to make sure that our particles are inside the domain
+
+    std::array<double, 2> physicalBox0{{8. * fineDx[dirX], 32 * fineDx[dirX]}};
+    std::array<double, 2> physicalBox1{{60. * fineDx[dirX], 102 * fineDx[dirX]}};
+
+
+
+    for (auto const& position : fineParticlesPositionFromFill)
+    {
+        if (position[dirX] >= physicalBox0[0] && position[dirX] <= physicalBox1[0])
+        {
+            EXPECT_LE(position[dirX], physicalBox0[1]);
+        }
+        else if (position[dirX] >= physicalBox1[0])
+        {
+            EXPECT_LE(position[dirX], physicalBox1[1]);
         }
     }
 
