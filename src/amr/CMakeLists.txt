@@ -16,6 +16,7 @@ set( SOURCES_INC
      data/field/field_variable.h
      data/field/refine/field_linear_refine.h
      data/field/refine/field_data_linear_refine.h
+     data/field/time_interpolate/field_linear_time_interpolate.h
      tools/field_resource.h
      tools/particle_resource.h
      tools/amr_utils.h
