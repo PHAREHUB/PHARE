@@ -174,6 +174,41 @@ TEST_F(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     }
 }
 
+TEST_F(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLinear)
+{
+    double interpolateTime = 0.2;
+    destNew->setTime(interpolateTime);
+
+    auto& layout = srcNew->gridLayout;
+
+
+    auto& destField = destNew->field;
+
+
+    timeOp.timeInterpolate(*destNew, domain, *srcOld, *srcNew);
+
+
+    bool const withGhost{true};
+    auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(domain, qty, layout,
+                                                                          !withGhost);
+
+    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(domain, qty, layout,
+                                                                               withGhost);
+
+    auto localBox = AMRToLocal(static_cast<std::add_const_t<decltype(box)>>(box), ghostBox);
+
+    auto iStart = localBox.lower(dirX);
+    auto iEnd   = localBox.upper(dirX);
+
+
+    for (auto ix = iStart; ix <= iEnd; ++ix)
+    {
+        auto position = layout.fieldNodeCoordinates(destField, origin, ix);
+
+        EXPECT_DOUBLE_EQ(srcFunc(position[dirX], interpolateTime), destField(ix));
+    }
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
