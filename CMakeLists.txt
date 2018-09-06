@@ -114,7 +114,7 @@ if (test)
           COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage)
 
       add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
-          COMMAND gcovr --exclude='.*subprojects.*' --exclude='.*tests.*' --object-directory ${CMAKE_BINARY_DIR}  -r ${CMAKE_SOURCE_DIR} --html-title 'Phare coverage' --html  --html-details -o ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
+          COMMAND gcovr --exclude='.*subprojects.*' --exclude='.*tests.*' --object-directory ${CMAKE_BINARY_DIR}  -r ${CMAKE_SOURCE_DIR} --html  --html-details -o ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
           )
 
       add_custom_target(gcovr
