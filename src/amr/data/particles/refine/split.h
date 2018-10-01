@@ -64,7 +64,7 @@ public:
         deltasX_.assign(refinedParticlesNbr, 0);
         weights_.assign(refinedParticlesNbr, 0);
 
-        std::vector<int> const& acceptedNbrOfBabies = tabNbrOfBabies_[interpOrder - 1];
+        std::vector<int> const& validRefinedParticleNbr = tabNbrOfBabies_[interpOrder - 1];
 
         for (auto iDim = 0u; iDim < dimension; ++iDim)
         {
@@ -75,11 +75,11 @@ public:
 
             else
             {
-                if (std::find(acceptedNbrOfBabies.begin(), acceptedNbrOfBabies.end(),
-                              refinedParticlesNbr)
-                    == acceptedNbrOfBabies.end())
+                if (std::find(std::begin(validRefinedParticleNbr),
+                              std::end(validRefinedParticleNbr), refinedParticlesNbr)
+                    == std::end(validRefinedParticleNbr))
                 {
-                    std::cout << "# of babies for splitting not correct" << std::endl;
+                    throw std::runtime_error("Invalid refined particle number");
                 }
 
                 else
@@ -131,7 +131,7 @@ public:
                             deltasX_[4] = +tabD1RF2N05Delta_[1][interpOrder - 1];
                             break;
 
-                        default: std::cout << "ta mere en short !" << std::endl;
+                        default: throw std::runtime_error("Invalid refined particle number");
                     }
                 }
             }
@@ -139,6 +139,11 @@ public:
     }
 
     ~Split() = default;
+
+
+    static constexpr int maxCellDistanceFromSplit() { return std::ceil((interpOrder + 1) * 0.5); }
+
+
 
 
     inline void operator()(Particle<dimension> const& coarsePartOnRefinedGrid,

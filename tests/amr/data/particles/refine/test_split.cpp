@@ -1,3 +1,5 @@
+#include "data/particles/particle.h"
+#include "data/particles/particles_data.h"
 #include "data/particles/refine/split.h"
 #include "test_basic_hierarchy.h"
 #include "test_tag_strategy.h"
@@ -6,581 +8,314 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+
+#include <algorithm>
+#include <limits>
+#include <vector>
+
+
 using testing::DoubleNear;
 using testing::Eq;
 
-template<std::size_t dimension_, int ratio_, std::size_t interpOrder_, int refineParticlesNbr_>
+template<std::size_t dimension_, int ratio_, std::size_t interpOrder_, int refineParticlesNbr_,
+         ParticlesDataSplitType SplitType_>
 struct ParticlesDataSplitTestDescriptors
 {
-    std::size_t constexpr static dimension   = dimension_;
-    int constexpr static ratio               = ratio_;
-    std::size_t constexpr static interpOrder = interpOrder_;
-    int constexpr static refineParticlesNbr  = refineParticlesNbr_;
+    std::size_t constexpr static dimension            = dimension_;
+    int constexpr static ratio                        = ratio_;
+    std::size_t constexpr static interpOrder          = interpOrder_;
+    int constexpr static refineParticlesNbr           = refineParticlesNbr_;
+    static constexpr ParticlesDataSplitType SplitType = SplitType_;
 };
+
+
+
 
 template<typename Type>
-class aParticlesDataSplitOperator : public ::testing::Test
+class aSimpleBasicHierarchyWithTwoLevels : public ::testing::Test
 {
+public:
+    static std::size_t constexpr dimension            = Type::dimension;
+    static std::size_t constexpr interpOrder          = Type::interpOrder;
+    static int constexpr refineParticlesNbr           = Type::refineParticlesNbr;
+    static int constexpr ratio                        = Type::ratio;
+    static constexpr ParticlesDataSplitType SplitType = Type::SplitType;
+
+
+    aSimpleBasicHierarchyWithTwoLevels()
+        : basicHierarchy{ratio}
+        , hierarchy{basicHierarchy.getHierarchy()}
+        , level0{hierarchy.getPatchLevel(0)}
+        , level1{hierarchy.getPatchLevel(1)}
+        , dataID{basicHierarchy.getVariables().find("proton1")->second}
+
+    {
+    }
+
+
+
+    BasicHierarchy<dimension, interpOrder, SplitType, refineParticlesNbr> basicHierarchy;
+    SAMRAI::hier::PatchHierarchy& hierarchy;
+    std::shared_ptr<SAMRAI::hier::PatchLevel> level0;
+    std::shared_ptr<SAMRAI::hier::PatchLevel> level1;
+
+
+    int dataID;
+
+
+    ~aSimpleBasicHierarchyWithTwoLevels()
+    {
+        auto db = SAMRAI::hier::VariableDatabase::getDatabase();
+        db->removeVariable("proton1");
+    }
+
+
+
+    std::vector<Particle<dimension>> getRefinedL0Particles()
+    {
+        std::vector<Particle<dimension>> refinedParticles;
+
+        auto split
+            = Split<dimension, interpOrder>(Point<int32, dimension>{ratio}, refineParticlesNbr);
+
+        auto geom        = this->hierarchy.getGridGeometry();
+        auto domainBoxes = geom->getPhysicalDomain();
+
+        auto domainBox  = domainBoxes.front();
+        auto ghostWidth = static_cast<int>(ghostWidthForParticles<interpOrder>());
+        auto lowerCell  = domainBox.lower()[0] - ghostWidth;
+        auto upperCell  = domainBox.upper()[0] + ghostWidth;
+
+
+        for (int iCell = lowerCell; iCell <= upperCell; ++iCell)
+        {
+            auto coarseParticles = loadCell<dimension>(iCell);
+
+            for (auto const& part : coarseParticles)
+            {
+                auto coarseOnRefinedGrid{part};
+
+                for (int iDim = 0; iDim < dimension; ++iDim)
+                {
+                    auto delta                      = static_cast<int>(part.delta[iDim] * ratio);
+                    coarseOnRefinedGrid.iCell[iDim] = part.iCell[iDim] * ratio + delta;
+                    coarseOnRefinedGrid.delta[iDim] = part.delta[iDim] * ratio - delta;
+                }
+
+                split(coarseOnRefinedGrid, refinedParticles);
+            }
+        }
+
+        return refinedParticles;
+    }
 };
 
-TYPED_TEST_CASE_P(aParticlesDataSplitOperator);
 
 
-
-
-TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForCoarseBoundary)
+template<typename Type>
+class levelOneCoarseBoundaries : public aSimpleBasicHierarchyWithTwoLevels<Type>
 {
-    //
-    std::size_t constexpr dimension   = TypeParam::dimension;
-    int constexpr ratio               = TypeParam::ratio;
-    std::size_t constexpr interpOrder = TypeParam::interpOrder;
-    int constexpr refinedParticlesNbr = TypeParam::refineParticlesNbr;
+public:
+    using BaseType                         = aSimpleBasicHierarchyWithTwoLevels<Type>;
+    static constexpr std::size_t dimension = BaseType::dimension;
 
-
-    BasicHierarchy<dimension, interpOrder, ParticlesDataSplitType::coarseBoundary,
-                   refinedParticlesNbr>
-        basicHierarchy{ratio};
-
-    Split<dimension, interpOrder> split{{{ratio}}, refinedParticlesNbr};
-
-    auto& hierarchy = basicHierarchy.getHierarchy();
-
-
-    std::vector<Particle<dimension>> fineParticles;
-
-    std::vector<Point<double, dimension>> fineParticlesPositionFromFill;
-
-    std::vector<Box<double, dimension>> boxes;
-    std::vector<Box<double, dimension>> boxesCandidateForSplit;
-
-    auto gridGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianGridGeometry const>(
-        hierarchy.getGridGeometry());
-
-    auto* coarseDx = gridGeom->getDx();
-
-
-    // the physical domain start at 0. and finish at 1.0
-    // the first refine box is 4 , 15
-    // the second refine box is 30 , 50
-
-    // for interpOrder 1 we have one ghost cell to fill
-    // for interpOrder 2 and 3 we have 2 ghost cell to fill
-
-    // the border are at : 8 , 32 , 60 , 102
-
-    if constexpr (dimension == 1)
+    std::vector<Particle<dimension>>
+    filterCoarseToFineParticles(std::vector<Particle<dimension>> const& refinedParticles,
+                                std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        //
+        std::vector<Particle<dimension>> coarseToFines;
 
-        double maxDistanceX = ((interpOrder) / 2.) * coarseDx[dirX];
+        auto pData    = patch->getPatchData(this->dataID);
+        auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
+
+        auto myBox      = partData->getBox();
+        auto myGhostBox = partData->getGhostBox();
 
 
-        for (int fineIndex : {8, 32, 60, 102})
-        {
-            Box<double, dimension> box;
+        // only works with one patch or clearly distinct patches so that all
+        // ghost regions are coarseToFine.
+        std::copy_if(std::begin(refinedParticles), std::end(refinedParticles),
+                     std::back_inserter(coarseToFines),
+                     [&myBox, &myGhostBox, this](auto const& part) {
+                         return PHARE::isInBox(myGhostBox, part) && !PHARE::isInBox(myBox, part);
+                     });
 
-            static_assert(interpOrder > 0 && interpOrder < 4,
-                          "Error out of range for interpOrder test");
 
-            // ie left border
-            if (fineIndex == 8 || fineIndex == 60)
-            {
-                if constexpr (interpOrder == 1)
-                {
-                    box.lower[dirX] = (fineIndex - 1) * coarseDx[dirX] / ratio;
-                    box.upper[dirX] = fineIndex * coarseDx[dirX] / ratio;
-                }
-                else if constexpr (interpOrder == 2 || interpOrder == 3)
-                {
-                    //
-                    box.lower[dirX] = (fineIndex - 2) * coarseDx[dirX] / ratio;
-                    box.upper[dirX] = fineIndex * coarseDx[dirX] / ratio;
-                }
-            }
-            else // right border
-            {
-                if constexpr (interpOrder == 1)
-                {
-                    box.lower[dirX] = fineIndex * coarseDx[dirX] / ratio;
-                    box.upper[dirX] = (fineIndex + 1) * coarseDx[dirX] / ratio;
-                }
-                else if constexpr (interpOrder == 2 || interpOrder == 3)
-                {
-                    //
-                    box.lower[dirX] = fineIndex * coarseDx[dirX] / ratio;
-                    box.upper[dirX] = (fineIndex + 2) * coarseDx[dirX] / ratio;
-                }
-            }
-
-            boxes.push_back(box);
-
-            box.lower[dirX] = box.lower[dirX] - maxDistanceX;
-            box.upper[dirX] = box.upper[dirX] + maxDistanceX;
-
-            boxesCandidateForSplit.push_back(box);
-        }
+        return coarseToFines;
     }
 
-    auto level0 = hierarchy.getPatchLevel(0);
-    for (auto const& patch : *level0)
+
+
+
+    auto& getCoarseToFine(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        auto specie1It = basicHierarchy.getVariables().find("specie1");
-        auto dataId    = specie1It->second;
+        auto pDat    = patch->getPatchData(this->dataID);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
 
-        auto particlesData
-            = std::dynamic_pointer_cast<ParticlesData<dimension>>(patch->getPatchData(dataId));
-
-        auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-            patch->getPatchGeometry());
+        return partDat->coarseToFineParticles;
+    }
+};
 
 
-        auto* xLower = patchGeom->getXLower();
-        auto* dx     = patchGeom->getDx();
 
-        Point<double, dimension> origin;
 
-        for (auto iDir = dirX; iDir < dimension; ++iDir)
+TYPED_TEST_CASE_P(levelOneCoarseBoundaries);
+
+
+template<typename Type>
+class levelOneInterior : public aSimpleBasicHierarchyWithTwoLevels<Type>
+{
+public:
+    using BaseType                         = aSimpleBasicHierarchyWithTwoLevels<Type>;
+    static constexpr std::size_t dimension = BaseType::dimension;
+
+    std::vector<Particle<dimension>>
+    filterInteriorParticles(std::vector<Particle<dimension>> const& refinedParticles,
+                            std::shared_ptr<SAMRAI::hier::Patch> const& patch)
+    {
+        std::vector<Particle<dimension>> interiors;
+
+        auto pData    = patch->getPatchData(this->dataID);
+        auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
+
+        auto myBox = partData->getBox();
+
+        std::copy_if(std::begin(refinedParticles), std::end(refinedParticles),
+                     std::back_inserter(interiors),
+                     [&myBox](auto const& part) { return PHARE::isInBox(myBox, part); });
+
+        return interiors;
+    }
+
+
+
+
+    auto& getInterior(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
+    {
+        auto pDat    = patch->getPatchData(this->dataID);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
+
+        return partDat->domainParticles;
+    }
+};
+
+
+
+
+TYPED_TEST_CASE_P(levelOneInterior);
+
+
+
+/*
+using ::testing::get;
+MATCHER_P2(PositionNearEq, epsilon, dimension, "")
+{
+    bool nearEq = true;
+
+    for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
+    {
+        nearEq = nearEq && ((get<0>(arg)[iDir] - get<1>(arg)[iDir]) <= epsilon);
+    }
+
+    return nearEq;
+}
+*/
+
+
+
+
+TYPED_TEST_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule)
+{
+    auto refinedParticles = this->getRefinedL0Particles();
+
+    for (auto const& patch : *this->level1)
+    {
+        auto expectedParticles = this->filterCoarseToFineParticles(refinedParticles, patch);
+        auto& actualParticles  = this->getCoarseToFine(patch);
+
+        ASSERT_EQ(expectedParticles.size(), actualParticles.size());
+        ASSERT_GT(actualParticles.size(), 0);
+
+        bool allFound = true;
+        for (auto const& particle : expectedParticles)
         {
-            origin[iDir] = xLower[iDir] - particlesData->getGhostCellWidth()[iDir] * dx[iDir];
-        }
+            auto foundActual = std::find_if(
+                std::begin(actualParticles), std::end(actualParticles),
 
-
-        auto candidateToSplit = [dx, &origin, &boxesCandidateForSplit](auto const& particle) {
-            Point<double, dimension> particlePosition{positionAsPoint(particle, dx, origin)};
-
-            return isIn(particlePosition, boxesCandidateForSplit);
-        };
-
-        for (auto const& particle : particlesData->domainParticles)
-        {
-            //
-            if (candidateToSplit(particle))
-            {
-                Particle<dimension> fineParticle{particle};
-                Point<double, dimension> normalizedPosition;
-
-                Point<double, dimension> particlePosition{positionAsPoint(particle, dx, origin)};
-
-                auto ghostCellWidth = particlesData->getGhostCellWidth();
-
-                for (auto iDir = dirX; iDir < dimension; ++iDir)
+                [&particle](auto const& actualPart) //
                 {
-                    double fineDx = dx[iDir] / ratio;
+                    bool sameCell  = true;
+                    bool sameDelta = true;
 
-                    double normalizedPosition = particlePosition[iDir] / fineDx;
-                    fineParticle.iCell[iDir]  = static_cast<int>(normalizedPosition);
-                    fineParticle.delta[iDir]
-                        = static_cast<float>(normalizedPosition - fineParticle.iCell[iDir]);
-                }
-
-                std::vector<Particle<dimension>> splittedParticles;
-
-
-                auto isInSplittedRegion = [&boxes, dx, dimension](auto const& particle) {
-                    Point<double, dimension> fineDx;
-                    Point<double, dimension> origin;
-                    for (auto iDir = dirX; iDir < dimension; ++iDir)
+                    for (int iDim = 0; iDim < TypeParam::dimension; ++iDim)
                     {
-                        fineDx[iDir] = dx[iDir] / ratio;
-                        origin[iDir] = 0.;
+                        sameCell  = sameCell && actualPart.iCell[iDim] == particle.iCell[iDim];
+                        sameDelta = sameDelta
+                                    && std::fabs(actualPart.delta[iDim] - particle.delta[iDim])
+                                           < std::numeric_limits<float>::epsilon();
                     }
 
-                    Point<double, dimension> particlePosition{
-                        positionAsPoint(particle, fineDx, origin)};
+                    return sameCell && sameDelta;
+                });
 
-                    return isIn(particlePosition, boxes);
-                };
-
-                split(fineParticle, splittedParticles);
-
-                std::copy_if(std::begin(splittedParticles), std::end(splittedParticles),
-                             std::back_inserter(fineParticles), isInSplittedRegion);
-            }
-        }
-    }
-
-    int const expectedNbrParticles{static_cast<int>(fineParticles.size())};
-
-    int countParticlesInCoarseBoundary{0};
-
-    SAMRAI::hier::IntVector ghostCellWidth{SAMRAI::tbox::Dimension{dimension}};
-
-
-    auto level1 = hierarchy.getPatchLevel(1);
-    for (auto const& patch : *level1)
-    {
-        auto specie1It = basicHierarchy.getVariables().find("specie1");
-        auto dataId    = specie1It->second;
-
-        auto particlesData
-            = std::dynamic_pointer_cast<ParticlesData<dimension>>(patch->getPatchData(dataId));
-
-        countParticlesInCoarseBoundary += particlesData->coarseToFineParticles.size();
-
-        auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-            patch->getPatchGeometry());
-
-        ghostCellWidth = particlesData->getGhostCellWidth();
-
-        auto* xLower = patchGeom->getXLower();
-        auto* dx     = patchGeom->getDx();
-
-        auto computePosition = [xLower, dx, &ghostCellWidth, dimension](auto const& particle) {
-            Point<double, dimension> origin;
-
-            for (auto iDir = dirX; iDir < dimension; ++iDir)
-            {
-                origin[iDir] = xLower[iDir] - ghostCellWidth[iDir] * dx[iDir];
-            }
-
-            return positionAsPoint(particle, dx, origin);
-        };
-        std::transform(std::begin(particlesData->coarseToFineParticles),
-                       std::end(particlesData->coarseToFineParticles),
-                       std::back_inserter(fineParticlesPositionFromFill), computePosition);
-    }
-
-    // compute position for the expected particles
-    // here the particle is considered on a single grid covering all the domain
-    // That come from the fact that we do not use the fine level origin for the expected
-    // particles (since we manually split them on the coarse level)
-    auto computePosition = [coarseDx, dimension](auto const& particle) {
-        Point<double, dimension> fineDx;
-        Point<double, dimension> origin;
-        for (auto iDir = dirX; iDir < dimension; ++iDir)
-        {
-            fineDx[iDir] = coarseDx[iDir] / ratio;
-            origin[iDir] = 0.;
+            allFound = allFound && (foundActual != std::end(expectedParticles));
         }
 
-
-        return positionAsPoint(particle, fineDx, origin);
-    };
-
-    std::vector<Point<double, dimension>> expectedPosition;
-
-    std::transform(std::begin(fineParticles), std::end(fineParticles),
-                   std::back_inserter(expectedPosition), computePosition);
-
-    auto comparePosition = [](auto const& lhs, auto const& rhs) { return lhs[dirX] < rhs[dirX]; };
-
-    std::sort(std::begin(expectedPosition), std::end(expectedPosition), comparePosition);
-    std::sort(std::begin(fineParticlesPositionFromFill), std::end(fineParticlesPositionFromFill),
-              comparePosition);
-
-
-    EXPECT_EQ(expectedNbrParticles, countParticlesInCoarseBoundary);
-
-
-    for (std::size_t i = 0u; i < fineParticlesPositionFromFill.size(); ++i)
-    {
-        for (auto iDir = dirX; iDir < dimension; ++iDir)
-        {
-            double const epsilon     = 1e-7;
-            bool foundAMatch         = false;
-            std::size_t indexToMatch = 0;
-            for (std::size_t j = 0u; j < expectedPosition.size(); ++j)
-            {
-                double expectedToFind = fineParticlesPositionFromFill[i][iDir];
-                if (expectedToFind >= expectedPosition[j][iDir] - epsilon
-                    && expectedToFind <= expectedPosition[j][iDir] + epsilon)
-                {
-                    foundAMatch  = true;
-                    indexToMatch = j;
-                    break;
-                }
-            }
-            EXPECT_TRUE(foundAMatch);
-            if (foundAMatch)
-            {
-                EXPECT_NEAR(expectedPosition[indexToMatch][iDir],
-                            fineParticlesPositionFromFill[i][iDir], epsilon);
-            }
-        }
+        EXPECT_TRUE(allFound);
     }
-
-    basicHierarchy.TearDown();
 }
 
 
 
 
-TYPED_TEST_P(aParticlesDataSplitOperator, splitIsExpectedForInterior)
+TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
 {
-    //
-    std::size_t constexpr dimension   = TypeParam::dimension;
-    int constexpr ratio               = TypeParam::ratio;
-    std::size_t constexpr interpOrder = TypeParam::interpOrder;
-    int constexpr refinedParticlesNbr = TypeParam::refineParticlesNbr;
+    auto refinedParticles = this->getRefinedL0Particles();
+    std::cout << this->interpOrder << " " << refinedParticles.size() << "\n";
 
-
-    BasicHierarchy<dimension, interpOrder, ParticlesDataSplitType::interior, refinedParticlesNbr>
-        basicHierarchy{ratio};
-
-    Split<dimension, interpOrder> split{{{ratio}}, refinedParticlesNbr};
-
-    auto& hierarchy = basicHierarchy.getHierarchy();
-
-
-    std::vector<Particle<dimension>> fineParticles;
-
-    std::vector<Point<double, dimension>> fineParticlesPositionFromFill;
-
-    std::vector<Box<double, dimension>> boxes;
-    std::vector<Box<double, dimension>> boxesCandidateForSplit;
-
-    auto gridGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianGridGeometry const>(
-        hierarchy.getGridGeometry());
-
-    auto* coarseDx = gridGeom->getDx();
-
-    Point<double, dimension> fineDx;
+    for (auto const& patch : *this->level1)
     {
-        auto const& patch0 = hierarchy.getPatchLevel(1)->begin();
-        auto patchGeom     = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-            patch0->getPatchGeometry());
+        auto expectedParticles = this->filterInteriorParticles(refinedParticles, patch);
+        auto& actualParticles  = this->getInterior(patch);
 
+        ASSERT_EQ(expectedParticles.size(), actualParticles.size());
+        ASSERT_GT(actualParticles.size(), 0);
 
-        auto* dx = patchGeom->getDx();
-
-        for (auto iDim = 0u; iDim < dimension; ++iDim)
+        bool allFound = true;
+        for (auto const& particle : expectedParticles)
         {
-            fineDx[iDim] = dx[iDim];
-        }
-    }
+            auto foundActual = std::find_if(
+                std::begin(actualParticles), std::end(actualParticles),
 
-
-    // the physical domain start at 0. and finish at 1.0
-    // the first refine box is 4 , 15
-    // the second refine box is 30 , 50
-
-    if constexpr (dimension == 1)
-    {
-        //
-
-        double maxDistanceX = ((interpOrder) / 2.) * coarseDx[dirX];
-
-
-        for (auto const& patch : *(hierarchy.getPatchLevel(1)))
-        {
-            Box<double, dimension> box;
-
-            static_assert(interpOrder > 0 && interpOrder < 4,
-                          "Error out of range for interpOrder test");
-
-            auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-                patch->getPatchGeometry());
-
-
-            auto* xLower = patchGeom->getXLower();
-            auto* xUpper = patchGeom->getXUpper();
-
-            box.lower[dirX] = xLower[dirX];
-            box.upper[dirX] = xUpper[dirX];
-
-
-            boxes.push_back(box);
-
-            box.lower[dirX] = box.lower[dirX] - maxDistanceX;
-            box.upper[dirX] = box.upper[dirX] + maxDistanceX;
-
-            boxesCandidateForSplit.push_back(box);
-        }
-    }
-
-    auto level0 = hierarchy.getPatchLevel(0);
-    for (auto const& patch : *level0)
-    {
-        auto specie1It = basicHierarchy.getVariables().find("specie1");
-        auto dataId    = specie1It->second;
-
-        auto particlesData
-            = std::dynamic_pointer_cast<ParticlesData<dimension>>(patch->getPatchData(dataId));
-
-        auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-            patch->getPatchGeometry());
-
-
-        auto* xLower = patchGeom->getXLower();
-        auto* dx     = patchGeom->getDx();
-
-        Point<double, dimension> origin;
-
-        for (auto iDir = dirX; iDir < dimension; ++iDir)
-        {
-            origin[iDir] = xLower[iDir] - particlesData->getGhostCellWidth()[iDir] * dx[iDir];
-        }
-
-
-        auto candidateToSplit = [dx, &origin, &boxesCandidateForSplit](auto const& particle) {
-            Point<double, dimension> particlePosition{positionAsPoint(particle, dx, origin)};
-
-            return isIn(particlePosition, boxesCandidateForSplit);
-        };
-
-        for (auto const& particle : particlesData->domainParticles)
-        {
-            //
-
-            if (candidateToSplit(particle))
-            {
-                Particle<dimension> fineParticle{particle};
-                Point<double, dimension> normalizedPosition;
-
-                Point<double, dimension> particlePosition{positionAsPoint(particle, dx, origin)};
-
-                auto ghostCellWidth = particlesData->getGhostCellWidth();
-
-                for (auto iDir = dirX; iDir < dimension; ++iDir)
+                [&particle](auto const& actualPart) //
                 {
-                    double normalizedPos     = particlePosition[iDir] / fineDx[iDir];
-                    fineParticle.iCell[iDir] = static_cast<int>(normalizedPos);
-                    fineParticle.delta[iDir]
-                        = static_cast<float>(normalizedPos - fineParticle.iCell[iDir]);
-                }
+                    bool sameCell  = true;
+                    bool sameDelta = true;
 
-                std::vector<Particle<dimension>> splittedParticles;
-
-
-                auto isInSplittedRegion = [&boxes, fineDx, dimension](auto const& particle) {
-                    Point<double, dimension> origin;
-                    for (auto iDir = dirX; iDir < dimension; ++iDir)
+                    for (int iDim = 0; iDim < TypeParam::dimension; ++iDim)
                     {
-                        origin[iDir] = 0.;
+                        sameCell  = sameCell && actualPart.iCell[iDim] == particle.iCell[iDim];
+                        sameDelta = sameDelta
+                                    && std::fabs(actualPart.delta[iDim] - particle.delta[iDim])
+                                           < std::numeric_limits<float>::epsilon();
                     }
 
-                    Point<double, dimension> particlePosition{
-                        positionAsPoint(particle, fineDx, origin)};
+                    return sameCell && sameDelta;
+                });
 
-                    return isIn(particlePosition, boxes);
-                };
-
-                split(fineParticle, splittedParticles);
-
-                std::copy_if(std::begin(splittedParticles), std::end(splittedParticles),
-                             std::back_inserter(fineParticles), isInSplittedRegion);
-            }
+            allFound = allFound && (foundActual != std::end(expectedParticles));
         }
+
+        EXPECT_TRUE(allFound);
     }
-
-
-
-    SAMRAI::hier::IntVector ghostCellWidth{SAMRAI::tbox::Dimension{dimension}};
-
-
-    auto level1 = hierarchy.getPatchLevel(1);
-    for (auto const& patch : *level1)
-    {
-        auto specie1It = basicHierarchy.getVariables().find("specie1");
-        auto dataId    = specie1It->second;
-
-        auto particlesData
-            = std::dynamic_pointer_cast<ParticlesData<dimension>>(patch->getPatchData(dataId));
-
-
-        auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-            patch->getPatchGeometry());
-
-        ghostCellWidth = particlesData->getGhostCellWidth();
-
-        auto* xLower = patchGeom->getXLower();
-        auto* dx     = patchGeom->getDx();
-
-        auto computePosition = [xLower, dx, &ghostCellWidth, dimension](auto const& particle) {
-            Point<double, dimension> origin;
-
-            for (auto iDir = dirX; iDir < dimension; ++iDir)
-            {
-                origin[iDir] = xLower[iDir] - ghostCellWidth[iDir] * dx[iDir];
-            }
-
-            return positionAsPoint(particle, dx, origin);
-        };
-        std::transform(std::begin(particlesData->domainParticles),
-                       std::end(particlesData->domainParticles),
-                       std::back_inserter(fineParticlesPositionFromFill), computePosition);
-    }
-
-    // compute position for the expected particles
-    // here the particle is considered on a single grid covering all the domain
-    // That come from the fact that we do not use the fine level origin for the expected
-    // particles (since we manually split them on the coarse level)
-    auto computePosition = [coarseDx, dimension, fineDx](auto const& particle) {
-        Point<double, dimension> origin;
-        for (auto iDir = dirX; iDir < dimension; ++iDir)
-        {
-            origin[iDir] = 0.;
-        }
-
-
-        return positionAsPoint(particle, fineDx, origin);
-    };
-
-    std::vector<Point<double, dimension>> expectedPosition;
-
-    std::transform(std::begin(fineParticles), std::end(fineParticles),
-                   std::back_inserter(expectedPosition), computePosition);
-
-    auto comparePosition = [](auto const& lhs, auto const& rhs) { return lhs[dirX] < rhs[dirX]; };
-
-    std::sort(std::begin(expectedPosition), std::end(expectedPosition), comparePosition);
-    std::sort(std::begin(fineParticlesPositionFromFill), std::end(fineParticlesPositionFromFill),
-              comparePosition);
-
-
-
-    for (std::size_t i = 0u; i < fineParticlesPositionFromFill.size(); ++i)
-    {
-        for (auto iDir = dirX; iDir < dimension; ++iDir)
-        {
-            double const epsilon     = 1e-7;
-            bool foundAMatch         = false;
-            std::size_t indexToMatch = 0;
-            for (std::size_t j = 0u; j < expectedPosition.size(); ++j)
-            {
-                double expectedToFind = fineParticlesPositionFromFill[i][iDir];
-                if (expectedToFind >= expectedPosition[j][iDir] - epsilon
-                    && expectedToFind <= expectedPosition[j][iDir] + epsilon)
-                {
-                    foundAMatch  = true;
-                    indexToMatch = j;
-                    break;
-                }
-            }
-            EXPECT_TRUE(foundAMatch);
-            if (foundAMatch)
-            {
-                EXPECT_NEAR(expectedPosition[indexToMatch][iDir],
-                            fineParticlesPositionFromFill[i][iDir], epsilon);
-            }
-        }
-    }
-
-    // We want to make sure that our particles are inside the domain
-
-    std::array<double, 2> physicalBox0{{8. * fineDx[dirX], 32 * fineDx[dirX]}};
-    std::array<double, 2> physicalBox1{{60. * fineDx[dirX], 102 * fineDx[dirX]}};
-
-
-
-    for (auto const& position : fineParticlesPositionFromFill)
-    {
-        if (position[dirX] >= physicalBox0[0] && position[dirX] <= physicalBox1[0])
-        {
-            EXPECT_LE(position[dirX], physicalBox0[1]);
-        }
-        else if (position[dirX] >= physicalBox1[0])
-        {
-            EXPECT_LE(position[dirX], physicalBox1[1]);
-        }
-    }
-
-    basicHierarchy.TearDown();
 }
 
 
-REGISTER_TYPED_TEST_CASE_P(aParticlesDataSplitOperator, splitIsExpectedForCoarseBoundary,
-                           splitIsExpectedForInterior);
+
+
+REGISTER_TYPED_TEST_CASE_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule);
+
+REGISTER_TYPED_TEST_CASE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule);
 
 
 
@@ -590,16 +325,62 @@ REGISTER_TYPED_TEST_CASE_P(aParticlesDataSplitOperator, splitIsExpectedForCoarse
 // int constexpr refinedParticlesNbr = 2;
 
 // dimension , ratio , interpOrder, refinedParticlesNbr
-using ParticlesDataSplitDescriptors1Dr2o1ref2 = ParticlesDataSplitTestDescriptors<1, 2, 1, 2>;
-using ParticlesDataSplitDescriptors1Dr2o2ref2 = ParticlesDataSplitTestDescriptors<1, 2, 2, 2>;
-using ParticlesDataSplitDescriptors1Dr2o3ref2 = ParticlesDataSplitTestDescriptors<1, 2, 3, 2>;
+using ParticlesDataSplitDescriptors1Dr2o1ref2C2F
+    = ParticlesDataSplitTestDescriptors<1, 2, 1, 2, ParticlesDataSplitType::coarseBoundary>;
+using ParticlesDataSplitDescriptors1Dr2o2ref2C2F
+    = ParticlesDataSplitTestDescriptors<1, 2, 2, 2, ParticlesDataSplitType::coarseBoundary>;
+using ParticlesDataSplitDescriptors1Dr2o3ref2C2F
+    = ParticlesDataSplitTestDescriptors<1, 2, 3, 2, ParticlesDataSplitType::coarseBoundary>;
+
+using ParticlesDataSplitDescriptors1Dr2o1ref3C2F
+    = ParticlesDataSplitTestDescriptors<1, 2, 1, 3, ParticlesDataSplitType::coarseBoundary>;
+using ParticlesDataSplitDescriptors1Dr2o2ref3C2F
+    = ParticlesDataSplitTestDescriptors<1, 2, 2, 3, ParticlesDataSplitType::coarseBoundary>;
+using ParticlesDataSplitDescriptors1Dr2o3ref3C2F
+    = ParticlesDataSplitTestDescriptors<1, 2, 3, 3, ParticlesDataSplitType::coarseBoundary>;
+
+
+using ParticlesDataSplitDescriptors1Dr2o1ref2Int
+    = ParticlesDataSplitTestDescriptors<1, 2, 1, 2, ParticlesDataSplitType::interior>;
+using ParticlesDataSplitDescriptors1Dr2o2ref2Int
+    = ParticlesDataSplitTestDescriptors<1, 2, 2, 2, ParticlesDataSplitType::interior>;
+using ParticlesDataSplitDescriptors1Dr2o3ref2Int
+    = ParticlesDataSplitTestDescriptors<1, 2, 3, 2, ParticlesDataSplitType::interior>;
+using ParticlesDataSplitDescriptors1Dr2o1ref3Int
+    = ParticlesDataSplitTestDescriptors<1, 2, 1, 3, ParticlesDataSplitType::interior>;
+using ParticlesDataSplitDescriptors1Dr2o2ref3Int
+    = ParticlesDataSplitTestDescriptors<1, 2, 2, 3, ParticlesDataSplitType::interior>;
+using ParticlesDataSplitDescriptors1Dr2o3ref3Int
+    = ParticlesDataSplitTestDescriptors<1, 2, 3, 3, ParticlesDataSplitType::interior>;
 
 
 
-typedef ::testing::Types<ParticlesDataSplitDescriptors1Dr2o1ref2,
-                         ParticlesDataSplitDescriptors1Dr2o2ref2,
-                         ParticlesDataSplitDescriptors1Dr2o3ref2>
-    ParticlesDataDescriptorsRange;
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestUsingParticlesPositionThat, aParticlesDataSplitOperator,
-                              ParticlesDataDescriptorsRange);
+typedef ::testing::Types<
+    ParticlesDataSplitDescriptors1Dr2o1ref2C2F, ParticlesDataSplitDescriptors1Dr2o2ref2C2F,
+    ParticlesDataSplitDescriptors1Dr2o3ref2C2F, ParticlesDataSplitDescriptors1Dr2o1ref3C2F,
+    ParticlesDataSplitDescriptors1Dr2o2ref3C2F, ParticlesDataSplitDescriptors1Dr2o3ref3C2F>
+    ParticlesCoarseToFineDataDescriptorsRange;
+
+
+typedef ::testing::Types<
+    ParticlesDataSplitDescriptors1Dr2o1ref2Int, ParticlesDataSplitDescriptors1Dr2o2ref2Int,
+    ParticlesDataSplitDescriptors1Dr2o3ref2Int, ParticlesDataSplitDescriptors1Dr2o1ref3Int,
+    ParticlesDataSplitDescriptors1Dr2o2ref3Int, ParticlesDataSplitDescriptors1Dr2o3ref3Int>
+    ParticlesInteriorDataDescriptorsRange;
+
+
+// typedef ::testing::Types<ParticlesDataSplitDescriptors1Dr2o1ref2C2F> TestTest;
+
+
+
+INSTANTIATE_TYPED_TEST_CASE_P(TestCoarseToFine, levelOneCoarseBoundaries,
+                              ParticlesCoarseToFineDataDescriptorsRange);
+
+
+INSTANTIATE_TYPED_TEST_CASE_P(TestInterior, levelOneInterior,
+                              ParticlesInteriorDataDescriptorsRange);
+
+
+
+// INSTANTIATE_TYPED_TEST_CASE_P(TestInterior, levelOneCoarseBoundaries, TestTest);

@@ -1,11 +1,31 @@
 #ifndef PHARE_CORE_UTILITIES_POINT_POINT_H
 #define PHARE_CORE_UTILITIES_POINT_POINT_H
 
+#include "utilities/meta/meta_utilities.h"
+
 #include <array>
 #include <cstddef>
 
 namespace PHARE
 {
+template<typename T, typename Index, typename Attempt = void>
+struct has_subscript_operator : std::false_type
+{
+};
+
+
+template<typename T, typename Index>
+struct has_subscript_operator<T, Index,
+                              tryToInstanciate<decltype(std::declval<T>()[std::declval<Index>()])>>
+    : std::true_type
+{
+};
+
+
+template<typename T, typename Index = int>
+using is_subscriptable = std::enable_if_t<has_subscript_operator<T, Index>::value, dummy::type>;
+
+
 template<typename Type, std::size_t dim>
 class Point
 {
@@ -27,6 +47,14 @@ public:
     {
     }
 
+    template<typename Container, is_subscriptable<Container> = dummy::value>
+    Point(Container c)
+    {
+        for (int i = 0; i < dim; ++i)
+        {
+            r[i] = c[i];
+        }
+    }
 
     constexpr Point() { r.fill(static_cast<Type>(0)); }
 

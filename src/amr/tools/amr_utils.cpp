@@ -25,6 +25,7 @@ bool isSameBlock(SAMRAI::hier::Transformation const& transformation)
 
 
 
+
 /**
  * @brief AMRToLocal sets the AMRBox to local indexing relative to the referenceAMRBox
  */
@@ -71,5 +72,7 @@ SAMRAI::hier::IntVector localToAMR(SAMRAI::hier::Box const& referenceAMRBox)
 {
     return SAMRAI::hier::IntVector{referenceAMRBox.lower()};
 }
+
+
 
 } // namespace PHARE

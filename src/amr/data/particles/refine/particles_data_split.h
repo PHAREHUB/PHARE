@@ -4,6 +4,7 @@
 #include "data/particles/particles_data.h"
 #include "split.h"
 #include "tools/amr_utils.h"
+#include "utilities/constants.h"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -48,7 +49,8 @@ public:
 
 
 
-    SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dimension) const
+    virtual SAMRAI::hier::IntVector
+    getStencilWidth(SAMRAI::tbox::Dimension const& dimension) const override
     {
         return SAMRAI::hier::IntVector{dimension, ghostWidthForParticles<interpOrder>()};
     }
@@ -117,45 +119,44 @@ private:
 
 
 
-    /** @brief given a two ParticlesData (destination and source),
-     * an overlap , a ratio and the geometry of both patch, perform the
+    /** @brief given two ParticlesData (destination and source),
+     * an overlap , a ratio and the geometry of both patches, perform the
      * splitting of coarse particules onto the destination patch
-     *
      */
-    void refine_(ParticlesData<dim>& destinationParticlesData,
-                 ParticlesData<dim> const& sourceParticlesData,
-                 SAMRAI::pdat::CellOverlap const& destinationFieldOverlap,
+    void refine_(ParticlesData<dim>& destParticlesData, ParticlesData<dim> const& srcParticlesData,
+                 SAMRAI::pdat::CellOverlap const& destFieldOverlap,
                  SAMRAI::hier::IntVector const& ratio,
                  SAMRAI::geom::CartesianPatchGeometry const& patchGeomDest,
                  SAMRAI::geom::CartesianPatchGeometry const& patchGeomSrc) const
     {
-        auto const& destinationBoxes = destinationFieldOverlap.getDestinationBoxContainer();
+        // the source PatchData is a possible restriction of a "real" patchdata
+        // so that it is the closest from the destination boxes
+        // if all particles from the original source patchdata are in "domainParticles"
+        // they can now be found in either domain of ghost particle arrays of this
+        // temporary restriction "source" patchData
+        // therefore we need references to the domain and ghost particle arrays
+        auto const& srcInteriorParticles = srcParticlesData.domainParticles;
+        auto const& srcGhostParticles    = srcParticlesData.ghostParticles;
 
+        // the particle refine operator's job is to fill either domain (during initialization of new
+        // patches) or coarse to fine boundaries (during advance), so we need references to these
+        // arrays on the destination. We don't fill ghosts with this operator, they are filled from
+        // exchanging with neighbor patches.
+        auto const& destBoxes                = destFieldOverlap.getDestinationBoxContainer();
+        auto& destCoarseBoundaryParticles    = destParticlesData.coarseToFineParticles;
+        auto& destDomainParticles            = destParticlesData.domainParticles;
+        auto& destCoarseBoundaryOldParticles = destParticlesData.coarseToFineParticlesOld;
+        auto& destCoarseBoundaryNewParticles = destParticlesData.coarseToFineParticlesNew;
 
-        // We get the reference of particles data on : interior, ghost , coarseBoundary
-        // coarseBoundaryOld , coarseBoundaryNew
-
-        auto const& sourceInteriorParticles = sourceParticlesData.domainParticles;
-        auto const sourceGhostParticles     = sourceParticlesData.ghostParticles;
-
-        auto& destinationCoarseBoundaryParticles = destinationParticlesData.coarseToFineParticles;
-        auto& destinationDomainParticles         = destinationParticlesData.domainParticles;
-
-        auto& destinationCoarseBoundaryOldParticles
-            = destinationParticlesData.coarseToFineParticlesOld;
-        auto& destinationCoarseBoundaryNewParticles
-            = destinationParticlesData.coarseToFineParticlesNew;
 
         // We get the source box that contains ghost region in order to get local index later
         // same for destinationGhostBox and destinationDomainBox the later will allow to get an
         // index relative to the interior
-        auto const& sourceGhostBox       = sourceParticlesData.getGhostBox();
-        auto const& destinationGhostBox  = destinationParticlesData.getGhostBox();
-        auto const& destinationDomainBox = destinationParticlesData.getBox();
+        auto const& sourceGhostBox = srcParticlesData.getGhostBox();
+        auto const& destGhostBox   = destParticlesData.getGhostBox();
+        auto const& destDomainBox  = destParticlesData.getBox();
 
-
-
-        auto computeRatio = [&ratio]() {
+        /*auto computeRatio = [&ratio]() {
             Point<int32, dim> pointRatio;
 
             for (auto iDir = dirX; iDir < dim; ++iDir)
@@ -163,261 +164,126 @@ private:
                 pointRatio[iDir] = ratio[iDir];
             }
             return pointRatio;
-        };
+        };*/
 
-        SplitT split{computeRatio(), refinedParticleNbr};
+        // TODO refineParticleNbr should not be runtime and SplitT should be created only once.
+        // SplitT split{computeRatio(), refinedParticleNbr};
+
+        SplitT split{Point<int32, dim>{ratio}, refinedParticleNbr};
+
 
         // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
         // In case of a coarseBoundary it will most likely give multiple boxes
         // in case of interior, this will be just one boxe usually
-        for (auto const& destinationBox : destinationBoxes)
+        for (auto const& destinationBox : destBoxes)
         {
-            auto localDestinationBox = destinationBox;
-
-            auto localSourceBox = AMRToLocal(sourceGhostBox, sourceGhostBox);
-
-            localDestinationBox = AMRToLocal(
-                static_cast<std::add_const_t<decltype(localDestinationBox)>>(localDestinationBox),
-                destinationGhostBox);
+            std::array<std::remove_reference_t<decltype(srcInteriorParticles)>*, 2> particlesArrays{
+                {&srcInteriorParticles, &srcGhostParticles}};
 
 
-            // this is same as isIn but with samrai boxes
-            auto isInBox = [](auto const& particle, auto const& localSourceBox) {
-                //
-                auto isIn1D = [](auto const& pos, auto const& lower, auto const& upper) {
-                    return pos >= lower && pos <= upper;
-                };
-
-                bool isIn{true};
-
-                for (auto iDir = dirX; iDir < dim; ++iDir)
-                {
-                    isIn = isIn
-                           && isIn1D(particle.iCell[iDir], localSourceBox.lower(iDir),
-                                     localSourceBox.upper(iDir));
-                }
-                return isIn;
-            };
-
-
-
-
-            // Now we need to get the physical position of the boundary of the destinationBox.
-            // for that we need to consider the domainBox of the destinationPatchData as the
-            // reference Box
-
-            auto* dxDest     = patchGeomDest.getDx();
-            auto* xLowerDest = patchGeomDest.getXLower();
-
-            auto* dxSrc     = patchGeomSrc.getDx();
-            auto* xLowerSrc = patchGeomSrc.getXLower();
-
-
-            Box<double, dim> physicalBoxDestination;
-
-            auto destinationBoxLocalToDomain = AMRToLocal(
-                static_cast<std::add_const_t<decltype(destinationBox)>>(destinationBox),
-                destinationDomainBox);
-
-
-
-            for (auto iDir = dirX; iDir < dim; ++iDir)
-            {
-                if constexpr (splitType == ParticlesDataSplitType::interior)
-                {
-                    physicalBoxDestination.lower[iDir] = xLowerDest[iDir];
-                    physicalBoxDestination.upper[iDir] = patchGeomDest.getXUpper()[iDir];
-                }
-                else
-                {
-                    physicalBoxDestination.lower[iDir]
-                        = xLowerDest[iDir] + dxDest[iDir] * destinationBoxLocalToDomain.lower(iDir);
-                    physicalBoxDestination.upper[iDir]
-                        = xLowerDest[iDir]
-                          + dxDest[iDir] * (destinationBoxLocalToDomain.upper(iDir) + 1);
-                }
-            }
-
-
-            Point<double, dim> originDest;
-            Point<double, dim> originSrc;
-
-            for (auto iDir = dirX; iDir < dim; ++iDir)
-            {
-                originDest[iDir] = xLowerDest[iDir]
-                                   - sourceParticlesData.getGhostCellWidth()[iDir] * dxDest[iDir];
-                originSrc[iDir]
-                    = xLowerSrc[iDir] - sourceParticlesData.getGhostCellWidth()[iDir] * dxSrc[iDir];
-            }
-
-
-            // this will set coarse particle position as a
-            // refined particles position (by adapting icell and delta)
-            auto particleAtRefinedPosition
-                = [&sourceGhostBox, &destinationGhostBox, &ratio, &originDest, &originSrc, dxDest,
-                   dxSrc](auto& particle) {
-                      //
-
-                      Point<double, dim> position{positionAsPoint(particle, dxSrc, originSrc)};
-
-                      for (auto iDir = dirX; iDir < dim; ++iDir)
-                      {
-                          double normalizedPos = (position[iDir] - originDest[iDir]) / dxDest[iDir];
-
-                          particle.iCell[iDir] = static_cast<int>(normalizedPos);
-                          particle.delta[iDir]
-                              = normalizedPos - static_cast<double>(particle.iCell[iDir]);
-                      }
-                  };
-
-
-
-
-            auto isInSplit = [&physicalBoxDestination, dxDest, &originDest](auto const& particle) {
-                Point<double, dim> particlesPosition{positionAsPoint(particle, dxDest, originDest)};
-
-                return isIn(particlesPosition, physicalBoxDestination);
-            };
-
-            // Since we are in a temporary space, we may have to copy information
-            // from ghost region as well. This operator will perform the split
-            // on particles in domain and ghost zone, and put the split particles
-            // in the coarseToFineParticles.
-            std::array<std::remove_reference_t<decltype(sourceInteriorParticles)>*, 2>
-                particlesArrays{{&sourceInteriorParticles, &sourceGhostParticles}};
-
-
-
-            // We loop over interiorParticles and ghostParticles
-            // for each particles, if they are in the localSourceBox
-            // then we shift them in the destination space (coarseAtRefinedPosition)
-            // case 1-3
-            // if we want to split on the coarseBoundary we check if the coarseParticle is
-            // a candidate to split. If it is the case we split in a temporary vector
-            // then for each particles in the temporary vector, we check if they are inside
-            // the desired region, and put them in.
-            // case 4
-            // if we want to split on the interior, we split each particles in a temporary vector
-            // and keep the ones that enter the interior domains.
+            auto isInDest = [&destinationBox](auto const& particle) //
+            { return isInBox(destinationBox, particle); };
 
 
             for (auto const& sourceParticlesArray : particlesArrays)
             {
                 for (auto const& particle : *sourceParticlesArray)
                 {
-                    //
-                    auto particlePosition{positionAsPoint(particle, dxSrc, originSrc)};
+                    std::vector<Particle<dim>> refinedParticles;
+                    auto particleRefinedPos{particle};
 
-                    if (isInBox(particle, localSourceBox))
+                    for (int iDim = 0; iDim < dim; ++iDim)
                     {
-                        //
-                        auto particleRefinedPos = particle;
-                        particleAtRefinedPosition(particleRefinedPos);
+                        particleRefinedPos.iCell[iDim]
+                            = particle.iCell[iDim] * ratio[iDim]
+                              + static_cast<int>(particle.delta[iDim] * ratio[iDim]);
+                        particleRefinedPos.delta[iDim]
+                            = particle.delta[iDim] * ratio[iDim]
+                              - static_cast<int>(particle.delta[iDim] * ratio[iDim]);
+                    }
 
-                        bool constexpr isCoarseBoundarySplitType
+
+                    if (isCandidateForSplit_(particleRefinedPos, destinationBox))
+                    {
+                        split(particleRefinedPos, refinedParticles);
+
+
+                        // we need to know in which of interior or coarseToFineXXXX
+                        // arrays we must put particles
+
+                        bool constexpr putParticlesInCoarseBoundary
                             = splitType == ParticlesDataSplitType::coarseBoundary
                               || splitType == ParticlesDataSplitType::coarseBoundaryOld
                               || splitType == ParticlesDataSplitType::coarseBoundaryNew;
 
 
 
-
-                        if constexpr (isCoarseBoundarySplitType)
+                        if (putParticlesInCoarseBoundary)
                         {
-                            if (this->isCandidateForSplit_(particleRefinedPos,
-                                                           physicalBoxDestination, dxDest,
-                                                           originDest, dxSrc))
+                            if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
                             {
-                                std::vector<Particle<dim>> splittedParticles;
-
-                                auto particlePosition{
-                                    positionAsPoint(particleRefinedPos, dxDest, originDest)};
-
-                                split(particleRefinedPos, splittedParticles);
-
-                                if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
-                                {
-                                    std::copy_if(
-                                        std::begin(splittedParticles), std::end(splittedParticles),
-                                        std::back_inserter(destinationCoarseBoundaryParticles),
-                                        isInSplit);
-                                }
-                                else if constexpr (splitType
-                                                   == ParticlesDataSplitType::coarseBoundaryOld)
-                                {
-                                    //
-                                    std::copy_if(
-                                        std::begin(splittedParticles), std::end(splittedParticles),
-                                        std::back_inserter(destinationCoarseBoundaryOldParticles),
-                                        isInSplit);
-                                }
-                                else //  splitType is coarseBoundaryNew
-                                {
-                                    //
-                                    std::copy_if(
-                                        std::begin(splittedParticles), std::end(splittedParticles),
-                                        std::back_inserter(destinationCoarseBoundaryNewParticles),
-                                        isInSplit);
-                                }
+                                std::copy_if(
+                                    std::begin(refinedParticles), std::end(refinedParticles),
+                                    std::back_inserter(destCoarseBoundaryParticles), isInDest);
+                            }
+                            else if constexpr (splitType
+                                               == ParticlesDataSplitType::coarseBoundaryOld)
+                            {
+                                //
+                                std::copy_if(
+                                    std::begin(refinedParticles), std::end(refinedParticles),
+                                    std::back_inserter(destCoarseBoundaryOldParticles), isInDest);
+                            }
+                            else //  splitType is coarseBoundaryNew
+                            {
+                                std::copy_if(
+                                    std::begin(refinedParticles), std::end(refinedParticles),
+                                    std::back_inserter(destCoarseBoundaryNewParticles), isInDest);
                             }
                         }
-                        else // splitType == ParticlesDataSplitType::interior
-                        {
-                            std::vector<Particle<dim>> splittedParticles;
-                            split(particleRefinedPos, splittedParticles);
 
-                            std::copy_if(std::begin(splittedParticles), std::end(splittedParticles),
-                                         std::back_inserter(destinationDomainParticles), isInSplit);
+                        else
+                        {
+                            std::copy_if(std::begin(refinedParticles), std::end(refinedParticles),
+                                         std::back_inserter(destDomainParticles), isInDest);
                         }
-                    } // is in source selected box
-                }     // loop on particle
-            }         // loop on particelesArrays
+                    } // end is candidate for split
+                }     // end loop on particles
+            }         // end loop on source particle arrays
         }             // loop on destination box
     }
 
 
 
 
-    template<typename Particle>
-    bool isCandidateForSplit_(Particle const& particle,
-                              Box<double, dim> const& physicalBoxDestination, double const* dxDest,
-                              Point<double, dim> const& originDest, double const* dxSrc) const
+    // constexpr int maxCellDistanceFromSplit() const { return std::ceil((interpOrder + 1) * 0.5); }
+
+
+
+
+    SAMRAI::hier::Box getSplitBox(SAMRAI::hier::Box destinationBox) const
     {
-        // Given the physicalBoxDestination where splitted particles must be keep
-        // return true if a coarseParticles may split in the region
-        Point<double, dim> maxDistance;
+        SAMRAI::hier::Box splitBox{destinationBox};
+        SAMRAI::tbox::Dimension dimension{dim};
+        auto growingVec = SAMRAI::hier::IntVector::getZero(dimension);
 
-        Point<double, dim> particlePosition{positionAsPoint(particle, dxDest, originDest)};
-        Point<double, dim> distanceFromLower;
-        Point<double, dim> distanceFromUpper;
-
-        Box<double, dim> candidateBoxForSplit;
-
-        // the maximum distance is ((interpOrder ) / 2. ) * dxCoarse
-
-        for (auto iDir = dirX; iDir < dim; ++iDir)
+        for (int iDim = 0; iDim < dim; ++iDim)
         {
-            maxDistance[iDir] = (interpOrder / 2.) * dxSrc[iDir];
+            growingVec[iDim] = SplitT::maxCellDistanceFromSplit();
         }
+        splitBox.grow(growingVec);
+
+        return splitBox;
+    }
 
 
-        for (auto iDir = dirX; iDir < dim; ++iDir)
-        {
-            distanceFromLower[iDir]
-                = std::abs(particlePosition[iDir] - physicalBoxDestination.lower[iDir]);
-            distanceFromUpper[iDir]
-                = std::abs(particlePosition[iDir] - physicalBoxDestination.upper[iDir]);
-        }
 
-        bool mustSplit = true;
 
-        for (auto iDir = dirX; iDir < dim; ++iDir)
-        {
-            mustSplit = mustSplit
-                        && (distanceFromLower[iDir] <= maxDistance[iDir]
-                            || distanceFromUpper[iDir] <= maxDistance[iDir]);
-        }
-        return mustSplit;
+    template<typename Particle>
+    bool isCandidateForSplit_(Particle const& particle, SAMRAI::hier::Box const& toFillBox) const
+    {
+        auto toSplitBox = getSplitBox(toFillBox);
+        return isInBox(toSplitBox, particle);
     }
 };
 

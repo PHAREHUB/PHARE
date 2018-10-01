@@ -11,7 +11,8 @@ Main
 }
 PatchHierarchy
 {
-    max_levels  =   4
+    max_levels  =   2
+    proper_nesting_buffer = 2
     // vector of coarse ratio with dim dimension
     ratio_to_coarser
     {
@@ -42,7 +43,7 @@ StandardTagAndInitialize
             tagging_method = "REFINE_BOXES"
             level_0
             {
-                boxes = [ (4) , (15)] , [ (30), (50)]
+                boxes = [ (4) , (15)]
             }
         }
     }

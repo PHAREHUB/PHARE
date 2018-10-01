@@ -26,6 +26,47 @@
 using namespace PHARE;
 
 template<std::size_t dimension>
+std::vector<Particle<dimension>> loadCell(int iCell)
+{
+    float middle = 0.5;
+    float delta  = 0.30f;
+
+    Particle<dimension> tmpParticle;
+    std::vector<Particle<dimension>> particles;
+
+    tmpParticle.weight = 1.;
+    tmpParticle.charge = 1.;
+    tmpParticle.v      = {{1.0, 0.0, 0.0}};
+
+    tmpParticle.iCell[dirX] = iCell;
+
+    tmpParticle.delta[dirX] = middle - delta;
+    particles.push_back(tmpParticle);
+
+    tmpParticle.delta[dirX] = middle + delta;
+    particles.push_back(tmpParticle);
+
+    tmpParticle.delta[dirX] = middle;
+    particles.push_back(tmpParticle);
+
+    tmpParticle.delta[dirX] = middle - delta / 2;
+    particles.push_back(tmpParticle);
+
+    tmpParticle.delta[dirX] = middle + delta / 2;
+    particles.push_back(tmpParticle);
+
+    tmpParticle.delta[dirX] = middle - delta / 3;
+    particles.push_back(tmpParticle);
+
+    tmpParticle.delta[dirX] = middle + delta / 3;
+    particles.push_back(tmpParticle);
+
+    return particles;
+}
+
+
+
+template<std::size_t dimension>
 class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 {
 public:
@@ -46,20 +87,31 @@ public:
     virtual ~TagStrategy() = default;
 
     void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                             int const levelNumber, double const, bool const, bool const,
+                             int const levelNumber, double const initDataTime, bool const,
+                             bool const,
                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& = std::shared_ptr<
                                  SAMRAI::hier::PatchLevel>(),
                              bool const allocateData = true) override
     {
+        auto level = hierarchy->getPatchLevel(levelNumber);
         if (allocateData)
         {
-            auto level = hierarchy->getPatchLevel(levelNumber);
             for (auto& patch : *level)
             {
-                for (auto const& dataPair : dataToAllocate_)
+                for (auto const& [dataName, dataId] : dataToAllocate_)
                 {
-                    auto const& dataId = dataPair.second;
-                    patch->allocatePatchData(dataId);
+                    // auto const& dataId = dataPair.second;
+                    patch->allocatePatchData(dataId, initDataTime);
+                }
+            }
+        }
+        else
+        {
+            for (auto& patch : *level)
+            {
+                for (auto const& [dataName, dataId] : dataToAllocate_)
+                {
+                    patch->setTime(dataId, initDataTime);
                 }
             }
         }
@@ -69,61 +121,28 @@ public:
 
         if (levelNumber == 0)
         {
-            auto level = hierarchy->getPatchLevel(levelNumber);
             for (auto& patch : *level)
             {
-                for (auto const& variablesId : dataToAllocate_)
+                for (auto const& [name, dataId] : dataToAllocate_)
                 {
-                    auto const& dataId = variablesId.second;
                     auto particlesData = std::dynamic_pointer_cast<ParticlesData<dimension>>(
                         patch->getPatchData(dataId));
 
                     auto& interior = particlesData->domainParticles;
 
+                    auto particlesBox      = particlesData->getBox();
                     auto particlesGhostBox = particlesData->getGhostBox();
-                    particlesGhostBox
-                        = AMRToLocal(static_cast<std::add_const_t<decltype(particlesGhostBox)>>(
-                                         particlesGhostBox),
-                                     particlesGhostBox);
-
-
+                    // particlesBox           = AMRToLocal(
+                    //    static_cast<std::add_const_t<decltype(particlesBox)>>(particlesBox),
+                    //    particlesGhostBox);
 
                     // here we are 1D
-                    for (int iCellPos = particlesGhostBox.lower(dirX);
-                         iCellPos <= particlesGhostBox.upper(dirX); ++iCellPos)
+                    for (int iCellPos = particlesBox.lower(dirX);
+                         iCellPos <= particlesBox.upper(dirX); ++iCellPos)
                     {
-                        float middle = 0.5;
-                        float delta  = 0.30;
-
-                        Particle<dimension> particle;
-
-                        particle.weight = 1.;
-                        particle.charge = 1.;
-                        particle.v      = {{1.0, 0.0, 0.0}};
-
-                        particle.iCell[dirX] = iCellPos;
-
-                        particle.delta[dirX] = middle - delta;
-                        interior.push_back(particle);
-
-                        particle.delta[dirX] = middle + delta;
-                        interior.push_back(particle);
-
-                        particle.delta[dirX] = middle;
-                        interior.push_back(particle);
-
-                        particle.delta[dirX] = middle - delta / 2;
-                        interior.push_back(particle);
-
-                        particle.delta[dirX] = middle + delta / 2;
-                        interior.push_back(particle);
-
-
-                        particle.delta[dirX] = middle - delta / 3;
-                        interior.push_back(particle);
-
-                        particle.delta[dirX] = middle + delta / 3;
-                        interior.push_back(particle);
+                        auto particles = loadCell<dimension>(iCellPos);
+                        interior.insert(std::end(interior), std::begin(particles),
+                                        std::end(particles));
                     }
                 }
             }
@@ -133,11 +152,17 @@ public:
             // create schedule
             if (splitType_ == ParticlesDataSplitType::coarseBoundary)
             {
+                // warning : the refine operator is of type 'coarseBoundary'
+                // therefore it can only work with a border fill pattern.
+                // using another fill pattern (e.g. interior) will result in
+                // the operator putting refined particles in the wrong particle Array
+                // in the destination patch data (ex : interior particles in the coarse to fine
+                // particle array)
                 auto refineScheduleBorder = algorithm_.createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
                     hierarchy->getPatchLevel(levelNumber), nullptr, levelNumber - 1, hierarchy);
 
-                refineScheduleBorder->fillData(0.);
+                refineScheduleBorder->fillData(initDataTime);
             }
             else if (splitType_ == ParticlesDataSplitType::interior)
             {
@@ -145,9 +170,13 @@ public:
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
                     hierarchy->getPatchLevel(levelNumber), nullptr, levelNumber - 1, hierarchy);
 
-                refineScheduleInterior->fillData(0.);
+                refineScheduleInterior->fillData(initDataTime);
             }
         }
+
+        // whatever the level is, we need to fill ghosts
+        // auto ghostFiller = algorithm_.createSchedule(hierarchy->getPatchLevel(levelNumber));
+        // ghostFiller->fillData(initDataTime);
     }
 
 
