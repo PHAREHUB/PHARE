@@ -12,10 +12,8 @@ namespace PHARE
 template<typename GridLayoutT, typename ResourcesUser>
 struct UserFieldType
 {
-    using patch_data_type
-        = FieldData<typename GridLayoutT::implT, typename ResourcesUser::field_type>;
-    using variable_type
-        = FieldVariable<typename GridLayoutT::implT, typename ResourcesUser::field_type>;
+    using patch_data_type   = FieldData<GridLayoutT, typename ResourcesUser::field_type>;
+    using variable_type     = FieldVariable<GridLayoutT, typename ResourcesUser::field_type>;
     using internal_type_ptr = typename ResourcesUser::field_type*;
 };
 

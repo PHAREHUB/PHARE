@@ -19,7 +19,7 @@ using namespace PHARE;
 
 using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
-template<typename GridLayoutImpl, typename FieldImpl>
+template<typename GridLayoutT, typename FieldImpl>
 struct FieldGeometryParam
 {
     FieldGeometryParam(std::string const& name, HybridQuantity::Scalar quantity,
@@ -33,14 +33,14 @@ struct FieldGeometryParam
         , destinationFieldGeometry{destinationFieldFactory->getBoxGeometry(
               destinationPatch.getBox())}
         , sourceFieldGeometry{sourceFieldFactory->getBoxGeometry(sourcePatch.getBox())}
-        , destinationFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+        , destinationFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(
               destinationFieldFactory->allocate(destinationPatch))}
-        , sourceFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+        , sourceFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(
               sourceFieldFactory->allocate(sourcePatch))}
     {
     }
-    FieldVariable<GridLayoutImpl, FieldImpl> destinationFieldVariable;
-    FieldVariable<GridLayoutImpl, FieldImpl> sourceFieldVariable;
+    FieldVariable<GridLayoutT, FieldImpl> destinationFieldVariable;
+    FieldVariable<GridLayoutT, FieldImpl> sourceFieldVariable;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> destinationFieldFactory;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> sourceFieldFactory;
 
@@ -51,8 +51,8 @@ struct FieldGeometryParam
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destinationFieldGeometry;
     std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceFieldGeometry;
 
-    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> destinationFieldData;
-    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> sourceFieldData;
+    std::shared_ptr<FieldData<GridLayoutT, FieldImpl>> destinationFieldData;
+    std::shared_ptr<FieldData<GridLayoutT, FieldImpl>> sourceFieldData;
 };
 
 
@@ -310,9 +310,9 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
 REGISTER_TYPED_TEST_CASE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
 
-using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayoutImplYee<1, 1>, Field1D>;
-using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayoutImplYee<1, 2>, Field1D>;
-using FieldGeometryTest1DOrder3 = FieldGeometryParam<GridLayoutImplYee<1, 3>, Field1D>;
+using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 1>>, Field1D>;
+using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 2>>, Field1D>;
+using FieldGeometryTest1DOrder3 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 3>>, Field1D>;
 
 using FieldGeometry1DTestList
     = ::testing::Types<FieldGeometryTest1DOrder1, FieldGeometryTest1DOrder2,

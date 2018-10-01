@@ -16,7 +16,7 @@ using testing::Eq;
 
 using namespace PHARE;
 
-using GridYee1DO1 = GridLayoutImplYee<1, 1>;
+using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
 struct AWeighterData

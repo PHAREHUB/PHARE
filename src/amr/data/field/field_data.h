@@ -11,11 +11,13 @@
 
 #include "field_geometry.h"
 
+#include <iostream>
+
 namespace PHARE
 {
 // We use another class here so that we can specialize specifics function: copy , pack , unpack
 // on the dimension and we don't want to loose non specialized function related to SAMRAI interface
-template<typename GridLayoutImpl, std::size_t dim, typename FieldImpl,
+template<typename GridLayoutT, std::size_t dim, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
 class FieldDataInternals
 {
@@ -23,13 +25,13 @@ class FieldDataInternals
 
 
 
-template<typename GridLayoutImpl, typename FieldImpl,
+template<typename GridLayoutT, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
 class FieldData : public SAMRAI::hier::PatchData
 {
 public:
-    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr std::size_t dimension    = GridLayoutT::dimension;
+    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
     /*** \brief Construct a FieldData from information associated to a patch
      *
@@ -38,9 +40,18 @@ public:
      * number of cells in each needed directions
      */
     FieldData(SAMRAI::hier::Box const& domain, SAMRAI::hier::IntVector const& ghost,
-              std::string name, std::array<double, dimension> const& dl,
-              std::array<uint32, dimension> const& nbrCells, Point<double, dimension> const& origin,
-              PhysicalQuantity qty)
+              std::string name, GridLayoutT layout, PhysicalQuantity qty)
+        : SAMRAI::hier::PatchData(domain, ghost)
+        , gridLayout{std::move(layout)}
+        , field(name, qty, gridLayout.allocSize(qty))
+        , quantity_{qty} {} //
+
+              [[deprecated]] FieldData(SAMRAI::hier::Box const& domain,
+                                       SAMRAI::hier::IntVector const& ghost, std::string name,
+                                       std::array<double, dimension> const& dl,
+                                       std::array<uint32, dimension> const& nbrCells,
+                                       Point<double, dimension> const& origin, PhysicalQuantity qty)
+
         : SAMRAI::hier::PatchData(domain, ghost)
         , gridLayout{dl, nbrCells, origin}
         , field(name, qty, gridLayout.allocSize(qty))
@@ -79,18 +90,18 @@ public:
 
         if (fieldSource != nullptr)
         {
-            // First step is to translate the AMR box into proper index space of the given quantity_
-            // using the source gridlayout to accomplish that we get the interior box, from the
-            // FieldData. and we call toFieldBox (with the default parameter withGhost = true). note
-            // that we could have stored the ghost box of the field data at creation
+            // First step is to translate the AMR box into proper index space of the given
+            // quantity_ using the source gridlayout to accomplish that we get the interior box,
+            // from the FieldData. and we call toFieldBox (with the default parameter withGhost
+            // = true). note that we could have stored the ghost box of the field data at
+            // creation
 
-            SAMRAI::hier::Box sourceBox
-                = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-                    fieldSource->getBox(), quantity_, fieldSource->gridLayout);
+            SAMRAI::hier::Box sourceBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
+                fieldSource->getBox(), quantity_, fieldSource->gridLayout);
 
 
             SAMRAI::hier::Box destinationBox
-                = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+                = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
                     this->getBox(), quantity_, this->gridLayout);
 
             // Given the two boxes in correct space we just have to intersect them
@@ -134,9 +145,9 @@ public:
     /*** \brief Copy data from the source into the destination using the designated overlap
      * descriptor.
      *
-     *   The overlap will contain AMR index space boxes on destination to be filled and also give
-     * the necessary transformation to apply to the source, to perform the copy (ie : translation
-     * for periodics condition)
+     *   The overlap will contain AMR index space boxes on destination to be filled and also
+     * give the necessary transformation to apply to the source, to perform the copy (ie :
+     * translation for periodics condition)
      */
     void copy(const SAMRAI::hier::PatchData& source, const SAMRAI::hier::BoxOverlap& overlap) final
     {
@@ -173,8 +184,8 @@ public:
 
 
 
-    /*** \brief Determines whether the patch data subclass can estimate the necessary stream size
-     * using only index space information.
+    /*** \brief Determines whether the patch data subclass can estimate the necessary stream
+     * size using only index space information.
      *
      * The return value is true since that for a corresponding domain, there is a fixed
      * number of elements in the field depending on the PhysicalQuantity and the Layout used
@@ -194,8 +205,8 @@ public:
 
 
 
-    /*** \brief Serialize the data contained in the field data on the region covered by the overlap,
-     * and put it on the stream.
+    /*** \brief Serialize the data contained in the field data on the region covered by the
+     * overlap, and put it on the stream.
      */
     void packStream(SAMRAI::tbox::MessageStream& stream,
                     const SAMRAI::hier::BoxOverlap& overlap) const final
@@ -217,8 +228,8 @@ public:
             {
                 auto const& source = field;
                 SAMRAI::hier::Box sourceBox
-                    = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-                        getBox(), quantity_, gridLayout);
+                    = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(getBox(), quantity_,
+                                                                               gridLayout);
 
                 SAMRAI::hier::Box packBox{box};
 
@@ -243,8 +254,8 @@ public:
 
 
 
-    /*** \brief Unserialize data contained on the stream, that comes from a region covered by the
-     * overlap, and fill the data where is needed.
+    /*** \brief Unserialize data contained on the stream, that comes from a region covered by
+     * the overlap, and fill the data where is needed.
      */
     void unpackStream(SAMRAI::tbox::MessageStream& stream,
                       const SAMRAI::hier::BoxOverlap& overlap) final
@@ -276,8 +287,8 @@ public:
 
                 auto& source = field;
                 SAMRAI::hier::Box destination
-                    = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-                        getBox(), quantity_, gridLayout);
+                    = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(getBox(), quantity_,
+                                                                               gridLayout);
 
 
                 SAMRAI::hier::Box packBox{box * destination};
@@ -295,7 +306,7 @@ public:
 
 
 
-    GridLayout<GridLayoutImpl> gridLayout;
+    GridLayoutT gridLayout;
     FieldImpl field;
 
 private:
@@ -311,8 +322,8 @@ private:
                SAMRAI::hier::Box const& destinationBox, FieldData const& source,
                FieldImpl const& fieldSource, FieldImpl& fieldDestination)
     {
-        // First we represent the intersection that is defined in AMR space to the local space of
-        // the source
+        // First we represent the intersection that is defined in AMR space to the local space
+        // of the source
 
         SAMRAI::hier::Box localSourceBox{AMRToLocal(intersectBox, sourceBox)};
 
@@ -351,12 +362,12 @@ private:
                 for (auto const& box : boxList)
                 {
                     SAMRAI::hier::Box sourceBox
-                        = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+                        = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
                             source.getBox(), quantity_, source.gridLayout);
 
 
                     SAMRAI::hier::Box destinationBox
-                        = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+                        = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
                             this->getBox(), quantity_, this->gridLayout);
 
 
@@ -413,8 +424,8 @@ private:
         for (auto const& box : boxContainer)
         {
             // We compute the intersection between the box contained in the overlap
-            // with the ghostBox of the fieldData (toFieldBox , withGhost=true default parameter)
-            // in case we want to apply the transformation, we do it here
+            // with the ghostBox of the fieldData (toFieldBox , withGhost=true default
+            // parameter) in case we want to apply the transformation, we do it here
             SAMRAI::hier::Box finalBox{box};
             if constexpr (withTransform)
             {
@@ -423,7 +434,7 @@ private:
             }
 
             finalBox = finalBox
-                       * FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+                       * FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
                              getBox(), quantity_, gridLayout);
 
             size_t size = 1;
@@ -443,15 +454,15 @@ private:
     }
 
 
-    FieldDataInternals<GridLayoutImpl, dimension, FieldImpl, PhysicalQuantity> internals_;
+    FieldDataInternals<GridLayoutT, dimension, FieldImpl, PhysicalQuantity> internals_;
 }; // namespace PHARE
 
 
 
 
 // 1D internals implementation
-template<typename GridLayoutImpl, typename FieldImpl, typename PhysicalQuantity>
-class FieldDataInternals<GridLayoutImpl, 1, FieldImpl, PhysicalQuantity>
+template<typename GridLayoutT, typename FieldImpl, typename PhysicalQuantity>
+class FieldDataInternals<GridLayoutT, 1, FieldImpl, PhysicalQuantity>
 {
 public:
     void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
@@ -505,8 +516,8 @@ public:
 
 
 // 2D internals implementation
-template<typename GridLayoutImpl, typename FieldImpl, typename PhysicalQuantity>
-class FieldDataInternals<GridLayoutImpl, 2, FieldImpl, PhysicalQuantity>
+template<typename GridLayoutT, typename FieldImpl, typename PhysicalQuantity>
+class FieldDataInternals<GridLayoutT, 2, FieldImpl, PhysicalQuantity>
 {
 public:
     void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
@@ -584,8 +595,8 @@ public:
 
 
 // 3D internals implementation
-template<typename GridLayoutImpl, typename FieldImpl, typename PhysicalQuantity>
-class FieldDataInternals<GridLayoutImpl, 3, FieldImpl, PhysicalQuantity>
+template<typename GridLayoutT, typename FieldImpl, typename PhysicalQuantity>
+class FieldDataInternals<GridLayoutT, 3, FieldImpl, PhysicalQuantity>
 {
 public:
     void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,

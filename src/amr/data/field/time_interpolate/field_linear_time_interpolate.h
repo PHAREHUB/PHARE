@@ -14,10 +14,12 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, typename FieldT>
+template<typename GridLayoutT, typename FieldT>
 class FieldLinearTimeInterpolate : public SAMRAI::hier::TimeInterpolateOperator
 {
 public:
+    using GridLayoutImpl = typename GridLayoutT::implT;
+
     FieldLinearTimeInterpolate()
         : SAMRAI::hier::TimeInterpolateOperator{"FieldLinearTimeInterpolate"}
     {
@@ -64,11 +66,14 @@ public:
         auto qty = fieldDest.physicalQuantity();
 
 
-        bool const withGhost{true};
-        auto interpolateBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
-            where, qty, layout, !withGhost);
+        auto whereLayout
+            = FieldGeometry<GridLayoutT, PhysicalQuantity>::layoutFromBox(where, layout);
 
-        auto ghostBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        bool const withGhost{true};
+        auto interpolateBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
+            where, qty, whereLayout, !withGhost);
+
+        auto ghostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             fieldDataDest.getBox(), qty, layout, withGhost);
 
         auto finalBox = interpolateBox * ghostBox;
@@ -141,7 +146,7 @@ private:
     static std::size_t constexpr dim = GridLayoutImpl::dimension;
 
     using PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity());
-    using FieldDataT       = FieldData<GridLayoutImpl, FieldT>;
+    using FieldDataT       = FieldData<GridLayoutT, FieldT>;
 };
 
 

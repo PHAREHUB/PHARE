@@ -24,7 +24,7 @@
 
 using namespace PHARE;
 
-template<typename GridLayoutImpl, typename FieldImpl>
+template<typename GridLayoutT, typename FieldImpl>
 struct FieldDataTestParam
 {
     FieldDataTestParam(std::string const& name, HybridQuantity::Scalar quantity,
@@ -38,9 +38,9 @@ struct FieldDataTestParam
         , destinationFieldGeometry{fieldDestinationFactory->getBoxGeometry(
               destinationPatch.getBox())}
         , sourceFieldGeometry{fieldSourceFactory->getBoxGeometry(sourcePatch.getBox())}
-        , destinationFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+        , destinationFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(
               fieldDestinationFactory->allocate(destinationPatch))}
-        , sourceFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldImpl>>(
+        , sourceFieldData{std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(
               fieldSourceFactory->allocate(sourcePatch))}
     {
         resetValues();
@@ -109,8 +109,8 @@ struct FieldDataTestParam
 
 
 
-    FieldVariable<GridLayoutImpl, FieldImpl> fieldDestinationVariable;
-    FieldVariable<GridLayoutImpl, FieldImpl> fieldSourceVariable;
+    FieldVariable<GridLayoutT, FieldImpl> fieldDestinationVariable;
+    FieldVariable<GridLayoutT, FieldImpl> fieldSourceVariable;
 
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> fieldDestinationFactory;
     std::shared_ptr<SAMRAI::hier::PatchDataFactory> fieldSourceFactory;
@@ -121,8 +121,8 @@ struct FieldDataTestParam
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destinationFieldGeometry;
     std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceFieldGeometry;
 
-    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> destinationFieldData;
-    std::shared_ptr<FieldData<GridLayoutImpl, FieldImpl>> sourceFieldData;
+    std::shared_ptr<FieldData<GridLayoutT, FieldImpl>> destinationFieldData;
+    std::shared_ptr<FieldData<GridLayoutT, FieldImpl>> sourceFieldData;
 };
 
 struct Patches1D
@@ -272,9 +272,9 @@ struct AFieldData1DCenteredOnEy : public ::testing::Test
 
 using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
-using FieldDataTest1DOrder1 = FieldDataTestParam<GridLayoutImplYee<1, 1>, Field1D>;
-using FieldDataTest1DOrder2 = FieldDataTestParam<GridLayoutImplYee<1, 2>, Field1D>;
-using FieldDataTest1DOrder3 = FieldDataTestParam<GridLayoutImplYee<1, 3>, Field1D>;
+using FieldDataTest1DOrder1 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 1>>, Field1D>;
+using FieldDataTest1DOrder2 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 2>>, Field1D>;
+using FieldDataTest1DOrder3 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 3>>, Field1D>;
 
 using FieldDataTestList
     = ::testing::Types<FieldDataTest1DOrder1, FieldDataTest1DOrder2, FieldDataTest1DOrder3>;

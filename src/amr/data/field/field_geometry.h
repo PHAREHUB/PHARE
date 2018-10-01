@@ -11,19 +11,18 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, typename PhysicalQuantity>
+template<typename GridLayoutT, typename PhysicalQuantity>
 class FieldGeometry : public SAMRAI::hier::BoxGeometry
 {
 public:
-    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr std::size_t dimension    = GridLayoutT::dimension;
+    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
     /** \brief Construct a FieldGeometry on a region, for a specific quantity,
      * with a temporary gridlayout
      */
-    FieldGeometry(SAMRAI::hier::Box const& box, GridLayout<GridLayoutImpl> layout,
-                  PhysicalQuantity qty)
-        : box_{toFieldBox(box, qty, layout)}
+    FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT layout, PhysicalQuantity qty)
+        : ghostBox_{toFieldBox(box, qty, layout)}
         , interiorBox_{toFieldBox(box, qty, layout, false)}
         , layout_{std::move(layout)}
         , quantity_{qty}
@@ -96,10 +95,12 @@ public:
      * that is adequate for the specified quantity. The layout is used to know
      * the centering, nbr of ghosts of the specified quantity.
      * @param withGhost true if we want to include the ghost nodes in the field box.
+     *
+     * Note : precondition : the nbr of physical cells of the layout must correspond
+     *  to the nbr of cells of the box.
      */
     static SAMRAI::hier::Box toFieldBox(SAMRAI::hier::Box box, PhysicalQuantity qty,
-                                        GridLayout<GridLayoutImpl> const& layout,
-                                        bool withGhost = true)
+                                        GridLayoutT const& layout, bool withGhost = true)
     {
         SAMRAI::hier::IntVector lower = box.lower();
         constexpr std::uint32_t dirX{0};
@@ -160,7 +161,7 @@ public:
 
         else
         {
-            auto const& centering = GridLayout<GridLayoutImpl>::centering(qty);
+            auto const& centering = GridLayoutT::centering(qty);
 
             SAMRAI::hier::IntVector shift(box.getDim());
             shift[dirX] = layout.nbrGhosts(centering[dirX]);
@@ -206,9 +207,11 @@ public:
     /**
      * @brief The origin of the returned layout should NOT be used
      * this is only to get start and end index for physical and ghost
+     *
+     * Note : this function is used whenever we don't have a layout with the same
+     * nbr of cells as the box (ex: we want restriction of a patch box etc.)
      */
-    static GridLayout<GridLayoutImpl> layoutFromBox(SAMRAI::hier::Box const& box,
-                                                    GridLayout<GridLayoutImpl> const& layout)
+    static GridLayoutT layoutFromBox(SAMRAI::hier::Box const& box, GridLayoutT const& layout)
     {
         std::array<uint32, dimension> nbCell;
         for (std::size_t iDim = 0; iDim < dimension; ++iDim)
@@ -216,14 +219,14 @@ public:
             nbCell[iDim] = static_cast<uint32>(box.numberCells(iDim));
         }
 
-        return GridLayout<GridLayoutImpl>(layout.meshSize(), nbCell, layout.origin());
+        return GridLayoutT(layout.meshSize(), nbCell, layout.origin());
     }
 
 
 private:
-    SAMRAI::hier::Box box_;
+    SAMRAI::hier::Box ghostBox_;
     SAMRAI::hier::Box interiorBox_;
-    GridLayout<GridLayoutImpl> layout_;
+    GridLayoutT layout_;
     PhysicalQuantity quantity_;
 
 
@@ -266,7 +269,7 @@ private:
         // the sourceMask is a restriction of the sourceBox
         // so we need to intersect it with the sourceBox, then to apply a transformation
         // to account for the periodicity
-        SAMRAI::hier::Box sourceShift = sourceGeometry.box_ * sourceMask;
+        SAMRAI::hier::Box sourceShift = sourceGeometry.ghostBox_ * sourceMask;
         sourceOffset.transform(sourceShift);
 
 
@@ -276,9 +279,11 @@ private:
         GridLayout sourceShiftLayout = layoutFromBox(sourceShift, sourceGeometry.layout_);
         GridLayout fillBoxLayout     = layoutFromBox(fillBox, layout_);
 
-        auto const& destinationBox = box_;
+        auto const& destinationBox = ghostBox_;
+
         SAMRAI::hier::Box const sourceBox{
             toFieldBox(sourceShift, quantity_, sourceShiftLayout, !withGhosts)};
+
         SAMRAI::hier::Box const fillField{
             toFieldBox(fillBox, quantity_, fillBoxLayout, !withGhosts)};
 

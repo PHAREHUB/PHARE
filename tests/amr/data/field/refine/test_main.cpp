@@ -9,13 +9,13 @@
 
 #include "data/field/refine/field_data_linear_refine.h"
 #include "data/field/refine/field_linear_refine.h"
-
+#include "data/grid/gridlayout.h"
 
 #include "test_basic_hierarchy.h"
 
 using namespace PHARE;
 
-using GridYee1DO1 = GridLayoutImplYee<1, 1>;
+using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
 using testing::Eq;

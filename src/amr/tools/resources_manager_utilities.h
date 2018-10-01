@@ -1,8 +1,11 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_H
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_H
-#include <type_traits>
 
 #include "utilities/meta/meta_utilities.h"
+
+#include <string>
+#include <type_traits>
+#include <vector>
 
 namespace PHARE
 {
@@ -99,6 +102,31 @@ struct UseResourcePtr
 /** UseNullPtr is used to select a nullptr with the correct type */
 struct UseNullPtr
 {
+};
+
+
+template<typename ResourcesUser>
+std::vector<std::string> extractNames(ResourcesUser const& user)
+{
+    std::vector<std::string> names;
+
+    if constexpr (has_field<ResourcesUser>::value)
+    {
+        auto properties = user.getFieldNamesAndQuantities();
+
+        for (auto const& property : properties)
+        {
+            names.push_back(property.name);
+        }
+    }
+
+
+    else if constexpr (has_particles<ResourcesUser>::value)
+    {
+        throw std::runtime_error("not implemeted");
+    }
+
+    return names;
 };
 
 

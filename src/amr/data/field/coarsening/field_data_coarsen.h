@@ -15,12 +15,12 @@ namespace PHARE
 {
 //
 //
-template<typename GridLayoutImpl, typename FieldT,
+template<typename GridLayoutT, typename FieldT,
          typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
 class FieldDataCoarsen : public SAMRAI::hier::CoarsenOperator
 {
 public:
-    static constexpr std::size_t dimension = GridLayoutImpl::dimension;
+    static constexpr std::size_t dimension = GridLayoutT::dimension;
     static constexpr std::size_t maxRafinement{10};
     FieldDataCoarsen()
         : SAMRAI::hier::CoarsenOperator("FieldDataCoarsenOperator")
@@ -80,10 +80,10 @@ public:
                  SAMRAI::hier::Box const& coarseBox,
                  SAMRAI::hier::IntVector const& ratio) const override
     {
-        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT>>(
+        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
             destinationPatch.getPatchData(destinationComponent));
         auto const sourceFieldData
-            = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT> const>(
+            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT> const>(
                 sourcePatch.getPatchData(sourceComponent));
 
         if (!destinationFieldData || !sourceFieldData)
@@ -109,16 +109,16 @@ public:
 
         // We get different boxes : destination , source, restrictBoxes
         // and transform them in the correct indexing.
-        auto destinationBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto destinationBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             destinationPatch.getBox(), qty, destinationLayout, withGhost);
 
-        auto sourceBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto sourceBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             sourcePatch.getBox(), qty, sourceLayout, withGhost);
 
-        auto coarseLayout = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::layoutFromBox(
+        auto coarseLayout = FieldGeometry<GridLayoutT, PhysicalQuantity>::layoutFromBox(
             coarseBox, destinationLayout);
 
-        auto coarseFieldBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto coarseFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             coarseBox, qty, coarseLayout, !withGhost);
 
         // finnaly we compute the intersection

@@ -3,6 +3,7 @@
 
 #include "data/field/field_data.h"
 #include "data/field/field_geometry.h"
+#include "data/grid/gridlayout.h"
 #include "field_linear_refine.h"
 
 #include <SAMRAI/hier/RefineOperator.h>
@@ -13,12 +14,13 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, typename FieldT,
+template<typename GridLayoutT, typename FieldT,
          typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
 class FieldDataLinearRefine : public SAMRAI::hier::RefineOperator
 {
 public:
-    static constexpr std::size_t dimension = GridLayoutImpl::dimension;
+    using GridLayoutImpl                   = typename GridLayoutT::implT;
+    static constexpr std::size_t dimension = GridLayoutT::dimension;
 
     FieldDataLinearRefine()
         : SAMRAI::hier::RefineOperator{"FieldDataLinearRefineOperator"}
@@ -59,10 +61,10 @@ public:
 
         auto const& destinationBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
-        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT>>(
+        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
             destination.getPatchData(destinationComponent));
 
-        auto const sourceFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT>>(
+        auto const sourceFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
             source.getPatchData(sourceComponent));
 
         if (!destinationFieldData || !sourceFieldData)
@@ -85,10 +87,10 @@ public:
 
         bool const withGhost{true};
 
-        auto destinationFieldBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto destinationFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             destination.getBox(), qty, destinationLayout, withGhost);
 
-        auto sourceFieldBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto sourceFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             source.getBox(), qty, sourceLayout, withGhost);
 
         FieldLinearRefine<dimension> refineIt{destinationLayout.centering(qty), destinationFieldBox,

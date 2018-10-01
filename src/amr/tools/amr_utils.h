@@ -1,9 +1,11 @@
 #ifndef PHARE_AMR_UTILS_H
 #define PHARE_AMR_UTILS_H
 
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchData.h>
 
 #include "utilities/constants.h"
@@ -54,7 +56,7 @@ SAMRAI::hier::IntVector AMRToLocal(SAMRAI::hier::Box const& referenceAMRBox);
  * @brief localToAMR returns the vector to add to a box to put it in AMR index space from a
  * local index relative to referenceAMRBox
  */
-SAMRAI::hier::IntVector localToAMR(SAMRAI::hier::Box const& referenceAMRBox);
+SAMRAI::hier::IntVector localToAMRVector(SAMRAI::hier::Box const& referenceAMRBox);
 
 
 /**
@@ -115,6 +117,52 @@ Index<int, dimension> refinedPosition(Index<int, dimension> index,
         index[dirZ] *= ratio(dirZ);
     }
     return index;
+}
+
+
+template<typename GridLayoutT>
+GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
+{
+    int constexpr dimension = GridLayoutT::dimension;
+
+    SAMRAI::tbox::Dimension const dim{dimension};
+    //  We get geometry information from the patch, such as meshSize, and physical origin
+    auto patchGeom
+        = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(patch.getPatchGeometry());
+    Point<double, dimension> origin;
+
+    std::array<double, dimension> dl;
+
+    if (patchGeom != nullptr)
+    {
+        auto pOrigin = patchGeom->getXLower();
+        auto pDl     = patchGeom->getDx();
+
+        for (std::size_t iDim = 0; iDim < dimension; ++iDim)
+        {
+            origin[iDim] = pOrigin[iDim];
+            dl[iDim]     = pDl[iDim];
+        }
+    }
+    else
+    {
+        // in case that the patch does not have a CartesianPatchGeometry
+        // the gridlayout will most likely throw at the construction
+        // so we may throw here instead
+        throw std::runtime_error(
+            "The geometry on the patch is not set, please verify your configuration");
+    }
+
+    SAMRAI::hier::Box domain = patch.getBox();
+
+    std::array<uint32, dimension> nbrCell;
+
+    for (std::size_t iDim = 0; iDim < dimension; ++iDim)
+    {
+        nbrCell[iDim] = static_cast<uint32>(domain.numberCells(iDim));
+    }
+
+    return GridLayoutT{dl, nbrCell, origin};
 }
 
 

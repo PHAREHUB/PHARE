@@ -27,7 +27,7 @@ std::size_t constexpr dim         = 1;
 std::size_t constexpr interpOrder = 1;
 
 
-using GridYee = GridLayoutImplYee<dim, interpOrder>;
+using GridYee = GridLayout<GridLayoutImplYee<dim, interpOrder>>;
 
 using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 

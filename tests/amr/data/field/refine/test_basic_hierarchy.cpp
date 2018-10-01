@@ -10,7 +10,7 @@
 #include "data/grid/gridlayoutdefs.h"
 #include "tools/amr_utils.h"
 
-using GridYee1DO1 = GridLayoutImplYee<1, 1>;
+using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
 
