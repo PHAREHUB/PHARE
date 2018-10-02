@@ -4,6 +4,7 @@
 #define PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_H
 
 #include <string>
+#include <tuple>
 
 #include <hybrid/hybrid_quantities.h>
 
@@ -18,6 +19,7 @@ struct Electromag
     {
     }
 
+    using vecfield_type = VecFieldT;
 
 
     //-------------------------------------------------------------------------
@@ -31,6 +33,8 @@ struct Electromag
     bool isSettable() const { return E.isSettable() && B.isSettable(); }
 
 
+    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(E, B); }
+
     auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
 
 
@@ -42,6 +46,8 @@ struct Electromag
 
     VecFieldT E;
     VecFieldT B;
+
+    static constexpr std::size_t dimension = VecFieldT::dimension;
 };
 } // namespace PHARE
 #endif

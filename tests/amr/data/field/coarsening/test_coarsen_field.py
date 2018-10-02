@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This scripts aims at generate some signal on two levels (cos, sin, other functions)
 # and then to perform a coarsening on a given region
 

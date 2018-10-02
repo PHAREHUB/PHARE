@@ -36,7 +36,8 @@ public:
     virtual ~TagStrategy() = default;
 
     void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                             int const levelNumber, double const, bool const, bool const,
+                             int const levelNumber, double const initDataTime, bool const,
+                             bool const,
                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& = std::shared_ptr<
                                  SAMRAI::hier::PatchLevel>(),
                              bool const allocateData = true) override
@@ -49,7 +50,7 @@ public:
                 for (auto const& dataPair : dataToAllocate_)
                 {
                     auto const& dataId = dataPair.second;
-                    patch->allocatePatchData(dataId);
+                    patch->allocatePatchData(dataId, initDataTime);
                 }
             }
         }

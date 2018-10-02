@@ -98,7 +98,7 @@ public:
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    std::string const& name() { return name_; }
+    std::string const& name() const { return name_; }
 
 
 
