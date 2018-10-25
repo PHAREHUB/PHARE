@@ -27,16 +27,28 @@ public:
     {
     }
 
+    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
+    {
+        std::unique_ptr<MHDTransactionInfo> mhdInfo{
+            dynamic_cast<MHDTransactionInfo*>(fromCoarserInfo.release())};
+    }
+
+
+
+    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                          int const levelNumber) override
+    {
+    }
+
+
     static const std::string stratName;
 
     virtual std::string fineModelName() const override { return MHDModel::model_name; }
 
     virtual std::string coarseModelName() const override { return MHDModel::model_name; }
 
-    virtual void allocate(PhysicalModel const& model, SAMRAI::hier::Patch& patch,
-                          double const allocateTime) const override
-    {
-    }
+    virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override {}
 
     virtual void initLevel(int const levelNumber, double const initDataTime) const override {}
 
@@ -51,17 +63,6 @@ public:
     }
 
 
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
-    {
-        std::unique_ptr<MHDTransactionInfo> mhdInfo{
-            dynamic_cast<MHDTransactionInfo*>(fromCoarserInfo.release())};
-    }
-
-    virtual void update(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                        int const levelNumber) override
-    {
-    }
 
 
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -72,10 +73,10 @@ public:
     }
 
 
+    virtual void firstStep(PhysicalModel const& model) final {}
 
-    virtual void initialize(PhysicalModel const& destModel, PhysicalModel const& srcModel) override
-    {
-    }
+
+    virtual void lastStep(PhysicalModel const& model) final {}
 
     virtual std::string name() override { return stratName; }
 

@@ -105,18 +105,17 @@ TEST(AHybridModel, fillsHybridTransactionInfo)
     auto& modelInfo = dynamic_cast<HybridTransactionInfo const&>(*modelInfoPtr);
 
 
-    EXPECT_EQ("EM_B_x", modelInfo.modelMagneticX);
-    EXPECT_EQ("EM_B_y", modelInfo.modelMagneticY);
-    EXPECT_EQ("EM_B_z", modelInfo.modelMagneticZ);
+    EXPECT_EQ("EM_B", modelInfo.modelMagnetic.vecName);
 
-    EXPECT_EQ("EM_B", modelInfo.modelMagneticName);
+    EXPECT_EQ("EM_B_x", modelInfo.modelMagnetic.xName);
+    EXPECT_EQ("EM_B_y", modelInfo.modelMagnetic.yName);
+    EXPECT_EQ("EM_B_z", modelInfo.modelMagnetic.zName);
 
-    EXPECT_EQ("EM_E_x", modelInfo.modelElectricX);
-    EXPECT_EQ("EM_E_y", modelInfo.modelElectricY);
-    EXPECT_EQ("EM_E_z", modelInfo.modelElectricZ);
+    EXPECT_EQ("EM_E", modelInfo.modelElectric.vecName);
 
-
-    EXPECT_EQ("EM_E", modelInfo.modelElectricName);
+    EXPECT_EQ("EM_E_x", modelInfo.modelElectric.xName);
+    EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
+    EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
 }
 
 

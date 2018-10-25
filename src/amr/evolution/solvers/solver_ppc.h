@@ -45,16 +45,12 @@ public:
         auto magneticComponentNames = extractNames(Bpred);
         auto electricComponentNames = extractNames(Epred);
 
-        modelInfo.solverMagneticName.emplace_back(Bpred.name());
-        modelInfo.solverElectricName.emplace_back(Epred.name());
+        modelInfo.ghostElectric.push_back({Epred.name(), electricComponentNames[0],
+                                           electricComponentNames[1], electricComponentNames[2]});
+        modelInfo.ghostMagnetic.push_back({Bpred.name(), magneticComponentNames[0],
+                                           magneticComponentNames[1], magneticComponentNames[2]});
 
-        modelInfo.solverElectricX.emplace_back(electricComponentNames[0]);
-        modelInfo.solverElectricY.emplace_back(electricComponentNames[1]);
-        modelInfo.solverElectricZ.emplace_back(electricComponentNames[2]);
-
-        modelInfo.solverMagneticX.emplace_back(magneticComponentNames[0]);
-        modelInfo.solverMagneticY.emplace_back(magneticComponentNames[1]);
-        modelInfo.solverMagneticZ.emplace_back(magneticComponentNames[2]);
+        // here fill modelInfo.initElectric and initMagnetic if some solver
     }
 
 

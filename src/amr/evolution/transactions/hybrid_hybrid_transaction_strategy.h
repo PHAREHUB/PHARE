@@ -39,83 +39,96 @@ public:
     static const std::string stratName;
 
 
-
-    virtual std::string fineModelName() const override { return HybridModel::model_name; }
-
-    virtual std::string coarseModelName() const override { return HybridModel::model_name; }
-
-
-    virtual void allocate(PhysicalModel const& model, SAMRAI::hier::Patch& patch,
-                          double const allocateTime) const override
+    HybridHybridTransactionStrategy(
+        std::shared_ptr<typename HybridModel::resources_manager_type> manager, int const firstLevel)
+        : HybridTransactionStrategy<HybridModel>{stratName}
+        , resourcesManager_{std::move(manager)}
+        , firstLevel_{firstLevel}
     {
-        auto& hybModel = dynamic_cast<HybridModel const&>(model);
+        resourcesManager_->registerResources(EM_old_.E);
+        resourcesManager_->registerResources(EM_old_.B);
+    }
+
+    virtual ~HybridHybridTransactionStrategy() = default;
+
+
+
+    /**
+     * @brief allocate the transaction strategy internal variables to the model resourceManager
+     */
+    virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+    {
         // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
         // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
-        hybModel.resourcesManager->allocate(EM_old_, patch, allocateTime);
+        // hybModel.resourcesManager->allocate(EM_old_, patch, allocateTime);
+        resourcesManager_->allocate(EM_old_, patch, allocateTime);
     }
 
 
-    virtual void update(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                        int const levelNumber) override
+
+    /**
+     * @brief setup creates all SAMRAI algorithms to communicate data involved in a transaction
+     * between the coarse and fine levels.
+     *
+     * This method creates the SAMRAI algorithms for communications associated between pairs of
+     * variables. The function does not create the SAMRAI schedules since they depend on the levels
+     */
+    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
     {
-        // update electric and magnetic ghosts refine
+        std::unique_ptr<HybridTransactionInfo> hybridInfo{
+            dynamic_cast<HybridTransactionInfo*>(fromCoarserInfo.release())};
 
-        auto updateGhostSchedules = [&hierarchy, levelNumber, this](auto& ghostMap) //
-        {
-            for (auto& ghostAlgAndScheduleItem : ghostMap)
-            {
-                auto& ghostAlgAndSchedule = ghostAlgAndScheduleItem.second;
 
-                auto& algo = ghostAlgAndSchedule.algo;
+        // TODO here we need to use both coarse and fine since solvers may differ
 
-                auto const& level = hierarchy->getPatchLevel(levelNumber);
-                auto schedule     = algo->createSchedule(
-                    level, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+        setupEandBGhostTransactions_(hybridInfo);
+        setupEandBInitTransactions_(hybridInfo);
 
-                // storeSchedule_(ghostAlgAndSchedule, std::move(schedule), levelNumber);
-                ghostAlgAndSchedule.schedules[levelNumber] = std::move(schedule);
-            }
-        };
+        // on a tous les algos pour remplir les ghosts de
+        // - model E, B vers model E, B
+        // - model E, B vers solver list of E_internal and list of B_internal
 
-        updateGhostSchedules(magneticGhostsRefine_);
-        updateGhostSchedules(electricGhostsRefine_);
+        // TODO setup particle transactions
+    }
 
 
 
-        // update electric and magnetic ghost initialization
+    /**
+     * @brief setLevel creates SAMRAI schedules for all variables relevant for hybrid to hybrid
+     * communications, whether they are from model, solver or transaction internals
+     *
+     * The method takes maps associating quantityName to the pair (algo, map of schedules)
+     * for each algo, it creates a bunch of associated schedules and store them in the vector
+     */
+    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                          int const levelNumber) override
+    {
+        // update the schedules for ghost communications of the electric and magnetic field
 
-        auto updateInitSchedules = [&hierarchy, levelNumber, this](auto& initMap) //
-        {
-            for (auto& initAlgAndScheduleItem : initMap)
-            {
-                auto& initAlgAndSchedule = initAlgAndScheduleItem.second;
+        auto level = hierarchy->getPatchLevel(levelNumber);
+        createGhostSchedules_(magneticGhostsRefine_, hierarchy, level);
+        createGhostSchedules_(electricGhostsRefine_, hierarchy, level);
 
-                auto& algo = initAlgAndSchedule.algo;
-
-                // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
-                // the regriding schedule for which oldptr is not nullptr is handled in another
-                // function
-                auto const& level = hierarchy->getPatchLevel(levelNumber);
-                auto schedule     = algo->createSchedule(
-                    level, nullptr, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-
-                // storeSchedule_(initAlgAndSchedule, std::move(schedule), levelNumber);
-                initAlgAndSchedule.schedules[levelNumber] = std::move(schedule);
-            }
-        };
-
+        // now update electric and magnetic initialization
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
         if (levelNumber != 0)
         {
-            updateInitSchedules(magneticInitRefine_);
-            updateInitSchedules(electricInitRefine_);
+            createInitSchedules_(magneticInitRefine_, hierarchy, level);
+            createInitSchedules_(electricInitRefine_, hierarchy, level);
         }
     }
 
 
 
-
+    /**
+     * @brief regrid performs the regriding communications for Hybrid to Hybrid transactions
+     *
+     * This routine must create and execute schedules for:
+     *
+     * - filling the model magnetic field
+     */
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                         const int levelNumber,
                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
@@ -123,13 +136,11 @@ public:
     {
         // create temporary schedule from algorithms
 
-        auto doRegrid = [&hierarchy, levelNumber, oldLevel, initDataTime](auto& initMap) //
+        auto doRegrid = [&hierarchy, levelNumber, oldLevel, initDataTime](auto& refiners) //
         {
-            for (auto& initAlgAndScheduleItem : initMap)
+            for (auto& [key, refiner] : refiners)
             {
-                auto& initAlgAndSchedule = initAlgAndScheduleItem.second;
-
-                auto& algo = initAlgAndSchedule.algo;
+                auto& algo = refiner.algo;
 
                 // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
                 // the regriding schedule for which oldptr is not nullptr is handled in another
@@ -152,17 +163,12 @@ public:
 
 
 
-    HybridHybridTransactionStrategy(
-        std::shared_ptr<typename HybridModel::resources_manager_type> manager, int const firstLevel)
-        : HybridTransactionStrategy<HybridModel>{stratName}
-        , resourcesManager_{std::move(manager)}
-        , firstLevel_{firstLevel}
-    {
-        resourcesManager_->registerResources(EM_old_.E);
-        resourcesManager_->registerResources(EM_old_.B);
-    }
 
-    virtual ~HybridHybridTransactionStrategy() = default;
+    virtual std::string fineModelName() const override { return HybridModel::model_name; }
+
+    virtual std::string coarseModelName() const override { return HybridModel::model_name; }
+
+
 
 
     virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() override
@@ -178,66 +184,10 @@ public:
 
 
 
-    /**
-     * @brief setup create all algorithms using information from models, solvers
-     * @param info
-     */
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
-    {
-        std::unique_ptr<HybridTransactionInfo> hybridInfo{
-            dynamic_cast<HybridTransactionInfo*>(fromCoarserInfo.release())};
-
-
-
-
-        setupEandBGhostTransactions_(hybridInfo);
-        setupEandBInitTransactions_(hybridInfo);
-
-        // on a tous les algos pour remplir les ghosts de
-        // - model E, B vers model E, B
-        // - model E, B vers solver list of E_internal and list of B_internal
-
-
-        // auto solverBNames = hybridInfo.solverMagnetic; // "SolverPPC_EMPred_B"
-
-        // setup domains
-
-
-        // etc.
-    }
-
     virtual void initLevel(int const levelNumber, double const initDataTime) const override
     {
-        //
-
-        auto fillData = [this, levelNumber, initDataTime](auto const& initRefine) {
-            for (auto& initItem : initRefine)
-            {
-                auto& initAlgo = initItem.second;
-
-                if (initAlgo.algo == nullptr)
-                {
-                    throw std::runtime_error("Algorithm are nullptr");
-                }
-
-                auto schedule = initAlgo.schedules.find(levelNumber);
-                if (schedule != std::end(initAlgo.schedules))
-                {
-                    auto& scheduleSam = schedule->second;
-
-                    schedule->second->fillData(initDataTime);
-                }
-                else
-                {
-                    throw std::runtime_error("Error the schedule cannot be found, wrong level");
-                }
-            }
-        };
-
-
-        fillData(magneticInitRefine_);
-        fillData(electricInitRefine_);
+        applyInitSchedules_(levelNumber, initDataTime, magneticInitRefine_);
+        applyInitSchedules_(levelNumber, initDataTime, electricInitRefine_);
     }
 
 
@@ -269,18 +219,6 @@ public:
     // also we know the level number of the source and the destination
     //
 #endif
-
-    virtual void initialize(HybridModel const& destModel, PhysicalModel const& srcModel) override
-    {
-        auto const& srcHybModel = dynamic_cast<HybridModel const&>(srcModel);
-
-        /*
-        fillMagnetic(srcHybModel, destHybModel.electromag.B, initDataTime);
-        fillElectric(destHybModel.electromag.E, initDataTime);
-        fillIonParticles(destHybModel.ions, initDataTime);
-        fillIonMoments(destHybModel.ions, initDataTime);
-        */
-    }
 
 
     virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
@@ -436,15 +374,56 @@ public:
 
 private:
     /**
-     * @brief setupEandBGhostTransactions_ creates the SAMRAI algorithms to transfer
-     *  - Ex, Ey, Ez from the model variables to the model variables on ghosts
-     *  - Ex, Ey, Ez from the model variables to the solver variables on ghosts
-     *  - Bx, By, Bz from the model variables to the model variables on ghosts
-     *  - Bx, By, Bz from the model variables to the solver variables on ghosts
+     * @brief The Refiner struct encapsulate the algorithm and its associated
+     * schedules
      *
-     * Note that in the case of the solver, this function does not know how many
-     * Electric and Magnetic variables the solver needs transactions for. This
-     * is known upon reading the hybrid transaction info.
+     * We have several of those object, one per level, that is used to retrieve which schedule to
+     * use for a given transaction communication, and which algorithm to use to re-create schedules
+     * when initializing a level
+     */
+    struct Refiner
+    {
+        Refiner()
+            : algo{std::make_unique<SAMRAI::xfer::RefineAlgorithm>()}
+        {
+        }
+
+        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo; // this part is set in setup
+
+        // this part is created in initializeLevelData()
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> schedules;
+    };
+
+    using Refiners = std::map<std::string, Refiner>;
+
+
+
+    /**
+     * @brief setupEandBGhostTransactions_ creates the SAMRAI algorithms to transfer
+     * electromagnetic fields on ghost nodes of level patches and register all refine operations.
+     *
+     * For each variable to register, we use the registerRefine overload that allows time
+     * interpolation.
+     *
+     * The operation must use 'src_told' and 'src_tnew' versions of each field and
+     * time/space interpolate that onto the ghost nodes of the same variable onto the destination
+     * level patches.
+     *
+     * The schedules originating from these algorithms will be executed in the solver
+     * to fill the ghosts on a given level. At this point, the 'src_tnew' IDs are just model
+     * electric field IDs since when advancing a level, the next model of the next coarser level is
+     * already advanced. The "src_told" IDs however, is found in the Transaction itself as the
+     * EM_old_ electromagnetic field This field is a copy of the model electromagnetic field at t=n
+     * *before* the solver advanced the model to t=n+1 on the coarser level.
+     *
+     *
+     * Each operation thus takes:
+     *  - src       : variable IDs in model (not sure what it is used for here)
+     *  - dest      : variable IDs in the TransactionInfo.ghostXXXXnames (could be from model, could
+     * be from solver)
+     *  - src_told  : variable IDs in Transaction
+     *  - src_tnew  : variable IDs in model
+     *
      *
      * The SAMRAI algorithms created by this function are stored in RefineAlgosAndSchedule
      * objects, themselves stored in an appropriate map with a key provided by the
@@ -453,42 +432,21 @@ private:
      */
     void setupEandBGhostTransactions_(std::unique_ptr<HybridTransactionInfo> const& info)
     {
-        // first, let's create algorithms for the electric and magnetic VecField
-        // transactions from the model to the model variables.
-        // this is needed for any solvers as they need to update the model electromagnetic
-        // fields from t to t+dt.
-
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
 
-        std::array<std::string, 3> magneticComponentNames;
-        std::array<std::string, 3> electricComponentNames;
 
-        RefineAlgosAndSchedules modelBGhosts;
-        RefineAlgosAndSchedules modelEGhosts;
-
-        modelBGhosts.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-        modelEGhosts.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-
-
-        auto modelBKey = info->modelMagneticName; // "HybridModel_EM_B"
-        auto modelEKey = info->modelElectricName; // "HybridModel_EM_E"
-
-        magneticComponentNames[0] = info->modelMagneticX;
-        magneticComponentNames[1] = info->modelMagneticY;
-        magneticComponentNames[2] = info->modelMagneticZ;
-
-        electricComponentNames[0] = info->modelElectricX;
-        electricComponentNames[1] = info->modelElectricY;
-        electricComponentNames[2] = info->modelElectricZ;
-
-
-
-        auto registerAndRefine = [this](auto& srcComponentNames, auto& destComponentNames,
-                                        auto const& vecField_old, auto& algo) //
+        // register a refine operation for all components in src/dest componentNames
+        // using the components of the vecField_old as the old source
+        auto registerRefine = [this](auto const& srcComponentNames, auto const& destComponentNames,
+                                     auto const& names_old) //
         {
-            auto names_old = extractNames(vecField_old);
+            Refiner algsAndSched;
+            algsAndSched.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
 
+
+            // there is one refine operation to register per component of the VecField
+            // since they are each a specific variable
             for (auto componentIndex = 0u; componentIndex < 3; ++componentIndex)
             {
                 auto src_id  = resourcesManager_->getID(srcComponentNames[componentIndex]);
@@ -498,59 +456,43 @@ private:
                 if (src_id && dest_id && old_id)
                 {
                     // dest, src, old, new, scratch
-                    algo->registerRefine(*dest_id, // dest
-                                         *src_id,  // source at same time
-                                         *old_id,  // source at past time (for time interp)
-                                         *src_id,  // source at future time (for time interp)
-                                         *dest_id, // scratch
-                                         fieldRefineOp_, fieldTimeOp_);
+                    algsAndSched.algo->registerRefine(
+                        *dest_id, // dest
+                        *src_id,  // source at same time
+                        *old_id,  // source at past time (for time interp)
+                        *src_id,  // source at future time (for time interp)
+                        *dest_id, // scratch
+                        fieldRefineOp_, fieldTimeOp_);
                 }
             }
+            return algsAndSched;
         };
 
 
-        registerAndRefine(magneticComponentNames, magneticComponentNames, Bold, modelBGhosts.algo);
-        registerAndRefine(electricComponentNames, electricComponentNames, Eold, modelEGhosts.algo);
 
-        magneticGhostsRefine_[modelBKey] = std::move(modelBGhosts);
-        electricGhostsRefine_[modelEKey] = std::move(modelEGhosts);
-
-
-
-        // now we need to create algorithms for solver E and B
-        // remember the solver may have several internal E and B variables
-        // and we need algos from model to each of them
-
-        auto registerAndRefineSolver
-            = [&registerAndRefine](auto& srcComponentNames, auto& keys, auto& Xnames, auto& Ynames,
-                                   auto& Znames, auto& vecFieldOld, auto& map) //
+        auto algosToMap = [&registerRefine](VecFieldNames const& modelVec,
+                                            std::vector<VecFieldNames> const& ghostVec,
+                                            auto const& oldVecNames, auto& map) //
         {
-            auto nbrVariables = Xnames.size();
-
+            auto nbrVariables = ghostVec.size();
             for (auto i = 0u; i < nbrVariables; ++i)
             {
-                RefineAlgosAndSchedules algsAndSched;
-                algsAndSched.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+                std::array<std::string, 3> destComponentNames{
+                    {ghostVec[i].xName, ghostVec[i].yName, ghostVec[i].zName}};
 
-                auto key = keys[i];
-                std::array<std::string, 3> destComponentNames{{Xnames[i], Ynames[i], Znames[i]}};
+                std::array<std::string, 3> srcComponentNames{
+                    {modelVec.xName, modelVec.yName, modelVec.zName}};
 
-                registerAndRefine(srcComponentNames, destComponentNames, vecFieldOld,
-                                  algsAndSched.algo);
-
-                map[key] = std::move(algsAndSched);
+                map[ghostVec[i].vecName]
+                    = registerRefine(srcComponentNames, destComponentNames, oldVecNames);
             }
         };
 
 
-        registerAndRefineSolver(magneticComponentNames, info->solverMagneticName,
-                                info->solverMagneticX, info->solverMagneticY, info->solverMagneticZ,
-                                Bold, magneticGhostsRefine_);
-
-
-        registerAndRefineSolver(electricComponentNames, info->solverElectricName,
-                                info->solverElectricX, info->solverElectricY, info->solverElectricZ,
-                                Eold, electricGhostsRefine_);
+        algosToMap(info->modelMagnetic, info->ghostMagnetic, extractNames(Bold),
+                   magneticGhostsRefine_);
+        algosToMap(info->modelElectric, info->ghostElectric, extractNames(Eold),
+                   electricGhostsRefine_);
     }
 
 
@@ -558,29 +500,11 @@ private:
 
     void setupEandBInitTransactions_(std::unique_ptr<HybridTransactionInfo> const& info)
     {
-        //
-        RefineAlgosAndSchedules initB;
-        RefineAlgosAndSchedules initE;
+        Refiner initB;
+        Refiner initE;
 
-        initB.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-        initE.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-
-
-        std::array<std::string, 3> magneticComponentNames;
-        std::array<std::string, 3> electricComponentNames;
-
-        magneticComponentNames[0] = info->modelMagneticX;
-        magneticComponentNames[1] = info->modelMagneticY;
-        magneticComponentNames[2] = info->modelMagneticZ;
-
-
-        electricComponentNames[0] = info->modelElectricX;
-        electricComponentNames[1] = info->modelElectricY;
-        electricComponentNames[2] = info->modelElectricZ;
-
-
-        auto registerAndRefine = [this](auto& srcComponentNames, auto& destComponentNames,
-                                        auto& algo) //
+        auto registerRefine = [this](auto& srcComponentNames, auto& destComponentNames,
+                                     auto& algo) //
         {
             for (auto componentIndex = 0u; componentIndex < 3; ++componentIndex)
             {
@@ -604,39 +528,86 @@ private:
             }
         };
 
-        registerAndRefine(magneticComponentNames, magneticComponentNames, initB.algo);
-        registerAndRefine(electricComponentNames, electricComponentNames, initE.algo);
 
-        magneticInitRefine_[info->modelMagneticName] = std::move(initB);
-        electricInitRefine_[info->modelElectricName] = std::move(initE);
+        auto algosToMap = [&registerRefine](std::vector<VecFieldNames> const& names, auto& map,
+                                            auto& algsAndSchedules) //
+        {
+            auto nbrVariables = names.size();
+            for (auto i = 0u; i < nbrVariables; ++i)
+            {
+                std::array<std::string, 3> componentNames{
+                    {names[i].xName, names[i].yName, names[i].zName}};
 
-        // setup transaction for Eold and Bold
-
-
-        /*
-                RefineAlgosAndSchedules initBold;
-                RefineAlgosAndSchedules initEold;
-
-
-                initB.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-                initE.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+                registerRefine(componentNames, componentNames, algsAndSchedules.algo);
+                map[names[i].vecName] = std::move(algsAndSchedules);
+            }
+        };
 
 
-                auto& Eold = EM_old_.E;
-                auto& Bold = EM_old_.B;
+        algosToMap(info->initMagnetic, magneticInitRefine_, initB);
+        algosToMap(info->initElectric, electricInitRefine_, initE);
+    }
 
-                auto EoldKey = Eold.name();
-                auto BoldKey = Bold.name();
 
-                auto EoldNames = extractNames(Eold);
-                auto BoldNames = extractNames(Bold);
 
-                registerAndRefine(magneticComponentNames, BoldNames, initBold.algo);
-                registerAndRefine(electricComponentNames, EoldNames, initEold.algo);
 
-                magneticInitRefine_[BoldKey] = std::move(initBold);
-                electricInitRefine_[EoldKey] = std::move(initEold);
-                /*/
+    void createGhostSchedules_(Refiners& refiners,
+                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+    {
+        for (auto& [key, refiner] : refiners)
+        {
+            auto& algo    = refiner.algo;
+            auto schedule = algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
+                                                 hierarchy);
+
+            refiner.schedules[level->getLevelNumber()] = std::move(schedule);
+        }
+    }
+
+
+
+
+    void createInitSchedules_(Refiners& refiners,
+                              std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
+    {
+        for (auto& [key, refiner] : refiners)
+        {
+            auto& algo       = refiner.algo;
+            auto levelNumber = level->getLevelNumber();
+
+            // note that here we must take that createsSchedule() overload and put nullptr as src
+            // since we want to take from coarser level everywhere.
+            // using the createSchedule overload that takes level, next_coarser_level only
+            // would result in interior ghost nodes to be filled with interior of neighbor patches
+            // but there is nothing there.
+            refiner.schedules[levelNumber]
+                = algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy);
+        }
+    }
+
+
+
+    void applyInitSchedules_(int levelNumber, double initDataTime, Refiners const& refiners) const
+    {
+        for (auto& [key, refiner] : refiners)
+        {
+            if (refiner.algo == nullptr)
+            {
+                throw std::runtime_error("Algorithm is nullptr");
+            }
+
+            auto schedule = refiner.schedules.find(levelNumber);
+            if (schedule != std::end(refiner.schedules))
+            {
+                schedule->second->fillData(initDataTime);
+            }
+            else
+            {
+                throw std::runtime_error("Error - schedule cannot be found for this level");
+            }
+        }
     }
 
 
@@ -670,61 +641,34 @@ private:
     int const firstLevel_;
 
 
-    struct RefineAlgosAndSchedules
-    {
-        RefineAlgosAndSchedules()
-            : algo{std::make_unique<SAMRAI::xfer::RefineAlgorithm>()}
-        {
-        }
-
-        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo; // this part is set in setup
-
-        // this part is created in initializeLevelData()
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> schedules;
-    };
 
 
-    int computeRelativeLevelNumber_(int const levelNumber) const
-    {
-        auto relativeLevelNumber = levelNumber - firstLevel_;
-        if (relativeLevelNumber < 0)
-        {
-            throw std::runtime_error(
-                "cannot store schedules for level number < firstLevel of the transaction");
-        }
-        return relativeLevelNumber;
-    }
+    // the following maps store the algorithm and the associated schedules for different quantities
+    // and different operations. The key of the map is the name of the quantity, e.g.
+    // "HybridModel_EM_B" and the value will be the {algo, schedules[]}
+    // there may be several maps for the same quantity if that quantity needs several algorithms
+    // this is typically the case for the magnetic field for instance, which needs to spatially
+    // interpolated at initialization phase (spatial only registerRefine()) AND to be spatial/time
+    // interpolated at advance phase when filling ghosts
 
 
-    void storeSchedule_(RefineAlgosAndSchedules& ghostAlgAndSchedule,
-                        std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule,
-                        int const levelNumber)
-    {
-        // auto relativeLevelNumber = computeRelativeLevelNumber_(levelNumber);
+    //! stores the algo and its associated schedules for the getting ghost magnetic field
+    Refiners magneticGhostsRefine_;
 
-        ghostAlgAndSchedule.schedules[levelNumber] = std::move(schedule);
-    }
+    //! stores the algo and its associated schedules for getting magnetic field at initialization
+    Refiners magneticInitRefine_;
 
-
-
-
-    // keys : B, Bpred
-    // using keys, we will registerRefine by geting IDs of components using the
-    // resourcesManager
-    std::map<std::string, RefineAlgosAndSchedules> magneticGhostsRefine_;
-    std::map<std::string, RefineAlgosAndSchedules> magneticInitRefine_;
-
-    // keys : E, Epred
-    std::map<std::string, RefineAlgosAndSchedules> electricGhostsRefine_;
-    std::map<std::string, RefineAlgosAndSchedules> electricInitRefine_;
+    // same as for the magnetic field
+    Refiners electricGhostsRefine_;
+    Refiners electricInitRefine_;
 
 
     // algo and schedule used to initialize domain particles
     // from coarser level using particleRefineOp<domain>
-    RefineAlgosAndSchedules particleInitRefine_;
+    Refiner particleInitRefine_;
 
     // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
-    std::map<std::string, RefineAlgosAndSchedules> particleGhostExchange_;
+    Refiners particleGhostExchange_;
 
     // at first step of advance:
     // from temporaryParticle of coarseLevel to model PRA1 ( + PRA1 copy into PRA)
@@ -735,7 +679,7 @@ private:
     // solver->advanceLevel() when starting, has all PRAs set correctly
 
     // keys: PRA1, PRA2 , chosen by transaction
-    std::map<std::string, RefineAlgosAndSchedules> particlePRA_;
+    Refiners particlePRA_;
 
 
 

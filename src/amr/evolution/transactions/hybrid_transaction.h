@@ -38,6 +38,62 @@ public:
     }
 
 
+    /**
+     * @brief allocate calls the abstract HybridTransactionStrategy to perform the allocation of its
+     * internal resources
+     */
+    virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+    {
+        strat_->allocate(patch, allocateTime);
+    }
+
+
+
+    /**
+     * @brief setup prepares a HybridTransaction to communicates variables given in the two
+     * information structures. Since the HybridTransaction does not know which concrete strategy it
+     * is using, it cannot directly use these informations. It thus passes them to its strategy.
+     *
+     * @param fromCoarserInfo see ITransaction
+     * @param fromFinerInfo see ITransaction
+     */
+    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+                       std::unique_ptr<ITransactionInfo> fromFinerInfo) override
+    {
+        strat_->setup(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+    }
+
+
+
+
+    /**
+     * @brief setLevel is the hybrid concrete transaction of the virtual method
+     * ITransaction::setLevel() it calls the HybridTransactionStrategy::setLevel.
+     */
+    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                          int const levelNumber) override
+    {
+        strat_->setLevel(hierarchy, levelNumber);
+    }
+
+
+
+    /**
+     * @brief regrid performs regridding communications for a hybrid transaction.
+     * Since the transaction does not know what the coarser model is, it forwards the call to its
+     * strategy.
+     */
+    virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                        const int levelNumber,
+                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                        double const initDataTime) final
+    {
+        strat_->regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+    }
+
+
+
+
     virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() override
     {
         return strat_->emptyInfoFromCoarser();
@@ -52,51 +108,20 @@ public:
     {
         strat_->initLevel(levelNumber, initDataTime);
     }
+
+
+    virtual void firstStep(PhysicalModel const& model) final {}
+
+
+    virtual void lastStep(PhysicalModel const& model) final {}
+
+
+
+
     virtual std::string fineModelName() const override { return strat_->fineModelName(); }
 
     virtual std::string coarseModelName() const override { return strat_->coarseModelName(); }
 
-
-
-    virtual void allocate(PhysicalModel const& model, SAMRAI::hier::Patch& patch,
-                          double const allocateTime) const override
-    {
-        strat_->allocate(model, patch, allocateTime);
-    }
-
-
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       std::unique_ptr<ITransactionInfo> fromFinerInfo) override
-    {
-        strat_->setup(std::move(fromCoarserInfo), std::move(fromFinerInfo));
-
-
-        // utilise les strings de la Info pour get les Ids et mettre
-        // les IDs la ou il faut dans les registerRefine()
-    }
-
-    virtual void update(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                        int const levelNumber) override
-    {
-        strat_->update(hierarchy, levelNumber);
-    }
-
-
-    virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                        const int levelNumber,
-                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                        double const initDataTime) override
-    {
-        strat_->regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-    }
-
-
-
-    virtual void initialize(PhysicalModel const& destModel, PhysicalModel const& srcModel) override
-    {
-        auto const& hybDestModel = dynamic_cast<HybridModel const&>(destModel);
-        strat_->initialize(hybDestModel, srcModel);
-    }
 
 
 

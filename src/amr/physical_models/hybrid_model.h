@@ -94,18 +94,18 @@ public:
         auto magneticComponentNames = extractNames(state.electromag.B);
         auto electricComponentNames = extractNames(state.electromag.E);
 
+        modelInfo.modelMagnetic = {state.electromag.B.name(), magneticComponentNames[0],
+                                   magneticComponentNames[1], magneticComponentNames[2]};
 
-        modelInfo.modelMagneticX = magneticComponentNames[0];
-        modelInfo.modelMagneticY = magneticComponentNames[1];
-        modelInfo.modelMagneticZ = magneticComponentNames[2];
+        modelInfo.modelElectric = {state.electromag.E.name(), electricComponentNames[0],
+                                   electricComponentNames[1], electricComponentNames[2]};
 
-        modelInfo.modelMagneticName = state.electromag.B.name();
 
-        modelInfo.modelElectricX = electricComponentNames[0];
-        modelInfo.modelElectricY = electricComponentNames[1];
-        modelInfo.modelElectricZ = electricComponentNames[2];
+        modelInfo.initElectric.push_back(modelInfo.modelElectric);
+        modelInfo.initMagnetic.push_back(modelInfo.modelMagnetic);
 
-        modelInfo.modelElectricName = state.electromag.E.name();
+        modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
+        modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
     }
 
     virtual ~HybridModel() override = default;

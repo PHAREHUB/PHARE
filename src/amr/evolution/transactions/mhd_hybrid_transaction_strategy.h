@@ -31,6 +31,28 @@ public:
         hybridResourcesManager_->registerResources(EM_old_);
     }
 
+    /**
+     * @brief allocate allocate the internal resources to the hybrid and MHD resourcesManagers
+     */
+    virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+    {
+        // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
+        // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
+        hybridResourcesManager_->allocate(EM_old_, patch, allocateTime);
+    }
+
+
+
+    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
+    {
+    }
+
+
+    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                          int const levelNumber) override
+    {
+    }
 
     virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() override
     {
@@ -42,21 +64,7 @@ public:
         return std::make_unique<HybridTransactionInfo>();
     }
 
-    virtual void allocate(PhysicalModel const& model, SAMRAI::hier::Patch& patch,
-                          double const allocateTime) const override
-    {
-        auto& hybModel = dynamic_cast<HybridModel const&>(model);
 
-        // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
-        // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
-        hybModel.resourcesManager->allocate(EM_old_, patch, allocateTime);
-    }
-
-
-    virtual void update(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                        int const levelNumber) override
-    {
-    }
 
 
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -70,20 +78,10 @@ public:
 
 
 
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
-    {
-    }
-
     virtual std::string fineModelName() const override { return HybridModel::model_name; }
 
     virtual std::string coarseModelName() const override { return MHDModel::model_name; }
 
-
-    virtual void initialize(HybridModel const& destModel, PhysicalModel const& srcModel) override
-    {
-        auto const& mhdSrcModel = dynamic_cast<MHDModel const&>(srcModel);
-    }
 
 
     virtual void initLevel(int const levelNumber, double const initDataTime) const override {}

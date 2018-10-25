@@ -79,12 +79,12 @@ public:
             {
                 model_->allocate(*patch, initDataTime);
                 solver_->allocate(*model_, *patch, initDataTime);
-                transaction_->allocate(*model_, *patch, initDataTime);
+                transaction_->allocate(*patch, initDataTime);
             }
         }
 
 
-        transaction_->update(hierarchy, levelNumber);
+        transaction_->setLevel(hierarchy, levelNumber);
 
 
         if (oldLevel)

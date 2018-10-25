@@ -286,14 +286,14 @@ public:
             {
                 model.allocate(*patch, initDataTime);
                 solver.allocate(model, *patch, initDataTime);
-                transaction.allocate(model, *patch, initDataTime);
+                transaction.allocate(*patch, initDataTime);
             }
             // TODO: transactions may need to allocate data in initializeLevelData too
         }
 
 
-        transaction.update(hierarchy, levelNumber);
 
+        transaction.setLevel(hierarchy, levelNumber);
 
         // on est en train de changer la hierarchy soit en créant un nouveau niveau (finest)
         // soit en regriddant un niveau.
@@ -373,6 +373,22 @@ public:
 
 
 
+    /**
+     * @brief advanceLevel is derived from the abstract method of TimeRefinementLevelStrategy
+     *
+     * In this method, the MultiPhysicsIntegrator needs to get the model, solver and transaction
+     * necessary to advance the given level. It then forwards the call to the solver's advanceLevel
+     * method, passing it the model and transaction, among others.
+     *
+     * If it is the first step of the subcycling the Transaction may have something to do before
+     * calling the solver's advanceLevel(). Typically it may need to grab coarser level's data at
+     * the coarser future time so that all subsequent subcycles may use time interpolation without
+     * involving communications. This is done by calling transaction.firstStep()
+     *
+     *
+     * At the last step of the subcycle, the Transaction may also need to perform some actions, like
+     * working on its internal data for instance. transaction.lastStep()
+     */
     virtual double advanceLevel(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
                                 const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                 const double currentTime, const double newTime,
@@ -389,19 +405,15 @@ public:
 
         auto iLevel = level->getLevelNumber();
 
-        auto& solver = getSolver_(iLevel);
-        auto& model  = getModel_(iLevel);
-
+        auto& solver      = getSolver_(iLevel);
+        auto& model       = getModel_(iLevel);
         auto& fromCoarser = getTransactionWithCoarser_(iLevel);
 
-        bool isNotLastLevel = hierarchy->getFinestLevelNumber() != iLevel;
 
-        if (isNotLastLevel)
+        if (firstStep)
         {
-            auto& toFiner = getTransactionWithCoarser_(iLevel + 1);
-            // toFiner->sendModelState(iLevel+1);
+            fromCoarser.firstStep(model);
         }
-
 
         // TODO give firstStep and lastStep bools to the transaction
         // and levelNumber, so that it knows which schedules to apply later on.
@@ -411,10 +423,9 @@ public:
         solver.advanceLevel(hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
 
 
-        if (isNotLastLevel)
+        if (lastStep)
         {
-            auto& toFiner = getTransactionWithCoarser_(iLevel + 1);
-            // toFiner->sendModelState(iLevel+1);
+            fromCoarser.lastStep(model);
         }
 
 
@@ -532,7 +543,6 @@ private:
         else
             throw std::runtime_error("no found transaction");
     }
-
 
 
 }; // namespace PHARE
