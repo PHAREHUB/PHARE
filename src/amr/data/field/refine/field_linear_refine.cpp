@@ -4,22 +4,8 @@
 
 namespace PHARE
 {
-std::size_t nbrRefinePoints(QtyCentering centering, bool isEvenRatio, int ratio)
-{
-    std::size_t nbrPoints;
-    if (centering == QtyCentering::primal || !isEvenRatio)
-    {
-        nbrPoints = static_cast<std::size_t>(ratio);
-    }
-    else
-    {
-        nbrPoints = static_cast<std::size_t>(ratio);
-    }
-    return nbrPoints;
-}
-
-
-UniformIntervalPartitionWeight::UniformIntervalPartitionWeight(QtyCentering centering, int ratio,
+UniformIntervalPartitionWeight::UniformIntervalPartitionWeight(QtyCentering centering,
+                                                               std::size_t ratio,
                                                                std::size_t nbrPoints)
 {
     assert(nbrPoints > 1);

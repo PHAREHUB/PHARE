@@ -25,49 +25,11 @@ using testing::Eq;
 
 
 
-TEST(primalRefinementWithEvenRatio, givesRatioPlusOneRefinementPoints)
-{
-    auto centering   = QtyCentering::primal;
-    auto ratio       = 4;
-    auto isEvenRatio = true;
-    EXPECT_EQ(ratio, nbrRefinePoints(centering, isEvenRatio, ratio));
-}
-
-
-
-TEST(dualRefinementWithEvenRatio, givesRatioRefinementPoints)
-{
-    auto centering   = QtyCentering::dual;
-    auto ratio       = 8;
-    auto isEvenRatio = true;
-    EXPECT_EQ(ratio, nbrRefinePoints(centering, isEvenRatio, ratio));
-}
-
-
-
-TEST(primalRefinementWithOddRatio, givesRatioPlusOneRefinementPoints)
-{
-    auto centering   = QtyCentering::primal;
-    auto ratio       = 5;
-    auto isEvenRatio = false;
-    EXPECT_EQ(ratio, nbrRefinePoints(centering, isEvenRatio, ratio));
-}
-
-
-
-TEST(dualRefinementWithOddRatio, givesRatioPlusOneRefinementPoints)
-{
-    auto centering   = QtyCentering::primal;
-    auto ratio       = 5;
-    auto isEvenRatio = false;
-    EXPECT_EQ(ratio, nbrRefinePoints(centering, isEvenRatio, ratio));
-}
-
-
 
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalEven)
 {
-    auto nbrPoints = nbrRefinePoints(QtyCentering::primal, true, 2);
+    auto ratio     = 2u;
+    auto nbrPoints = ratio;
     UniformIntervalPartitionWeight uipw{QtyCentering::primal, 2, nbrPoints};
 
     std::array<double, 2> expectedDistances{0, 0.5};
@@ -83,8 +45,9 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalEven)
 
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalOdd)
 {
-    UniformIntervalPartitionWeight uipw{QtyCentering::primal, 5,
-                                        nbrRefinePoints(QtyCentering::primal, false, 5)};
+    auto ratio     = 5u;
+    auto nbrPoints = ratio;
+    UniformIntervalPartitionWeight uipw{QtyCentering::primal, ratio, nbrPoints};
 
     std::array<double, 5> expectedDistances{0., 1. / 5., 2. / 5., 3. / 5., 4. / 5.};
     auto const& actualDistances = uipw.getUniformDistances();
@@ -99,7 +62,7 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalOdd)
 TEST(UniformIntervalPartition, givesCorrectPartitionsForDualEven)
 {
     auto const ratio = 4u;
-    auto nbrPoints   = nbrRefinePoints(QtyCentering::dual, ratio % 2 == 0, ratio);
+    auto nbrPoints   = ratio;
 
     UniformIntervalPartitionWeight uipw{QtyCentering::dual, ratio, nbrPoints};
 
@@ -120,7 +83,7 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForDualEven)
 TEST(UniformIntervalPartition, givesCorrectPartitionsForDualOdd)
 {
     auto const ratio = 5u;
-    auto nbrPoints   = nbrRefinePoints(QtyCentering::dual, ratio % 2 == 0, ratio);
+    auto nbrPoints   = ratio;
 
     UniformIntervalPartitionWeight uipw{QtyCentering::dual, ratio, nbrPoints};
     auto smallCellSize = 1. / ratio;

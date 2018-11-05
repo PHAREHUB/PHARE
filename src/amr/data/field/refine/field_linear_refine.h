@@ -21,7 +21,8 @@ namespace PHARE
 class UniformIntervalPartitionWeight
 {
 public:
-    UniformIntervalPartitionWeight(QtyCentering centering, int ratio, std::size_t nbrPoints);
+    UniformIntervalPartitionWeight(QtyCentering centering, std::size_t ratio,
+                                   std::size_t nbrPoints);
 
 
     std::vector<double> const& getUniformDistances() const { return distances_; }
@@ -29,10 +30,6 @@ public:
 private:
     std::vector<double> distances_;
 };
-
-
-
-std::size_t nbrRefinePoints(QtyCentering centering, bool isEvenRatio, int ratio);
 
 
 
@@ -68,9 +65,10 @@ public:
             // and distance for the right index
             // The number of points depends on the centering, for primal or odd ratio
             // it is ratio + 1 , for dual with evenRatio it is ratio
-            auto nbrPoints = nbrRefinePoints(centering[iDir], isEvenRatio[iDir], ratio(iDir));
+            auto nbrPoints = static_cast<std::size_t>(ratio(iDir));
 
-            UniformIntervalPartitionWeight distances{centering[iDir], ratio(iDir), nbrPoints};
+            UniformIntervalPartitionWeight distances{
+                centering[iDir], static_cast<std::size_t>(ratio(iDir)), nbrPoints};
 
             weights_[iDir].reserve(distances.getUniformDistances().size());
             for (auto const& distance : distances.getUniformDistances())
