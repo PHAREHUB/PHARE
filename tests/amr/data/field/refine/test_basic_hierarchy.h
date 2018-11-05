@@ -103,7 +103,7 @@ public:
               dimension_, "ChopAndPackLoadBalancer",
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
-        , refineOperator_{std::make_shared<FieldDataLinearRefine<GridLayoutT, FieldT>>()}
+        , refineOperator_{std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<GridLayoutT, FieldT>>(variablesIds_,
@@ -150,7 +150,7 @@ public:
             = typeid(FieldVariable<typename GridLayoutT::implT, FieldT>).name();
 
 
-        gridGeometry_->addRefineOperator(fieldVariableTypeName, refineOperator_);
+        // gridGeometry_->addRefineOperator(fieldVariableTypeName, refineOperator_);
     }
 
 

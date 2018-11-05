@@ -17,7 +17,6 @@ namespace PHARE
 {
 /** @brief  This class will contain uniform spaced distance in the interval 0,1
  * the distance is from the left index.
- *
  */
 class UniformIntervalPartitionWeight
 {
@@ -32,8 +31,14 @@ private:
 };
 
 
+
+std::size_t nbrRefinePoints(QtyCentering centering, bool isEvenRatio, int ratio);
+
+
+
+
 template<std::size_t dimension>
-class FieldLinearRefineIndexesAndWeights
+class FieldRefineIndexesAndWeights
 {
 public:
     /** @brief Given a centering in each directions and a ratio, initialize weights and shifts
@@ -42,22 +47,20 @@ public:
      * also which coarseIndex to start for refine operation
      *
      */
-    FieldLinearRefineIndexesAndWeights(std::array<QtyCentering, dimension> centering,
-                                       SAMRAI::hier::IntVector const& ratio)
+    FieldRefineIndexesAndWeights(std::array<QtyCentering, dimension> centering,
+                                 SAMRAI::hier::IntVector const& ratio)
         : ratio_{ratio}
     {
-        std::array<bool, dimension> evenRatio;
-        std::array<double, dimension> halfRatio;
+        std::array<bool, dimension> isEvenRatio;
 
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
-            evenRatio[iDir] = ratio(iDir) % 2 == 0;
-            halfRatio[iDir] = ratio(iDir) / 2.;
+            isEvenRatio[iDir] = ratio(iDir) % 2 == 0;
         }
 
         // compute weights for each directions
         // number of points is ratio + 1 if we are primal or odd ratio
-        // and                 ratio otherwise
+        // and ratio otherwise
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
             // here we extract the distances of the left index
@@ -65,15 +68,7 @@ public:
             // and distance for the right index
             // The number of points depends on the centering, for primal or odd ratio
             // it is ratio + 1 , for dual with evenRatio it is ratio
-            std::size_t nbrPoints;
-            if (centering[iDir] == QtyCentering::primal || !evenRatio[iDir])
-            {
-                nbrPoints = static_cast<std::size_t>(ratio(iDir)) + 1;
-            }
-            else
-            {
-                nbrPoints = static_cast<std::size_t>(ratio(iDir));
-            }
+            auto nbrPoints = nbrRefinePoints(centering[iDir], isEvenRatio[iDir], ratio(iDir));
 
             UniformIntervalPartitionWeight distances{centering[iDir], ratio(iDir), nbrPoints};
 
@@ -96,7 +91,7 @@ public:
                 // in case we are dual, we need to shift our fine index of - halfRatio
                 // so that after truncating to integer (the index/ratio), we get the correct
                 // coarseStartIndex
-                shifts_[iDir] = 0. - halfRatio[iDir];
+                shifts_[iDir] = 0.5;
             }
         }
     }
@@ -109,19 +104,21 @@ public:
         Point<int, dimension> coarseIndex{fineIndex};
 
         // here we perform the floating point division, and then we truncate to integer
-        coarseIndex[dirX]
-            = static_cast<int>(static_cast<double>(fineIndex[dirX] + shifts_[dirX]) / ratio_(dirX));
+        coarseIndex[dirX] = static_cast<int>(
+            static_cast<double>(fineIndex[dirX] + shifts_[dirX]) / ratio_(dirX) - shifts_[dirX]);
 
         if constexpr (dimension > 1)
         {
             coarseIndex[dirY] = static_cast<int>(
-                static_cast<double>(fineIndex[dirY] + shifts_[dirY]) / ratio_(dirY));
+                static_cast<double>(fineIndex[dirY] + shifts_[dirY]) / ratio_(dirY)
+                - shifts_[dirY]);
         }
 
         if constexpr (dimension > 2)
         {
             coarseIndex[dirZ] = static_cast<int>(
-                static_cast<double>(fineIndex[dirZ] + shifts_[dirZ]) / ratio_(dirZ));
+                static_cast<double>(fineIndex[dirZ] + shifts_[dirZ]) / ratio_(dirZ)
+                - shifts_[dirZ]);
         }
 
         return coarseIndex;
@@ -197,7 +194,7 @@ public:
         // then we get the index in weights table for a given fineIndex.
         // After that we get the local index of coarseStartIndex and fineIndex.
 
-        // Finnaly we can compute the interpolation
+        // Finally we can compute the interpolation
 
 
         Point<int, dimension> coarseStartIndex = indexesAndWeights_.computeStartIndexes(fineIndex);
@@ -283,7 +280,7 @@ public:
     }
 
 private:
-    FieldLinearRefineIndexesAndWeights<dimension> const indexesAndWeights_;
+    FieldRefineIndexesAndWeights<dimension> const indexesAndWeights_;
     SAMRAI::hier::Box const fineBox_;
     SAMRAI::hier::Box const coarseBox_;
     std::array<std::vector<std::array<double, 2>>, dimension> const& weights_;

@@ -50,7 +50,8 @@ public:
 
     constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
 
-    using type = typename NdArrayImpl::type;
+    using type                   = typename NdArrayImpl::type;
+    using physical_quantity_type = PhysicalQuantity;
     static constexpr int dimension{NdArrayImpl::dimension};
 
 private:

@@ -14,20 +14,20 @@
 
 namespace PHARE
 {
-template<typename GridLayoutT, typename FieldT,
-         typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
-class FieldDataLinearRefine : public SAMRAI::hier::RefineOperator
+template<typename GridLayoutT, typename FieldT>
+class FieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
     using GridLayoutImpl                   = typename GridLayoutT::implT;
+    using PhysicalQuantity                 = typename FieldT::physical_quantity_type;
     static constexpr std::size_t dimension = GridLayoutT::dimension;
 
-    FieldDataLinearRefine()
-        : SAMRAI::hier::RefineOperator{"FieldDataLinearRefineOperator"}
+    FieldRefineOperator()
+        : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
     {
     }
 
-    virtual ~FieldDataLinearRefine() = default;
+    virtual ~FieldRefineOperator() = default;
 
     /** This implementation have the top priority for refine operation
      *
@@ -59,7 +59,7 @@ public:
         auto const& destinationFieldOverlap
             = dynamic_cast<FieldOverlap<dimension> const&>(destinationOverlap);
 
-        auto const& destinationBoxes = destinationFieldOverlap.getDestinationBoxContainer();
+        auto const& overlapBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
         auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
             destination.getPatchData(destinationComponent));
@@ -87,6 +87,7 @@ public:
 
         bool const withGhost{true};
 
+        auto destbox             = destination.getBox();
         auto destinationFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             destination.getBox(), qty, destinationLayout, withGhost);
 
@@ -96,7 +97,7 @@ public:
         FieldLinearRefine<dimension> refineIt{destinationLayout.centering(qty), destinationFieldBox,
                                               sourceFieldBox, ratio};
 
-        for (auto const& box : destinationBoxes)
+        for (auto const& box : overlapBoxes)
         {
             // we compute the intersection with the destination,
             // and then we apply the refine operation on each fine

@@ -622,7 +622,7 @@ private:
 
     // field data refine op
     std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
-        std::make_shared<FieldDataLinearRefine<gridlayout_type, field_type>>()};
+        std::make_shared<FieldRefineOperator<gridlayout_type, field_type>>()};
 
     // field data time op
     std::shared_ptr<FieldLinearTimeInterpolate<gridlayout_type, field_type>> fieldTimeOp_{
