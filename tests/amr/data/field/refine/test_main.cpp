@@ -310,42 +310,6 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForDualOddRati
 
         } while (fineIndex[dirX] < fineIndexes[i][dirX] + ratio(dirX));
     }
-
-    /*std::size_t constexpr dimension{1};
-
-    std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
-
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
-
-    FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
-
-
-    Point<int, dimension> fineIndex{10};
-
-    Point<int, dimension> expectedStartIndex{1};
-
-    auto startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
-
-    EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-
-    do
-    {
-        ++fineIndex[dirX];
-
-        startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
-
-        EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-
-    } while (fineIndex[dirX] < 12);
-
-    ++fineIndex[dirX]; //
-
-    ++expectedStartIndex[dirX]; // so now it is the next of 2
-
-    startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
-
-    EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-    */
 }
 
 
@@ -355,24 +319,26 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForDualOddRati
 TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualOddRatio)
 {
     std::size_t constexpr dimension{1};
-
     std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
-
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
-
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-
-    auto weights = indexesAndWeights.getWeights();
-
+    auto weights         = indexesAndWeights.getWeights();
     auto const& xWeights = weights[dirX];
 
     EXPECT_DOUBLE_EQ(xWeights[2][0], 1.);
 
-    EXPECT_DOUBLE_EQ(xWeights[0][1], 1. - xWeights[4][1]);
-    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[3][1]);
+    EXPECT_DOUBLE_EQ(xWeights[0][1], 3. / 5.);
+    EXPECT_DOUBLE_EQ(xWeights[0][0], 1. - 3. / 5.);
 
-    // EXPECT_DOUBLE_EQ(xWeights[5][1], 1. - xWeights[2][1]);
+    EXPECT_DOUBLE_EQ(xWeights[1][1], 4. / 5.);
+    EXPECT_DOUBLE_EQ(xWeights[1][0], 1. - 4. / 5.);
+
+    EXPECT_DOUBLE_EQ(xWeights[3][1], 1. / 5.);
+    EXPECT_DOUBLE_EQ(xWeights[3][0], 1. - 1. / 5.);
+
+    EXPECT_DOUBLE_EQ(xWeights[4][1], 2. / 5.);
+    EXPECT_DOUBLE_EQ(xWeights[4][0], 1. - 2. / 5.);
 }
 
 
@@ -381,22 +347,27 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualOddRatio)
 TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalOddRatio)
 {
     std::size_t constexpr dimension{1};
-
     std::array<QtyCentering, dimension> centering{{QtyCentering::primal}};
-
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
-
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-
-    auto weights = indexesAndWeights.getWeights();
-
+    auto weights         = indexesAndWeights.getWeights();
     auto const& xWeights = weights[dirX];
+    auto smallCellSize   = 1. / 5.;
 
-    EXPECT_DOUBLE_EQ(xWeights.front()[1], 0.);
-    EXPECT_DOUBLE_EQ(xWeights.back()[1], 1.);
-    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[4][1]);
-    EXPECT_DOUBLE_EQ(xWeights[2][1], 1. - xWeights[3][1]);
+    EXPECT_DOUBLE_EQ(xWeights[0][1], 0.);
+
+    EXPECT_DOUBLE_EQ(xWeights[1][1], smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[1][0], 1 - smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 2. * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[2][0], 1 - 2. * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[3][1], 3. * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[3][0], 1 - 3 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[4][1], 4. * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[4][0], 1 - 4. * smallCellSize);
 }
 
 
@@ -405,20 +376,25 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalOddRatio
 TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualEvenRatio)
 {
     std::size_t constexpr dimension{1};
-
     std::array<QtyCentering, dimension> centering{{QtyCentering::dual}};
-
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
-
+    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 4};
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-
-    auto weights = indexesAndWeights.getWeights();
-
+    auto smallCellSize   = 1. / ratio(dirX);
+    auto weights         = indexesAndWeights.getWeights();
     auto const& xWeights = weights[dirX];
-    EXPECT_DOUBLE_EQ(xWeights[0][1], 1. - xWeights[5][1]);
-    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[4][1]);
-    EXPECT_DOUBLE_EQ(xWeights[2][1], 1. - xWeights[3][1]);
+
+    EXPECT_DOUBLE_EQ(xWeights[0][1], 2.5 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[0][0], 1. - 2.5 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[1][1], 3.5 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[1][0], 1 - 3.5 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 0.5 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[2][0], 1 - 0.5 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[3][1], 1.5 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[3][0], 1 - 1.5 * smallCellSize);
 }
 
 
@@ -427,23 +403,31 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualEvenRatio)
 TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalEvenRatio)
 {
     std::size_t constexpr dimension{1};
-
     std::array<QtyCentering, dimension> centering{{QtyCentering::primal}};
-
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
-
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-
-    auto weights = indexesAndWeights.getWeights();
-
+    auto weights         = indexesAndWeights.getWeights();
     auto const& xWeights = weights[dirX];
+    auto smallCellSize   = 1. / ratio(dirX);
 
     EXPECT_DOUBLE_EQ(xWeights[0][1], 0.);
-    EXPECT_DOUBLE_EQ(xWeights[6][1], 1.);
-    EXPECT_DOUBLE_EQ(xWeights[1][1], 1. - xWeights[5][1]);
-    EXPECT_DOUBLE_EQ(xWeights[2][1], 1. - xWeights[4][1]);
-    EXPECT_DOUBLE_EQ(xWeights[3][1], 1. - xWeights[3][1]);
+    EXPECT_DOUBLE_EQ(xWeights[0][0], 1.);
+
+    EXPECT_DOUBLE_EQ(xWeights[1][1], smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[1][0], 1. - smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[2][1], 2 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[2][0], 1. - 2 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[3][1], 3 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[3][0], 1. - 3 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[4][1], 4 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[4][0], 1. - 4 * smallCellSize);
+
+    EXPECT_DOUBLE_EQ(xWeights[5][1], 5 * smallCellSize);
+    EXPECT_DOUBLE_EQ(xWeights[5][0], 1. - 5 * smallCellSize);
 }
 
 

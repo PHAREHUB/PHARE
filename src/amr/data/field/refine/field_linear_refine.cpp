@@ -54,7 +54,7 @@ UniformIntervalPartitionWeight::UniformIntervalPartitionWeight(QtyCentering cent
         else
         {
             int const halfRatio = ratio / 2;
-            for (std::size_t i = 0; i < distances_.size() - 1; ++i)
+            for (std::size_t i = 1; i < distances_.size(); ++i)
             {
                 int const j = (halfRatio + i) % ratio;
 
