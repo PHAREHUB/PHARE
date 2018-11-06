@@ -15,7 +15,9 @@ set( SOURCES_INC
      data/field/field_overlap.h
      data/field/field_variable.h
      data/field/refine/field_linear_refine.h
-     data/field/refine/field_data_linear_refine.h
+     data/field/refine/field_refiner.h
+     data/field/refine/linear_weighter.h
+     data/field/refine/field_refine_operator.h
      data/field/time_interpolate/field_linear_time_interpolate.h
      tools/field_resource.h
      tools/particle_resource.h
@@ -44,7 +46,7 @@ set( SOURCES_INC
      physical_models/mhd_model.h
    )
 set( SOURCES_CPP
-     data/field/refine/field_linear_refine.cpp
+     data/field/refine/linear_weighter.cpp
      data/particles/refine/split.cpp
      tools/amr_utils.cpp
      evolution/solvers/solver.cpp

@@ -1,10 +1,11 @@
-#ifndef PHARE_FIELD_DATA_LINEAR_REFINE_H
-#define PHARE_FIELD_DATA_LINEAR_REFINE_H
+#ifndef PHARE_FIELD_REFINE_OPERATOR_H
+#define PHARE_FIELD_REFINE_OPERATOR_H
 
 #include "data/field/field_data.h"
 #include "data/field/field_geometry.h"
 #include "data/grid/gridlayout.h"
 #include "field_linear_refine.h"
+#include "field_refiner.h"
 
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/tbox/Dimension.h>
@@ -94,8 +95,8 @@ public:
         auto sourceFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             source.getBox(), qty, sourceLayout, withGhost);
 
-        FieldLinearRefine<dimension> refineIt{destinationLayout.centering(qty), destinationFieldBox,
-                                              sourceFieldBox, ratio};
+        FieldRefiner<dimension> refineIt{destinationLayout.centering(qty), destinationFieldBox,
+                                         sourceFieldBox, ratio};
 
         for (auto const& box : overlapBoxes)
         {

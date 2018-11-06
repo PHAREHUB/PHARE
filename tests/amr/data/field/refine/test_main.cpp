@@ -5,8 +5,9 @@
 #include "gtest/gtest.h"
 
 
-#include "data/field/refine/field_data_linear_refine.h"
 #include "data/field/refine/field_linear_refine.h"
+#include "data/field/refine/field_refine_operator.h"
+#include "data/field/refine/field_refiner.h"
 #include "data/grid/gridlayout.h"
 
 #include "test_basic_hierarchy.h"
@@ -118,7 +119,7 @@ TEST(FieldRefine, CanBeCreated)
     SAMRAI::hier::Box sourceGhostBox{dim};
     SAMRAI::hier::IntVector ratio{dim, 2};
 
-    FieldLinearRefine<1> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
+    FieldRefiner<1> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
 }
 
 
@@ -285,8 +286,8 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualOddRatio)
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-    auto weights         = indexesAndWeights.getWeights();
-    auto const& xWeights = weights[dirX];
+    auto const& xWeights = indexesAndWeights.weights(Direction::X);
+    // auto const& xWeights = weights[dirX];
 
     EXPECT_DOUBLE_EQ(xWeights[2][0], 1.);
 
@@ -313,9 +314,8 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalOddRatio
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 5};
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-    auto weights         = indexesAndWeights.getWeights();
-    auto const& xWeights = weights[dirX];
-    auto smallCellSize   = 1. / 5.;
+    auto xWeights      = indexesAndWeights.weights(Direction::X);
+    auto smallCellSize = 1. / 5.;
 
     EXPECT_DOUBLE_EQ(xWeights[0][1], 0.);
 
@@ -342,9 +342,9 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForDualEvenRatio)
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 4};
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-    auto smallCellSize   = 1. / ratio(dirX);
-    auto weights         = indexesAndWeights.getWeights();
-    auto const& xWeights = weights[dirX];
+    auto smallCellSize = 1. / ratio(dirX);
+    auto xWeights      = indexesAndWeights.weights(Direction::X);
+
 
     EXPECT_DOUBLE_EQ(xWeights[0][1], 2.5 * smallCellSize);
     EXPECT_DOUBLE_EQ(xWeights[0][0], 1. - 2.5 * smallCellSize);
@@ -369,9 +369,8 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectWeightsForPrimalEvenRati
     SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dimension}, 6};
     FieldRefineIndexesAndWeights<dimension> indexesAndWeights{centering, ratio};
 
-    auto weights         = indexesAndWeights.getWeights();
-    auto const& xWeights = weights[dirX];
-    auto smallCellSize   = 1. / ratio(dirX);
+    auto xWeights      = indexesAndWeights.weights(Direction::X);
+    auto smallCellSize = 1. / ratio(dirX);
 
     EXPECT_DOUBLE_EQ(xWeights[0][1], 0.);
     EXPECT_DOUBLE_EQ(xWeights[0][0], 1.);

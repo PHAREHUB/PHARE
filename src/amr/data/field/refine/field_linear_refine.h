@@ -4,43 +4,18 @@
 
 #include "data/field/field.h"
 #include "data/grid/gridlayoutdefs.h"
+#include "linear_weighter.h"
 #include "utilities/constants.h"
 #include "utilities/point/point.h"
 
 #include <SAMRAI/hier/Box.h>
 
 #include <array>
-#include <unordered_map>
 #include <vector>
 
 
 namespace PHARE
 {
-/** @brief  This class calculates the distances of each fine index within a coarse cell
- * from the left-most coarse index of the same kind (dual/primal)
- */
-class LinearWeighter
-{
-public:
-    using FineIndexWeight  = std::array<double, 2>;
-    using FineIndexWeights = std::vector<FineIndexWeight>;
-
-
-    LinearWeighter(QtyCentering centering, std::size_t ratio);
-
-
-    std::vector<double> const& getUniformDistances() const { return distFromLeftNode_; }
-
-    std::vector<std::array<double, 2>> const& weights() { return weights_; }
-
-private:
-    std::vector<double> distFromLeftNode_;
-    FineIndexWeights weights_;
-};
-
-
-
-
 template<std::size_t dimension>
 class FieldRefineIndexesAndWeights
 {
@@ -51,20 +26,16 @@ public:
      * also which coarseIndex to start for refine operation
      *
      */
-    FieldRefineIndexesAndWeights(std::array<QtyCentering, dimension> centering,
+    FieldRefineIndexesAndWeights(std::array<QtyCentering, dimension> centerings,
                                  SAMRAI::hier::IntVector const& ratio)
         : ratio_{ratio}
-    {
-        for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
-        {
-            LinearWeighter weighter{centering[iDir], static_cast<std::size_t>(ratio(iDir))};
-            weights_[iDir] = weighter.weights();
-        }
+        , weighters_{make_weighters(centerings, ratio, std::make_index_sequence<dimension>{})}
 
+    {
         // this shift will be use to determine which coarseIndexe we take
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
-            if (centering[iDir] == QtyCentering::primal)
+            if (centerings[iDir] == QtyCentering::primal)
             {
                 shifts_[iDir] = 0.;
             }
@@ -109,9 +80,9 @@ public:
 
 
 
-    std::array<std::vector<std::array<double, 2>>, dimension> const& getWeights() const
+    typename LinearWeighter::FineIndexWeights const& weights(Direction dir) const
     {
-        return weights_;
+        return weighters_[static_cast<std::size_t>(dir)].weights();
     }
 
 
@@ -139,132 +110,8 @@ public:
 
 private:
     SAMRAI::hier::IntVector const ratio_;
-
-    std::array<typename LinearWeighter::FineIndexWeights, dimension> weights_;
+    std::array<LinearWeighter, dimension> weighters_;
     Point<double, dimension> shifts_;
-};
-
-
-
-
-template<std::size_t dimension>
-class FieldLinearRefine
-{
-public:
-    FieldLinearRefine(std::array<QtyCentering, dimension> const& centering,
-                      SAMRAI::hier::Box const& destinationGhostBox,
-                      SAMRAI::hier::Box const& sourceGhostBox, SAMRAI::hier::IntVector const& ratio)
-        : indexesAndWeights_{centering, ratio}
-        , fineBox_{destinationGhostBox}
-        , coarseBox_{sourceGhostBox}
-        , weights_{indexesAndWeights_.getWeights()}
-    {
-    }
-
-
-    /** @brief Given a sourceField , a destinationField, and a fineIndex compute the interpolation
-     * from the coarseField(sourceField) to the fineFiled(destinationField) at the fineIndex index
-     */
-    template<typename FieldT>
-    void operator()(FieldT const& sourceField, FieldT& destinationField,
-                    Point<int, dimension> fineIndex)
-    {
-        TBOX_ASSERT(sourceField.physicalQuantities() == coarseField.physicalQuantities());
-
-        // First we get the coarseStartIndex for a given fineIndex
-        // then we get the index in weights table for a given fineIndex.
-        // After that we get the local index of coarseStartIndex and fineIndex.
-
-        // Finally we can compute the interpolation
-
-
-        Point<int, dimension> coarseStartIndex = indexesAndWeights_.coarseStartIndex(fineIndex);
-        Point<int, dimension> iWeight{indexesAndWeights_.computeWeightIndex(fineIndex)};
-
-
-
-        coarseStartIndex = AMRToLocal(coarseStartIndex, coarseBox_);
-        fineIndex        = AMRToLocal(fineIndex, fineBox_);
-
-        double fieldValue = 0.;
-
-        if constexpr (dimension == 1)
-        {
-            auto const& xStartIndex = coarseStartIndex[dirX];
-
-            auto const& xWeights = weights_[dirX][iWeight[dirX]];
-
-
-            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
-            {
-                fieldValue += sourceField(xStartIndex + iShiftX) * xWeights[iShiftX];
-            }
-
-
-            destinationField(fineIndex[dirX])
-                = fieldValue; // TODO : field should take a MeshIndex/Point (choose and kill the
-                              // other?)
-        }
-        else if constexpr (dimension == 2)
-        {
-            auto const& xStartIndex = coarseStartIndex[dirX];
-            auto const& yStartIndex = coarseStartIndex[dirY];
-
-            auto const& xWeights = weights_[dirX][iWeight[dirX]];
-            auto const& yWeights = weights_[dirY][iWeight[dirY]];
-
-
-
-            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
-            {
-                double Yinterp = 0.;
-                for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
-                {
-                    Yinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY)
-                               * yWeights[iShiftY];
-                }
-                fieldValue += Yinterp * xWeights[iShiftX];
-            }
-
-            destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
-        }
-        else if constexpr (dimension == 3)
-        {
-            auto const& xStartIndex = coarseStartIndex[dirX];
-            auto const& yStartIndex = coarseStartIndex[dirY];
-            auto const& zStartIndex = coarseStartIndex[dirZ];
-
-            auto const& xWeights = weights_[dirX][iWeight[dirX]];
-            auto const& yWeights = weights_[dirY][iWeight[dirY]];
-            auto const& zWeights = weights_[dirY][iWeight[dirZ]];
-
-
-            for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
-            {
-                double Yinterp = 0.;
-                for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
-                {
-                    double Zinterp = 0.;
-                    for (std::size_t iShiftZ = 0; iShiftZ < zWeights.size(); ++iShiftZ)
-                    {
-                        Zinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY,
-                                               zStartIndex + iShiftZ)
-                                   * zWeights[iShiftZ];
-                    }
-                    Yinterp += Zinterp * yWeights[iShiftY];
-                }
-                fieldValue += Yinterp * xWeights[iShiftX];
-            }
-
-            destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldValue;
-        }
-    }
-
-private:
-    FieldRefineIndexesAndWeights<dimension> const indexesAndWeights_;
-    SAMRAI::hier::Box const fineBox_;
-    SAMRAI::hier::Box const coarseBox_;
-    std::array<std::vector<std::array<double, 2>>, dimension> const& weights_;
 };
 
 

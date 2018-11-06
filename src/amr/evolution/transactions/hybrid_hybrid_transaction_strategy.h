@@ -3,7 +3,7 @@
 #define PHARE_HYBRID_HYBRID_TRANSACTION_STRATEGY_H
 
 #include "data/field/coarsening/field_data_coarsen.h"
-#include "data/field/refine/field_data_linear_refine.h"
+#include "data/field/refine/field_refine_operator.h"
 #include "data/field/time_interpolate/field_linear_time_interpolate.h"
 #include "data/particles/refine/particles_data_split.h"
 #include "evolution/transactions/hybrid_transaction_info.h"

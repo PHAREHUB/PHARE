@@ -3,7 +3,7 @@
 
 
 #include "data/field/field_variable.h"
-#include "data/field/refine/field_data_linear_refine.h"
+#include "data/field/refine/field_refine_operator.h"
 #include "data/grid/gridlayout.h"
 #include "test_tag_strategy.h"
 
