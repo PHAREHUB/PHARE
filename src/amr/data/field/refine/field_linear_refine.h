@@ -10,6 +10,7 @@
 #include <SAMRAI/hier/Box.h>
 
 #include <array>
+#include <unordered_map>
 #include <vector>
 
 
@@ -29,6 +30,7 @@ public:
 
 private:
     std::vector<double> distances_;
+    std::vector<int> relativeDualIndexes;
 };
 
 

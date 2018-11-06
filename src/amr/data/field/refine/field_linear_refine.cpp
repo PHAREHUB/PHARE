@@ -7,45 +7,42 @@ namespace PHARE
 UniformIntervalPartitionWeight::UniformIntervalPartitionWeight(QtyCentering centering,
                                                                std::size_t ratio,
                                                                std::size_t nbrPoints)
+
 {
     assert(nbrPoints > 1);
-
     distances_.resize(nbrPoints);
-
     bool isEvenRatio   = ratio % 2 == 0;
     auto smallCellSize = 1. / ratio;
+
+    std::iota(std::begin(distances_), std::end(distances_), 0);
 
     // when we are primal we have the coarse centering
     // that lie on top of a fine centered data
     if (centering == QtyCentering::primal)
     {
-        for (std::size_t i = 0; i < distances_.size(); ++i)
-        {
-            distances_[i] = static_cast<double>(i) / ratio;
-        }
+        std::transform(std::begin(distances_), std::end(distances_), std::begin(distances_),
+                       [ratio](auto const& v) { return static_cast<double>(v) / ratio; });
     }
     else
     {
         if (isEvenRatio)
         {
-            int const halfRatio = ratio / 2;
-            for (std::size_t i = 0; i < distances_.size(); ++i)
-            {
-                int const j = (halfRatio + i) % ratio;
-
-                distances_[j] = (1 / 2. + static_cast<double>(i)) * smallCellSize;
-            }
+            auto middle = std::begin(distances_) + distances_.size() / 2;
+            std::transform(std::begin(distances_), std::end(distances_), std::begin(distances_),
+                           [smallCellSize](auto const& v) {
+                               return (0.5 + static_cast<double>(v)) * smallCellSize;
+                           });
+            std::rotate(std::begin(distances_), middle, std::end(distances_));
         }
-        // when not evenRatio, we have  a coarse centering  that lie on top of a fine centered data
+
         else
         {
-            int const halfRatio = ratio / 2;
-            for (std::size_t i = 1; i < distances_.size(); ++i)
-            {
-                int const j = (halfRatio + i) % ratio;
+            auto middle = std::begin(distances_) + distances_.size() / 2 + 1;
+            std::transform(
+                std::begin(distances_), std::end(distances_), std::begin(distances_),
+                [smallCellSize](auto const& v) { return static_cast<double>(v) * smallCellSize; });
 
-                distances_[j] = static_cast<double>(i) / ratio;
-            }
+            std::rotate(std::begin(distances_), middle, std::end(distances_));
         }
     }
 }
