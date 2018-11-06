@@ -28,9 +28,8 @@ using testing::Eq;
 
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalEven)
 {
-    auto ratio     = 2u;
-    auto nbrPoints = ratio;
-    UniformIntervalPartitionWeight uipw{QtyCentering::primal, 2, nbrPoints};
+    auto ratio = 2u;
+    LinearWeighter uipw{QtyCentering::primal, 2};
 
     std::array<double, 2> expectedDistances{0, 0.5};
     auto const& actualDistances = uipw.getUniformDistances();
@@ -47,12 +46,12 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalOdd)
 {
     auto ratio     = 5u;
     auto nbrPoints = ratio;
-    UniformIntervalPartitionWeight uipw{QtyCentering::primal, ratio, nbrPoints};
+    LinearWeighter uipw{QtyCentering::primal, ratio};
 
     std::array<double, 5> expectedDistances{0., 1. / 5., 2. / 5., 3. / 5., 4. / 5.};
     auto const& actualDistances = uipw.getUniformDistances();
 
-    for (auto i = 0u; i < 5; ++i)
+    for (auto i = 0u; i < nbrPoints; ++i)
     {
         EXPECT_DOUBLE_EQ(expectedDistances[i], actualDistances[i]);
     }
@@ -64,7 +63,7 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForDualEven)
     auto const ratio = 4u;
     auto nbrPoints   = ratio;
 
-    UniformIntervalPartitionWeight uipw{QtyCentering::dual, ratio, nbrPoints};
+    LinearWeighter uipw{QtyCentering::dual, ratio};
 
     auto smallCellSize = 1. / ratio;
     std::array<double, 4> expectedDistances{5. / 2. * smallCellSize, 7. / 2. * smallCellSize,
@@ -85,7 +84,7 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForDualOdd)
     auto const ratio = 5u;
     auto nbrPoints   = ratio;
 
-    UniformIntervalPartitionWeight uipw{QtyCentering::dual, ratio, nbrPoints};
+    LinearWeighter uipw{QtyCentering::dual, ratio};
     auto smallCellSize = 1. / ratio;
 
     std::array<double, 5> expectedDistances{smallCellSize * 3, smallCellSize * 4, 0,
@@ -143,7 +142,7 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForPrimalEvenR
         auto expectedStartIndex = expectedStartIndexes[i];
         do
         {
-            auto startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
+            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
             std::cout << "fineIndex = " << fineIndex[dirX] << " startIndex = " << startIndex[dirX]
                       << " expected = " << expectedStartIndex[dirX] << "\n";
 
@@ -175,7 +174,7 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForPrimalOddRa
         auto expectedStartIndex = expectedStartIndexes[i];
         do
         {
-            auto startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
+            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
             std::cout << "fineIndex = " << fineIndex[dirX] << " startIndex = " << startIndex[dirX]
                       << " expected = " << expectedStartIndex[dirX] << "\n";
 
@@ -207,7 +206,7 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForDualEvenRat
         auto expectedStartIndex = expectedStartIndexes[i];
         do
         {
-            auto startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
+            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
 
             if (fineIndex[dirX] < fineIndexes[i][dirX] + ratio(dirX) / 2)
             {
@@ -251,7 +250,7 @@ TEST(AFieldLinearRefineIndexesAndWeights1D, giveACorrectStartIndexForDualOddRati
         auto expectedStartIndex = expectedStartIndexes[i];
         do
         {
-            auto startIndex = indexesAndWeights.computeStartIndexes(fineIndex);
+            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
 
             auto midCell = static_cast<int>(fineIndexes[i][dirX] + ratio(dirX) / 2);
             if (fineIndex[dirX] < midCell)

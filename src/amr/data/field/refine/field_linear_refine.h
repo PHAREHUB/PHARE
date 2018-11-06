@@ -16,21 +16,26 @@
 
 namespace PHARE
 {
-/** @brief  This class will contain uniform spaced distance in the interval 0,1
- * the distance is from the left index.
+/** @brief  This class calculates the distances of each fine index within a coarse cell
+ * from the left-most coarse index of the same kind (dual/primal)
  */
-class UniformIntervalPartitionWeight
+class LinearWeighter
 {
 public:
-    UniformIntervalPartitionWeight(QtyCentering centering, std::size_t ratio,
-                                   std::size_t nbrPoints);
+    using FineIndexWeight  = std::array<double, 2>;
+    using FineIndexWeights = std::vector<FineIndexWeight>;
 
 
-    std::vector<double> const& getUniformDistances() const { return distances_; }
+    LinearWeighter(QtyCentering centering, std::size_t ratio);
+
+
+    std::vector<double> const& getUniformDistances() const { return distFromLeftNode_; }
+
+    std::vector<std::array<double, 2>> const& weights() { return weights_; }
 
 private:
-    std::vector<double> distances_;
-    std::vector<int> relativeDualIndexes;
+    std::vector<double> distFromLeftNode_;
+    FineIndexWeights weights_;
 };
 
 
@@ -50,33 +55,10 @@ public:
                                  SAMRAI::hier::IntVector const& ratio)
         : ratio_{ratio}
     {
-        std::array<bool, dimension> isEvenRatio;
-
         for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
         {
-            isEvenRatio[iDir] = ratio(iDir) % 2 == 0;
-        }
-
-        // compute weights for each directions
-        // number of points is ratio + 1 if we are primal or odd ratio
-        // and ratio otherwise
-        for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
-        {
-            // here we extract the distances of the left index
-            // and then compute the weights : 1.-distance for the left one
-            // and distance for the right index
-            // The number of points depends on the centering, for primal or odd ratio
-            // it is ratio + 1 , for dual with evenRatio it is ratio
-            auto nbrPoints = static_cast<std::size_t>(ratio(iDir));
-
-            UniformIntervalPartitionWeight distances{
-                centering[iDir], static_cast<std::size_t>(ratio(iDir)), nbrPoints};
-
-            weights_[iDir].reserve(distances.getUniformDistances().size());
-            for (auto const& distance : distances.getUniformDistances())
-            {
-                weights_[iDir].emplace_back(std::array<double, 2>{{1. - distance, distance}});
-            }
+            LinearWeighter weighter{centering[iDir], static_cast<std::size_t>(ratio(iDir))};
+            weights_[iDir] = weighter.weights();
         }
 
         // this shift will be use to determine which coarseIndexe we take
@@ -99,7 +81,7 @@ public:
 
 
 
-    Point<int, dimension> computeStartIndexes(Point<int, dimension> fineIndex) const
+    Point<int, dimension> coarseStartIndex(Point<int, dimension> fineIndex) const
     {
         Point<int, dimension> coarseIndex{fineIndex};
 
@@ -136,7 +118,6 @@ public:
 
 
     /** @brief Compute the index of weigths for a given fineIndex
-     *
      */
     Point<int, dimension> computeWeightIndex(Point<int, dimension> fineIndex) const
     {
@@ -159,7 +140,7 @@ public:
 private:
     SAMRAI::hier::IntVector const ratio_;
 
-    std::array<std::vector<std::array<double, 2>>, dimension> weights_;
+    std::array<typename LinearWeighter::FineIndexWeights, dimension> weights_;
     Point<double, dimension> shifts_;
 };
 
@@ -197,7 +178,7 @@ public:
         // Finally we can compute the interpolation
 
 
-        Point<int, dimension> coarseStartIndex = indexesAndWeights_.computeStartIndexes(fineIndex);
+        Point<int, dimension> coarseStartIndex = indexesAndWeights_.coarseStartIndex(fineIndex);
         Point<int, dimension> iWeight{indexesAndWeights_.computeWeightIndex(fineIndex)};
 
 
