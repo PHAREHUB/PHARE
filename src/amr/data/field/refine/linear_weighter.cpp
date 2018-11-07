@@ -1,6 +1,6 @@
 #include "field_linear_refine.h"
 
-
+#include <algorithm>
 
 namespace PHARE
 {
