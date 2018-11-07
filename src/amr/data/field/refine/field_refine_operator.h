@@ -44,6 +44,9 @@ public:
         return SAMRAI::hier::IntVector::getOne(dim);
     }
 
+
+
+
     /**
      * @brief Given a  set of box on a  fine patch, compute the interpolation from
      * a coarser patch that is underneath the fine box.
@@ -56,30 +59,17 @@ public:
                 SAMRAI::hier::BoxOverlap const& destinationOverlap,
                 SAMRAI::hier::IntVector const& ratio) const override
     {
-        // cast the BoxOverlap to FieldOverlap ones;
         auto const& destinationFieldOverlap
             = dynamic_cast<FieldOverlap<dimension> const&>(destinationOverlap);
 
         auto const& overlapBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
-        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
-            destination.getPatchData(destinationComponent));
+        auto& destinationField        = getField_(destination, destinationComponent);
+        auto const& destinationLayout = getLayout_(destination, destinationComponent);
 
-        auto const sourceFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
-            source.getPatchData(sourceComponent));
+        auto const& sourceField  = getField_(source, sourceComponent);
+        auto const& sourceLayout = getLayout_(source, sourceComponent);
 
-        if (!destinationFieldData || !sourceFieldData)
-        {
-            throw std::runtime_error("Cannot cast to FieldData");
-        }
-
-        // We get layout from the fieldData
-        auto const& destinationLayout = destinationFieldData->gridLayout;
-        auto const& sourceLayout      = sourceFieldData->gridLayout;
-
-        // We get field from fieldData
-        auto& destinationField  = destinationFieldData->field;
-        auto const& sourceField = sourceFieldData->field;
 
         // We assume that quantity are the same
         // note that an assertion will be raised
@@ -88,15 +78,19 @@ public:
 
         bool const withGhost{true};
 
-        auto destbox             = destination.getBox();
         auto destinationFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             destination.getBox(), qty, destinationLayout, withGhost);
 
         auto sourceFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             source.getBox(), qty, sourceLayout, withGhost);
 
-        FieldRefiner<dimension> refineIt{destinationLayout.centering(qty), destinationFieldBox,
-                                         sourceFieldBox, ratio};
+
+
+
+        FieldRefiner<dimension> refine{destinationLayout.centering(qty), destinationFieldBox,
+                                       sourceFieldBox, ratio};
+
+
 
         for (auto const& box : overlapBoxes)
         {
@@ -105,6 +99,9 @@ public:
             // index.
             auto intersectionBox = destinationFieldBox * box;
 
+
+
+
             if constexpr (dimension == 1)
             {
                 int iStartX = intersectionBox.lower(dirX);
@@ -112,9 +109,13 @@ public:
 
                 for (int ix = iStartX; ix <= iEndX; ++ix)
                 {
-                    refineIt(sourceField, destinationField, {{ix}});
+                    refine(sourceField, destinationField, {{ix}});
                 }
             }
+
+
+
+
             else if constexpr (dimension == 2)
             {
                 int iStartX = intersectionBox.lower(dirX);
@@ -127,10 +128,14 @@ public:
                 {
                     for (int iy = iStartY; iy <= iEndY; ++iy)
                     {
-                        refineIt(sourceField, destinationField, {{ix, iy}});
+                        refine(sourceField, destinationField, {{ix, iy}});
                     }
                 }
             }
+
+
+
+
             else if constexpr (dimension == 3)
             {
                 int iStartX = intersectionBox.lower(dirX);
@@ -147,12 +152,36 @@ public:
                     {
                         for (int iz = iStartZ; iz <= iEndZ; ++iz)
                         {
-                            refineIt(sourceField, destinationField, {{ix, iy, iz}});
+                            refine(sourceField, destinationField, {{ix, iy, iz}});
                         }
                     }
                 }
             }
         }
+    }
+
+private:
+    GridLayoutT const& getLayout_(SAMRAI::hier::Patch const& patch, int id) const
+    {
+        auto const& patchData
+            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(patch.getPatchData(id));
+        if (!patchData)
+        {
+            throw std::runtime_error("cannot cast to FieldData");
+        }
+        return patchData->gridLayout;
+    }
+
+
+    FieldT& getField_(SAMRAI::hier::Patch const& patch, int id) const
+    {
+        auto const& patchData
+            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(patch.getPatchData(id));
+        if (!patchData)
+        {
+            throw std::runtime_error("cannot cast to FieldData");
+        }
+        return patchData->field;
     }
 };
 
