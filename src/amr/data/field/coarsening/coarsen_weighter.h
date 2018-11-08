@@ -1,10 +1,10 @@
 #ifndef PHARE_COARSEN_WEIGHTER_H
 #define PHARE_COARSEN_WEIGHTER_H
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <vector>
-
 
 
 namespace PHARE
