@@ -11,7 +11,7 @@ Main
 }
 PatchHierarchy
 {
-    max_levels  =   1
+    max_levels  =   2
     // vector of coarse ratio with dim dimension
     largest_patch_size
     {
