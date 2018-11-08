@@ -3,7 +3,7 @@
 
 #include <numeric>
 
-#include "data/field/coarsening/field_coarsen.h"
+#include "data/field/coarsening/field_coarsen_index_weight.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 
@@ -21,7 +21,7 @@ using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
 struct AWeighterData
 {
-    std::shared_ptr<Weight> weight;
+    std::shared_ptr<CoarsenWeighter> weight;
 };
 
 struct AWeighter : public testing::TestWithParam<AWeighterData>
@@ -35,7 +35,7 @@ struct AWeighter : public testing::TestWithParam<AWeighterData>
 
 TEST_P(AWeighter, hasSumOfWeightEqualToOne)
 {
-    auto weight = param.weight->getWeights();
+    auto weight = param.weight->weights();
 
     double totalWeight = std::accumulate(std::begin(weight), std::end(weight), 0.);
 
@@ -46,7 +46,7 @@ TEST_P(AWeighter, hasSumOfWeightEqualToOne)
 AWeighterData createWeighter(std::size_t nbrPoints)
 {
     AWeighterData weightData;
-    weightData.weight = std::make_shared<Weight>(nbrPoints);
+    weightData.weight = std::make_shared<CoarsenWeighter>(nbrPoints);
     return weightData;
 }
 

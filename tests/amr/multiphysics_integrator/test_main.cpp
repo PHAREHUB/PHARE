@@ -22,7 +22,7 @@
 
 
 #include "data/electromag/electromag.h"
-#include "data/field/coarsening/field_data_coarsen.h"
+#include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"

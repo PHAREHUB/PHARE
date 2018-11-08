@@ -2,7 +2,7 @@
 #define PHARE_TEST_LINEAR_COARSEN_H
 
 
-#include "data/field/coarsening/field_coarsen.h"
+#include "data/field/coarsening/field_coarsen_index_weight.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "gmock/gmock.h"
@@ -280,9 +280,9 @@ std::vector<FieldCoarsenTestData> createParam()
         SAMRAI::hier::IntVector ratio{dim, 2};
 
 
-        CoarsenField<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
+        FieldCoarsener<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
 
-        CoarsenField<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
+        FieldCoarsener<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
 
 
 

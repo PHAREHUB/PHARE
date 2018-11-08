@@ -7,8 +7,10 @@ set( SOURCES_INC
      data/particles/particles_data.h
      data/particles/particles_data_factory.h
      data/particles/particles_variable.h
-     data/field/coarsening/field_data_coarsen.h
-     data/field/coarsening/field_coarsen.h
+     data/field/coarsening/field_coarsen_operator.h
+     data/field/coarsening/field_coarsen_index_weight.h
+     data/field/coarsening/coarsen_weighter.h
+     data/field/coarsening/field_coarsener.h
      data/field/field_data.h
      data/field/field_data_factory.h
      data/field/field_geometry.h

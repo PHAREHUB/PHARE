@@ -44,13 +44,14 @@ public:
         : SAMRAI::hier::PatchData(domain, ghost)
         , gridLayout{std::move(layout)}
         , field(name, qty, gridLayout.allocSize(qty))
-        , quantity_{qty} {} //
+        , quantity_{qty}
+    {
+    } //
 
-              [[deprecated]] FieldData(SAMRAI::hier::Box const& domain,
-                                       SAMRAI::hier::IntVector const& ghost, std::string name,
-                                       std::array<double, dimension> const& dl,
-                                       std::array<uint32, dimension> const& nbrCells,
-                                       Point<double, dimension> const& origin, PhysicalQuantity qty)
+    [[deprecated]] FieldData(SAMRAI::hier::Box const& domain, SAMRAI::hier::IntVector const& ghost,
+                             std::string name, std::array<double, dimension> const& dl,
+                             std::array<uint32, dimension> const& nbrCells,
+                             Point<double, dimension> const& origin, PhysicalQuantity qty)
 
         : SAMRAI::hier::PatchData(domain, ghost)
         , gridLayout{dl, nbrCells, origin}
@@ -302,6 +303,30 @@ public:
 
 
     FieldImpl* getPointer() { return &field; }
+
+
+    static GridLayoutT const& getLayout(SAMRAI::hier::Patch const& patch, int id)
+    {
+        auto const& patchData
+            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(patch.getPatchData(id));
+        if (!patchData)
+        {
+            throw std::runtime_error("cannot cast to FieldData");
+        }
+        return patchData->gridLayout;
+    }
+
+
+    static FieldImpl& getField(SAMRAI::hier::Patch const& patch, int id)
+    {
+        auto const& patchData
+            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(patch.getPatchData(id));
+        if (!patchData)
+        {
+            throw std::runtime_error("cannot cast to FieldData");
+        }
+        return patchData->field;
+    }
 
 
 

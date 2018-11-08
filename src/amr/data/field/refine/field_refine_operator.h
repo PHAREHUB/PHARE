@@ -22,6 +22,7 @@ public:
     using GridLayoutImpl                   = typename GridLayoutT::implT;
     using PhysicalQuantity                 = typename FieldT::physical_quantity_type;
     static constexpr std::size_t dimension = GridLayoutT::dimension;
+    using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
 
     FieldRefineOperator()
         : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
@@ -55,7 +56,7 @@ public:
      *
      */
     void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
-                int const destinationComponent, int const sourceComponent,
+                int const destinationId, int const sourceId,
                 SAMRAI::hier::BoxOverlap const& destinationOverlap,
                 SAMRAI::hier::IntVector const& ratio) const override
     {
@@ -64,11 +65,10 @@ public:
 
         auto const& overlapBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
-        auto& destinationField        = getField_(destination, destinationComponent);
-        auto const& destinationLayout = getLayout_(destination, destinationComponent);
-
-        auto const& sourceField  = getField_(source, sourceComponent);
-        auto const& sourceLayout = getLayout_(source, sourceComponent);
+        auto& destinationField        = FieldDataT::getField(destination, destinationId);
+        auto const& destinationLayout = FieldDataT::getLayout(destination, destinationId);
+        auto const& sourceField       = FieldDataT::getField(source, sourceId);
+        auto const& sourceLayout      = FieldDataT::getLayout(source, sourceId);
 
 
         // We assume that quantity are the same
@@ -87,8 +87,8 @@ public:
 
 
 
-        FieldRefiner<dimension> refine{destinationLayout.centering(qty), destinationFieldBox,
-                                       sourceFieldBox, ratio};
+        FieldRefiner<dimension> refiner{destinationLayout.centering(qty), destinationFieldBox,
+                                        sourceFieldBox, ratio};
 
 
 
@@ -109,7 +109,7 @@ public:
 
                 for (int ix = iStartX; ix <= iEndX; ++ix)
                 {
-                    refine(sourceField, destinationField, {{ix}});
+                    refiner(sourceField, destinationField, {{ix}});
                 }
             }
 
@@ -128,7 +128,7 @@ public:
                 {
                     for (int iy = iStartY; iy <= iEndY; ++iy)
                     {
-                        refine(sourceField, destinationField, {{ix, iy}});
+                        refiner(sourceField, destinationField, {{ix, iy}});
                     }
                 }
             }
@@ -152,36 +152,12 @@ public:
                     {
                         for (int iz = iStartZ; iz <= iEndZ; ++iz)
                         {
-                            refine(sourceField, destinationField, {{ix, iy, iz}});
+                            refiner(sourceField, destinationField, {{ix, iy, iz}});
                         }
                     }
                 }
             }
         }
-    }
-
-private:
-    GridLayoutT const& getLayout_(SAMRAI::hier::Patch const& patch, int id) const
-    {
-        auto const& patchData
-            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(patch.getPatchData(id));
-        if (!patchData)
-        {
-            throw std::runtime_error("cannot cast to FieldData");
-        }
-        return patchData->gridLayout;
-    }
-
-
-    FieldT& getField_(SAMRAI::hier::Patch const& patch, int id) const
-    {
-        auto const& patchData
-            = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(patch.getPatchData(id));
-        if (!patchData)
-        {
-            throw std::runtime_error("cannot cast to FieldData");
-        }
-        return patchData->field;
     }
 };
 
