@@ -1,11 +1,6 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 
-#include <map>
-
-#include <SAMRAI/hier/Patch.h>
-#include <SAMRAI/hier/VariableDatabase.h>
-
 #include "field_resource.h"
 #include "hybrid/hybrid_quantities.h"
 #include "particle_resource.h"
@@ -13,6 +8,12 @@
 #include "resources_manager_utilities.h"
 
 
+#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/VariableDatabase.h>
+
+
+#include <map>
+#include <optional>
 
 
 namespace PHARE
@@ -107,12 +108,10 @@ template<typename GridLayoutT>
 class ResourcesManager
 {
 public:
-    ResourcesManager() = delete;
-
-    ResourcesManager(SAMRAI::tbox::Dimension const& dim)
+    ResourcesManager()
         : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
         , context_{variableDatabase_->getContext(contextName_)}
-        , dimension_{dim}
+        , dimension_{SAMRAI::tbox::Dimension{GridLayoutT::dimension}}
     {
     }
 
@@ -182,16 +181,16 @@ public:
      * we ask for them in a tuple, and recursively call allocate() for all of the unpacked elements
      */
     template<typename ResourcesUser>
-    void allocate(ResourcesUser& obj, SAMRAI::hier::Patch& patch) const
+    void allocate(ResourcesUser& obj, SAMRAI::hier::Patch& patch, double const allocateTime) const
     {
         if constexpr (has_field<ResourcesUser>::value)
         {
-            allocate_(obj, obj.getFieldNamesAndQuantities(), patch);
+            allocate_(obj, obj.getFieldNamesAndQuantities(), patch, allocateTime);
         }
 
         if constexpr (has_particles<ResourcesUser>::value)
         {
-            allocate_(obj, obj.getParticleArrayNames(), patch);
+            allocate_(obj, obj.getParticleArrayNames(), patch, allocateTime);
         }
 
         if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
@@ -199,7 +198,7 @@ public:
             auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
             for (auto& resourcesUser : resourcesUsers)
             {
-                this->allocate(resourcesUser, patch);
+                this->allocate(resourcesUser, patch, allocateTime);
             }
         }
 
@@ -209,9 +208,9 @@ public:
             auto&& subResources = obj.getCompileTimeResourcesUserList();
 
             // unpack the tuple subResources and apply for each element registerResources()
-            std::apply(
-                [this, &patch](auto&... subResource) { (this->allocate(subResource, patch), ...); },
-                subResources);
+            std::apply([this, &patch, allocateTime](auto&... subResource) //
+                       { (this->allocate(subResource, patch, allocateTime), ...); },
+                       subResources);
         }
     }
 
@@ -225,15 +224,112 @@ public:
      */
     template<typename... ResourcesUsers>
     constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
-    makeResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resoucesUsers)
+    makeResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resourcesUsers)
     {
-        return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this, resoucesUsers...};
+        return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this, resourcesUsers...};
+    }
+
+
+    template<typename ResourcesUser>
+    void setTime(ResourcesUser& obj, SAMRAI::hier::Patch const& patch, double time) const
+    {
+        auto IDs = getIDs(obj);
+        for (auto const& id : IDs)
+        {
+            auto patchdata = patch.getPatchData(id);
+            patchdata->setTime(time);
+        }
+    }
+
+
+
+    /** \brief Get all the names and resources id that the resource user
+     *  have registered via the ResourcesManager
+     */
+    template<typename ResourcesUser>
+    std::vector<int> getIDs(ResourcesUser& obj) const
+    {
+        std::vector<int> IDs;
+        this->getIDs_(obj, IDs);
+        return IDs;
+    }
+
+
+
+    /** \brief Get all the names and resources id that the resource user
+     *  have registered via the ResourcesManager
+     */
+    std::optional<int> getID(std::string const& resourceName) const
+    {
+        auto id = nameToResourceInfo_.find(resourceName);
+        if (id != std::end(nameToResourceInfo_))
+            return std::optional<int>{id->second.id};
+        else
+            return std::nullopt;
     }
 
 
 
 
 private:
+    template<typename ResourcesUser>
+    void getIDs_(ResourcesUser& obj, std::vector<int>& IDs) const
+    {
+        if constexpr (has_field<ResourcesUser>::value)
+        {
+            for (auto const& properties : obj.getFieldNamesAndQuantities())
+            {
+                auto foundIt = nameToResourceInfo_.find(properties.name);
+                if (foundIt != nameToResourceInfo_.end())
+                {
+                    IDs.push_back(foundIt->second.id);
+                }
+                else
+                {
+                    throw std::runtime_error("Cannot find " + properties.name);
+                }
+            }
+        }
+
+        if constexpr (has_particles<ResourcesUser>::value)
+        {
+            for (auto const& properties : obj.getParticleArrayNames())
+            {
+                auto foundIt = nameToResourceInfo_.find(properties.name);
+                if (foundIt != nameToResourceInfo_.end())
+                {
+                    IDs.push_back(foundIt->second.id);
+                }
+                else
+                {
+                    throw std::runtime_error("Cannot find " + properties.name);
+                }
+            }
+        }
+
+        if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
+        {
+            auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
+            for (auto& resourcesUser : resourcesUsers)
+            {
+                //
+                this->getIDs_(resourcesUser, IDs);
+            }
+        }
+
+        if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
+        {
+            // get a tuple here
+            auto&& subResources = obj.getCompileTimeResourcesUserList();
+
+            // unpack the tuple subResources and apply for each element registerResources()
+            std::apply(
+                [this, &IDs](auto&... subResource) { (this->getIDs_(subResource, IDs), ...); },
+                subResources);
+        }
+    }
+
+
     // The function getResourcesPointer_ is the one that depending
     // on NullOrResourcePtr will choose to return
     // the real pointer or a nullptr to the correct type.
@@ -321,6 +417,11 @@ private:
     template<typename ResourcesUser, typename ResourcesType>
     void registerResources_(ResourcesUser const& user)
     {
+        auto notInMap = [](auto& key, auto& map) {
+            auto foundResource = map.find(key);
+            return foundResource == std::end(map);
+        };
+
         if constexpr (isUserFieldType<GridLayoutT, ResourcesUser, ResourcesType>::value)
         {
             auto const& resourcesProperties = user.getFieldNamesAndQuantities();
@@ -329,14 +430,17 @@ private:
                 std::string const& resourcesName = properties.name;
                 auto const& qty                  = properties.qty;
 
-                ResourcesInfo info;
-                info.variable
-                    = std::make_shared<typename ResourcesType::variable_type>(resourcesName, qty);
+                if (notInMap(resourcesName, nameToResourceInfo_))
+                {
+                    ResourcesInfo info;
+                    info.variable = std::make_shared<typename ResourcesType::variable_type>(
+                        resourcesName, qty);
 
-                info.id = variableDatabase_->registerVariableAndContext(
-                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+                    info.id = variableDatabase_->registerVariableAndContext(
+                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                nameToResourceInfo_.emplace(resourcesName, info);
+                    nameToResourceInfo_.emplace(resourcesName, info);
+                }
             }
         }
 
@@ -347,14 +451,17 @@ private:
             {
                 auto const& name = properties.name;
 
-                ResourcesInfo info;
+                if (notInMap(name, nameToResourceInfo_))
+                {
+                    ResourcesInfo info;
 
-                info.variable = std::make_shared<typename ResourcesType::variable_type>(name);
+                    info.variable = std::make_shared<typename ResourcesType::variable_type>(name);
 
-                info.id = variableDatabase_->registerVariableAndContext(
-                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+                    info.id = variableDatabase_->registerVariableAndContext(
+                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                nameToResourceInfo_.emplace(name, info);
+                    nameToResourceInfo_.emplace(name, info);
+                }
             }
         }
     }
@@ -394,7 +501,7 @@ private:
     //! \brief Allocate the data on the given level
     template<typename ResourcesUser, typename ResourcesProperties>
     void allocate_(ResourcesUser const& obj, ResourcesProperties const& resourcesProperties,
-                   SAMRAI::hier::Patch& patch) const
+                   SAMRAI::hier::Patch& patch, double const allocateTime) const
     {
         for (auto const& properties : resourcesProperties)
         {
@@ -402,7 +509,7 @@ private:
             auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
             if (resourceVariablesInfo != nameToResourceInfo_.end())
             {
-                patch.allocatePatchData(resourceVariablesInfo->second.id);
+                patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
             }
             else
             {

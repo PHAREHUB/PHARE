@@ -43,7 +43,7 @@ using TestWithQuantityThatLivesOnPatchBoundary1D = FieldVariableTest1D;
 TEST_P(TestWithQuantityThatLivesOnPatchBoundary1D, ThatActualDataLivesOnPatchBoundary)
 {
     auto fieldVariable
-        = std::make_shared<FieldVariable<GridLayoutImplYee<1, 1>,
+        = std::make_shared<FieldVariable<GridLayout<GridLayoutImplYee<1, 1>>,
                                          Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
             param.qtyName, param.qty);
 
@@ -55,7 +55,7 @@ using TestWithQuantityThatLivesInsidePatchBoundary1D = FieldVariableTest1D;
 TEST_P(TestWithQuantityThatLivesInsidePatchBoundary1D, ThatActualDataLivesInsidePatchBoundary)
 {
     auto fieldVariable
-        = std::make_shared<FieldVariable<GridLayoutImplYee<1, 1>,
+        = std::make_shared<FieldVariable<GridLayout<GridLayoutImplYee<1, 1>>,
                                          Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
             param.qtyName, param.qty);
 

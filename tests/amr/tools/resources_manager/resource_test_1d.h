@@ -29,8 +29,7 @@ class aResourceUserCollection : public ::testing::Test
 {
 public:
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager{
-        SAMRAI::tbox::Dimension{1}};
+    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager;
 
     ResourcesUsers users;
 
@@ -40,17 +39,19 @@ public:
         hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
         hierarchy->init();
 
-        auto registerAndAllocate = [this](auto &resourcesUser) {
-            auto &patchHierarchy = hierarchy->hierarchy;
+        auto registerAndAllocate = [this](auto& resourcesUser) {
+            auto& patchHierarchy = hierarchy->hierarchy;
 
             resourcesManager.registerResources(resourcesUser.user);
+
+            double const initDataTime{0.0};
 
             for (int iLevel = 0; iLevel < patchHierarchy->getNumberOfLevels(); ++iLevel)
             {
                 auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
-                for (auto &patch : *patchLevel)
+                for (auto& patch : *patchLevel)
                 {
-                    resourcesManager.allocate(resourcesUser.user, *patch);
+                    resourcesManager.allocate(resourcesUser.user, *patch, initDataTime);
                 }
             }
         }; // end lambda

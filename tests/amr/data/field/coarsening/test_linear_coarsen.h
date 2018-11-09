@@ -2,7 +2,7 @@
 #define PHARE_TEST_LINEAR_COARSEN_H
 
 
-#include "data/field/coarsening/field_coarsen.h"
+#include "data/field/coarsening/field_coarsen_index_weight.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "gmock/gmock.h"
@@ -16,7 +16,7 @@ using testing::Eq;
 
 using namespace PHARE;
 
-using GridYee1DO1 = GridLayoutImplYee<1, 1>;
+using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
 
@@ -49,8 +49,8 @@ struct FieldCoarsenTestData
     int eyFineNbrCell{21 + ghostWidth * 2};
 
 
-    std::shared_ptr<GridLayout<GridYee1DO1>> coarseLayout;
-    std::shared_ptr<GridLayout<GridYee1DO1>> fineLayout;
+    std::shared_ptr<GridYee1DO1> coarseLayout;
+    std::shared_ptr<GridYee1DO1> fineLayout;
 
     std::shared_ptr<Field1D> exFineValue;
     std::shared_ptr<Field1D> eyFineValue;
@@ -66,8 +66,7 @@ struct FieldCoarsenTestData
 
     void init()
     {
-        coarseLayout = std::make_shared<GridLayout<GridYee1DO1>>(meshSizeCoarse, nbrCellCoarse,
-                                                                 coarseOrigin);
+        coarseLayout = std::make_shared<GridYee1DO1>(meshSizeCoarse, nbrCellCoarse, coarseOrigin);
 
 
         exCoarseValue
@@ -85,8 +84,7 @@ struct FieldCoarsenTestData
 
 
 
-        fineLayout
-            = std::make_shared<GridLayout<GridYee1DO1>>(meshSizeFine, nbrCellFine, fineOrigin);
+        fineLayout = std::make_shared<GridYee1DO1>(meshSizeFine, nbrCellFine, fineOrigin);
 
         exFineValue
             = std::make_shared<Field1D>("Ex", exQuantity, fineLayout->allocSize(exQuantity));
@@ -282,9 +280,9 @@ std::vector<FieldCoarsenTestData> createParam()
         SAMRAI::hier::IntVector ratio{dim, 2};
 
 
-        CoarsenField<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
+        FieldCoarsener<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
 
-        CoarsenField<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
+        FieldCoarsener<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
 
 
 

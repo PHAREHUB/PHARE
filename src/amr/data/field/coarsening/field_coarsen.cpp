@@ -1,8 +1,8 @@
-#include "field_coarsen.h"
+#include "field_coarsen_index_weight.h"
 
 namespace PHARE
 {
-double Weight::findX_(std::size_t nbrPoints) const
+double CoarsenWeighter::findX_(std::size_t nbrPoints) const
 {
     double x = 0.;
 
@@ -28,7 +28,7 @@ double Weight::findX_(std::size_t nbrPoints) const
 
 
 
-void Weight::computeWeights_(std::size_t nbrPoints)
+void CoarsenWeighter::computeWeights_(std::size_t nbrPoints)
 {
     weights_.resize(nbrPoints);
 

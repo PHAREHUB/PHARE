@@ -1,9 +1,11 @@
-#ifndef PHARE_FIELD_DATA_LINEAR_REFINE_H
-#define PHARE_FIELD_DATA_LINEAR_REFINE_H
+#ifndef PHARE_FIELD_REFINE_OPERATOR_H
+#define PHARE_FIELD_REFINE_OPERATOR_H
 
 #include "data/field/field_data.h"
 #include "data/field/field_geometry.h"
+#include "data/grid/gridlayout.h"
 #include "field_linear_refine.h"
+#include "field_refiner.h"
 
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/tbox/Dimension.h>
@@ -13,19 +15,21 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, typename FieldT,
-         typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
-class FieldDataLinearRefine : public SAMRAI::hier::RefineOperator
+template<typename GridLayoutT, typename FieldT>
+class FieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
-    static constexpr std::size_t dimension = GridLayoutImpl::dimension;
+    using GridLayoutImpl                   = typename GridLayoutT::implT;
+    using PhysicalQuantity                 = typename FieldT::physical_quantity_type;
+    static constexpr std::size_t dimension = GridLayoutT::dimension;
+    using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
 
-    FieldDataLinearRefine()
-        : SAMRAI::hier::RefineOperator{"FieldDataLinearRefineOperator"}
+    FieldRefineOperator()
+        : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
     {
     }
 
-    virtual ~FieldDataLinearRefine() = default;
+    virtual ~FieldRefineOperator() = default;
 
     /** This implementation have the top priority for refine operation
      *
@@ -41,6 +45,9 @@ public:
         return SAMRAI::hier::IntVector::getOne(dim);
     }
 
+
+
+
     /**
      * @brief Given a  set of box on a  fine patch, compute the interpolation from
      * a coarser patch that is underneath the fine box.
@@ -49,34 +56,20 @@ public:
      *
      */
     void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
-                int const destinationComponent, int const sourceComponent,
+                int const destinationId, int const sourceId,
                 SAMRAI::hier::BoxOverlap const& destinationOverlap,
                 SAMRAI::hier::IntVector const& ratio) const override
     {
-        // cast the BoxOverlap to FieldOverlap ones;
         auto const& destinationFieldOverlap
             = dynamic_cast<FieldOverlap<dimension> const&>(destinationOverlap);
 
-        auto const& destinationBoxes = destinationFieldOverlap.getDestinationBoxContainer();
+        auto const& overlapBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
-        auto destinationFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT>>(
-            destination.getPatchData(destinationComponent));
+        auto& destinationField        = FieldDataT::getField(destination, destinationId);
+        auto const& destinationLayout = FieldDataT::getLayout(destination, destinationId);
+        auto const& sourceField       = FieldDataT::getField(source, sourceId);
+        auto const& sourceLayout      = FieldDataT::getLayout(source, sourceId);
 
-        auto const sourceFieldData = std::dynamic_pointer_cast<FieldData<GridLayoutImpl, FieldT>>(
-            source.getPatchData(sourceComponent));
-
-        if (!destinationFieldData || !sourceFieldData)
-        {
-            throw std::runtime_error("Cannot cast to FieldData");
-        }
-
-        // We get layout from the fieldData
-        auto const& destinationLayout = destinationFieldData->gridLayout;
-        auto const& sourceLayout      = sourceFieldData->gridLayout;
-
-        // We get field from fieldData
-        auto& destinationField  = destinationFieldData->field;
-        auto const& sourceField = sourceFieldData->field;
 
         // We assume that quantity are the same
         // note that an assertion will be raised
@@ -85,21 +78,29 @@ public:
 
         bool const withGhost{true};
 
-        auto destinationFieldBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto destinationFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             destination.getBox(), qty, destinationLayout, withGhost);
 
-        auto sourceFieldBox = FieldGeometry<GridLayoutImpl, PhysicalQuantity>::toFieldBox(
+        auto sourceFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             source.getBox(), qty, sourceLayout, withGhost);
 
-        FieldLinearRefine<dimension> refineIt{destinationLayout.centering(qty), destinationFieldBox,
-                                              sourceFieldBox, ratio};
 
-        for (auto const& box : destinationBoxes)
+
+
+        FieldRefiner<dimension> refiner{destinationLayout.centering(qty), destinationFieldBox,
+                                        sourceFieldBox, ratio};
+
+
+
+        for (auto const& box : overlapBoxes)
         {
             // we compute the intersection with the destination,
             // and then we apply the refine operation on each fine
             // index.
             auto intersectionBox = destinationFieldBox * box;
+
+
+
 
             if constexpr (dimension == 1)
             {
@@ -108,9 +109,13 @@ public:
 
                 for (int ix = iStartX; ix <= iEndX; ++ix)
                 {
-                    refineIt(sourceField, destinationField, {{ix}});
+                    refiner(sourceField, destinationField, {{ix}});
                 }
             }
+
+
+
+
             else if constexpr (dimension == 2)
             {
                 int iStartX = intersectionBox.lower(dirX);
@@ -123,10 +128,14 @@ public:
                 {
                     for (int iy = iStartY; iy <= iEndY; ++iy)
                     {
-                        refineIt(sourceField, destinationField, {{ix, iy}});
+                        refiner(sourceField, destinationField, {{ix, iy}});
                     }
                 }
             }
+
+
+
+
             else if constexpr (dimension == 3)
             {
                 int iStartX = intersectionBox.lower(dirX);
@@ -143,7 +152,7 @@ public:
                     {
                         for (int iz = iStartZ; iz <= iEndZ; ++iz)
                         {
-                            refineIt(sourceField, destinationField, {{ix, iy, iz}});
+                            refiner(sourceField, destinationField, {{ix, iy, iz}});
                         }
                     }
                 }

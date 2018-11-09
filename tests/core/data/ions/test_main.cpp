@@ -88,13 +88,6 @@ TEST_F(theIons, throwIfAccessingDensityWhileNotUsable)
 
 
 
-TEST_F(theIons, throwIfAccessingVelocityWhileNotUsable)
-{
-    EXPECT_ANY_THROW(ions.velocity());
-}
-
-
-
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

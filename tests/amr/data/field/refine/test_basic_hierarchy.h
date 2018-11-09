@@ -3,7 +3,8 @@
 
 
 #include "data/field/field_variable.h"
-#include "data/field/refine/field_data_linear_refine.h"
+#include "data/field/refine/field_refine_operator.h"
+#include "data/grid/gridlayout.h"
 #include "test_tag_strategy.h"
 
 
@@ -102,7 +103,7 @@ public:
               dimension_, "ChopAndPackLoadBalancer",
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
-        , refineOperator_{std::make_shared<FieldDataLinearRefine<GridLayoutT, FieldT>>()}
+        , refineOperator_{std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<GridLayoutT, FieldT>>(variablesIds_,
@@ -145,10 +146,11 @@ public:
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
 
-        auto fieldVariableTypeName = typeid(FieldVariable<GridLayoutT, FieldT>).name();
+        auto fieldVariableTypeName
+            = typeid(FieldVariable<typename GridLayoutT::implT, FieldT>).name();
 
 
-        gridGeometry_->addRefineOperator(fieldVariableTypeName, refineOperator_);
+        // gridGeometry_->addRefineOperator(fieldVariableTypeName, refineOperator_);
     }
 
 

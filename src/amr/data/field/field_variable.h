@@ -5,19 +5,19 @@
 
 #include <utility>
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
+//#include "data/grid/gridlayout.h"
+//  #include "data/grid/gridlayout_impl.h"
 #include "field_data_factory.h"
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, typename FieldImpl,
+template<typename GridLayoutT, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
 class FieldVariable : public SAMRAI::hier::Variable
 {
 public:
-    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr std::size_t dimension    = GridLayoutT::dimension;
+    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
     /** \brief Construct a new variable with an unique name, and a specific PhysicalQuantity
      *
@@ -26,10 +26,9 @@ public:
      */
     FieldVariable(std::string const& name, PhysicalQuantity qty,
                   bool fineBoundaryRepresentsVariable = true)
-        : SAMRAI::hier::Variable(
-              name,
-              std::make_shared<FieldDataFactory<GridLayoutImpl, FieldImpl>>(
-                  fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name, qty))
+        : SAMRAI::hier::Variable(name, std::make_shared<FieldDataFactory<GridLayoutT, FieldImpl>>(
+                                           fineBoundaryRepresentsVariable,
+                                           computeDataLivesOnPatchBorder_(qty), name, qty))
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
         , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
     {
@@ -57,7 +56,7 @@ private:
 
     bool computeDataLivesOnPatchBorder_(PhysicalQuantity qty)
     {
-        auto const& centering = GridLayout<GridLayoutImpl>::centering(qty);
+        auto const& centering = GridLayoutT::centering(qty);
 
 
         for (auto const& qtyCentering : centering)

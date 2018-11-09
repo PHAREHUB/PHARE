@@ -3,6 +3,10 @@
 
 #include "utilities/types.h"
 
+
+
+#include <algorithm>
+
 namespace PHARE
 {
 template<uint32 lhs, uint32 rhs>
@@ -17,6 +21,22 @@ constexpr uint32 max()
         return lhs;
     }
 }
+
+
+
+template<typename Container, typename ContainedT = typename Container::value_type>
+bool notIn(ContainedT& obj, Container& list)
+{
+    auto sameItem
+        = std::find_if(std::begin(list), std::end(list), [&obj, &list](auto& currentItem) {
+              return obj->name() == currentItem->name();
+          });
+
+    return sameItem == std::end(list);
+}
+
+
+
 
 } // namespace PHARE
 

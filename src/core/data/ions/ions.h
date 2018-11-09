@@ -76,17 +76,7 @@ public:
 
 
 
-    vecfield_type const& velocity() const
-    {
-        if (isUsable())
-        {
-            return bulkVelocity_;
-        }
-        else
-        {
-            throw std::runtime_error("Error - cannot access velocity data");
-        }
-    }
+    vecfield_type const& velocity() const { return bulkVelocity_; }
 
 
     void computeDensity()
@@ -109,6 +99,9 @@ public:
 
     auto begin() { return std::begin(populations_); }
     auto end() { return std::end(populations_); }
+
+    auto begin() const { return std::begin(populations_); }
+    auto end() const { return std::end(populations_); }
 
 
     bool isUsable() const

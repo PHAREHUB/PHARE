@@ -14,13 +14,13 @@
 
 namespace PHARE
 {
-template<typename GridLayoutImpl, typename FieldImpl,
+template<typename GridLayoutT, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
 class FieldDataFactory : public SAMRAI::hier::PatchDataFactory
 {
 public:
-    static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr std::size_t dimension    = GridLayoutT::dimension;
+    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
 
     FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
@@ -56,48 +56,16 @@ public:
      */
     std ::shared_ptr<SAMRAI::hier::PatchData> allocate(SAMRAI::hier::Patch const& patch) const final
     {
-        SAMRAI::tbox::Dimension const dim{dimension};
-        //  We get geometry information from the patch, such as meshSize, and physical origin
-        auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
-            patch.getPatchGeometry());
-        Point<double, dimension> origin;
-
-        std::array<double, dimension> dl;
-
-        if (patchGeom != nullptr)
-        {
-            auto pOrigin = patchGeom->getXLower();
-            auto pDl     = patchGeom->getDx();
-
-            for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-            {
-                origin[iDim] = pOrigin[iDim];
-                dl[iDim]     = pDl[iDim];
-            }
-        }
-        else
-        {
-            // in case that the patch does not have a CartesianPatchGeometry
-            // the gridlayout will most likely throw at the construction
-            // so we may throw here instead
-            throw std::runtime_error(
-                "The geometry on the patch is not set, please verify your configuration");
-        }
-
-        SAMRAI::hier::Box domain = patch.getBox();
-
-        std::array<uint32, dimension> nbrCell;
-
-        for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-        {
-            nbrCell[iDim] = static_cast<uint32>(domain.numberCells(iDim));
-        }
+        auto const& domain = patch.getBox();
+        SAMRAI::tbox::Dimension dim{dimension};
 
 
-        // We finnaly make the FieldData with the correct parameter
 
-        return std::make_shared<FieldData<GridLayoutImpl, FieldImpl>>(
-            domain, SAMRAI::hier::IntVector{dim, 5}, name_, dl, nbrCell, origin, quantity_);
+        // We finally make the FieldData with the correct parameter
+
+        return std::make_shared<FieldData<GridLayoutT, FieldImpl>>(
+            domain, SAMRAI::hier::IntVector{dim, 5}, name_, layoutFromPatch<GridLayoutT>(patch),
+            quantity_);
     }
 
 
@@ -123,9 +91,11 @@ public:
         }
 
 
-        GridLayout<GridLayoutImpl> gridLayout(dl, nbCell, origin);
+        // dumb dl and origin, only nbCell is usefull
+        // but FieldGeometry needs to use a gridlayout instance with proper nbrCells
+        GridLayoutT gridLayout(dl, nbCell, origin);
 
-        return std::make_shared<FieldGeometry<GridLayoutImpl, PhysicalQuantity>>(
+        return std::make_shared<FieldGeometry<GridLayoutT, PhysicalQuantity>>(
             box, std::move(gridLayout), quantity_);
     }
 
@@ -149,9 +119,9 @@ public:
         }
 
         const std::size_t baseField
-            = SAMRAI::tbox::MemoryUtilities::align(sizeof(FieldData<GridLayoutImpl, FieldImpl>));
+            = SAMRAI::tbox::MemoryUtilities::align(sizeof(FieldData<GridLayoutT, FieldImpl>));
 
-        GridLayout<GridLayoutImpl> gridLayout{dl, nbCell, origin};
+        GridLayoutT gridLayout{dl, nbCell, origin};
 
 
         auto const& allocSize = gridLayout.allocSize(quantity_);

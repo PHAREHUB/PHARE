@@ -15,7 +15,7 @@ using testing::Eq;
 
 using namespace PHARE;
 
-struct AParticlesData1D : public testing::Test
+struct twoParticlesDatasTouchingPeriodicBorders : public testing::Test
 {
     SAMRAI::tbox::Dimension dimension{1};
     SAMRAI::hier::BlockId blockId{0};
@@ -51,20 +51,18 @@ struct AParticlesData1D : public testing::Test
 
     bool overwriteInterior{true};
 
-    // we want the last cell of source (cell AMR 15) to be on top of the
-    // ghost cell of dest (cell AMR -1)
-    // so the formula is dest.lower() - source.upper() - 1
-    SAMRAI::hier::Transformation transformation{
-        (destDomain.lower() - sourceDomain.upper()
-         - SAMRAI::hier::Index{SAMRAI::hier::IntVector::getOne(dimension)})};
+    SAMRAI::hier::Transformation transformation{destPdat.getGhostBox().lower()
+                                                - sourceDomain.upper()};
 
 
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
         std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
+
+
     Particle<1> particle;
 
-    AParticlesData1D()
+    twoParticlesDatasTouchingPeriodicBorders()
     {
         particle.weight = 1.0;
         particle.charge = 1.0;
@@ -73,82 +71,65 @@ struct AParticlesData1D : public testing::Test
 };
 
 
-
-
-TEST_F(AParticlesData1D, PreserveVelocityWhenCopyingWithPeriodics)
+TEST_F(twoParticlesDatasTouchingPeriodicBorders,
+       haveATransformationThatPutsUpperSourceCellOnTopOfFirstGhostSourceCell)
 {
-    particle.iCell = {{6}};
+    EXPECT_EQ(-16, transformation.getOffset()[0]);
+}
+
+
+
+TEST_F(twoParticlesDatasTouchingPeriodicBorders, canCopyUpperSourceParticlesInLowerDestGhostCell)
+{
+    auto leftDestGhostCell = -1;
+    auto upperSourceCell   = 15;
+    particle.iCell         = {{upperSourceCell}};
     sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghostParticles.size(), Eq(1));
-    ASSERT_THAT(destPdat.ghostParticles[0].v, Eq(particle.v));
+    EXPECT_THAT(destPdat.ghostParticles.size(), Eq(1));
+    EXPECT_EQ(leftDestGhostCell, destPdat.ghostParticles[0].iCell[0]);
 }
 
 
 
 
-TEST_F(AParticlesData1D, ShiftTheiCellWhenCopyingWithPeriodics)
+TEST_F(twoParticlesDatasTouchingPeriodicBorders, preserveParticleAttributesInCopies)
 {
-    particle.iCell = {{6}};
+    particle.iCell = {{15}};
     sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    std::array<int, 1> expectediCell{{0}};
+    EXPECT_THAT(destPdat.ghostParticles.size(), Eq(1));
 
-    ASSERT_THAT(destPdat.ghostParticles.size(), Eq(1));
-    ASSERT_THAT(destPdat.ghostParticles[0].iCell, Eq(expectediCell));
+    EXPECT_THAT(destPdat.ghostParticles[0].v, Eq(particle.v));
+    // EXPECT_THAT(destPdat.ghostParticles[0].iCell, Eq(-1));
+    EXPECT_THAT(destPdat.ghostParticles[0].delta, Eq(particle.delta));
+    EXPECT_THAT(destPdat.ghostParticles[0].weight, Eq(particle.weight));
+    EXPECT_THAT(destPdat.ghostParticles[0].charge, Eq(particle.charge));
+    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Ex, particle.Ex);
+    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Ey, particle.Ey);
+    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Ez, particle.Ez);
+    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Bx, particle.Bx);
+    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].By, particle.By);
+    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Bz, particle.Bz);
 }
 
 
 
-
-TEST_F(AParticlesData1D, CopyBorderSourceParticlesIntoDestGhostWithPeriodics)
+TEST_F(twoParticlesDatasTouchingPeriodicBorders,
+       CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
 {
-    particle.iCell = {{6}};
+    auto upperSourceGhostCell = 16;
+    auto lowerDestCell        = 0;
 
+    particle.iCell = {{upperSourceGhostCell}};
     sourcePdat.ghostParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    ASSERT_THAT(destPdat.ghostParticles.size(), Eq(1));
+    EXPECT_THAT(destPdat.domainParticles.size(), Eq(1));
+    EXPECT_EQ(lowerDestCell, destPdat.domainParticles[0].iCell[0]);
 }
-
-
-
-
-TEST_F(AParticlesData1D, CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
-{
-    particle.iCell = {{7}};
-    sourcePdat.ghostParticles.push_back(particle);
-    destPdat.copy(sourcePdat, *cellOverlap);
-
-    ASSERT_THAT(destPdat.domainParticles.size(), Eq(1));
-}
-
-
-
-
-TEST_F(AParticlesData1D, PreserveWeightWhenCopyingWithPeriodics)
-{
-    particle.iCell = {{6}};
-    sourcePdat.domainParticles.push_back(particle);
-    destPdat.copy(sourcePdat, *cellOverlap);
-
-    ASSERT_THAT(destPdat.ghostParticles[0].weight, Eq(particle.weight));
-}
-
-
-
-
-TEST_F(AParticlesData1D, PreserveChargeWhenCopyingWithPeriodics)
-{
-    particle.iCell = {{6}};
-    sourcePdat.domainParticles.push_back(particle);
-    destPdat.copy(sourcePdat, *cellOverlap);
-
-    ASSERT_THAT(destPdat.ghostParticles[0].charge, Eq(particle.charge));
-}
-
 
 
 
@@ -159,21 +140,15 @@ int main(int argc, char **argv)
 
 
     SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
-
     SAMRAI::tbox::SAMRAIManager::initialize();
-
     SAMRAI::tbox::SAMRAIManager::startup();
 
-
     int testResult = RUN_ALL_TESTS();
-
 
     // Finalize
 
     SAMRAI::tbox::SAMRAIManager::shutdown();
-
     SAMRAI::tbox::SAMRAIManager::finalize();
-
     SAMRAI::tbox::SAMRAI_MPI::finalize();
 
     return testResult;
