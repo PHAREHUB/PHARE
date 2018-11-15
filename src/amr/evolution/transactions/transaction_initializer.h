@@ -13,8 +13,8 @@ namespace PHARE
 class TransactionInitializer
 {
 public:
-    static void setup(ITransaction& transaction, PhysicalModel const& coarseModel,
-                      PhysicalModel const& fineModel, ISolver const& solver)
+    static void setup(ITransaction& transaction, IPhysicalModel const& coarseModel,
+                      IPhysicalModel const& fineModel, ISolver const& solver)
     {
         auto fromCoarserInfo = transaction.emptyInfoFromCoarser();
         auto fromFinerInfo   = transaction.emptyInfoFromFiner();
@@ -22,7 +22,7 @@ public:
         fineModel.fillTransactionInfo(fromFinerInfo);
         coarseModel.fillTransactionInfo(fromCoarserInfo);
 
-        transaction.setup(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+        transaction.registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
 
 
         /*

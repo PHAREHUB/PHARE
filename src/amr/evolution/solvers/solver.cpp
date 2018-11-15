@@ -11,7 +11,7 @@ bool areCompatible(ITransaction const& transaction, ISolver const& solver)
 }
 
 
-bool areCompatible(PhysicalModel const& model, ISolver const& solver)
+bool areCompatible(IPhysicalModel const& model, ISolver const& solver)
 {
     return model.name() == solver.modelName();
 }

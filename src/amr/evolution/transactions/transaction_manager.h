@@ -33,8 +33,8 @@ public:
     {
     }
 
-    std::optional<std::string> name(PhysicalModel const& coarseModel,
-                                    PhysicalModel const& fineModel) const
+    std::optional<std::string> name(IPhysicalModel const& coarseModel,
+                                    IPhysicalModel const& fineModel) const
     {
         auto finder = [&coarseModel, &fineModel](TransactionDescriptor const& desc) {
             return desc.coarseModel == coarseModel.name() && desc.fineModel == fineModel.name();
@@ -53,8 +53,8 @@ public:
     }
 
     std::unique_ptr<ITransaction> create(std::string transactionName,
-                                         PhysicalModel const& coarseModel,
-                                         PhysicalModel const& fineModel, int const firstLevel) const
+                                         IPhysicalModel const& coarseModel,
+                                         IPhysicalModel const& fineModel, int const firstLevel) const
     {
         if (transactionName == HybridHybridTransactionStrategy<HybridModel>::stratName)
         {

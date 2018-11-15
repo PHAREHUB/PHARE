@@ -35,7 +35,7 @@ public:
 
 
 template<typename GridLayoutT, typename VecFieldT>
-class MHDModel : public PhysicalModel
+class MHDModel : public IPhysicalModel
 {
 public:
     static const std::string model_name;
@@ -43,7 +43,7 @@ public:
 
 
     explicit MHDModel(std::shared_ptr<resources_manager_type> resourcesManager)
-        : PhysicalModel{model_name}
+        : IPhysicalModel{model_name}
         , resourcesManager{std::move(resourcesManager)}
     {
     }

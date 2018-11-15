@@ -22,19 +22,19 @@ public:
 
     virtual std::string modelName() const = 0;
 
-    virtual void registerResources(PhysicalModel& model) = 0;
+    virtual void registerResources(IPhysicalModel& model) = 0;
 
     virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const = 0;
 
 
     virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              int const levelNumber, PhysicalModel& model,
+                              int const levelNumber, IPhysicalModel& model,
                               ITransaction& fromCoarser, const double currentTime,
                               const double newTime)
         = 0;
 
 
-    virtual void allocate(PhysicalModel& model, SAMRAI::hier::Patch& patch,
+    virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
                           double const allocateTime) const = 0;
 
     virtual ~ISolver() = default;
@@ -52,7 +52,7 @@ protected:
 
 bool areCompatible(ITransaction const& transaction, ISolver const& solver);
 
-bool areCompatible(PhysicalModel const& model, ISolver const& solver);
+bool areCompatible(IPhysicalModel const& model, ISolver const& solver);
 
 
 

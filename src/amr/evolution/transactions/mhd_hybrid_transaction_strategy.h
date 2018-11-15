@@ -43,14 +43,15 @@ public:
 
 
 
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+    virtual void
+    registerQuantities(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
                        [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
     {
     }
 
 
-    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                          int const levelNumber) override
+    virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               int const levelNumber) override
     {
     }
 

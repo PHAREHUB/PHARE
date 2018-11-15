@@ -27,7 +27,8 @@ public:
     {
     }
 
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+    virtual void
+    registerQuantities(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
                        [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
     {
         std::unique_ptr<MHDTransactionInfo> mhdInfo{
@@ -36,8 +37,8 @@ public:
 
 
 
-    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                          int const levelNumber) override
+    virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               int const levelNumber) override
     {
     }
 
@@ -73,10 +74,10 @@ public:
     }
 
 
-    virtual void firstStep(PhysicalModel const& model) final {}
+    virtual void firstStep(IPhysicalModel const& model) final {}
 
 
-    virtual void lastStep(PhysicalModel const& model) final {}
+    virtual void lastStep(IPhysicalModel const& model) final {}
 
     virtual std::string name() override { return stratName; }
 

@@ -54,7 +54,7 @@ public:
     }
 
 
-    virtual void registerResources(PhysicalModel& model) override
+    virtual void registerResources(IPhysicalModel& model) override
     {
         auto& hmodel = dynamic_cast<HybridModel&>(model);
         hmodel.resourcesManager->registerResources(electromagPred_.E);
@@ -63,7 +63,7 @@ public:
         hmodel.resourcesManager->registerResources(electromagAvg_.B);
     }
 
-    virtual void allocate(PhysicalModel& model, SAMRAI::hier::Patch& patch,
+    virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
                           double const allocateTime) const override
     {
         auto& hmodel = dynamic_cast<HybridModel&>(model);
@@ -90,7 +90,7 @@ public:
 
 
     virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              int const levelNumber, PhysicalModel& model,
+                              int const levelNumber, IPhysicalModel& model,
                               ITransaction& fromCoarserTransaction, const double currentTime,
                               const double newTime) override
     {

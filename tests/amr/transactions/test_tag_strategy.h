@@ -57,7 +57,7 @@ public:
         model_->fillTransactionInfo(infoFromCoarser);
         solver_->fillTransactionInfo(infoFromFiner);
 
-        transaction_->setup(std::move(infoFromFiner), std::move(infoFromCoarser));
+        transaction_->registerQuantities(std::move(infoFromFiner), std::move(infoFromCoarser));
     }
 
 
@@ -84,7 +84,7 @@ public:
         }
 
 
-        transaction_->setLevel(hierarchy, levelNumber);
+        transaction_->registerLevel(hierarchy, levelNumber);
 
 
         if (oldLevel)

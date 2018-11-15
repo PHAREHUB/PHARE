@@ -18,10 +18,10 @@ class PhysicalState
 };
 
 
-class PhysicalModel
+class IPhysicalModel
 {
 protected:
-    PhysicalModel(std::string modelName)
+    IPhysicalModel(std::string modelName)
         : name_{std::move(modelName)}
     {
     }
@@ -36,7 +36,7 @@ public:
 
     virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const = 0;
 
-    virtual ~PhysicalModel() = default;
+    virtual ~IPhysicalModel() = default;
 };
 
 

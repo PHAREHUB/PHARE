@@ -223,7 +223,7 @@ class ATransactionInitializerWithHybridAndMHDModels : public ::testing::Test
 
 public:
     std::vector<std::unique_ptr<ITransaction>> transactions;
-    std::vector<std::unique_ptr<PhysicalModel>> models;
+    std::vector<std::unique_ptr<IPhysicalModel>> models;
 
     ATransactionInitializerWithHybridAndMHDModels()
     // : hybridModel{std::make_unique<HybridModelT>(getIonsInit_())}
@@ -389,7 +389,7 @@ struct ABasicHierarchyWithHybridTransactions : public ::testing::Test
         hybridModel->fillTransactionInfo(fromCoarserInfo);
         hybridModel->fillTransactionInfo(fromFinerInfo);
 
-        transaction->setup(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+        transaction->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }
 
 

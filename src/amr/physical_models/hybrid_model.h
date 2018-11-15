@@ -31,7 +31,7 @@ public:
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename IonsInitializer>
-class HybridModel : public PhysicalModel
+class HybridModel : public IPhysicalModel
 {
 public:
     static const std::string model_name;
@@ -44,7 +44,7 @@ public:
 
     HybridModel(IonsInitializer ionsInitializer,
                 std::shared_ptr<resources_manager_type> resourcesManager)
-        : PhysicalModel{model_name}
+        : IPhysicalModel{model_name}
         , state{std::move(ionsInitializer)}
         , resourcesManager{std::move(resourcesManager)}
     {

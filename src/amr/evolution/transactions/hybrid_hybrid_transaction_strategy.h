@@ -73,7 +73,7 @@ public:
      * This method creates the SAMRAI algorithms for communications associated between pairs of
      * variables. The function does not create the SAMRAI schedules since they depend on the levels
      */
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+    virtual void registerQuantities(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
                        [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
     {
         std::unique_ptr<HybridTransactionInfo> hybridInfo{
@@ -101,7 +101,7 @@ public:
      * The method takes maps associating quantityName to the pair (algo, map of schedules)
      * for each algo, it creates a bunch of associated schedules and store them in the vector
      */
-    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+    virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                           int const levelNumber) override
     {
         // update the schedules for ghost communications of the electric and magnetic field

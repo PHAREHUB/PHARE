@@ -28,16 +28,16 @@ public:
     }
 
 
-    virtual void registerResources(PhysicalModel& model) override {}
+    virtual void registerResources(IPhysicalModel& model) override {}
 
     // TODO make this a resourcesUser
-    virtual void allocate(PhysicalModel& model, SAMRAI::hier::Patch& patch,
+    virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
                           double const allocateTime) const override
     {
     }
 
     virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              int const levelNumber, PhysicalModel& model,
+                              int const levelNumber, IPhysicalModel& model,
                               ITransaction& fromCoarser, const double currentTime,
                               const double newTime) override
     {

@@ -42,6 +42,34 @@ struct LevelDescriptor
 
 
 
+/**
+ * @brief The MultiPhysicsIntegrator is given to the SAMRAI GriddingAlgorithm and is used by SAMRAI
+ * to manipulate data of patch levels for application-dependent tasks such as initializing a level
+ * or advancing a level. It inherits from SAMRAI::algs::TimeRefinementLevelStrategy and
+ * SAMRAI::mesh::StandardTagAndInitStrategy and implement the needed application-dependent
+ * operations.
+ *
+ * The MultiPhysicsIntegrator uses a pool of ITransaction, ISolver and IPhysicalModel to initialize,
+ * advance and synchronize a given level. It manipulate these abstractions and therefore does not
+ * know any details of the specific models, solvers and transactions used to manipulate a level.
+ * Each time SAMRAI calls the MultiPhysicsIntegrator to perform an action at a specific level, the
+ * MultiPhysicsIntegrator usually first has to figure out which of the ITransaction, IModel and
+ * ISolver to use.
+ *
+ * The interface of the MultiPhysicsIntegrator is composed of:
+ *
+ * - the implementations of the StandardTagAndInitStrategy and TimeRefinementLevelStrategy
+ * - methods to register the models, transactions and solvers for a given PatchHierarchy.
+ *
+ * these last methods are to be called in the following order:
+ *
+ * - registerModel() : used to register a model for a range of levels
+ * - registerAndInitSolver(): used to register and initialize a solver for a range of levels where
+ * the compatible model has been registered
+ * - registerAndSetupTransactions() : used to register the transactions associated with the
+ * registered IPhysicalModel and ISolver objects
+ *
+ */
 template<typename TransactionFactory>
 class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                public SAMRAI::algs::TimeRefinementLevelStrategy
@@ -69,23 +97,28 @@ public:
     }
 
 
+
+    /* -------------------------------------------------------------------------
+                       MultiPhysicsIntegrator proper interface
+       ------------------------------------------------------------------------- */
+
+
     auto nbrOfLevels() const { return nbrOfLevels_; }
 
 
     /**
      * @brief registerModel registers the model to the multiphysics integrator for a given level
      * range. The level index for the coarsest and finest must be greater or equal to zero, less
-     * than the nbrOfLevels().
+     * than the nbrOfLevels(). Once this method is called, the MultiPhysicsIntegrator will use this
+     * model for all levels in the given range.
      *
-     * Once this method is called, the MultiPhysicsIntegrator will use this model for all levels in
-     * the given range.
      * @param coarsestLevel is the index of the coarsest level using the model
      * @param finestLevel is the index of the finest level using the model. finestLevel >
      * coarsestModel
      * @param model the model to be registered to the MultiphysicsIntegrator. The model must not
      * have been registered already.
      */
-    void registerModel(int coarsestLevel, int finestLevel, std::shared_ptr<PhysicalModel> model)
+    void registerModel(int coarsestLevel, int finestLevel, std::shared_ptr<IPhysicalModel> model)
     {
         if (!validLevelRange_(coarsestLevel, finestLevel))
         {
@@ -189,55 +222,11 @@ public:
      */
     void registerAndSetupTransactions(TransactionFactory& transactionFactory)
     {
-        // for each pair of level register the correct transaction
-        for (auto iLevel = 0; iLevel < nbrOfLevels_; ++iLevel)
-        {
-            auto coarseLevelNumber = iLevel - 1;
-            auto fineLevelNumber   = iLevel;
-
-            if (iLevel == 0)
-            {
-                coarseLevelNumber = fineLevelNumber;
-            }
-
-            auto& coarseModel = getModel_(coarseLevelNumber);
-            auto& fineModel   = getModel_(fineLevelNumber);
-
-            registerTransaction_(transactionFactory, coarseModel, fineModel, iLevel);
-        }
+        registerTransactions_(transactionFactory);
 
         // now setup all transactions we've just created
 
-
-        auto doSetup = [this](auto iLevel, auto& transaction) {
-            auto coarseLevelNumber = iLevel - 1;
-            auto fineLevelNumber   = iLevel;
-
-            if (iLevel == 0)
-            {
-                coarseLevelNumber = fineLevelNumber;
-            }
-
-            auto& coarseModel = getModel_(coarseLevelNumber);
-            auto& fineModel   = getModel_(fineLevelNumber);
-            auto& solver      = getSolver_(iLevel);
-
-            TransactionInitializer::setup(transaction, coarseModel, fineModel, solver);
-        };
-
-
-
-        auto transactionName = levelDescriptors_[0].transactionName;
-        doSetup(0, getTransactionWithCoarser_(0));
-
-        for (auto iLevel = 1; iLevel < nbrOfLevels_; ++iLevel)
-        {
-            if (transactionName != levelDescriptors_[iLevel].transactionName)
-            {
-                transactionName = levelDescriptors_[iLevel].transactionName;
-                doSetup(iLevel, getTransactionWithCoarser_(iLevel));
-            }
-        }
+        setupTransactions_();
     }
 
 
@@ -293,7 +282,7 @@ public:
 
 
 
-        transaction.setLevel(hierarchy, levelNumber);
+        transaction.registerLevel(hierarchy, levelNumber);
 
         // on est en train de changer la hierarchy soit en créant un nouveau niveau (finest)
         // soit en regriddant un niveau.
@@ -469,7 +458,7 @@ private:
     int nbrOfLevels_;
     std::vector<LevelDescriptor> levelDescriptors_;
     std::vector<std::unique_ptr<ISolver>> solvers_;
-    std::vector<std::shared_ptr<PhysicalModel>> models_;
+    std::vector<std::shared_ptr<IPhysicalModel>> models_;
     std::map<std::string, std::unique_ptr<ITransaction>> transactions_;
 
 
@@ -483,8 +472,30 @@ private:
     }
 
 
+
+    void registerTransactions_(TransactionFactory& transactionFactory)
+    {
+        for (auto iLevel = 0; iLevel < nbrOfLevels_; ++iLevel)
+        {
+            auto coarseLevelNumber = iLevel - 1;
+            auto fineLevelNumber   = iLevel;
+
+            if (iLevel == 0)
+            {
+                coarseLevelNumber = fineLevelNumber;
+            }
+
+            auto& coarseModel = getModel_(coarseLevelNumber);
+            auto& fineModel   = getModel_(fineLevelNumber);
+
+            registerTransaction_(transactionFactory, coarseModel, fineModel, iLevel);
+        }
+    }
+
+
+
     void registerTransaction_(TransactionFactory const& transactions,
-                              PhysicalModel const& coarseModel, PhysicalModel const& fineModel,
+                              IPhysicalModel const& coarseModel, IPhysicalModel const& fineModel,
                               int iLevel)
     {
         if (auto transactionName = transactions.name(coarseModel, fineModel); transactionName)
@@ -506,11 +517,52 @@ private:
 
 
 
+
+    void setupTransaction_(int iLevel, ITransaction& transaction)
+    {
+        auto coarseLevelNumber = iLevel - 1;
+        auto fineLevelNumber   = iLevel;
+
+        if (iLevel == 0)
+        {
+            coarseLevelNumber = fineLevelNumber;
+        }
+
+        auto& coarseModel = getModel_(coarseLevelNumber);
+        auto& fineModel   = getModel_(fineLevelNumber);
+        auto& solver      = getSolver_(iLevel);
+
+        TransactionInitializer::setup(transaction, coarseModel, fineModel, solver);
+    }
+
+
+
+
+    void setupTransactions_()
+    {
+        auto transactionName = levelDescriptors_[0].transactionName;
+        setupTransaction_(0, getTransactionWithCoarser_(0));
+
+        for (auto iLevel = 1; iLevel < nbrOfLevels_; ++iLevel)
+        {
+            if (transactionName != levelDescriptors_[iLevel].transactionName)
+            {
+                transactionName = levelDescriptors_[iLevel].transactionName;
+                setupTransaction_(iLevel, getTransactionWithCoarser_(iLevel));
+            }
+        }
+    }
+
+
+
+
     ISolver& getSolver_(int iLevel)
     {
         return const_cast<ISolver&>(
             const_cast<std::remove_pointer_t<decltype(this)> const*>(this)->getSolver_(iLevel));
     }
+
+
 
 
     ISolver const& getSolver_(int iLevel) const
@@ -520,17 +572,25 @@ private:
     }
 
 
-    PhysicalModel& getModel_(int iLevel)
+
+
+    IPhysicalModel& getModel_(int iLevel)
     {
-        return const_cast<PhysicalModel&>(
+        return const_cast<IPhysicalModel&>(
             const_cast<std::remove_pointer_t<decltype(this)> const*>(this)->getModel_(iLevel));
     }
 
-    PhysicalModel const& getModel_(int iLevel) const
+
+
+
+    IPhysicalModel const& getModel_(int iLevel) const
     {
         auto& descriptor = levelDescriptors_[iLevel];
         return *models_[descriptor.modelIndex];
     }
+
+
+
 
     ITransaction& getTransactionWithCoarser_(int iLevel)
     {

@@ -35,7 +35,8 @@ public:
      * levels. The method is called by a HybridTransaction::allocate() and its concrete
      * implementation is found in concrete strategies
      */
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
+    virtual void
+    registerQuantities(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
                        [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo)
         = 0;
 
@@ -44,8 +45,8 @@ public:
     virtual std::unique_ptr<ITransactionInfo> emptyInfoFromFiner()   = 0;
 
 
-    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                          int const levelNumber)
+    virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               int const levelNumber)
         = 0;
 
     virtual void
