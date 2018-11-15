@@ -93,7 +93,7 @@ public:
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
         , refineOperator_{std::make_shared<
-              ParticlesDataSplitOperator<dimension, interpOrder, splitType, refinedParticlesNbr,
+              ParticlesRefineOperator<dimension, interpOrder, splitType, refinedParticlesNbr,
                                          Split<dimension, interpOrder>>>()}
 
 

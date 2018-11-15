@@ -112,6 +112,9 @@ bool isInBox(SAMRAI::hier::Box const& box, Particle<1> const& particle);*/
  *
  */
 template<std::size_t dim>
+/**
+ * @brief The ParticlesData class
+ */
 class ParticlesData : public SAMRAI::hier::PatchData
 {
 public:

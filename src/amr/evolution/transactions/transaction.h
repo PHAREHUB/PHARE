@@ -13,6 +13,21 @@
 
 namespace PHARE
 {
+/**
+ * @brief The ITransaction class is an interface used to communicate data between patches and level.
+ * It is used by the MultiPhysicsIntegrator and the ISolver objects. ITransaction ...
+ *
+ * By hiding all the details related to SAMRAI algorithms and schedules, and by providing a simple
+ * interface, ITransaction makes possible to perform communications in the MultiPhysicsIntegrator or
+ * ISolver without polluting their code with SAMRAI details.
+ *
+ *
+ * The MultiPhysicsIntegrator will use abstract ITransaction objects mainly to:
+ *  - regrid a level (see regrid method), without knowing which data has to be set on the reggrided
+ * level and from which data it is obtained.
+ *  - intiallize a level (see initLevel method) without knowing which data is to be initialized
+ *
+ */
 class ITransaction
 {
 public:
@@ -25,9 +40,11 @@ public:
     /**
      * @brief allocate is used to allocate resources used internally by the concrete ITransaction.
      *
-     * Typical internal resources owned by an ITransactions are temporal temporary versions
-     * of model variable used for time interpolations. Other kind of internal resources can be
-     * temporary variables used in multi-model transactions involving quantities of different nature
+     * This routine will be typically called by the MultiPhysicsIntegrator while in
+     * initializeLevelData. Typical internal resources owned by an ITransactions are temporal
+     * temporary versions of model variable used for time interpolations. Other kind of internal
+     * resources can be temporary variables used in multi-model transactions involving quantities of
+     * different nature
      *
      * @param patch is the samrai Patch onto which we want to allocate the data
      * @param allocateTime is the time at which data is allocated

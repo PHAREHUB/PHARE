@@ -24,7 +24,9 @@ class FieldDataInternals
 };
 
 
-
+/**@brief FieldData is the specialization of SAMRAI::hier::PatchData to Field objects
+ *
+ */
 template<typename GridLayoutT, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
 class FieldData : public SAMRAI::hier::PatchData

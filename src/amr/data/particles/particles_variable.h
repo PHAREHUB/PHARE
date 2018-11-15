@@ -8,6 +8,9 @@
 namespace PHARE
 {
 template<std::size_t dim>
+/**
+ * @brief The ParticlesVariable class
+ */
 class ParticlesVariable : public SAMRAI::hier::Variable
 {
 public:

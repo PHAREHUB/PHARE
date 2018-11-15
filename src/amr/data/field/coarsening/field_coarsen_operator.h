@@ -19,25 +19,28 @@ namespace PHARE
 //
 template<typename GridLayoutT, typename FieldT,
          typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
-class FieldDataCoarsen : public SAMRAI::hier::CoarsenOperator
+/**
+ * @brief The FieldCoarsenOperator class
+ */
+class FieldCoarsenOperator : public SAMRAI::hier::CoarsenOperator
 {
 public:
     static constexpr std::size_t dimension = GridLayoutT::dimension;
     static constexpr std::size_t maxRafinement{10};
     using FieldDataT = FieldData<GridLayoutT, FieldT>;
 
-    FieldDataCoarsen()
+    FieldCoarsenOperator()
         : SAMRAI::hier::CoarsenOperator("FieldDataCoarsenOperator")
     {
     }
 
-    FieldDataCoarsen(FieldDataCoarsen const&) = delete;
-    FieldDataCoarsen(FieldDataCoarsen&&)      = delete;
-    FieldDataCoarsen& operator=(FieldDataCoarsen const&) = delete;
-    FieldDataCoarsen&& operator=(FieldDataCoarsen&&) = delete;
+    FieldCoarsenOperator(FieldCoarsenOperator const&) = delete;
+    FieldCoarsenOperator(FieldCoarsenOperator&&)      = delete;
+    FieldCoarsenOperator& operator=(FieldCoarsenOperator const&) = delete;
+    FieldCoarsenOperator&& operator=(FieldCoarsenOperator&&) = delete;
 
 
-    virtual ~FieldDataCoarsen() = default;
+    virtual ~FieldCoarsenOperator() = default;
 
 
 

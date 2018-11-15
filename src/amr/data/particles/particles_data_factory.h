@@ -14,6 +14,9 @@
 namespace PHARE
 {
 template<std::size_t dim>
+/**
+ * @brief The ParticlesDataFactory class
+ */
 class ParticlesDataFactory : public SAMRAI::hier::PatchDataFactory
 
 {
