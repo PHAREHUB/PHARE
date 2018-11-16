@@ -8,7 +8,7 @@ PHARE is a Parallel Hybrid code with Adaptive Mesh REfinement.
 The PHARE project is divided into:
 
 - [core](core.md) : package which gathers all the source code completely independent of the AMR library (here SAMRAI). In particular [core](core.md) will contain all numerical, physics, I/O etc.
-- [amr](amr.md) : package that depends on the [core](core.md) package and on the AMR library SAMRAI. [AMR](amr.md) contains low-level code that specializes SAMRAI abstract clases (PatchData, RefineOperator, etc.) and code that provides a high-level interface to easily manipulate an abstract AMR hierarchy of plasma models (Transactions, MultiPhysicsIntegrator, etc.) and hides SAMRAI details (e.g. ResourcesManager).
+- [amr](amr.md) : package that depends on the [core](core.md) package and on the AMR library SAMRAI. [AMR](amr.md) contains low-level code that specializes SAMRAI abstract clases (PatchData, RefineOperator, etc.) and code that provides a high-level interface to easily manipulate an abstract AMR hierarchy of plasma models (Messengers, MultiPhysicsIntegrator, etc.) and hides SAMRAI details (e.g. ResourcesManager).
 - **tests** (phare/tests) :  groups all tests under the same directory hierarchy as the source code.
 
 ## Build

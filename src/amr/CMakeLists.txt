@@ -31,18 +31,17 @@ set( SOURCES_INC
      evolution/solvers/solver.h
      evolution/solvers/solver_ppc.h
      evolution/solvers/solver_mhd.h
-     evolution/transactions/transaction.h
-     evolution/transactions/hybrid_transaction.h
-     evolution/transactions/hybrid_transaction_strategy.h
-     evolution/transactions/hybrid_hybrid_transaction_strategy.h
-     evolution/transactions/mhd_hybrid_transaction_strategy.h
-     evolution/transactions/mhd_transaction.h
-     evolution/transactions/transaction_manager.h
-     evolution/transactions/transaction_factory.h
-     evolution/transactions/transaction_initializer.h
-     evolution/transactions/transaction_info.h
-     evolution/transactions/hybrid_transaction_info.h
-     evolution/transactions/mhd_transaction_info.h
+     evolution/messengers/messenger.h
+     evolution/messengers/hybrid_messenger.h
+     evolution/messengers/hybrid_messenger_strategy.h
+     evolution/messengers/hybrid_hybrid_messenger_strategy.h
+     evolution/messengers/mhd_hybrid_messenger_strategy.h
+     evolution/messengers/mhd_messenger.h
+     evolution/messengers/messenger_factory.h
+     evolution/messengers/messenger_initializer.h
+     evolution/messengers/messenger_info.h
+     evolution/messengers/hybrid_messenger_info.h
+     evolution/messengers/mhd_messenger_info.h
      physical_models/physical_model.h
      physical_models/hybrid_model.h
      physical_models/mhd_model.h
@@ -52,7 +51,7 @@ set( SOURCES_CPP
      data/particles/refine/split.cpp
      tools/amr_utils.cpp
      evolution/solvers/solver.cpp
-     evolution/transactions/transaction.cpp
+     evolution/messengers/messenger.cpp
      data/field/coarsening/field_coarsen.cpp
      tools/resources_manager.cpp
    )

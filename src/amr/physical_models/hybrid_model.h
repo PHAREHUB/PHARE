@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "evolution/transactions/hybrid_transaction_info.h"
+#include "evolution/messengers/hybrid_messenger_info.h"
 #include "physical_models/physical_model.h"
 #include "tools/resources_manager.h"
 
@@ -51,9 +51,9 @@ public:
     }
 
 
-    virtual std::unique_ptr<ITransactionInfo> transactionInfo() const override
+    virtual std::unique_ptr<IMessengerInfo> messengerInfo() const override
     {
-        auto info = std::make_unique<HybridTransactionInfo>();
+        auto info = std::make_unique<HybridMessengerInfo>();
 
         // info->electricGhostNames = state.electromag.E.getComponentNames();
         // info->magneticGhostNames = state.electromag.B.getComponentNames();
@@ -86,10 +86,10 @@ public:
     }
 
 
-    virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const override
+    virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const override
     {
         //
-        auto& modelInfo = dynamic_cast<HybridTransactionInfo&>(*info);
+        auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
         auto magneticComponentNames = extractNames(state.electromag.B);
         auto electricComponentNames = extractNames(state.electromag.E);

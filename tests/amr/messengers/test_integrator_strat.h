@@ -57,7 +57,7 @@ public:
         const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy, const int coarsestLevel,
         const int finestLevel, const double syncTime, const std::vector<double>& oldTimes) override
     {
-        // TODO use transactions to sync with coarser
+        // TODO use messengers to sync with coarser
     }
 
     virtual void

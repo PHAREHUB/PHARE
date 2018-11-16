@@ -9,7 +9,7 @@
 
 #include <SAMRAI/hier/Patch.h>
 
-#include "evolution/transactions/transaction_info.h"
+#include "evolution/messengers/messenger_info.h"
 
 namespace PHARE
 {
@@ -30,11 +30,11 @@ protected:
     std::string name_;
 
 public:
-    virtual std::unique_ptr<ITransactionInfo> transactionInfo() const = 0;
+    virtual std::unique_ptr<IMessengerInfo> messengerInfo() const = 0;
     std::string name() const { return name_; }
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) = 0;
 
-    virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const = 0;
+    virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const = 0;
 
     virtual ~IPhysicalModel() = default;
 };

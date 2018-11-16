@@ -8,11 +8,11 @@
 #include "data/ndarray/ndarray_vector.h"
 #include "data/particles/particle_array.h"
 #include "data/vecfield/vecfield.h"
+#include "evolution/messengers/hybrid_messenger.h"
+#include "evolution/messengers/messenger_factory.h"
+#include "evolution/messengers/messenger_initializer.h"
 #include "evolution/solvers/solver_mhd.h"
 #include "evolution/solvers/solver_ppc.h"
-#include "evolution/transactions/hybrid_transaction.h"
-#include "evolution/transactions/transaction_initializer.h"
-#include "evolution/transactions/transaction_manager.h"
 #include "hybrid/hybrid_quantities.h"
 #include "physical_models/hybrid_model.h"
 #include "test_basichierarchy.h"
@@ -85,7 +85,7 @@ std::array<double, 3> thermalVelocity(double x)
 }
 
 
-TEST(anHybridTransaction, hasACorrectName)
+TEST(anHybridMessenger, hasACorrectName)
 {
     auto getIonsInit_ = []() {
         IonsInit1D ionsInit;
@@ -115,14 +115,14 @@ TEST(anHybridTransaction, hasACorrectName)
     MHDModel<GridYee1D, VecField1D> mhdModel{};
 
 
-    using hybhybStratT = HybridHybridTransactionStrategy<decltype(hybridModel)>;
-    using mhdhybStratT = MHDHybridTransactionStrategy<decltype(mhdModel), decltype(hybridModel)>;
+    using hybhybStratT = HybridHybridMessengerStrategy<decltype(hybridModel)>;
+    using mhdhybStratT = MHDHybridMessengerStrategy<decltype(mhdModel), decltype(hybridModel)>;
 
 
     auto hybhybstrat = std::make_unique<hybhybStratT>();
 
-    std::unique_ptr<ITransaction> ht
-        = std::make_unique<HybridTransaction<decltype(hybridModel)>>(std::move(hybhybstrat));
+    std::unique_ptr<IMessenger> ht
+        = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(hybhybstrat));
 
 
     EXPECT_EQ(std::string{"Hybird-Hybrid"}, ht->name());
@@ -130,7 +130,7 @@ TEST(anHybridTransaction, hasACorrectName)
 
     auto mhdstrat = std::make_unique<mhdhybStratT>();
 
-    ht = std::make_unique<HybridTransaction<decltype(hybridModel)>>(std::move(mhdstrat));
+    ht = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(mhdstrat));
 
 
     EXPECT_EQ(std::string{"MHD-Hybrid"}, ht->name());
@@ -139,32 +139,32 @@ TEST(anHybridTransaction, hasACorrectName)
 #endif
 
 /*
-TEST(aHybridHybridTransaction, returnsHybridCoarseAndFineModelNames)
+TEST(aHybridHybridMessenger, returnsHybridCoarseAndFineModelNames)
 {
-    auto strat       = std::make_unique<HybridHybridTransactionStrategy<HybridModelT>>();
-    auto transaction = std::make_unique<HybridTransaction<HybridModelT>>(std::move(strat));
+    auto strat       = std::make_unique<HybridHybridMessengerStrategy<HybridModelT>>();
+    auto messenger = std::make_unique<HybridMessenger<HybridModelT>>(std::move(strat));
 
-    EXPECT_EQ(HybridModelT::model_name, transaction->coarseModelName());
-    EXPECT_EQ(HybridModelT::model_name, transaction->fineModelName());
+    EXPECT_EQ(HybridModelT::model_name, messenger->coarseModelName());
+    EXPECT_EQ(HybridModelT::model_name, messenger->fineModelName());
 }
 
 
-TEST(aMHDHybridTransaction, returnsMHDCoarseAndHybridFineModelNames)
+TEST(aMHDHybridMessenger, returnsMHDCoarseAndHybridFineModelNames)
 {
-    auto strat       = std::make_unique<MHDHybridTransactionStrategy<MHDModelT, HybridModelT>>();
-    auto transaction = std::make_unique<HybridTransaction<HybridModelT>>(std::move(strat));
+    auto strat       = std::make_unique<MHDHybridMessengerStrategy<MHDModelT, HybridModelT>>();
+    auto messenger = std::make_unique<HybridMessenger<HybridModelT>>(std::move(strat));
 
-    EXPECT_EQ(MHDModelT::model_name, transaction->coarseModelName());
-    EXPECT_EQ(HybridModelT::model_name, transaction->fineModelName());
+    EXPECT_EQ(MHDModelT::model_name, messenger->coarseModelName());
+    EXPECT_EQ(HybridModelT::model_name, messenger->fineModelName());
 }
 
 
-TEST(aMHDMHDTransaction, returnsMHDCoarseAndFineModelNames)
+TEST(aMHDMHDMessenger, returnsMHDCoarseAndFineModelNames)
 {
-    auto transaction = std::make_unique<MHDTransaction<MHDModelT>>();
+    auto messenger = std::make_unique<MHDMessenger<MHDModelT>>();
 
-    EXPECT_EQ(MHDModelT::model_name, transaction->coarseModelName());
-    EXPECT_EQ(MHDModelT::model_name, transaction->fineModelName());
+    EXPECT_EQ(MHDModelT::model_name, messenger->coarseModelName());
+    EXPECT_EQ(MHDModelT::model_name, messenger->fineModelName());
 }
 */
 
@@ -214,23 +214,23 @@ auto getIonsInit() // TODO refactor this getIonInit used in several tests
 
 
 
-class ATransactionInitializerWithHybridAndMHDModels : public ::testing::Test
+class AMessengerInitializerWithHybridAndMHDModels : public ::testing::Test
 {
-    std::vector<TransactionDescriptor> descriptors{
+    std::vector<MessengerDescriptor> descriptors{
         {"MHDModel", "MHDModel"}, {"MHDModel", "HybridModel"}, {"HybridModel", "HybridModel"}};
-    TransactionFactory<MHDModelT, HybridModelT> transactionFactory{descriptors};
+    MessengerFactory<MHDModelT, HybridModelT> messengerFactory{descriptors};
 
 
 public:
-    std::vector<std::unique_ptr<ITransaction>> transactions;
+    std::vector<std::unique_ptr<IMessenger>> messengers;
     std::vector<std::unique_ptr<IPhysicalModel>> models;
 
-    ATransactionInitializerWithHybridAndMHDModels()
+    AMessengerInitializerWithHybridAndMHDModels()
     // : hybridModel{std::make_unique<HybridModelT>(getIonsInit_())}
     //,mhdModel{std::make_unique<MHDModelT>()}
-    //, mhdmhdTransaction{transactionManager.create("MHDModel-MHDModel")}
-    //, mhdHybridTransaction{transactionManager.create("MHDModel-HybridModel")}
-    //, hybridHybridTransaction{transactionManager.create("HybridModel-HybridModel")}
+    //, mhdmhdMessenger{messengerManager.create("MHDModel-MHDModel")}
+    //, mhdHybridMessenger{messengerManager.create("MHDModel-HybridModel")}
+    //, hybridHybridMessenger{messengerManager.create("HybridModel-HybridModel")}
 
     {
         auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
@@ -249,21 +249,21 @@ public:
         models.push_back(std::move(hybridModel));
 
 
-        auto mhdmhdTransaction{
-            transactionFactory.create("MHDModel-MHDModel", *models[0], *models[0], 0)};
-        auto mhdHybridTransaction{
-            transactionFactory.create("MHDModel-HybridModel", *models[0], *models[1], 2)};
-        auto hybridHybridTransaction{
-            transactionFactory.create("HybridModel-HybridModel", *models[1], *models[1], 3)};
+        auto mhdmhdMessenger{
+            messengerFactory.create("MHDModel-MHDModel", *models[0], *models[0], 0)};
+        auto mhdHybridMessenger{
+            messengerFactory.create("MHDModel-HybridModel", *models[0], *models[1], 2)};
+        auto hybridHybridMessenger{
+            messengerFactory.create("HybridModel-HybridModel", *models[1], *models[1], 3)};
 
-        transactions.push_back(std::move(mhdmhdTransaction));
-        transactions.push_back(std::move(mhdHybridTransaction));
-        transactions.push_back(std::move(hybridHybridTransaction));
+        messengers.push_back(std::move(mhdmhdMessenger));
+        messengers.push_back(std::move(mhdHybridMessenger));
+        messengers.push_back(std::move(hybridHybridMessenger));
     }
 
-    TransactionInitializer initializer;
+    MessengerInitializer initializer;
 
-    virtual ~ATransactionInitializerWithHybridAndMHDModels()
+    virtual ~AMessengerInitializerWithHybridAndMHDModels()
     {
         auto db = SAMRAI::hier::VariableDatabase::getDatabase();
 
@@ -339,23 +339,23 @@ public:
 
 
 
-TEST_F(ATransactionInitializerWithHybridAndMHDModels, canInitializeMHDandHybridTransactions)
+TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDandHybridMessengers)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     auto mhdSolver    = std::make_unique<SolverMHD<MHDModelT>>();
 
 
-    TransactionInitializer::setup(*transactions[0], *models[0], *models[0], *mhdSolver);
-    TransactionInitializer::setup(*transactions[1], *models[0], *models[1], *hybridSolver);
-    TransactionInitializer::setup(*transactions[2], *models[1], *models[1], *hybridSolver);
+    MessengerInitializer::setup(*messengers[0], *models[0], *models[0], *mhdSolver);
+    MessengerInitializer::setup(*messengers[1], *models[0], *models[1], *hybridSolver);
+    MessengerInitializer::setup(*messengers[2], *models[1], *models[1], *hybridSolver);
 }
 
 
 
-struct ABasicHierarchyWithHybridTransactions : public ::testing::Test
+struct ABasicHierarchyWithHybridMessenger : public ::testing::Test
 {
     int const firstHybLevel{0};
-    using HybridHybridT = HybridHybridTransactionStrategy<HybridModelT>;
+    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT>;
 
 
 
@@ -366,34 +366,34 @@ struct ABasicHierarchyWithHybridTransactions : public ::testing::Test
         std::make_shared<HybridModelT>(getIonsInit(), resourcesManagerHybrid)};
 
 
-    std::unique_ptr<HybridTransactionStrategy<HybridModelT>> hybhybStrat{
+    std::unique_ptr<HybridMessengerStrategy<HybridModelT>> hybhybStrat{
         std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
 
-    std::shared_ptr<HybridTransaction<HybridModelT>> transaction{
-        std::make_shared<HybridTransaction<HybridModelT>>(std::move(hybhybStrat))};
+    std::shared_ptr<HybridMessenger<HybridModelT>> messenger{
+        std::make_shared<HybridMessenger<HybridModelT>>(std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT>> solver{std::make_shared<SolverPPC<HybridModelT>>()};
 
 
 
 
-    ABasicHierarchyWithHybridTransactions()
+    ABasicHierarchyWithHybridMessenger()
     {
         hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
         hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
         solver->registerResources(*hybridModel);
 
-        auto fromCoarserInfo = transaction->emptyInfoFromCoarser();
-        auto fromFinerInfo   = transaction->emptyInfoFromFiner();
+        auto fromCoarserInfo = messenger->emptyInfoFromCoarser();
+        auto fromFinerInfo   = messenger->emptyInfoFromFiner();
 
-        hybridModel->fillTransactionInfo(fromCoarserInfo);
-        hybridModel->fillTransactionInfo(fromFinerInfo);
+        hybridModel->fillMessengerInfo(fromCoarserInfo);
+        hybridModel->fillMessengerInfo(fromFinerInfo);
 
-        transaction->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+        messenger->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }
 
 
-    ~ABasicHierarchyWithHybridTransactions()
+    ~ABasicHierarchyWithHybridMessenger()
     {
         auto db = SAMRAI::hier::VariableDatabase::getDatabase();
 
@@ -471,9 +471,9 @@ struct ABasicHierarchyWithHybridTransactions : public ::testing::Test
 
 
 
-TEST_F(ABasicHierarchyWithHybridTransactions, initializesRefinedLevels)
+TEST_F(ABasicHierarchyWithHybridMessenger, initializesRefinedLevels)
 {
-    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, transaction);
+    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
     short unsigned const dimension = 1;
 
@@ -534,9 +534,9 @@ TEST_F(ABasicHierarchyWithHybridTransactions, initializesRefinedLevels)
 
 
 
-TEST_F(ABasicHierarchyWithHybridTransactions, initializesNewLevelDuringRegrid)
+TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewLevelDuringRegrid)
 {
-    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, transaction);
+    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
     short unsigned const dimension = 1;
 
@@ -606,9 +606,9 @@ TEST_F(ABasicHierarchyWithHybridTransactions, initializesNewLevelDuringRegrid)
 
 
 
-TEST_F(ABasicHierarchyWithHybridTransactions, initializesNewFinestLevelAfterRegrid)
+TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewFinestLevelAfterRegrid)
 {
-    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, transaction);
+    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
     short unsigned const dimension = 1;
 
@@ -621,9 +621,9 @@ TEST_F(ABasicHierarchyWithHybridTransactions, initializesNewFinestLevelAfterRegr
 
 
 
-TEST_F(ABasicHierarchyWithHybridTransactions, fillsRefinedLevelGhosts)
+TEST_F(ABasicHierarchyWithHybridMessenger, fillsRefinedLevelGhosts)
 {
-    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, transaction);
+    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
     short unsigned const dimension = 1;
     auto newTime                   = 1.;
@@ -718,8 +718,8 @@ TEST_F(ABasicHierarchyWithHybridTransactions, fillsRefinedLevelGhosts)
         }
     */
 
-    transaction->fillElectricGhosts(hybridModel->state.electromag.E, 3, newTime * 0.5);
-    transaction->fillMagneticGhosts(hybridModel->state.electromag.B, 3, newTime * 0.5);
+    messenger->fillElectricGhosts(hybridModel->state.electromag.E, 3, newTime * 0.5);
+    messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 3, newTime * 0.5);
 
 
     auto iLevel = 3;
@@ -800,9 +800,9 @@ TEST_F(ABasicHierarchyWithHybridTransactions, fillsRefinedLevelGhosts)
 
 
 
-TEST_F(ABasicHierarchyWithHybridTransactions, fillsRefinedLevelGhostsAfterRegrid)
+TEST_F(ABasicHierarchyWithHybridMessenger, fillsRefinedLevelGhostsAfterRegrid)
 {
-    auto tagStrat = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, transaction);
+    auto tagStrat = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
 
     int const ratio                = 2;
     short unsigned const dimension = 1;

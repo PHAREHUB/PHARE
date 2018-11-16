@@ -6,9 +6,9 @@
 #include <SAMRAI/hier/Patch.h>
 
 
+#include "evolution/messengers/hybrid_messenger.h"
+#include "evolution/messengers/hybrid_messenger_info.h"
 #include "evolution/solvers/solver.h"
-#include "evolution/transactions/hybrid_transaction.h"
-#include "evolution/transactions/hybrid_transaction_info.h"
 
 namespace PHARE
 {
@@ -32,12 +32,13 @@ public:
 
     virtual ~SolverPPC() = default;
 
+
     virtual std::string modelName() const override { return HybridModel::model_name; }
 
 
-    virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const override
+    virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const override
     {
-        auto& modelInfo = dynamic_cast<HybridTransactionInfo&>(*info);
+        auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
         auto const& Epred = electromagPred_.E;
         auto const& Bpred = electromagPred_.B;
@@ -72,33 +73,19 @@ public:
         hmodel.resourcesManager->allocate(electromagAvg_.E, patch, allocateTime);
         hmodel.resourcesManager->allocate(electromagAvg_.B, patch, allocateTime);
     }
-    /*
-        template<typename HybridTransaction>
-        void initTransaction(HybridTransaction& hybridTransaction)
-        {
-            bool constexpr withTemporal{true};
-            hybridTransaction.registerMagneticIn(electromagPred_.B,
-       BooleanSelector<withTemporal>{}); hybridTransaction.registerElectricIn(electromagPred_.E,
-       BooleanSelector<withTemporal>{});
 
-            hybridTransaction.registerMagneticIn(electromagAvg_.B, BooleanSelector<withTemporal>{});
-            hybridTransaction.registerElectricIn(electromagAvg_.E, BooleanSelector<withTemporal>{});
-
-            hybridTransaction.registerMagneticSync(model_.electromag.B);
-            hybridTransaction.registerElectricSync(model_.electromag.E);
-        }*/
 
 
     virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                               int const levelNumber, IPhysicalModel& model,
-                              ITransaction& fromCoarserTransaction, const double currentTime,
+                              IMessenger& fromCoarserMessenger, const double currentTime,
                               const double newTime) override
     {
         // bool constexpr withTemporal{true};
 
         auto& hybridModel = dynamic_cast<HybridModel&>(model);
         auto& hybridState = hybridModel.state;
-        auto& fromCoarser = dynamic_cast<HybridTransaction<HybridModel>&>(fromCoarserTransaction);
+        auto& fromCoarser = dynamic_cast<HybridMessenger<HybridModel>&>(fromCoarserMessenger);
 
 
         /*
@@ -142,7 +129,7 @@ public:
         // are incomplete because they may have recieved contributions from particles outside
         // their domain that would have entered the purple region during the push
         // therefore we need to re-fill the purple region and accumulate that density
-        // this is done by calling a transaction to fill the moments.
+        // this is done by calling a messenger to fill the moments.
 
         fromCoarser.fillIonMomentGhosts(hybridState.ions, levelNumber, newTime);
 
@@ -216,8 +203,8 @@ public:
         // return newTime;
     }
     /*
-    template<typename HybridTransaction>
-    void syncLevel(HybridTransaction& toCoarser)
+    template<typename HybridMessenger>
+    void syncLevel(HybridMessenger& toCoarser)
     {
         toCoarser.syncMagnetic(model_.electromag.B);
         toCoarser.syncElectric(model_.electromag.E);

@@ -4,10 +4,10 @@
 
 namespace PHARE
 {
-bool areCompatible(ITransaction const& transaction, ISolver const& solver)
+bool areCompatible(IMessenger const& messenger, ISolver const& solver)
 {
-    return solver.modelName() == transaction.fineModelName()
-           || solver.modelName() == transaction.coarseModelName();
+    return solver.modelName() == messenger.fineModelName()
+           || solver.modelName() == messenger.coarseModelName();
 }
 
 

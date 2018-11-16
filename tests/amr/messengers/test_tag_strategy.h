@@ -5,8 +5,8 @@
 #include "data/field/field_data.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield_component.h"
+#include "evolution/messengers/hybrid_messenger.h"
 #include "evolution/solvers/solver_ppc.h"
-#include "evolution/transactions/hybrid_transaction.h"
 #include "physical_models/hybrid_model.h"
 #include "tools/amr_utils.h"
 
@@ -40,24 +40,24 @@ class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 private:
     std::shared_ptr<HybridModel> model_;
     std::shared_ptr<PHARE::SolverPPC<HybridModel>> solver_;
-    std::shared_ptr<PHARE::HybridTransaction<HybridModel>> transaction_;
+    std::shared_ptr<PHARE::HybridMessenger<HybridModel>> messenger_;
 
 public:
     explicit TagStrategy(std::shared_ptr<HybridModel> model,
                          std::shared_ptr<PHARE::SolverPPC<HybridModel>> solver,
-                         std::shared_ptr<PHARE::HybridTransaction<HybridModel>> transaction)
+                         std::shared_ptr<PHARE::HybridMessenger<HybridModel>> messenger)
         : model_{std::move(model)}
         , solver_{std::move(solver)}
-        , transaction_{std::move(transaction)}
+        , messenger_{std::move(messenger)}
     {
-        auto infoFromFiner   = transaction_->emptyInfoFromFiner();
-        auto infoFromCoarser = transaction_->emptyInfoFromCoarser();
+        auto infoFromFiner   = messenger_->emptyInfoFromFiner();
+        auto infoFromCoarser = messenger_->emptyInfoFromCoarser();
 
-        model_->fillTransactionInfo(infoFromFiner);
-        model_->fillTransactionInfo(infoFromCoarser);
-        solver_->fillTransactionInfo(infoFromFiner);
+        model_->fillMessengerInfo(infoFromFiner);
+        model_->fillMessengerInfo(infoFromCoarser);
+        solver_->fillMessengerInfo(infoFromFiner);
 
-        transaction_->registerQuantities(std::move(infoFromFiner), std::move(infoFromCoarser));
+        messenger_->registerQuantities(std::move(infoFromFiner), std::move(infoFromCoarser));
     }
 
 
@@ -79,19 +79,19 @@ public:
             {
                 model_->allocate(*patch, initDataTime);
                 solver_->allocate(*model_, *patch, initDataTime);
-                transaction_->allocate(*patch, initDataTime);
+                messenger_->allocate(*patch, initDataTime);
             }
         }
 
 
-        transaction_->registerLevel(hierarchy, levelNumber);
+        messenger_->registerLevel(hierarchy, levelNumber);
 
 
         if (oldLevel)
         {
             // in case of a regrid we need to make a bunch of temporary regriding schedules
             // using the init algorithms and actually perform the .fillData() for all of them
-            transaction_->regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            messenger_->regrid(hierarchy, levelNumber, oldLevel, initDataTime);
         }
 
 
@@ -134,7 +134,7 @@ public:
 
             else
             {
-                transaction_->initLevel(levelNumber, initDataTime);
+                messenger_->initLevel(levelNumber, initDataTime);
             }
         }
     }

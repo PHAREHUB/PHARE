@@ -7,8 +7,8 @@
 #include "data/ions/ions.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/vecfield/vecfield.h"
-#include "evolution/transactions/hybrid_transaction.h"
-#include "evolution/transactions/transaction.h"
+#include "evolution/messengers/hybrid_messenger.h"
+#include "evolution/messengers/messenger.h"
 #include "physical_models/hybrid_model.h"
 #include "physical_models/mhd_model.h"
 #include "tools/resources_manager.h"
@@ -87,7 +87,7 @@ auto getIonsInit()
 
 
 
-TEST(AHybridModel, fillsHybridTransactionInfo)
+TEST(AHybridModel, fillsHybridMessengerInfo)
 {
     std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
         std::make_shared<ResourcesManagerT>()};
@@ -98,11 +98,11 @@ TEST(AHybridModel, fillsHybridTransactionInfo)
 
 
 
-    std::unique_ptr<ITransactionInfo> modelInfoPtr = std::make_unique<HybridTransactionInfo>();
+    std::unique_ptr<IMessengerInfo> modelInfoPtr = std::make_unique<HybridMessengerInfo>();
 
-    hybridModel->fillTransactionInfo(modelInfoPtr);
+    hybridModel->fillMessengerInfo(modelInfoPtr);
 
-    auto& modelInfo = dynamic_cast<HybridTransactionInfo const&>(*modelInfoPtr);
+    auto& modelInfo = dynamic_cast<HybridMessengerInfo const&>(*modelInfoPtr);
 
 
     EXPECT_EQ("EM_B", modelInfo.modelMagnetic.vecName);

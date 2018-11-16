@@ -1,8 +1,8 @@
 
-#ifndef PHARE_HYBRID_TRANSACTION_INFO_H
-#define PHARE_HYBRID_TRANSACTION_INFO_H
+#ifndef PHARE_HYBRID_MESSENGER_INFO_H
+#define PHARE_HYBRID_MESSENGER_INFO_H
 
-#include "transaction_info.h"
+#include "messenger_info.h"
 
 
 #include <string>
@@ -14,9 +14,9 @@
 namespace PHARE
 {
 /**
- * @brief The HybridTransactionInfo class derives from ITransactionInfo. It is used to setup a
- * HybridTransaction and thus contains all the names of all variables that will need to be
- * communicated by a HybridTransaction.
+ * @brief The HybridMessengerInfo class derives from IMessengerInfo. It is used to setup a
+ * HybridMessenger and thus contains all the names of all variables that will need to be
+ * communicated by a HybridMessenger.
  *
  * One can distinguish two groups of variables:
  *
@@ -36,7 +36,7 @@ struct VecFieldNames
 };
 
 
-class HybridTransactionInfo : public ITransactionInfo
+class HybridMessengerInfo : public IMessengerInfo
 {
 public:
     VecFieldNames modelMagnetic;
@@ -48,7 +48,7 @@ public:
     std::vector<VecFieldNames> ghostMagnetic;
     std::vector<VecFieldNames> ghostElectric;
 
-    virtual ~HybridTransactionInfo() = default;
+    virtual ~HybridMessengerInfo() = default;
 };
 
 

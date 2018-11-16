@@ -1,22 +1,22 @@
 <style>
-	.markdown-body {
+    .markdown-body {
 #		box-sizing: border-box;
 #		min-width: 200px;
 #		max-width: 980px;
 #		margin: 0 auto;
 #		padding: 45px;
-	}
+    }
 
 .section
 {
  color:red;
 }
-		
-		.subsection
-		{
-		text-decoration:underline;
-		}
-	}
+
+        .subsection
+        {
+        text-decoration:underline;
+        }
+    }
 </style>
 
 
@@ -34,7 +34,7 @@ Transaction of data between patches can occur when
 - level data is synchronized with the next coarser level
 
 
-Level initialization takes place when: 
+Level initialization takes place when:
 
 - a new refinement level is created, increasing the depth of the patch hierarchy. In this case, because the level did not exist before, all the data is obtained by refining the solution existing on the next coarser level.
 - there is a *regridding*, i.e. an existing level is reshaped. Here, data is obtained from the old level where it has an intersection with the new level, and by refinement of the next coarser solution where it does not.
@@ -50,34 +50,34 @@ This section describes which data is communicated and when.
 ### General to any solver
 
 - **model E** :
-	- refined in initializeLevelData(), filled in whole level interior, patch ghosts and level borders
-	- refined in `solver::advanceLevel()` when updating model, need to fill ghosts : `transaction.fillElectricGhosts()`
-	- coarsened in `HybridTransaction::synchronize()`
+    - refined in initializeLevelData(), filled in whole level interior, patch ghosts and level borders
+    - refined in `solver::advanceLevel()` when updating model, need to fill ghosts : `Messenger.fillElectricGhosts()`
+    - coarsened in `HybridMessenger::synchronize()`
 
-- **model B** : 
-	- in initializeLevelData(), filled in whole level interior, patch ghosts and level borders
-	- in `solver::advanceLevel()` when updating model, need to fill ghosts : `transaction.fillMagneticGhosts()`
-	- coarsened in HybridTransaction::synchronize()
-	
+- **model B** :
+    - in initializeLevelData(), filled in whole level interior, patch ghosts and level borders
+    - in `solver::advanceLevel()` when updating model, need to fill ghosts : `Messenger.fillMagneticGhosts()`
+    - coarsened in HybridMessenger::synchronize()
+
 - **model coarseToFineOld of the ith population**:
-	- at initializeLevelData(). HybridTransaction fills these particles so to be able to use t=n and t=n+1 refined particles in coarse to fine boundaries and get moments on incomplete nodes close to level boundaries. Note that HybridTransaction need to fill `coarseToFineOld` with particles moved from `coarseToFineNew` at the end of last_step
+    - at initializeLevelData(). HybridMessenger fills these particles so to be able to use t=n and t=n+1 refined particles in coarse to fine boundaries and get moments on incomplete nodes close to level boundaries. Note that HybridMessenger need to fill `coarseToFineOld` with particles moved from `coarseToFineNew` at the end of last_step
 
 - **model coarseToFineNew of the ith population** :
-	- at first step in MultiPhysicsIntegrator::advanceLevel(), HybridTransaction, taking a model, fills `coarseToFineNew` particles with refined particles so that it can later compute moments from `coarseToFineNew` and `coarseToFineOld`
+    - at first step in MultiPhysicsIntegrator::advanceLevel(), HybridMessenger, taking a model, fills `coarseToFineNew` particles with refined particles so that it can later compute moments from `coarseToFineNew` and `coarseToFineOld`
 
 - **model coarseToFine of the ith population** :
-	- each time coarseToFineOld is filled, it is copied into coarseToFine. No dedicated schedule needed.
+    - each time coarseToFineOld is filled, it is copied into coarseToFine. No dedicated schedule needed.
 
-- **Transaction Eold** : 
-	- is used in communication in HybridTransaction::fillElectricGhosts() together with model E to be time interpolated at finer level ghost nodes.
-	- copied from model E after solver::advanceLevel()
+- **Messenger Eold** :
+    - is used in communication in HybridMessenger::fillElectricGhosts() together with model E to be time interpolated at finer level ghost nodes.
+    - copied from model E after solver::advanceLevel()
 
-- **Transaction Bold** : 
-	- is used in communication in HybridTransaction::fillElectricGhosts() together with model B to be time interpolated at finer level ghost nodes.
-	- copied from model B after solver::advanceLevel()
+- **Messenger Bold** :
+    - is used in communication in HybridMessenger::fillElectricGhosts() together with model B to be time interpolated at finer level ghost nodes.
+    - copied from model B after solver::advanceLevel()
 
 - **model Ions total density and bulk velocity**:
-	- coarsened to next coarser level ion total density and bulk velocity
+    - coarsened to next coarser level ion total density and bulk velocity
 
 
 
@@ -85,10 +85,10 @@ This section describes which data is communicated and when.
 
 
 - **SolverPPC Epred** :
-	- in predictor 1 and 2 after ohm(). Needs E model n+1 and E transaction n on coarser
+    - in predictor 1 and 2 after ohm(). Needs E model n+1 and E Messenger n on coarser
 
-- **SolverPPC Bpred** : 
-	- in predictor 1 and 2 after faraday(). Needs E model n+1 and E transaction n on coarser
+- **SolverPPC Bpred** :
+    - in predictor 1 and 2 after faraday(). Needs E model n+1 and E Messenger n on coarser
 
 
 
@@ -104,11 +104,11 @@ Let's remind that a `ParticleData` has 5 `ParticleArray`
 
 ```
 {
-	ParticleArray* interior;
-	ParticleArray* ghosts;
-	ParticleArray* coarseToFine;
-	ParticleArray* coarseToFineOld;
-	ParticleArray* coarseToFineNew;
+    ParticleArray* interior;
+    ParticleArray* ghosts;
+    ParticleArray* coarseToFine;
+    ParticleArray* coarseToFineOld;
+    ParticleArray* coarseToFineNew;
 };
 ```
 
@@ -134,13 +134,13 @@ The three steps are represented in the figure below
 ![](newLevelParticles.png)
 
 
-##### FAQ: 
+##### FAQ:
 
 - Why don't we fill both interior and level borders with refined particles at the same time, we could do that using a PatchLevelBorderAndInteriorFillPattern?
-	- The reason is that we need to use the particle refine operator to refine particles, and that operator needs to know in which `PaticleArray` of the `ParticlesData` it must put refined particles in. The way it knows that is with a template parameter so that it is compile time. Therefore a particle refine operator can only put particles in one `ParticleArray` and thus we need to do interior and borders separately.
+    - The reason is that we need to use the particle refine operator to refine particles, and that operator needs to know in which `PaticleArray` of the `ParticlesData` it must put refined particles in. The way it knows that is with a template parameter so that it is compile time. Therefore a particle refine operator can only put particles in one `ParticleArray` and thus we need to do interior and borders separately.
 
 - Why can't we fill the ghost regions of the level patches together with interior particles, i.e. from refining the next coarser level particles?
-	- The reason is that particles in patch ghost regions in the level interior must be clones of particles in neighboring patches for the simulation to work. Filling these regions by refining particles from the next coarser level as we do for interior particles will only work if the splitting of coarse particles is deterministic. Since we don't know the splitting properties in this part of the code, we assume it is not deterministic and fill ghost particles by exchanging particles with neighbor level patches.
+    - The reason is that particles in patch ghost regions in the level interior must be clones of particles in neighboring patches for the simulation to work. Filling these regions by refining particles from the next coarser level as we do for interior particles will only work if the splitting of coarse particles is deterministic. Since we don't know the splitting properties in this part of the code, we assume it is not deterministic and fill ghost particles by exchanging particles with neighbor level patches.
 
 
 
@@ -192,12 +192,12 @@ Variables  | prototype                                | Space interpolator templ
 
 ### <span class = "subsection">Communications during advancement of the solution </span>
 
-These are communications of particles that are needed to get ghost particles. 
+These are communications of particles that are needed to get ghost particles.
 
 
 #### Ghost particle region
 
-These particles are needed to get complete density and flux estimates on the interior and ghost nodes of the moment grids. 
+These particles are needed to get complete density and flux estimates on the interior and ghost nodes of the moment grids.
 
 
 ![](ghosts_width_particles.png)
@@ -231,7 +231,7 @@ We need to get two kind of ghost particles:
 ![](ghost_exchange.png)
 
 
-The above figure represents two patches (solid line) ad their ghost zone (dashed lines). Two particles are represented. The filled and empty circles represent their position at t and t+dt, respectively. The red particle is moving close to the border of the black patch that overlaps the ghost box of the blue patch. The black particle is already in this region at time t, but is leaving the patch at time t+dt. 
+The above figure represents two patches (solid line) ad their ghost zone (dashed lines). Two particles are represented. The filled and empty circles represent their position at t and t+dt, respectively. The red particle is moving close to the border of the black patch that overlaps the ghost box of the blue patch. The black particle is already in this region at time t, but is leaving the patch at time t+dt.
 
 Same level ghost communication consists in sending particles of the interior `ParticleArray` of a `ParticlesData` to a neighbor `ParticleData` ghost ParticleArray if they are also in that `ParticlesData` ghost box. For instance at time t, the communication woud copy the black particle of the black patch into the blue ghost particle array. At t+dt the communication would send the red particle of the black patch into the ghost particle array of the blue patch (while the black would have left it in the mean time, entering the interior of the patch).
 
@@ -246,7 +246,7 @@ Variables  | prototype                                | Space interpolator templ
 
 
 
-Coarse to fine particle transactions are needed to fill the ghost zone of patches found at the level boundary (see the region between the dashed and solid lines in the above figure about regridding). 
+Coarse to fine particle Messengers are needed to fill the ghost zone of patches found at the level boundary (see the region between the dashed and solid lines in the above figure about regridding).
 
 At first_step, the solver needs to get particles in `coarseToFineNew` so to fill the moments on the level incomplete nodes. Note that at the moment the code is in advanceLevel(), `coarseToFineOld` ParticleArray is already filled, either from level initialization (see above) or from moving `coarseToFineNew` particles in it at the end of last time step.
 
@@ -259,9 +259,9 @@ Variables  | prototype                                | Space interpolator templ
 
 
 This operation is only needed at first step of the subcycle.
- 
- 
- 
+
+
+
 
 
 ## <span class="section">Field Refinement</span>
@@ -275,7 +275,7 @@ This operation is only needed at first step of the subcycle.
 
 At level initialization, the model magnetic field always needs to be initialized, and everywhere, on interior, ghost and coarse to fine nodes. The electric field however may not be needed. If the solver starts with the Ohm's law (E = ...) then no need to initialize it. If however it starts with faraday or pushing particles, then it is needed.
 
-The Transactions need to have their internal electric and magnetic field initialized. These fields represent the t=n state of the level that is used by finer level to get their ghost nodes at times between t=n et t=n+dt_coarse.
+The Messengers need to have their internal electric and magnetic field initialized. These fields represent the t=n state of the level that is used by finer level to get their ghost nodes at times between t=n et t=n+dt_coarse.
 
 Solvers may need additional variables to be initialized. For instance, solvers may have internal copies of the electromagnetic field at past times.
 
@@ -283,15 +283,15 @@ Solvers may need additional variables to be initialized. For instance, solvers m
 None of the schedules need a `PatchLevelFillPattern`.
 
 
-   Data Owner |  Variables | schedule prototype      | Optional ?| Purpose                                              
-     :---:    | :---:      |     :---:               | :---:     | :---:                                                
-  model       |  Ex,Ey,Ez  | level ; ncl ; hierarchy | yes       | have model E on grid                                 
-  model       |  Bx,By,Bz  | level ; ncl ; hierarchy | no        | have model B on grid                                 
-  Transaction |  Ex,Ey,Ez  | level ; ncl ; hierarchy | no        | hold E at t=n for time interpolation                 
-  Transaction |  Bx,By,Bz  | level ; ncl ; hierarchy | no        | hold B at t=n for time interpolation                 
-  Solver      |  Ex,Ey,Ez  | level ; ncl ; hierarchy | yes       | solver internal var. that needs init. ex: E at t=n-1 
+   Data Owner |  Variables | schedule prototype      | Optional ?| Purpose
+     :---:    | :---:      |     :---:               | :---:     | :---:
+  model       |  Ex,Ey,Ez  | level ; ncl ; hierarchy | yes       | have model E on grid
+  model       |  Bx,By,Bz  | level ; ncl ; hierarchy | no        | have model B on grid
+  Messenger |  Ex,Ey,Ez  | level ; ncl ; hierarchy | no        | hold E at t=n for time interpolation
+  Messenger |  Bx,By,Bz  | level ; ncl ; hierarchy | no        | hold B at t=n for time interpolation
+  Solver      |  Ex,Ey,Ez  | level ; ncl ; hierarchy | yes       | solver internal var. that needs init. ex: E at t=n-1
   Solver      |  Bx,By,Bz  | level ; ncl ; hierarchy | yes       | solver internal var. that needs init. ex: B at t=n-1
-     
+
 
 #### Level Regridding
 

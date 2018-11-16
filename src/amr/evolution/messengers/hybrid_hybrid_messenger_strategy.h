@@ -1,13 +1,13 @@
 
-#ifndef PHARE_HYBRID_HYBRID_TRANSACTION_STRATEGY_H
-#define PHARE_HYBRID_HYBRID_TRANSACTION_STRATEGY_H
+#ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
+#define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
 
 #include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"
 #include "data/field/time_interpolate/field_linear_time_interpolate.h"
 #include "data/particles/refine/particles_data_split.h"
-#include "evolution/transactions/hybrid_transaction_info.h"
-#include "evolution/transactions/hybrid_transaction_strategy.h"
+#include "evolution/messengers/hybrid_messenger_info.h"
+#include "evolution/messengers/hybrid_messenger_strategy.h"
 #include "physical_models/physical_model.h"
 #include "tools/resources_manager_utilities.h"
 
@@ -20,7 +20,7 @@
 
 namespace PHARE
 {
-/** \brief An HybridTransaction purpose is to manage transaction from an to : the electric field,
+/** \brief An HybridMessenger purpose is to manage messenger from an to : the electric field,
  * magnetic field, and the ions.
  *
  *
@@ -30,7 +30,7 @@ namespace PHARE
  *
  */
 template<typename HybridModel>
-class HybridHybridTransactionStrategy : public HybridTransactionStrategy<HybridModel>
+class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
 {
     using IonsT     = decltype(std::declval<HybridModel>().state.ions);
     using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
@@ -39,9 +39,9 @@ public:
     static const std::string stratName;
 
 
-    HybridHybridTransactionStrategy(
+    HybridHybridMessengerStrategy(
         std::shared_ptr<typename HybridModel::resources_manager_type> manager, int const firstLevel)
-        : HybridTransactionStrategy<HybridModel>{stratName}
+        : HybridMessengerStrategy<HybridModel>{stratName}
         , resourcesManager_{std::move(manager)}
         , firstLevel_{firstLevel}
     {
@@ -49,12 +49,12 @@ public:
         resourcesManager_->registerResources(EM_old_.B);
     }
 
-    virtual ~HybridHybridTransactionStrategy() = default;
+    virtual ~HybridHybridMessengerStrategy() = default;
 
 
 
     /**
-     * @brief allocate the transaction strategy internal variables to the model resourceManager
+     * @brief allocate the messenger strategy internal variables to the model resourceManager
      */
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
     {
@@ -67,36 +67,36 @@ public:
 
 
     /**
-     * @brief setup creates all SAMRAI algorithms to communicate data involved in a transaction
+     * @brief setup creates all SAMRAI algorithms to communicate data involved in a messenger
      * between the coarse and fine levels.
      *
      * This method creates the SAMRAI algorithms for communications associated between pairs of
      * variables. The function does not create the SAMRAI schedules since they depend on the levels
      */
-    virtual void registerQuantities(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
+    virtual void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+                       [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
     {
-        std::unique_ptr<HybridTransactionInfo> hybridInfo{
-            dynamic_cast<HybridTransactionInfo*>(fromCoarserInfo.release())};
+        std::unique_ptr<HybridMessengerInfo> hybridInfo{
+            dynamic_cast<HybridMessengerInfo*>(fromCoarserInfo.release())};
 
 
         // TODO here we need to use both coarse and fine since solvers may differ
 
-        setupEandBGhostTransactions_(hybridInfo);
-        setupEandBInitTransactions_(hybridInfo);
+        setupEandBGhostMessengers_(hybridInfo);
+        setupEandBInitMessengers_(hybridInfo);
 
         // on a tous les algos pour remplir les ghosts de
         // - model E, B vers model E, B
         // - model E, B vers solver list of E_internal and list of B_internal
 
-        // TODO setup particle transactions
+        // TODO setup particle messengers
     }
 
 
 
     /**
      * @brief setLevel creates SAMRAI schedules for all variables relevant for hybrid to hybrid
-     * communications, whether they are from model, solver or transaction internals
+     * communications, whether they are from model, solver or messenger internals
      *
      * The method takes maps associating quantityName to the pair (algo, map of schedules)
      * for each algo, it creates a bunch of associated schedules and store them in the vector
@@ -123,7 +123,7 @@ public:
 
 
     /**
-     * @brief regrid performs the regriding communications for Hybrid to Hybrid transactions
+     * @brief regrid performs the regriding communications for Hybrid to Hybrid messengers
      *
      * This routine must create and execute schedules for:
      *
@@ -171,14 +171,14 @@ public:
 
 
 
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() override
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
     {
-        return std::make_unique<HybridTransactionInfo>();
+        return std::make_unique<HybridMessengerInfo>();
     }
 
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromFiner() override
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
     {
-        return std::make_unique<HybridTransactionInfo>();
+        return std::make_unique<HybridMessengerInfo>();
     }
 
 
@@ -193,7 +193,7 @@ public:
 
 
 #if 0
-    HybridHybridTransactionStrategy(
+    HybridHybridMessengerStrategy(
         HybridState const &hybridModel, ResourcesManager &resources,
         std::shared_ptr<SAMRAI::hier::RefineOperator> const &fieldRefineOp,
         std::shared_ptr<SAMRAI::hier::CoarsenOperator> const &fieldCoarsenOp,
@@ -378,7 +378,7 @@ private:
      * schedules
      *
      * We have several of those object, one per level, that is used to retrieve which schedule to
-     * use for a given transaction communication, and which algorithm to use to re-create schedules
+     * use for a given messenger communication, and which algorithm to use to re-create schedules
      * when initializing a level
      */
     struct Refiner
@@ -399,7 +399,7 @@ private:
 
 
     /**
-     * @brief setupEandBGhostTransactions_ creates the SAMRAI algorithms to transfer
+     * @brief setupEandBGhostMessengers_ creates the SAMRAI algorithms to transfer
      * electromagnetic fields on ghost nodes of level patches and register all refine operations.
      *
      * For each variable to register, we use the registerRefine overload that allows time
@@ -412,25 +412,25 @@ private:
      * The schedules originating from these algorithms will be executed in the solver
      * to fill the ghosts on a given level. At this point, the 'src_tnew' IDs are just model
      * electric field IDs since when advancing a level, the next model of the next coarser level is
-     * already advanced. The "src_told" IDs however, is found in the Transaction itself as the
+     * already advanced. The "src_told" IDs however, is found in the Messenger itself as the
      * EM_old_ electromagnetic field This field is a copy of the model electromagnetic field at t=n
      * *before* the solver advanced the model to t=n+1 on the coarser level.
      *
      *
      * Each operation thus takes:
      *  - src       : variable IDs in model (not sure what it is used for here)
-     *  - dest      : variable IDs in the TransactionInfo.ghostXXXXnames (could be from model, could
+     *  - dest      : variable IDs in the MessengerInfo.ghostXXXXnames (could be from model, could
      * be from solver)
-     *  - src_told  : variable IDs in Transaction
+     *  - src_told  : variable IDs in Messenger
      *  - src_tnew  : variable IDs in model
      *
      *
      * The SAMRAI algorithms created by this function are stored in RefineAlgosAndSchedule
      * objects, themselves stored in an appropriate map with a key provided by the
-     * HybridTransactionInfo
+     * HybridMessengerInfo
      *
      */
-    void setupEandBGhostTransactions_(std::unique_ptr<HybridTransactionInfo> const& info)
+    void setupEandBGhostMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
@@ -498,7 +498,7 @@ private:
 
 
 
-    void setupEandBInitTransactions_(std::unique_ptr<HybridTransactionInfo> const& info)
+    void setupEandBInitMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         Refiner initB;
         Refiner initE;
@@ -675,447 +675,18 @@ private:
     // and from modelParticles of coarserLevel to model PRA2
     // the copy of PRA1 vector to PRA is done after the schedule in a PatchStrategy post truc
     // these are ran before solver->advanceLevel() in the MultiPhysics::advanceLevel()
-    // with a method : transaction.firstStepOperation() or somthg like that...
+    // with a method : messenger.firstStepOperation() or somthg like that...
     // solver->advanceLevel() when starting, has all PRAs set correctly
 
-    // keys: PRA1, PRA2 , chosen by transaction
+    // keys: PRA1, PRA2 , chosen by messenger
     Refiners particlePRA_;
 
 
-
-
-#if 0
-template<typename Variable, bool withTemporal, typename Enum, Enum fillType>
-void getElectric(Variable &E, double fillTime, BooleanSelector<withTemporal>,
-                 EnumSelector<Enum, fillType>)
-{
-    std::cout << "perform the electric fill\n";
-    showAction_<withTemporal, Enum, fillType>();
-}
-
-
-
-
-template<typename Variable, bool withTemporal, typename Enum, Enum fillType>
-void getIons(Variable &ions, BooleanSelector<withTemporal>, EnumSelector<Enum, fillType>)
-{
-    std::cout << "perform ions fill\n";
-    showAction_<withTemporal, Enum, fillType>();
-}
-
-
-template<typename Variable, bool withTemporal, typename Enum, Enum fillType>
-void sendMagnetic(Variable &B, BooleanSelector<withTemporal>, EnumSelector<Enum, fillType>)
-{
-    std::cout << "send magnetic to the next finer level\n";
-    showAction_<withTemporal, Enum, fillType>();
-}
-
-
-
-
-template<typename Variable, bool withTemporal, typename Enum, Enum fillType>
-void sendElectric(Variable &E, BooleanSelector<withTemporal>, EnumSelector<Enum, fillType>)
-{
-    std::cout << "send electric to the next finer level\n";
-    showAction_<withTemporal, Enum, fillType>();
-}
-template<typename Variable, bool withTemporal, typename Enum, Enum fillType>
-void sendIons(Variable &ions, BooleanSelector<withTemporal>, EnumSelector<Enum, fillType>)
-{
-    std::cout << "send ions to the next finer level\n";
-    showAction_<withTemporal, Enum, fillType>();
-}
-
-
-template<typename Variable>
-void syncMagnetic(Variable &B)
-{
-    std::cout << "perform coarse sync to the next coarser level\n";
-}
-template<typename Variable>
-void syncElectric(Variable &E)
-{
-    std::cout << "perform coarse sync to the next coarser level\n";
-}
-
-
-
-// TODO : we have to take the temporal argument
-// so we may have twice more algorithms maps
-template<typename Variable, bool withTemporal>
-void registerMagneticIn(Variable &B, BooleanSelector<withTemporal>)
-{
-    std::cout << "register a transaction from magnetic(coarse level) to variable in the "
-                 "current level\n";
-
-    showTemporalStatus_<withTemporal>();
-
-    std::cout << "create algorithm : magnetic to " << B.name() << "\n";
-    auto destID = resources_.getIDs(B);
-    showVec_(destID);
-
-    if constexpr (withTemporal)
-    {
-        // if we want a temporal sync, we first transfert the data in magneticNew_;
-        // and then we time interpolate from model_.electromag.B to magneticNew_
-        // into B, finnaly we sync at the same level
-
-        // TODO this should be unique for electric to electric
-        //      and magnetic to magnetic
-        if (!alreadyRegisterMagneticNew_)
-        {
-            auto refineAlgInit = makeRefineAlgForField_(model_.electromag.B, magneticNew_);
-            algorithmsMagneticIn_.try_emplace(magneticNew_.name(), refineAlgInit);
-            alreadyRegisterMagneticNew_ = true;
-        }
-
-        // finnaly sync at the same level the destination
-        auto refineAlg = makeRefineAlgForField_(B, B);
-        algorithmsMagneticIn_.try_emplace(B.name(), refineAlg);
-    }
-    else
-    {
-        auto refineAlg = makeRefineAlgForField_(model_.electromag.B, B);
-        algorithmsMagneticIn_.try_emplace(B.name(), refineAlg);
-    }
-}
-template<typename Variable, bool withTemporal>
-void registerElectricIn(Variable &E, BooleanSelector<withTemporal>)
-{
-    std::cout << "register a transaction from electric(coarse level) to variable in the "
-                 "current level\n";
-
-    showTemporalStatus_<withTemporal>();
-
-    std::cout << "create algorithm : electric to " << E.name() << "\n";
-
-    auto destID = resources_.getIDs(E);
-    showVec_(destID);
-
-    if constexpr (withTemporal)
-    {
-        if (!alreadyRegisterElectricNew_)
-        {
-            auto refineAlgInit = makeRefineAlgForField_(model_.electromag.E, electricNew_);
-
-            algorithmsElectricIn_.try_emplace(electricNew_.name(), refineAlgInit);
-
-            alreadyRegisterElectricNew_ = true;
-        }
-
-
-        auto refineAlg = makeRefineAlgForField_(E, E);
-
-        algorithmsElectricIn_.try_emplace(E.name(), refineAlg);
-    }
-    else
-    {
-        auto refineAlg = makeRefineAlgForField_(model_.electromag.E, E);
-
-        algorithmsElectricIn_.try_emplace(E.name(), refineAlg);
-    }
-}
-template<typename Variable, bool withTemporal>
-void registerIonsIn(Variable &ions, BooleanSelector<withTemporal>)
-{
-    std::cout << "register a transaction from ions(coarse level) to variable in the "
-                 "current level\n";
-
-    showTemporalStatus_<withTemporal>();
-
-    for (auto const &pop : ions)
-    {
-        std::cout << "create algorithm : ionsPop to " << pop.name() << "\n";
-
-        auto destID = resources_.getIDs(pop);
-        showVec_(destID);
-
-        algorithmsIonsIn_.try_emplace(pop.name(), std::make_shared<Algorithm>(dimension_));
-    }
-}
-
-template<typename Variable, bool withTemporal>
-void registerMagneticOut(Variable &B, BooleanSelector<withTemporal>)
-{
-    std::cout << "register a transaction from variable(current level) to magnetic"
-                 "of next finer level\n";
-
-    showTemporalStatus_<withTemporal>();
-    std::cout << "create algorithm : " << B.name() << " to magnetic\n";
-
-    auto destID = resources_.getIDs(B);
-    showVec_(destID);
-
-    auto refineAlg = makeRefineAlgForField_(B, model_.electromag.B);
-
-    algorithmsMagneticOut_.try_emplace(B.name(), refineAlg);
-}
-template<typename Variable, bool withTemporal>
-void registerElectricOut(Variable &E, BooleanSelector<withTemporal>)
-{
-    std::cout << "register a transaction from variable(current level) to electric"
-                 "of next finer level\n";
-
-    showTemporalStatus_<withTemporal>();
-    std::cout << "create algorithm : " << E.name() << " to electric\n";
-
-    auto destID = resources_.getIDs(E);
-    showVec_(destID);
-
-    auto refineAlg = makeRefineAlgForField_(E, model_.electromag.E);
-    algorithmsElectricOut_.try_emplace(E.name(), refineAlg);
-}
-template<typename Variable, bool withTemporal>
-void registerIonsOut(Variable &ions, BooleanSelector<withTemporal>)
-{
-    std::cout << "register a transaction from variable(current level) to ions"
-                 "of next finer level\n";
-
-    showTemporalStatus_<withTemporal>();
-
-    for (auto const &pop : ions)
-    {
-        std::cout << "create algorithm : " << pop.name() << " to ionsPop\n";
-
-        auto destID = resources_.getIDs(pop);
-        showVec_(destID);
-
-        algorithmsIonsOut_.try_emplace(pop.name(), std::make_shared<Algorithm>(dimension_));
-    }
-}
-
-template<typename Variable>
-void registerMagneticSync(Variable &B)
-{
-    std::cout << "register electric coarse transaction\n";
-    std::cout << "create algorithm : " << B.name() << " to magnetic\n";
-
-    auto destID = resources_.getIDs(B);
-    showVec_(destID);
-
-    auto coarseAlg = makeCoarseAlgForField_(B, model_.electromag.B);
-
-    algorithmsMagneticSync_.try_emplace(B.name(), coarseAlg);
-}
-template<typename Variable>
-void registerElectricSync(Variable &E)
-{
-    std::cout << "register magnetic coarse transaction\n";
-    std::cout << "create algorithm : " << E.name() << " to electric\n";
-
-    auto destID = resources_.getIDs(E);
-    showVec_(destID);
-
-    auto coarseAlg = makeCoarseAlgForField_(E, model_.electromag.E);
-
-    algorithmsMagneticSync_.try_emplace(E.name(), coarseAlg);
-}
-
-void setStatus(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const *hierarchy,
-               std::shared_ptr<SAMRAI::hier::PatchLevel> const *currentLevel,
-               std::shared_ptr<SAMRAI::hier::PatchLevel> const *oldLevel)
-{
-    hierarchy_    = hierarchy;
-    currentLevel_ = currentLevel;
-    oldLevel_     = oldLevel;
-
-    currentLevelNumber_ = (*currentLevel)->getLevelNumber();
-
-    if ((*currentLevel)->inHierarchy())
-    {
-        relativeLevel_ = currentLevelNumber_ - startLevel_;
-    }
-    else
-    {
-        relativeLevel_ = 0;
-    }
-}
-
-void updateSchedule(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const &hierarchy,
-                    int const levelNumber)
-{
-    //
-}
-
-
-void init(SAMRAI::hier::Patch const &patch)
-{
-    resources_.allocate(electricNew_, patch);
-    resources_.allocate(magneticNew_, patch);
-}
-
-
-private:
-template<typename VariableSrc, typename VariableDest>
-auto makeRefineAlgForField_(VariableSrc &src, VariableDest &dest)
-{
-    auto destID = resources_.getIDs(dest);
-
-    auto srcID = resources_.getIDs(src);
-
-
-    auto refineAlg = std::make_shared<Algorithm>(dimension_);
-
-    refineAlg->refOperator = &fieldRefineOp_;
-
-
-    SAMRAI::xfer::RefineAlgorithm algorithm{};
-    for (auto iComponent = 0u; iComponent < NBR_COMPO; ++iComponent)
-    {
-        algorithm.registerRefine(destID[iComponent], srcID[iComponent], destID[iComponent],
-                                 *refineAlg->refOperator);
-    }
-
-    return refineAlg;
-}
-
-template<typename VariableSrc, typename VariableDest>
-auto makeCoarseAlgForField_(VariableSrc &src, VariableDest &dest)
-{
-    auto destID = resources_.getIDs(dest);
-
-    auto srcID = resources_.getIDs(src);
-
-
-    auto coarseAlg = std::make_shared<Algorithm>(dimension_);
-
-    coarseAlg->coarseOperator = &fieldCoarsenOp_;
-
-    SAMRAI::xfer::CoarsenAlgorithm algorithm{SAMRAI::tbox::Dimension{VariableSrc::dimension}};
-    for (auto iComponent = 0u; iComponent < NBR_COMPO; ++iComponent)
-    {
-        algorithm.registerCoarsen(destID[iComponent], srcID[iComponent],
-                                  *coarseAlg->coarseOperator);
-    }
-
-    return coarseAlg;
-}
-
-void showVec_(std::vector<int> const &IDs)
-{
-    for (auto const &value : IDs)
-    {
-        std::cout << value << "\n";
-    }
-}
-template<bool withTemporal>
-void showTemporalStatus_()
-{
-    if constexpr (withTemporal)
-    {
-        std::cout << "Perform temporal transaction\n";
-    }
-    else if constexpr (!withTemporal)
-    {
-        std::cout << "Perform non temporal transaction\n";
-    }
-}
-template<bool withTemporal, typename Enum, Enum fillType>
-void showAction_()
-{
-    std::cout << "***************************************\n";
-    showTemporalStatus_<withTemporal>();
-
-    if constexpr (fillType == Enum::SameLevel)
-    {
-        std::cout << "Perform same level transaction\n";
-    }
-    if constexpr (fillType == Enum::GhostRegionOnSameLevel)
-    {
-        std::cout << "Perform ghost region on same level transaction\n";
-    }
-    if constexpr (fillType == Enum::LevelBorderOnly)
-    {
-        std::cout << "Perform coarse to fine level boundary  only transaction\n";
-    }
-    if constexpr (fillType == Enum::GhostRegion)
-    {
-        std::cout << "Perform ghost region transaction\n";
-    }
-    if constexpr (fillType == Enum::EraseDestination)
-    {
-        std::cout << "Perform ghost and interior transaction (interpolation + initial split) "
-                     "transaction\n";
-    }
-
-    std::cout << "***************************************\n";
-}
-
-HybridState const &model_;
-
-std::remove_reference_t<decltype(model_.electromag.E)> electricNew_;
-std::remove_reference_t<decltype(model_.electromag.B)> magneticNew_;
-
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsMagneticIn_;
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsMagneticOut_;
-
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsElectricIn_;
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsElectricOut_;
-
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsIonsIn_;
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsIonsOut_;
-
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsMagneticSync_;
-std::map<std::string, std::shared_ptr<Algorithm>> algorithmsElectricSync_;
-
-ResourcesManager &resources_;
-
-std::shared_ptr<SAMRAI::hier::PatchHierarchy> const *hierarchy_;
-std::shared_ptr<SAMRAI::hier::PatchLevel> const *currentLevel_;
-std::shared_ptr<SAMRAI::hier::PatchLevel> const *oldLevel_;
-
-std::shared_ptr<SAMRAI::hier::RefineOperator> const &fieldRefineOp_;
-std::shared_ptr<SAMRAI::hier::CoarsenOperator> const &fieldCoarsenOp_;
-
-std::shared_ptr<SAMRAI::hier::RefineOperator> const &particlesRefineOp_;
-
-int const startLevel_;
-
-int relativeLevel_;
-int currentLevelNumber_;
-
-SAMRAI::tbox::Dimension dimension_;
-
-bool alreadyRegisterElectricNew_{false};
-bool alreadyRegisterMagneticNew_{false};
-#endif
 };
 
 template<typename HybridModel>
-const std::string HybridHybridTransactionStrategy<HybridModel>::stratName
+const std::string HybridHybridMessengerStrategy<HybridModel>::stratName
     = "HybridModel-HybridModel";
-
-/*
-template<typename HybridState, typename ResourcesManager>
-class HybridTransactionStrategyFactory
-{
-private:
-using VecFieldT   = decltype(std::declval<HybridState>().electromag.E);
-using IonsT       = decltype(std::declval<HybridState>().ions);
-using HybridStrat = HybridTransactionStrategy<HybridState>;
-using HybHybStrat = HybridHybridTransactionStrategy<HybridState, ResourcesManager>;
-using MHDHybStrat = MHDHybridTransactionStrategy<HybridState>;
-// using mhdmhdStrat = MHDMHDTransactionStrategy;
-
-
-public:
-static std::unique_ptr<HybridStrat> createStrategy(HybridTransactionStrategyType type)
-{
-    switch (type)
-    {
-        case HybridTransactionStrategyType::HybridHybrid:
-            return std::make_unique<HybHybStrat>();
-            break;
-
-        case HybridTransactionStrategyType::MHDHybrid:
-            return std::make_unique<MHDHybStrat>();
-            break;
-    }
-}
-};
-
-*/
 
 
 

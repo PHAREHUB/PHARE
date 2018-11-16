@@ -18,13 +18,10 @@
 #include "physical_models/mhd_model.h"
 #include "physical_models/physical_model.h"
 
-#include "evolution/transactions/hybrid_transaction.h"
-#include "evolution/transactions/mhd_transaction.h"
-#include "evolution/transactions/transaction.h"
-#include "evolution/transactions/transaction_initializer.h"
-#include "evolution/transactions/transaction_manager.h"
-
-
+#include "evolution/messengers/hybrid_messenger.h"
+#include "evolution/messengers/messenger.h"
+#include "evolution/messengers/messenger_initializer.h"
+#include "evolution/messengers/mhd_messenger.h"
 #include "utilities/algorithm.h"
 
 
@@ -36,8 +33,8 @@ struct LevelDescriptor
     static const int NOT_SET = -1;
     int modelIndex           = NOT_SET;
     int solverIndex          = NOT_SET;
-    // std::unique_ptr<ITransaction> fromCoarser;
-    std::string transactionName;
+    // std::unique_ptr<IMessenger> fromCoarser;
+    std::string messengerName;
 };
 
 
@@ -55,28 +52,28 @@ inline bool isRootLevel(int levelNumber)
  * SAMRAI::mesh::StandardTagAndInitStrategy and implement the needed application-dependent
  * operations.
  *
- * The MultiPhysicsIntegrator uses a pool of ITransaction, ISolver and IPhysicalModel to initialize,
+ * The MultiPhysicsIntegrator uses a pool of IMessenger, ISolver and IPhysicalModel to initialize,
  * advance and synchronize a given level. It manipulate these abstractions and therefore does not
- * know any details of the specific models, solvers and transactions used to manipulate a level.
+ * know any details of the specific models, solvers and messengers used to manipulate a level.
  * Each time SAMRAI calls the MultiPhysicsIntegrator to perform an action at a specific level, the
- * MultiPhysicsIntegrator usually first has to figure out which of the ITransaction, IModel and
+ * MultiPhysicsIntegrator usually first has to figure out which of the IMessenger, IModel and
  * ISolver to use.
  *
  * The interface of the MultiPhysicsIntegrator is composed of:
  *
  * - the implementations of the StandardTagAndInitStrategy and TimeRefinementLevelStrategy
- * - methods to register the models, transactions and solvers for a given PatchHierarchy.
+ * - methods to register the models, messengers and solvers for a given PatchHierarchy.
  *
  * these last methods are to be called in the following order:
  *
  * - registerModel() : used to register a model for a range of levels
  * - registerAndInitSolver(): used to register and initialize a solver for a range of levels where
  * the compatible model has been registered
- * - registerAndSetupTransactions() : used to register the transactions associated with the
+ * - registerAndSetupMessengers() : used to register the messengers associated with the
  * registered IPhysicalModel and ISolver objects
  *
  */
-template<typename TransactionFactory>
+template<typename MessengerFactory>
 class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                public SAMRAI::algs::TimeRefinementLevelStrategy
 {
@@ -189,21 +186,21 @@ public:
 
 
     /**
-     * @brief registerAndSetupTransactions registers and setup the transactions for the hierarchy
+     * @brief registerAndSetupMessengers registers and setup the messengers for the hierarchy
      *
-     * This method create all necessary transactions for levels in the hierarchy to exchange data
+     * This method create all necessary messengers for levels in the hierarchy to exchange data
      * knowing the sequence of models. This method must thus be called *after* the registerModel().
      *
      *
-     * @param transactionFactory is used to create the appropriate transaction
+     * @param messengerFactory is used to create the appropriate messenger
      */
-    void registerAndSetupTransactions(TransactionFactory& transactionFactory)
+    void registerAndSetupMessengers(MessengerFactory& messengerFactory)
     {
-        registerTransactions_(transactionFactory);
+        registerMessengers_(messengerFactory);
 
-        // now setup all transactions we've just created
+        // now setup all messengers we've just created
 
-        setupTransactions_();
+        setupMessengers_();
     }
 
 
@@ -219,10 +216,10 @@ public:
 
 
 
-    std::string transactionName(int iLevel)
+    std::string messengerName(int iLevel)
     {
-        auto& transaction = getTransactionWithCoarser_(iLevel);
-        return transaction.name();
+        auto& messenger = getMessengerWithCoarser_(iLevel);
+        return messenger.name();
     }
 
 
@@ -245,10 +242,10 @@ public:
      * This is:
      * - the model (by definition the model has data defined on patches)
      * - the solver (Some solvers has internal data that needs to exist on patches)
-     * - the transaction (the transaction has data defined on patches for internal reasons)
+     * - the messenger (the messenger has data defined on patches for internal reasons)
      *
      *
-     * then the level needs to be registered to the transaction.
+     * then the level needs to be registered to the messenger.
      *
      * Then data initialization per se begins and one can be on one of the following cases:
      *
@@ -266,7 +263,7 @@ public:
     {
         auto& model             = getModel_(levelNumber);
         auto& solver            = getSolver_(levelNumber);
-        auto& transaction       = getTransactionWithCoarser_(levelNumber);
+        auto& messenger         = getMessengerWithCoarser_(levelNumber);
         const bool isRegridding = oldLevel != nullptr;
 
 
@@ -280,12 +277,12 @@ public:
             {
                 model.allocate(*patch, initDataTime);
                 solver.allocate(model, *patch, initDataTime);
-                transaction.allocate(*patch, initDataTime);
+                messenger.allocate(*patch, initDataTime);
             }
         }
 
 
-        transaction.registerLevel(hierarchy, levelNumber);
+        messenger.registerLevel(hierarchy, levelNumber);
 
 
         // on est en train de changer la hierarchy soit en créant un nouveau niveau (finest)
@@ -297,7 +294,7 @@ public:
         {
             // in case of a regrid we need to make a bunch of temporary regriding schedules
             // using the init algorithms and actually perform the .fillData() for all of them
-            transaction.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            messenger.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
         }
 
 
@@ -314,7 +311,7 @@ public:
             }
             else
             {
-                transaction.initLevel(levelNumber, initDataTime);
+                messenger.initLevel(levelNumber, initDataTime);
             }
         }
     }
@@ -369,18 +366,18 @@ public:
     /**
      * @brief advanceLevel is derived from the abstract method of TimeRefinementLevelStrategy
      *
-     * In this method, the MultiPhysicsIntegrator needs to get the model, solver and transaction
+     * In this method, the MultiPhysicsIntegrator needs to get the model, solver and messenger
      * necessary to advance the given level. It then forwards the call to the solver's advanceLevel
-     * method, passing it the model and transaction, among others.
+     * method, passing it the model and messenger, among others.
      *
-     * If it is the first step of the subcycling the Transaction may have something to do before
+     * If it is the first step of the subcycling the Messenger may have something to do before
      * calling the solver's advanceLevel(). Typically it may need to grab coarser level's data at
      * the coarser future time so that all subsequent subcycles may use time interpolation without
-     * involving communications. This is done by calling transaction.firstStep()
+     * involving communications. This is done by calling messenger.firstStep()
      *
      *
-     * At the last step of the subcycle, the Transaction may also need to perform some actions, like
-     * working on its internal data for instance. transaction.lastStep()
+     * At the last step of the subcycle, the Messenger may also need to perform some actions, like
+     * working on its internal data for instance. messenger.lastStep()
      */
     virtual double advanceLevel(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
                                 const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
@@ -393,14 +390,14 @@ public:
             throw std::runtime_error("Error - regridAdvance must be False and is True");
 
 
-        // TODO transaction needs to copy stuff from the model into internal 'old' variables
+        // TODO messenger needs to copy stuff from the model into internal 'old' variables
 
 
         auto iLevel = level->getLevelNumber();
 
         auto& solver      = getSolver_(iLevel);
         auto& model       = getModel_(iLevel);
-        auto& fromCoarser = getTransactionWithCoarser_(iLevel);
+        auto& fromCoarser = getMessengerWithCoarser_(iLevel);
 
 
         if (firstStep)
@@ -408,7 +405,7 @@ public:
             fromCoarser.firstStep(model);
         }
 
-        // TODO give firstStep and lastStep bools to the transaction
+        // TODO give firstStep and lastStep bools to the messenger
         // and levelNumber, so that it knows which schedules to apply later on.
         // fromCoarser.setStepInfo(firstStep, lastStep, levelNumber)
 
@@ -432,7 +429,7 @@ public:
         const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy, const int coarsestLevel,
         const int finestLevel, const double syncTime, const std::vector<double>& oldTimes) override
     {
-        // TODO use transactions to sync with coarser
+        // TODO use messengers to sync with coarser
     }
 
     virtual void
@@ -463,7 +460,7 @@ private:
     std::vector<LevelDescriptor> levelDescriptors_;
     std::vector<std::unique_ptr<ISolver>> solvers_;
     std::vector<std::shared_ptr<IPhysicalModel>> models_;
-    std::map<std::string, std::unique_ptr<ITransaction>> transactions_;
+    std::map<std::string, std::unique_ptr<IMessenger>> messengers_;
 
 
     bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -553,7 +550,7 @@ private:
 
 
 
-    void registerTransactions_(TransactionFactory& transactionFactory)
+    void registerMessengers_(MessengerFactory& messengerFactory)
     {
         for (auto iLevel = 0; iLevel < nbrOfLevels_; ++iLevel)
         {
@@ -568,38 +565,37 @@ private:
             auto& coarseModel = getModel_(coarseLevelNumber);
             auto& fineModel   = getModel_(fineLevelNumber);
 
-            registerTransaction_(transactionFactory, coarseModel, fineModel, iLevel);
+            registerMessenger_(messengerFactory, coarseModel, fineModel, iLevel);
         }
     }
 
 
 
 
-    void registerTransaction_(TransactionFactory const& transactions,
-                              IPhysicalModel const& coarseModel, IPhysicalModel const& fineModel,
-                              int iLevel)
+    void registerMessenger_(MessengerFactory const& messenger, IPhysicalModel const& coarseModel,
+                            IPhysicalModel const& fineModel, int iLevel)
     {
-        if (auto transactionName = transactions.name(coarseModel, fineModel); transactionName)
+        if (auto messengerName = messenger.name(coarseModel, fineModel); messengerName)
         {
-            auto foundTransaction = transactions_.find(*transactionName);
-            if (foundTransaction == transactions_.end())
+            auto foundMessenger = messengers_.find(*messengerName);
+            if (foundMessenger == messengers_.end())
             {
-                transactions_[*transactionName] = std::move(
-                    transactions.create(*transactionName, coarseModel, fineModel, iLevel));
+                messengers_[*messengerName]
+                    = std::move(messenger.create(*messengerName, coarseModel, fineModel, iLevel));
             }
 
-            levelDescriptors_[iLevel].transactionName = *transactionName;
+            levelDescriptors_[iLevel].messengerName = *messengerName;
         }
         else
         {
-            throw std::runtime_error("No viable transaction found");
+            throw std::runtime_error("No viable messenger found");
         }
     }
 
 
 
 
-    void setupTransaction_(int iLevel, ITransaction& transaction)
+    void setupMessenger_(int iLevel, IMessenger& messenger)
     {
         auto coarseLevelNumber = iLevel - 1;
         auto fineLevelNumber   = iLevel;
@@ -613,23 +609,23 @@ private:
         auto& fineModel   = getModel_(fineLevelNumber);
         auto& solver      = getSolver_(iLevel);
 
-        TransactionInitializer::setup(transaction, coarseModel, fineModel, solver);
+        MessengerInitializer::setup(messenger, coarseModel, fineModel, solver);
     }
 
 
 
 
-    void setupTransactions_()
+    void setupMessengers_()
     {
-        auto transactionName = levelDescriptors_[0].transactionName;
-        setupTransaction_(0, getTransactionWithCoarser_(0));
+        auto messengerName = levelDescriptors_[0].messengerName;
+        setupMessenger_(0, getMessengerWithCoarser_(0));
 
         for (auto iLevel = 1; iLevel < nbrOfLevels_; ++iLevel)
         {
-            if (transactionName != levelDescriptors_[iLevel].transactionName)
+            if (messengerName != levelDescriptors_[iLevel].messengerName)
             {
-                transactionName = levelDescriptors_[iLevel].transactionName;
-                setupTransaction_(iLevel, getTransactionWithCoarser_(iLevel));
+                messengerName = levelDescriptors_[iLevel].messengerName;
+                setupMessenger_(iLevel, getMessengerWithCoarser_(iLevel));
             }
         }
     }
@@ -673,16 +669,16 @@ private:
 
 
 
-    ITransaction& getTransactionWithCoarser_(int iLevel)
+    IMessenger& getMessengerWithCoarser_(int iLevel)
     {
         auto& descriptor = levelDescriptors_[iLevel];
-        auto transaction = transactions_[descriptor.transactionName].get();
-        auto s           = transaction->name();
+        auto messenger   = messengers_[descriptor.messengerName].get();
+        auto s           = messenger->name();
 
-        if (transaction)
-            return *transaction;
+        if (messenger)
+            return *messenger;
         else
-            throw std::runtime_error("no found transaction");
+            throw std::runtime_error("no found messenger");
     }
 
 

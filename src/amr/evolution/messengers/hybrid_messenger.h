@@ -1,14 +1,14 @@
 
-#ifndef PHARE_HYBRID_TRANSACTION_H
-#define PHARE_HYBRID_TRANSACTION_H
+#ifndef PHARE_HYBRID_MESSENGER_H
+#define PHARE_HYBRID_MESSENGER_H
 
 
 
 
-#include "evolution/transactions/hybrid_transaction_strategy.h"
-#include "evolution/transactions/mhd_transaction.h"
-#include "evolution/transactions/transaction.h"
-#include "evolution/transactions/transaction_info.h"
+#include "evolution/messengers/hybrid_messenger_strategy.h"
+#include "evolution/messengers/messenger.h"
+#include "evolution/messengers/messenger_info.h"
+#include "evolution/messengers/mhd_messenger.h"
 #include "hybrid/hybrid_quantities.h"
 #include "physical_models/hybrid_model.h"
 #include "physical_models/physical_model.h"
@@ -18,25 +18,25 @@
 
 namespace PHARE
 {
-enum class HybridTransactionStrategyType { HybridHybrid, MHDHybrid };
+enum class HybridMessengerStrategyType { HybridHybrid, MHDHybrid };
 
 
 
-/** @brief HybridTransaction is a concrete implementation of the ITransaction interface which
- * represents all data transactions towards a Hybrid level.
+/** @brief HybridMessenger is a concrete implementation of the IMessenger interface which
+ * represents all data messengers towards a Hybrid level.
  *
  * Most of the operations needed to communicate data cannot however be defined here since it is not
  * known whether the origin level is Hybrid or not. The class therefore relies on a pointer to a
  * strategy that performs the operations.
  *
- * Possible HybridTransactionStrategy are:
+ * Possible HybridMessengerStrategy are:
  *
- * - HybridHybridTransactionStrategy
- * - MHDHybridTransactionStrategy
+ * - HybridHybridMessengerStrategy
+ * - MHDHybridMessengerStrategy
  *
  *
- * In addition to implement the interface of a ITransaction to be used by the
- * MultiPhysicsIntegrator, HybridTransaction also provides Hybrid ISolver objects with an interface
+ * In addition to implement the interface of a IMessenger to be used by the
+ * MultiPhysicsIntegrator, HybridMessenger also provides Hybrid ISolver objects with an interface
  * specific to Hybrid systems. Those methods are:
  *
  *
@@ -55,29 +55,29 @@ enum class HybridTransactionStrategyType { HybridHybrid, MHDHybrid };
  *
  */
 template<typename HybridModel>
-class HybridTransaction : public ITransaction
+class HybridMessenger : public IMessenger
 {
 private:
     using IonsT     = decltype(std::declval<HybridModel>().state.ions);
     using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
 
-    using stratT = HybridTransactionStrategy<HybridModel>;
+    using stratT = HybridMessengerStrategy<HybridModel>;
 
 public:
-    explicit HybridTransaction(std::unique_ptr<stratT> strat)
+    explicit HybridMessenger(std::unique_ptr<stratT> strat)
         : strat_{std::move(strat)}
     {
     }
 
 
     /* -------------------------------------------------------------------------
-                            Start ITransaction interface
+                            Start IMessenger interface
        -------------------------------------------------------------------------*/
 
 
 
     /**
-     * @brief see ITransaction::allocate. Allocate calls the abstract HybridTransactionStrategy to
+     * @brief see IMessenger::allocate. Allocate calls the abstract HybridMessengerStrategy to
      * perform the allocation of its internal resources
      */
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
@@ -88,16 +88,16 @@ public:
 
 
     /**
-     * @brief see ITransaction::registerQuantities. Prepares a HybridTransaction to communicates
-     * variables given in the two information structures. Since the HybridTransaction does not know
+     * @brief see IMessenger::registerQuantities. Prepares a HybridMessenger to communicates
+     * variables given in the two information structures. Since the HybridMessenger does not know
      * which concrete strategy it is using, it cannot directly use these informations. It thus
      * passes them to its strategy.
      *
-     * @param fromCoarserInfo see ITransaction
-     * @param fromFinerInfo see ITransaction
+     * @param fromCoarserInfo see IMessenger
+     * @param fromFinerInfo see IMessenger
      */
-    virtual void registerQuantities(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                                    std::unique_ptr<ITransactionInfo> fromFinerInfo) override
+    virtual void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+                                    std::unique_ptr<IMessengerInfo> fromFinerInfo) override
     {
         strat_->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }
@@ -106,7 +106,7 @@ public:
 
 
     /**
-     * @brief see ITransaction::registerLevel
+     * @brief see IMessenger::registerLevel
      */
     virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                int const levelNumber) override
@@ -117,7 +117,7 @@ public:
 
 
     /**
-     * @brief see ITransaction::registerLevel
+     * @brief see IMessenger::registerLevel
      */
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                         const int levelNumber,
@@ -131,7 +131,7 @@ public:
 
 
     /**
-     * @brief see ITransaction::initLevel
+     * @brief see IMessenger::initLevel
      * @param levelNumber
      * @param initDataTime
      */
@@ -142,7 +142,7 @@ public:
 
 
     /**
-     * @brief see ITransaction::firstStep
+     * @brief see IMessenger::firstStep
      * @param model
      */
     virtual void firstStep(IPhysicalModel const& model) final {}
@@ -150,7 +150,7 @@ public:
 
 
     /**
-     * @brief see ITransaction::lastStep
+     * @brief see IMessenger::lastStep
      * @param model
      */
     virtual void lastStep(IPhysicalModel const& model) final {}
@@ -158,7 +158,7 @@ public:
 
 
     /**
-     * @brief ITransaction::fineModelName
+     * @brief IMessenger::fineModelName
      * @return
      */
     virtual std::string fineModelName() const override { return strat_->fineModelName(); }
@@ -167,7 +167,7 @@ public:
 
 
     /**
-     * @brief see ITransaction::coarseModelName
+     * @brief see IMessenger::coarseModelName
      * @return
      */
     virtual std::string coarseModelName() const override { return strat_->coarseModelName(); }
@@ -176,9 +176,9 @@ public:
 
 
     /**
-     * @brief see ITransaction::emptyInfoFromCoarser
+     * @brief see IMessenger::emptyInfoFromCoarser
      */
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() override
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
     {
         return strat_->emptyInfoFromCoarser();
     }
@@ -186,9 +186,9 @@ public:
 
 
     /**
-     * @brief see ITransaction::emptyInfoFromFiner
+     * @brief see IMessenger::emptyInfoFromFiner
      */
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromFiner() override
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
     {
         return strat_->emptyInfoFromFiner();
     }
@@ -196,8 +196,8 @@ public:
 
 
     /**
-     * @brief returns the name of the concrete ITransaction, which in the case of a
-     * HybridTransaction is just the name of its strategy.
+     * @brief returns the name of the concrete IMessenger, which in the case of a
+     * HybridMessenger is just the name of its strategy.
      */
     virtual std::string name() override
     {
@@ -212,9 +212,9 @@ public:
     }
 
     /* -------------------------------------------------------------------------
-                            End ITransaction interface
+                            End IMessenger interface
 
-                        Start HybridTransaction Interface
+                        Start HybridMessenger Interface
        -------------------------------------------------------------------------*/
 
 
@@ -284,13 +284,13 @@ public:
 
 
     /* -------------------------------------------------------------------------
-                        End HybridTransaction Interface
+                        End HybridMessenger Interface
        -------------------------------------------------------------------------*/
 
 
 
 
-    virtual ~HybridTransaction() = default;
+    virtual ~HybridMessenger() = default;
 
 private:
     const std::unique_ptr<stratT> strat_;

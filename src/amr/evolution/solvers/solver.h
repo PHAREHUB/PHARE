@@ -7,8 +7,8 @@
 #include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "evolution/transactions/transaction.h"
-#include "evolution/transactions/transaction_info.h"
+#include "evolution/messengers/messenger.h"
+#include "evolution/messengers/messenger_info.h"
 #include "physical_models/physical_model.h"
 
 
@@ -24,13 +24,12 @@ public:
 
     virtual void registerResources(IPhysicalModel& model) = 0;
 
-    virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const = 0;
+    virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const = 0;
 
 
     virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              int const levelNumber, IPhysicalModel& model,
-                              ITransaction& fromCoarser, const double currentTime,
-                              const double newTime)
+                              int const levelNumber, IPhysicalModel& model, IMessenger& fromCoarser,
+                              const double currentTime, const double newTime)
         = 0;
 
 
@@ -50,7 +49,7 @@ protected:
 
 
 
-bool areCompatible(ITransaction const& transaction, ISolver const& solver);
+bool areCompatible(IMessenger const& messenger, ISolver const& solver);
 
 bool areCompatible(IPhysicalModel const& model, ISolver const& solver);
 

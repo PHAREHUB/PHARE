@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "evolution/transactions/mhd_transaction_info.h"
+#include "evolution/messengers/mhd_messenger_info.h"
 #include "physical_models/physical_model.h"
 #include "tools/resources_manager.h"
 
@@ -49,9 +49,9 @@ public:
     }
 
 
-    virtual std::unique_ptr<ITransactionInfo> transactionInfo() const override
+    virtual std::unique_ptr<IMessengerInfo> messengerInfo() const override
     {
-        return std::make_unique<MHDTransactionInfo>();
+        return std::make_unique<MHDMessengerInfo>();
     }
 
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
@@ -62,9 +62,7 @@ public:
 
 
 
-    virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const override
-    {
-    }
+    virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const override {}
 
     virtual ~MHDModel() override = default;
 
