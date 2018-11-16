@@ -41,6 +41,12 @@ struct LevelDescriptor
 };
 
 
+inline bool isRootLevel(int levelNumber)
+{
+    return levelNumber == 0;
+}
+
+
 
 /**
  * @brief The MultiPhysicsIntegrator is given to the SAMRAI GriddingAlgorithm and is used by SAMRAI
@@ -206,7 +212,11 @@ public:
     std::string solverName(int iLevel) const { return getSolver_(iLevel).name(); }
 
 
+
+
     std::string modelName(int iLevel) const { return getModel_(iLevel).name(); }
+
+
 
 
     std::string transactionName(int iLevel)
@@ -224,6 +234,29 @@ public:
     // -----------------------------------------------------------------------------------------------
 
 
+
+
+    /**
+     * @brief see SAMRAI documentation. This function initializes the data on the given level.
+     *
+     * The method first checks wether allocation of patch data must be performed.
+     * If it does, all objects using resources on patches must see their allocate() function called.
+     *
+     * This is:
+     * - the model (by definition the model has data defined on patches)
+     * - the solver (Some solvers has internal data that needs to exist on patches)
+     * - the transaction (the transaction has data defined on patches for internal reasons)
+     *
+     *
+     * then the level needs to be registered to the transaction.
+     *
+     * Then data initialization per se begins and one can be on one of the following cases:
+     *
+     * - regridding
+     * - initialization of the root level
+     * - initialization of a new level from scratch (not a regridding)
+     *
+     */
     virtual void initializeLevelData(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                      const int levelNumber, const double initDataTime,
                                      const bool canBeRefined, const bool initialTime,
@@ -231,9 +264,10 @@ public:
                                      = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                                      const bool allocateData = true) override
     {
-        auto& model       = getModel_(levelNumber);
-        auto& solver      = getSolver_(levelNumber);
-        auto& transaction = getTransactionWithCoarser_(levelNumber);
+        auto& model             = getModel_(levelNumber);
+        auto& solver            = getSolver_(levelNumber);
+        auto& transaction       = getTransactionWithCoarser_(levelNumber);
+        const bool isRegridding = oldLevel != nullptr;
 
 
         // here we need to allocate PatchDatas for
@@ -248,19 +282,18 @@ public:
                 solver.allocate(model, *patch, initDataTime);
                 transaction.allocate(*patch, initDataTime);
             }
-            // TODO: transactions may need to allocate data in initializeLevelData too
         }
 
 
-
         transaction.registerLevel(hierarchy, levelNumber);
+
 
         // on est en train de changer la hierarchy soit en créant un nouveau niveau (finest)
         // soit en regriddant un niveau.
         // du coup tous les schedules concernant ce niveau sont devenus invalides
         // en gros on doit refaire les memes en passant le pointeur sur le newLevel
 
-        if (oldLevel)
+        if (isRegridding)
         {
             // in case of a regrid we need to make a bunch of temporary regriding schedules
             // using the init algorithms and actually perform the .fillData() for all of them
@@ -270,7 +303,7 @@ public:
 
         else // we're creating a brand new finest level in the hierarchy
         {
-            if (levelNumber == 0)
+            if (isRootLevel(levelNumber))
             {
                 // here we are either starting the simulation and building the root level
                 // or building from a restart
@@ -444,6 +477,7 @@ private:
 
 
 
+
     bool existModelOnRange_(int coarsestLevel, int finestLevel)
     {
         bool hasModel = true;
@@ -457,6 +491,8 @@ private:
         }
         return !hasModel;
     }
+
+
 
 
     void addModel_(std::shared_ptr<IPhysicalModel> model, int coarsestLevel, int finestLevel)
@@ -476,6 +512,7 @@ private:
             throw std::runtime_error("model " + model->name() + " already registered");
         }
     }
+
 
 
 
@@ -515,6 +552,7 @@ private:
 
 
 
+
     void registerTransactions_(TransactionFactory& transactionFactory)
     {
         for (auto iLevel = 0; iLevel < nbrOfLevels_; ++iLevel)
@@ -533,6 +571,7 @@ private:
             registerTransaction_(transactionFactory, coarseModel, fineModel, iLevel);
         }
     }
+
 
 
 
