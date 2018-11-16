@@ -106,6 +106,8 @@ public:
     auto nbrOfLevels() const { return nbrOfLevels_; }
 
 
+
+
     /**
      * @brief registerModel registers the model to the multiphysics integrator for a given level
      * range. The level index for the coarsest and finest must be greater or equal to zero, less
@@ -125,29 +127,13 @@ public:
             throw std::runtime_error("invalid range level");
         }
 
-        for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+        if (existModelOnRange_(coarsestLevel, finestLevel))
         {
-            if (levelDescriptors_[iLevel].modelIndex != LevelDescriptor::NOT_SET)
-            {
-                throw std::runtime_error("error - model already set for level "
-                                         + std::to_string(iLevel));
-            }
+            throw std::runtime_error("error - level range contains levels with registered model");
         }
 
-        if (notIn(model, models_))
-        {
-            models_.push_back(std::move(model));
-            int modelIndex = models_.size() - 1;
 
-            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
-            {
-                levelDescriptors_[iLevel].modelIndex = modelIndex;
-            }
-        }
-        else
-        {
-            throw std::runtime_error("model " + model->name() + " already registered");
-        }
+        addModel_(model, coarsestLevel, finestLevel);
     }
 
 
@@ -192,6 +178,7 @@ public:
 
         addSolver_(std::move(solver), coarsestLevel, finestLevel);
     }
+
 
 
 
@@ -453,6 +440,41 @@ private:
             return false;
         }
         return true;
+    }
+
+
+
+    bool existModelOnRange_(int coarsestLevel, int finestLevel)
+    {
+        bool hasModel = true;
+
+        for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+        {
+            if (levelDescriptors_[iLevel].modelIndex != LevelDescriptor::NOT_SET)
+            {
+                return hasModel;
+            }
+        }
+        return !hasModel;
+    }
+
+
+    void addModel_(std::shared_ptr<IPhysicalModel> model, int coarsestLevel, int finestLevel)
+    {
+        if (notIn(model, models_))
+        {
+            models_.push_back(std::move(model));
+            int modelIndex = models_.size() - 1;
+
+            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+            {
+                levelDescriptors_[iLevel].modelIndex = modelIndex;
+            }
+        }
+        else
+        {
+            throw std::runtime_error("model " + model->name() + " already registered");
+        }
     }
 
 
