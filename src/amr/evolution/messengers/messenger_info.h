@@ -9,10 +9,16 @@
 namespace PHARE
 {
 /**
- * @brief The IMessengerInfo class is an abstract class used to setup an abstract IMessenger
- * object. This class needs to be abstract since an IMessenger does not know which concrete kind
- * of messenger information is needed. Derived implemetation should provide all informations
- * required by a concrete implementation of IMessenger::setup()
+ * @brief The IMessengerInfo class is an abstract class used to register quantities to be used by a
+ * Messenger in communications. This class is abstract and each concrete IMessenger will need to
+ * define its concrete specialization of the IMessengerInfo.
+ *
+ * * This class and its subclasses are intermediate objects between IPhysicalModel and ISolver
+ * subclasses and IMessenger subclasses.
+ *
+ * Concrete implementations of this class are used by concrete implementations of IPhysicalModel,
+ * ISolver to declare the quantities they need concrete IMessenger to deal with.
+ *
  */
 class IMessengerInfo
 {

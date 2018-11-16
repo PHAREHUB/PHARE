@@ -200,7 +200,7 @@ public:
 
         // now setup all messengers we've just created
 
-        setupMessengers_();
+        setupQuantities_();
     }
 
 
@@ -267,9 +267,6 @@ public:
         const bool isRegridding = oldLevel != nullptr;
 
 
-        // here we need to allocate PatchDatas for
-        // - the model
-        // - the solver
         if (allocateData)
         {
             auto level = hierarchy->getPatchLevel(levelNumber);
@@ -431,6 +428,9 @@ public:
     {
         // TODO use messengers to sync with coarser
     }
+
+
+
 
     virtual void
     synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
@@ -595,7 +595,7 @@ private:
 
 
 
-    void setupMessenger_(int iLevel, IMessenger& messenger)
+    void registerQuantities_(int iLevel, IMessenger& messenger)
     {
         auto coarseLevelNumber = iLevel - 1;
         auto fineLevelNumber   = iLevel;
@@ -615,17 +615,17 @@ private:
 
 
 
-    void setupMessengers_()
+    void setupQuantities_()
     {
         auto messengerName = levelDescriptors_[0].messengerName;
-        setupMessenger_(0, getMessengerWithCoarser_(0));
+        registerQuantities_(0, getMessengerWithCoarser_(0));
 
         for (auto iLevel = 1; iLevel < nbrOfLevels_; ++iLevel)
         {
             if (messengerName != levelDescriptors_[iLevel].messengerName)
             {
                 messengerName = levelDescriptors_[iLevel].messengerName;
-                setupMessenger_(iLevel, getMessengerWithCoarser_(iLevel));
+                registerQuantities_(iLevel, getMessengerWithCoarser_(iLevel));
             }
         }
     }

@@ -14,14 +14,16 @@
 namespace PHARE
 {
 /**
- * @brief The HybridMessengerInfo class derives from IMessengerInfo. It is used to setup a
- * HybridMessenger and thus contains all the names of all variables that will need to be
- * communicated by a HybridMessenger.
+ * @brief The HybridMessengerInfo class derives from IMessengerInfo.
+ * It is filled by HybridModel and a Hybrid ISolver to register the quantities they need to be
+ * communicated by the HybridMessenger.
  *
  * One can distinguish two groups of variables:
  *
- * - init variables, are the names of the variables that need to be initialized
- * - ghost variables are the names of the variables that need to be filled in ghost zones
+ * - init variables, are the names of the variables that need to be initialized. Those are the
+ * quantities that will be communicated during IMessenger::regrid() and IMessenger::initLevel()
+ *
+ * - ghost variables are the names of the variables that need to be filled in ghost zones.
  *
  * these variables can belong to the model, the solver.
  *
@@ -42,11 +44,26 @@ public:
     VecFieldNames modelMagnetic;
     VecFieldNames modelElectric;
 
+    //! names of the magnetic quantities that will be communicated by HybridMessenger::initLevel()
+    //! and HybridMessenger::regrid()
     std::vector<VecFieldNames> initMagnetic;
+
+
+    //! names of the electric quantities that will be communicated by HybridMessenger::initLevel()
+    //! and HybridMessenger::regrid()
     std::vector<VecFieldNames> initElectric;
 
+
+    //! name of the magnetic quantities that will be communicated by
+    //! HybridMessenger::fillMagneticGhosts()
     std::vector<VecFieldNames> ghostMagnetic;
+
+
+    //! name of the electric quantities that will be communicated by the
+    //! HybridMessenger::fillGhostElectric
     std::vector<VecFieldNames> ghostElectric;
+
+
 
     virtual ~HybridMessengerInfo() = default;
 };

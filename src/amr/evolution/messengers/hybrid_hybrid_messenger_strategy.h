@@ -53,6 +53,11 @@ public:
 
 
 
+    /* ------------------------------------------------------------------------
+                    methods used for the IMessenger interface
+       ------------------------------------------------------------------------ */
+
+
     /**
      * @brief allocate the messenger strategy internal variables to the model resourceManager
      */
@@ -166,6 +171,9 @@ public:
 
     virtual std::string fineModelName() const override { return HybridModel::model_name; }
 
+
+
+
     virtual std::string coarseModelName() const override { return HybridModel::model_name; }
 
 
@@ -175,6 +183,9 @@ public:
     {
         return std::make_unique<HybridMessengerInfo>();
     }
+
+
+
 
     virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
     {
@@ -192,33 +203,9 @@ public:
 
 
 
-#if 0
-    HybridHybridMessengerStrategy(
-        HybridState const &hybridModel, ResourcesManager &resources,
-        std::shared_ptr<SAMRAI::hier::RefineOperator> const &fieldRefineOp,
-        std::shared_ptr<SAMRAI::hier::CoarsenOperator> const &fieldCoarsenOp,
-        std::shared_ptr<SAMRAI::hier::RefineOperator> const &particlesRefineOp,
-        int const startLevel)
-        : model_{hybridModel}
-        , electricNew_{model_.electromag.E.name() + "_new", HybridQuantity::Vector{}}
-        , magneticNew_{model_.electromag.B.name() + "_new", HybridQuantity::Vector{}}
-        , resources_{resources}
-        , fieldRefineOp_{fieldRefineOp}
-        , fieldCoarsenOp_{fieldCoarsenOp}
-        , particlesRefineOp_{particlesRefineOp}
-        , startLevel_{startLevel}
-        , dimension_{SAMRAI::tbox::Dimension{HybridState::dimension}}
-    {
-        resources_.registerResources(electricNew_);
-        resources_.registerResources(magneticNew_);
-    }
-    // here we have two comportement:
-    // either we already have a schedule and in this case we simply use it
-    // or we don't have one and we create the schedule
-    // note that we will have the current level , and the hierarchy access
-    // also we know the level number of the source and the destination
-    //
-#endif
+    /* ------------------------------------------------------------------------
+                 methods used for the HybridMessenger interface
+       ------------------------------------------------------------------------ */
 
 
     virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
