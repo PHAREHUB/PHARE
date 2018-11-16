@@ -179,14 +179,10 @@ public:
             throw std::runtime_error("invalid level range");
         }
 
-
-        for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+        if (!canBeRegistered_(coarsestLevel, finestLevel, *solver))
         {
-            if (auto& model = getModel_(iLevel); !areCompatible(model, *solver))
-            {
-                throw std::runtime_error(model.name() + " is not compatible with " + solver->name()
-                                         + ", (expecting " + solver->modelName() + ")");
-            }
+            throw std::runtime_error(solver->name()
+                                     + " is not compatible with model on specified level range");
         }
 
 
@@ -194,19 +190,7 @@ public:
         solver->registerResources(model);
 
 
-        if (notIn(solver, solvers_))
-        {
-            solvers_.push_back(std::move(solver)); // check that solver exist
-
-            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
-            {
-                levelDescriptors_[iLevel].solverIndex = solvers_.size() - 1;
-            }
-        }
-        else
-        {
-            throw std::runtime_error("solver " + solver->name() + " already registered");
-        }
+        addSolver_(std::move(solver), coarsestLevel, finestLevel);
     }
 
 
@@ -469,6 +453,42 @@ private:
             return false;
         }
         return true;
+    }
+
+
+
+    void addSolver_(std::unique_ptr<ISolver> solver, int coarsestLevel, int finestLevel)
+    {
+        if (notIn(solver, solvers_))
+        {
+            solvers_.push_back(std::move(solver)); // check that solver exist
+
+            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+            {
+                levelDescriptors_[iLevel].solverIndex = solvers_.size() - 1;
+            }
+        }
+        else
+        {
+            throw std::runtime_error("solver " + solver->name() + " already registered");
+        }
+    }
+
+
+
+
+    bool canBeRegistered_(int coarsestLevel, int finestLevel, ISolver const& solver)
+    {
+        bool itCan = true;
+
+        for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+        {
+            if (auto& model = getModel_(iLevel); !areCompatible(model, solver))
+            {
+                return false;
+            }
+        }
+        return itCan;
     }
 
 
