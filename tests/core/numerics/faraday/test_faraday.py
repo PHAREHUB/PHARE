@@ -4,12 +4,12 @@
 
 # the code consists in calculating the curl of a function numerically
 
-import sys
-sys.path.append('/home/smets/codeS/phare/tests/core/data/gridlayout/')
-
-import numpy as np
-import gridlayout
 import os
+import sys
+import numpy as np
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../data/', 'gridlayout'))
+
+import gridlayout
 
 class TestVariables (object) :
 
