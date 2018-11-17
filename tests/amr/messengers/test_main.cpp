@@ -491,8 +491,8 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesRefinedLevels)
 
         for (auto& patch : *level)
         {
-            auto _ = hybridModel->resourcesManager->makeResourcesGuard(
-                *patch, hybridModel->state.electromag);
+            auto _
+                = hybridModel->resourcesManager->setOnPatch(*patch, hybridModel->state.electromag);
 
             auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 
@@ -563,8 +563,8 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewLevelDuringRegrid)
 
         for (auto& patch : *level)
         {
-            auto _ = hybridModel->resourcesManager->makeResourcesGuard(
-                *patch, hybridModel->state.electromag);
+            auto _
+                = hybridModel->resourcesManager->setOnPatch(*patch, hybridModel->state.electromag);
 
             auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 

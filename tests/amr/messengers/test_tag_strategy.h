@@ -103,8 +103,7 @@ public:
 
                 for (auto& patch : *level)
                 {
-                    auto _ = model_->resourcesManager->makeResourcesGuard(*patch,
-                                                                          model_->state.electromag);
+                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag);
 
                     auto layout
                         = PHARE::layoutFromPatch<typename HybridModel::gridLayout_type>(*patch);

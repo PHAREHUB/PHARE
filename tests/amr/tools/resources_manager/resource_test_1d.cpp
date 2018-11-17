@@ -79,16 +79,16 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 {
     TypeParam resourceUserCollection;
 
-    auto check = [this](auto &resourceUserPack) {
-        auto &hierarchy    = this->hierarchy->hierarchy;
-        auto &resourceUser = resourceUserPack.user;
+    auto check = [this](auto& resourceUserPack) {
+        auto& hierarchy    = this->hierarchy->hierarchy;
+        auto& resourceUser = resourceUserPack.user;
 
         for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
         {
             auto patchLevel = hierarchy->getPatchLevel(iLevel);
-            for (auto const &patch : *patchLevel)
+            for (auto const& patch : *patchLevel)
             {
-                auto guard = this->resourcesManager.makeResourcesGuard(*patch, resourceUser);
+                auto dataOnPatch = this->resourcesManager.setOnPatch(*patch, resourceUser);
                 EXPECT_TRUE(resourceUser.isUsable());
                 EXPECT_FALSE(resourceUser.isSettable());
             }
