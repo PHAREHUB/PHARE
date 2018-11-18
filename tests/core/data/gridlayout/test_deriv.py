@@ -48,11 +48,11 @@ def test_deriv1D(path):
         filename_dxBy = 'dxBy_interpOrder_{}_1d.txt'.format(interpOrder)
         filename_dxEz = 'dxEz_interpOrder_{}_1d.txt'.format(interpOrder)
 
-        By   = np.empty(layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]))
-        Ez   = np.empty(layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]))
+        By   = np.zeros(layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]))
+        Ez   = np.zeros(layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]))
 
-        dxBy = np.empty(layout.allocSizeDerived(interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
-        dxEz = np.empty(layout.allocSizeDerived(interpOrder, tv.EzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+        dxBy = np.zeros(layout.allocSizeDerived(interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
+        dxEz = np.zeros(layout.allocSizeDerived(interpOrder, tv.EzCentering[0], tv.nbrCells[0]), dtype=np.float64)
 
         nbrGhost_p = layout.nbrGhosts(interpOrder, 'primal')
         nbrGhost_d = layout.nbrGhosts(interpOrder, 'dual')
@@ -88,18 +88,18 @@ def test_deriv2D(path):
         filename_dxEz = 'dxEz_interpOrder_{}_2d.txt'.format(interpOrder)
         filename_dyEz = 'dyEz_interpOrder_{}_2d.txt'.format(interpOrder)
 
-        By   = np.empty([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        By   = np.zeros([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-        Ez   = np.empty([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        Ez   = np.zeros([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.EzCentering[1], tv.nbrCells[1])], dtype=np.float64)
 
-        dxBy = np.empty([layout.allocSizeDerived(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        dxBy = np.zeros([layout.allocSizeDerived(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-        dyBy = np.empty([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        dyBy = np.zeros([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSizeDerived(interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-        dxEz = np.empty([layout.allocSizeDerived(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        dxEz = np.zeros([layout.allocSizeDerived(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.EzCentering[1], tv.nbrCells[1])], dtype=np.float64)
-        dyEz = np.empty([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        dyEz = np.zeros([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSizeDerived(interpOrder, tv.EzCentering[1], tv.nbrCells[1])], dtype=np.float64)
 
         nbrGhost_p = layout.nbrGhosts(interpOrder, 'primal')
@@ -151,30 +151,30 @@ def test_deriv3D(path):
         filename_dyEz = 'dyEz_interpOrder_{}_3d.txt'.format(interpOrder)
         filename_dzEz = 'dzEz_interpOrder_{}_3d.txt'.format(interpOrder)
 
-        By   = np.empty([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        By   = np.zeros([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                          layout.allocSize(interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-        Ez   = np.empty([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        Ez   = np.zeros([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
                          layout.allocSize(interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-        dxBy = np.empty([layout.allocSizeDerived(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        dxBy = np.zeros([layout.allocSizeDerived(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                          layout.allocSize(interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-        dyBy = np.empty([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        dyBy = np.zeros([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSizeDerived(interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                          layout.allocSize(interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-        dzBy = np.empty([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+        dzBy = np.zeros([layout.allocSize(interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                          layout.allocSizeDerived(interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-        dxEz = np.empty([layout.allocSizeDerived(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        dxEz = np.zeros([layout.allocSizeDerived(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
                          layout.allocSize(interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
-        dyEz = np.empty([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        dyEz = np.zeros([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSizeDerived(interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
                          layout.allocSize(interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
-        dzEz = np.empty([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+        dzEz = np.zeros([layout.allocSize(interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSize(interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
                          layout.allocSizeDerived(interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 

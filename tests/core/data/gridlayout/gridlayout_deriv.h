@@ -15,16 +15,7 @@
 
 using namespace PHARE;
 
-std::vector<double> read(std::string filename)
-{
-    std::ifstream readFile(filename);
-    assert(readFile.is_open());
-    std::vector<double> x;
-
-    std::copy(std::istream_iterator<double>(readFile), std::istream_iterator<double>(),
-              std::back_inserter(x));
-    return x;
-}
+std::vector<double> read(std::string filename);
 
 
 
