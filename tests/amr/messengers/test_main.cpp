@@ -302,14 +302,21 @@ public:
                 db->removeVariable(partProp.name);
             }
 
-            db->removeVariable("EM_old_E_x");
-            db->removeVariable("EM_old_E_y");
-            db->removeVariable("EM_old_E_z");
+            db->removeVariable("HybridModel-HybridModel_EM_old_E_x");
+            db->removeVariable("HybridModel-HybridModel_EM_old_E_y");
+            db->removeVariable("HybridModel-HybridModel_EM_old_E_z");
 
+            db->removeVariable("MHDModel-HybridModel_EM_old_E_x");
+            db->removeVariable("MHDModel-HybridModel_EM_old_E_y");
+            db->removeVariable("MHDModel-HybridModel_EM_old_E_z");
 
-            db->removeVariable("EM_old_B_x");
-            db->removeVariable("EM_old_B_y");
-            db->removeVariable("EM_old_B_z");
+            db->removeVariable("HybridModel-HybridModel_EM_old_B_x");
+            db->removeVariable("HybridModel-HybridModel_EM_old_B_y");
+            db->removeVariable("HybridModel-HybridModel_EM_old_B_z");
+
+            db->removeVariable("MHDModel-HybridModel_EM_old_B_x");
+            db->removeVariable("MHDModel-HybridModel_EM_old_B_y");
+            db->removeVariable("MHDModel-HybridModel_EM_old_B_z");
         }
     }
 };
