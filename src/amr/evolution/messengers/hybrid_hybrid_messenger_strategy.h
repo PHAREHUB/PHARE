@@ -78,7 +78,8 @@ public:
      * This method creates the SAMRAI algorithms for communications associated between pairs of
      * variables. The function does not create the SAMRAI schedules since they depend on the levels
      */
-    virtual void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+    virtual void
+    registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
                        [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
     {
         std::unique_ptr<HybridMessengerInfo> hybridInfo{
@@ -107,7 +108,7 @@ public:
      * for each algo, it creates a bunch of associated schedules and store them in the vector
      */
     virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                          int const levelNumber) override
+                               int const levelNumber) override
     {
         // update the schedules for ghost communications of the electric and magnetic field
 
@@ -215,10 +216,10 @@ public:
 
         auto name = B.name();
 
-        auto algoAndSchedulesItem = magneticGhostsRefine_.find(name);
-        if (algoAndSchedulesItem != std::end(magneticGhostsRefine_))
+        auto magneticRefiner = magneticGhostsRefine_.find(name);
+        if (magneticRefiner != std::end(magneticGhostsRefine_))
         {
-            auto& schedules   = algoAndSchedulesItem->second.schedules;
+            auto& schedules   = magneticRefiner->second.schedules;
             auto scheduleItem = schedules.find(levelNumber);
             if (scheduleItem != std::end(schedules))
             {
@@ -542,7 +543,9 @@ private:
                                std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
     {
+        // clang-format off
         for (auto& [key, refiner] : refiners)
+        // clang-format on
         {
             auto& algo    = refiner.algo;
             auto schedule = algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
@@ -559,7 +562,9 @@ private:
                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                               std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
     {
+        // clang-format off
         for (auto& [key, refiner] : refiners)
+        // clang-format on
         {
             auto& algo       = refiner.algo;
             auto levelNumber = level->getLevelNumber();
@@ -578,7 +583,9 @@ private:
 
     void applyInitSchedules_(int levelNumber, double initDataTime, Refiners const& refiners) const
     {
+        // clang-format off
         for (auto& [key, refiner] : refiners)
+        // clang-format on
         {
             if (refiner.algo == nullptr)
             {
@@ -667,13 +674,10 @@ private:
 
     // keys: PRA1, PRA2 , chosen by messenger
     Refiners particlePRA_;
-
-
 };
 
 template<typename HybridModel>
-const std::string HybridHybridMessengerStrategy<HybridModel>::stratName
-    = "HybridModel-HybridModel";
+const std::string HybridHybridMessengerStrategy<HybridModel>::stratName = "HybridModel-HybridModel";
 
 
 
