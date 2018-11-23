@@ -316,16 +316,30 @@ public:
 
 
 
-TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDandHybridMessengers)
+TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDHybridMessengers)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     auto mhdSolver    = std::make_unique<SolverMHD<MHDModelT>>();
 
-
-    MessengerInitializer::setup(*messengers[0], *models[0], *models[0], *mhdSolver);
     MessengerInitializer::setup(*messengers[1], *models[0], *models[1], *hybridSolver);
+}
+
+
+
+TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDMessengers)
+{
+    auto mhdSolver = std::make_unique<SolverMHD<MHDModelT>>();
+    MessengerInitializer::setup(*messengers[0], *models[0], *models[0], *mhdSolver);
+}
+
+
+
+TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeHybridHybridMessengers)
+{
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     MessengerInitializer::setup(*messengers[2], *models[1], *models[1], *hybridSolver);
 }
+
 
 
 
