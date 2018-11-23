@@ -122,7 +122,7 @@ private:
     std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager_;
     std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager_;
     int const firstLevel_;
-    Electromag EM_old_{"EM_old"};
+    Electromag EM_old_{stratName + "_EM_old"};
 };
 
 template<typename MHDModel, typename HybridModel>
