@@ -200,7 +200,7 @@ public:
 
         // now setup all messengers we've just created
 
-        setupQuantities_();
+        registerQuantities_();
     }
 
 
@@ -615,7 +615,7 @@ private:
 
 
 
-    void setupQuantities_()
+    void registerQuantities_()
     {
         auto messengerName = levelDescriptors_[0].messengerName;
         registerQuantities_(0, getMessengerWithCoarser_(0));

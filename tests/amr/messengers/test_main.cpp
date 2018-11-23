@@ -64,8 +64,11 @@ using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArra
 using HybridModelT                       = HybridModel<GridYee1D, Electromag1D, Ions1D, IonsInit1D>;
 using MHDModelT                          = MHDModel<GridYee1D, VecField1D>;
 using ResourcesManagerT                  = ResourcesManager<GridYee1D>;
+using hybhybStratT                       = HybridHybridMessengerStrategy<HybridModelT>;
+using mhdhybStratT                       = MHDHybridMessengerStrategy<MHDModelT, HybridModelT>;
+using HybridMessengerT                   = HybridMessenger<HybridModelT>;
 
-#if 0
+#if 1
 
 
 double density(double x)
@@ -110,30 +113,21 @@ TEST(anHybridMessenger, hasACorrectName)
         return ionsInit;
     };
 
-    ResourcesManager<GridYee1D> rm{};
-    HybridModel<GridYee1D, Electromag1D, Ions1D, IonsInit1D> hybridModel{getIonsInit_()};
-    MHDModel<GridYee1D, VecField1D> mhdModel{};
+    auto hyb_rm = std::make_shared<ResourcesManagerT>();
+    auto mhd_rm = std::make_shared<ResourcesManagerT>();
+
+    HybridModelT hybridModel{getIonsInit_(), hyb_rm};
+    MHDModelT mhdModel{hyb_rm};
+
+    auto hybhybstrat = std::make_unique<hybhybStratT>(hyb_rm, 0);
+
+    std::unique_ptr<IMessenger> ht = std::make_unique<HybridMessengerT>(std::move(hybhybstrat));
+    EXPECT_EQ(std::string{"HybridModel-HybridModel"}, ht->name());
 
 
-    using hybhybStratT = HybridHybridMessengerStrategy<decltype(hybridModel)>;
-    using mhdhybStratT = MHDHybridMessengerStrategy<decltype(mhdModel), decltype(hybridModel)>;
-
-
-    auto hybhybstrat = std::make_unique<hybhybStratT>();
-
-    std::unique_ptr<IMessenger> ht
-        = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(hybhybstrat));
-
-
-    EXPECT_EQ(std::string{"Hybird-Hybrid"}, ht->name());
-
-
-    auto mhdstrat = std::make_unique<mhdhybStratT>();
-
-    ht = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(mhdstrat));
-
-
-    EXPECT_EQ(std::string{"MHD-Hybrid"}, ht->name());
+    auto mhdstrat = std::make_unique<mhdhybStratT>(mhd_rm, hyb_rm, 0);
+    ht            = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(mhdstrat));
+    EXPECT_EQ(std::string{"MHDModel-HybridModel"}, ht->name());
 }
 
 #endif
@@ -167,23 +161,6 @@ TEST(aMHDMHDMessenger, returnsMHDCoarseAndFineModelNames)
     EXPECT_EQ(MHDModelT::model_name, messenger->fineModelName());
 }
 */
-
-
-double density(double x)
-{
-    return x * x + 2.;
-}
-
-std::array<double, 3> bulkVelocity(double x)
-{
-    return std::array<double, 3>{{1.0, 0.0, 0.0}};
-}
-
-
-std::array<double, 3> thermalVelocity(double x)
-{
-    return std::array<double, 3>{{0.5, 0.0, 0.0}};
-}
 
 
 
