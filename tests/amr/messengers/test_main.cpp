@@ -86,71 +86,6 @@ std::array<double, 3> thermalVelocity(double x)
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
 
-#if 1
-
-TEST(anHybridMessenger, hasACorrectName)
-{
-    auto getIonsInit_ = []() {
-        IonsInit1D ionsInit;
-        ionsInit.name   = "Ions";
-        ionsInit.masses = {{0.1, 0.3}};
-
-        ionsInit.names.emplace_back("specie1");
-        ionsInit.names.emplace_back("specie2");
-
-        ionsInit.nbrPopulations = 2;
-
-        ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-            std::make_unique<ScalarFunction<dim>>(density),
-            std::make_unique<VectorFunction<dim>>(bulkVelocity),
-            std::make_unique<VectorFunction<dim>>(thermalVelocity), -1., 10));
-
-        ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-            std::make_unique<ScalarFunction<dim>>(density),
-            std::make_unique<VectorFunction<dim>>(bulkVelocity),
-            std::make_unique<VectorFunction<dim>>(thermalVelocity), -1., 10));
-
-        return ionsInit;
-    };
-
-    auto hyb_rm = std::make_shared<ResourcesManagerT>();
-    auto mhd_rm = std::make_shared<ResourcesManagerT>();
-
-    HybridModelT hybridModel{getIonsInit_(), hyb_rm};
-    MHDModelT mhdModel{hyb_rm};
-
-    auto hybhybstrat = std::make_unique<hybhybStratT>(hyb_rm, 0);
-
-    std::unique_ptr<IMessenger> ht = std::make_unique<HybridMessengerT>(std::move(hybhybstrat));
-    EXPECT_EQ(std::string{"HybridModel-HybridModel"}, ht->name());
-
-
-    auto mhdstrat = std::make_unique<mhdhybStratT>(mhd_rm, hyb_rm, 0);
-    ht            = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(mhdstrat));
-    EXPECT_EQ(std::string{"MHDModel-HybridModel"}, ht->name());
-
-    auto db = SAMRAI::hier::VariableDatabase::getDatabase();
-
-
-    db->removeVariable("HybridModel-HybridModel_EM_old_E_x");
-    db->removeVariable("HybridModel-HybridModel_EM_old_E_y");
-    db->removeVariable("HybridModel-HybridModel_EM_old_E_z");
-
-    db->removeVariable("MHDModel-HybridModel_EM_old_E_x");
-    db->removeVariable("MHDModel-HybridModel_EM_old_E_y");
-    db->removeVariable("MHDModel-HybridModel_EM_old_E_z");
-
-    db->removeVariable("HybridModel-HybridModel_EM_old_B_x");
-    db->removeVariable("HybridModel-HybridModel_EM_old_B_y");
-    db->removeVariable("HybridModel-HybridModel_EM_old_B_z");
-
-    db->removeVariable("MHDModel-HybridModel_EM_old_B_x");
-    db->removeVariable("MHDModel-HybridModel_EM_old_B_y");
-    db->removeVariable("MHDModel-HybridModel_EM_old_B_z");
-}
-
-#endif
-
 
 
 auto getIonsInit() // TODO refactor this getIonInit used in several tests
@@ -179,7 +114,8 @@ auto getIonsInit() // TODO refactor this getIonInit used in several tests
 
 
 
-class AMessengerInitializerWithHybridAndMHDModels : public ::testing::Test
+
+class HybridMessengers : public ::testing::Test
 {
     std::vector<MessengerDescriptor> descriptors{
         {"MHDModel", "MHDModel"}, {"MHDModel", "HybridModel"}, {"HybridModel", "HybridModel"}};
@@ -190,7 +126,7 @@ public:
     std::vector<std::unique_ptr<IMessenger>> messengers;
     std::vector<std::unique_ptr<IPhysicalModel>> models;
 
-    AMessengerInitializerWithHybridAndMHDModels()
+    HybridMessengers()
     {
         auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
         auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();
@@ -220,9 +156,8 @@ public:
         messengers.push_back(std::move(hybridHybridMessenger));
     }
 
-    MessengerInitializer initializer;
 
-    virtual ~AMessengerInitializerWithHybridAndMHDModels()
+    virtual ~HybridMessengers()
     {
         auto db = SAMRAI::hier::VariableDatabase::getDatabase();
 
@@ -305,7 +240,7 @@ public:
 
 
 
-TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDHybridMessengers)
+TEST_F(HybridMessengers, canInitializeMHDHybridMessengers)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     auto mhdSolver    = std::make_unique<SolverMHD<MHDModelT>>();
@@ -315,7 +250,7 @@ TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDHybridMessen
 
 
 
-TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDMessengers)
+TEST_F(HybridMessengers, canInitializeMHDMessengers)
 {
     auto mhdSolver = std::make_unique<SolverMHD<MHDModelT>>();
     MessengerInitializer::setup(*messengers[0], *models[0], *models[0], *mhdSolver);
@@ -323,10 +258,19 @@ TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeMHDMessengers)
 
 
 
-TEST_F(AMessengerInitializerWithHybridAndMHDModels, canInitializeHybridHybridMessengers)
+TEST_F(HybridMessengers, canInitializeHybridHybridMessengers)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     MessengerInitializer::setup(*messengers[2], *models[1], *models[1], *hybridSolver);
+}
+
+
+
+TEST_F(HybridMessengers, areNamedByTheirStrategyName)
+{
+    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, messengers[0]->name());
+    EXPECT_EQ(std::string{"MHDModel-HybridModel"}, messengers[1]->name());
+    EXPECT_EQ(std::string{"HybridModel-HybridModel"}, messengers[2]->name());
 }
 
 
@@ -458,7 +402,6 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesRefinedLevels)
     short unsigned const dimension = 1;
 
     auto integratorStrat = std::make_shared<TestIntegratorStrat>();
-
     BasicHierarchy basicHierarchy{ratio, dimension, tagStrat.get(), integratorStrat};
 
     auto& hierarchy = basicHierarchy.getHierarchy();
