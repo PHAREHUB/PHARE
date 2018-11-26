@@ -128,6 +128,25 @@ TEST(anHybridMessenger, hasACorrectName)
     auto mhdstrat = std::make_unique<mhdhybStratT>(mhd_rm, hyb_rm, 0);
     ht            = std::make_unique<HybridMessenger<decltype(hybridModel)>>(std::move(mhdstrat));
     EXPECT_EQ(std::string{"MHDModel-HybridModel"}, ht->name());
+
+    auto db = SAMRAI::hier::VariableDatabase::getDatabase();
+
+
+    db->removeVariable("HybridModel-HybridModel_EM_old_E_x");
+    db->removeVariable("HybridModel-HybridModel_EM_old_E_y");
+    db->removeVariable("HybridModel-HybridModel_EM_old_E_z");
+
+    db->removeVariable("MHDModel-HybridModel_EM_old_E_x");
+    db->removeVariable("MHDModel-HybridModel_EM_old_E_y");
+    db->removeVariable("MHDModel-HybridModel_EM_old_E_z");
+
+    db->removeVariable("HybridModel-HybridModel_EM_old_B_x");
+    db->removeVariable("HybridModel-HybridModel_EM_old_B_y");
+    db->removeVariable("HybridModel-HybridModel_EM_old_B_z");
+
+    db->removeVariable("MHDModel-HybridModel_EM_old_B_x");
+    db->removeVariable("MHDModel-HybridModel_EM_old_B_y");
+    db->removeVariable("MHDModel-HybridModel_EM_old_B_z");
 }
 
 #endif
@@ -441,13 +460,13 @@ struct ABasicHierarchyWithHybridMessenger : public ::testing::Test
                 db->removeVariable(partProp.name);
             }
 
-            db->removeVariable("EM_old_E_x");
-            db->removeVariable("EM_old_E_y");
-            db->removeVariable("EM_old_E_z");
+            db->removeVariable("HybridModel-HybridModel_EM_old_E_x");
+            db->removeVariable("HybridModel-HybridModel_EM_old_E_y");
+            db->removeVariable("HybridModel-HybridModel_EM_old_E_z");
 
-            db->removeVariable("EM_old_B_x");
-            db->removeVariable("EM_old_B_y");
-            db->removeVariable("EM_old_B_z");
+            db->removeVariable("HybridModel-HybridModel_EM_old_B_x");
+            db->removeVariable("HybridModel-HybridModel_EM_old_B_y");
+            db->removeVariable("HybridModel-HybridModel_EM_old_B_z");
 
             db->removeVariable("EMPred_E_x");
             db->removeVariable("EMPred_E_y");
