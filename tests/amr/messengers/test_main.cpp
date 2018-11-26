@@ -33,6 +33,7 @@
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
 #include <SAMRAI/mesh/TileClustering.h>
 #include <SAMRAI/tbox/InputManager.h>
+#include <SAMRAI/tbox/Logger.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
@@ -276,7 +277,7 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
 
 
 
-struct ABasicHierarchyWithHybridMessenger : public ::testing::Test
+struct HybridHybridMessenger : public ::testing::Test
 {
     int const firstHybLevel{0};
     using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT>;
@@ -301,7 +302,7 @@ struct ABasicHierarchyWithHybridMessenger : public ::testing::Test
 
 
 
-    ABasicHierarchyWithHybridMessenger()
+    HybridHybridMessenger()
     {
         hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
         hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
@@ -317,7 +318,7 @@ struct ABasicHierarchyWithHybridMessenger : public ::testing::Test
     }
 
 
-    ~ABasicHierarchyWithHybridMessenger()
+    ~HybridHybridMessenger()
     {
         auto db = SAMRAI::hier::VariableDatabase::getDatabase();
 
@@ -395,7 +396,7 @@ struct ABasicHierarchyWithHybridMessenger : public ::testing::Test
 
 
 
-TEST_F(ABasicHierarchyWithHybridMessenger, initializesRefinedLevels)
+TEST_F(HybridHybridMessenger, initializesRefinedLevels)
 {
     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
@@ -457,7 +458,7 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesRefinedLevels)
 
 
 
-TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewLevelDuringRegrid)
+TEST_F(HybridHybridMessenger, initializesNewLevelDuringRegrid)
 {
     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
@@ -473,8 +474,9 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewLevelDuringRegrid)
     // regrid all > 0
 
     double rootDt = 0.1;
-
+    auto arp      = integrator->atRegridPoint(0);
     integrator->advanceHierarchy(rootDt);
+    auto arp2 = integrator->atRegridPoint(0);
 
     auto& hierarchy = basicHierarchy.getHierarchy();
 
@@ -529,7 +531,7 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewLevelDuringRegrid)
 
 
 
-TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewFinestLevelAfterRegrid)
+TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 {
     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
@@ -544,7 +546,7 @@ TEST_F(ABasicHierarchyWithHybridMessenger, initializesNewFinestLevelAfterRegrid)
 
 
 
-TEST_F(ABasicHierarchyWithHybridMessenger, fillsRefinedLevelGhosts)
+TEST_F(HybridHybridMessenger, fillsRefinedLevelGhosts)
 {
     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
     int const ratio = 2;
@@ -723,7 +725,7 @@ TEST_F(ABasicHierarchyWithHybridMessenger, fillsRefinedLevelGhosts)
 
 
 
-TEST_F(ABasicHierarchyWithHybridMessenger, fillsRefinedLevelGhostsAfterRegrid)
+TEST_F(HybridHybridMessenger, fillsRefinedLevelGhostsAfterRegrid)
 {
     auto tagStrat = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
 
@@ -737,6 +739,21 @@ TEST_F(ABasicHierarchyWithHybridMessenger, fillsRefinedLevelGhostsAfterRegrid)
 }
 
 
+class StreamAppender : public SAMRAI::tbox::Logger::Appender
+{
+public:
+    StreamAppender(std::ostream* stream) { d_stream = stream; }
+    void logMessage(const std::string& message, const std::string& filename, const int line)
+    {
+        (*d_stream) << "At :" << filename << " line :" << line << " message: " << message
+                    << std::endl;
+    }
+
+private:
+    std::ostream* d_stream;
+};
+
+
 
 
 int main(int argc, char** argv)
@@ -746,6 +763,10 @@ int main(int argc, char** argv)
     SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
     SAMRAI::tbox::SAMRAIManager::initialize();
     SAMRAI::tbox::SAMRAIManager::startup();
+
+    std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
+        = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
+    SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
 
 
     int testResult = RUN_ALL_TESTS();
