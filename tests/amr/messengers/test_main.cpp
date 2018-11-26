@@ -222,12 +222,6 @@ public:
     std::vector<std::unique_ptr<IPhysicalModel>> models;
 
     AMessengerInitializerWithHybridAndMHDModels()
-    // : hybridModel{std::make_unique<HybridModelT>(getIonsInit_())}
-    //,mhdModel{std::make_unique<MHDModelT>()}
-    //, mhdmhdMessenger{messengerManager.create("MHDModel-MHDModel")}
-    //, mhdHybridMessenger{messengerManager.create("MHDModel-HybridModel")}
-    //, hybridHybridMessenger{messengerManager.create("HybridModel-HybridModel")}
-
     {
         auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
         auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();

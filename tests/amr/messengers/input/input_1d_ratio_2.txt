@@ -70,4 +70,5 @@ TimeRefinementIntegrator
     start_time  =   0.0
     end_time    =   1.0
     max_integrator_steps    =   20
+    regrid_interval = 1
 }

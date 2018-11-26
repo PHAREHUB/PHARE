@@ -46,10 +46,10 @@ def test_ampere_yee1D(path):
 
     tv = TestVariables()
 
-    By = np.empty(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Bz = np.empty(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Jy = np.empty(layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Jz = np.empty(layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    By = np.zeros(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    Bz = np.zeros(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    Jy = np.zeros(layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    Jz = np.zeros(layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]), dtype=np.float64)
 
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
@@ -85,21 +85,21 @@ def test_ampere_yee2D(path):
 
     tv = TestVariables()
 
-    Bx   = np.empty([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
+    Bx   = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    By   = np.empty([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+    By   = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Bz   = np.empty([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
+    Bz   = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1])], dtype=np.float64)
 
-    Jx   = np.empty([layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
+    Jx   = np.zeros([layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.JxCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Jy   = np.empty([layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]),
+    Jy   = np.zeros([layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.JyCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Jz   = np.empty([layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]),
+    Jz   = np.zeros([layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.JzCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    w1 = np.empty_like(Jz)
-    w2 = np.empty_like(Jz)
+    w1 = np.zeros_like(Jz)
+    w2 = np.zeros_like(Jz)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])
@@ -150,32 +150,32 @@ def test_ampere_yee3D(path):
 
     tv = TestVariables()
 
-    Bx   = np.empty([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
+    Bx   = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1]),
                      layout.allocSize(tv.interpOrder, tv.BxCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    By   = np.empty([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+    By   = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                      layout.allocSize(tv.interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Bz   = np.empty([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
+    Bz   = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1]),
                      layout.allocSize(tv.interpOrder, tv.BzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-    Jx   = np.empty([layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
+    Jx   = np.zeros([layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.JxCentering[1], tv.nbrCells[1]),
                      layout.allocSize(tv.interpOrder, tv.JxCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Jy   = np.empty([layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]),
+    Jy   = np.zeros([layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.JyCentering[1], tv.nbrCells[1]),
                      layout.allocSize(tv.interpOrder, tv.JyCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Jz   = np.empty([layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]),
+    Jz   = np.zeros([layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]),
                      layout.allocSize(tv.interpOrder, tv.JzCentering[1], tv.nbrCells[1]),
                      layout.allocSize(tv.interpOrder, tv.JzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-    u1 = np.empty_like(Jx)
-    u2 = np.empty_like(Jx)
-    v1 = np.empty_like(Jy)
-    v2 = np.empty_like(Jy)
-    w1 = np.empty_like(Jz)
-    w2 = np.empty_like(Jz)
+    u1 = np.zeros_like(Jx)
+    u2 = np.zeros_like(Jx)
+    v1 = np.zeros_like(Jy)
+    v2 = np.zeros_like(Jy)
+    w1 = np.zeros_like(Jz)
+    w2 = np.zeros_like(Jz)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])

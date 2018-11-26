@@ -247,8 +247,8 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
     for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
         Point<double, 1> point = this->layout.fieldNodeCoordinates(By, Point<double, 1>{0.}, ix);
-        By(ix)     = std::cos(2 * M_PI / 5. * point[0]);
-        Bz(ix)     = std::sin(2 * M_PI / 5. * point[0]);
+        By(ix)                 = std::cos(2 * M_PI / 5. * point[0]);
+        Bz(ix)                 = std::sin(2 * M_PI / 5. * point[0]);
     }
 
     ampere.setLayout(&layout);
@@ -287,8 +287,9 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(Bx, Point<double, 2>{0., 0.}, ix, iy);
-            Bx(ix, iy) = std::cos(2 * M_PI / 5. * point[0])*std::sin(2 * M_PI / 6. * point[1]);
+            Point<double, 2> point
+                = this->layout.fieldNodeCoordinates(Bx, Point<double, 2>{0., 0.}, ix, iy);
+            Bx(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
     }
 
@@ -296,8 +297,9 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (uint32 iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(By, Point<double, 2>{0., 0.}, ix, iy);
-            By(ix, iy) = std::cos(2 * M_PI / 5. * point[0])*std::tanh(2 * M_PI / 6. * point[1]);
+            Point<double, 2> point
+                = this->layout.fieldNodeCoordinates(By, Point<double, 2>{0., 0.}, ix, iy);
+            By(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }
 
@@ -305,8 +307,9 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(Bz, Point<double, 2>{0., 0.}, ix, iy);
-            Bz(ix, iy) = std::sin(2 * M_PI / 5. * point[0])*std::tanh(2 * M_PI / 6. * point[1]);
+            Point<double, 2> point
+                = this->layout.fieldNodeCoordinates(Bz, Point<double, 2>{0., 0.}, ix, iy);
+            Bz(ix, iy) = std::sin(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }
 
@@ -328,7 +331,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            uint32 index_= ix*nPts_[1]+iy;
+            uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Jx(ix, iy), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
         }
     }
@@ -339,7 +342,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            uint32 index_= ix*nPts_[1]+iy;
+            uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Jy(ix, iy), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
         }
     }
@@ -350,7 +353,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            uint32 index_= ix*nPts_[1]+iy;
+            uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Jz(ix, iy), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
         }
     }
@@ -386,10 +389,11 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         {
             for (uint32 iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(Bx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point = this->layout.fieldNodeCoordinates(
+                    Bx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
                 Bx(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                *std::cos(2 * M_PI / 6. * point[1])
-                               *std::tanh(2 * M_PI / 12. * point[2]);
+                                 * std::cos(2 * M_PI / 6. * point[1])
+                                 * std::tanh(2 * M_PI / 12. * point[2]);
             }
         }
     }
@@ -400,10 +404,11 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         {
             for (uint32 iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point = this->layout.fieldNodeCoordinates(
+                    By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
                 By(ix, iy, iz) = std::tanh(2 * M_PI / 5. * point[0])
-                                 *std::sin(2 * M_PI / 6. * point[1])
-                                 *std::cos(2 * M_PI / 12. * point[2]);
+                                 * std::sin(2 * M_PI / 6. * point[1])
+                                 * std::cos(2 * M_PI / 12. * point[2]);
             }
         }
     }
@@ -414,10 +419,11 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         {
             for (uint32 iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(Bz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point = this->layout.fieldNodeCoordinates(
+                    Bz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
                 Bz(ix, iy, iz) = std::cos(2 * M_PI / 5. * point[0])
-                               *std::tanh(2 * M_PI / 6. * point[1])
-                                *std::sin(2 * M_PI / 12. * point[2]);
+                                 * std::tanh(2 * M_PI / 6. * point[1])
+                                 * std::sin(2 * M_PI / 12. * point[2]);
             }
         }
     }
@@ -448,7 +454,7 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         {
             for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                uint32 index_= ix*nPts_[1]*nPts_[2]+iy*nPts_[2]+iz;
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(Jx(ix, iy, iz), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
             }
         }
@@ -462,7 +468,7 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         {
             for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                uint32 index_= ix*nPts_[1]*nPts_[2]+iy*nPts_[2]+iz;
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(Jy(ix, iy, iz), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
             }
         }
@@ -476,7 +482,7 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         {
             for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                uint32 index_= ix*nPts_[1]*nPts_[2]+iy*nPts_[2]+iz;
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(Jz(ix, iy, iz), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
             }
         }
