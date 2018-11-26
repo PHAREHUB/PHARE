@@ -474,9 +474,7 @@ TEST_F(HybridHybridMessenger, initializesNewLevelDuringRegrid)
     // regrid all > 0
 
     double rootDt = 0.1;
-    auto arp      = integrator->atRegridPoint(0);
     integrator->advanceHierarchy(rootDt);
-    auto arp2 = integrator->atRegridPoint(0);
 
     auto& hierarchy = basicHierarchy.getHierarchy();
 
