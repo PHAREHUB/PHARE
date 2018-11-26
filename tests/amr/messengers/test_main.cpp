@@ -68,7 +68,6 @@ using hybhybStratT                       = HybridHybridMessengerStrategy<HybridM
 using mhdhybStratT                       = MHDHybridMessengerStrategy<MHDModelT, HybridModelT>;
 using HybridMessengerT                   = HybridMessenger<HybridModelT>;
 
-#if 1
 
 
 double density(double x)
@@ -87,6 +86,7 @@ std::array<double, 3> thermalVelocity(double x)
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
 
+#if 1
 
 TEST(anHybridMessenger, hasACorrectName)
 {

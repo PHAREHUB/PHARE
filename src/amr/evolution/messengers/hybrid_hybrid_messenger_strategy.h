@@ -625,8 +625,8 @@ private:
 
 
     //! keeps a copy of the model electromagnetic field at t=n
-    Electromag EM_old_{"EM_old"}; // TODO needs to be allocated somewhere and
-                                  // updated to t=n before advanceLevel()
+    Electromag EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
+                                               // updated to t=n before advanceLevel()
 
 
     std::shared_ptr<typename HybridModel::resources_manager_type> resourcesManager_;
