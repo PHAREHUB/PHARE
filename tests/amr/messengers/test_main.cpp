@@ -151,37 +151,6 @@ TEST(anHybridMessenger, hasACorrectName)
 
 #endif
 
-/*
-TEST(aHybridHybridMessenger, returnsHybridCoarseAndFineModelNames)
-{
-    auto strat       = std::make_unique<HybridHybridMessengerStrategy<HybridModelT>>();
-    auto messenger = std::make_unique<HybridMessenger<HybridModelT>>(std::move(strat));
-
-    EXPECT_EQ(HybridModelT::model_name, messenger->coarseModelName());
-    EXPECT_EQ(HybridModelT::model_name, messenger->fineModelName());
-}
-
-
-TEST(aMHDHybridMessenger, returnsMHDCoarseAndHybridFineModelNames)
-{
-    auto strat       = std::make_unique<MHDHybridMessengerStrategy<MHDModelT, HybridModelT>>();
-    auto messenger = std::make_unique<HybridMessenger<HybridModelT>>(std::move(strat));
-
-    EXPECT_EQ(MHDModelT::model_name, messenger->coarseModelName());
-    EXPECT_EQ(HybridModelT::model_name, messenger->fineModelName());
-}
-
-
-TEST(aMHDMHDMessenger, returnsMHDCoarseAndFineModelNames)
-{
-    auto messenger = std::make_unique<MHDMessenger<MHDModelT>>();
-
-    EXPECT_EQ(MHDModelT::model_name, messenger->coarseModelName());
-    EXPECT_EQ(MHDModelT::model_name, messenger->fineModelName());
-}
-*/
-
-
 
 
 auto getIonsInit() // TODO refactor this getIonInit used in several tests

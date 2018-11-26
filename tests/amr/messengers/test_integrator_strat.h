@@ -78,7 +78,12 @@ public:
     {
     }
 
-    virtual bool usingRefinedTimestepping() const override { return true; }
+    virtual bool usingRefinedTimestepping() const override
+    {
+        // refined time stepping not allowed
+        // so that regridding occurs right away at the first advance
+        return false;
+    }
 };
 
 
