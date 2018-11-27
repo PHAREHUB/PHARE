@@ -31,6 +31,7 @@ set( SOURCES_INC
      evolution/solvers/solver.h
      evolution/solvers/solver_ppc.h
      evolution/solvers/solver_mhd.h
+     evolution/messengers/quantity_refiner.h
      evolution/messengers/messenger.h
      evolution/messengers/hybrid_messenger.h
      evolution/messengers/hybrid_messenger_strategy.h

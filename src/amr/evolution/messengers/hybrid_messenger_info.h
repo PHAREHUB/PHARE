@@ -38,11 +38,15 @@ struct VecFieldNames
 };
 
 
+
+
 class HybridMessengerInfo : public IMessengerInfo
 {
 public:
     VecFieldNames modelMagnetic;
     VecFieldNames modelElectric;
+    std::vector<std::string> modelPopulationNames;
+
 
     //! names of the magnetic quantities that will be communicated by HybridMessenger::initLevel()
     //! and HybridMessenger::regrid()

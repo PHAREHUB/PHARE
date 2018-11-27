@@ -9,12 +9,14 @@
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "evolution/messengers/hybrid_messenger_strategy.h"
 #include "physical_models/physical_model.h"
+#include "quantity_refiner.h"
 #include "tools/resources_manager_utilities.h"
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
 
+#include <optional>
 #include <utility>
 
 
@@ -86,8 +88,6 @@ public:
             dynamic_cast<HybridMessengerInfo*>(fromCoarserInfo.release())};
 
 
-        // TODO here we need to use both coarse and fine since solvers may differ
-
         setupEandBGhostMessengers_(hybridInfo);
         setupEandBInitMessengers_(hybridInfo);
 
@@ -113,16 +113,16 @@ public:
         // update the schedules for ghost communications of the electric and magnetic field
 
         auto level = hierarchy->getPatchLevel(levelNumber);
-        createGhostSchedules_(magneticGhostsRefine_, hierarchy, level);
-        createGhostSchedules_(electricGhostsRefine_, hierarchy, level);
+        createGhostSchedules_(magneticGhostsRefiners_, hierarchy, level);
+        createGhostSchedules_(electricGhostsRefiners_, hierarchy, level);
 
         // now update electric and magnetic initialization
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
         if (levelNumber != 0)
         {
-            createInitSchedules_(magneticInitRefine_, hierarchy, level);
-            createInitSchedules_(electricInitRefine_, hierarchy, level);
+            createInitSchedules_(magneticInitRefiners_, hierarchy, level);
+            createInitSchedules_(electricInitRefiners_, hierarchy, level);
         }
     }
 
@@ -144,7 +144,7 @@ public:
 
         auto doRegrid = [&hierarchy, levelNumber, oldLevel, initDataTime](auto& refiners) //
         {
-            for (auto& [key, refiner] : refiners)
+            for (auto& [key, refiner] : refiners.qtyRefiners)
             {
                 auto& algo = refiner.algo;
 
@@ -163,8 +163,8 @@ public:
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
 
-        doRegrid(magneticInitRefine_);
-        doRegrid(electricInitRefine_);
+        doRegrid(magneticInitRefiners_);
+        doRegrid(electricInitRefiners_);
     }
 
 
@@ -198,8 +198,8 @@ public:
 
     virtual void initLevel(int const levelNumber, double const initDataTime) const override
     {
-        applyInitSchedules_(levelNumber, initDataTime, magneticInitRefine_);
-        applyInitSchedules_(levelNumber, initDataTime, electricInitRefine_);
+        applyInitSchedules_(levelNumber, initDataTime, magneticInitRefiners_);
+        applyInitSchedules_(levelNumber, initDataTime, electricInitRefiners_);
     }
 
 
@@ -209,89 +209,48 @@ public:
        ------------------------------------------------------------------------ */
 
 
+    /**
+     * @brief see IMessenger::fillMagneticGhosts for documentation
+
+     * Note on the HybridHybrid version:
+     * The function throws if the given magnetic field B has not been registered
+     * in the ghostMagnetic field of the HybridMessengerInfo
+     *
+     * The method finds if the name of the VecField is
+     *
+     */
     virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
                                     double const fillTime) override
     {
         std::cout << "perform the magnetic ghost fill\n";
 
-        auto name = B.name();
 
-        auto magneticRefiner = magneticGhostsRefine_.find(name);
-        if (magneticRefiner != std::end(magneticGhostsRefine_))
+        auto schedule = magneticGhostsRefiners_.find(B.name(), levelNumber);
+        if (*schedule)
         {
-            auto& schedules   = magneticRefiner->second.schedules;
-            auto scheduleItem = schedules.find(levelNumber);
-            if (scheduleItem != std::end(schedules))
-            {
-                auto& schedule = scheduleItem->second;
-                schedule->fillData(fillTime);
-            }
-            else
-            {
-                throw std::runtime_error(
-                    "Error - cannot find schedules for Magnetic Ghosts filling");
-            }
+            (*schedule)->fillData(fillTime);
         }
         else
         {
-            throw std::runtime_error("Error - cannot find algo for Magnetic Ghosts filling");
+            throw std::runtime_error("no schedule for the magnetic field " + B.name());
         }
-
-        // auto name      = B.name();
-        // auto algoID    = getAlgo(name);
-        // auto schedules = ghostSchedules(algoID, name);
-
-        // getSchedules()
-        // for (auto& schedule : schedules_)
-        //{
-        // schedule.fillData();
-        //}
-
-#if 0
-        showAction_<withTemporal, Enum, fillType>();
-
-        auto findIt = algorithmsMagneticIn_.find(B.name());
-        if (findIt != std::end(algorithmsMagneticIn_))
-        {
-            auto &algo = findIt->second;
-            // here it all depend on fillType
-            if (algo->refineSchedule.size() <= static_cast<std::size_t>(relativeLevel_))
-            {
-                algo->refineSchedule.push_back(algo->refine.createSchedule(
-                    *currentLevel_, currentLevelNumber_ - 1, *hierarchy_));
-            }
-
-            algo->refineSchedule[relativeLevel_]->fillData(fillTime);
-        }
-#endif
     }
+
+
 
     virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber,
                                     double const fillTime) override
     {
         std::cout << "perform the electric ghost fill\n";
 
-        auto name = E.name();
-
-        auto algoAndSchedulesItem = electricGhostsRefine_.find(name);
-        if (algoAndSchedulesItem != std::end(electricGhostsRefine_))
+        auto schedule = electricGhostsRefiners_.find(E.name(), levelNumber);
+        if (*schedule)
         {
-            auto& schedules   = algoAndSchedulesItem->second.schedules;
-            auto scheduleItem = schedules.find(levelNumber);
-            if (scheduleItem != std::end(schedules))
-            {
-                auto& schedule = scheduleItem->second;
-                schedule->fillData(fillTime);
-            }
-            else
-            {
-                throw std::runtime_error(
-                    "Error - cannot find schedules for electric Ghosts filling");
-            }
+            (*schedule)->fillData(fillTime);
         }
         else
         {
-            throw std::runtime_error("Error - cannot find algo for electric Ghosts filling");
+            throw std::runtime_error("no schedule for the electric field " + E.name());
         }
     }
 
@@ -361,28 +320,8 @@ public:
 
 
 private:
-    /**
-     * @brief The Refiner struct encapsulate the algorithm and its associated
-     * schedules
-     *
-     * We have several of those object, one per level, that is used to retrieve which schedule to
-     * use for a given messenger communication, and which algorithm to use to re-create schedules
-     * when initializing a level
-     */
-    struct Refiner
-    {
-        Refiner()
-            : algo{std::make_unique<SAMRAI::xfer::RefineAlgorithm>()}
-        {
-        }
+    // using Refiners =
 
-        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo; // this part is set in setup
-
-        // this part is created in initializeLevelData()
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> schedules;
-    };
-
-    using Refiners = std::map<std::string, Refiner>;
 
 
 
@@ -394,15 +333,20 @@ private:
      * interpolation.
      *
      * The operation must use 'src_told' and 'src_tnew' versions of each field and
-     * time/space interpolate that onto the ghost nodes of the same variable onto the destination
+     * time/space interpolate that onto the ghost nodes of the same quantity onto the destination
      * level patches.
      *
      * The schedules originating from these algorithms will be executed in the solver
-     * to fill the ghosts on a given level. At this point, the 'src_tnew' IDs are just model
-     * electric field IDs since when advancing a level, the next model of the next coarser level is
-     * already advanced. The "src_told" IDs however, is found in the Messenger itself as the
-     * EM_old_ electromagnetic field This field is a copy of the model electromagnetic field at t=n
-     * *before* the solver advanced the model to t=n+1 on the coarser level.
+     * to fill the ghosts on a given level at time t_coarse + n*dt_fine.At this time, the ghosts are
+     * obtained from time interpolation of the model fields at times t_coarse (src_told) and
+     * t_coarse+dt_coarse (src_tnew).
+     *
+     * src_told IDs are obtained from the messenger Eold and Bold, which are copies of the model
+     * fields at t_coarse (they are initialized with the level from the coarse level and swapped
+     * with the solution at lastStep().)
+     *
+     * src_tnew IDs are obtained from the model IDs since on the coarser level, the model fields
+     * already are at t_coarse + dt_coarse when the schedule is executed.
      *
      *
      * Each operation thus takes:
@@ -417,6 +361,11 @@ private:
      * objects, themselves stored in an appropriate map with a key provided by the
      * HybridMessengerInfo
      *
+     * Note: each time one of the 6 schedules created here will be executed, i.e. at each fine time
+     * step, the fields at src_tnew will be communicated from the coarser level even though they
+     * have not changed. This may be optimized later, for instance by storing the coarser model
+     * fields at firstStep() and doing the time interpolation ourselves.
+     *
      */
     void setupEandBGhostMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
@@ -429,8 +378,8 @@ private:
         auto registerRefine = [this](auto const& srcComponentNames, auto const& destComponentNames,
                                      auto const& names_old) //
         {
-            Refiner algsAndSched;
-            algsAndSched.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+            QuantityRefiner refiner;
+            refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
 
 
             // there is one refine operation to register per component of the VecField
@@ -444,23 +393,22 @@ private:
                 if (src_id && dest_id && old_id)
                 {
                     // dest, src, old, new, scratch
-                    algsAndSched.algo->registerRefine(
-                        *dest_id, // dest
-                        *src_id,  // source at same time
-                        *old_id,  // source at past time (for time interp)
-                        *src_id,  // source at future time (for time interp)
-                        *dest_id, // scratch
-                        fieldRefineOp_, fieldTimeOp_);
+                    refiner.algo->registerRefine(*dest_id, // dest
+                                                 *src_id,  // source at same time
+                                                 *old_id,  // source at past time (for time interp)
+                                                 *src_id, // source at future time (for time interp)
+                                                 *dest_id, // scratch
+                                                 fieldRefineOp_, fieldTimeOp_);
                 }
             }
-            return algsAndSched;
+            return refiner;
         };
 
 
 
-        auto algosToMap = [&registerRefine](VecFieldNames const& modelVec,
-                                            std::vector<VecFieldNames> const& ghostVec,
-                                            auto const& oldVecNames, auto& map) //
+        auto addToPool = [&registerRefine](VecFieldNames const& modelVec,
+                                           std::vector<VecFieldNames> const& ghostVec,
+                                           auto const& oldVecNames, auto& refinerPool) //
         {
             auto nbrVariables = ghostVec.size();
             for (auto i = 0u; i < nbrVariables; ++i)
@@ -471,16 +419,16 @@ private:
                 std::array<std::string, 3> srcComponentNames{
                     {modelVec.xName, modelVec.yName, modelVec.zName}};
 
-                map[ghostVec[i].vecName]
-                    = registerRefine(srcComponentNames, destComponentNames, oldVecNames);
+                refinerPool.add(registerRefine(srcComponentNames, destComponentNames, oldVecNames),
+                                ghostVec[i].vecName);
             }
         };
 
 
-        algosToMap(info->modelMagnetic, info->ghostMagnetic, extractNames(Bold),
-                   magneticGhostsRefine_);
-        algosToMap(info->modelElectric, info->ghostElectric, extractNames(Eold),
-                   electricGhostsRefine_);
+        addToPool(info->modelMagnetic, info->ghostMagnetic, extractNames(Bold),
+                  magneticGhostsRefiners_);
+        addToPool(info->modelElectric, info->ghostElectric, extractNames(Eold),
+                  electricGhostsRefiners_);
     }
 
 
@@ -488,12 +436,11 @@ private:
 
     void setupEandBInitMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
-        Refiner initB;
-        Refiner initE;
-
-        auto registerRefine = [this](auto& srcComponentNames, auto& destComponentNames,
-                                     auto& algo) //
+        auto registerRefine = [this](auto& srcComponentNames, auto& destComponentNames) //
         {
+            QuantityRefiner refiner;
+            refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+
             for (auto componentIndex = 0u; componentIndex < 3; ++componentIndex)
             {
                 auto src_id  = resourcesManager_->getID(srcComponentNames[componentIndex]);
@@ -504,10 +451,12 @@ private:
                 if (src_id && dest_id)
                 {
                     // dest, src, old, new, scratch
-                    algo->registerRefine(*dest_id, // dest
-                                         *src_id,  // source at same time
-                                         *dest_id, // scratch
-                                         fieldRefineOp_);
+                    refiner.algo->registerRefine(*dest_id, // dest
+                                                 *src_id,  // source at same time
+                                                 *dest_id, // scratch
+                                                 fieldRefineOp_);
+
+                    return refiner;
                 }
                 else
                 {
@@ -517,8 +466,8 @@ private:
         };
 
 
-        auto algosToMap = [&registerRefine](std::vector<VecFieldNames> const& names, auto& map,
-                                            auto& algsAndSchedules) //
+        auto addToPool
+            = [&registerRefine](std::vector<VecFieldNames> const& names, auto& refinerPool) //
         {
             auto nbrVariables = names.size();
             for (auto i = 0u; i < nbrVariables; ++i)
@@ -526,44 +475,42 @@ private:
                 std::array<std::string, 3> componentNames{
                     {names[i].xName, names[i].yName, names[i].zName}};
 
-                registerRefine(componentNames, componentNames, algsAndSchedules.algo);
-                map[names[i].vecName] = std::move(algsAndSchedules);
+                refinerPool.add(registerRefine(componentNames, componentNames), names[i].vecName);
             }
         };
 
 
-        algosToMap(info->initMagnetic, magneticInitRefine_, initB);
-        algosToMap(info->initElectric, electricInitRefine_, initE);
+        addToPool(info->initMagnetic, magneticInitRefiners_);
+        addToPool(info->initElectric, electricInitRefiners_);
     }
 
 
 
 
-    void createGhostSchedules_(Refiners& refiners,
+    void createGhostSchedules_(RefinerPool& refiners,
                                std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
     {
         // clang-format off
-        for (auto& [key, refiner] : refiners)
+        for (auto& [key, refiner] : refiners.qtyRefiners)
         // clang-format on
         {
             auto& algo    = refiner.algo;
             auto schedule = algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
                                                  hierarchy);
-
-            refiner.schedules[level->getLevelNumber()] = std::move(schedule);
+            refiner.add(schedule, level->getLevelNumber());
         }
     }
 
 
 
 
-    void createInitSchedules_(Refiners& refiners,
+    void createInitSchedules_(RefinerPool& refiners,
                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                               std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
     {
         // clang-format off
-        for (auto& [key, refiner] : refiners)
+        for (auto& [key, refiner] : refiners.qtyRefiners)
         // clang-format on
         {
             auto& algo       = refiner.algo;
@@ -574,17 +521,18 @@ private:
             // using the createSchedule overload that takes level, next_coarser_level only
             // would result in interior ghost nodes to be filled with interior of neighbor patches
             // but there is nothing there.
-            refiner.schedules[levelNumber]
-                = algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy);
+            refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                        levelNumber);
         }
     }
 
 
 
-    void applyInitSchedules_(int levelNumber, double initDataTime, Refiners const& refiners) const
+    void applyInitSchedules_(int levelNumber, double initDataTime,
+                             RefinerPool const& refiners) const
     {
         // clang-format off
-        for (auto& [key, refiner] : refiners)
+        for (auto& [key, refiner] : refiners.qtyRefiners)
         // clang-format on
         {
             if (refiner.algo == nullptr)
@@ -647,22 +595,22 @@ private:
 
 
     //! stores the algo and its associated schedules for the getting ghost magnetic field
-    Refiners magneticGhostsRefine_;
+    RefinerPool magneticGhostsRefiners_;
 
     //! stores the algo and its associated schedules for getting magnetic field at initialization
-    Refiners magneticInitRefine_;
+    RefinerPool magneticInitRefiners_;
 
     // same as for the magnetic field
-    Refiners electricGhostsRefine_;
-    Refiners electricInitRefine_;
+    RefinerPool electricGhostsRefiners_;
+    RefinerPool electricInitRefiners_;
 
 
     // algo and schedule used to initialize domain particles
     // from coarser level using particleRefineOp<domain>
-    Refiner particleInitRefine_;
+    QuantityRefiner particleInitRefine_;
 
     // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
-    Refiners particleGhostExchange_;
+    RefinerPool particleGhostExchange_;
 
     // at first step of advance:
     // from temporaryParticle of coarseLevel to model PRA1 ( + PRA1 copy into PRA)
@@ -673,7 +621,7 @@ private:
     // solver->advanceLevel() when starting, has all PRAs set correctly
 
     // keys: PRA1, PRA2 , chosen by messenger
-    Refiners particlePRA_;
+    RefinerPool particlePRA_;
 };
 
 template<typename HybridModel>
