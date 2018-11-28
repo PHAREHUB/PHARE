@@ -2,8 +2,8 @@
 #ifndef PHARE_HYBRID_MESSENGER_INFO_H
 #define PHARE_HYBRID_MESSENGER_INFO_H
 
+#include "data/vecfield/vecfield_component.h"
 #include "messenger_info.h"
-
 
 #include <string>
 #include <vector>
@@ -35,11 +35,23 @@ struct VecFieldNames
     std::string xName;
     std::string yName;
     std::string zName;
+
+    VecFieldNames() = default;
+
+    template<typename VecFieldT>
+    VecFieldNames(VecFieldT const& v)
+        : vecName{v.name()}
+        , xName{v.getComponentName(Component::X)}
+        , yName{v.getComponentName(Component::Y)}
+        , zName{v.getComponentName(Component::Z)}
+
+    {
+    }
 };
 
 
 
-
+/// template<typename VecFieldT>
 class HybridMessengerInfo : public IMessengerInfo
 {
 public:
@@ -61,6 +73,7 @@ public:
     //! name of the magnetic quantities that will be communicated by
     //! HybridMessenger::fillMagneticGhosts()
     std::vector<VecFieldNames> ghostMagnetic;
+    // std::vector<VecFieldT*> ghostsMagnetic;
 
 
     //! name of the electric quantities that will be communicated by the

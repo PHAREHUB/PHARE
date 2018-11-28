@@ -225,8 +225,8 @@ public:
         std::cout << "perform the magnetic ghost fill\n";
 
 
-        auto schedule = magneticGhostsRefiners_.find(B.name(), levelNumber);
-        if (*schedule)
+        auto schedule = magneticGhostsRefiners_.findSchedule(B.name(), levelNumber);
+        if (schedule)
         {
             (*schedule)->fillData(fillTime);
         }
@@ -238,13 +238,15 @@ public:
 
 
 
+
     virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber,
                                     double const fillTime) override
     {
         std::cout << "perform the electric ghost fill\n";
 
-        auto schedule = electricGhostsRefiners_.find(E.name(), levelNumber);
-        if (*schedule)
+
+        auto schedule = electricGhostsRefiners_.findSchedule(E.name(), levelNumber);
+        if (schedule)
         {
             (*schedule)->fillData(fillTime);
         }
@@ -253,6 +255,7 @@ public:
             throw std::runtime_error("no schedule for the electric field " + E.name());
         }
     }
+
 
 
 
@@ -281,6 +284,8 @@ public:
             // schedule.fillData(fillTime);
         }
     }
+
+
 
 
     virtual void fillIonMomentGhosts(IonsT& ions, int const levelNumber,
@@ -372,63 +377,60 @@ private:
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
 
+        addToGhostRefinerPool_(info->modelElectric, info->ghostElectric, VecFieldNames{Eold},
+                               electricGhostsRefiners_);
+        addToGhostRefinerPool_(info->modelMagnetic, info->ghostMagnetic, VecFieldNames{Bold},
+                               magneticGhostsRefiners_);
+    }
 
-        // register a refine operation for all components in src/dest componentNames
-        // using the components of the vecField_old as the old source
-        auto registerRefine = [this](auto const& srcComponentNames, auto const& destComponentNames,
-                                     auto const& names_old) //
+
+
+
+    void addToGhostRefinerPool_(VecFieldNames const& modelVec,
+                                std::vector<VecFieldNames> const& ghostVec,
+                                VecFieldNames const& oldVecNames, RefinerPool& refinerPool)
+    {
+        auto nbrVectors = ghostVec.size();
+        for (auto i = 0u; i < nbrVectors; ++i)
         {
-            QuantityRefiner refiner;
-            refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+            refinerPool.add(makeGhostRefiner_(modelVec, ghostVec[i], oldVecNames),
+                            ghostVec[i].vecName);
+        }
+    }
 
 
-            // there is one refine operation to register per component of the VecField
-            // since they are each a specific variable
-            for (auto componentIndex = 0u; componentIndex < 3; ++componentIndex)
+
+
+    QuantityRefiner makeGhostRefiner_(VecFieldNames const& src, VecFieldNames const& dest,
+                                      VecFieldNames const& old)
+    {
+        QuantityRefiner refiner;
+        refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+
+        auto registerRefine = [this, &refiner](std::string const& src, std::string const& dest,
+                                               std::string const& old) {
+            auto src_id  = resourcesManager_->getID(src);
+            auto dest_id = resourcesManager_->getID(dest);
+            auto old_id  = resourcesManager_->getID(old);
+
+            if (src_id && dest_id && old_id)
             {
-                auto src_id  = resourcesManager_->getID(srcComponentNames[componentIndex]);
-                auto dest_id = resourcesManager_->getID(destComponentNames[componentIndex]);
-                auto old_id  = resourcesManager_->getID(names_old[componentIndex]);
-
-                if (src_id && dest_id && old_id)
-                {
-                    // dest, src, old, new, scratch
-                    refiner.algo->registerRefine(*dest_id, // dest
-                                                 *src_id,  // source at same time
-                                                 *old_id,  // source at past time (for time interp)
-                                                 *src_id, // source at future time (for time interp)
-                                                 *dest_id, // scratch
-                                                 fieldRefineOp_, fieldTimeOp_);
-                }
-            }
-            return refiner;
-        };
-
-
-
-        auto addToPool = [&registerRefine](VecFieldNames const& modelVec,
-                                           std::vector<VecFieldNames> const& ghostVec,
-                                           auto const& oldVecNames, auto& refinerPool) //
-        {
-            auto nbrVariables = ghostVec.size();
-            for (auto i = 0u; i < nbrVariables; ++i)
-            {
-                std::array<std::string, 3> destComponentNames{
-                    {ghostVec[i].xName, ghostVec[i].yName, ghostVec[i].zName}};
-
-                std::array<std::string, 3> srcComponentNames{
-                    {modelVec.xName, modelVec.yName, modelVec.zName}};
-
-                refinerPool.add(registerRefine(srcComponentNames, destComponentNames, oldVecNames),
-                                ghostVec[i].vecName);
+                // dest, src, old, new, scratch
+                refiner.algo->registerRefine(*dest_id, // dest
+                                             *src_id,  // source at same time
+                                             *old_id,  // source at past time (for time interp)
+                                             *src_id,  // source at future time (for time interp)
+                                             *dest_id, // scratch
+                                             fieldRefineOp_, fieldTimeOp_);
             }
         };
 
+        // register refine operators for each component of the vecfield
+        registerRefine(src.xName, dest.xName, old.xName);
+        registerRefine(src.yName, dest.yName, old.yName);
+        registerRefine(src.zName, dest.zName, old.zName);
 
-        addToPool(info->modelMagnetic, info->ghostMagnetic, extractNames(Bold),
-                  magneticGhostsRefiners_);
-        addToPool(info->modelElectric, info->ghostElectric, extractNames(Eold),
-                  electricGhostsRefiners_);
+        return refiner;
     }
 
 

@@ -43,14 +43,17 @@ public:
         auto const& Epred = electromagPred_.E;
         auto const& Bpred = electromagPred_.B;
 
-        auto magneticComponentNames = extractNames(Bpred);
-        auto electricComponentNames = extractNames(Epred);
+        //        auto magneticComponentNames = extractNames(Bpred);
+        //        auto electricComponentNames = extractNames(Epred);
 
-        modelInfo.ghostElectric.push_back({Epred.name(), electricComponentNames[0],
-                                           electricComponentNames[1], electricComponentNames[2]});
-        modelInfo.ghostMagnetic.push_back({Bpred.name(), magneticComponentNames[0],
-                                           magneticComponentNames[1], magneticComponentNames[2]});
-
+        modelInfo.ghostElectric.emplace_back(Epred);
+        modelInfo.ghostMagnetic.emplace_back(Bpred);
+        /*
+                modelInfo.ghostElectric.push_back({Epred.name(), electricComponentNames[0],
+                                                   electricComponentNames[1],
+           electricComponentNames[2]}); modelInfo.ghostMagnetic.push_back({Bpred.name(),
+           magneticComponentNames[0], magneticComponentNames[1], magneticComponentNames[2]});
+        */
         // here fill modelInfo.initElectric and initMagnetic if some solver
     }
 

@@ -22,6 +22,8 @@ public:
         fineModel.fillMessengerInfo(fromFinerInfo);
         coarseModel.fillMessengerInfo(fromCoarserInfo);
 
+        // TODO ask solver to fillMessengerInfo too
+
         messenger.registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }
 };

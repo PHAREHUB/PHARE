@@ -91,18 +91,22 @@ public:
         //
         auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
-        auto magneticComponentNames = extractNames(state.electromag.B);
-        auto electricComponentNames = extractNames(state.electromag.E);
+        modelInfo.modelMagnetic = VecFieldNames{state.electromag.B};
+        modelInfo.modelElectric = VecFieldNames{state.electromag.E};
 
+        // auto magneticComponentNames = extractNames(state.electromag.B);
+        // auto electricComponentNames = extractNames(state.electromag.E);
+
+        /*
         modelInfo.modelMagnetic = {state.electromag.B.name(), magneticComponentNames[0],
                                    magneticComponentNames[1], magneticComponentNames[2]};
 
         modelInfo.modelElectric = {state.electromag.E.name(), electricComponentNames[0],
                                    electricComponentNames[1], electricComponentNames[2]};
+        */
 
-
-        modelInfo.initElectric.push_back(modelInfo.modelElectric);
-        modelInfo.initMagnetic.push_back(modelInfo.modelMagnetic);
+        modelInfo.initElectric.emplace_back(state.electromag.E);
+        modelInfo.initMagnetic.emplace_back(state.electromag.B);
 
         modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
         modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);

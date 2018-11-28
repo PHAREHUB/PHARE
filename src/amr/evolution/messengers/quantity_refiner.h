@@ -54,8 +54,8 @@ struct RefinerPool
 {
     std::map<std::string, QuantityRefiner> qtyRefiners;
 
-    std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>> find(std::string const& name,
-                                                                      int levelNumber)
+    std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
+    findSchedule(std::string const& name, int levelNumber)
     {
         if (auto mapIter = qtyRefiners.find(name); mapIter != std::end(qtyRefiners))
         {
@@ -70,9 +70,13 @@ struct RefinerPool
 
     void add(QuantityRefiner&& qtyRefiner, std::string const& qtyName)
     {
-        qtyRefiners[qtyName] = std::move(qtyRefiner);
+        if (qtyRefiners.find(qtyName) == std::end(qtyRefiners))
+            qtyRefiners[qtyName] = std::move(qtyRefiner);
+        else
+            throw std::runtime_error(qtyName + " already in map");
     }
 };
+
 
 
 
