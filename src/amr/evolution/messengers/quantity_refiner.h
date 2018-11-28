@@ -2,6 +2,11 @@
 #define PHARE_QUANTITY_REFINER_H
 
 
+#include "evolution/messengers/hybrid_messenger_info.h"
+
+#include "data/field/refine/field_refine_operator.h"
+#include "data/field/time_interpolate/field_linear_time_interpolate.h"
+#include "data/particles/refine/particles_data_split.h"
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
@@ -9,8 +14,8 @@
 #include <memory>
 #include <optional>
 
-
-
+namespace PHARE
+{
 /**
  * @brief The Refiner struct encapsulate the algorithm and its associated
  * schedules
@@ -50,6 +55,72 @@ struct QuantityRefiner
 };
 
 
+
+
+template<typename ResourcesManager>
+QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescriptor const& model,
+                                 VecFieldDescriptor const& oldModel, ResourcesManager const& rm,
+                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
+{
+    QuantityRefiner refiner;
+    refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+
+    auto registerRefine
+        = [&rm, &refiner, &refineOp, &timeOp](std::string const& model, std::string const& ghost,
+                                              std::string const& oldModel) {
+              auto src_id  = rm->getID(model);
+              auto dest_id = rm->getID(ghost);
+              auto old_id  = rm->getID(oldModel);
+
+              if (src_id && dest_id && old_id)
+              {
+                  // dest, src, old, new, scratch
+                  refiner.algo->registerRefine(*dest_id, // dest
+                                               *src_id,  // source at same time
+                                               *old_id,  // source at past time (for time interp)
+                                               *src_id,  // source at future time (for time interp)
+                                               *dest_id, // scratch
+                                               refineOp, timeOp);
+              }
+          };
+
+    // register refine operators for each component of the vecfield
+    registerRefine(ghost.xName, model.xName, oldModel.xName);
+    registerRefine(ghost.yName, model.yName, oldModel.yName);
+    registerRefine(ghost.zName, model.zName, oldModel.zName);
+
+    return refiner;
+}
+
+
+
+template<typename ResourcesManager>
+QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager const& rm,
+                                std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
+{
+    QuantityRefiner refiner;
+    refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+
+    auto registerRefine = [&refiner, &rm, &refineOp](std::string name) //
+    {
+        auto id = rm->getID(name);
+        if (id)
+        {
+            refiner.algo->registerRefine(*id, *id, *id, refineOp);
+        }
+    };
+
+    registerRefine(name.xName);
+    registerRefine(name.yName);
+    registerRefine(name.zName);
+
+    return refiner;
+}
+
+
+
+
 struct RefinerPool
 {
     std::map<std::string, QuantityRefiner> qtyRefiners;
@@ -77,7 +148,7 @@ struct RefinerPool
     }
 };
 
-
+} // namespace PHARE
 
 
 #endif

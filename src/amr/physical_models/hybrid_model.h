@@ -91,8 +91,8 @@ public:
         //
         auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
-        modelInfo.modelMagnetic = VecFieldNames{state.electromag.B};
-        modelInfo.modelElectric = VecFieldNames{state.electromag.E};
+        modelInfo.modelMagnetic = VecFieldDescriptor{state.electromag.B};
+        modelInfo.modelElectric = VecFieldDescriptor{state.electromag.E};
 
         // auto magneticComponentNames = extractNames(state.electromag.B);
         // auto electricComponentNames = extractNames(state.electromag.E);

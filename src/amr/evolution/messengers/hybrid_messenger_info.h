@@ -29,17 +29,17 @@ namespace PHARE
  *
  */
 
-struct VecFieldNames
+struct VecFieldDescriptor
 {
     std::string vecName;
     std::string xName;
     std::string yName;
     std::string zName;
 
-    VecFieldNames() = default;
+    VecFieldDescriptor() = default;
 
     template<typename VecFieldT>
-    VecFieldNames(VecFieldT const& v)
+    VecFieldDescriptor(VecFieldT const& v)
         : vecName{v.name()}
         , xName{v.getComponentName(Component::X)}
         , yName{v.getComponentName(Component::Y)}
@@ -55,30 +55,30 @@ struct VecFieldNames
 class HybridMessengerInfo : public IMessengerInfo
 {
 public:
-    VecFieldNames modelMagnetic;
-    VecFieldNames modelElectric;
+    VecFieldDescriptor modelMagnetic;
+    VecFieldDescriptor modelElectric;
     std::vector<std::string> modelPopulationNames;
 
 
     //! names of the magnetic quantities that will be communicated by HybridMessenger::initLevel()
     //! and HybridMessenger::regrid()
-    std::vector<VecFieldNames> initMagnetic;
+    std::vector<VecFieldDescriptor> initMagnetic;
 
 
     //! names of the electric quantities that will be communicated by HybridMessenger::initLevel()
     //! and HybridMessenger::regrid()
-    std::vector<VecFieldNames> initElectric;
+    std::vector<VecFieldDescriptor> initElectric;
 
 
     //! name of the magnetic quantities that will be communicated by
     //! HybridMessenger::fillMagneticGhosts()
-    std::vector<VecFieldNames> ghostMagnetic;
+    std::vector<VecFieldDescriptor> ghostMagnetic;
     // std::vector<VecFieldT*> ghostsMagnetic;
 
 
     //! name of the electric quantities that will be communicated by the
     //! HybridMessenger::fillGhostElectric
-    std::vector<VecFieldNames> ghostElectric;
+    std::vector<VecFieldDescriptor> ghostElectric;
 
 
 

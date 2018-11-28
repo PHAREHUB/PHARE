@@ -327,49 +327,17 @@ public:
 private:
     // using Refiners =
 
+    using Electromag = decltype(std::declval<HybridModel>().state.electromag);
 
+    using GridLayoutT = typename HybridModel::gridLayout_type;
+
+    using field_type =
+        typename decltype(std::declval<HybridModel>().state.electromag)::vecfield_type::field_type;
 
 
     /**
-     * @brief setupEandBGhostMessengers_ creates the SAMRAI algorithms to transfer
-     * electromagnetic fields on ghost nodes of level patches and register all refine operations.
-     *
-     * For each variable to register, we use the registerRefine overload that allows time
-     * interpolation.
-     *
-     * The operation must use 'src_told' and 'src_tnew' versions of each field and
-     * time/space interpolate that onto the ghost nodes of the same quantity onto the destination
-     * level patches.
-     *
-     * The schedules originating from these algorithms will be executed in the solver
-     * to fill the ghosts on a given level at time t_coarse + n*dt_fine.At this time, the ghosts are
-     * obtained from time interpolation of the model fields at times t_coarse (src_told) and
-     * t_coarse+dt_coarse (src_tnew).
-     *
-     * src_told IDs are obtained from the messenger Eold and Bold, which are copies of the model
-     * fields at t_coarse (they are initialized with the level from the coarse level and swapped
-     * with the solution at lastStep().)
-     *
-     * src_tnew IDs are obtained from the model IDs since on the coarser level, the model fields
-     * already are at t_coarse + dt_coarse when the schedule is executed.
-     *
-     *
-     * Each operation thus takes:
-     *  - src       : variable IDs in model (not sure what it is used for here)
-     *  - dest      : variable IDs in the MessengerInfo.ghostXXXXnames (could be from model, could
-     * be from solver)
-     *  - src_told  : variable IDs in Messenger
-     *  - src_tnew  : variable IDs in model
-     *
-     *
-     * The SAMRAI algorithms created by this function are stored in RefineAlgosAndSchedule
-     * objects, themselves stored in an appropriate map with a key provided by the
-     * HybridMessengerInfo
-     *
-     * Note: each time one of the 6 schedules created here will be executed, i.e. at each fine time
-     * step, the fields at src_tnew will be communicated from the coarser level even though they
-     * have not changed. This may be optimized later, for instance by storing the coarser model
-     * fields at firstStep() and doing the time interpolation ourselves.
+     * @brief setupEandBGhostMessengers_ adds to the ghost refiner pool all electric and magnetic
+     * VecFieldDescriptors that are present in the given info.
      *
      */
     void setupEandBGhostMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
@@ -377,23 +345,38 @@ private:
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
 
-        addToGhostRefinerPool_(info->modelElectric, info->ghostElectric, VecFieldNames{Eold},
+        addToGhostRefinerPool_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
                                electricGhostsRefiners_);
-        addToGhostRefinerPool_(info->modelMagnetic, info->ghostMagnetic, VecFieldNames{Bold},
+        addToGhostRefinerPool_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                                magneticGhostsRefiners_);
     }
 
 
 
-
-    void addToGhostRefinerPool_(VecFieldNames const& modelVec,
-                                std::vector<VecFieldNames> const& ghostVec,
-                                VecFieldNames const& oldVecNames, RefinerPool& refinerPool)
+    /**
+     * @brief addToGhostRefinerPool_ adds to the ghost refiner pool all VecFieldDescriptor of the
+     * given vector field.
+     *
+     * Each of the ghost VecFieldDescriptor will have an entry in the ghost refiner pool
+     *
+     * @param ghostVec is the collection of VecFieldDescriptor. Each VecFieldDescriptor corresponds
+     * to a VecField for which ghosts will be needed.
+     * @param modelVec is VecFieldDescriptor for the model VecField associated with the VecField for
+     * which ghosts are needed. When ghosts are filled, this quantity is taken on the coarser level
+     * and is definer at t_coarse+dt_coarse
+     * @param oldModelVec is the VecFieldDescriptor for the VecField for which ghosts are needed, at
+     * t_coarse. These are typically internal variables of the messenger, like Eold or Bold.
+     * @param refinerPool is the RefinerPool to which we add the refiner to.
+     */
+    void addToGhostRefinerPool_(std::vector<VecFieldDescriptor> const& ghostVec,
+                                VecFieldDescriptor const& modelVec,
+                                VecFieldDescriptor const& oldModelVec, RefinerPool& refinerPool)
     {
         auto nbrVectors = ghostVec.size();
         for (auto i = 0u; i < nbrVectors; ++i)
         {
-            refinerPool.add(makeGhostRefiner_(modelVec, ghostVec[i], oldVecNames),
+            refinerPool.add(makeGhostRefiner(ghostVec[i], modelVec, oldModelVec, resourcesManager_,
+                                             fieldRefineOp_, fieldTimeOp_),
                             ghostVec[i].vecName);
         }
     }
@@ -401,89 +384,23 @@ private:
 
 
 
-    QuantityRefiner makeGhostRefiner_(VecFieldNames const& src, VecFieldNames const& dest,
-                                      VecFieldNames const& old)
+    void setupEandBInitMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
-        QuantityRefiner refiner;
-        refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-
-        auto registerRefine = [this, &refiner](std::string const& src, std::string const& dest,
-                                               std::string const& old) {
-            auto src_id  = resourcesManager_->getID(src);
-            auto dest_id = resourcesManager_->getID(dest);
-            auto old_id  = resourcesManager_->getID(old);
-
-            if (src_id && dest_id && old_id)
-            {
-                // dest, src, old, new, scratch
-                refiner.algo->registerRefine(*dest_id, // dest
-                                             *src_id,  // source at same time
-                                             *old_id,  // source at past time (for time interp)
-                                             *src_id,  // source at future time (for time interp)
-                                             *dest_id, // scratch
-                                             fieldRefineOp_, fieldTimeOp_);
-            }
-        };
-
-        // register refine operators for each component of the vecfield
-        registerRefine(src.xName, dest.xName, old.xName);
-        registerRefine(src.yName, dest.yName, old.yName);
-        registerRefine(src.zName, dest.zName, old.zName);
-
-        return refiner;
+        addToInitRefinerPool_(info->initMagnetic, magneticInitRefiners_);
+        addToInitRefinerPool_(info->initElectric, electricInitRefiners_);
     }
 
 
 
 
-    void setupEandBInitMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
+    void addToInitRefinerPool_(std::vector<VecFieldDescriptor> const& names,
+                               RefinerPool& refinerPool)
     {
-        auto registerRefine = [this](auto& srcComponentNames, auto& destComponentNames) //
+        // auto nbrVectors = names.size();
+        for (auto const& name : names)
         {
-            QuantityRefiner refiner;
-            refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-
-            for (auto componentIndex = 0u; componentIndex < 3; ++componentIndex)
-            {
-                auto src_id  = resourcesManager_->getID(srcComponentNames[componentIndex]);
-                auto dest_id = resourcesManager_->getID(destComponentNames[componentIndex]);
-
-                auto id1 = *src_id;
-                auto id2 = *dest_id;
-                if (src_id && dest_id)
-                {
-                    // dest, src, old, new, scratch
-                    refiner.algo->registerRefine(*dest_id, // dest
-                                                 *src_id,  // source at same time
-                                                 *dest_id, // scratch
-                                                 fieldRefineOp_);
-
-                    return refiner;
-                }
-                else
-                {
-                    throw std::runtime_error("invalid IDs");
-                }
-            }
-        };
-
-
-        auto addToPool
-            = [&registerRefine](std::vector<VecFieldNames> const& names, auto& refinerPool) //
-        {
-            auto nbrVariables = names.size();
-            for (auto i = 0u; i < nbrVariables; ++i)
-            {
-                std::array<std::string, 3> componentNames{
-                    {names[i].xName, names[i].yName, names[i].zName}};
-
-                refinerPool.add(registerRefine(componentNames, componentNames), names[i].vecName);
-            }
-        };
-
-
-        addToPool(info->initMagnetic, magneticInitRefiners_);
-        addToPool(info->initElectric, electricInitRefiners_);
+            refinerPool.add(makeInitRefiner(name, resourcesManager_, fieldRefineOp_), name.vecName);
+        }
     }
 
 
@@ -557,21 +474,14 @@ private:
 
 
 
-    using Electromag = decltype(std::declval<HybridModel>().state.electromag);
-
-    using gridlayout_type = typename HybridModel::gridLayout_type;
-
-    using field_type =
-        typename decltype(std::declval<HybridModel>().state.electromag)::vecfield_type::field_type;
-
     // field data refine op
-    std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
+    /*std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
         std::make_shared<FieldRefineOperator<gridlayout_type, field_type>>()};
 
     // field data time op
     std::shared_ptr<FieldLinearTimeInterpolate<gridlayout_type, field_type>> fieldTimeOp_{
         std::make_shared<FieldLinearTimeInterpolate<gridlayout_type, field_type>>()};
-
+*/
 
 
     //! keeps a copy of the model electromagnetic field at t=n
@@ -624,6 +534,18 @@ private:
 
     // keys: PRA1, PRA2 , chosen by messenger
     RefinerPool particlePRA_;
+
+
+
+    using FieldT = typename VecFieldT::field_type;
+
+
+    std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
+        std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()};
+
+    // field data time op
+    std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> fieldTimeOp_{
+        std::make_shared<FieldLinearTimeInterpolate<GridLayoutT, FieldT>>()};
 };
 
 template<typename HybridModel>
