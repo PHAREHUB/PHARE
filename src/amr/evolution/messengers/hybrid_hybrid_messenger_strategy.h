@@ -113,16 +113,16 @@ public:
         // update the schedules for ghost communications of the electric and magnetic field
 
         auto level = hierarchy->getPatchLevel(levelNumber);
-        createGhostSchedules_(magneticGhostsRefiners_, hierarchy, level);
-        createGhostSchedules_(electricGhostsRefiners_, hierarchy, level);
+        magneticGhostsRefiners_.createGhostSchedules(hierarchy, level);
+        electricGhostsRefiners_.createGhostSchedules(hierarchy, level);
 
         // now update electric and magnetic initialization
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
         if (levelNumber != 0)
         {
-            createInitSchedules_(magneticInitRefiners_, hierarchy, level);
-            createInitSchedules_(electricInitRefiners_, hierarchy, level);
+            magneticInitRefiners_.createInitSchedules(hierarchy, level);
+            electricInitRefiners_.createInitSchedules(hierarchy, level);
         }
     }
 
@@ -393,58 +393,60 @@ private:
 
 
 
-    void addToInitRefinerPool_(std::vector<VecFieldDescriptor> const& names,
+    void addToInitRefinerPool_(std::vector<VecFieldDescriptor> const& descriptors,
                                RefinerPool& refinerPool)
     {
-        // auto nbrVectors = names.size();
-        for (auto const& name : names)
+        for (auto const& descriptor : descriptors)
         {
-            refinerPool.add(makeInitRefiner(name, resourcesManager_, fieldRefineOp_), name.vecName);
+            refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, fieldRefineOp_),
+                            descriptor.vecName);
         }
     }
 
 
+    /*
 
-
-    void createGhostSchedules_(RefinerPool& refiners,
-                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                               std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
-    {
-        // clang-format off
-        for (auto& [key, refiner] : refiners.qtyRefiners)
-        // clang-format on
+        void createGhostSchedules_(RefinerPool& refiners,
+                                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
         {
-            auto& algo    = refiner.algo;
-            auto schedule = algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                                 hierarchy);
-            refiner.add(schedule, level->getLevelNumber());
+            // clang-format off
+            for (auto& [key, refiner] : refiners.qtyRefiners)
+            // clang-format on
+            {
+                auto& algo    = refiner.algo;
+                auto schedule = algo->createSchedule(level,
+       level->getNextCoarserHierarchyLevelNumber(), hierarchy); refiner.add(schedule,
+       level->getLevelNumber());
+            }
         }
-    }
+    */
 
 
-
-
-    void createInitSchedules_(RefinerPool& refiners,
-                              std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
-    {
-        // clang-format off
-        for (auto& [key, refiner] : refiners.qtyRefiners)
-        // clang-format on
+    /*
+        void createInitSchedules_(RefinerPool& refiners,
+                                  std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                  std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
         {
-            auto& algo       = refiner.algo;
-            auto levelNumber = level->getLevelNumber();
+            // clang-format off
+            for (auto& [key, refiner] : refiners.qtyRefiners)
+            // clang-format on
+            {
+                auto& algo       = refiner.algo;
+                auto levelNumber = level->getLevelNumber();
 
-            // note that here we must take that createsSchedule() overload and put nullptr as src
-            // since we want to take from coarser level everywhere.
-            // using the createSchedule overload that takes level, next_coarser_level only
-            // would result in interior ghost nodes to be filled with interior of neighbor patches
-            // but there is nothing there.
-            refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
-                        levelNumber);
+                // note that here we must take that createsSchedule() overload and put nullptr as
+       src
+                // since we want to take from coarser level everywhere.
+                // using the createSchedule overload that takes level, next_coarser_level only
+                // would result in interior ghost nodes to be filled with interior of neighbor
+       patches
+                // but there is nothing there.
+                refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                            levelNumber);
+            }
         }
-    }
-
+    */
 
 
     void applyInitSchedules_(int levelNumber, double initDataTime,

@@ -146,6 +146,41 @@ struct RefinerPool
         else
             throw std::runtime_error(qtyName + " already in map");
     }
+
+
+
+    void createGhostSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                              std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+    {
+        for (auto& [key, refiner] : qtyRefiners)
+        {
+            auto& algo    = refiner.algo;
+            auto schedule = algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
+                                                 hierarchy);
+            refiner.add(schedule, level->getLevelNumber());
+        }
+    }
+
+
+
+
+    void createInitSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
+    {
+        for (auto& [key, refiner] : qtyRefiners)
+        {
+            auto& algo       = refiner.algo;
+            auto levelNumber = level->getLevelNumber();
+
+            // note that here we must take that createsSchedule() overload and put nullptr as src
+            // since we want to take from coarser level everywhere.
+            // using the createSchedule overload that takes level, next_coarser_level only
+            // would result in interior ghost nodes to be filled with interior of neighbor patches
+            // but there is nothing there.
+            refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                        levelNumber);
+        }
+    }
 };
 
 } // namespace PHARE
