@@ -7,7 +7,7 @@ namespace PHARE
 std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
 RefinerPool::findSchedule_(std::string const& name, int levelNumber)
 {
-    if (auto mapIter = qtyRefiners.find(name); mapIter != std::end(qtyRefiners))
+    if (auto mapIter = qtyRefiners_.find(name); mapIter != std::end(qtyRefiners_))
     {
         return mapIter->second.findSchedule(levelNumber);
     }
@@ -22,8 +22,8 @@ RefinerPool::findSchedule_(std::string const& name, int levelNumber)
 
 void RefinerPool::add(QuantityRefiner&& qtyRefiner, std::string const& qtyName)
 {
-    if (qtyRefiners.find(qtyName) == std::end(qtyRefiners))
-        qtyRefiners[qtyName] = std::move(qtyRefiner);
+    if (qtyRefiners_.find(qtyName) == std::end(qtyRefiners_))
+        qtyRefiners_[qtyName] = std::move(qtyRefiner);
     else
         throw std::runtime_error(qtyName + " already in map");
 }
@@ -34,7 +34,7 @@ void RefinerPool::createGhostSchedules(
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
     std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
 {
-    for (auto& [key, refiner] : qtyRefiners)
+    for (auto& [key, refiner] : qtyRefiners_)
     {
         auto& algo = refiner.algo;
         auto schedule
@@ -50,7 +50,7 @@ void RefinerPool::createInitSchedules(
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
     std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
 {
-    for (auto& [key, refiner] : qtyRefiners)
+    for (auto& [key, refiner] : qtyRefiners_)
     {
         auto& algo       = refiner.algo;
         auto levelNumber = level->getLevelNumber();
@@ -69,7 +69,7 @@ void RefinerPool::createInitSchedules(
 
 void RefinerPool::initialize(int levelNumber, double initDataTime) const
 {
-    for (auto& [key, refiner] : qtyRefiners)
+    for (auto& [key, refiner] : qtyRefiners_)
 
     {
         if (refiner.algo == nullptr)

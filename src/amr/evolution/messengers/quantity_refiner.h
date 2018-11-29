@@ -154,7 +154,7 @@ public:
                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                         double const initDataTime)
     {
-        for (auto& [key, refiner] : qtyRefiners)
+        for (auto& [key, refiner] : qtyRefiners_)
         {
             auto& algo = refiner.algo;
 
@@ -195,7 +195,7 @@ private:
 
 
 
-    std::map<std::string, QuantityRefiner> qtyRefiners;
+    std::map<std::string, QuantityRefiner> qtyRefiners_;
 };
 
 } // namespace PHARE
