@@ -308,13 +308,13 @@ struct HybridHybridMessenger : public ::testing::Test
         hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
         solver->registerResources(*hybridModel);
 
-        auto fromCoarserInfo = messenger->emptyInfoFromCoarser();
-        auto fromFinerInfo   = messenger->emptyInfoFromFiner();
+        // auto fromCoarserInfo = messenger->emptyInfoFromCoarser();
+        // auto fromFinerInfo   = messenger->emptyInfoFromFiner();
 
-        hybridModel->fillMessengerInfo(fromCoarserInfo);
-        hybridModel->fillMessengerInfo(fromFinerInfo);
+        // hybridModel->fillMessengerInfo(fromCoarserInfo);
+        // hybridModel->fillMessengerInfo(fromFinerInfo);
 
-        messenger->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+        // messenger->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }
 
 
