@@ -121,51 +121,62 @@ QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager
 
 
 
-struct RefinerPool
+/**
+ * @brief The RefinerPool class is used by a Messenger to manipulate SAMRAI algorithms and schedules
+ * It contains a QuantityRefiner for all quantities registered to the Messenger for ghost, init etc.
+ */
+class RefinerPool
 {
-    std::map<std::string, QuantityRefiner> qtyRefiners;
+public:
+    void add(QuantityRefiner&& qtyRefiner, std::string const& qtyName);
 
-    std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
-    findSchedule(std::string const& name, int levelNumber)
-    {
-        if (auto mapIter = qtyRefiners.find(name); mapIter != std::end(qtyRefiners))
-        {
-            return mapIter->second.findSchedule(levelNumber);
-        }
-        else
-        {
-            return std::nullopt;
-        }
-    }
-
-
-    void add(QuantityRefiner&& qtyRefiner, std::string const& qtyName)
-    {
-        if (qtyRefiners.find(qtyName) == std::end(qtyRefiners))
-            qtyRefiners[qtyName] = std::move(qtyRefiner);
-        else
-            throw std::runtime_error(qtyName + " already in map");
-    }
 
 
 
     void createGhostSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+                              std::shared_ptr<SAMRAI::hier::PatchLevel>& level);
+
+
+
+
+    void createInitSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& level);
+
+
+
+
+    void initialize(int levelNumber, double initDataTime) const;
+
+
+
+    virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                        const int levelNumber,
+                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                        double const initDataTime)
     {
         for (auto& [key, refiner] : qtyRefiners)
         {
-            auto& algo    = refiner.algo;
-            auto schedule = algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                                 hierarchy);
-            refiner.add(schedule, level->getLevelNumber());
+            auto& algo = refiner.algo;
+
+            // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
+            // the regriding schedule for which oldptr is not nullptr is handled in another
+            // function
+            auto const& level = hierarchy->getPatchLevel(levelNumber);
+
+            auto schedule = algo->createSchedule(
+                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+
+            schedule->fillData(initDataTime);
         }
     }
+
+
 
 
     template<typename VecFieldT>
     void fillVecFieldGhosts(VecFieldT& vec, int const levelNumber, double const fillTime)
     {
-        auto schedule = findSchedule(vec.name(), levelNumber);
+        auto schedule = findSchedule_(vec.name(), levelNumber);
         if (schedule)
         {
             (*schedule)->fillData(fillTime);
@@ -178,49 +189,13 @@ struct RefinerPool
 
 
 
-
-    void createInitSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
-    {
-        for (auto& [key, refiner] : qtyRefiners)
-        {
-            auto& algo       = refiner.algo;
-            auto levelNumber = level->getLevelNumber();
-
-            // note that here we must take that createsSchedule() overload and put nullptr as src
-            // since we want to take from coarser level everywhere.
-            // using the createSchedule overload that takes level, next_coarser_level only
-            // would result in interior ghost nodes to be filled with interior of neighbor patches
-            // but there is nothing there.
-            refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
-                        levelNumber);
-        }
-    }
+private:
+    std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
+    findSchedule_(std::string const& name, int levelNumber);
 
 
 
-
-    void initialize(int levelNumber, double initDataTime) const
-    {
-        for (auto& [key, refiner] : qtyRefiners)
-
-        {
-            if (refiner.algo == nullptr)
-            {
-                throw std::runtime_error("Algorithm is nullptr");
-            }
-
-            auto schedule = refiner.schedules.find(levelNumber);
-            if (schedule != std::end(refiner.schedules))
-            {
-                schedule->second->fillData(initDataTime);
-            }
-            else
-            {
-                throw std::runtime_error("Error - schedule cannot be found for this level");
-            }
-        }
-    }
+    std::map<std::string, QuantityRefiner> qtyRefiners;
 };
 
 } // namespace PHARE

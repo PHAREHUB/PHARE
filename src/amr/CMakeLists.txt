@@ -53,6 +53,7 @@ set( SOURCES_CPP
      tools/amr_utils.cpp
      evolution/solvers/solver.cpp
      evolution/messengers/messenger.cpp
+     evolution/messengers/quantity_refiner.cpp
      data/field/coarsening/field_coarsen.cpp
      tools/resources_manager.cpp
    )

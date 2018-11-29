@@ -140,31 +140,8 @@ public:
                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                         double const initDataTime) override
     {
-        // create temporary schedule from algorithms
-
-        auto doRegrid = [&hierarchy, levelNumber, oldLevel, initDataTime](auto& refiners) //
-        {
-            for (auto& [key, refiner] : refiners.qtyRefiners)
-            {
-                auto& algo = refiner.algo;
-
-                // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
-                // the regriding schedule for which oldptr is not nullptr is handled in another
-                // function
-                auto const& level = hierarchy->getPatchLevel(levelNumber);
-
-                auto schedule = algo->createSchedule(
-                    level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-
-                schedule->fillData(initDataTime);
-            }
-        };
-
-        // root level is not initialized with a schedule using coarser level data
-        // so we don't create these schedules if root level
-
-        doRegrid(magneticInitRefiners_);
-        doRegrid(electricInitRefiners_);
+        magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
     }
 
 
