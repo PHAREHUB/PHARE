@@ -162,6 +162,21 @@ struct RefinerPool
     }
 
 
+    template<typename VecFieldT>
+    void fillVecFieldGhosts(VecFieldT& vec, int const levelNumber, double const fillTime)
+    {
+        auto schedule = findSchedule(vec.name(), levelNumber);
+        if (schedule)
+        {
+            (*schedule)->fillData(fillTime);
+        }
+        else
+        {
+            throw std::runtime_error("no schedule for " + vec.name());
+        }
+    }
+
+
 
 
     void createInitSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -179,6 +194,31 @@ struct RefinerPool
             // but there is nothing there.
             refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
                         levelNumber);
+        }
+    }
+
+
+
+
+    void initialize(int levelNumber, double initDataTime) const
+    {
+        for (auto& [key, refiner] : qtyRefiners)
+
+        {
+            if (refiner.algo == nullptr)
+            {
+                throw std::runtime_error("Algorithm is nullptr");
+            }
+
+            auto schedule = refiner.schedules.find(levelNumber);
+            if (schedule != std::end(refiner.schedules))
+            {
+                schedule->second->fillData(initDataTime);
+            }
+            else
+            {
+                throw std::runtime_error("Error - schedule cannot be found for this level");
+            }
         }
     }
 };

@@ -198,8 +198,8 @@ public:
 
     virtual void initLevel(int const levelNumber, double const initDataTime) const override
     {
-        applyInitSchedules_(levelNumber, initDataTime, magneticInitRefiners_);
-        applyInitSchedules_(levelNumber, initDataTime, electricInitRefiners_);
+        magneticInitRefiners_.initialize(levelNumber, initDataTime);
+        electricInitRefiners_.initialize(levelNumber, initDataTime);
     }
 
 
@@ -223,17 +223,7 @@ public:
                                     double const fillTime) override
     {
         std::cout << "perform the magnetic ghost fill\n";
-
-
-        auto schedule = magneticGhostsRefiners_.findSchedule(B.name(), levelNumber);
-        if (schedule)
-        {
-            (*schedule)->fillData(fillTime);
-        }
-        else
-        {
-            throw std::runtime_error("no schedule for the magnetic field " + B.name());
-        }
+        magneticGhostsRefiners_.fillVecFieldGhosts(B, levelNumber, fillTime);
     }
 
 
@@ -243,17 +233,7 @@ public:
                                     double const fillTime) override
     {
         std::cout << "perform the electric ghost fill\n";
-
-
-        auto schedule = electricGhostsRefiners_.findSchedule(E.name(), levelNumber);
-        if (schedule)
-        {
-            (*schedule)->fillData(fillTime);
-        }
-        else
-        {
-            throw std::runtime_error("no schedule for the electric field " + E.name());
-        }
+        electricGhostsRefiners_.fillVecFieldGhosts(E, levelNumber, fillTime);
     }
 
 
@@ -400,76 +380,6 @@ private:
         {
             refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, fieldRefineOp_),
                             descriptor.vecName);
-        }
-    }
-
-
-    /*
-
-        void createGhostSchedules_(RefinerPool& refiners,
-                                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                   std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
-        {
-            // clang-format off
-            for (auto& [key, refiner] : refiners.qtyRefiners)
-            // clang-format on
-            {
-                auto& algo    = refiner.algo;
-                auto schedule = algo->createSchedule(level,
-       level->getNextCoarserHierarchyLevelNumber(), hierarchy); refiner.add(schedule,
-       level->getLevelNumber());
-            }
-        }
-    */
-
-
-    /*
-        void createInitSchedules_(RefinerPool& refiners,
-                                  std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                  std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
-        {
-            // clang-format off
-            for (auto& [key, refiner] : refiners.qtyRefiners)
-            // clang-format on
-            {
-                auto& algo       = refiner.algo;
-                auto levelNumber = level->getLevelNumber();
-
-                // note that here we must take that createsSchedule() overload and put nullptr as
-       src
-                // since we want to take from coarser level everywhere.
-                // using the createSchedule overload that takes level, next_coarser_level only
-                // would result in interior ghost nodes to be filled with interior of neighbor
-       patches
-                // but there is nothing there.
-                refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
-                            levelNumber);
-            }
-        }
-    */
-
-
-    void applyInitSchedules_(int levelNumber, double initDataTime,
-                             RefinerPool const& refiners) const
-    {
-        // clang-format off
-        for (auto& [key, refiner] : refiners.qtyRefiners)
-        // clang-format on
-        {
-            if (refiner.algo == nullptr)
-            {
-                throw std::runtime_error("Algorithm is nullptr");
-            }
-
-            auto schedule = refiner.schedules.find(levelNumber);
-            if (schedule != std::end(refiner.schedules))
-            {
-                schedule->second->fillData(initDataTime);
-            }
-            else
-            {
-                throw std::runtime_error("Error - schedule cannot be found for this level");
-            }
         }
     }
 
