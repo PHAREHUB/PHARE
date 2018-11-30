@@ -37,6 +37,7 @@ class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel
 
 public:
     static const std::string stratName;
+    static constexpr std::size_t rootLevelNumber = 0;
 
 
     HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> manager, int const firstLevel)
@@ -44,8 +45,7 @@ public:
         , resourcesManager_{std::move(manager)}
         , firstLevel_{firstLevel}
     {
-        resourcesManager_->registerResources(EM_old_.E);
-        resourcesManager_->registerResources(EM_old_.B);
+        resourcesManager_->registerResources(EM_old_);
     }
 
     virtual ~HybridHybridMessengerStrategy() = default;
@@ -112,7 +112,7 @@ public:
 
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
-        if (levelNumber != 0)
+        if (levelNumber != rootLevelNumber)
         {
             magneticInitRefiners_.createInitSchedules(hierarchy, level);
             electricInitRefiners_.createInitSchedules(hierarchy, level);
