@@ -91,19 +91,10 @@ public:
         //
         auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
-        modelInfo.modelMagnetic = VecFieldDescriptor{state.electromag.B};
-        modelInfo.modelElectric = VecFieldDescriptor{state.electromag.E};
-
-        // auto magneticComponentNames = extractNames(state.electromag.B);
-        // auto electricComponentNames = extractNames(state.electromag.E);
-
-        /*
-        modelInfo.modelMagnetic = {state.electromag.B.name(), magneticComponentNames[0],
-                                   magneticComponentNames[1], magneticComponentNames[2]};
-
-        modelInfo.modelElectric = {state.electromag.E.name(), electricComponentNames[0],
-                                   electricComponentNames[1], electricComponentNames[2]};
-        */
+        modelInfo.modelMagnetic   = VecFieldDescriptor{state.electromag.B};
+        modelInfo.modelElectric   = VecFieldDescriptor{state.electromag.E};
+        modelInfo.modelIonBulk    = VecFieldDescriptor{state.ions.velocity()};
+        modelInfo.modelIonDensity = FieldDescriptor{state.ions.densityName()};
 
         modelInfo.initElectric.emplace_back(state.electromag.E);
         modelInfo.initMagnetic.emplace_back(state.electromag.B);

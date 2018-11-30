@@ -226,14 +226,6 @@ struct HybridHybridMessenger : public ::testing::Test
         hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
         hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
         solver->registerResources(*hybridModel);
-
-        // auto fromCoarserInfo = messenger->emptyInfoFromCoarser();
-        // auto fromFinerInfo   = messenger->emptyInfoFromFiner();
-
-        // hybridModel->fillMessengerInfo(fromCoarserInfo);
-        // hybridModel->fillMessengerInfo(fromFinerInfo);
-
-        // messenger->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }
 };
 
@@ -301,7 +293,7 @@ TEST_F(HybridHybridMessenger, initializesRefinedLevels)
 
 
 
-
+#if 0
 TEST_F(HybridHybridMessenger, initializesNewLevelDuringRegrid)
 {
     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
@@ -372,7 +364,6 @@ TEST_F(HybridHybridMessenger, initializesNewLevelDuringRegrid)
 
 
 
-
 TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 {
     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
@@ -384,6 +375,7 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 
     //   BasicHierarchy hierarchy{ratio, dimension, tagStrat.get(),integratorStrat};
 }
+#endif
 
 
 
@@ -520,9 +512,6 @@ TEST_F(HybridHybridMessenger, fillsRefinedLevelGhosts)
 
         auto checkMyFieldGhosts = [&layout](auto const& field, auto const& func) //
         {
-
-
-
             auto iStart = layout.ghostStartIndex(
                 field, PHARE::Direction::X); // physicalStartIndex(field, PHARE::Direction::X);
             auto iEnd = layout.physicalStartIndex(field, PHARE::Direction::X);

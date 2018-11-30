@@ -51,13 +51,17 @@ struct VecFieldDescriptor
 
 
 
+using FieldDescriptor = std::string;
+
+
 /// template<typename VecFieldT>
 class HybridMessengerInfo : public IMessengerInfo
 {
 public:
     VecFieldDescriptor modelMagnetic;
     VecFieldDescriptor modelElectric;
-    std::vector<std::string> modelPopulationNames;
+    VecFieldDescriptor modelIonBulk;
+    FieldDescriptor modelIonDensity;
 
 
     //! names of the magnetic quantities that will be communicated by HybridMessenger::initLevel()
@@ -68,6 +72,12 @@ public:
     //! names of the electric quantities that will be communicated by HybridMessenger::initLevel()
     //! and HybridMessenger::regrid()
     std::vector<VecFieldDescriptor> initElectric;
+
+
+    std::vector<VecFieldDescriptor> initIonBulk;
+
+
+    std::vector<FieldDescriptor> initIonDensity;
 
 
     //! name of the magnetic quantities that will be communicated by

@@ -116,6 +116,12 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
     EXPECT_EQ("EM_E_x", modelInfo.modelElectric.xName);
     EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
     EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
+
+    EXPECT_EQ("Ions_rho", modelInfo.modelIonDensity);
+    EXPECT_EQ("Ions_bulkVel", modelInfo.modelIonBulk.vecName);
+    EXPECT_EQ("Ions_bulkVel_x", modelInfo.modelIonBulk.xName);
+    EXPECT_EQ("Ions_bulkVel_y", modelInfo.modelIonBulk.yName);
+    EXPECT_EQ("Ions_bulkVel_z", modelInfo.modelIonBulk.zName);
 }
 
 
