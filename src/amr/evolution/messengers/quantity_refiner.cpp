@@ -70,17 +70,16 @@ void RefinerPool::createInitSchedules(
 void RefinerPool::initialize(int levelNumber, double initDataTime) const
 {
     for (auto& [key, refiner] : qtyRefiners_)
-
     {
         if (refiner.algo == nullptr)
         {
             throw std::runtime_error("Algorithm is nullptr");
         }
 
-        auto schedule = refiner.schedules.find(levelNumber);
-        if (schedule != std::end(refiner.schedules))
+        auto schedule = refiner.findSchedule(levelNumber);
+        if (schedule)
         {
-            schedule->second->fillData(initDataTime);
+            (*schedule)->fillData(initDataTime);
         }
         else
         {
@@ -88,6 +87,32 @@ void RefinerPool::initialize(int levelNumber, double initDataTime) const
         }
     }
 }
+
+
+
+
+void RefinerPool::regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                         const int levelNumber,
+                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                         double const initDataTime)
+{
+    for (auto& [key, refiner] : qtyRefiners_)
+    {
+        auto& algo = refiner.algo;
+
+        // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
+        // the regriding schedule for which oldptr is not nullptr is handled in another
+        // function
+        auto const& level = hierarchy->getPatchLevel(levelNumber);
+
+        auto schedule = algo->createSchedule(
+            level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+
+        schedule->fillData(initDataTime);
+    }
+}
+
+
 
 
 } // namespace PHARE

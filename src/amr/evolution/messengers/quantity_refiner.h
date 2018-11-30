@@ -17,28 +17,24 @@
 namespace PHARE
 {
 /**
- * @brief The Refiner struct encapsulate the algorithm and its associated
- * schedules
- *
- * We have several of those object, one per level, that is used to retrieve which schedule to
- * use for a given messenger communication, and which algorithm to use to re-create schedules
- * when initializing a level
+ * @brief The Refiner struct encapsulate a SAMRAI algorithm for a quantity and all the schedules
+ * associated to the levels in the hierarchy.
  */
-struct QuantityRefiner
+class QuantityRefiner
 {
+public:
     QuantityRefiner()
         : algo{std::make_unique<SAMRAI::xfer::RefineAlgorithm>()}
     {
     }
 
-    std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo; // this part is set in setup
 
-    // this part is created in initializeLevelData()
-    std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> schedules;
-
-    std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>> findSchedule(int levelNumber)
+    /**
+     * @brief findSchedule returns the schedule at a given level number if there is one (optional).
+     */
+    std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>> findSchedule(int levelNumber) const
     {
-        if (auto mapIter = schedules.find(levelNumber); mapIter != std::end(schedules))
+        if (auto mapIter = schedules_.find(levelNumber); mapIter != std::end(schedules_))
         {
             return mapIter->second;
         }
@@ -48,15 +44,48 @@ struct QuantityRefiner
         }
     }
 
+
+
+    /**
+     * @brief add is used to add a refine schedule for the given level number.
+     * Note that already existing schedules at this level number are overwritten.
+     */
     void add(std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule, int levelNumber)
     {
-        schedules[levelNumber] = std::move(schedule);
+        schedules_[levelNumber] = std::move(schedule);
     }
+
+
+
+    std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo;
+
+private:
+    std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> schedules_;
 };
 
 
 
 
+/**
+ * @brief makeGhostRefiner creates a QuantityRefiner for ghost filling of a VecField.
+ *
+ * The method basically calls registerRefine() on the QuantityRefiner algorithm,
+ * passing it the IDs of the ghost, model and old model patch datas associated to each component of
+ * the vector field.
+ *
+ *
+ * @param ghost is the VecFieldDescriptor of the VecField that needs its ghost nodes filled
+ * @param model is the VecFieldDescriptor of the model VecField from which data is taken (at time
+ * t_coarse+dt_coarse)
+ * @param oldModel is the VecFieldDescriptor of the model VecField from which data is taken at time
+ * t_coarse
+ * @param rm is the ResourcesManager
+ * @param refineOp is the spatial refinement operator
+ * @param timeOp is the time interpolator
+ *
+ * @return the function returns a QuantityRefiner which may be stored in a RefinerPool and to which
+ * later schedules will be added.
+ */
 template<typename ResourcesManager>
 QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescriptor const& model,
                                  VecFieldDescriptor const& oldModel, ResourcesManager const& rm,
@@ -64,7 +93,6 @@ QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescri
                                  std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
 {
     QuantityRefiner refiner;
-    refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
 
     auto registerRefine
         = [&rm, &refiner, &refineOp, &timeOp](std::string const& model, std::string const& ghost,
@@ -95,12 +123,16 @@ QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescri
 
 
 
+
 template<typename ResourcesManager>
+/**
+ * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is called
+ * is the one that allows initialization of a vector field quantity.
+ */
 QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager const& rm,
                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
 {
     QuantityRefiner refiner;
-    refiner.algo = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
 
     auto registerRefine = [&refiner, &rm, &refineOp](std::string name) //
     {
@@ -128,51 +160,65 @@ QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager
 class RefinerPool
 {
 public:
+    /**
+     * @brief add is used to add a QuantityRefiner to the pool, associated with the key qtyName.
+     */
     void add(QuantityRefiner&& qtyRefiner, std::string const& qtyName);
 
 
 
-
+    /**
+     * @brief createGhostSchedulesis adds a ghost filling schedule to all QuantityRefiner of the
+     * pool. Once this method is called, all quantities in the pool can have their ghost filled on
+     * the given level using fillVecFieldGhosts().
+     */
     void createGhostSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                               std::shared_ptr<SAMRAI::hier::PatchLevel>& level);
 
 
 
-
+    /**
+     * @brief createInitSchedules adds initialization schedule to all quantities in the pool on the
+     * given level. This method needs to be called to later use initialize() on the given level.
+     */
     void createInitSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& level);
 
 
 
 
+    /**
+     * @brief initialize is used to initialize all quantities registered in the pool.
+     *
+     * Basically the method just takes all QuantityRefiner one by one, find the schedule associated
+     * with the given level number and executes fillData().
+     *
+     * The method createInitSchedule() must have been called before for that level otherwise
+     * initialize() will not find schedules and will throw a run time exception.
+     */
     void initialize(int levelNumber, double initDataTime) const;
 
 
 
+
+    /**
+     * @brief regrid is used to execute a regridding schedule for all quantities in the pool.
+     */
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                         const int levelNumber,
                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                        double const initDataTime)
-    {
-        for (auto& [key, refiner] : qtyRefiners_)
-        {
-            auto& algo = refiner.algo;
-
-            // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
-            // the regriding schedule for which oldptr is not nullptr is handled in another
-            // function
-            auto const& level = hierarchy->getPatchLevel(levelNumber);
-
-            auto schedule = algo->createSchedule(
-                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-
-            schedule->fillData(initDataTime);
-        }
-    }
+                        double const initDataTime);
 
 
 
 
+    /**
+     * @brief fillVecFieldGhosts is used to fill the ghost nodes of all the given VecField.
+     *
+     * The VecField must have been registered before to the pool for ghost filling, and the method
+     * createGhostSchedule must have been called for the given levelNumber otherwise no refine
+     * schedule will be found and the method will throw an axception.
+     */
     template<typename VecFieldT>
     void fillVecFieldGhosts(VecFieldT& vec, int const levelNumber, double const fillTime)
     {

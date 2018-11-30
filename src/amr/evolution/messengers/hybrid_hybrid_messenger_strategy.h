@@ -27,8 +27,6 @@ namespace PHARE
  *
  *
  * TODO: we would also want to add rho soon
- * TODO: we have a lot of get* send* maybe we should use some enum instead,so that we can make
- * combinaison with other parameter easier
  *
  */
 template<typename HybridModel>
@@ -65,9 +63,6 @@ public:
      */
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
     {
-        // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
-        // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
-        // hybModel.resourcesManager->allocate(EM_old_, patch, allocateTime);
         resourcesManager_->allocate(EM_old_, patch, allocateTime);
     }
 
@@ -87,15 +82,8 @@ public:
         std::unique_ptr<HybridMessengerInfo> hybridInfo{
             dynamic_cast<HybridMessengerInfo*>(fromCoarserInfo.release())};
 
-
-        setupEandBGhostMessengers_(hybridInfo);
-        setupEandBInitMessengers_(hybridInfo);
-
-        // on a tous les algos pour remplir les ghosts de
-        // - model E, B vers model E, B
-        // - model E, B vers solver list of E_internal and list of B_internal
-
-        // TODO setup particle messengers
+        registerGhosts_(hybridInfo);
+        registerInit_(hybridInfo);
     }
 
 
@@ -177,6 +165,7 @@ public:
     {
         magneticInitRefiners_.initialize(levelNumber, initDataTime);
         electricInitRefiners_.initialize(levelNumber, initDataTime);
+        // TODO particleInitRefiner_.initialize(levelNumber, initDataTime);
     }
 
 
@@ -292,22 +281,23 @@ private:
         typename decltype(std::declval<HybridModel>().state.electromag)::vecfield_type::field_type;
 
 
-    /**
-     * @brief setupEandBGhostMessengers_ adds to the ghost refiner pool all electric and magnetic
-     * VecFieldDescriptors that are present in the given info.
-     *
-     */
-    void setupEandBGhostMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
+
+
+    void registerGhosts_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
 
+
         addToGhostRefinerPool_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
                                electricGhostsRefiners_);
+
         addToGhostRefinerPool_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                                magneticGhostsRefiners_);
-    }
 
+        // TODO add moments infos to moments ghost refiner pool
+        // TODO add particle infos to particle ghost refiner pool
+    }
 
 
     /**
@@ -341,12 +331,14 @@ private:
 
 
 
-    void setupEandBInitMessengers_(std::unique_ptr<HybridMessengerInfo> const& info)
+    void registerInit_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         addToInitRefinerPool_(info->initMagnetic, magneticInitRefiners_);
         addToInitRefinerPool_(info->initElectric, electricInitRefiners_);
-    }
 
+        // TODO add moments infos to moments init refiner pool
+        // TODO add particle infos to particle init refiner pool
+    }
 
 
 
@@ -359,18 +351,6 @@ private:
                             descriptor.vecName);
         }
     }
-
-
-
-
-    // field data refine op
-    /*std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
-        std::make_shared<FieldRefineOperator<gridlayout_type, field_type>>()};
-
-    // field data time op
-    std::shared_ptr<FieldLinearTimeInterpolate<gridlayout_type, field_type>> fieldTimeOp_{
-        std::make_shared<FieldLinearTimeInterpolate<gridlayout_type, field_type>>()};
-*/
 
 
     //! keeps a copy of the model electromagnetic field at t=n
