@@ -22,25 +22,24 @@
 
 namespace PHARE
 {
-/** \brief An HybridMessenger purpose is to manage messenger from an to : the electric field,
- * magnetic field, and the ions.
- *
- *
- * TODO: we would also want to add rho soon
- *
+/** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid to
+ * hybrid data communications.
  */
 template<typename HybridModel>
 class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
 {
-    using IonsT     = decltype(std::declval<HybridModel>().state.ions);
-    using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
+    using IonsT             = typename HybridModel::ions_type;
+    using ElectromagT       = typename HybridModel::electromag_type;
+    using VecFieldT         = typename HybridModel::vecfield_type;
+    using GridLayoutT       = typename HybridModel::gridLayout_type;
+    using FieldT            = typename VecFieldT::field_type;
+    using ResourcesManagerT = typename HybridModel::resources_manager_type;
 
 public:
     static const std::string stratName;
 
 
-    HybridHybridMessengerStrategy(
-        std::shared_ptr<typename HybridModel::resources_manager_type> manager, int const firstLevel)
+    HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> manager, int const firstLevel)
         : HybridMessengerStrategy<HybridModel>{stratName}
         , resourcesManager_{std::move(manager)}
         , firstLevel_{firstLevel}
@@ -89,28 +88,37 @@ public:
 
 
     /**
-     * @brief setLevel creates SAMRAI schedules for all variables relevant for hybrid to hybrid
-     * communications, whether they are from model, solver or messenger internals
+     * @brief setLevel creates SAMRAI schedules for all resources in the ghost and init RefinerPools
      *
-     * The method takes maps associating quantityName to the pair (algo, map of schedules)
-     * for each algo, it creates a bunch of associated schedules and store them in the vector
+     * Needing ghosts to be filled:
+     *  - magnetic fields
+     *  - electric fields
+     *  - particles
+     *
+     * Needing to be initialized
+     *  - magnetic fields
+     *  - electric fields
+     *  - ion bulk velocity (total)
+     *  - ion density (total)
+     *  - ion population particle arrays
      */
     virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                int const levelNumber) override
     {
-        // update the schedules for ghost communications of the electric and magnetic field
-
         auto level = hierarchy->getPatchLevel(levelNumber);
+
         magneticGhostsRefiners_.createGhostSchedules(hierarchy, level);
         electricGhostsRefiners_.createGhostSchedules(hierarchy, level);
 
-        // now update electric and magnetic initialization
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
         if (levelNumber != 0)
         {
             magneticInitRefiners_.createInitSchedules(hierarchy, level);
             electricInitRefiners_.createInitSchedules(hierarchy, level);
+            ionBulkInitRefiners_.createInitSchedules(hierarchy, level);
+            ionDensityInitRefiners_.createInitSchedules(hierarchy, level);
+            // TODO init particle array schedules
         }
     }
 
@@ -119,9 +127,7 @@ public:
     /**
      * @brief regrid performs the regriding communications for Hybrid to Hybrid messengers
      *
-     * This routine must create and execute schedules for:
-     *
-     * - filling the model magnetic field
+     * basically, all quantities that are in initialization refiners need to be regridded
      */
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                         const int levelNumber,
@@ -130,6 +136,9 @@ public:
     {
         magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
         electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        ionBulkInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        ionDensityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        // TODO regrid particle arrays
     }
 
 
@@ -165,6 +174,8 @@ public:
     {
         magneticInitRefiners_.initialize(levelNumber, initDataTime);
         electricInitRefiners_.initialize(levelNumber, initDataTime);
+        ionBulkInitRefiners_.initialize(levelNumber, initDataTime);
+        ionDensityInitRefiners_.initialize(levelNumber, initDataTime);
         // TODO particleInitRefiner_.initialize(levelNumber, initDataTime);
     }
 
@@ -271,18 +282,6 @@ public:
 
 
 private:
-    // using Refiners =
-
-    using Electromag = decltype(std::declval<HybridModel>().state.electromag);
-
-    using GridLayoutT = typename HybridModel::gridLayout_type;
-
-    using field_type =
-        typename decltype(std::declval<HybridModel>().state.electromag)::vecfield_type::field_type;
-
-
-
-
     void registerGhosts_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         auto const& Eold = EM_old_.E;
@@ -295,7 +294,7 @@ private:
         addToGhostRefinerPool_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                                magneticGhostsRefiners_);
 
-        // TODO add moments infos to moments ghost refiner pool
+
         // TODO add particle infos to particle ghost refiner pool
     }
 
@@ -335,6 +334,8 @@ private:
     {
         addToInitRefinerPool_(info->initMagnetic, magneticInitRefiners_);
         addToInitRefinerPool_(info->initElectric, electricInitRefiners_);
+        addToInitRefinerPool_(info->initIonBulk, ionBulkInitRefiners_);
+        addToInitRefinerPool_(info->initIonDensity, ionDensityInitRefiners_);
 
         // TODO add moments infos to moments init refiner pool
         // TODO add particle infos to particle init refiner pool
@@ -352,38 +353,46 @@ private:
         }
     }
 
+    void addToInitRefinerPool_(std::vector<FieldDescriptor> const& descriptors,
+                               RefinerPool& refinerPool)
+    {
+        for (auto const& descriptor : descriptors)
+        {
+            refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, fieldRefineOp_),
+                            descriptor);
+        }
+    }
+
 
     //! keeps a copy of the model electromagnetic field at t=n
-    Electromag EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
-                                               // updated to t=n before advanceLevel()
+    ElectromagT EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
+                                                // updated to t=n before advanceLevel()
 
 
+    //! ResourceManager shared with other objects (like the HybridModel)
     std::shared_ptr<typename HybridModel::resources_manager_type> resourcesManager_;
 
 
     int const firstLevel_;
 
 
-
-
-    // the following maps store the algorithm and the associated schedules for different quantities
-    // and different operations. The key of the map is the name of the quantity, e.g.
-    // "HybridModel_EM_B" and the value will be the {algo, schedules[]}
-    // there may be several maps for the same quantity if that quantity needs several algorithms
-    // this is typically the case for the magnetic field for instance, which needs to spatially
-    // interpolated at initialization phase (spatial only registerRefine()) AND to be spatial/time
-    // interpolated at advance phase when filling ghosts
-
-
-    //! stores the algo and its associated schedules for the getting ghost magnetic field
+    //! store refiners for magnetic fields that need ghosts to be filled
     RefinerPool magneticGhostsRefiners_;
 
-    //! stores the algo and its associated schedules for getting magnetic field at initialization
+    //! store refiners for magnetic fields that need to be initialized
     RefinerPool magneticInitRefiners_;
 
-    // same as for the magnetic field
+    //! store refiners for electric fields that need ghosts to be filled
     RefinerPool electricGhostsRefiners_;
+
+    //! store refiners for electric fields that need to be initializes
     RefinerPool electricInitRefiners_;
+
+    //! store refiners for ion bulk velocity resources that need to be initialized
+    RefinerPool ionBulkInitRefiners_;
+
+    //! store refiners for total ion density resources that need to be initialized
+    RefinerPool ionDensityInitRefiners_;
 
 
     // algo and schedule used to initialize domain particles
@@ -404,9 +413,6 @@ private:
     // keys: PRA1, PRA2 , chosen by messenger
     RefinerPool particlePRA_;
 
-
-
-    using FieldT = typename VecFieldT::field_type;
 
 
     std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{

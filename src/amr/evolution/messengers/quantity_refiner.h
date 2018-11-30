@@ -124,11 +124,11 @@ QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescri
 
 
 
-template<typename ResourcesManager>
 /**
  * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is called
  * is the one that allows initialization of a vector field quantity.
  */
+template<typename ResourcesManager>
 QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager const& rm,
                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
 {
@@ -146,6 +146,28 @@ QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager
     registerRefine(name.xName);
     registerRefine(name.yName);
     registerRefine(name.zName);
+
+    return refiner;
+}
+
+
+
+
+/**
+ * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is called
+ * is the one that allows initialization of a vector field quantity.
+ */
+template<typename ResourcesManager>
+QuantityRefiner makeInitRefiner(FieldDescriptor const& name, ResourcesManager const& rm,
+                                std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
+{
+    QuantityRefiner refiner;
+
+    auto id = rm->getID(name);
+    if (id)
+    {
+        refiner.algo->registerRefine(*id, *id, *id, refineOp);
+    }
 
     return refiner;
 }

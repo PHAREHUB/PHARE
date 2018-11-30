@@ -36,6 +36,9 @@ class HybridModel : public IPhysicalModel
 public:
     static const std::string model_name;
     using gridLayout_type        = GridLayoutT;
+    using electromag_type        = Electromag;
+    using vecfield_type          = typename Electromag::vecfield_type;
+    using ions_type              = Ions;
     using resources_manager_type = ResourcesManager<gridLayout_type>;
 
 
