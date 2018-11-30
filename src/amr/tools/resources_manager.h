@@ -262,6 +262,15 @@ public:
 
 
 
+    ~ResourcesManager()
+    {
+        for (auto& [key, resourcesInfo] : nameToResourceInfo_)
+        {
+            variableDatabase_->removeVariable(key);
+        }
+    }
+
+
 
 private:
     template<typename ResourcesUser>
