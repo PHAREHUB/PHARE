@@ -106,13 +106,11 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
 
 
     EXPECT_EQ("EM_B", modelInfo.modelMagnetic.vecName);
-
     EXPECT_EQ("EM_B_x", modelInfo.modelMagnetic.xName);
     EXPECT_EQ("EM_B_y", modelInfo.modelMagnetic.yName);
     EXPECT_EQ("EM_B_z", modelInfo.modelMagnetic.zName);
 
     EXPECT_EQ("EM_E", modelInfo.modelElectric.vecName);
-
     EXPECT_EQ("EM_E_x", modelInfo.modelElectric.xName);
     EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
     EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
@@ -122,6 +120,32 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
     EXPECT_EQ("Ions_bulkVel_x", modelInfo.modelIonBulk.xName);
     EXPECT_EQ("Ions_bulkVel_y", modelInfo.modelIonBulk.yName);
     EXPECT_EQ("Ions_bulkVel_z", modelInfo.modelIonBulk.zName);
+
+
+
+    EXPECT_NE(std::end(modelInfo.initIonDensity),
+              std::find(std::begin(modelInfo.initIonDensity), std::end(modelInfo.initIonDensity),
+                        "Ions_rho"));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.vecName == std::string{"Ions_bulkVel"}; }));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.xName == std::string{"Ions_bulkVel_x"}; }));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.yName == std::string{"Ions_bulkVel_y"}; }));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.zName == std::string{"Ions_bulkVel_z"}; }));
 }
 
 

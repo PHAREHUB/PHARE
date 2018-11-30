@@ -98,6 +98,8 @@ public:
 
         modelInfo.initElectric.emplace_back(state.electromag.E);
         modelInfo.initMagnetic.emplace_back(state.electromag.B);
+        modelInfo.initIonBulk.emplace_back(state.ions.velocity());
+        modelInfo.initIonDensity.emplace_back(state.ions.densityName());
 
         modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
         modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
