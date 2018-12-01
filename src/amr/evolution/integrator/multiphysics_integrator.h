@@ -412,7 +412,7 @@ public:
 
         if (lastStep)
         {
-            fromCoarser.lastStep(model);
+            fromCoarser.lastStep(model, *level);
         }
 
 

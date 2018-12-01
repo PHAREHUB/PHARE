@@ -114,6 +114,7 @@ public:
     virtual void syncElectric(VecFieldT& E) override {}
     virtual void syncIonMoments(IonsT& ions) override {}
 
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
 
 
 private:

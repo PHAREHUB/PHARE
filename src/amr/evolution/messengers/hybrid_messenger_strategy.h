@@ -79,6 +79,10 @@ public:
 
     virtual std::string coarseModelName() const = 0;
 
+
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+
+
     std::string name() const { return stratname_; }
 
     virtual ~HybridMessengerStrategy() = default;

@@ -165,7 +165,8 @@ TEST_F(HybridMessengers, canInitializeMHDHybridMessengers)
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     auto mhdSolver    = std::make_unique<SolverMHD<MHDModelT>>();
 
-    MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1], *hybridSolver);
+    MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
+                                              *hybridSolver);
 }
 
 
@@ -181,7 +182,8 @@ TEST_F(HybridMessengers, canInitializeMHDMessengers)
 TEST_F(HybridMessengers, canInitializeHybridHybridMessengers)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
-    MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1], *hybridSolver);
+    MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
+                                              *hybridSolver);
 }
 
 
@@ -196,9 +198,12 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
 
 
 
-struct HybridHybridMessenger : public ::testing::Test
+struct AfullHybridBasicHierarchy : public ::testing::Test
 {
     int const firstHybLevel{0};
+    int const ratio{2};
+    short unsigned const dimension = 1;
+
     using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT>;
 
 
@@ -218,30 +223,33 @@ struct HybridHybridMessenger : public ::testing::Test
 
     std::shared_ptr<SolverPPC<HybridModelT>> solver{std::make_shared<SolverPPC<HybridModelT>>()};
 
+    std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 
 
+    std::shared_ptr<TestIntegratorStrat> integrator;
 
-    HybridHybridMessenger()
+    std::shared_ptr<BasicHierarchy> basicHierarchy;
+
+    AfullHybridBasicHierarchy()
     {
         hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
         hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
         solver->registerResources(*hybridModel);
+
+        tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
+        integrator = std::make_shared<TestIntegratorStrat>();
+        basicHierarchy
+            = std::make_shared<BasicHierarchy>(ratio, dimension, tagStrat.get(), integrator);
     }
 };
 
 
 
 
-TEST_F(HybridHybridMessenger, initializesRefinedLevels)
+TEST_F(AfullHybridBasicHierarchy, initializesRefinedLevels)
 {
-    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
-    int const ratio = 2;
-    short unsigned const dimension = 1;
-
-    auto integratorStrat = std::make_shared<TestIntegratorStrat>();
-    BasicHierarchy basicHierarchy{ratio, dimension, tagStrat.get(), integratorStrat};
-
-    auto& hierarchy = basicHierarchy.getHierarchy();
+    auto& hierarchy = basicHierarchy->getHierarchy();
+    auto& rm        = hybridModel->resourcesManager;
 
     for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
@@ -251,15 +259,13 @@ TEST_F(HybridHybridMessenger, initializesRefinedLevels)
 
         for (auto& patch : *level)
         {
-            auto _
-                = hybridModel->resourcesManager->setOnPatch(*patch, hybridModel->state.electromag);
+            auto onPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
 
             auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 
             auto& Ex = hybridModel->state.electromag.E.getComponent(PHARE::Component::X);
             auto& Ey = hybridModel->state.electromag.E.getComponent(PHARE::Component::Y);
             auto& Ez = hybridModel->state.electromag.E.getComponent(PHARE::Component::Z);
-
             auto& Bx = hybridModel->state.electromag.B.getComponent(PHARE::Component::X);
             auto& By = hybridModel->state.electromag.B.getComponent(PHARE::Component::Y);
             auto& Bz = hybridModel->state.electromag.B.getComponent(PHARE::Component::Z);
@@ -279,11 +285,9 @@ TEST_F(HybridHybridMessenger, initializesRefinedLevels)
                 }
             };
 
-
             checkMyField(Ex, TagStrategy<HybridModelT>::fillEx);
             checkMyField(Ey, TagStrategy<HybridModelT>::fillEy);
             checkMyField(Ez, TagStrategy<HybridModelT>::fillEz);
-
             checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
             checkMyField(By, TagStrategy<HybridModelT>::fillBy);
             checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
@@ -380,28 +384,48 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 
 
 
-TEST_F(HybridHybridMessenger, fillsRefinedLevelGhosts)
+TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
 {
-    auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
-    int const ratio = 2;
-    short unsigned const dimension = 1;
-    auto newTime                   = 1.;
-    auto integratorStrat           = std::make_shared<TestIntegratorStrat>();
+    auto newTime       = 1.;
+    auto& hierarchy    = basicHierarchy->getHierarchy();
+    auto const& level0 = hierarchy.getPatchLevel(0);
+    auto const& level1 = hierarchy.getPatchLevel(1);
+    auto const& level2 = hierarchy.getPatchLevel(2);
+    auto& rm           = hybridModel->resourcesManager;
 
-
-    BasicHierarchy basicHierarchy{ratio, dimension, tagStrat.get(), integratorStrat};
-
-
-
-#if 0
-    auto& hierarchy = basicHierarchy.getHierarchy();
-
-    auto const& level = hierarchy.getPatchLevel(2);
-
-    for (auto& patch : *level)
+    for (auto& patch : *level0)
     {
-        auto _ = hybridModel->resourcesManager->makeResourcesGuard(*patch,
-                                                                   hybridModel->state.electromag);
+        rm->setTime(hybridModel->state.electromag, *patch, newTime);
+    }
+
+    for (auto& patch : *level1)
+    {
+        rm->setTime(hybridModel->state.electromag, *patch, 0.5);
+    }
+
+
+    messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 1, 0.5);
+
+    auto iPatch = 0;
+    for (auto patch : *level1)
+    {
+        auto exOldId = hybridModel->resourcesManager->getID("HybridModel-HybridModel_EM_old_E_x");
+        auto exId    = hybridModel->resourcesManager->getID("EM_E_x");
+
+        ASSERT_TRUE(exOldId);
+        ASSERT_TRUE(exId);
+
+        EXPECT_TRUE(patch->checkAllocated(*exOldId));
+        EXPECT_TRUE(patch->checkAllocated(*exId));
+
+        auto exOldData = patch->getPatchData(*exOldId);
+        auto exData    = patch->getPatchData(*exId);
+
+        auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
+
+
+        EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
+        EXPECT_DOUBLE_EQ(0.5, patch->getPatchData(*exId)->getTime());
 
         auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 
@@ -414,58 +438,26 @@ TEST_F(HybridHybridMessenger, fillsRefinedLevelGhosts)
         auto& Bz = hybridModel->state.electromag.B.getComponent(PHARE::Component::Z);
 
 
-        auto pseudoAdvanceMyField = [&layout](auto& field, auto const& func) //
+        auto checkMyField = [&layout, &iPatch](auto const& field, auto const& func) //
         {
-            auto iStart = layout.physicalStartIndex(field, PHARE::Direction::X);
-            auto iEnd   = layout.physicalEndIndex(field, PHARE::Direction::X);
+            auto iGhostStart = layout.ghostStartIndex(field, PHARE::Direction::X);
+            auto iStart      = layout.physicalStartIndex(field, PHARE::Direction::X);
 
-            for (auto ix = iStart; ix <= iEnd; ++ix)
+            for (auto ix = iGhostStart; ix < iStart; ++ix)
             {
-                auto origin = layout.origin();
-                auto x      = layout.fieldNodeCoordinates(field, origin, ix);
-                field(ix)   = func(x[0]) + 2;
-                // auto expected = func(x[0]);
-                // EXPECT_DOUBLE_EQ(expected, field(ix));
+                auto origin   = layout.origin();
+                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
+                auto expected = func(x[0]);
+                std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << "\n";
+                EXPECT_DOUBLE_EQ(expected, field(ix));
             }
         };
 
-        pseudoAdvanceMyField(Ex, TagStrategy<HybridModelT>::fillInt);
-        pseudoAdvanceMyField(Ey, TagStrategy<HybridModelT>::fillInt);
-        pseudoAdvanceMyField(Ez, TagStrategy<HybridModelT>::fillInt);
-        pseudoAdvanceMyField(Bx, TagStrategy<HybridModelT>::fillInt);
-        pseudoAdvanceMyField(By, TagStrategy<HybridModelT>::fillInt);
-        pseudoAdvanceMyField(Bz, TagStrategy<HybridModelT>::fillInt);
+        checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
+        checkMyField(By, TagStrategy<HybridModelT>::fillBy);
+        checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
 
-        hybridModel->resourcesManager->setTime(hybridModel->state.electromag, *patch, newTime);
-    }
-
-
-    auto const& level3 = hierarchy.getPatchLevel(3);
-    auto const& level2 = hierarchy.getPatchLevel(2);
-
-    for (auto patch : *level2)
-    {
-        auto exOldId = hybridModel->resourcesManager->getID("EM_old_E_x");
-        auto exId    = hybridModel->resourcesManager->getID("EM_E_x");
-
-
-        ASSERT_TRUE(exOldId);
-        ASSERT_TRUE(exId);
-
-        EXPECT_TRUE(patch->checkAllocated(*exOldId));
-        EXPECT_TRUE(patch->checkAllocated(*exId));
-
-        ASSERT_TRUE(patch->checkAllocated(*exOldId));
-        ASSERT_TRUE(patch->checkAllocated(*exId));
-
-
-        auto exOldData = patch->getPatchData(*exOldId);
-        auto exData    = patch->getPatchData(*exId);
-
-
-
-        EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
-        EXPECT_DOUBLE_EQ(1., patch->getPatchData(*exId)->getTime());
+        iPatch++;
     }
 
 
@@ -477,6 +469,7 @@ TEST_F(HybridHybridMessenger, fillsRefinedLevelGhosts)
         }
     */
 
+#if 0
     messenger->fillElectricGhosts(hybridModel->state.electromag.E, 3, newTime * 0.5);
     messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 3, newTime * 0.5);
 
@@ -555,8 +548,8 @@ TEST_F(HybridHybridMessenger, fillsRefinedLevelGhosts)
 
 
 
-
-TEST_F(HybridHybridMessenger, fillsRefinedLevelGhostsAfterRegrid)
+#if 0
+TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhostsAfterRegrid)
 {
     auto tagStrat = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
 
@@ -568,7 +561,7 @@ TEST_F(HybridHybridMessenger, fillsRefinedLevelGhostsAfterRegrid)
 
     //   BasicHierarchy hierarchy{ratio, dimension, tagStrat.get(), integratorStrat};
 }
-
+#endif
 
 class StreamAppender : public SAMRAI::tbox::Logger::Appender
 {

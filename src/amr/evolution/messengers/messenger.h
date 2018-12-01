@@ -168,7 +168,7 @@ public:
      *
      * @param model
      */
-    virtual void lastStep(IPhysicalModel const& model) = 0;
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
 
 
 

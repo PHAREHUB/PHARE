@@ -68,9 +68,6 @@ public:
                              = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                              bool const allocateData = true) override
     {
-        //
-
-
         auto level = hierarchy->getPatchLevel(levelNumber);
 
         if (allocateData)
@@ -153,7 +150,7 @@ public:
     static double fillBz(double x) { return 6 * x; }
 
 
-    static double fillInt(double x) { return 1.; }
+    static double fillInt([[maybe_unused]] double x) { return 1.; }
 
 private:
 };

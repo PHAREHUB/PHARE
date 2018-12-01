@@ -280,6 +280,19 @@ public:
     }
 
 
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+    {
+        auto& hybridModel = static_cast<HybridModel&>(model);
+        for (auto& patch : level)
+        {
+            auto dataOnPatch
+                = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag, EM_old_);
+
+            auto& EM = hybridModel.state.electromag;
+            // EM_old_  = EM;
+        }
+    }
+
 
 private:
     void registerGhosts_(std::unique_ptr<HybridMessengerInfo> const& info)

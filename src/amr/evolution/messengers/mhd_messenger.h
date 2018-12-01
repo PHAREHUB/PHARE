@@ -6,6 +6,7 @@
 #include <string>
 
 #include <SAMRAI/hier/CoarsenOperator.h>
+#include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/RefineOperator.h>
 
 #include "evolution/messengers/messenger.h"
@@ -77,7 +78,7 @@ public:
     virtual void firstStep(IPhysicalModel const& model) final {}
 
 
-    virtual void lastStep(IPhysicalModel const& model) final {}
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
 
     virtual std::string name() override { return stratName; }
 
