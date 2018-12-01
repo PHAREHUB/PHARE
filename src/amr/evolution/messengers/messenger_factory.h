@@ -33,6 +33,9 @@ public:
     {
     }
 
+
+
+
     std::optional<std::string> name(IPhysicalModel const& coarseModel,
                                     IPhysicalModel const& fineModel) const
     {
@@ -52,6 +55,9 @@ public:
         }
     }
 
+
+
+
     std::unique_ptr<IMessenger> create(std::string messengerName, IPhysicalModel const& coarseModel,
                                        IPhysicalModel const& fineModel, int const firstLevel) const
     {
@@ -64,7 +70,6 @@ public:
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
-
 
 
 
@@ -81,6 +86,9 @@ public:
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
+
+
+
 
         else if (messengerName == MHDMessenger<MHDModel>::stratName)
         {

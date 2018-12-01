@@ -10,11 +10,11 @@
 
 namespace PHARE
 {
-class MessengerInitializer
+class MessengerRegistration
 {
 public:
-    static void setup(IMessenger& messenger, IPhysicalModel const& coarseModel,
-                      IPhysicalModel const& fineModel, ISolver const& solver)
+    static void registerQuantities(IMessenger& messenger, IPhysicalModel const& coarseModel,
+                                   IPhysicalModel const& fineModel, ISolver const& solver)
     {
         auto fromCoarserInfo = messenger.emptyInfoFromCoarser();
         auto fromFinerInfo   = messenger.emptyInfoFromFiner();
@@ -22,7 +22,9 @@ public:
         fineModel.fillMessengerInfo(fromFinerInfo);
         coarseModel.fillMessengerInfo(fromCoarserInfo);
 
-        // TODO ask solver to fillMessengerInfo too
+        // solver only fills fromFinerInfo since
+        // that's on this level it is solving equations
+        solver.fillMessengerInfo(fromFinerInfo);
 
         messenger.registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
     }

@@ -17,7 +17,7 @@ namespace PHARE
  * @brief The PhysicalState class is an interface for concrete states holding data associated with a
  * concrete IPhysicalModel
  */
-class PhysicalState
+class IPhysicalState
 {
 };
 

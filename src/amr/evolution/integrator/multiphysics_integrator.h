@@ -609,7 +609,7 @@ private:
         auto& fineModel   = getModel_(fineLevelNumber);
         auto& solver      = getSolver_(iLevel);
 
-        MessengerInitializer::setup(messenger, coarseModel, fineModel, solver);
+        MessengerRegistration::registerQuantities(messenger, coarseModel, fineModel, solver);
     }
 
 

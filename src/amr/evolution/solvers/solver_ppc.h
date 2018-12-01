@@ -36,6 +36,8 @@ public:
     virtual std::string modelName() const override { return HybridModel::model_name; }
 
 
+
+
     virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const override
     {
         auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
@@ -43,39 +45,31 @@ public:
         auto const& Epred = electromagPred_.E;
         auto const& Bpred = electromagPred_.B;
 
-        //        auto magneticComponentNames = extractNames(Bpred);
-        //        auto electricComponentNames = extractNames(Epred);
-
         modelInfo.ghostElectric.emplace_back(Epred);
         modelInfo.ghostMagnetic.emplace_back(Bpred);
-        /*
-                modelInfo.ghostElectric.push_back({Epred.name(), electricComponentNames[0],
-                                                   electricComponentNames[1],
-           electricComponentNames[2]}); modelInfo.ghostMagnetic.push_back({Bpred.name(),
-           magneticComponentNames[0], magneticComponentNames[1], magneticComponentNames[2]});
-        */
-        // here fill modelInfo.initElectric and initMagnetic if some solver
     }
+
+
 
 
     virtual void registerResources(IPhysicalModel& model) override
     {
         auto& hmodel = dynamic_cast<HybridModel&>(model);
-        hmodel.resourcesManager->registerResources(electromagPred_.E);
-        hmodel.resourcesManager->registerResources(electromagPred_.B);
-        hmodel.resourcesManager->registerResources(electromagAvg_.E);
-        hmodel.resourcesManager->registerResources(electromagAvg_.B);
+        hmodel.resourcesManager->registerResources(electromagPred_);
+        hmodel.resourcesManager->registerResources(electromagAvg_);
     }
+
+
+
 
     virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
                           double const allocateTime) const override
     {
         auto& hmodel = dynamic_cast<HybridModel&>(model);
-        hmodel.resourcesManager->allocate(electromagPred_.E, patch, allocateTime);
-        hmodel.resourcesManager->allocate(electromagPred_.B, patch, allocateTime);
-        hmodel.resourcesManager->allocate(electromagAvg_.E, patch, allocateTime);
-        hmodel.resourcesManager->allocate(electromagAvg_.B, patch, allocateTime);
+        hmodel.resourcesManager->allocate(electromagPred_, patch, allocateTime);
+        hmodel.resourcesManager->allocate(electromagAvg_, patch, allocateTime);
     }
+
 
 
 
@@ -217,32 +211,6 @@ public:
 } // namespace PHARE
 
 
-
-
-/*
-template<bool>
-struct BooleanSelector
-{
-};
-
-template<typename Enum, Enum>
-class EnumSelector
-{
-};
-
-enum class FillType {
-    SameLevel,
-    GhostRegionOnSameLevel,
-    LevelBorderOnly,
-    GhostRegion,
-    EraseDestination
-};
-
-
-
-template<FillType fillValue>
-using FillTypeSelector = EnumSelector<FillType, fillValue>;
-*/
 
 
 #endif

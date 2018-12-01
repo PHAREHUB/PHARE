@@ -18,7 +18,7 @@ using MHDQuantity = HybridQuantity;
 
 
 template<typename VecFieldT>
-class MHDState : public PhysicalState
+class MHDState : public IPhysicalState
 {
 public:
     /*virtual void allocate(ResourcesManager const& manager, SAMRAI::hier::Patch& patch) override
@@ -48,11 +48,6 @@ public:
     {
     }
 
-
-    virtual std::unique_ptr<IMessengerInfo> messengerInfo() const override
-    {
-        return std::make_unique<MHDMessengerInfo>();
-    }
 
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
     {

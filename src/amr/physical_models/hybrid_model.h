@@ -12,8 +12,12 @@
 
 namespace PHARE
 {
+/**
+ * @brief The HybridState class is a concrete implementation of a IPhysicalState.
+ * It holds an Electromag and Ion object manipulated by Hybrid concrete type of ISolver
+ */
 template<typename Electromag, typename Ions, typename IonsInitializer>
-class HybridState : public PhysicalState
+class HybridState : public IPhysicalState
 {
 public:
     HybridState(IonsInitializer ionsInitializer)
@@ -30,6 +34,10 @@ public:
 
 
 
+/**
+ * @brief The HybridModel class is a concrete implementation of a IPhysicalModel. The class holds a
+ * HybridState and a ResourcesManager.
+ */
 template<typename GridLayoutT, typename Electromag, typename Ions, typename IonsInitializer>
 class HybridModel : public IPhysicalModel
 {
@@ -42,9 +50,17 @@ public:
     using resources_manager_type = ResourcesManager<gridLayout_type>;
 
 
+    //! Physical quantities associated with hybrid equations
     HybridState<Electromag, Ions, IonsInitializer> state;
+
+    //! ResourcesManager used for interacting with SAMRAI databases, patchdata etc.
     std::shared_ptr<resources_manager_type> resourcesManager;
 
+
+    /**
+     * @brief This constructor uses the IonInitializer to build the Ions of the HybridState and
+     * stores the ResourcesManager for allocating data on patches with allocate()
+     */
     HybridModel(IonsInitializer ionsInitializer,
                 std::shared_ptr<resources_manager_type> resourcesManager)
         : IPhysicalModel{model_name}
@@ -54,44 +70,23 @@ public:
     }
 
 
-    virtual std::unique_ptr<IMessengerInfo> messengerInfo() const override
-    {
-        auto info = std::make_unique<HybridMessengerInfo>();
-
-        // info->electricGhostNames = state.electromag.E.getComponentNames();
-        // info->magneticGhostNames = state.electromag.B.getComponentNames();
-
-
-        // auto E_IDs = resourcesManager.getIDs(state.electromag.E);
-        // auto B_IDs = resourcesManager.getIDs(state.electromag.B);
-
-
-        for (auto& pop : state.ions)
-        {
-            // auto Pop_Rho_ID = resourcesManager.getIDs(pop, pop.densityName());
-        }
-        // info->electricGhost(E_ID_s);
-        // info->magneticGhost(B_ID_s);
-
-        // info->electricDomain(E_ID_s);
-        // info->magneticDomain(B_ID_s);
-
-        //
-
-        return info;
-    }
-
+    /**
+     * @brief allocate uses the ResourcesManager to allocate HybridState physical quantities on the
+     * given Patch at the given allocateTime
+     */
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
     {
-        resourcesManager->allocate(state.electromag.E, patch, allocateTime);
-        resourcesManager->allocate(state.electromag.B, patch, allocateTime);
+        resourcesManager->allocate(state.electromag, patch, allocateTime);
         resourcesManager->allocate(state.ions, patch, allocateTime);
     }
 
 
+    /**
+     * @brief fillMessengerInfo describes which variables of the model are to be initialized or
+     * filled at ghost nodes.
+     */
     virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const override
     {
-        //
         auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
         modelInfo.modelMagnetic   = VecFieldDescriptor{state.electromag.B};
@@ -106,6 +101,11 @@ public:
 
         modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
         modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
+
+        // TODO weird not to have moment ghosts the model does not know it's done with
+        // particles
+
+        // TODO add ghosts for particles of each population
     }
 
     virtual ~HybridModel() override = default;
