@@ -294,6 +294,38 @@ TEST_F(VecFieldTest, PhysicalQuantities)
 
 
 
+TEST(aVecField, dataCanBeCopiedIntoAnother)
+{
+    using Scalar = typename HybridQuantity::Scalar;
+
+    Field<NdArrayVector3D<>, Scalar> bx1{"B1_bx1", Scalar::Bx, 2u, 3u, 4u};
+    Field<NdArrayVector3D<>, Scalar> by1{"B1_by1", Scalar::By, 2u, 3u, 4u};
+    Field<NdArrayVector3D<>, Scalar> bz1{"B1_bz1", Scalar::Bz, 2u, 3u, 4u};
+    VecField<NdArrayVector3D<>, HybridQuantity> B1{"B1", HybridQuantity::Vector::B};
+    B1.setBuffer("B1_x", &bx1);
+    B1.setBuffer("B1_y", &by1);
+    B1.setBuffer("B1_z", &bz1);
+
+    bx1(1, 1, 1) = 12;
+    by1(1, 1, 1) = 13;
+    bz1(1, 1, 1) = 14;
+
+    Field<NdArrayVector3D<>, Scalar> bx2{"B2_bx2", Scalar::Bx, 2u, 3u, 4u};
+    Field<NdArrayVector3D<>, Scalar> by2{"B2_by2", Scalar::By, 2u, 3u, 4u};
+    Field<NdArrayVector3D<>, Scalar> bz2{"B2_bz2", Scalar::Bz, 2u, 3u, 4u};
+    VecField<NdArrayVector3D<>, HybridQuantity> B2{"B2", HybridQuantity::Vector::B};
+    B2.setBuffer("B2_x", &bx2);
+    B2.setBuffer("B2_y", &by2);
+    B2.setBuffer("B2_z", &bz2);
+
+    B2.copyData(B1);
+
+    EXPECT_DOUBLE_EQ(12, bx2(1, 1, 1));
+    EXPECT_DOUBLE_EQ(13, by2(1, 1, 1));
+    EXPECT_DOUBLE_EQ(14, bz2(1, 1, 1));
+}
+
+
 
 int main(int argc, char** argv)
 {

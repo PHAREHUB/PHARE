@@ -138,6 +138,21 @@ public:
     }
 
 
+    void copyData(VecField const& source)
+    {
+        if (isUsable() && source.isUsable())
+        {
+            xComponent_->copyData(*source.xComponent_);
+            yComponent_->copyData(*source.yComponent_);
+            zComponent_->copyData(*source.zComponent_);
+        }
+        else
+        {
+            throw std::runtime_error("Error, unusable VecField, cannot copyData");
+        }
+    }
+
+
 private:
     std::string name_ = "No Name";
     std::array<typename PhysicalQuantity::Scalar, 3> physQties_;
