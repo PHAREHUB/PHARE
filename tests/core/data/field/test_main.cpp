@@ -172,6 +172,79 @@ TYPED_TEST(GenericField3D, physiscalQuantity)
 }
 
 
+TEST(Field1D, canBeAssigned)
+{
+    auto nx = 10u;
+    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> f{
+        "test", PHARE::HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> other{
+        "other", PHARE::HybridQuantity::Scalar::rho, nx};
+
+    for (auto& v : f)
+    {
+        v = 12.;
+    }
+
+    other.copyData(f);
+
+    for (auto const& v : f)
+    {
+        EXPECT_DOUBLE_EQ(12., v);
+    }
+}
+
+
+
+
+TEST(Field2D, canBeAssigned)
+{
+    auto nx = 10u;
+    auto ny = 11u;
+    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> f{
+        "test", PHARE::HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> other{
+        "other", PHARE::HybridQuantity::Scalar::rho, nx, ny};
+
+    for (auto& v : f)
+    {
+        v = 12.;
+    }
+
+    other.copyData(f);
+
+    for (auto const& v : f)
+    {
+        EXPECT_DOUBLE_EQ(12., v);
+    }
+}
+
+
+
+
+TEST(Field3D, canBeAssigned)
+{
+    auto nx = 10u;
+    auto ny = 11u;
+    auto nz = 12u;
+    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> f{
+        "test", PHARE::HybridQuantity::Scalar::rho, nx, ny, nz};
+    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> other{
+        "other", PHARE::HybridQuantity::Scalar::rho, nx, ny, nz};
+
+    for (auto& v : f)
+    {
+        v = 12.;
+    }
+
+    other.copyData(f);
+
+    for (auto const& v : f)
+    {
+        EXPECT_DOUBLE_EQ(12., v);
+    }
+}
+
+
 
 
 int main(int argc, char** argv)
