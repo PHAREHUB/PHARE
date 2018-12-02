@@ -12,14 +12,14 @@ using PHARE::NdArrayVector3D;
 
 
 
-TEST(NdArray1DTest, SizeIsOkAfterNonEmptyCreation)
+TEST(NdArray1D, SizeIsOkAfterNonEmptyCreation)
 {
     auto size = 10u;
     NdArrayVector1D<> array1d{size};
     EXPECT_EQ(size, array1d.size());
 }
 
-TEST(NdArray2DTest, SizeIsOkAfterNonEmptyCreation)
+TEST(NdArray2D, SizeIsOkAfterNonEmptyCreation)
 {
     auto nx   = 12u;
     auto ny   = 24u;
@@ -29,7 +29,7 @@ TEST(NdArray2DTest, SizeIsOkAfterNonEmptyCreation)
 }
 
 
-TEST(NdArray3DTest, SizeIsOkAfterNonEmptyCreation)
+TEST(NdArray3D, SizeIsOkAfterNonEmptyCreation)
 {
     auto nx   = 12u;
     auto ny   = 24u;
@@ -40,7 +40,7 @@ TEST(NdArray3DTest, SizeIsOkAfterNonEmptyCreation)
 }
 
 
-TEST(NdArray1DTest, IsModifiable)
+TEST(NdArray1D, IsModifiable)
 {
     auto nx = 12u;
     NdArrayVector1D<> array1d{nx};
@@ -48,7 +48,7 @@ TEST(NdArray1DTest, IsModifiable)
     EXPECT_EQ(24, array1d(10));
 }
 
-TEST(NdArray1DTest, ArrayCanBeReadOnly)
+TEST(NdArray1D, ArrayCanBeReadOnly)
 {
     auto nx = 12u;
     NdArrayVector1D<> array1d{nx};
@@ -58,7 +58,7 @@ TEST(NdArray1DTest, ArrayCanBeReadOnly)
 }
 
 
-TEST(NdArray2DTest, IsModifiable)
+TEST(NdArray2D, IsModifiable)
 {
     auto nx = 12u;
     auto ny = 32u;
@@ -68,7 +68,7 @@ TEST(NdArray2DTest, IsModifiable)
 }
 
 
-TEST(NdArray2DTest, ArrayCanBeReadOnly)
+TEST(NdArray2D, ArrayCanBeReadOnly)
 {
     auto nx = 12u;
     auto ny = 87u;
@@ -79,7 +79,7 @@ TEST(NdArray2DTest, ArrayCanBeReadOnly)
 }
 
 
-TEST(NdArray3DTest, IsModifiable)
+TEST(NdArray3D, IsModifiable)
 {
     auto nx = 12u;
     auto ny = 32u;
@@ -90,7 +90,7 @@ TEST(NdArray3DTest, IsModifiable)
 }
 
 
-TEST(NdArray3DTest, ArrayCanBeReadOnly)
+TEST(NdArray3D, ArrayCanBeReadOnly)
 {
     auto nx = 12u;
     auto ny = 32u;
@@ -106,7 +106,7 @@ MATCHER_P(FloatNearPointwise, tol, "Out of range")
     return (std::get<0>(arg) > std::get<1>(arg) - tol && std::get<0>(arg) < std::get<1>(arg) + tol);
 }
 
-TEST(NdArray1DTest, AccessWholeArray)
+TEST(NdArray1D, AccessWholeArray)
 {
     auto nx = 20u;
     NdArrayVector1D<> array1d{nx};
@@ -135,7 +135,7 @@ TEST(NdArray1DTest, AccessWholeArray)
 
 
 
-TEST(NdArray2DTest, AccessWholeArray)
+TEST(NdArray2D, AccessWholeArray)
 {
     auto nx = 20u;
     auto ny = 10u;
@@ -171,7 +171,7 @@ TEST(NdArray2DTest, AccessWholeArray)
 
 
 
-TEST(NdArray3DTest, AccessWholeArray)
+TEST(NdArray3D, AccessWholeArray)
 {
     auto nx = 20u;
     auto ny = 10u;
@@ -211,6 +211,61 @@ TEST(NdArray3DTest, AccessWholeArray)
         }
     }
 }
+
+
+
+TEST(NdArray1D, CanBeAssignedAnother)
+{
+    auto size = 10u;
+    NdArrayVector1D<> array1d{size};
+    NdArrayVector1D<> other{size};
+    for (auto& v : array1d)
+        v = 12.;
+
+    other = array1d;
+
+    for (auto const& v : other)
+        EXPECT_DOUBLE_EQ(12., v);
+}
+
+
+
+
+TEST(NdArray2D, CanBeAssignedAnother)
+{
+    auto nx = 10u;
+    auto ny = 11u;
+    NdArrayVector2D<> array2d{nx, ny};
+    NdArrayVector2D<> other{nx, ny};
+    for (auto& v : array2d)
+        v = 12.;
+
+    other = array2d;
+
+    for (auto const& v : other)
+        EXPECT_DOUBLE_EQ(12., v);
+}
+
+
+
+TEST(NdArray3D, CanBeAssignedAnother)
+{
+    auto nx = 10u;
+    auto ny = 11u;
+    auto nz = 12u;
+    NdArrayVector3D<> array3d{nx, ny, nz};
+    NdArrayVector3D<> other{nx, ny, nz};
+    for (auto& v : array3d)
+        v = 12.;
+
+    other = array3d;
+
+    for (auto const& v : other)
+        EXPECT_DOUBLE_EQ(12., v);
+}
+
+
+
 
 int main(int argc, char** argv)
 {
