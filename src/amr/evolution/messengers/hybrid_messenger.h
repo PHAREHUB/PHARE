@@ -153,7 +153,10 @@ public:
      * @brief see IMessenger::lastStep
      * @param model
      */
-    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
+    {
+        strat_->lastStep(model, level);
+    }
 
 
 

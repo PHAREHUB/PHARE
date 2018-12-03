@@ -395,8 +395,10 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
 
     for (auto& patch : *level0)
     {
+        auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
         rm->setTime(hybridModel->state.electromag, *patch, newTime);
     }
+    messenger->lastStep(*hybridModel, *level0);
 
     for (auto& patch : *level1)
     {
@@ -425,7 +427,7 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
 
 
         EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
-        EXPECT_DOUBLE_EQ(0.5, patch->getPatchData(*exId)->getTime());
+        EXPECT_DOUBLE_EQ(1., patch->getPatchData(*exId)->getTime());
 
         auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 

@@ -119,6 +119,9 @@ public:
         }
     }
 
+
+
+
     Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
     getComponent(Component component) const
     {
@@ -139,6 +142,7 @@ public:
 
 
 
+
     std::string getComponentName(Component component) const
     {
         switch (component)
@@ -146,6 +150,23 @@ public:
             case Component::X: return componentNames_[0];
             case Component::Y: return componentNames_[1];
             case Component::Z: return componentNames_[2];
+        }
+    }
+
+
+
+
+    void copyData(VecField const& source)
+    {
+        if (isUsable() && source.isUsable())
+        {
+            xComponent_->copyData(*source.xComponent_);
+            yComponent_->copyData(*source.yComponent_);
+            zComponent_->copyData(*source.zComponent_);
+        }
+        else
+        {
+            throw std::runtime_error("Error, unusable VecField, cannot copyData");
         }
     }
 

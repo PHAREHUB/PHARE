@@ -85,8 +85,33 @@ public:
     NdArrayVector1D()                              = delete;
     NdArrayVector1D(NdArrayVector1D const& source) = default;
     NdArrayVector1D(NdArrayVector1D&& source)      = default;
-    NdArrayVector1D& operator=(NdArrayVector1D const& source) = default;
-    NdArrayVector1D& operator=(NdArrayVector1D&& source) = default;
+    NdArrayVector1D& operator                      =(NdArrayVector1D const& source)
+    {
+        if (nx_ != source.nx_)
+        {
+            throw std::runtime_error(
+                "Error NdArrayVector1D cannot be assigned, incompatible sizes");
+        }
+        else
+        {
+            this->data_ = source.data_;
+        }
+        return *this;
+    }
+
+    NdArrayVector1D& operator=(NdArrayVector1D&& source)
+    {
+        if (nx_ != source.nx_)
+        {
+            throw std::runtime_error(
+                "Error NdArrayVector1D cannot be assigned, incompatible sizes");
+        }
+        else
+        {
+            this->data_ = std::move(source.data_);
+        }
+        return *this;
+    }
 
     //! read/write access operator
     DataType& operator()(uint32_t i) { return this->data_[i]; }
@@ -128,8 +153,33 @@ public:
     NdArrayVector2D()                              = delete;
     NdArrayVector2D(NdArrayVector2D const& source) = default;
     NdArrayVector2D(NdArrayVector2D&& source)      = default;
-    NdArrayVector2D& operator=(NdArrayVector2D const& source) = default;
-    NdArrayVector2D& operator=(NdArrayVector2D&& source) = default;
+    NdArrayVector2D& operator                      =(NdArrayVector2D const& source)
+    {
+        if (nx_ != source.nx_ || ny_ != source.ny_)
+        {
+            throw std::runtime_error(
+                "Error NdArrayVector1D cannot be assigned, incompatible sizes");
+        }
+        else
+        {
+            this->data_ = source.data_;
+        }
+        return *this;
+    }
+
+    NdArrayVector2D& operator=(NdArrayVector2D&& source)
+    {
+        if (nx_ != source.nx_ || ny_ != source.ny_)
+        {
+            throw std::runtime_error(
+                "Error NdArrayVector1D cannot be assigned, incompatible sizes");
+        }
+        else
+        {
+            this->data_ = std::move(source.data_);
+        }
+        return *this;
+    }
 
     //! read/write data access operator returns C-ordered data.
     DataType& operator()(uint32_t i, uint32_t j) { return this->data_[j + ny_ * i]; }
@@ -177,8 +227,33 @@ public:
     NdArrayVector3D()                              = delete;
     NdArrayVector3D(NdArrayVector3D const& source) = default;
     NdArrayVector3D(NdArrayVector3D&& source)      = default;
-    NdArrayVector3D& operator=(NdArrayVector3D const& source) = default;
-    NdArrayVector3D& operator=(NdArrayVector3D&& source) = default;
+    NdArrayVector3D& operator                      =(NdArrayVector3D const& source)
+    {
+        if (nx_ != source.nx_ || ny_ != source.ny_ || nz_ != source.nz_)
+        {
+            throw std::runtime_error(
+                "Error NdArrayVector1D cannot be assigned, incompatible sizes");
+        }
+        else
+        {
+            this->data_ = source.data_;
+        }
+        return *this;
+    }
+
+    NdArrayVector3D& operator=(NdArrayVector3D&& source)
+    {
+        if (nx_ != source.nx_ || ny_ != source.ny_ || nz_ != source.nz_)
+        {
+            throw std::runtime_error(
+                "Error NdArrayVector1D cannot be assigned, incompatible sizes");
+        }
+        else
+        {
+            this->data_ = std::move(source.data_);
+        }
+        return *this;
+    }
 
 
     DataType& operator()(uint32_t i, uint32_t j, uint32_t k)

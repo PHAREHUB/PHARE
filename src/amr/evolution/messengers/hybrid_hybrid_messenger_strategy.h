@@ -289,7 +289,7 @@ public:
                 = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag, EM_old_);
 
             auto& EM = hybridModel.state.electromag;
-            // EM_old_  = EM;
+            EM_old_.copyData(EM);
         }
     }
 

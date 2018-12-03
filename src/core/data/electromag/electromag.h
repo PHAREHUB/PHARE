@@ -42,7 +42,11 @@ struct Electromag
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-
+    void copyData(Electromag const& source)
+    {
+        E.copyData(source.E);
+        B.copyData(source.B);
+    }
 
     VecFieldT E;
     VecFieldT B;
