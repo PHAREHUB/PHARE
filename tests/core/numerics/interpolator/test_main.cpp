@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <fstream>
+#include <list>
 #include <random>
 
 #include "data/electromag/electromag.h"
@@ -48,8 +49,8 @@ public:
         }
 
 
-        // for each position, we obtained N(interp_order) weights
-        // store their in weightsSum
+        // for each particle, we have N(interp_order) weights
+        // the sum of these N(interp_order) weights for each particle is stored in weightsSum
         std::transform(std::begin(weights), std::end(weights), std::begin(weightsSums),
                        [](auto const& weight_list) {
                            return std::accumulate(std::begin(weight_list), std::end(weight_list),
@@ -79,6 +80,7 @@ TYPED_TEST(AWeighter, ComputesWeightThatSumIsOne)
     auto equalsOne = [](double sum) { return std::abs(sum - 1.) < 1e-10; };
     EXPECT_TRUE(std::all_of(std::begin(this->weightsSums), std::end(this->weightsSums), equalsOne));
 }
+
 
 
 
@@ -138,7 +140,7 @@ TYPED_TEST(AWeighter, computesBSplineWeightsForAnyParticlePosition)
     std::array<double, nbrPointsSupport(TypeParam::interp_order)> weights;
 
     // python file hard-codes 10 particle positions
-    // that start at x = 3
+    // that start at x = 3 every 0.1
     const int particlePositionNbr = 10;
     const double startPosition    = 3.;
     std::vector<double> particle_positions(particlePositionNbr);
@@ -176,6 +178,7 @@ public:
     PHARE::ParticleArray<1> particles;
     InterpolatorT interp;
 
+    // arbitrary number of cells
     static constexpr uint32_t nx = 50;
 
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
@@ -194,7 +197,7 @@ public:
 
     A1DInterpolator()
         : em{"EM"}
-        , particles(5)
+        , particles(1) // so we have 5 particles
         , bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
         , by1d_{"field", HybridQuantity::Scalar::By, nx}
         , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
@@ -202,7 +205,7 @@ public:
         , ey1d_{"field", HybridQuantity::Scalar::Ey, nx}
         , ez1d_{"field", HybridQuantity::Scalar::Ez, nx}
     {
-        for (auto ix = 0u; ix < nx; ++ix)
+        for (auto ix = 0u; ix < nx; ++ix) // B & E are constant on their grid
         {
             bx1d_(ix) = bx0;
             by1d_(ix) = by0;
@@ -288,6 +291,7 @@ public:
     PHARE::ParticleArray<2> particles;
     InterpolatorT interp;
 
+    // arbitrary number of cells
     static constexpr uint32_t nx = 50;
     static constexpr uint32_t ny = 50;
 
@@ -307,7 +311,7 @@ public:
 
     A2DInterpolator()
         : em{"EM"}
-        , particles(5)
+        , particles(1)
         , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny}
         , by_{"field", HybridQuantity::Scalar::By, nx, ny}
         , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny}
@@ -403,6 +407,7 @@ public:
     PHARE::ParticleArray<3> particles;
     InterpolatorT interp;
 
+    // arbitrary number of cells
     static constexpr uint32_t nx = 50;
     static constexpr uint32_t ny = 50;
     static constexpr uint32_t nz = 50;
@@ -423,7 +428,7 @@ public:
 
     A3DInterpolator()
         : em{"EM"}
-        , particles(5)
+        , particles(1)
         , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny, nz}
         , by_{"field", HybridQuantity::Scalar::By, nx, ny, nz}
         , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny, nz}
@@ -510,6 +515,276 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_z", nullptr);
 }
 
+
+
+template<typename Weighter>
+class ASingleParticle : public ::testing::Test
+{
+public:
+    PHARE::Particle<1> particle;
+    uint32_t nx = 40;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
+    static constexpr std::size_t interp_order = Weighter::interp_order;
+    static constexpr std::size_t nbrPoints    = nbrPointsSupport(interp_order);
+    std::array<double, nbrPoints> weights;
+
+    ASingleParticle()
+        : particle{}
+        , rho{"field", HybridQuantity::Scalar::rho, nx}
+    {
+        particle.iCell[0]       = 20;
+        particle.delta[0]       = 0.2f;
+        particle.weight         = 0.24;
+        auto normalizedPosition = static_cast<double>(particle.iCell[0] + particle.delta[0]);
+
+        auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPosition);
+        this->weighter.computeWeight(normalizedPosition, startIndex, weights);
+
+        for (auto ix = 0u; ix < nbrPoints; ++ix)
+        {
+            rho(startIndex + ix) = weights[ix] * particle.weight;
+        }
+    }
+
+protected:
+    Weighter weighter;
+};
+
+
+
+TYPED_TEST_CASE(ASingleParticle, Weighters);
+
+
+// count the number of nodes where density is deposited...
+// this has to be equal to the nbrPoints == interpOrder+1
+TYPED_TEST(ASingleParticle, DepositWeightsOnAppropriateNumOfIndex)
+{
+    auto numOfNodes = 0;
+    auto nx         = this->nx;
+
+    for (auto ix = 0u; ix < nx; ++ix)
+    {
+        if (this->rho(ix) > 0.)
+        {
+            numOfNodes++;
+        }
+    }
+
+    EXPECT_EQ(numOfNodes, ASingleParticle<TypeParam>::nbrPoints);
+}
+
+
+// find the N index the closest to the particle (test all the index & keep the closest one
+// which is not already in the list)
+TYPED_TEST(ASingleParticle, DepositWeightsOnAppropriateIndex)
+{
+    auto nbrPoints = ASingleParticle<TypeParam>::nbrPoints;
+    // auto nx = ASingleParticle<TypeParam>::nx;
+
+    auto normalizedPosition
+        = static_cast<double>(this->particle.iCell[0] + this->particle.delta[0]);
+    auto startIndex
+        = computeStartIndex<ASingleParticle<TypeParam>::interp_order>(normalizedPosition);
+
+    std::list<int> indexList(nbrPoints);
+    std::iota(indexList.begin(), indexList.end(), startIndex);
+
+    int closestIndex;
+    std::array<int, 4> shiftIndices;
+
+    if (this->particle.delta[0] < 0.5)
+    {
+        closestIndex = this->particle.iCell[0];
+        shiftIndices = {+1, -1, +2, -2};
+    }
+    else
+    {
+        closestIndex = this->particle.iCell[0] + 1;
+        shiftIndices = {-1, +1, -2, +2};
+    }
+
+    std::list<int> closestIndices{closestIndex};
+    for (int i = 0; i < nbrPoints - 1; ++i)
+    {
+        closestIndices.push_back(closestIndex + shiftIndices.at(i));
+    }
+    closestIndices.sort();
+
+    EXPECT_EQ(indexList, closestIndices);
+}
+
+
+// set a collection of particle (the number depending on interpOrder) so that
+// their cumulative density equals 1 at index 20. idem for velocity components...
+template<typename Weighter>
+class ACollectionOfParticles : public ::testing::Test
+{
+public:
+    static constexpr uint32_t nx        = 40;
+    static constexpr uint32_t nbrPoints = nbrPointsSupport(Weighter::interp_order);
+    static constexpr uint32_t numOfPart = Weighter::interp_order + 2;
+    PHARE::Particle<1> part;
+    PHARE::ParticleArray<1> particles;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
+    VecField<NdArrayVector1D<>, HybridQuantity> v;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vx;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vy;
+    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vz;
+    std::array<double, nbrPointsSupport(Weighter::interp_order)> weights;
+
+
+    ACollectionOfParticles()
+        : part{}
+        , particles{}
+        , rho{"field", HybridQuantity::Scalar::rho, nx}
+        , vx{"field", HybridQuantity::Scalar::Vx, nx}
+        , vy{"field", HybridQuantity::Scalar::Vy, nx}
+        , vz{"field", HybridQuantity::Scalar::Vz, nx}
+        , v{"vecfield", HybridQuantity::Vector::V}
+    {
+        if constexpr (Weighter::interp_order == 1)
+        {
+            part.iCell[0] = 19;
+            part.delta[0] = 0.5f;
+            part.weight   = 1.0;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 20;
+            part.delta[0] = 0.5f;
+            part.weight   = 0.4;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 20;
+            part.delta[0] = 0.5f;
+            part.weight   = 0.6;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+        }
+
+        if constexpr (Weighter::interp_order == 2)
+        {
+            part.iCell[0] = 19;
+            part.delta[0] = 0.0f;
+            part.weight   = 1.0;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 20;
+            part.delta[0] = 0.0f;
+            part.weight   = 0.2;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 20;
+            part.delta[0] = 0.0f;
+            part.weight   = 0.8;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 21;
+            part.delta[0] = 0.0f;
+            part.weight   = 1.0;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+        }
+
+        if constexpr (Weighter::interp_order == 3)
+        {
+            part.iCell[0] = 18;
+            part.delta[0] = 0.5f;
+            part.weight   = 1.0;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 19;
+            part.delta[0] = 0.5f;
+            part.weight   = 1.0;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 20;
+            part.delta[0] = 0.5f;
+            part.weight   = 1.0;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 21;
+            part.delta[0] = 0.5f;
+            part.weight   = 0.1;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+
+            part.iCell[0] = 21;
+            part.delta[0] = 0.5f;
+            part.weight   = 0.9;
+            part.v[0]     = +2.;
+            part.v[1]     = -1.;
+            part.v[2]     = +1.;
+            particles.push_back(part);
+        }
+
+        for (auto ip = 0; ip < numOfPart; ++ip)
+        {
+            auto normalizedPosition
+                = static_cast<double>(particles[ip].iCell[0] + particles[ip].delta[0]);
+
+            auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPosition);
+            this->weighter.computeWeight(normalizedPosition, startIndex, weights);
+
+            for (auto ix = 0u; ix < nbrPoints; ++ix)
+            {
+                rho(startIndex + ix) += weights[ix] * particles[ip].weight;
+                vx(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[0];
+                vy(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[1];
+                vz(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[2];
+            }
+        }
+    }
+
+protected:
+    Weighter weighter;
+};
+
+
+TYPED_TEST_CASE(ACollectionOfParticles, Weighters);
+
+
+TYPED_TEST(ACollectionOfParticles, DepositCorrectlyTheirWeight)
+{
+    EXPECT_DOUBLE_EQ(this->rho(20), 1.0);
+}
+
+
+TYPED_TEST(ACollectionOfParticles, DepositCorrectlyTheirVelocity)
+{
+    EXPECT_DOUBLE_EQ(this->vx(20), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(20), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(20), 1.0);
+}
 
 
 int main(int argc, char** argv)
