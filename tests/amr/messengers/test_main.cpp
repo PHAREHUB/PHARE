@@ -383,93 +383,93 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 
 
 
-
+#if 0
 TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
-{
-    auto newTime       = 1.;
-    auto& hierarchy    = basicHierarchy->getHierarchy();
-    auto const& level0 = hierarchy.getPatchLevel(0);
-    auto const& level1 = hierarchy.getPatchLevel(1);
-    auto const& level2 = hierarchy.getPatchLevel(2);
-    auto& rm           = hybridModel->resourcesManager;
-
-    for (auto& patch : *level0)
     {
-        auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
-        rm->setTime(hybridModel->state.electromag, *patch, newTime);
-    }
-    messenger->lastStep(*hybridModel, *level0);
+        auto newTime       = 1.;
+        auto& hierarchy    = basicHierarchy->getHierarchy();
+        auto const& level0 = hierarchy.getPatchLevel(0);
+        auto const& level1 = hierarchy.getPatchLevel(1);
+        auto const& level2 = hierarchy.getPatchLevel(2);
+        auto& rm           = hybridModel->resourcesManager;
 
-    for (auto& patch : *level1)
-    {
-        rm->setTime(hybridModel->state.electromag, *patch, 0.5);
-    }
-
-
-    messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 1, 0.5);
-
-    auto iPatch = 0;
-    for (auto patch : *level1)
-    {
-        auto exOldId = hybridModel->resourcesManager->getID("HybridModel-HybridModel_EM_old_E_x");
-        auto exId    = hybridModel->resourcesManager->getID("EM_E_x");
-
-        ASSERT_TRUE(exOldId);
-        ASSERT_TRUE(exId);
-
-        EXPECT_TRUE(patch->checkAllocated(*exOldId));
-        EXPECT_TRUE(patch->checkAllocated(*exId));
-
-        auto exOldData = patch->getPatchData(*exOldId);
-        auto exData    = patch->getPatchData(*exId);
-
-        auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
-
-
-        EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
-        EXPECT_DOUBLE_EQ(1., patch->getPatchData(*exId)->getTime());
-
-        auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
-
-        auto& Ex = hybridModel->state.electromag.E.getComponent(PHARE::Component::X);
-        auto& Ey = hybridModel->state.electromag.E.getComponent(PHARE::Component::Y);
-        auto& Ez = hybridModel->state.electromag.E.getComponent(PHARE::Component::Z);
-
-        auto& Bx = hybridModel->state.electromag.B.getComponent(PHARE::Component::X);
-        auto& By = hybridModel->state.electromag.B.getComponent(PHARE::Component::Y);
-        auto& Bz = hybridModel->state.electromag.B.getComponent(PHARE::Component::Z);
-
-
-        auto checkMyField = [&layout, &iPatch](auto const& field, auto const& func) //
+        for (auto& patch : *level0)
         {
-            auto iGhostStart = layout.ghostStartIndex(field, PHARE::Direction::X);
-            auto iStart      = layout.physicalStartIndex(field, PHARE::Direction::X);
-
-            for (auto ix = iGhostStart; ix < iStart; ++ix)
-            {
-                auto origin   = layout.origin();
-                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                auto expected = func(x[0]);
-                std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << "\n";
-                EXPECT_DOUBLE_EQ(expected, field(ix));
-            }
-        };
-
-        checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
-        checkMyField(By, TagStrategy<HybridModelT>::fillBy);
-        checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
-
-        iPatch++;
-    }
-
-
-    /*
-        for (auto& patch : *level3)
-        {
-            hybridModel->resourcesManager->setTime(hybridModel->state.electromag, *patch,
-                                                   newTime * 0.5);
+            auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
+            rm->setTime(hybridModel->state.electromag, *patch, newTime);
         }
-    */
+        messenger->lastStep(*hybridModel, *level0);
+
+        for (auto& patch : *level1)
+        {
+            rm->setTime(hybridModel->state.electromag, *patch, 0.5);
+        }
+
+
+        messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 1, 0.5);
+
+        auto iPatch = 0;
+        for (auto patch : *level1)
+        {
+            auto exOldId
+                = hybridModel->resourcesManager->getID("HybridModel-HybridModel_EM_old_E_x");
+            auto exId = hybridModel->resourcesManager->getID("EM_E_x");
+
+            ASSERT_TRUE(exOldId);
+            ASSERT_TRUE(exId);
+
+            EXPECT_TRUE(patch->checkAllocated(*exOldId));
+            EXPECT_TRUE(patch->checkAllocated(*exId));
+
+            auto exOldData = patch->getPatchData(*exOldId);
+            auto exData    = patch->getPatchData(*exId);
+
+            auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
+
+
+            EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
+            EXPECT_DOUBLE_EQ(1., patch->getPatchData(*exId)->getTime());
+
+            auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
+
+            auto& Ex = hybridModel->state.electromag.E.getComponent(PHARE::Component::X);
+            auto& Ey = hybridModel->state.electromag.E.getComponent(PHARE::Component::Y);
+            auto& Ez = hybridModel->state.electromag.E.getComponent(PHARE::Component::Z);
+
+            auto& Bx = hybridModel->state.electromag.B.getComponent(PHARE::Component::X);
+            auto& By = hybridModel->state.electromag.B.getComponent(PHARE::Component::Y);
+            auto& Bz = hybridModel->state.electromag.B.getComponent(PHARE::Component::Z);
+
+
+            auto checkMyField = [&layout, &iPatch](auto const& field, auto const& func) //
+            {
+                auto iGhostStart = layout.ghostStartIndex(field, PHARE::Direction::X);
+                auto iStart      = layout.physicalStartIndex(field, PHARE::Direction::X);
+
+                for (auto ix = iGhostStart; ix < iStart; ++ix)
+                {
+                    auto origin   = layout.origin();
+                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
+                    auto expected = func(x[0]);
+                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << "\n";
+                    EXPECT_DOUBLE_EQ(expected, field(ix));
+                }
+            };
+
+            checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
+            checkMyField(By, TagStrategy<HybridModelT>::fillBy);
+            checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
+
+            iPatch++;
+        }
+
+        /*
+            for (auto& patch : *level3)
+            {
+                hybridModel->resourcesManager->setTime(hybridModel->state.electromag, *patch,
+                                                       newTime * 0.5);
+            }
+        */
 
 #if 0
     messenger->fillElectricGhosts(hybridModel->state.electromag.E, 3, newTime * 0.5);
@@ -546,8 +546,8 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
     }
 
 #endif
-}
-
+    }
+#endif
 
 
 #if 0
