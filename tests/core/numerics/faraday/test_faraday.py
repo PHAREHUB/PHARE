@@ -46,15 +46,15 @@ def test_faraday_yee1D(path):
     tv = TestVariables()
 
 
-    By = np.empty(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Bz = np.empty(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    By = np.zeros(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    Bz = np.zeros(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
 
-    Ey = np.empty(layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Ez = np.empty(layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    Ey = np.zeros(layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    Ez = np.zeros(layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]), dtype=np.float64)
 
 
-    ByNew = np.empty(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    BzNew = np.empty(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    ByNew = np.zeros(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    BzNew = np.zeros(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])
@@ -89,28 +89,28 @@ def test_faraday_yee2D(path):
 
     tv = TestVariables()
 
-    Bx = np.empty([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
+    Bx = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    By = np.empty([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+    By = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Bz = np.empty([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
+    Bz = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1])], dtype=np.float64)
 
-    Ex = np.empty([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
+    Ex = np.zeros([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.ExCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Ey = np.empty([layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]),
+    Ey = np.zeros([layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.EyCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Ez = np.empty([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+    Ez = np.zeros([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.EzCentering[1], tv.nbrCells[1])], dtype=np.float64)
 
-    BxNew = np.empty([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
+    BxNew = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
                       layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    ByNew = np.empty([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+    ByNew = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                       layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    BzNew = np.empty([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
+    BzNew = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
                       layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    w1 = np.empty_like(BzNew)
-    w2 = np.empty_like(BzNew)
+    w1 = np.zeros_like(BzNew)
+    w2 = np.zeros_like(BzNew)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])
@@ -165,42 +165,42 @@ def test_faraday_yee3D(path):
 
     tv = TestVariables()
 
-    Bx = np.empty([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
+    Bx = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1]),
                    layout.allocSize(tv.interpOrder, tv.BxCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    By = np.empty([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+    By = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                    layout.allocSize(tv.interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Bz = np.empty([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
+    Bz = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1]),
                    layout.allocSize(tv.interpOrder, tv.BzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-    Ex = np.empty([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
+    Ex = np.zeros([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.ExCentering[1], tv.nbrCells[1]),
                    layout.allocSize(tv.interpOrder, tv.ExCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Ey = np.empty([layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]),
+    Ey = np.zeros([layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.EyCentering[1], tv.nbrCells[1]),
                    layout.allocSize(tv.interpOrder, tv.EyCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Ez = np.empty([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
+    Ez = np.zeros([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                    layout.allocSize(tv.interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
                    layout.allocSize(tv.interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-    BxNew = np.empty([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
+    BxNew = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
                       layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1]),
                       layout.allocSize(tv.interpOrder, tv.BxCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    ByNew = np.empty([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
+    ByNew = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
                       layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
                       layout.allocSize(tv.interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    BzNew = np.empty([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
+    BzNew = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
                       layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1]),
                       layout.allocSize(tv.interpOrder, tv.BzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-    u1 = np.empty_like(BxNew)
-    u2 = np.empty_like(BxNew)
-    v1 = np.empty_like(ByNew)
-    v2 = np.empty_like(ByNew)
-    w1 = np.empty_like(BzNew)
-    w2 = np.empty_like(BzNew)
+    u1 = np.zeros_like(BxNew)
+    u2 = np.zeros_like(BxNew)
+    v1 = np.zeros_like(ByNew)
+    v2 = np.zeros_like(ByNew)
+    w1 = np.zeros_like(BzNew)
+    w2 = np.zeros_like(BzNew)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])

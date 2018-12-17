@@ -11,6 +11,8 @@
 #include <data/ndarray/ndarray_vector.h>
 
 
+
+
 namespace PHARE
 {
 //! Class Field represents a multidimensional (1,2 or 3D) scalar field
@@ -23,11 +25,17 @@ template<typename NdArrayImpl, typename PhysicalQuantity>
 class Field : public NdArrayImpl
 {
 public:
+    using impl_type              = NdArrayImpl;
+    using type                   = typename NdArrayImpl::type;
+    using physical_quantity_type = PhysicalQuantity;
+    static constexpr int dimension{NdArrayImpl::dimension};
+
+
     Field()                    = delete;
     Field(Field const& source) = delete;
     Field(Field&& source)      = default;
+    Field& operator=(Field&& source) = delete;
     Field& operator=(Field const& source) = delete;
-    Field& operator=(Field&& source) = default;
 
     template<typename... Dims>
     Field(std::string name, PhysicalQuantity qty, Dims... dims)
@@ -48,11 +56,14 @@ public:
 
     std::string name() const { return name_; }
 
+
     constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
 
-    using type                   = typename NdArrayImpl::type;
-    using physical_quantity_type = PhysicalQuantity;
-    static constexpr int dimension{NdArrayImpl::dimension};
+    void copyData(Field const& source)
+    {
+        static_cast<NdArrayImpl&>(*this) = static_cast<NdArrayImpl const&>(source);
+    }
+
 
 private:
     std::string name_{"No Name"};

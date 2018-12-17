@@ -32,6 +32,7 @@
 #include "data/particles/particle_array.h"
 #include "data/vecfield/vecfield.h"
 #include "evolution/integrator/multiphysics_integrator.h"
+#include "evolution/messengers/messenger_factory.h"
 #include "physical_models/hybrid_model.h"
 #include "physical_models/mhd_model.h"
 #include "tools/resources_manager.h"
@@ -102,31 +103,31 @@ public:
 };
 
 #if 0
-template<typename MHDTransaction, typename MHDToHybrid, typename HybridTransaction,
-         typename HybridToFullPIC, typename FullPICTransaction>
-class TransactionManager
+template<typename MHDMessenger, typename MHDToHybrid, typename HybridMessenger,
+         typename HybridToFullPIC, typename FullPICMessenger>
+class MessengerManager
 {
 public:
     template<typename Variable>
     void registerVariable(Variable const &variable)
     {
-        std::cout << "register variable for future transaction\n";
+        std::cout << "register variable for future messenger\n";
         // this one will consist at creating the Algorithm for each
         // component.
         // As well as tracking which variable need which algorithm
         // Note that at this moment we do not know the temporal nature
-        // of the transaction : so we have two possibilites :
+        // of the messenger : so we have two possibilites :
         // create one algorithm for each or adding a parameter to determine
         // if we will need temporal interpolation
     }
 
 private:
-    std::vector<MHDTransaction> mhdTransactions_;
-    std::vector<HybridToFullPIC> hybridTransactions_;
-    std::vector<FullPICTransaction> fullPICTransaction_;
+    std::vector<MHDMessenger> mhdMessengers_;
+    std::vector<HybridToFullPIC> hybridMessengers_;
+    std::vector<FullPICMessenger> fullPICMessenger_;
 
-    MHDToHybrid mhdToHybridTransaction_;
-    HybridToFullPIC hybridToFullPICTransaction_;
+    MHDToHybrid mhdToHybridMessenger_;
+    HybridToFullPIC hybridToFullPICMessenger_;
 };
 #endif
 
@@ -237,7 +238,7 @@ public:
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator;
 
     using MultiPhysicsIntegratorT
-        = MultiPhysicsIntegrator<TransactionFactory<MHDModelT, HybridModelT>>;
+        = MultiPhysicsIntegrator<MessengerFactory<MHDModelT, HybridModelT>>;
 
     std::shared_ptr<MultiPhysicsIntegratorT> multiphysInteg;
 
@@ -262,12 +263,12 @@ public:
 
         auto dimension = SAMRAI::tbox::Dimension{1};
 
-        std::vector<TransactionDescriptor> descriptors;
+        std::vector<MessengerDescriptor> descriptors;
         descriptors.push_back({"MHDModel", "MHDModel"});
         descriptors.push_back({"MHDModel", "HybridModel"});
         descriptors.push_back({"HybridModel", "HybridModel"});
 
-        TransactionFactory<MHDModelT, HybridModelT> transactionFactory{descriptors};
+        MessengerFactory<MHDModelT, HybridModelT> messengerFactory{descriptors};
 
         // hierarchy
         auto inputDatabase = SAMRAI::tbox::InputManager::getManager()->parseInputFile(
@@ -302,7 +303,7 @@ public:
 
 
         // models and solvers must be registered to SAMRAI system before
-        multiphysInteg->registerAndSetupTransactions(transactionFactory);
+        multiphysInteg->registerAndSetupMessengers(messengerFactory);
 
 
         auto standardTag = std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
@@ -351,93 +352,6 @@ public:
         }
 #endif
     }
-
-
-    virtual ~aMultiPhysicsIntegrator()
-    {
-        auto db = SAMRAI::hier::VariableDatabase::getDatabase();
-
-        for (auto vecFieldProperty : mhdModel->state.B.getFieldNamesAndQuantities())
-        {
-            db->removeVariable(vecFieldProperty.name);
-        }
-        for (auto vecFieldProperty : mhdModel->state.V.getFieldNamesAndQuantities())
-        {
-            db->removeVariable(vecFieldProperty.name);
-        }
-
-        for (auto vecFieldProperty : hybridModel->state.electromag.B.getFieldNamesAndQuantities())
-        {
-            db->removeVariable(vecFieldProperty.name);
-        }
-        for (auto vecFieldProperty : hybridModel->state.electromag.E.getFieldNamesAndQuantities())
-        {
-            db->removeVariable(vecFieldProperty.name);
-        }
-
-        for (auto momentsProperty : hybridModel->state.ions.getFieldNamesAndQuantities())
-        {
-            db->removeVariable(momentsProperty.name);
-        }
-
-        auto bulktuple = hybridModel->state.ions.getCompileTimeResourcesUserList();
-        auto& bulk     = std::get<0>(bulktuple);
-
-        for (auto vecFieldProperty : bulk.getFieldNamesAndQuantities())
-        {
-            db->removeVariable(vecFieldProperty.name);
-        }
-
-
-        for (auto& pop : hybridModel->state.ions)
-        {
-            auto namesQties = pop.getFieldNamesAndQuantities();
-            for (auto nameQty : namesQties)
-            {
-                auto name = nameQty.name;
-                db->removeVariable(name);
-            }
-
-            auto bulktuple = pop.getCompileTimeResourcesUserList();
-            auto& bulk     = std::get<0>(bulktuple);
-
-            for (auto vecFieldProperty : bulk.getFieldNamesAndQuantities())
-            {
-                db->removeVariable(vecFieldProperty.name);
-            }
-
-
-            auto namesParticleArrays = pop.getParticleArrayNames();
-            for (auto partProp : namesParticleArrays)
-            {
-                db->removeVariable(partProp.name);
-            }
-        }
-
-        // remove solver variables
-        db->removeVariable("EMPred_E_x");
-        db->removeVariable("EMPred_E_y");
-        db->removeVariable("EMPred_E_z");
-        db->removeVariable("EMPred_B_x");
-        db->removeVariable("EMPred_B_y");
-        db->removeVariable("EMPred_B_z");
-
-        db->removeVariable("EMAvg_E_x");
-        db->removeVariable("EMAvg_E_y");
-        db->removeVariable("EMAvg_E_z");
-        db->removeVariable("EMAvg_B_x");
-        db->removeVariable("EMAvg_B_y");
-        db->removeVariable("EMAvg_B_z");
-
-        db->removeVariable("EM_old_E_x");
-        db->removeVariable("EM_old_E_y");
-        db->removeVariable("EM_old_E_z");
-
-
-        db->removeVariable("EM_old_B_x");
-        db->removeVariable("EM_old_B_y");
-        db->removeVariable("EM_old_B_z");
-    }
 };
 
 
@@ -452,7 +366,7 @@ TEST(aSimpleMultiPhysicsIntegrator, triuc)
 
 
     using MultiPhysicsIntegratorT
-        = MultiPhysicsIntegrator<TransactionFactory<MHDModelT, HybridModelT>>;
+        = MultiPhysicsIntegrator<MessengerFactory<MHDModelT, HybridModelT>>;
 
     std::shared_ptr<MultiPhysicsIntegratorT> multiphysInteg{
         std::make_shared<MultiPhysicsIntegratorT>(4)};
@@ -474,10 +388,10 @@ TEST(aSimpleMultiPhysicsIntegrator, triuc)
 
 
 
-    std::vector<TransactionDescriptor> descriptors;
+    std::vector<MessengerDescriptor> descriptors;
     descriptors.push_back({"HybridModel", "HybridModel"});
-    TransactionFactory<MHDModelT, HybridModelT> transactionFactory{descriptors};
-    multiphysInteg->registerAndSetupTransactions(transactionFactory);
+    MessengerFactory<MHDModelT, HybridModelT> messengerFactory{descriptors};
+    multiphysInteg->registerAndSetupMessengers(messengerFactory);
 }
 #endif
 
@@ -564,12 +478,12 @@ TEST_F(aMultiPhysicsIntegrator, knowsWhichModelIsSolvedAtAGivenLevel)
 
 
 
-TEST_F(aMultiPhysicsIntegrator, returnsCorrecTransactionForEachLevel)
+TEST_F(aMultiPhysicsIntegrator, returnsCorrecMessengerForEachLevel)
 {
-    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg->transactionName(0));
-    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg->transactionName(1));
-    EXPECT_EQ(std::string{"MHDModel-HybridModel"}, multiphysInteg->transactionName(2));
-    EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg->transactionName(3));
+    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg->messengerName(0));
+    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg->messengerName(1));
+    EXPECT_EQ(std::string{"MHDModel-HybridModel"}, multiphysInteg->messengerName(2));
+    EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg->messengerName(3));
 }
 
 
@@ -581,7 +495,7 @@ TEST_F(aMultiPhysicsIntegrator, returnsCorrecTransactionForEachLevel)
 */
 
 #if 0
-TEST(aTransaction, isCreated)
+TEST(aMessenger, isCreated)
 {
     SAMRAI::tbox::Dimension dimension{dim};
     ResourcesManager<GridYee1D> resourcesManager{dimension};
@@ -630,11 +544,11 @@ TEST(aTransaction, isCreated)
 
     int const hybridStartLevel = 0;
 
-    // then we init the transaction needed
-    HybridTransaction hybridTransaction{hybridModel,    resourcesManager,  fieldRefineOp,
+    // then we init the messenger needed
+    HybridMessenger hybridMessenger{hybridModel,    resourcesManager,  fieldRefineOp,
                                         fieldCoarsenOp, particlesRefineOp, hybridStartLevel};
 
-    solverppc.initTransaction(hybridTransaction);
+    solverppc.initMessenger(hybridMessenger);
 
 
     // hierarchy
@@ -702,13 +616,13 @@ TEST(aTransaction, isCreated)
 
 
     auto level0 = hierarchy->getPatchLevel(0);
-    hybridTransaction.setStatus(&hierarchy, &level0, nullptr);
+    hybridMessenger.setStatus(&hierarchy, &level0, nullptr);
 
-    // then for each level, we give an hybridTransaction that know which level is the current one
-    solverppc.advanceLevel(hybridTransaction, hybridTransaction);
+    // then for each level, we give an hybridMessenger that know which level is the current one
+    solverppc.advanceLevel(hybridMessenger, hybridMessenger);
 
     // after advancing each substep of a leaf
-    solverppc.syncLevel(hybridTransaction);
+    solverppc.syncLevel(hybridMessenger);
 }
 #endif
 

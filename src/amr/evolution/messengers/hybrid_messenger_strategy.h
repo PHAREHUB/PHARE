@@ -1,8 +1,8 @@
 
-#ifndef PHARE_HYBRID_TRANSACTION_STRATEGY_H
-#define PHARE_HYBRID_TRANSACTION_STRATEGY_H
+#ifndef PHARE_HYBRID_MESSENGER_STRATEGY_H
+#define PHARE_HYBRID_MESSENGER_STRATEGY_H
 
-#include "evolution/transactions/transaction_info.h"
+#include "evolution/messengers/messenger_info.h"
 #include "physical_models/physical_model.h"
 
 
@@ -16,36 +16,37 @@
 namespace PHARE
 {
 template<typename HybridModel>
-class HybridTransactionStrategy
+class HybridMessengerStrategy
 {
     using IonsT     = decltype(std::declval<HybridModel>().state.ions);
     using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
 
 public:
     /**
-     * @brief allocate HybridTransactionStrategy internal resources on a given patch for a given
+     * @brief allocate HybridMessengerStrategy internal resources on a given patch for a given
      * allocation time. The method is virtual and is implemented by a concrete
-     * HybridTransactionStrategy
+     * HybridMessengerStrategy
      */
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const = 0;
 
 
     /**
-     * @brief setup prepares the HybridTransactionStrategy to communicate specific data between two
-     * levels. The method is called by a HybridTransaction::allocate() and its concrete
+     * @brief setup prepares the HybridMessengerStrategy to communicate specific data between two
+     * levels. The method is called by a HybridMessenger::allocate() and its concrete
      * implementation is found in concrete strategies
      */
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo)
+    virtual void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+                                    [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo)
         = 0;
 
 
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() = 0;
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromFiner()   = 0;
+
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() = 0;
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner()   = 0;
 
 
-    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                          int const levelNumber)
+    virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               int const levelNumber)
         = 0;
 
     virtual void
@@ -78,13 +79,17 @@ public:
 
     virtual std::string coarseModelName() const = 0;
 
+
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+
+
     std::string name() const { return stratname_; }
 
-    virtual ~HybridTransactionStrategy() = default;
+    virtual ~HybridMessengerStrategy() = default;
 
 
 protected:
-    explicit HybridTransactionStrategy(std::string stratName)
+    explicit HybridMessengerStrategy(std::string stratName)
         : stratname_{stratName}
     {
     }

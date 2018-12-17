@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "evolution/transactions/mhd_transaction_info.h"
+#include "evolution/messengers/mhd_messenger_info.h"
 #include "physical_models/physical_model.h"
 #include "tools/resources_manager.h"
 
@@ -18,7 +18,7 @@ using MHDQuantity = HybridQuantity;
 
 
 template<typename VecFieldT>
-class MHDState : public PhysicalState
+class MHDState : public IPhysicalState
 {
 public:
     /*virtual void allocate(ResourcesManager const& manager, SAMRAI::hier::Patch& patch) override
@@ -35,7 +35,7 @@ public:
 
 
 template<typename GridLayoutT, typename VecFieldT>
-class MHDModel : public PhysicalModel
+class MHDModel : public IPhysicalModel
 {
 public:
     static const std::string model_name;
@@ -43,16 +43,11 @@ public:
 
 
     explicit MHDModel(std::shared_ptr<resources_manager_type> resourcesManager)
-        : PhysicalModel{model_name}
+        : IPhysicalModel{model_name}
         , resourcesManager{std::move(resourcesManager)}
     {
     }
 
-
-    virtual std::unique_ptr<ITransactionInfo> transactionInfo() const override
-    {
-        return std::make_unique<MHDTransactionInfo>();
-    }
 
     virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
     {
@@ -62,9 +57,7 @@ public:
 
 
 
-    virtual void fillTransactionInfo(std::unique_ptr<ITransactionInfo> const& info) const override
-    {
-    }
+    virtual void fillMessengerInfo(std::unique_ptr<IMessengerInfo> const& info) const override {}
 
     virtual ~MHDModel() override = default;
 

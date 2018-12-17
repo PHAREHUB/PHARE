@@ -1,17 +1,17 @@
 
-#ifndef PHARE_MHD_HYBRID_TRANSACTION_STRATEGY_H
-#define PHARE_MHD_HYBRID_TRANSACTION_STRATEGY_H
+#ifndef PHARE_MHD_HYBRID_MESSENGER_STRATEGY_H
+#define PHARE_MHD_HYBRID_MESSENGER_STRATEGY_H
 
-#include "evolution/transactions/hybrid_transaction_info.h"
-#include "evolution/transactions/hybrid_transaction_strategy.h"
-#include "evolution/transactions/mhd_transaction_info.h"
+#include "evolution/messengers/hybrid_messenger_info.h"
+#include "evolution/messengers/hybrid_messenger_strategy.h"
+#include "evolution/messengers/mhd_messenger_info.h"
 
 #include <string>
 
 namespace PHARE
 {
 template<typename MHDModel, typename HybridModel>
-class MHDHybridTransactionStrategy : public HybridTransactionStrategy<HybridModel>
+class MHDHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
 {
     using IonsT     = decltype(std::declval<HybridModel>().state.ions);
     using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
@@ -19,11 +19,11 @@ class MHDHybridTransactionStrategy : public HybridTransactionStrategy<HybridMode
 public:
     static const std::string stratName;
 
-    MHDHybridTransactionStrategy(
+    MHDHybridMessengerStrategy(
         std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager,
         std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager,
         int const firstLevel)
-        : HybridTransactionStrategy<HybridModel>{stratName}
+        : HybridMessengerStrategy<HybridModel>{stratName}
         , mhdResourcesManager_{std::move(mhdResourcesManager)}
         , hybridResourcesManager_{std::move(hybridResourcesManager)}
         , firstLevel_{firstLevel}
@@ -43,25 +43,26 @@ public:
 
 
 
-    virtual void setup(std::unique_ptr<ITransactionInfo> fromCoarserInfo,
-                       [[maybe_unused]] std::unique_ptr<ITransactionInfo> fromFinerInfo) override
+    virtual void
+    registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+                       [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
     {
     }
 
 
-    virtual void setLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                          int const levelNumber) override
+    virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               int const levelNumber) override
     {
     }
 
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromCoarser() override
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
     {
-        return std::make_unique<MHDTransactionInfo>();
+        return std::make_unique<MHDMessengerInfo>();
     }
 
-    virtual std::unique_ptr<ITransactionInfo> emptyInfoFromFiner() override
+    virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
     {
-        return std::make_unique<HybridTransactionInfo>();
+        return std::make_unique<HybridMessengerInfo>();
     }
 
 
@@ -86,7 +87,7 @@ public:
 
     virtual void initLevel(int const levelNumber, double const initDataTime) const override {}
 
-    virtual ~MHDHybridTransactionStrategy() = default;
+    virtual ~MHDHybridMessengerStrategy() = default;
 
 
     virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
@@ -113,6 +114,7 @@ public:
     virtual void syncElectric(VecFieldT& E) override {}
     virtual void syncIonMoments(IonsT& ions) override {}
 
+    virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
 
 
 private:
@@ -121,11 +123,11 @@ private:
     std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager_;
     std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager_;
     int const firstLevel_;
-    Electromag EM_old_{"EM_old"};
+    Electromag EM_old_{stratName + "_EM_old"};
 };
 
 template<typename MHDModel, typename HybridModel>
-const std::string MHDHybridTransactionStrategy<MHDModel, HybridModel>::stratName
+const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
     = "MHDModel-HybridModel";
 
 

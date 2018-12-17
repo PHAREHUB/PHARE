@@ -12,6 +12,9 @@
 namespace PHARE
 {
 template<typename GridLayoutT, typename PhysicalQuantity>
+/**
+ * @brief The FieldGeometry class
+ */
 class FieldGeometry : public SAMRAI::hier::BoxGeometry
 {
 public:

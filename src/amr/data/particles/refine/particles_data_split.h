@@ -31,15 +31,15 @@ enum class ParticlesDataSplitType {
 
 template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
          std::size_t refinedParticleNbr, typename SplitT>
-class ParticlesDataSplitOperator : public SAMRAI::hier::RefineOperator
+class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
-    ParticlesDataSplitOperator()
+    ParticlesRefineOperator()
         : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
     {
     }
 
-    virtual ~ParticlesDataSplitOperator() = default;
+    virtual ~ParticlesRefineOperator() = default;
 
     /** @brief a priority of 0 means that this operator
      * will be applied first

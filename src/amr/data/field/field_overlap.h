@@ -14,6 +14,9 @@ namespace PHARE
  * quantity. It will also store any transformation between a source and destination patch.
  */
 template<std::size_t dimension>
+/**
+ * @brief The FieldOverlap class
+ */
 class FieldOverlap : public SAMRAI::hier::BoxOverlap
 {
 public:

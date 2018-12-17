@@ -13,6 +13,9 @@ namespace PHARE
 {
 template<typename GridLayoutT, typename FieldImpl,
          typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
+/**
+ * @brief The FieldVariable class
+ */
 class FieldVariable : public SAMRAI::hier::Variable
 {
 public:

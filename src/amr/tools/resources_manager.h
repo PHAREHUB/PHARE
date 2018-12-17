@@ -18,14 +18,6 @@
 
 namespace PHARE
 {
-/**
- * \brief FieldType gathers field type traits for ResourceManager to know
- * how to work with Field objects
- **/
-
-
-
-
 template<typename GridLayoutT, typename ResourcesUser, typename ResourcesType>
 using isUserFieldType = std::is_same<std::remove_reference_t<ResourcesType>,
                                      UserFieldType<GridLayoutT, ResourcesUser>>;
@@ -41,8 +33,8 @@ using isUserParticleType = std::is_same<typename std::remove_reference<Resources
 
 
 /**
- * \brief ResourcesInfo gathers the information associated to a resource
- * that is necessary for the ResourceManager to retrieve data.
+ * \brief ResourcesInfo contains the SAMRAI variable and patchdata ID to retrieve data from the
+ * SAMRAI database
  */
 struct ResourcesInfo
 {
@@ -50,58 +42,52 @@ struct ResourcesInfo
     int id;
 };
 
+
+
+
 /** \brief ResourcesManager is an adapter between PHARE objects that manipulate
  * data on patches, and the SAMRAI variable database system, storing the data.
- * It is used by PHARE to register data to the samrai system and to get access to it
- * whenever needed, without having to know the SAMRAI database system.
+ * It is used by PHARE to register data to the samrai system, allocate data on patches, and to get
+ * access to it whenever needed, without having to know the SAMRAI database system.
  *
  * Objects registering and retrieving data through the ResourcesManager are called
- * ResourcesUser. A ResourcesUser needs to satisfy a specific interface to work with
+ * ResourcesUsers. A ResourcesUser needs to satisfy a specific interface to work with
  * the ResourcesManager.
  *
- * There are only two kinds of Resources that can be registered to the ResourcesManager
+ * There are only two kinds of Resources that can be registered to the SAMRAI system via the
+ * ResourcesManager, because them only are associated with a PatchData generalization:
  *
- * - resources defined as a Field
- * - resources defined as a ParticleArray
+ * - Field
+ * - ParticleArray
  *
  * Several kinds of ResourcesUser can register their resources to the ResourcesManager
- * and are identified by type traits.
+ * and are identified by the following type traits:
  *
- * - those having Field resources only (trait has_field)
- * - those having ParticleArray resources only (trait has_particle)
- * - those having subResources, i.e. objects that do not hold Resources themselves
- *   but rather hold objects that hold resources. (trait has_sub_resources)
+ * - has_field <ResourcesUser>
+ * - has_particles <ResourcesUser>
+ * - has_runtime_subresourceuser_list <ResourcesUser>
+ * - has_compiletime_subresourcesuser_list <ResourcesUser>
  *
  *
- * for exemple:
+ * for example:
  *
- * - VecField is a ResourcesUser for which the has_field trait is true
- * - Electromag is a ResourcesUser for which the has_sub_resources trait  is true because it
- *  holds 2 VecFields that hold Field objects.
+ * - has_field<VecField>  is true
+ * - has_compiletime_subresourcesuser_list<Electromag> is true because it holds 2 VecFields that
+ * hold Field objects.
  *
- * ResourcesManager basically offers 4 kinds of methods in its interface. Three
- * methods aim to be used by code manipulating ResourceUsers, typically the
- * code that manipulate data and algorithms:
+ * ResourcesManager is used to register ResourceUsers to the SAMRAI system, this is done
+ * by calling the registerResources() method. It is also used to allocate already registered
+ * ResourcesUsers on a patch by calling the method allocate(). One can also get the identifier (ID)
+ * of a patchdata corresponding to one or several ResourcesUsers by calling getID() or getIDs()
+ * methods.
  *
- * - registerResources() : these methods are used by code that wants to register
- * resources of a ResourcesUser.
+ * Data objects like VecField and Ions etc., i.e. ResourcesUsers, need to be set on a patch before
+ * being usable. Having a Patch and several ResourcesUsers obj1, obj2, etc. this is done by calling:
  *
- * - setResources_() : these methods are used by code that wants to retrieve a pointer
- * to an already registered resource. After calling this method passing a ResourcesUser
- * and a Patch, the ResourcesUser has its internal pointers pointing to the resource
- * lying on the given Patch. These methods are typically used while looping over the
- * patches of a PatchLevel, to set the resources of a ResourcesUser to those lying on
- * the current patch. One issue is that ResourcesUser internal pointers
- * will point to the data of the last Patch it has been set to. This is why this
- * method is typically not used directly. Rather, it is better to use a ResourcesGuard
- * that will set the resources of ResourcesUsers in scope and reset their pointers
- * upon leaving the scope.
+ * dataOnPatch = setOnPatch(patch, obj1, obj2);
  *
- * - createResourcesGuard() : used to create a ResourcesGuard.
+ * obj1 and obj2 become unusable again at the end of the scope of dataOnPatch
  *
- * One method is rather to be used by SAMRAI derived classes:
- *
- * - allocate()
  *
  */
 template<typename GridLayoutT>
@@ -217,19 +203,25 @@ public:
 
 
 
-    /** \brief make a ResourceGuard to set resources to all passed objects
+    /** \brief set all passed resources on given Patch
      *
-     * This is a helper that allow use simple as
-     * auto guard = createResourcesGuards(patch, obj1, obj2, ...);
+     * auto dataOnPatch = setOnPatch(patch, obj1, obj2, ...);
+     *
+     * now obj1, obj2 data containers contain data defined on the given patch.
+     * At the end of the scope of dataOnPatch, obj1 and obj2 will become unusable again
      */
     template<typename... ResourcesUsers>
     constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
-    makeResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resourcesUsers)
+    setOnPatch(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resourcesUsers)
     {
         return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this, resourcesUsers...};
     }
 
 
+
+    /** @brief setTime is used to set the time of the Resources associated with the given
+     * ResourcesUser on the given patch.
+     */
     template<typename ResourcesUser>
     void setTime(ResourcesUser& obj, SAMRAI::hier::Patch const& patch, double time) const
     {
@@ -268,6 +260,15 @@ public:
             return std::nullopt;
     }
 
+
+
+    ~ResourcesManager()
+    {
+        for (auto& [key, resourcesInfo] : nameToResourceInfo_)
+        {
+            variableDatabase_->removeVariable(key);
+        }
+    }
 
 
 

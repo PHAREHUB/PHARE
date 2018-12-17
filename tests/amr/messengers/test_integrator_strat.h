@@ -57,7 +57,7 @@ public:
         const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy, const int coarsestLevel,
         const int finestLevel, const double syncTime, const std::vector<double>& oldTimes) override
     {
-        // TODO use transactions to sync with coarser
+        // TODO use messengers to sync with coarser
     }
 
     virtual void
@@ -78,7 +78,12 @@ public:
     {
     }
 
-    virtual bool usingRefinedTimestepping() const override { return true; }
+    virtual bool usingRefinedTimestepping() const override
+    {
+        // refined time stepping not allowed
+        // so that regridding occurs right away at the first advance
+        return false;
+    }
 };
 
 

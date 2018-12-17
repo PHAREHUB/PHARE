@@ -78,6 +78,8 @@ public:
 
     vecfield_type const& velocity() const { return bulkVelocity_; }
 
+    std::string densityName() const { return name_ + "_rho"; }
+
 
     void computeDensity()
     {
@@ -141,7 +143,7 @@ public:
 
     MomentProperties getFieldNamesAndQuantities() const
     {
-        return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
+        return {{{densityName(), HybridQuantity::Scalar::rho}}};
     }
 
 

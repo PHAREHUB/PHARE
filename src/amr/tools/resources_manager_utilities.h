@@ -40,7 +40,6 @@ struct has_compiletime_subresourcesuser_list : std::false_type
 
 /** \brief has_field is a traits that permit to check if a ResourcesUser
  * has field
- *
  */
 template<typename ResourcesUser>
 struct has_field<ResourcesUser, tryToInstanciate<decltype(
@@ -54,7 +53,6 @@ struct has_field<ResourcesUser, tryToInstanciate<decltype(
 
 /** \brief has_particles is a traits that permit to check if a ResourcesUser
  * has particles
- *
  */
 template<typename ResourcesUser>
 struct has_particles<ResourcesUser, tryToInstanciate<decltype(
@@ -65,14 +63,9 @@ struct has_particles<ResourcesUser, tryToInstanciate<decltype(
 
 
 
-/** \brief has_sub_resources is a traits that permit to check if a ResourcesUser
- * have other ResourcesUser
- *
+/** @brief has_runtime_subresourceuser_list is a compile-time function that returns true if the
+ * given ResourcesUser has a runtime list of ResourcesUsers, like a vector of ResourcesUsers.
  */
-
-
-
-
 template<typename ResourcesUser>
 struct has_runtime_subresourceuser_list<
     ResourcesUser,
@@ -82,6 +75,9 @@ struct has_runtime_subresourceuser_list<
 };
 
 
+/** @brief has_compiletime_subresourcesuser_list is a compile-time function that returns true if the
+ * given ResourcesUser has one or several ResourcesUsers that can be put in a compile-time list.
+ */
 template<typename ResourcesUser>
 struct has_compiletime_subresourcesuser_list<
     ResourcesUser,
@@ -105,11 +101,13 @@ struct UseNullPtr
 };
 
 
-template<typename ResourcesUser>
-std::vector<std::string> extractNames(ResourcesUser const& user)
-{
-    std::vector<std::string> names;
 
+/** extractNames of direct Field and Particle Resources of the given ResourcesUser
+ * Is called by the other overload of extractNames()
+ */
+template<typename ResourcesUser>
+void extractNames(ResourcesUser& user, std::vector<std::string>& names)
+{
     if constexpr (has_field<ResourcesUser>::value)
     {
         auto properties = user.getFieldNamesAndQuantities();
@@ -120,11 +118,47 @@ std::vector<std::string> extractNames(ResourcesUser const& user)
         }
     }
 
-
-    else if constexpr (has_particles<ResourcesUser>::value)
+    if constexpr (has_particles<ResourcesUser>::value)
     {
-        throw std::runtime_error("not implemeted");
+        auto pnames = user.getParticleArrayNames();
+        for (auto const& p : pnames)
+        {
+            names.push_back(p.name);
+        }
     }
+}
+
+
+
+
+/** @brief extractNames returns a vector of strings containing the names of all resources associated
+ * with a ResourcesUser
+ */
+template<typename ResourcesUser>
+std::vector<std::string> extractNames(ResourcesUser& user)
+{
+    std::vector<std::string> names;
+
+    if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
+    {
+        // get a tuple here
+        auto&& subResources = user.getCompileTimeResourcesUserList();
+
+        // unpack the tuple subResources and apply for each element registerResources()
+        std::apply([&names](auto&... subResource) { (extractNames(subResource, names), ...); },
+                   subResources);
+    }
+
+    if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
+    {
+        auto&& resourcesUsers = user.getRunTimeResourcesUserList();
+        for (auto& resourcesUser : resourcesUsers)
+        {
+            extractNames(resourcesUser, names);
+        }
+    }
+
+    extractNames(user, names);
 
     return names;
 };

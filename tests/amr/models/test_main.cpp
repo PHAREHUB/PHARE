@@ -7,8 +7,8 @@
 #include "data/ions/ions.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/vecfield/vecfield.h"
-#include "evolution/transactions/hybrid_transaction.h"
-#include "evolution/transactions/transaction.h"
+#include "evolution/messengers/hybrid_messenger.h"
+#include "evolution/messengers/messenger.h"
 #include "physical_models/hybrid_model.h"
 #include "physical_models/mhd_model.h"
 #include "tools/resources_manager.h"
@@ -87,7 +87,7 @@ auto getIonsInit()
 
 
 
-TEST(AHybridModel, fillsHybridTransactionInfo)
+TEST(AHybridModel, fillsHybridMessengerInfo)
 {
     std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
         std::make_shared<ResourcesManagerT>()};
@@ -98,24 +98,54 @@ TEST(AHybridModel, fillsHybridTransactionInfo)
 
 
 
-    std::unique_ptr<ITransactionInfo> modelInfoPtr = std::make_unique<HybridTransactionInfo>();
+    std::unique_ptr<IMessengerInfo> modelInfoPtr = std::make_unique<HybridMessengerInfo>();
 
-    hybridModel->fillTransactionInfo(modelInfoPtr);
+    hybridModel->fillMessengerInfo(modelInfoPtr);
 
-    auto& modelInfo = dynamic_cast<HybridTransactionInfo const&>(*modelInfoPtr);
+    auto& modelInfo = dynamic_cast<HybridMessengerInfo const&>(*modelInfoPtr);
 
 
     EXPECT_EQ("EM_B", modelInfo.modelMagnetic.vecName);
-
     EXPECT_EQ("EM_B_x", modelInfo.modelMagnetic.xName);
     EXPECT_EQ("EM_B_y", modelInfo.modelMagnetic.yName);
     EXPECT_EQ("EM_B_z", modelInfo.modelMagnetic.zName);
 
     EXPECT_EQ("EM_E", modelInfo.modelElectric.vecName);
-
     EXPECT_EQ("EM_E_x", modelInfo.modelElectric.xName);
     EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
     EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
+
+    EXPECT_EQ("Ions_rho", modelInfo.modelIonDensity);
+    EXPECT_EQ("Ions_bulkVel", modelInfo.modelIonBulk.vecName);
+    EXPECT_EQ("Ions_bulkVel_x", modelInfo.modelIonBulk.xName);
+    EXPECT_EQ("Ions_bulkVel_y", modelInfo.modelIonBulk.yName);
+    EXPECT_EQ("Ions_bulkVel_z", modelInfo.modelIonBulk.zName);
+
+
+
+    EXPECT_NE(std::end(modelInfo.initIonDensity),
+              std::find(std::begin(modelInfo.initIonDensity), std::end(modelInfo.initIonDensity),
+                        "Ions_rho"));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.vecName == std::string{"Ions_bulkVel"}; }));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.xName == std::string{"Ions_bulkVel_x"}; }));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.yName == std::string{"Ions_bulkVel_y"}; }));
+
+    EXPECT_NE(
+        std::end(modelInfo.initIonBulk),
+        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
+                     [](auto const& desc) { return desc.zName == std::string{"Ions_bulkVel_z"}; }));
 }
 
 

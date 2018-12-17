@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.3)
 
-project(test-transaction)
+project(test-messenger)
 
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 

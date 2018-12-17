@@ -139,7 +139,7 @@ public:
 
         auto fieldVariableTypeName = typeid(FieldVariable<GridLayoutT, FieldT>).name();
 
-        auto coarsenOperator = std::make_shared<FieldDataCoarsen<GridLayoutT, FieldT>>();
+        auto coarsenOperator = std::make_shared<FieldCoarsenOperator<GridLayoutT, FieldT>>();
 
         gridGeometry_->addCoarsenOperator(fieldVariableTypeName, coarsenOperator);
 
