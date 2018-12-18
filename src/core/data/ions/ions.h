@@ -61,6 +61,20 @@ public:
 
 
 
+    field_type& density()
+    {
+        if (isUsable())
+        {
+            return *rho_;
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot access density data");
+        }
+    }
+
+
+
 
     /*vecfield_type& velocity()
     {

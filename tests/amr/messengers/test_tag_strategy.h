@@ -100,7 +100,8 @@ public:
 
                 for (auto& patch : *level)
                 {
-                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag);
+                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag,
+                                                                  model_->state.ions);
 
                     auto layout
                         = PHARE::layoutFromPatch<typename HybridModel::gridLayout_type>(*patch);
@@ -112,6 +113,8 @@ public:
                     auto& Bx = model_->state.electromag.B.getComponent(PHARE::Component::X);
                     auto& By = model_->state.electromag.B.getComponent(PHARE::Component::Y);
                     auto& Bz = model_->state.electromag.B.getComponent(PHARE::Component::Z);
+
+                    auto& Ni = model_->state.ions.density();
 
 
                     auto fillLevel
@@ -125,6 +128,8 @@ public:
                     fillField(Bx, layout, fillBx);
                     fillField(By, layout, fillBy);
                     fillField(Bz, layout, fillBz);
+
+                    fillField(Ni, layout, fillDensity);
                 }
             }
 
@@ -148,6 +153,8 @@ public:
     static double fillBx(double x) { return 4 * x; }
     static double fillBy(double x) { return 5 * x; }
     static double fillBz(double x) { return 6 * x; }
+
+    static double fillDensity(double x) { return 7 * x; }
 
 
     static double fillInt([[maybe_unused]] double x) { return 1.; }
