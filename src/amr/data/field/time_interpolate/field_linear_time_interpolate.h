@@ -78,57 +78,68 @@ public:
 
         auto finalBox = interpolateBox * ghostBox;
 
+        auto srcGhostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
+            fieldDataSrcNew.getBox(), qty, fieldDataSrcNew.gridLayout, withGhost);
 
-        auto localBox
+        auto localDestBox
             = AMRToLocal(static_cast<std::add_const_t<decltype(finalBox)>>(finalBox), ghostBox);
+
+        auto localSrcBox
+            = AMRToLocal(static_cast<std::add_const_t<decltype(finalBox)>>(finalBox), srcGhostBox);
 
 
         if constexpr (dim == 1)
         {
-            auto iStart = localBox.lower(dirX);
-            auto iEnd   = localBox.upper(dirX);
+            auto iDestStart = localDestBox.lower(dirX);
+            auto iDestEnd   = localDestBox.upper(dirX);
 
-            for (auto ix = iStart; ix <= iEnd; ++ix)
+            auto iSrcStart = localSrcBox.lower(dirX);
+
+            for (auto ix = iDestStart, ixSrc = iSrcStart; ix <= iDestEnd; ++ix, ++ixSrc)
             {
-                fieldDest(ix) = (1. - alpha) * fieldSrcOld(ix) + alpha * fieldSrcNew(ix);
+                fieldDest(ix) = (1. - alpha) * fieldSrcOld(ixSrc) + alpha * fieldSrcNew(ixSrc);
             }
         }
         else if constexpr (dim == 2)
         {
-            auto iStartX = localBox.lower(dirX);
-            auto iEndX   = localBox.upper(dirX);
+            auto iDestStartX = localDestBox.lower(dirX);
+            auto iDestEndX   = localDestBox.upper(dirX);
+            auto iDestStartY = localDestBox.lower(dirY);
+            auto iDestEndY   = localDestBox.upper(dirY);
 
-            auto iStartY = localBox.lower(dirY);
-            auto iEndY   = localBox.upper(dirY);
+            auto iSrcStartX = localSrcBox.lower(dirX);
+            auto iSrcStartY = localSrcBox.lower(dirY);
 
-            for (auto ix = iStartX; ix <= iEndX; ++ix)
+            for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
             {
-                for (auto iy = iStartY; iy <= iEndY; ++iy)
+                for (auto iy = iDestStartY, iySrc = iSrcStartY; iy <= iDestEndY; ++iy, ++iySrc)
                 {
-                    fieldDest(ix, iy)
-                        = (1. - alpha) * fieldSrcOld(ix, iy) + alpha * fieldSrcNew(ix, iy);
+                    fieldDest(ix, iy) = (1. - alpha) * fieldSrcOld(ixSrc, iySrc)
+                                        + alpha * fieldSrcNew(ixSrc, iySrc);
                 }
             }
         }
         else if constexpr (dim == 3)
         {
-            auto iStartX = localBox.lower(dirX);
-            auto iEndX   = localBox.upper(dirX);
+            auto iStartX = localDestBox.lower(dirX);
+            auto iEndX   = localDestBox.upper(dirX);
+            auto iStartY = localDestBox.lower(dirY);
+            auto iEndY   = localDestBox.upper(dirY);
+            auto iStartZ = localDestBox.lower(dirZ);
+            auto iEndZ   = localDestBox.upper(dirZ);
 
-            auto iStartY = localBox.lower(dirY);
-            auto iEndY   = localBox.upper(dirY);
+            auto iSrcStartX = localSrcBox.lower(dirX);
+            auto iSrcStartY = localSrcBox.lower(dirY);
+            auto iSrcStartZ = localSrcBox.lower(dirZ);
 
-            auto iStartZ = localBox.lower(dirZ);
-            auto iEndZ   = localBox.upper(dirZ);
-
-            for (auto ix = iStartX; ix <= iEndX; ++ix)
+            for (auto ix = iStartX, ixSrc = iSrcStartX; ix <= iEndX; ++ix, ++ixSrc)
             {
-                for (auto iy = iStartY; iy <= iEndY; ++iy)
+                for (auto iy = iStartY, iySrc = iSrcStartY; iy <= iEndY; ++iy, ++ixSrc)
                 {
-                    for (auto iz = iStartZ; iz <= iEndZ; ++iz)
+                    for (auto iz = iStartZ, izSrc = iSrcStartZ; iz <= iEndZ; ++iz, ++izSrc)
                     {
-                        fieldDest(ix, iy, iz) = (1. - alpha) * fieldSrcOld(ix, iy, iz)
-                                                + alpha * fieldSrcNew(ix, iy, iz);
+                        fieldDest(ix, iy, iz) = (1. - alpha) * fieldSrcOld(ixSrc, iySrc, izSrc)
+                                                + alpha * fieldSrcNew(ixSrc, iySrc, izSrc);
                     }
                 }
             }
