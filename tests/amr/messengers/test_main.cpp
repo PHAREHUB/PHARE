@@ -408,6 +408,7 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
 
 
     messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 1, 0.5);
+    messenger->fillElectricGhosts(hybridModel->state.electromag.E, 1, 0.5);
 
 
 
@@ -447,6 +448,8 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
         {
             auto iGhostStart = layout.ghostStartIndex(field, PHARE::Direction::X);
             auto iStart      = layout.physicalStartIndex(field, PHARE::Direction::X);
+            auto iEnd        = layout.physicalEndIndex(field, PHARE::Direction::X);
+            auto iGhostEnd   = layout.ghostEndIndex(field, PHARE::Direction::X);
 
             for (auto ix = iGhostStart; ix < iStart; ++ix)
             {
@@ -457,11 +460,26 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
                           << expected - field(ix) << "\n";
                 EXPECT_DOUBLE_EQ(expected, field(ix));
             }
+
+
+            for (auto ix = iEnd; ix < iGhostEnd; ++ix)
+            {
+                auto origin   = layout.origin();
+                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
+                auto expected = func(x[0]);
+                std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << " "
+                          << expected - field(ix) << "\n";
+                EXPECT_DOUBLE_EQ(expected, field(ix));
+            }
         };
 
         checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
         checkMyField(By, TagStrategy<HybridModelT>::fillBy);
         checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
+
+        checkMyField(Ex, TagStrategy<HybridModelT>::fillEx);
+        checkMyField(Ey, TagStrategy<HybridModelT>::fillEy);
+        checkMyField(Ez, TagStrategy<HybridModelT>::fillEz);
 
         iPatch++;
     }
