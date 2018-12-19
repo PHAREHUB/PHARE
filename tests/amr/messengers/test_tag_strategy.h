@@ -116,6 +116,9 @@ public:
 
                     auto& Ni = model_->state.ions.density();
 
+                    auto& Vix = model_->state.ions.velocity().getComponent(PHARE::Component::X);
+                    auto& Viy = model_->state.ions.velocity().getComponent(PHARE::Component::Y);
+                    auto& Viz = model_->state.ions.velocity().getComponent(PHARE::Component::Z);
 
                     auto fillLevel
                         = [levelNumber](double) { return static_cast<double>(levelNumber); };
@@ -128,6 +131,10 @@ public:
                     fillField(Bx, layout, fillBx);
                     fillField(By, layout, fillBy);
                     fillField(Bz, layout, fillBz);
+
+                    fillField(Vix, layout, fillVx);
+                    fillField(Viy, layout, fillVy);
+                    fillField(Viz, layout, fillVz);
 
                     fillField(Ni, layout, fillDensity);
                 }
@@ -155,6 +162,10 @@ public:
     static double fillBz(double x) { return 6 * x; }
 
     static double fillDensity(double x) { return 7 * x; }
+
+    static double fillVx(double x) { return 8. * x; }
+    static double fillVy(double x) { return 9. * x; }
+    static double fillVz(double x) { return 10. * x; }
 
 
     static double fillInt([[maybe_unused]] double x) { return 1.; }

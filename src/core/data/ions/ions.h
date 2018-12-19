@@ -34,18 +34,6 @@ public:
         }
     }
 
-    /*
-        field_type& density()
-        {
-            if (isUsable())
-            {
-                return *rho_;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot access density data");
-            }
-        }*/
 
     field_type const& density() const
     {
@@ -91,6 +79,8 @@ public:
 
 
     vecfield_type const& velocity() const { return bulkVelocity_; }
+
+    vecfield_type& velocity() { return bulkVelocity_; }
 
     std::string densityName() const { return name_ + "_rho"; }
 

@@ -264,13 +264,16 @@ TEST_F(AfullHybridBasicHierarchy, initializesRefinedLevels)
 
             auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 
-            auto& Ex = hybridModel->state.electromag.E.getComponent(PHARE::Component::X);
-            auto& Ey = hybridModel->state.electromag.E.getComponent(PHARE::Component::Y);
-            auto& Ez = hybridModel->state.electromag.E.getComponent(PHARE::Component::Z);
-            auto& Bx = hybridModel->state.electromag.B.getComponent(PHARE::Component::X);
-            auto& By = hybridModel->state.electromag.B.getComponent(PHARE::Component::Y);
-            auto& Bz = hybridModel->state.electromag.B.getComponent(PHARE::Component::Z);
-            auto& Ni = hybridModel->state.ions.density();
+            auto& Ex  = hybridModel->state.electromag.E.getComponent(PHARE::Component::X);
+            auto& Ey  = hybridModel->state.electromag.E.getComponent(PHARE::Component::Y);
+            auto& Ez  = hybridModel->state.electromag.E.getComponent(PHARE::Component::Z);
+            auto& Bx  = hybridModel->state.electromag.B.getComponent(PHARE::Component::X);
+            auto& By  = hybridModel->state.electromag.B.getComponent(PHARE::Component::Y);
+            auto& Bz  = hybridModel->state.electromag.B.getComponent(PHARE::Component::Z);
+            auto& Ni  = hybridModel->state.ions.density();
+            auto& Vix = hybridModel->state.ions.velocity().getComponent(PHARE::Component::X);
+            auto& Viy = hybridModel->state.ions.velocity().getComponent(PHARE::Component::Y);
+            auto& Viz = hybridModel->state.ions.velocity().getComponent(PHARE::Component::Z);
 
 
             auto checkMyField = [&layout](auto const& field, auto const& func) //
@@ -294,6 +297,9 @@ TEST_F(AfullHybridBasicHierarchy, initializesRefinedLevels)
             checkMyField(By, TagStrategy<HybridModelT>::fillBy);
             checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
             checkMyField(Ni, TagStrategy<HybridModelT>::fillDensity);
+            checkMyField(Vix, TagStrategy<HybridModelT>::fillVx);
+            checkMyField(Viy, TagStrategy<HybridModelT>::fillVy);
+            checkMyField(Viz, TagStrategy<HybridModelT>::fillVz);
         }
     }
 }
