@@ -102,10 +102,19 @@ public:
         modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
         modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
 
-        // TODO weird not to have moment ghosts the model does not know it's done with
-        // particles
+        std::transform(std::begin(state.ions), std::end(state.ions),
+                       std::back_inserter(modelInfo.interiorParticles),
+                       [](auto const& pop) { return pop.name(); });
 
-        // TODO add ghosts for particles of each population
+
+        std::transform(std::begin(state.ions), std::end(state.ions),
+                       std::back_inserter(modelInfo.coarseToFineParticles),
+                       [](auto const& pop) { return pop.name(); });
+
+
+        std::transform(std::begin(state.ions), std::end(state.ions),
+                       std::back_inserter(modelInfo.ghostParticles),
+                       [](auto const& pop) { return pop.name(); });
     }
 
     virtual ~HybridModel() override = default;

@@ -155,7 +155,7 @@ QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager
 
 /**
  * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is called
- * is the one that allows initialization of a vector field quantity.
+ * is the one that allows initialization of a field quantity.
  */
 template<typename ResourcesManager>
 QuantityRefiner makeInitRefiner(FieldDescriptor const& name, ResourcesManager const& rm,

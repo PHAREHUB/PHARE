@@ -51,7 +51,8 @@ struct VecFieldDescriptor
 
 
 
-using FieldDescriptor = std::string;
+using FieldDescriptor      = std::string;
+using PopulationDescriptor = std::string;
 
 
 /// template<typename VecFieldT>
@@ -78,6 +79,11 @@ public:
 
 
     std::vector<FieldDescriptor> initIonDensity;
+
+
+    std::vector<PopulationDescriptor> interiorParticles;
+    std::vector<PopulationDescriptor> coarseToFineParticles;
+    std::vector<PopulationDescriptor> ghostParticles;
 
 
     //! name of the magnetic quantities that will be communicated by

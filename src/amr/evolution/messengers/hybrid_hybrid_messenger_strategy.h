@@ -6,6 +6,7 @@
 #include "data/field/refine/field_refine_operator.h"
 #include "data/field/time_interpolate/field_linear_time_interpolate.h"
 #include "data/particles/refine/particles_data_split.h"
+#include "data/particles/refine/split.h"
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "evolution/messengers/hybrid_messenger_strategy.h"
 #include "physical_models/physical_model.h"
@@ -28,12 +29,26 @@ namespace PHARE
 template<typename HybridModel>
 class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
 {
-    using IonsT             = typename HybridModel::ions_type;
-    using ElectromagT       = typename HybridModel::electromag_type;
-    using VecFieldT         = typename HybridModel::vecfield_type;
-    using GridLayoutT       = typename HybridModel::gridLayout_type;
-    using FieldT            = typename VecFieldT::field_type;
-    using ResourcesManagerT = typename HybridModel::resources_manager_type;
+    using IonsT                                = typename HybridModel::ions_type;
+    using ElectromagT                          = typename HybridModel::electromag_type;
+    using VecFieldT                            = typename HybridModel::vecfield_type;
+    using GridLayoutT                          = typename HybridModel::gridLayout_type;
+    using FieldT                               = typename VecFieldT::field_type;
+    using ResourcesManagerT                    = typename HybridModel::resources_manager_type;
+    static constexpr std::size_t dimension     = GridLayoutT::dimension;
+    static constexpr std::size_t interpOrder   = GridLayoutT::interp_order;
+    using SplitT                               = Split<dimension, interpOrder>;
+    static constexpr std::size_t nbRefinedPart = 2; // TODO stop hard-coding this
+    using InteriorParticleRefineOp
+        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::interior,
+                                  nbRefinedPart, SplitT>;
+
+    using CoarseToFineRefineOp
+        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::coarseBoundaryOld,
+                                  nbRefinedPart, SplitT>;
+
+
+
 
 public:
     static const std::string stratName;
@@ -95,12 +110,17 @@ public:
      *  - electric fields
      *  - particles
      *
+     *  ion moments do not need to be filled on ghost node by SAMRAI schedules
+     *  since they will be filled with coarseToFine particles on level ghost nodes
+     *  and computed by ghost particles on interior patch ghost nodes
+     *
      * Needing to be initialized
      *  - magnetic fields
      *  - electric fields
      *  - ion bulk velocity (total)
      *  - ion density (total)
-     *  - ion population particle arrays
+     *  - ion interior particle arrays
+     *  - ion coarseToFineOld particle arrays
      */
     virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                int const levelNumber) override
@@ -109,6 +129,7 @@ public:
 
         magneticGhostsRefiners_.createGhostSchedules(hierarchy, level);
         electricGhostsRefiners_.createGhostSchedules(hierarchy, level);
+        ghostParticleRefiners_.createGhostSchedules(hierarchy, level);
 
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
@@ -118,7 +139,8 @@ public:
             electricInitRefiners_.createInitSchedules(hierarchy, level);
             ionBulkInitRefiners_.createInitSchedules(hierarchy, level);
             ionDensityInitRefiners_.createInitSchedules(hierarchy, level);
-            // TODO init particle array schedules
+            interiorParticleRefiners_.createInitSchedules(hierarchy, level);
+            coarseToFineParticleRefiners_.createInitSchedules(hierarchy, level);
         }
     }
 
@@ -176,7 +198,9 @@ public:
         electricInitRefiners_.initialize(levelNumber, initDataTime);
         ionBulkInitRefiners_.initialize(levelNumber, initDataTime);
         ionDensityInitRefiners_.initialize(levelNumber, initDataTime);
-        // TODO particleInitRefiner_.initialize(levelNumber, initDataTime);
+        interiorParticleRefiners_.initialize(levelNumber, initDataTime);
+        coarseToFineParticleRefiners_.initialize(levelNumber, initDataTime);
+        // ghostParticleRefiners_.initialize(levelNumber, initDataTime);
     }
 
 
@@ -345,37 +369,50 @@ private:
 
     void registerInit_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
-        addToInitRefinerPool_(info->initMagnetic, magneticInitRefiners_);
-        addToInitRefinerPool_(info->initElectric, electricInitRefiners_);
-        addToInitRefinerPool_(info->initIonBulk, ionBulkInitRefiners_);
-        addToInitRefinerPool_(info->initIonDensity, ionDensityInitRefiners_);
+        auto makeKeys = [](auto const& descriptor) {
+            std::vector<std::string> keys;
+            std::transform(std::begin(descriptor), std::end(descriptor), std::back_inserter(keys),
+                           [](auto const& d) { return d.vecName; });
+            return keys;
+        };
 
-        // TODO add moments infos to moments init refiner pool
-        // TODO add particle infos to particle init refiner pool
+        addToInitRefinerPool_(info->initMagnetic, fieldRefineOp_, magneticInitRefiners_,
+                              makeKeys(info->initMagnetic));
+
+        addToInitRefinerPool_(info->initElectric, fieldRefineOp_, electricInitRefiners_,
+                              makeKeys(info->initElectric));
+
+        addToInitRefinerPool_(info->initIonBulk, fieldRefineOp_, ionBulkInitRefiners_,
+                              makeKeys(info->initIonBulk));
+
+        addToInitRefinerPool_(info->initIonDensity, fieldRefineOp_, ionDensityInitRefiners_,
+                              info->initIonDensity);
+
+        addToInitRefinerPool_(info->interiorParticles, interiorParticleRefineOp_,
+                              interiorParticleRefiners_, info->interiorParticles);
+
+
+        addToInitRefinerPool_(info->coarseToFineParticles, coarseToFineRefineOp_,
+                              coarseToFineParticleRefiners_, info->coarseToFineParticles);
+
+
+        addToInitRefinerPool_(info->ghostParticles, nullptr, ghostParticleRefiners_,
+                              info->ghostParticles);
     }
 
 
 
-    void addToInitRefinerPool_(std::vector<VecFieldDescriptor> const& descriptors,
-                               RefinerPool& refinerPool)
+    template<typename Descriptors>
+    void addToInitRefinerPool_(Descriptors const& descriptors,
+                               std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                               RefinerPool& refinerPool, std::vector<std::string> keys)
     {
+        auto key = std::begin(keys);
         for (auto const& descriptor : descriptors)
         {
-            refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, fieldRefineOp_),
-                            descriptor.vecName);
+            refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, refineOp), *key++);
         }
     }
-
-    void addToInitRefinerPool_(std::vector<FieldDescriptor> const& descriptors,
-                               RefinerPool& refinerPool)
-    {
-        for (auto const& descriptor : descriptors)
-        {
-            refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, fieldRefineOp_),
-                            descriptor);
-        }
-    }
-
 
     //! keeps a copy of the model electromagnetic field at t=n
     ElectromagT EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
@@ -407,13 +444,15 @@ private:
     //! store refiners for total ion density resources that need to be initialized
     RefinerPool ionDensityInitRefiners_;
 
-
     // algo and schedule used to initialize domain particles
     // from coarser level using particleRefineOp<domain>
-    QuantityRefiner particleInitRefine_;
+    RefinerPool interiorParticleRefiners_;
+
+    //! store refiners for coarse to fine particles
+    RefinerPool coarseToFineParticleRefiners_;
 
     // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
-    RefinerPool particleGhostExchange_;
+    RefinerPool ghostParticleRefiners_;
 
     // at first step of advance:
     // from temporaryParticle of coarseLevel to model PRA1 ( + PRA1 copy into PRA)
@@ -434,6 +473,13 @@ private:
     // field data time op
     std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> fieldTimeOp_{
         std::make_shared<FieldLinearTimeInterpolate<GridLayoutT, FieldT>>()};
+
+
+    std::shared_ptr<SAMRAI::hier::RefineOperator> interiorParticleRefineOp_{
+        std::make_shared<InteriorParticleRefineOp>()};
+
+    std::shared_ptr<SAMRAI::hier::RefineOperator> coarseToFineRefineOp_{
+        std::make_shared<CoarseToFineRefineOp>()};
 };
 
 template<typename HybridModel>
