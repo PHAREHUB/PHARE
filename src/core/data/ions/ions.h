@@ -30,7 +30,7 @@ public:
         for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
         {
             populations_.push_back(
-                IonPopulation{name_ + initializer.names[ipop], initializer.masses[ipop]});
+                IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop]});
         }
     }
 
