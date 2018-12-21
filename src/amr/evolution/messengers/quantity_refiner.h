@@ -7,6 +7,8 @@
 #include "data/field/refine/field_refine_operator.h"
 #include "data/field/time_interpolate/field_linear_time_interpolate.h"
 #include "data/particles/refine/particles_data_split.h"
+#include <SAMRAI/xfer/PatchLevelBorderFillPattern.h>
+#include <SAMRAI/xfer/PatchLevelInteriorFillPattern.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
@@ -20,10 +22,10 @@ namespace PHARE
  * @brief The Refiner struct encapsulate a SAMRAI algorithm for a quantity and all the schedules
  * associated to the levels in the hierarchy.
  */
-class QuantityRefiner
+class QuantityCommunicator
 {
 public:
-    QuantityRefiner()
+    QuantityCommunicator()
         : algo{std::make_unique<SAMRAI::xfer::RefineAlgorithm>()}
     {
     }
@@ -87,12 +89,13 @@ private:
  * later schedules will be added.
  */
 template<typename ResourcesManager>
-QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescriptor const& model,
-                                 VecFieldDescriptor const& oldModel, ResourcesManager const& rm,
-                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
+QuantityCommunicator
+makeCommunicator(VecFieldDescriptor const& ghost, VecFieldDescriptor const& model,
+                 VecFieldDescriptor const& oldModel, ResourcesManager const& rm,
+                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
 {
-    QuantityRefiner refiner;
+    QuantityCommunicator refiner;
 
     auto registerRefine
         = [&rm, &refiner, &refineOp, &timeOp](std::string const& model, std::string const& ghost,
@@ -129,10 +132,10 @@ QuantityRefiner makeGhostRefiner(VecFieldDescriptor const& ghost, VecFieldDescri
  * is the one that allows initialization of a vector field quantity.
  */
 template<typename ResourcesManager>
-QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager const& rm,
-                                std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
+QuantityCommunicator makeCommunicator(VecFieldDescriptor const& name, ResourcesManager const& rm,
+                                      std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
 {
-    QuantityRefiner refiner;
+    QuantityCommunicator refiner;
 
     auto registerRefine = [&refiner, &rm, &refineOp](std::string name) //
     {
@@ -158,10 +161,10 @@ QuantityRefiner makeInitRefiner(VecFieldDescriptor const& name, ResourcesManager
  * is the one that allows initialization of a field quantity.
  */
 template<typename ResourcesManager>
-QuantityRefiner makeInitRefiner(FieldDescriptor const& name, ResourcesManager const& rm,
-                                std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
+QuantityCommunicator makeCommunicator(std::string const& name, ResourcesManager const& rm,
+                                      std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
 {
-    QuantityRefiner refiner;
+    QuantityCommunicator refiner;
 
     auto id = rm->getID(name);
     if (id)
@@ -174,37 +177,95 @@ QuantityRefiner makeInitRefiner(FieldDescriptor const& name, ResourcesManager co
 
 
 
+enum class CommunicatorType {
+    GhostField,
+    InitField,
+    InitInteriorPart,
+    LevelBorderParticles,
+    InteriorGhostParticles
+};
+
 
 /**
- * @brief The RefinerPool class is used by a Messenger to manipulate SAMRAI algorithms and schedules
- * It contains a QuantityRefiner for all quantities registered to the Messenger for ghost, init etc.
+ * @brief The Communicators class is used by a Messenger to manipulate SAMRAI algorithms and
+ * schedules It contains a QuantityCommunicator for all quantities registered to the Messenger for
+ * ghost, init etc.
  */
-class RefinerPool
+template<CommunicatorType Type>
+class Communicators
 {
 public:
-    /**
-     * @brief add is used to add a QuantityRefiner to the pool, associated with the key qtyName.
-     */
-    void add(QuantityRefiner&& qtyRefiner, std::string const& qtyName);
+    template<typename Descriptor, typename ResourcesManager>
+    void add(Descriptor const& descriptor, std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+             std::string key, std::shared_ptr<ResourcesManager> const& rm)
+    {
+        add_(makeCommunicator(descriptor, rm, refineOp), key);
+    }
+
+
+    template<typename ResourcesManager>
+    void add(VecFieldDescriptor const& ghostDescriptor, VecFieldDescriptor const& modelDescriptor,
+             VecFieldDescriptor const& oldModelDescriptor,
+             std::shared_ptr<ResourcesManager> const& rm,
+             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp, std::string key)
+    {
+        add_(makeCommunicator(ghostDescriptor, modelDescriptor, oldModelDescriptor, rm, refineOp,
+                              timeOp),
+             key);
+    }
 
 
 
-    /**
-     * @brief createGhostSchedulesis adds a ghost filling schedule to all QuantityRefiner of the
-     * pool. Once this method is called, all quantities in the pool can have their ghost filled on
-     * the given level using fillVecFieldGhosts().
-     */
-    void createGhostSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              std::shared_ptr<SAMRAI::hier::PatchLevel>& level);
+
+    void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                       std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+    {
+        for (auto& [key, refiner] : communicators_)
+        {
+            auto& algo       = refiner.algo;
+            auto levelNumber = level->getLevelNumber();
+
+            if constexpr (Type == CommunicatorType::GhostField)
+            {
+                auto schedule = algo->createSchedule(
+                    level, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                refiner.add(schedule, levelNumber);
+            }
+
+            else if constexpr (Type == CommunicatorType::InitField)
+            {
+                // note that here we must take that createsSchedule() overload and put nullptr as
+                // src since we want to take from coarser level everywhere. using the createSchedule
+                // overload that takes level, next_coarser_level only would result in interior ghost
+                // nodes to be filled with interior of neighbor patches but there is nothing there.
+                refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                            levelNumber);
+            }
 
 
+            else if (Type == CommunicatorType::InitInteriorPart)
+            {
+                refiner.add(algo->createSchedule(
+                                std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
+                                level, nullptr, levelNumber - 1, hierarchy),
+                            levelNumber);
+            }
 
-    /**
-     * @brief createInitSchedules adds initialization schedule to all quantities in the pool on the
-     * given level. This method needs to be called to later use initialize() on the given level.
-     */
-    void createInitSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& level);
+            else if (Type == CommunicatorType::LevelBorderParticles)
+            {
+                refiner.add(algo->createSchedule(
+                                std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
+                                level, nullptr, levelNumber - 1, hierarchy),
+                            levelNumber);
+            }
+
+            else if (Type == CommunicatorType::InteriorGhostParticles)
+            {
+                refiner.add(algo->createSchedule(level), levelNumber);
+            }
+        }
+    }
 
 
 
@@ -218,7 +279,26 @@ public:
      * The method createInitSchedule() must have been called before for that level otherwise
      * initialize() will not find schedules and will throw a run time exception.
      */
-    void initialize(int levelNumber, double initDataTime) const;
+    void initialize(int levelNumber, double initDataTime) const
+    {
+        for (auto& [key, refiner] : communicators_)
+        {
+            if (refiner.algo == nullptr)
+            {
+                throw std::runtime_error("Algorithm is nullptr");
+            }
+
+            auto schedule = refiner.findSchedule(levelNumber);
+            if (schedule)
+            {
+                (*schedule)->fillData(initDataTime);
+            }
+            else
+            {
+                throw std::runtime_error("Error - schedule cannot be found for this level");
+            }
+        }
+    }
 
 
 
@@ -229,7 +309,23 @@ public:
     virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                         const int levelNumber,
                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                        double const initDataTime);
+                        double const initDataTime)
+    {
+        for (auto& [key, refiner] : communicators_)
+        {
+            auto& algo = refiner.algo;
+
+            // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
+            // the regriding schedule for which oldptr is not nullptr is handled in another
+            // function
+            auto const& level = hierarchy->getPatchLevel(levelNumber);
+
+            auto schedule = algo->createSchedule(
+                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+
+            schedule->fillData(initDataTime);
+        }
+    }
 
 
 
@@ -258,13 +354,35 @@ public:
 
 
 private:
+    void add_(QuantityCommunicator&& communicator, std::string const& key)
+    {
+        if (communicators_.find(key) == std::end(communicators_))
+            communicators_[key] = std::move(communicator);
+        else
+            throw std::runtime_error(key + " is already registered");
+    }
+
+
     std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
-    findSchedule_(std::string const& name, int levelNumber);
+    findSchedule_(std::string const& name, int levelNumber)
+    {
+        if (auto mapIter = communicators_.find(name); mapIter != std::end(communicators_))
+        {
+            return mapIter->second.findSchedule(levelNumber);
+        }
+        else
+        {
+            return std::nullopt;
+        }
+    }
 
 
 
-    std::map<std::string, QuantityRefiner> qtyRefiners_;
-};
+    std::map<std::string, QuantityCommunicator> communicators_;
+}; // namespace PHARE
+
+
+
 
 } // namespace PHARE
 

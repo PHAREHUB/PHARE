@@ -96,8 +96,8 @@ public:
         std::unique_ptr<HybridMessengerInfo> hybridInfo{
             dynamic_cast<HybridMessengerInfo*>(fromCoarserInfo.release())};
 
-        registerGhosts_(hybridInfo);
-        registerInit_(hybridInfo);
+        registerGhostsQuantities_(hybridInfo);
+        registerInitQuantities_(hybridInfo);
     }
 
 
@@ -127,20 +127,20 @@ public:
     {
         auto level = hierarchy->getPatchLevel(levelNumber);
 
-        magneticGhostsRefiners_.createGhostSchedules(hierarchy, level);
-        electricGhostsRefiners_.createGhostSchedules(hierarchy, level);
-        ghostParticleRefiners_.createGhostSchedules(hierarchy, level);
+        magneticGhosts_.registerLevel(hierarchy, level);
+        electricGhosts_.registerLevel(hierarchy, level);
+        ghostParticles_.registerLevel(hierarchy, level);
 
         // root level is not initialized with a schedule using coarser level data
         // so we don't create these schedules if root level
         if (levelNumber != rootLevelNumber)
         {
-            magneticInitRefiners_.createInitSchedules(hierarchy, level);
-            electricInitRefiners_.createInitSchedules(hierarchy, level);
-            ionBulkInitRefiners_.createInitSchedules(hierarchy, level);
-            ionDensityInitRefiners_.createInitSchedules(hierarchy, level);
-            interiorParticleRefiners_.createInitSchedules(hierarchy, level);
-            coarseToFineParticleRefiners_.createInitSchedules(hierarchy, level);
+            magneticInit_.registerLevel(hierarchy, level);
+            electricInit_.registerLevel(hierarchy, level);
+            ionBulkInit_.registerLevel(hierarchy, level);
+            ionDensityInit_.registerLevel(hierarchy, level);
+            interiorParticles_.registerLevel(hierarchy, level);
+            coarseToFineParticles_.registerLevel(hierarchy, level);
         }
     }
 
@@ -156,10 +156,10 @@ public:
                         std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                         double const initDataTime) override
     {
-        magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-        electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-        ionBulkInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-        ionDensityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        ionBulkInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+        ionDensityInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
         // TODO regrid particle arrays
     }
 
@@ -194,13 +194,13 @@ public:
 
     virtual void initLevel(int const levelNumber, double const initDataTime) const override
     {
-        magneticInitRefiners_.initialize(levelNumber, initDataTime);
-        electricInitRefiners_.initialize(levelNumber, initDataTime);
-        ionBulkInitRefiners_.initialize(levelNumber, initDataTime);
-        ionDensityInitRefiners_.initialize(levelNumber, initDataTime);
-        interiorParticleRefiners_.initialize(levelNumber, initDataTime);
-        coarseToFineParticleRefiners_.initialize(levelNumber, initDataTime);
-        // ghostParticleRefiners_.initialize(levelNumber, initDataTime);
+        magneticInit_.initialize(levelNumber, initDataTime);
+        electricInit_.initialize(levelNumber, initDataTime);
+        ionBulkInit_.initialize(levelNumber, initDataTime);
+        ionDensityInit_.initialize(levelNumber, initDataTime);
+        interiorParticles_.initialize(levelNumber, initDataTime);
+        coarseToFineParticles_.initialize(levelNumber, initDataTime);
+        ghostParticles_.initialize(levelNumber, initDataTime);
     }
 
 
@@ -224,7 +224,7 @@ public:
                                     double const fillTime) override
     {
         std::cout << "perform the magnetic ghost fill\n";
-        magneticGhostsRefiners_.fillVecFieldGhosts(B, levelNumber, fillTime);
+        magneticGhosts_.fillVecFieldGhosts(B, levelNumber, fillTime);
     }
 
 
@@ -234,7 +234,7 @@ public:
                                     double const fillTime) override
     {
         std::cout << "perform the electric ghost fill\n";
-        electricGhostsRefiners_.fillVecFieldGhosts(E, levelNumber, fillTime);
+        electricGhosts_.fillVecFieldGhosts(E, levelNumber, fillTime);
     }
 
 
@@ -319,21 +319,54 @@ public:
 
 
 private:
-    void registerGhosts_(std::unique_ptr<HybridMessengerInfo> const& info)
+    void registerGhostsQuantities_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
 
 
-        addToGhostRefinerPool_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
-                               electricGhostsRefiners_);
+        makeCommunicators_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
+                           electricGhosts_);
 
-        addToGhostRefinerPool_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
-                               magneticGhostsRefiners_);
-
-
-        // TODO add particle infos to particle ghost refiner pool
+        makeCommunicators_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
+                           magneticGhosts_);
     }
+
+
+
+
+    void registerInitQuantities_(std::unique_ptr<HybridMessengerInfo> const& info)
+    {
+        auto makeKeys = [](auto const& descriptor) {
+            std::vector<std::string> keys;
+            std::transform(std::begin(descriptor), std::end(descriptor), std::back_inserter(keys),
+                           [](auto const& d) { return d.vecName; });
+            return keys;
+        };
+
+        makeCommunicators_(info->initMagnetic, fieldRefineOp_, magneticInit_,
+                           makeKeys(info->initMagnetic));
+
+        makeCommunicators_(info->initElectric, fieldRefineOp_, electricInit_,
+                           makeKeys(info->initElectric));
+
+        makeCommunicators_(info->initIonBulk, fieldRefineOp_, ionBulkInit_,
+                           makeKeys(info->initIonBulk));
+
+        makeCommunicators_(info->initIonDensity, fieldRefineOp_, ionDensityInit_,
+                           info->initIonDensity);
+
+        makeCommunicators_(info->interiorParticles, interiorParticleRefineOp_, interiorParticles_,
+                           info->interiorParticles);
+
+
+        makeCommunicators_(info->coarseToFineParticles, coarseToFineRefineOp_,
+                           coarseToFineParticles_, info->coarseToFineParticles);
+
+
+        makeCommunicators_(info->ghostParticles, nullptr, ghostParticles_, info->ghostParticles);
+    }
+
 
 
     /**
@@ -351,68 +384,35 @@ private:
      * t_coarse. These are typically internal variables of the messenger, like Eold or Bold.
      * @param refinerPool is the RefinerPool to which we add the refiner to.
      */
-    void addToGhostRefinerPool_(std::vector<VecFieldDescriptor> const& ghostVec,
-                                VecFieldDescriptor const& modelVec,
-                                VecFieldDescriptor const& oldModelVec, RefinerPool& refinerPool)
+    void makeCommunicators_(std::vector<VecFieldDescriptor> const& ghostVecs,
+                            VecFieldDescriptor const& modelVec,
+                            VecFieldDescriptor const& oldModelVec,
+                            Communicators<CommunicatorType::GhostField>& communicators)
     {
-        auto nbrVectors = ghostVec.size();
-        for (auto i = 0u; i < nbrVectors; ++i)
+        for (auto const& ghostVec : ghostVecs)
         {
-            refinerPool.add(makeGhostRefiner(ghostVec[i], modelVec, oldModelVec, resourcesManager_,
-                                             fieldRefineOp_, fieldTimeOp_),
-                            ghostVec[i].vecName);
+            communicators.add(ghostVec, modelVec, oldModelVec, resourcesManager_, fieldRefineOp_,
+                              fieldTimeOp_, ghostVec.vecName);
         }
     }
 
 
 
 
-    void registerInit_(std::unique_ptr<HybridMessengerInfo> const& info)
-    {
-        auto makeKeys = [](auto const& descriptor) {
-            std::vector<std::string> keys;
-            std::transform(std::begin(descriptor), std::end(descriptor), std::back_inserter(keys),
-                           [](auto const& d) { return d.vecName; });
-            return keys;
-        };
-
-        addToInitRefinerPool_(info->initMagnetic, fieldRefineOp_, magneticInitRefiners_,
-                              makeKeys(info->initMagnetic));
-
-        addToInitRefinerPool_(info->initElectric, fieldRefineOp_, electricInitRefiners_,
-                              makeKeys(info->initElectric));
-
-        addToInitRefinerPool_(info->initIonBulk, fieldRefineOp_, ionBulkInitRefiners_,
-                              makeKeys(info->initIonBulk));
-
-        addToInitRefinerPool_(info->initIonDensity, fieldRefineOp_, ionDensityInitRefiners_,
-                              info->initIonDensity);
-
-        addToInitRefinerPool_(info->interiorParticles, interiorParticleRefineOp_,
-                              interiorParticleRefiners_, info->interiorParticles);
-
-
-        addToInitRefinerPool_(info->coarseToFineParticles, coarseToFineRefineOp_,
-                              coarseToFineParticleRefiners_, info->coarseToFineParticles);
-
-
-        addToInitRefinerPool_(info->ghostParticles, nullptr, ghostParticleRefiners_,
-                              info->ghostParticles);
-    }
-
-
-
-    template<typename Descriptors>
-    void addToInitRefinerPool_(Descriptors const& descriptors,
-                               std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                               RefinerPool& refinerPool, std::vector<std::string> keys)
+    template<typename Descriptors, typename Communicators>
+    void makeCommunicators_(Descriptors const& descriptors,
+                            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                            Communicators& communicators, std::vector<std::string> keys)
     {
         auto key = std::begin(keys);
         for (auto const& descriptor : descriptors)
         {
-            refinerPool.add(makeInitRefiner(descriptor, resourcesManager_, refineOp), *key++);
+            communicators.add(descriptor, refineOp, *key++, resourcesManager_);
         }
     }
+
+
+
 
     //! keeps a copy of the model electromagnetic field at t=n
     ElectromagT EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
@@ -420,39 +420,39 @@ private:
 
 
     //! ResourceManager shared with other objects (like the HybridModel)
-    std::shared_ptr<typename HybridModel::resources_manager_type> resourcesManager_;
+    std::shared_ptr<ResourcesManagerT> resourcesManager_;
 
 
     int const firstLevel_;
 
 
     //! store refiners for magnetic fields that need ghosts to be filled
-    RefinerPool magneticGhostsRefiners_;
+    Communicators<CommunicatorType::GhostField> magneticGhosts_;
 
     //! store refiners for magnetic fields that need to be initialized
-    RefinerPool magneticInitRefiners_;
+    Communicators<CommunicatorType::InitField> magneticInit_;
 
     //! store refiners for electric fields that need ghosts to be filled
-    RefinerPool electricGhostsRefiners_;
+    Communicators<CommunicatorType::GhostField> electricGhosts_;
 
     //! store refiners for electric fields that need to be initializes
-    RefinerPool electricInitRefiners_;
+    Communicators<CommunicatorType::InitField> electricInit_;
 
     //! store refiners for ion bulk velocity resources that need to be initialized
-    RefinerPool ionBulkInitRefiners_;
+    Communicators<CommunicatorType::InitField> ionBulkInit_;
 
     //! store refiners for total ion density resources that need to be initialized
-    RefinerPool ionDensityInitRefiners_;
+    Communicators<CommunicatorType::InitField> ionDensityInit_;
 
     // algo and schedule used to initialize domain particles
     // from coarser level using particleRefineOp<domain>
-    RefinerPool interiorParticleRefiners_;
+    Communicators<CommunicatorType::InitInteriorPart> interiorParticles_;
 
     //! store refiners for coarse to fine particles
-    RefinerPool coarseToFineParticleRefiners_;
+    Communicators<CommunicatorType::LevelBorderParticles> coarseToFineParticles_;
 
     // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
-    RefinerPool ghostParticleRefiners_;
+    Communicators<CommunicatorType::InteriorGhostParticles> ghostParticles_;
 
     // at first step of advance:
     // from temporaryParticle of coarseLevel to model PRA1 ( + PRA1 copy into PRA)
@@ -460,10 +460,7 @@ private:
     // the copy of PRA1 vector to PRA is done after the schedule in a PatchStrategy post truc
     // these are ran before solver->advanceLevel() in the MultiPhysics::advanceLevel()
     // with a method : messenger.firstStepOperation() or somthg like that...
-    // solver->advanceLevel() when starting, has all PRAs set correctly
 
-    // keys: PRA1, PRA2 , chosen by messenger
-    RefinerPool particlePRA_;
 
 
 
