@@ -31,7 +31,8 @@ set( SOURCES_INC
      evolution/solvers/solver.h
      evolution/solvers/solver_ppc.h
      evolution/solvers/solver_mhd.h
-     evolution/messengers/quantity_refiner.h
+     evolution/messengers/quantity_communicator.h
+     evolution/messengers/communicators.h
      evolution/messengers/messenger.h
      evolution/messengers/hybrid_messenger.h
      evolution/messengers/hybrid_messenger_strategy.h
@@ -53,7 +54,6 @@ set( SOURCES_CPP
      tools/amr_utils.cpp
      evolution/solvers/solver.cpp
      evolution/messengers/messenger.cpp
-     evolution/messengers/quantity_refiner.cpp
      data/field/coarsening/field_coarsen.cpp
      tools/resources_manager.cpp
    )

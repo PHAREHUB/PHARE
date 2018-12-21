@@ -2,6 +2,7 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
 
+#include "communicators.h"
 #include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"
 #include "data/field/time_interpolate/field_linear_time_interpolate.h"
@@ -10,7 +11,6 @@
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "evolution/messengers/hybrid_messenger_strategy.h"
 #include "physical_models/physical_model.h"
-#include "quantity_refiner.h"
 #include "tools/resources_manager_utilities.h"
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
@@ -103,18 +103,21 @@ public:
 
 
     /**
-     * @brief setLevel creates SAMRAI schedules for all resources in the ghost and init RefinerPools
+     * @brief registerLevel registers the level for all Communicators
      *
-     * Needing ghosts to be filled:
+     * The level must always be registered to ghost Communicators
+     *
      *  - magnetic fields
      *  - electric fields
-     *  - particles
+     *  - ghost particles
      *
      *  ion moments do not need to be filled on ghost node by SAMRAI schedules
      *  since they will be filled with coarseToFine particles on level ghost nodes
      *  and computed by ghost particles on interior patch ghost nodes
      *
-     * Needing to be initialized
+     * However the level need to be registered to init Communicators only on the non-root level
+     * since the root level is not initialized by a communication.
+     *
      *  - magnetic fields
      *  - electric fields
      *  - ion bulk velocity (total)
@@ -170,7 +173,6 @@ public:
 
 
 
-
     virtual std::string coarseModelName() const override { return HybridModel::model_name; }
 
 
@@ -191,7 +193,21 @@ public:
 
 
 
-
+    /**
+     * @brief initLevel is used to initialize data on the level levelNumer at time initDataTime.
+     *
+     * The method just calls  initialize() for all init Communicators.
+     * Before this method is called, QuantityCommunicators must be added to the Communicators
+     * and the level levelNumber must have been registered to all Communicators used in the method:
+     *
+     *  magnetic field
+     *  electric field
+     *  ion bulk
+     *  interior particles
+     *  coarse to fine old
+     *  ghost particles are also initialized
+     *
+     */
     virtual void initLevel(int const levelNumber, double const initDataTime) const override
     {
         magneticInit_.initialize(levelNumber, initDataTime);
@@ -223,8 +239,7 @@ public:
     virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
                                     double const fillTime) override
     {
-        std::cout << "perform the magnetic ghost fill\n";
-        magneticGhosts_.fillVecFieldGhosts(B, levelNumber, fillTime);
+        magneticGhosts_.fillGhosts(B, levelNumber, fillTime);
     }
 
 
@@ -233,8 +248,7 @@ public:
     virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber,
                                     double const fillTime) override
     {
-        std::cout << "perform the electric ghost fill\n";
-        electricGhosts_.fillVecFieldGhosts(E, levelNumber, fillTime);
+        electricGhosts_.fillGhosts(E, levelNumber, fillTime);
     }
 
 
@@ -453,15 +467,6 @@ private:
 
     // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
     Communicators<CommunicatorType::InteriorGhostParticles> ghostParticles_;
-
-    // at first step of advance:
-    // from temporaryParticle of coarseLevel to model PRA1 ( + PRA1 copy into PRA)
-    // and from modelParticles of coarserLevel to model PRA2
-    // the copy of PRA1 vector to PRA is done after the schedule in a PatchStrategy post truc
-    // these are ran before solver->advanceLevel() in the MultiPhysics::advanceLevel()
-    // with a method : messenger.firstStepOperation() or somthg like that...
-
-
 
 
     std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
