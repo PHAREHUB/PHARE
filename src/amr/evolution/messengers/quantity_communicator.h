@@ -164,15 +164,15 @@ template<typename ResourcesManager>
 QuantityCommunicator makeCommunicator(std::string const& name, ResourcesManager const& rm,
                                       std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
 {
-    QuantityCommunicator refiner;
+    QuantityCommunicator communicator;
 
     auto id = rm->getID(name);
     if (id)
     {
-        refiner.algo->registerRefine(*id, *id, *id, refineOp);
+        communicator.algo->registerRefine(*id, *id, *id, refineOp);
     }
 
-    return refiner;
+    return communicator;
 }
 
 

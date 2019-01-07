@@ -54,14 +54,14 @@ using namespace PHARE;
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-using VecField1D                         = VecField<NdArrayVector1D<>, HybridQuantity>;
-using IonsPop1D                          = IonPopulation<ParticleArray<dim>, VecField1D>;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
+using VecField1D                         = VecField<NdArrayVector1D<>, HybridQuantity>;
+using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArray<dim>, GridYee1D>;
+using IonsPop1D                          = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D                             = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D                       = Electromag<VecField1D>;
 using IonsInit1D                         = IonsInitializer<ParticleArray<dim>, GridYee1D>;
-using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArray<dim>, GridYee1D>;
 using HybridModelT                       = HybridModel<GridYee1D, Electromag1D, Ions1D, IonsInit1D>;
 using MHDModelT                          = MHDModel<GridYee1D, VecField1D>;
 using ResourcesManagerT                  = ResourcesManager<GridYee1D>;

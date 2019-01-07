@@ -145,17 +145,13 @@ using Electromag1D = Electromag<VecField1D>;
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
-using GridImplYee1D = GridLayoutImplYee<dim, interpOrder>;
-
-using GridYee1D = GridLayout<GridImplYee1D>;
-
-using IonsPop1D = IonPopulation<ParticleArray<dim>, VecField1D>;
-
-using IonsInit1D = IonsInitializer<ParticleArray<dim>, GridYee1D>;
-
-using Ions1D = Ions<IonsPop1D, GridYee1D>;
-
+using GridImplYee1D              = GridLayoutImplYee<dim, interpOrder>;
+using GridYee1D                  = GridLayout<GridImplYee1D>;
 using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<dim>, GridYee1D>;
+using IonsPop1D                  = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
+using IonsInit1D                 = IonsInitializer<ParticleArray<dim>, GridYee1D>;
+using Ions1D                     = Ions<IonsPop1D, GridYee1D>;
+
 
 
 double density(double x)

@@ -1,22 +1,28 @@
 
 #include "resource_test_1d.h"
 #include "data/electromag/electromag.h"
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayout_impl.h"
+#include "data/ions/particle_initializers/fluid_particle_initializer.h"
 
-struct GridLayoutMock
-{
-};
 
-using VecField1D      = VecField<NdArrayVector1D<>, HybridQuantity>;
-using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D>;
-using Ions1D          = Ions<IonPopulation1D, GridLayoutMock>;
-using Electromag1D    = Electromag<VecField1D>;
+static constexpr std::size_t dim         = 1;
+static constexpr std::size_t interpOrder = 1;
+using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
+using GridYee1D                          = GridLayout<GridImplYee1D>;
+
+using VecField1D                 = VecField<NdArrayVector1D<>, HybridQuantity>;
+using IonPopulation1D            = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
+using Ions1D                     = Ions<IonPopulation1D, GridYee1D>;
+using Electromag1D               = Electromag<VecField1D>;
+using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
 
 
 struct IonPopulation1D_P
 {
     std::string name = "protons";
     double mass      = 1.;
-    IonPopulation1D user{name, mass};
+    IonPopulation1D user{name, mass, nullptr};
 };
 
 
@@ -29,17 +35,40 @@ struct VecField1D_P
 
 
 
+double density(double x)
+{
+    return x * x + 2.;
+}
+
+std::array<double, 3> bulkVelocity(double x)
+{
+    return std::array<double, 3>{{1.0, 0.0, 0.0}};
+}
+
+
+std::array<double, 3> thermalVelocity(double x)
+{
+    return std::array<double, 3>{{0.5, 0.0, 0.0}};
+}
+
+
+
 
 struct Ions1D_P
 {
-    IonsInitializer<ParticleArray<1>, GridLayoutMock> createInitializer()
+    IonsInitializer<ParticleArray<1>, GridYee1D> createInitializer()
     {
-        IonsInitializer<ParticleArray<1>, GridLayoutMock> initializer;
+        IonsInitializer<ParticleArray<1>, GridYee1D> initializer;
 
         initializer.masses.push_back(1.);
         initializer.names.push_back("protons");
         initializer.nbrPopulations = 1;
         initializer.name           = "TestIons";
+        initializer.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
+            std::make_unique<ScalarFunction<1>>(density),
+            std::make_unique<VectorFunction<1>>(bulkVelocity),
+            std::make_unique<VectorFunction<1>>(thermalVelocity), -1., 10));
+
 
         return initializer;
     }

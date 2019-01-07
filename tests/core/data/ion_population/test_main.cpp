@@ -31,10 +31,15 @@ struct DummyVecField
 };
 
 
+struct DummyParticleInitializer
+{
+};
+
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField> protons{"protons", 1.};
+    IonPopulation<ParticleArray<1>, DummyVecField, DummyParticleInitializer> protons{"protons", 1.,
+                                                                                     nullptr};
     virtual ~AnIonPopulation();
 };
 

@@ -7,28 +7,33 @@
 #include <vector>
 
 
+#include "data/ions/particle_initializers/particle_initializer.h"
 #include "hybrid/hybrid_quantities.h"
 #include "particle_pack.h"
 
 
 namespace PHARE
 {
-template<typename ParticleArray, typename VecField>
+template<typename ParticleArray, typename VecField, typename GridLayout>
 class IonPopulation
 {
 public:
-    IonPopulation(std::string name, double mass)
-        : name_{std::move(name)}
-        , mass_{mass}
-        , flux_{name_ + "_flux", HybridQuantity::Vector::V}
-    {
-    }
-
     using field_type                       = typename VecField::field_type;
     static constexpr std::size_t dimension = VecField::dimension;
     using particle_array_type              = ParticleArray;
     using particle_resource_type           = ParticlesPack<ParticleArray>;
     using vecfield_type                    = VecField;
+    using particle_initializer_type        = ParticleInitializer<ParticleArray, GridLayout>;
+
+
+    IonPopulation(std::string name, double mass,
+                  std::unique_ptr<particle_initializer_type> particleInitializer)
+        : name_{std::move(name)}
+        , mass_{mass}
+        , flux_{name_ + "_flux", HybridQuantity::Vector::V}
+        , particleInitializer_{std::move(particleInitializer)}
+    {
+    }
 
     double mass() const { return mass_; }
 
@@ -46,6 +51,22 @@ public:
     }
 
 
+
+    void loadParticles()
+    {
+        if (isUsable())
+        {
+            particleInitializer_->loadParticles(*particles_->domainParticles);
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot load particles, IonPopulation not usable");
+        }
+    }
+
+
+
+
     auto nbrParticles() const
     {
         if (isUsable())
@@ -57,6 +78,9 @@ public:
             throw std::runtime_error("Error - cannot access to particles");
         }
     }
+
+
+
 
     ParticleArray& domainParticles()
     {
@@ -196,6 +220,7 @@ private:
     VecField flux_;
     field_type* rho_{nullptr};
     ParticlesPack<ParticleArray>* particles_{nullptr};
+    std::unique_ptr<particle_initializer_type> particleInitializer_;
 };
 
 } // namespace PHARE

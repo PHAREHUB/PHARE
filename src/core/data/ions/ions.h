@@ -17,9 +17,10 @@ class Ions
 public:
     using field_type    = typename IonPopulation::field_type;
     using vecfield_type = typename IonPopulation::vecfield_type;
+    using ions_initializer_type
+        = IonsInitializer<typename IonPopulation::particle_array_type, GridLayout>;
 
-    explicit Ions(
-        IonsInitializer<typename IonPopulation::particle_array_type, GridLayout> initializer)
+    explicit Ions(ions_initializer_type initializer)
         : name_{std::move(initializer.name)}
         , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
         , populations_{}
@@ -30,7 +31,8 @@ public:
         for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
         {
             populations_.push_back(
-                IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop]});
+                IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop],
+                              std::move(initializer.particleInitializers[ipop])});
         }
     }
 
@@ -64,18 +66,13 @@ public:
 
 
 
-    /*vecfield_type& velocity()
+    void loadParticles()
     {
-        if (isUsable())
+        for (auto const& pop : populations_)
         {
-            return bulkVelocity_;
+            pop.loadParticles();
         }
-        else
-        {
-            throw std::runtime_error("Error - cannot access velocity data");
-        }
-    }*/
-
+    }
 
 
     vecfield_type const& velocity() const { return bulkVelocity_; }
