@@ -1,6 +1,7 @@
 #ifndef PHARE_ION_POPULATION_H
 #define PHARE_ION_POPULATION_H
 
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <tuple>
