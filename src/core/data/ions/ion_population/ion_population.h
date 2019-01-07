@@ -52,11 +52,11 @@ public:
 
 
 
-    void loadParticles()
+    void loadParticles(GridLayout const& layout)
     {
         if (isUsable())
         {
-            particleInitializer_->loadParticles(*particles_->domainParticles);
+            particleInitializer_->loadParticles(*particles_->domainParticles, layout);
         }
         else
         {

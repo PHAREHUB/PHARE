@@ -66,11 +66,11 @@ public:
 
 
 
-    void loadParticles()
+    void loadParticles(GridLayout const& layout)
     {
         for (auto const& pop : populations_)
         {
-            pop.loadParticles();
+            pop.loadParticles(layout);
         }
     }
 
