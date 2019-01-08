@@ -16,6 +16,7 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
+    gridlayout_amr.cpp
   gridlayout_allocsize.cpp
   gridlayout_cell_centered_coord.cpp
   gridlayout_deriv.cpp

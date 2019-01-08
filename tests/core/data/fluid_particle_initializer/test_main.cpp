@@ -6,6 +6,7 @@
 #include "data/grid/gridlayout_impl.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/particles/particle_array.h"
+#include "utilities/box/box.h"
 #include "utilities/function/function.h"
 #include "utilities/point/point.h"
 
@@ -46,7 +47,7 @@ private:
 
 public:
     aFluidParticleInitializer1D()
-        : layout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+        : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{0}, Point{49}}}
         , initializer{std::make_unique<FluidParticleInitializer<ParticleArrayT, GridLayoutT>>(
               std::make_unique<ScalarFunction<1>>(density),
               std::make_unique<VectorFunction<1>>(bulkVelocity),
@@ -72,6 +73,25 @@ TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
     initializer->loadParticles(particles, layout);
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
+
+
+
+
+TEST_F(aFluidParticleInitializer1D, loadsParticlesInTheDomain)
+{
+    initializer->loadParticles(particles, layout);
+    for (auto const& particle : particles)
+    {
+        EXPECT_TRUE(particle.iCell[0] >= 0 && particle.iCell[0] < 50);
+        auto pos
+            = (particle.iCell[0] + particle.delta[0]) * layout.meshSize()[0] + layout.origin()[0];
+
+        auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
+
+        EXPECT_TRUE(pos > 0. && pos < endDomain);
+    }
+}
+
 
 
 

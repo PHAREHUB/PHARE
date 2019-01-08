@@ -41,6 +41,23 @@ struct has_beginend<IterableCandidate,
 template<typename IterableCandidate>
 using is_iterable = std::enable_if_t<has_beginend<IterableCandidate>::value, dummy::type>;
 
+
+
+// Basic function
+template<typename T>
+constexpr void allsame(T)
+{
+}
+
+// Recursive function
+template<typename T, typename T2, typename... Ts,
+         typename = std::enable_if_t<std::is_same<T, T2>::value>>
+constexpr void allsame(T arg, T2 arg2, Ts... args)
+{
+    allsame(arg2, args...);
+}
+
+
 } // namespace PHARE
 
 

@@ -11,7 +11,9 @@
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield.h"
 #include "numerics/faraday/faraday.h"
+#include "utilities/box/box.h"
 #include "utilities/index/index.h"
+#include "utilities/point/point.h"
 
 using namespace PHARE;
 
@@ -89,12 +91,12 @@ TEST(Faraday, shouldBeGivenAGridLayoutPointerToBeOperational)
 
     Faraday<GridLayoutMock2D> faraday2d;
     auto layout2d = std::make_unique<GridLayoutMock2D>();
-    //EXPECT_ANY_THROW(faraday2d(B, E, Bnew));
+    // EXPECT_ANY_THROW(faraday2d(B, E, Bnew));
     faraday2d.setLayout(layout2d.get());
 
     Faraday<GridLayoutMock3D> faraday3d;
     auto layout3d = std::make_unique<GridLayoutMock3D>();
-    //EXPECT_ANY_THROW(faraday3d(B, E, Bnew));
+    // EXPECT_ANY_THROW(faraday3d(B, E, Bnew));
     faraday3d.setLayout(layout3d.get());
 }
 
@@ -136,7 +138,7 @@ protected:
 
 public:
     Faraday1DTest()
-        : layout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+        : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{0}, Point{49}}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -187,7 +189,7 @@ protected:
 
 public:
     Faraday2DTest()
-        : layout{{{0.1, 0.2}}, {{50, 30}}, Point<double, 2>{0., 0.}}
+        : layout{{{0.1, 0.2}}, {{50, 30}}, Point{0., 0.}, Box{Point{0, 0}, Point{49, 39}}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -238,7 +240,10 @@ protected:
 
 public:
     Faraday3DTest()
-        : layout{{{0.1, 0.2, 0.3}}, {{50, 30, 40}}, Point<double, 3>{0., 0., 0.}}
+        : layout{{{0.1, 0.2, 0.3}},
+                 {{50, 30, 40}},
+                 Point{0., 0., 0.},
+                 Box{Point{0, 0, 0}, Point{49, 29, 39}}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -279,7 +284,7 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
 
     for (auto ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {
-        auto point = this->layout.fieldNodeCoordinates(Ey, Point<double, 1>{0.}, ix);
+        auto point = this->layout.fieldNodeCoordinates(Ey, Point{0.}, ix);
 
         Ey(ix) = std::cos(2 * M_PI / 5. * point[0]);
         Ez(ix) = std::sin(2 * M_PI / 5. * point[0]);
@@ -290,10 +295,10 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
 
     for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        auto point = this->layout.fieldNodeCoordinates(By, Point<double, 1>{0.}, ix);
+        auto point = this->layout.fieldNodeCoordinates(By, Point{0.}, ix);
 
-        By(ix)     = std::tanh(point[0] - 5. / 2.);
-        Bz(ix)     = std::tanh(point[0] - 5. / 2.);
+        By(ix) = std::tanh(point[0] - 5. / 2.);
+        Bz(ix) = std::tanh(point[0] - 5. / 2.);
     }
 
     faraday.setLayout(&layout);
@@ -335,9 +340,9 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Ex, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Ex, Point{0., 0.}, ix, iy);
 
-            Ex(ix, iy) = std::cos(2 * M_PI / 5. * point[0])*std::sin(2 * M_PI / 6. * point[1]);
+            Ex(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
     }
 
@@ -345,9 +350,9 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Ey, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Ey, Point{0., 0.}, ix, iy);
 
-            Ey(ix, iy) = std::cos(2 * M_PI / 5. * point[0])*std::tanh(2 * M_PI / 6. * point[1]);
+            Ey(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }
 
@@ -355,9 +360,9 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Ez, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Ez, Point{0., 0.}, ix, iy);
 
-            Ez(ix, iy) = std::sin(2 * M_PI / 5. * point[0])*std::tanh(2 * M_PI / 6. * point[1]);
+            Ez(ix, iy) = std::sin(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }
 
@@ -365,9 +370,9 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Bx, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0.}, ix, iy);
 
-            Bx(ix, iy) = std::tanh(point[0] - 5. / 2.)*std::tanh(point[1] - 6. / 2.);
+            Bx(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
         }
     }
 
@@ -375,9 +380,9 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(By, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0.}, ix, iy);
 
-            By(ix, iy) = std::tanh(point[0] - 5. / 2.)*std::tanh(point[1] - 6. / 2.);
+            By(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
         }
     }
 
@@ -385,9 +390,9 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Bz, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0.}, ix, iy);
 
-            Bz(ix, iy) = std::tanh(point[0] - 5. / 2.)*std::tanh(point[1] - 6. / 2.);
+            Bz(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
         }
     }
 
@@ -405,7 +410,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            auto index_= ix*nPts_[1]+iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Bxnew(ix, iy), ::testing::DoubleNear((expected_dbxdt[index_]), 1e-12));
         }
     }
@@ -421,7 +426,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            auto index_= ix*nPts_[1]+iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Bynew(ix, iy), ::testing::DoubleNear((expected_dbydt[index_]), 1e-12));
         }
     }
@@ -432,7 +437,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            auto index_= ix*nPts_[1]+iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Bznew(ix, iy), ::testing::DoubleNear((expected_dbzdt[index_]), 1e-12));
         }
     }
@@ -469,10 +474,12 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
             for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
-                {
-                auto point = this->layout.fieldNodeCoordinates(Ex, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+            {
+                auto point = this->layout.fieldNodeCoordinates(Ex, Point{0., 0., 0.}, ix, iy, iz);
 
-                Ex(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])*std::cos(2 * M_PI / 6. * point[1])*std::tanh(2 * M_PI / 12. * point[2]);
+                Ex(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
+                                 * std::cos(2 * M_PI / 6. * point[1])
+                                 * std::tanh(2 * M_PI / 12. * point[2]);
             }
         }
     }
@@ -483,9 +490,11 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Ey, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(Ey, Point{0., 0., 0.}, ix, iy, iz);
 
-                Ey(ix, iy, iz) = std::tanh(2 * M_PI / 5. * point[0])*std::sin(2 * M_PI / 6. * point[1])*std::cos(2 * M_PI / 12. * point[2]);
+                Ey(ix, iy, iz) = std::tanh(2 * M_PI / 5. * point[0])
+                                 * std::sin(2 * M_PI / 6. * point[1])
+                                 * std::cos(2 * M_PI / 12. * point[2]);
             }
         }
     }
@@ -496,9 +505,11 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Ez, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(Ez, Point{0., 0., 0.}, ix, iy, iz);
 
-                Ez(ix, iy, iz) = std::cos(2 * M_PI / 5. * point[0])*std::tanh(2 * M_PI / 6. * point[1])*std::sin(2 * M_PI / 12. * point[2]);
+                Ez(ix, iy, iz) = std::cos(2 * M_PI / 5. * point[0])
+                                 * std::tanh(2 * M_PI / 6. * point[1])
+                                 * std::sin(2 * M_PI / 12. * point[2]);
             }
         }
     }
@@ -509,9 +520,10 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Bx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0., 0.}, ix, iy, iz);
 
-                Bx(ix, iy, iz) = std::tanh(point[0] - 5. / 2.)*std::tanh(point[1] - 6. / 2.)*std::tanh(point[2] - 12. / 2.);
+                Bx(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
+                                 * std::tanh(point[2] - 12. / 2.);
             }
         }
     }
@@ -522,9 +534,10 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0., 0.}, ix, iy, iz);
 
-                By(ix, iy, iz) = std::tanh(point[0] - 5. / 2.)*std::tanh(point[1] - 6. / 2.)*std::tanh(point[2] - 12. / 2.);
+                By(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
+                                 * std::tanh(point[2] - 12. / 2.);
             }
         }
     }
@@ -535,9 +548,10 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Bz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0., 0.}, ix, iy, iz);
 
-                Bz(ix, iy, iz) = std::tanh(point[0] - 5. / 2.)*std::tanh(point[1] - 6. / 2.)*std::tanh(point[2] - 12. / 2.);
+                Bz(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
+                                 * std::tanh(point[2] - 12. / 2.);
             }
         }
     }
@@ -568,8 +582,9 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                auto index_= ix*nPts_[1]*nPts_[2]+iy*nPts_[2]+iz;
-                EXPECT_THAT(Bxnew(ix, iy, iz), ::testing::DoubleNear((expected_dbxdt[index_]), 1e-12));
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                EXPECT_THAT(Bxnew(ix, iy, iz),
+                            ::testing::DoubleNear((expected_dbxdt[index_]), 1e-12));
             }
         }
     }
@@ -582,8 +597,9 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                auto index_= ix*nPts_[1]*nPts_[2]+iy*nPts_[2]+iz;
-                EXPECT_THAT(Bynew(ix, iy, iz), ::testing::DoubleNear((expected_dbydt[index_]), 1e-12));
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                EXPECT_THAT(Bynew(ix, iy, iz),
+                            ::testing::DoubleNear((expected_dbydt[index_]), 1e-12));
             }
         }
     }
@@ -596,8 +612,9 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                auto index_= ix*nPts_[1]*nPts_[2]+iy*nPts_[2]+iz;
-                EXPECT_THAT(Bznew(ix, iy, iz), ::testing::DoubleNear((expected_dbzdt[index_]), 1e-12));
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                EXPECT_THAT(Bznew(ix, iy, iz),
+                            ::testing::DoubleNear((expected_dbzdt[index_]), 1e-12));
             }
         }
     }

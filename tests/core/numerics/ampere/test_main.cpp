@@ -11,6 +11,7 @@
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield.h"
 #include "numerics/ampere/ampere.h"
+#include "utilities/box/box.h"
 #include "utilities/index/index.h"
 
 using namespace PHARE;
@@ -131,7 +132,7 @@ protected:
 
 public:
     Ampere1DTest()
-        : layout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+        : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{0}, Point{49}}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -172,7 +173,7 @@ protected:
 
 public:
     Ampere2DTest()
-        : layout{{{0.1, 0.2}}, {{50, 30}}, Point<double, 2>{0., 0.}}
+        : layout{{{0.1, 0.2}}, {{50, 30}}, Point{0., 0.}, Box{Point{0, 0}, Point{49, 29}}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -213,7 +214,10 @@ protected:
 
 public:
     Ampere3DTest()
-        : layout{{{0.1, 0.2, 0.3}}, {{50, 30, 40}}, Point<double, 3>{0., 0., 0.}}
+        : layout{{{0.1, 0.2, 0.3}},
+                 {{50, 30, 40}},
+                 Point{0., 0., 0.},
+                 Box{Point{0, 0, 0}, Point{49, 29, 19}}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -246,9 +250,9 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
 
     for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        Point<double, 1> point = this->layout.fieldNodeCoordinates(By, Point<double, 1>{0.}, ix);
-        By(ix)                 = std::cos(2 * M_PI / 5. * point[0]);
-        Bz(ix)                 = std::sin(2 * M_PI / 5. * point[0]);
+        auto point = this->layout.fieldNodeCoordinates(By, Point{0.}, ix);
+        By(ix)     = std::cos(2 * M_PI / 5. * point[0]);
+        Bz(ix)     = std::sin(2 * M_PI / 5. * point[0]);
     }
 
     ampere.setLayout(&layout);
@@ -287,8 +291,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(Bx, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0.}, ix, iy);
             Bx(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
     }
@@ -297,8 +300,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (uint32 iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(By, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0.}, ix, iy);
             By(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }
@@ -307,8 +309,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(Bz, Point<double, 2>{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0.}, ix, iy);
             Bz(ix, iy) = std::sin(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }

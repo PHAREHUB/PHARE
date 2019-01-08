@@ -2,26 +2,42 @@
 #define PHARE_CORE_GRID_GridLayout_H
 
 
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <type_traits>
 
 #include "data/field/field.h"
 #include "gridlayoutdefs.h"
 #include "hybrid/hybrid_quantities.h"
 #include "utilities/algorithm.h"
+#include "utilities/box/box.h"
 #include "utilities/constants.h"
 #include "utilities/index/index.h"
 #include "utilities/point/point.h"
 #include "utilities/types.h"
 
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <type_traits>
 
 namespace PHARE
 {
 constexpr int centering2int(QtyCentering c)
 {
     return static_cast<int>(c);
+}
+
+template<typename T, std::size_t s>
+auto boxFromNbrCells(std::array<T, s> nbrCells)
+{
+    Point<int, s> lower;
+    Point<int, s> upper;
+
+    for (auto i = 0u; i < nbrCells.size(); ++i)
+    {
+        lower[i] = 0;
+        upper[i] = static_cast<int>(nbrCells[i]) - 1;
+    };
+
+    return Box{lower, upper};
 }
 
 /**
@@ -65,14 +81,29 @@ public:
      */
     GridLayout(std::array<double, dimension> const& meshSize,
                std::array<uint32, dimension> const& nbrCells,
-               Point<double, dimension> const& origin)
+               Point<double, dimension> const& origin,
+               Box<int, dimension> AMRBox = Box<int, dimension>{})
         : meshSize_{meshSize}
         , origin_{origin}
         , nbrPhysicalCells_{nbrCells}
         , physicalStartIndexTable_{initPhysicalStart_()}
         , physicalEndIndexTable_{initPhysicalEnd_()}
         , ghostEndIndexTable_{initGhostEnd_()}
+        , AMRBox_{AMRBox}
     {
+        if (AMRBox_.isEmpty())
+        {
+            AMRBox_ = boxFromNbrCells(nbrCells);
+        }
+        else
+        {
+            if (!sameSize(AMRBox, boxFromNbrCells(nbrCells)))
+            {
+                throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
+            }
+        }
+
+
         inverseMeshSize_[0] = 1. / meshSize_[0];
         if constexpr (dimension > 1)
         {
@@ -992,6 +1023,8 @@ private:
     std::array<uint32, dimension> nbrPhysicalCells_;
     std::array<double, dimension> inverseMeshSize_;
     static constexpr gridDataT data{};
+    // Box<int, dimension> localBox_;
+    Box<int, dimension> AMRBox_;
 
     // stores key indices in each direction (3) for primal and dual nodes (2)
     std::array<std::array<uint32, dimension>, 2> physicalStartIndexTable_;

@@ -37,6 +37,7 @@ public:
     constexpr explicit Point(Indexes... index)
         : r{{index...}}
     {
+        allsame(index...);
         static_assert(sizeof...(Indexes) == dimension,
                       "Error dimension does match number of arguments");
     }
@@ -62,10 +63,29 @@ public:
 
     type const& operator[](std::size_t i) const { return r[i]; }
 
+
+    bool operator==(Point const& p) const
+    {
+        bool areEqual = true;
+        for (auto i = 0; i < dim; ++i)
+        {
+            static_assert(std::is_integral_v<Type>,
+                          "this function is only valid for integral type of Point");
+
+            areEqual &= ((*this)[i] == p[i]);
+        }
+        return areEqual;
+    }
+
+
+
 private:
     std::array<Type, dim> r;
 };
 
+template<typename... Indexes>
+Point(Indexes... indexes)
+    ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
 
 
