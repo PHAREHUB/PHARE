@@ -138,7 +138,7 @@ protected:
 
 public:
     Faraday1DTest()
-        : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{0}, Point{49}}}
+        : layout{{{0.1}}, {{50}}, Point{0.}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -189,7 +189,7 @@ protected:
 
 public:
     Faraday2DTest()
-        : layout{{{0.1, 0.2}}, {{50, 30}}, Point{0., 0.}, Box{Point{0, 0}, Point{49, 39}}}
+        : layout{{{0.1, 0.2}}, {{50, 30}}, Point{0., 0.}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
@@ -240,10 +240,7 @@ protected:
 
 public:
     Faraday3DTest()
-        : layout{{{0.1, 0.2, 0.3}},
-                 {{50, 30, 40}},
-                 Point{0., 0., 0.},
-                 Box{Point{0, 0, 0}, Point{49, 29, 39}}}
+        : layout{{{0.1, 0.2, 0.3}}, {{50, 30, 40}}, Point{0., 0., 0.}}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}

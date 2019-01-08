@@ -32,7 +32,7 @@ protected:
 
 public:
     a1DDerivative()
-        : layout{{{0.1}}, {50}, Point{0.}, Box{Point{0}, Point{49}}}
+        : layout{{{0.1}}, {50}, Point{0.}}
         , By{"By", PHARE::HybridQuantity::Scalar::By,
              layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
         , Ez{"Ez", PHARE::HybridQuantity::Scalar::Ez,
@@ -54,7 +54,7 @@ protected:
 
 public:
     a2DDerivative()
-        : layout{{{0.1, 0.2}}, {50, 30}, Point{0., 0.}, Box{Point{0, 0}, Point{49, 39}}}
+        : layout{{{0.1, 0.2}}, {50, 30}, Point{0., 0.}}
         , By{"By", PHARE::HybridQuantity::Scalar::By,
              layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
         , Ez{"Ez", PHARE::HybridQuantity::Scalar::Ez,
@@ -76,10 +76,7 @@ protected:
 
 public:
     a3DDerivative()
-        : layout{{{0.1, 0.2, 0.3}},
-                 {50, 30, 40},
-                 Point{0., 0., 0.},
-                 Box{Point{0, 0, 0}, Point{49, 29, 39}}}
+        : layout{{{0.1, 0.2, 0.3}}, {50, 30, 40}, Point{0., 0., 0.}}
         , By{"By", PHARE::HybridQuantity::Scalar::By,
              layout.allocSize(PHARE::HybridQuantity::Scalar::By)}
         , Ez{"Ez", PHARE::HybridQuantity::Scalar::Ez,

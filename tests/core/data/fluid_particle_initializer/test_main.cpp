@@ -76,7 +76,7 @@ TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 
 
 
-
+/*
 TEST_F(aFluidParticleInitializer1D, loadsParticlesInTheDomain)
 {
     initializer->loadParticles(particles, layout);
@@ -91,7 +91,7 @@ TEST_F(aFluidParticleInitializer1D, loadsParticlesInTheDomain)
         EXPECT_TRUE(pos > 0. && pos < endDomain);
     }
 }
-
+*/
 
 
 

@@ -24,7 +24,17 @@ auto badLayout()
 }
 
 
-TEST(GridLayout, AMRBoxHasSameNumberOfCells)
+auto goodLayout()
+{
+    auto nbrCells = 50;
+    return GridLayout<GridLayoutImplYee<1, 1>>{
+        {0.1}, {static_cast<uint32>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells - 1}}};
+}
+
+
+
+TEST(GridLayout, AMRBoxHasNbrCellsCells)
 {
     EXPECT_ANY_THROW({ badLayout(); });
+    EXPECT_NO_THROW({ goodLayout(); });
 }
