@@ -82,19 +82,6 @@ auto cellAsPoint(Particle const& particle)
 
 
 
-template<typename Particle, typename MeshSizes, typename Point>
-auto positionAsPoint(Particle const& particle, MeshSizes mesh, Point origin)
-{
-    Point position;
-
-    for (auto iDim = 0u; iDim < Particle::dimension; ++iDim)
-    {
-        position[iDim] = origin[iDim] + (particle.iCell[iDim] + particle.delta[iDim]) * mesh[iDim];
-    }
-    return position;
-}
-
-
 
 } // namespace PHARE
 

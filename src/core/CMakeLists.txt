@@ -10,6 +10,7 @@ set( SOURCES_INC
      data/grid/gridlayoutimplyee.h
      data/ndarray/ndarray_vector.h
      data/particles/particle.h
+     data/particles/particle_utilities.h
      data/particles/particle_array.h
      data/ions/ion_population/particle_pack.h
      data/ions/ion_population/ion_population.h

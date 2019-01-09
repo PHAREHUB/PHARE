@@ -1,14 +1,20 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include <string>
 
+#include "data/grid/gridlayout.h"
+#include "data/grid/gridlayoutimplyee.h"
 #include "data/particles/particle.h"
 #include "data/particles/particle_array.h"
+#include "data/particles/particle_utilities.h"
+#include "utilities/box/box.h"
 #include "utilities/point/point.h"
 
-using PHARE::cellAsPoint;
-using PHARE::Particle;
-using PHARE::Point;
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
+
+#include <string>
+
+
+using namespace PHARE;
 
 class AParticle : public ::testing::Test
 {
@@ -82,11 +88,20 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
 {
     Point<double, 3> origin;
     std::array<double, 3> meshSize{{0.2, 0.05, 0.4}};
+    std::array<uint32, 3> nbrCells{{20, 30, 40}};
 
-    auto p = positionAsPoint(part, meshSize, origin);
-    EXPECT_DOUBLE_EQ(origin[0] + meshSize[0] * (part.iCell[0] + part.delta[0]), p[0]);
-    EXPECT_DOUBLE_EQ(origin[1] + meshSize[1] * (part.iCell[1] + part.delta[1]), p[1]);
-    EXPECT_DOUBLE_EQ(origin[2] + meshSize[2] * (part.iCell[2] + part.delta[2]), p[2]);
+    GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
+                                               Box{Point{40, 60, 80}, Point{59, 89, 119}}};
+
+    auto p            = positionAsPoint(part, layout);
+    auto startIndexes = layout.physicalStartIndex(QtyCentering::primal);
+
+    EXPECT_DOUBLE_EQ(origin[0] + meshSize[0] * (part.iCell[0] - startIndexes[0] + part.delta[0]),
+                     p[0]);
+    EXPECT_DOUBLE_EQ(origin[1] + meshSize[1] * (part.iCell[1] - startIndexes[1] + part.delta[1]),
+                     p[1]);
+    EXPECT_DOUBLE_EQ(origin[2] + meshSize[2] * (part.iCell[2] - startIndexes[2] + part.delta[2]),
+                     p[2]);
 }
 
 

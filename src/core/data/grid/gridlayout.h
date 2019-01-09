@@ -195,6 +195,15 @@ public:
 
 
 
+    auto physicalStartIndex(QtyCentering centering) const
+    {
+        uint32 icentering = static_cast<uint32>(centering);
+        return physicalStartIndexTable_[icentering];
+    }
+
+
+
+
     /**
      * @brief physicalEndIndex returns the index of the last node of a given
      * centering and in a given direction that is in the physical domain, i.e. not a ghost node.
@@ -231,6 +240,14 @@ public:
     }
 
 
+    auto physicalEndIndex(QtyCentering centering) const
+    {
+        uint32 icentering = static_cast<uint32>(centering);
+        return physicalStartIndexTable_[icentering];
+    }
+
+
+
 
     /**
      * @brief ghostStartIndex retuns the index of the first ghost node of a given centering
@@ -260,6 +277,10 @@ public:
         // ghostStartIndex is always the first node
         return 0;
     }
+
+
+
+    auto ghostStartIndex(QtyCentering centering) const { return std::array<uint32, dimension>{}; }
 
 
 
@@ -298,6 +319,13 @@ public:
         return ghostEndIndex(field.physicalQuantity(), direction);
     }
 
+
+
+    auto ghostEndIndex(QtyCentering centering) const
+    {
+        uint32 iCentering = static_cast<uint32>(centering);
+        return ghostEndIndexTable_[iCentering];
+    }
 
 
 
