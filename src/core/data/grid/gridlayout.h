@@ -512,6 +512,89 @@ public:
 
 
 
+
+    /**
+     * @brief localToAMR returns the AMR index associated with the given local one.
+     * This method only deals with **cell** indexes.
+     */
+    template<typename T>
+    auto localToAMR(Point<T, dimension> localPoint)
+    {
+        static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+        Point<T, dimension> pointAMR;
+
+        // any direction, it's the same because we want cells
+        auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
+
+        //
+        for (auto i = 0u; i < dimension; ++i)
+        {
+            pointAMR[i] = localPoint[i] + (AMRBox_.lower[i] - localStart);
+        }
+        return pointAMR;
+    }
+
+
+
+    /**
+     * @brief localToAMR returns the AMR box associated with the given local one.
+     * This method only deals with **cell** indexes.
+     */
+    template<typename T>
+    auto localToAMR(Box<T, dimension> localBox)
+    {
+        static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+        auto AMRBox = Box<T, dimension>{};
+
+        AMRBox.lower = localToAMR(localBox.lower);
+        AMRBox.upper = localToAMR(localBox.upper);
+
+        return AMRBox;
+    }
+
+
+
+    /**
+     * @brief AMRToLocal returns the local index associated with the given AMR one.
+     * This method only deals with **cell** indexes.
+     */
+    template<typename T>
+    auto AMRToLocal(Point<T, dimension> AMRPoint)
+    {
+        static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+        Point<T, dimension> localPoint;
+
+        // any direction, it's the same because we want cells
+        auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
+
+        //
+        for (auto i = 0u; i < dimension; ++i)
+        {
+            localPoint[i] = AMRPoint[i] - (AMRBox_.lower[i] - localStart);
+        }
+        return localPoint;
+    }
+
+
+    /**
+     * @brief AMRToLocal returns the local Box associated with the given AMR one.
+     * This method only deals with **cell** indexes.
+     */
+    template<typename T>
+    auto AMRToLocal(Box<T, dimension> AMRBox)
+    {
+        static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+        auto localBox = Box<T, dimension>{};
+
+        localBox.lower = AMRToLocal(AMRBox.lower);
+        localBox.upper = AMRToLocal(AMRBox.upper);
+
+        return localBox;
+    }
+
+
+
+
     // ----------------------------------------------------------------------
     //                      LAYOUT SPECIFIC METHODS
     //
