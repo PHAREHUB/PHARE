@@ -68,16 +68,16 @@ TEST_F(AParticle, ParticleDeltaIsInitializedOk)
 
 TEST_F(AParticle, ParticleCellIsInitializedOK)
 {
-    EXPECT_EQ(12, part.iCell[0]);
-    EXPECT_EQ(24, part.iCell[1]);
-    EXPECT_EQ(36, part.iCell[2]);
+    EXPECT_EQ(43, part.iCell[0]);
+    EXPECT_EQ(75, part.iCell[1]);
+    EXPECT_EQ(92, part.iCell[2]);
 }
 
 
 TEST_F(AParticle, CanBeReducedToAnIntegerPoint)
 {
     auto p = cellAsPoint(part);
-    EXPECT_EQ(40, p[0]);
+    EXPECT_EQ(43, p[0]);
     EXPECT_EQ(75, p[1]);
     EXPECT_EQ(92, p[2]);
 }
