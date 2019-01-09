@@ -23,7 +23,7 @@ protected:
 
 public:
     AParticle()
-        : part{0.01, 1, {{12, 24, 36}}, {{0.002f, 0.2f, 0.8f}}, {{1.8, 1.83, 2.28}}}
+        : part{0.01, 1, {{43, 75, 92}}, {{0.002f, 0.2f, 0.8f}}, {{1.8, 1.83, 2.28}}}
     {
     }
 };
@@ -77,9 +77,9 @@ TEST_F(AParticle, ParticleCellIsInitializedOK)
 TEST_F(AParticle, CanBeReducedToAnIntegerPoint)
 {
     auto p = cellAsPoint(part);
-    EXPECT_EQ(12, p[0]);
-    EXPECT_EQ(24, p[1]);
-    EXPECT_EQ(36, p[2]);
+    EXPECT_EQ(40, p[0]);
+    EXPECT_EQ(75, p[1]);
+    EXPECT_EQ(92, p[2]);
 }
 
 
@@ -89,19 +89,20 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     Point<double, 3> origin;
     std::array<double, 3> meshSize{{0.2, 0.05, 0.4}};
     std::array<uint32, 3> nbrCells{{20, 30, 40}};
-
     GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
                                                Box{Point{40, 60, 80}, Point{59, 89, 119}}};
 
-    auto p            = positionAsPoint(part, layout);
-    auto startIndexes = layout.physicalStartIndex(QtyCentering::primal);
-
-    EXPECT_DOUBLE_EQ(origin[0] + meshSize[0] * (part.iCell[0] - startIndexes[0] + part.delta[0]),
-                     p[0]);
-    EXPECT_DOUBLE_EQ(origin[1] + meshSize[1] * (part.iCell[1] - startIndexes[1] + part.delta[1]),
-                     p[1]);
-    EXPECT_DOUBLE_EQ(origin[2] + meshSize[2] * (part.iCell[2] - startIndexes[2] + part.delta[2]),
-                     p[2]);
+    auto iCell            = layout.AMRToLocal(Point{part.iCell});
+    auto p                = positionAsPoint(part, layout);
+    auto startIndexes     = layout.physicalStartIndex(QtyCentering::primal);
+    auto expectedPosition = Point<double, 3>{};
+    for (auto i = 0u; i < 3; ++i)
+    {
+        expectedPosition[i]
+            = origin[i] + meshSize[i] * (iCell[i] - startIndexes[i] + part.delta[i]),
+            p[i];
+        EXPECT_DOUBLE_EQ(expectedPosition[i], p[i]);
+    }
 }
 
 

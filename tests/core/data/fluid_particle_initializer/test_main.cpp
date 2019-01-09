@@ -6,6 +6,7 @@
 #include "data/grid/gridlayout_impl.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/particles/particle_array.h"
+#include "data/particles/particle_utilities.h"
 #include "utilities/box/box.h"
 #include "utilities/function/function.h"
 #include "utilities/point/point.h"
@@ -76,24 +77,22 @@ TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 
 
 
-/*
+
 TEST_F(aFluidParticleInitializer1D, loadsParticlesInTheDomain)
 {
     initializer->loadParticles(particles, layout);
+    auto i = 0u;
     for (auto const& particle : particles)
     {
-        EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] < 99);
-        auto iCell      = layout.AMRToLocal(Point{particle.iCell})[0];
-        auto startIndex = layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-        auto pos
-            = (iCell - startIndex + particle.delta[0]) * layout.meshSize()[0] + layout.origin()[0];
-
+        EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
+        auto pos       = positionAsPoint(particle, layout);
         auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
-        EXPECT_TRUE(pos > 0. && pos < endDomain);
+        EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
+        i++;
     }
 }
-*/
+
 
 
 
