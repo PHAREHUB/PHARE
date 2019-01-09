@@ -149,9 +149,13 @@ private:
                 std::array<float, dimension> delta = {{randPosX(generator)}};
 
                 Particle<dimension> tmpParticle;
+
+                // particle iCell is in AMR index
+                auto AMRCellIndex = layout.localToAMR(Point{ix});
+
                 tmpParticle.weight = cellWeight;
                 tmpParticle.charge = particleCharge_;
-                tmpParticle.iCell  = {{static_cast<int32>(ix)}};
+                tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
                 tmpParticle.delta  = delta;
                 tmpParticle.v      = particleVelocity;
 
@@ -240,9 +244,14 @@ private:
                         = {{randPosX(generator), randPosY(generator)}};
 
                     Particle<dimension> tmpParticle;
+
+                    // particle iCell is in AMR index
+                    auto AMRCellIndex = layout.localToAMR(Point{ix, iy});
+
+
                     tmpParticle.weight = cellWeight;
                     tmpParticle.charge = particleCharge_;
-                    tmpParticle.iCell  = {{static_cast<int32>(ix), static_cast<int32>(iy)}};
+                    tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
                     tmpParticle.delta  = delta;
                     tmpParticle.v      = particleVelocity;
 
@@ -338,10 +347,13 @@ private:
 
 
                         Particle<dimension> tmpParticle;
+
+                        // particle iCell is in AMR index
+                        auto AMRCellIndex = layout.localToAMR(Point{ix, iy, iz});
+
                         tmpParticle.weight = cellWeight;
                         tmpParticle.charge = particleCharge_;
-                        tmpParticle.iCell  = {{static_cast<int32>(ix), static_cast<int32>(iy),
-                                              static_cast<int32>(iz)}};
+                        tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
                         tmpParticle.delta  = delta;
                         tmpParticle.v      = particleVelocity;
 

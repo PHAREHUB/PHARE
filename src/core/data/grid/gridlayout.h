@@ -518,7 +518,7 @@ public:
      * This method only deals with **cell** indexes.
      */
     template<typename T>
-    auto localToAMR(Point<T, dimension> localPoint)
+    auto localToAMR(Point<T, dimension> localPoint) const
     {
         static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
         Point<T, dimension> pointAMR;
@@ -541,7 +541,7 @@ public:
      * This method only deals with **cell** indexes.
      */
     template<typename T>
-    auto localToAMR(Box<T, dimension> localBox)
+    auto localToAMR(Box<T, dimension> localBox) const
     {
         static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
         auto AMRBox = Box<T, dimension>{};
@@ -559,7 +559,7 @@ public:
      * This method only deals with **cell** indexes.
      */
     template<typename T>
-    auto AMRToLocal(Point<T, dimension> AMRPoint)
+    auto AMRToLocal(Point<T, dimension> AMRPoint) const
     {
         static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
         Point<T, dimension> localPoint;
@@ -581,7 +581,7 @@ public:
      * This method only deals with **cell** indexes.
      */
     template<typename T>
-    auto AMRToLocal(Box<T, dimension> AMRBox)
+    auto AMRToLocal(Box<T, dimension> AMRBox) const
     {
         static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
         auto localBox = Box<T, dimension>{};

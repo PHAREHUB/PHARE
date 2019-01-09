@@ -78,6 +78,18 @@ public:
     }
 
 
+    template<typename DestType>
+    auto toArray() const
+    {
+        std::array<DestType, dimension> destArray;
+        for (auto i = 0u; i < dimension; ++i)
+        {
+            destArray[i] = static_cast<DestType>(r[i]);
+        }
+        return destArray;
+    }
+
+
 
 private:
     std::array<Type, dim> r;
