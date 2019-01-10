@@ -246,7 +246,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
 
 
 
-TEST_F(AfullHybridBasicHierarchy, initializesRefinedLevels)
+TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
 {
     auto& hierarchy = basicHierarchy->getHierarchy();
     auto& rm        = hybridModel->resourcesManager;
@@ -304,6 +304,36 @@ TEST_F(AfullHybridBasicHierarchy, initializesRefinedLevels)
     }
 }
 
+
+
+
+TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
+{
+    auto& hierarchy = basicHierarchy->getHierarchy();
+    auto& rm        = hybridModel->resourcesManager;
+
+    for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
+    {
+        auto const& level = hierarchy.getPatchLevel(iLevel);
+
+        std::cout << "iLevel = " << iLevel << "\n";
+
+        for (auto& patch : *level)
+        {
+            auto onPatch = rm->setOnPatch(*patch, hybridModel->state.ions);
+
+            auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
+
+            auto const& ions = hybridModel->state.ions;
+
+
+            for (auto const& pop : ions)
+            {
+                EXPECT_GT(pop.nbrParticles(), 0);
+            }
+        }
+    }
+}
 
 
 #if 0

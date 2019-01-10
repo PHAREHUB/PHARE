@@ -137,6 +137,9 @@ public:
                     fillField(Viz, layout, fillVz);
 
                     fillField(Ni, layout, fillDensity);
+
+
+                    model_->state.ions.loadParticles(layout);
                 }
             }
 

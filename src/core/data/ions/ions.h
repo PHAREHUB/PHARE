@@ -68,7 +68,7 @@ public:
 
     void loadParticles(GridLayout const& layout)
     {
-        for (auto const& pop : populations_)
+        for (auto& pop : populations_)
         {
             pop.loadParticles(layout);
         }
