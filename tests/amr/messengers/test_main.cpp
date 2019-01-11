@@ -324,12 +324,24 @@ TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
 
             auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 
-            auto const& ions = hybridModel->state.ions;
+            auto& ions = hybridModel->state.ions;
 
 
-            for (auto const& pop : ions)
+            for (auto& pop : ions)
             {
+                auto& interiorGhosts = pop.ghostParticles();
+                // auto& levelBorderGhosts    = pop.coarseToFineParticles();
+                auto& oldLevelBorderGhosts = pop.coarseToFineOldParticles();
+                // auto& newLevelBorderGhosts = pop.coarseToFineNewParticles();
+                auto geom              = patch->getPatchGeometry();
+                auto const& boundaries = geom->getPatchBoundaries();
+                EXPECT_GT(interiorGhosts.size(), 0);
+
                 EXPECT_GT(pop.nbrParticles(), 0);
+                if (iLevel > 0)
+                {
+                    EXPECT_GT(oldLevelBorderGhosts.size(), 0);
+                }
             }
         }
     }
@@ -423,7 +435,7 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 
 
 
-TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
+TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
 {
     auto newTime       = 1.;
     auto& hierarchy    = basicHierarchy->getHierarchy();
@@ -523,6 +535,7 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhosts)
         iPatch++;
     }
 }
+
 
 
 

@@ -19,6 +19,8 @@ struct ParticlesPack
     ParticleArray* domainParticles;
     ParticleArray* ghostParticles;
     ParticleArray* coarseToFineParticles;
+    ParticleArray* coarseToFineParticlesOld;
+    ParticleArray* coarseToFineParticlesNew;
 };
 
 } // namespace PHARE

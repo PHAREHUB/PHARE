@@ -118,7 +118,7 @@ public:
             // the their ghost regions with refined particles would not ensure the ghosts to be
             // clones of neighbor patches particles if the splitting from coarser levels is not
             // deterministic.
-            else if (Type == CommunicatorType::InitInteriorPart)
+            else if constexpr (Type == CommunicatorType::InitInteriorPart)
             {
                 refiner.add(algo->createSchedule(
                                 std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
@@ -130,7 +130,7 @@ public:
             // into the level coarse to fine boundary. These are the coarseToFineOld particles.
             // we thus take the same createSchedule overload as above but pass it a
             // PatchLevelBorderFillPattern.
-            else if (Type == CommunicatorType::LevelBorderParticles)
+            else if constexpr (Type == CommunicatorType::LevelBorderParticles)
             {
                 refiner.add(algo->createSchedule(
                                 std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
@@ -140,7 +140,7 @@ public:
 
             // this branch is used to create a schedule that will transfer particles into the
             // patches' ghost zones.
-            else if (Type == CommunicatorType::InteriorGhostParticles)
+            else if constexpr (Type == CommunicatorType::InteriorGhostParticles)
             {
                 refiner.add(algo->createSchedule(level), levelNumber);
             }

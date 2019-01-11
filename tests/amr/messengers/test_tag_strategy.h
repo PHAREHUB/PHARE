@@ -94,7 +94,7 @@ public:
 
         else // we're creating a brand new finest level in the hierarchy
         {
-            if (levelNumber >= 0)
+            if (levelNumber == 0)
             {
                 // initializer.init(model);
 
@@ -147,6 +147,11 @@ public:
             {
                 messenger_->initLevel(levelNumber, initDataTime);
             }
+        }
+
+        if (levelNumber == 0)
+        {
+            messenger_->fillIonGhostParticles(model_->state.ions, levelNumber, initDataTime);
         }
     }
 

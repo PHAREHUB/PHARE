@@ -124,6 +124,35 @@ public:
     }
 
 
+
+    ParticleArray& coarseToFineOldParticles()
+    {
+        if (isUsable())
+        {
+            return *particles_->coarseToFineParticlesOld;
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot provide access to particle buffers");
+        }
+    }
+
+
+
+    ParticleArray& coarseToFineNewParticles()
+    {
+        if (isUsable())
+        {
+            return *particles_->coarseToFineParticlesNew;
+        }
+        else
+        {
+            throw std::runtime_error("Error - cannot provide access to particle buffers");
+        }
+    }
+
+
+
     field_type const& density() const
     {
         if (isUsable())

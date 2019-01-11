@@ -96,8 +96,8 @@ public:
         std::unique_ptr<HybridMessengerInfo> hybridInfo{
             dynamic_cast<HybridMessengerInfo*>(fromCoarserInfo.release())};
 
-        registerGhostsQuantities_(hybridInfo);
-        registerInitQuantities_(hybridInfo);
+        registerForSpaceTimeComm_(hybridInfo);
+        registerForSpaceComm_(hybridInfo);
     }
 
 
@@ -216,6 +216,7 @@ public:
         ionDensityInit_.initialize(levelNumber, initDataTime);
         interiorParticles_.initialize(levelNumber, initDataTime);
         coarseToFineParticles_.initialize(levelNumber, initDataTime);
+        // TODO need to copy coarse to fine old into coarseToFine that is pushed.
         ghostParticles_.initialize(levelNumber, initDataTime);
     }
 
@@ -258,26 +259,7 @@ public:
                                        double const fillTime) override
     {
         std::cout << "perform the ghost particle fill\n";
-
-        // tout ce qu'on fait ici c'est d'laler récup les ghosts des patchs
-        // voisins sur le meme level, pour pouvoir projeter la densite/flux
-        // manquants sur les points bleus "dans" le level
-        // et puis avoir les ghosts particuels ready pour le next step
-        for (auto& pop : ions)
-        {
-            // ici on appelle le schedule qui va chercher sur le meme niveau
-            // le particules des patchs voisins qui sont dans ma ghost zone
-            // pour aller dans mes ghosts
-            // algo.registerRefine(pop_particleArray_ID // dest
-            //  , pop_particleArray_ID // src
-            //  , pop_particleArray_ID // scratch
-            // nullptr )// pas de refineOp car same level
-
-            // on a trouve l'algo 'algo'
-            // le schedule  a deja ete cree (dans initiliazeLevelData)
-            // schedule =  algo.schedules[relatveLevel]
-            // schedule.fillData(fillTime);
-        }
+        ghostParticles_.initialize(levelNumber, fillTime);
     }
 
 
@@ -333,7 +315,7 @@ public:
 
 
 private:
-    void registerGhostsQuantities_(std::unique_ptr<HybridMessengerInfo> const& info)
+    void registerForSpaceTimeComm_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         auto const& Eold = EM_old_.E;
         auto const& Bold = EM_old_.B;
@@ -349,7 +331,7 @@ private:
 
 
 
-    void registerInitQuantities_(std::unique_ptr<HybridMessengerInfo> const& info)
+    void registerForSpaceComm_(std::unique_ptr<HybridMessengerInfo> const& info)
     {
         auto makeKeys = [](auto const& descriptor) {
             std::vector<std::string> keys;
@@ -440,22 +422,22 @@ private:
     int const firstLevel_;
 
 
-    //! store refiners for magnetic fields that need ghosts to be filled
+    //! store communicators for magnetic fields that need ghosts to be filled
     Communicators<CommunicatorType::GhostField> magneticGhosts_;
 
-    //! store refiners for magnetic fields that need to be initialized
+    //! store communicators for magnetic fields that need to be initialized
     Communicators<CommunicatorType::InitField> magneticInit_;
 
     //! store refiners for electric fields that need ghosts to be filled
     Communicators<CommunicatorType::GhostField> electricGhosts_;
 
-    //! store refiners for electric fields that need to be initializes
+    //! store communicators for electric fields that need to be initializes
     Communicators<CommunicatorType::InitField> electricInit_;
 
-    //! store refiners for ion bulk velocity resources that need to be initialized
+    //! store communicators for ion bulk velocity resources that need to be initialized
     Communicators<CommunicatorType::InitField> ionBulkInit_;
 
-    //! store refiners for total ion density resources that need to be initialized
+    //! store communicators for total ion density resources that need to be initialized
     Communicators<CommunicatorType::InitField> ionDensityInit_;
 
     // algo and schedule used to initialize domain particles

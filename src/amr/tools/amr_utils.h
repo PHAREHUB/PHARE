@@ -8,6 +8,7 @@
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchData.h>
 
+#include "utilities/box/box.h"
 #include "utilities/constants.h"
 #include "utilities/point/point.h"
 
@@ -120,6 +121,33 @@ Index<int, dimension> refinedPosition(Index<int, dimension> index,
 }
 
 
+template<std::size_t dim>
+auto toPHAREBox(SAMRAI::hier::Box b)
+{
+    if constexpr (dim == 1)
+    {
+        auto lower = Point{b.lower()[0]};
+        auto upper = Point{b.upper()[0]};
+        return Box{lower, upper};
+    }
+
+    else if constexpr (dim == 2)
+    {
+        auto lower = Point{b.lower()[0], b.lower()[1]};
+        auto upper = Point{b.upper()[0], b.upper()[1]};
+        return Box{lower, upper};
+    }
+
+    else if constexpr (dim == 3)
+    {
+        auto lower = Point{b.lower()[0], b.lower()[1], b.lower()[2]};
+        auto upper = Point{b.upper()[0], b.upper()[1], b.upper()[2]};
+        return Box{lower, upper};
+    }
+}
+
+
+
 template<typename GridLayoutT>
 GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
 {
@@ -162,7 +190,7 @@ GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
         nbrCell[iDim] = static_cast<uint32>(domain.numberCells(iDim));
     }
 
-    return GridLayoutT{dl, nbrCell, origin};
+    return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
 }
 
 

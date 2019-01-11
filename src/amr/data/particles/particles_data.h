@@ -120,7 +120,8 @@ class ParticlesData : public SAMRAI::hier::PatchData
 public:
     ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
         : SAMRAI::hier::PatchData::PatchData(box, ghost)
-        , pack{&domainParticles, &ghostParticles, &coarseToFineParticles}
+        , pack{&domainParticles, &ghostParticles, &coarseToFineParticles, &coarseToFineParticlesOld,
+               &coarseToFineParticlesNew}
         , interiorLocalBox_{AMRToLocal(box, this->getGhostBox())}
     {
     }
