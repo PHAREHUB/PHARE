@@ -321,26 +321,31 @@ TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
         for (auto& patch : *level)
         {
             auto onPatch = rm->setOnPatch(*patch, hybridModel->state.ions);
-
-            auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
-
-            auto& ions = hybridModel->state.ions;
-
+            auto& ions   = hybridModel->state.ions;
 
             for (auto& pop : ions)
             {
-                auto& interiorGhosts = pop.ghostParticles();
-                // auto& levelBorderGhosts    = pop.coarseToFineParticles();
+                auto& interiorGhosts       = pop.ghostParticles();
                 auto& oldLevelBorderGhosts = pop.coarseToFineOldParticles();
-                // auto& newLevelBorderGhosts = pop.coarseToFineNewParticles();
+
                 auto geom              = patch->getPatchGeometry();
                 auto const& boundaries = geom->getPatchBoundaries();
                 EXPECT_GT(interiorGhosts.size(), 0);
 
+                // domain particles
                 EXPECT_GT(pop.nbrParticles(), 0);
+
+                // here we expect to have level border particles only for
+                // refined levels and for a patch that has boundaries//
+                // note that here "boundaries" refers to both physical boundaries and
+                // coarse to fine boundaries. So technically a patch could be on a refined
+                // level and have 'boundaries' without having any coarse-to-fine ones but only
+                // physical and the test would fail. However here since we are periodic, there are
+                // no physical boundaries wo we're ok.
                 if (iLevel > 0)
                 {
-                    EXPECT_GT(oldLevelBorderGhosts.size(), 0);
+                    if (boundaries[0].size() > 0)
+                        EXPECT_GT(oldLevelBorderGhosts.size(), 0);
                 }
             }
         }
