@@ -217,7 +217,7 @@ public:
         interiorParticles_.initialize(levelNumber, initDataTime);
         coarseToFineParticles_.initialize(levelNumber, initDataTime);
         // TODO need to copy coarse to fine old into coarseToFine that is pushed.
-        ghostParticles_.initialize(levelNumber, initDataTime);
+        // ghostParticles_.initialize(levelNumber, initDataTime);
     }
 
 
