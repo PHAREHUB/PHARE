@@ -78,6 +78,28 @@ public:
     }
 
 
+    auto operator+(Point const& p) const
+    {
+        auto res = Point<Type, dim>{};
+        for (int i = 0; i < dim; ++i)
+        {
+            res[i] = r[i] + p[i];
+        }
+        return res;
+    }
+
+
+    auto operator+(Point&& p) const
+    {
+        for (int i = 0; i < dim; ++i)
+        {
+            p[i] += r[i];
+        }
+        return p;
+    }
+
+
+
     template<typename DestType>
     auto toArray() const
     {
