@@ -265,10 +265,17 @@ public:
 
     auto static constexpr dualToPrimal()
     {
-        if constexpr (interp_order == 1 || interp_order == 2 || interp_order == 4)
+        static_assert(nbrDualGhosts<interp_order>() >= nbrPrimalGhosts<interp_order>(),
+                      "NbrDualGhost should be >= nbrPrimalGhost");
+
+        if constexpr (nbrDualGhosts<interp_order>() == nbrPrimalGhosts<interp_order>())
+        {
             return -1;
-        else if constexpr (interp_order == 3)
+        }
+        else if constexpr (nbrDualGhosts<interp_order>() > nbrPrimalGhosts<interp_order>())
+        {
             return 1;
+        }
     }
 
 
@@ -276,10 +283,17 @@ public:
 
     auto static constexpr primalToDual()
     {
-        if constexpr (interp_order == 1 || interp_order == 2 || interp_order == 4)
+        static_assert(nbrDualGhosts<interp_order>() >= nbrPrimalGhosts<interp_order>(),
+                      "NbrDualGhost should be >= nbrPrimalGhost");
+
+        if constexpr (nbrDualGhosts<interp_order>() == nbrPrimalGhosts<interp_order>())
+        {
             return 1;
-        else if constexpr (interp_order == 3)
+        }
+        else if constexpr (nbrDualGhosts<interp_order>() > nbrPrimalGhosts<interp_order>())
+        {
             return -1;
+        }
     }
 
 

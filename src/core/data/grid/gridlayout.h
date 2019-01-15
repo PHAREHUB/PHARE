@@ -424,11 +424,11 @@ public:
      */
     uint32 static nbrGhosts(QtyCentering centering)
     {
-        uint32 nbrGhosts = nbrPrimalGhosts_();
+        uint32 nbrGhosts = nbrPrimalGhosts<interp_order>();
 
         if (centering == QtyCentering::dual)
         {
-            nbrGhosts = nbrDualGhosts_();
+            nbrGhosts = nbrDualGhosts<interp_order>();
         }
         return nbrGhosts;
     }
@@ -872,11 +872,11 @@ private:
      */
     constexpr static auto nextPrimal_()
     {
-        if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
+        if constexpr (nbrDualGhosts<interp_order>() > nbrPrimalGhosts<interp_order>())
         {
             return 0;
         }
-        else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
+        else if constexpr (nbrDualGhosts<interp_order>() == nbrPrimalGhosts<interp_order>())
         {
             return 1;
         }
@@ -889,11 +889,11 @@ private:
      */
     constexpr static auto prevPrimal_()
     {
-        if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
+        if constexpr (nbrDualGhosts<interp_order>() > nbrPrimalGhosts<interp_order>())
         {
             return -1;
         }
-        else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
+        else if constexpr (nbrDualGhosts<interp_order>() == nbrPrimalGhosts<interp_order>())
         {
             return 0;
         }
@@ -906,11 +906,11 @@ private:
      */
     constexpr static auto nextDual_()
     {
-        if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
+        if constexpr (nbrDualGhosts<interp_order>() > nbrPrimalGhosts<interp_order>())
         {
             return 1;
         }
-        else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
+        else if constexpr (nbrDualGhosts<interp_order>() == nbrPrimalGhosts<interp_order>())
         {
             return 0;
         }
@@ -923,49 +923,13 @@ private:
      */
     constexpr static auto prevDual_()
     {
-        if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
+        if constexpr (nbrDualGhosts<interp_order>() > nbrPrimalGhosts<interp_order>())
         {
             return 0;
         }
-        else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
+        else if constexpr (nbrDualGhosts<interp_order>() == nbrPrimalGhosts<interp_order>())
         {
             return -1;
-        }
-    }
-
-
-    /**
-     * @brief nbrDualGhosts_ returns the number of ghost nodes on each side for dual quantities.
-     * The formula is based only on the interpolation order, whch means only particle-mesh
-     * interactions constrain the number of dual ghost nodes.
-     */
-    auto constexpr static nbrDualGhosts_()
-    {
-        uint32 constexpr nbrMinGhost{5};
-
-        return max<static_cast<uint32>((interp_order + 1) / 2.), nbrMinGhost>();
-    }
-
-
-    /**
-     * @brief nbrPrimalGhosts_ returns the number of primal ghost nodes.
-     * Contrary to dual ghost nodes, the formula to get the number of primal ghost nodes depend on
-     * the interpolation order. If based only on the particle-mesh interaction, order1 would
-     * not need primal ghost nodes. But there is a minimum of 1 ghost node for primal that is linked
-     * to the possibility of calculating second order derivatives of primal quantities (e.g.
-     * laplacian of J for a yee lattice). Dual ghosts don't have this issue since they always have
-     * at least 1 ghost.
-     */
-    auto constexpr static nbrPrimalGhosts_()
-    {
-        uint32 constexpr nbrMinGhost{5};
-        if constexpr (interp_order == 1)
-        {
-            return max<nbrDualGhosts_(), nbrMinGhost>();
-        }
-        else if constexpr (interp_order == 2 || interp_order == 3)
-        {
-            return max<static_cast<uint32>(interp_order / 2.), nbrMinGhost>();
         }
     }
 
@@ -1024,18 +988,18 @@ private:
         uint32 iprimal = static_cast<uint32>(data.primal);
         uint32 idual   = static_cast<uint32>(data.dual);
 
-        physicalStartIndexTable[iprimal][data.idirX] = nbrPrimalGhosts_();
-        physicalStartIndexTable[idual][data.idirX]   = nbrDualGhosts_();
+        physicalStartIndexTable[iprimal][data.idirX] = nbrPrimalGhosts<interp_order>();
+        physicalStartIndexTable[idual][data.idirX]   = nbrDualGhosts<interp_order>();
 
         if constexpr (dimension > 1)
         {
-            physicalStartIndexTable[iprimal][data.idirY] = nbrPrimalGhosts_();
-            physicalStartIndexTable[idual][data.idirY]   = nbrDualGhosts_();
+            physicalStartIndexTable[iprimal][data.idirY] = nbrPrimalGhosts<interp_order>();
+            physicalStartIndexTable[idual][data.idirY]   = nbrDualGhosts<interp_order>();
 
             if constexpr (dimension > 2)
             {
-                physicalStartIndexTable[iprimal][data.idirZ] = nbrPrimalGhosts_();
-                physicalStartIndexTable[idual][data.idirZ]   = nbrDualGhosts_();
+                physicalStartIndexTable[iprimal][data.idirZ] = nbrPrimalGhosts<interp_order>();
+                physicalStartIndexTable[idual][data.idirZ]   = nbrDualGhosts<interp_order>();
             }
         }
         return physicalStartIndexTable;
@@ -1101,26 +1065,26 @@ private:
         uint32 idual   = static_cast<uint32>(data.dual);
 
         ghostEndIndexTable[iprimal][data.idirX]
-            = physicalEndIndexTable_[iprimal][data.idirX] + nbrPrimalGhosts_();
+            = physicalEndIndexTable_[iprimal][data.idirX] + nbrPrimalGhosts<interp_order>();
 
         ghostEndIndexTable[idual][data.idirX]
-            = physicalEndIndexTable_[idual][data.idirX] + nbrDualGhosts_();
+            = physicalEndIndexTable_[idual][data.idirX] + nbrDualGhosts<interp_order>();
 
         if constexpr (dimension > 1)
         {
             ghostEndIndexTable[iprimal][data.idirY]
-                = physicalEndIndexTable_[iprimal][data.idirY] + nbrPrimalGhosts_();
+                = physicalEndIndexTable_[iprimal][data.idirY] + nbrPrimalGhosts<interp_order>();
 
             ghostEndIndexTable[idual][data.idirY]
-                = physicalEndIndexTable_[idual][data.idirY] + nbrDualGhosts_();
+                = physicalEndIndexTable_[idual][data.idirY] + nbrDualGhosts<interp_order>();
 
             if constexpr (dimension > 2)
             {
                 ghostEndIndexTable[iprimal][data.idirZ]
-                    = physicalEndIndexTable_[iprimal][data.idirZ] + nbrPrimalGhosts_();
+                    = physicalEndIndexTable_[iprimal][data.idirZ] + nbrPrimalGhosts<interp_order>();
 
                 ghostEndIndexTable[idual][data.idirZ]
-                    = physicalEndIndexTable_[idual][data.idirZ] + nbrDualGhosts_();
+                    = physicalEndIndexTable_[idual][data.idirZ] + nbrDualGhosts<interp_order>();
             }
         }
         return ghostEndIndexTable;

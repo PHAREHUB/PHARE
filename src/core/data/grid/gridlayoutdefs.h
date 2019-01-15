@@ -1,11 +1,13 @@
 #ifndef PHARE_CORE_GRID_GRIDLAYOUTDEFS_H
 #define PHARE_CORE_GRID_GRIDLAYOUTDEFS_H
 
-#include <cstddef>
 
 #include "hybrid/hybrid_quantities.h"
 #include "utilities/point/point.h"
 #include "utilities/types.h"
+
+#include <cmath>
+#include <cstddef>
 
 namespace PHARE
 {
@@ -55,6 +57,48 @@ struct WeightPoint
 // using LinearCombination = std::vector<WeightPoint>;
 
 enum class Layout { Yee };
+
+
+
+/**
+ * @brief nbrDualGhosts_ returns the number of ghost nodes on each side for dual quantities.
+ * The formula is based only on the interpolation order, whch means only particle-mesh
+ * interactions constrain the number of dual ghost nodes.
+ */
+template<std::size_t interp_order>
+auto constexpr nbrDualGhosts()
+{
+    uint32 constexpr nbrMinGhost{5};
+
+    return std::max(static_cast<uint32>((interp_order + 1) / 2.), nbrMinGhost);
+}
+
+
+/**
+ * @brief nbrPrimalGhosts returns the number of primal ghost nodes.
+ * Contrary to dual ghost nodes, the formula to get the number of primal ghost nodes depend on
+ * the interpolation order. If based only on the particle-mesh interaction, order1 would
+ * not need primal ghost nodes. But there is a minimum of 1 ghost node for primal that is linked
+ * to the possibility of calculating second order derivatives of primal quantities (e.g.
+ * laplacian of J for a yee lattice). Dual ghosts don't have this issue since they always have
+ * at least 1 ghost.
+ */
+template<std::size_t interp_order>
+auto constexpr nbrPrimalGhosts()
+{
+    uint32 constexpr nbrMinGhost{5};
+    if constexpr (interp_order == 1)
+    {
+        return std::max(nbrDualGhosts<interp_order>(), nbrMinGhost);
+    }
+    else if constexpr (interp_order == 2 || interp_order == 3)
+    {
+        return std::max(static_cast<uint32>(interp_order / 2.), nbrMinGhost);
+    }
+}
+
+
+
 
 /**
  * @brief gridDataT provides constants used to initialize:

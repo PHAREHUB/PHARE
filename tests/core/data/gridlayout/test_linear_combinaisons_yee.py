@@ -5,6 +5,7 @@ import numpy as np
 import utilities
 import os
 import sys
+import gridlayout
 
 # this script writes the following file
 # in 1D, in 2D and in 3D :
@@ -25,14 +26,16 @@ import sys
 
 
 def dualToPrimal(interpOrder):
-    if interpOrder ==1 or interpOrder==2:
+    gl  = gridlayout.GridLayout()
+    if gl.nbrGhosts(interpOrder, 'primal') == gl.nbrGhosts(interpOrder, 'dual'):
         return -1
     else:
         return 1
 
 
 def primalToDual(interpOrder):
-    if interpOrder == 1 or interpOrder == 2:
+    gl  = gridlayout.GridLayout()
+    if gl.nbrGhosts(interpOrder, 'primal') == gl.nbrGhosts(interpOrder, 'dual'):
         return 1
     else:
         return -1
