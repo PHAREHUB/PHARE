@@ -8,9 +8,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using PHARE::Box;
-using PHARE::isIn;
-using PHARE::Point;
+using namespace PHARE::core;
 
 
 TEST(PointInBox, worksForNegativeCells)

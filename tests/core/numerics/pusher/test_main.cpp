@@ -16,7 +16,7 @@
 #include "utilities/particle_selector/particle_selector.h"
 #include "utilities/range/range.h"
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 
 struct Trajectory

@@ -10,8 +10,9 @@
 #include "gridlayout_utilities.h"
 #include "utilities/point/point.h"
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
+
 template<typename GridLayoutImpl>
 struct GridLayoutCellCenteringParam
 {
@@ -139,5 +140,5 @@ auto createCellCenteringParam()
 }
 
 
-} // namespace PHARE
+
 #endif

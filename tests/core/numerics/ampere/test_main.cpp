@@ -14,7 +14,7 @@
 #include "utilities/box/box.h"
 #include "utilities/index/index.h"
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 struct FieldMock
 {
@@ -118,12 +118,12 @@ protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> By;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jz;
 
     VecField<NdArrayVector1D<>, HybridQuantity> B;
     VecField<NdArrayVector1D<>, HybridQuantity> J;
@@ -159,12 +159,12 @@ protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> By;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jz;
 
     VecField<NdArrayVector2D<>, HybridQuantity> B;
     VecField<NdArrayVector2D<>, HybridQuantity> J;
@@ -200,12 +200,12 @@ protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> By;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jz;
 
     VecField<NdArrayVector3D<>, HybridQuantity> B;
     VecField<NdArrayVector3D<>, HybridQuantity> J;

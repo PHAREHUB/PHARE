@@ -9,35 +9,37 @@
 
 namespace PHARE
 {
-template<uint32 lhs, uint32 rhs>
-constexpr uint32 max()
+namespace core
 {
-    if constexpr (lhs < rhs)
+    template<uint32 lhs, uint32 rhs>
+    constexpr uint32 max()
     {
-        return rhs;
+        if constexpr (lhs < rhs)
+        {
+            return rhs;
+        }
+        else if constexpr (lhs >= rhs)
+        {
+            return lhs;
+        }
     }
-    else if constexpr (lhs >= rhs)
+
+
+
+    template<typename Container, typename ContainedT = typename Container::value_type>
+    bool notIn(ContainedT& obj, Container& list)
     {
-        return lhs;
+        auto sameItem
+            = std::find_if(std::begin(list), std::end(list), [&obj, &list](auto& currentItem) {
+                  return obj->name() == currentItem->name();
+              });
+
+        return sameItem == std::end(list);
     }
-}
 
 
 
-template<typename Container, typename ContainedT = typename Container::value_type>
-bool notIn(ContainedT& obj, Container& list)
-{
-    auto sameItem
-        = std::find_if(std::begin(list), std::end(list), [&obj, &list](auto& currentItem) {
-              return obj->name() == currentItem->name();
-          });
-
-    return sameItem == std::end(list);
-}
-
-
-
-
+} // namespace core
 } // namespace PHARE
 
 #endif

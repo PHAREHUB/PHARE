@@ -9,13 +9,7 @@
 #include "hybrid/hybrid_quantities.h"
 
 
-using PHARE::Component;
-using PHARE::Field;
-using PHARE::HybridQuantity;
-using PHARE::NdArrayVector1D;
-using PHARE::NdArrayVector2D;
-using PHARE::NdArrayVector3D;
-using PHARE::VecField;
+using namespace PHARE::core;
 
 
 

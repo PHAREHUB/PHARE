@@ -17,8 +17,8 @@
 
 
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 /* ::std::ostream& operator<<(::std::ostream& os, GridLayoutTestParam<Layout::Yee, 1> const& param);
  */
 /* void PrintTo(GridLayoutTestParam<Layout::Yee, 1> const& param, ::std::ostream& os); */
@@ -78,9 +78,6 @@ void writeToArray(std::ifstream& stream, Array& array)
         stream >> array[2];
     }
 }
-
-
-} // namespace PHARE
 
 
 

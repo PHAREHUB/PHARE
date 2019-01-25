@@ -6,65 +6,70 @@
 #include <functional>
 
 
-
-template<typename R, std::size_t N>
-class Function
+namespace PHARE
 {
-};
-
-
-template<typename R>
-class Function<R, 1>
+namespace core
 {
-public:
-    explicit Function(std::function<R(double)> func)
-        : f{func}
+    template<typename R, std::size_t N>
+    class Function
     {
-    }
-    R operator()(double x) { return f(x); }
-
-private:
-    std::function<R(double)> f;
-};
+    };
 
 
-
-template<typename R>
-class Function<R, 2>
-{
-public:
-    explicit Function(std::function<R(double, double)> func)
-        : f{func}
+    template<typename R>
+    class Function<R, 1>
     {
-    }
-    R operator()(double x, double y) { return f(x, y); }
+    public:
+        explicit Function(std::function<R(double)> func)
+            : f{func}
+        {
+        }
+        R operator()(double x) { return f(x); }
 
-private:
-    std::function<R(double, double)> f;
-};
+    private:
+        std::function<R(double)> f;
+    };
 
 
-template<typename R>
-class Function<R, 3>
-{
-public:
-    explicit Function(std::function<R(double, double, double)> func)
-        : f{func}
+
+    template<typename R>
+    class Function<R, 2>
     {
-    }
-    R operator()(double x, double y, double z) { return f(x, y, z); }
+    public:
+        explicit Function(std::function<R(double, double)> func)
+            : f{func}
+        {
+        }
+        R operator()(double x, double y) { return f(x, y); }
 
-private:
-    std::function<R(double, double, double)> f;
-};
+    private:
+        std::function<R(double, double)> f;
+    };
 
 
-template<std::size_t N>
-using ScalarFunction = Function<double, N>;
+    template<typename R>
+    class Function<R, 3>
+    {
+    public:
+        explicit Function(std::function<R(double, double, double)> func)
+            : f{func}
+        {
+        }
+        R operator()(double x, double y, double z) { return f(x, y, z); }
 
-template<std::size_t N>
-using VectorFunction = Function<std::array<double, 3>, N>;
+    private:
+        std::function<R(double, double, double)> f;
+    };
 
+
+    template<std::size_t N>
+    using ScalarFunction = Function<double, N>;
+
+    template<std::size_t N>
+    using VectorFunction = Function<std::array<double, 3>, N>;
+
+} // namespace core
+} // namespace PHARE
 
 
 

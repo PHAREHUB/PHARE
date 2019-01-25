@@ -6,9 +6,7 @@
 #include "data/ndarray/ndarray_vector.h"
 
 
-using PHARE::NdArrayVector1D;
-using PHARE::NdArrayVector2D;
-using PHARE::NdArrayVector3D;
+using namespace PHARE::core;
 
 
 

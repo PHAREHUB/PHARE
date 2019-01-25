@@ -6,7 +6,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 
 template<typename GridLayoutImpl>

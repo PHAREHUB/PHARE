@@ -8,35 +8,37 @@
 
 namespace PHARE
 {
-template<typename BoxCollection>
-class ParticleSelector
+namespace core
 {
-public:
-    explicit ParticleSelector(BoxCollection boxes)
-        : boxes_{boxes}
+    template<typename BoxCollection>
+    class ParticleSelector
     {
+    public:
+        explicit ParticleSelector(BoxCollection boxes)
+            : boxes_{boxes}
+        {
+        }
+
+        template<typename Particle>
+        bool operator()(Particle const& particle) const
+        {
+            auto point = cellAsPoint(particle);
+            return isIn(point, boxes_);
+        }
+
+
+    private:
+        BoxCollection boxes_;
+    };
+
+
+    template<typename BoxContainer>
+    auto makeSelector(BoxContainer&& boxes)
+    {
+        return ParticleSelector<BoxContainer>{std::forward<BoxContainer>(boxes)};
     }
 
-    template<typename Particle>
-    bool operator()(Particle const& particle) const
-    {
-        auto point = cellAsPoint(particle);
-        return isIn(point, boxes_);
-    }
-
-
-private:
-    BoxCollection boxes_;
-};
-
-
-template<typename BoxContainer>
-auto makeSelector(BoxContainer&& boxes)
-{
-    return ParticleSelector<BoxContainer>{std::forward<BoxContainer>(boxes)};
-}
-
-
+} // namespace core
 
 
 } // namespace PHARE

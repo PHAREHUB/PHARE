@@ -30,6 +30,10 @@ set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 
+
+
+
+
 #*******************************************************************************
 #* Cppcheck option
 #*******************************************************************************
@@ -60,6 +64,11 @@ if (cppcheck)
   endif()
 endif()
 
+
+
+
+
+
 #*******************************************************************************
 #* SAMRAI build option
 #*******************************************************************************
@@ -82,6 +91,7 @@ if (NOT SAMRAI_FOUND)
 
 
 endif()
+
 
 
 
@@ -138,20 +148,21 @@ if (test)
   ENDIF(coverage)
 
 
-  add_subdirectory(tests/amr/data/particles)
-  add_subdirectory(tests/amr/data/field/coarsening)
-  add_subdirectory(tests/amr/data/field/copy_pack)
-  add_subdirectory(tests/amr/data/field/geometry)
-  add_subdirectory(tests/amr/data/field/overlap)
-  add_subdirectory(tests/amr/data/field/refine)
-  add_subdirectory(tests/amr/data/field/variable)
-  add_subdirectory(tests/amr/data/field/time_interpolate)
-  add_subdirectory(tests/amr/tools/resources_manager)
-  add_subdirectory(tests/amr/messengers)
-  add_subdirectory(tests/amr/models)
-  add_subdirectory(tests/amr/multiphysics_integrator)
+  add_subdirectory(tests/samrai_interface/data/particles)
+  add_subdirectory(tests/samrai_interface/data/field/coarsening)
+  add_subdirectory(tests/samrai_interface/data/field/copy_pack)
+  add_subdirectory(tests/samrai_interface/data/field/geometry)
+  add_subdirectory(tests/samrai_interface/data/field/overlap)
+  add_subdirectory(tests/samrai_interface/data/field/refine)
+  add_subdirectory(tests/samrai_interface/data/field/variable)
+  add_subdirectory(tests/samrai_interface/data/field/time_interpolate)
+  add_subdirectory(tests/samrai_interface/tools/resources_manager)
+  add_subdirectory(tests/samrai_interface/messengers)
+  add_subdirectory(tests/samrai_interface/models)
+  add_subdirectory(tests/samrai_interface/multiphysics_integrator)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
+  add_subdirectory(tests/initializer)
   add_subdirectory(tests/core/data/gridlayout)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)
@@ -159,7 +170,6 @@ if (test)
   add_subdirectory(tests/core/data/ion_population)
   add_subdirectory(tests/core/data/fluid_particle_initializer)
   add_subdirectory(tests/core/utilities/box)
-  add_subdirectory(tests/core/utilities/point)
   add_subdirectory(tests/core/utilities/particle_selector)
   add_subdirectory(tests/core/utilities/partitionner)
   add_subdirectory(tests/core/utilities/range)
@@ -174,12 +184,21 @@ endif()
 
 
 
+
+
+
 #*******************************************************************************
-#* Here the Core and AMR lib
+#* Build the different libs and executables
 #*******************************************************************************
 
 add_subdirectory(src/core)
-add_subdirectory(src/amr)
+add_subdirectory(src/samrai_interface)
+add_subdirectory(src/initializer)
+add_subdirectory(src/phare)
+
+
+
+
 
 #*******************************************************************************
 #* Documentation option
@@ -229,5 +248,11 @@ if (documentation)
 
 
 endif(documentation)
+
+
+#*******************************************************************************
+#* Install PHAREIN
+#*******************************************************************************
+set(PHAREIN_DIR "${PROJECT_SOURCE_DIR}/external/pharein")
 
 

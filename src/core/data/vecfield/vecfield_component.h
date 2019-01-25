@@ -4,7 +4,10 @@
 
 namespace PHARE
 {
-enum class Component { X, Y, Z };
+namespace core
+{
+    enum class Component { X, Y, Z };
 }
+} // namespace PHARE
 
 #endif

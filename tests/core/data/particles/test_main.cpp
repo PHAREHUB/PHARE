@@ -14,7 +14,7 @@
 #include <string>
 
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 class AParticle : public ::testing::Test
 {

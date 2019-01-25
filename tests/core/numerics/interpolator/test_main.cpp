@@ -20,7 +20,7 @@
 #include <numerics/interpolator/interpolator.h>
 
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 
 
@@ -175,7 +175,7 @@ class A1DInterpolator : public ::testing::Test
 public:
     using VF = VecField<NdArrayVector1D<>, HybridQuantity>;
     Electromag<VF> em;
-    PHARE::ParticleArray<1> particles;
+    ParticleArray<1> particles;
     InterpolatorT interp;
 
     // arbitrary number of cells
@@ -227,9 +227,9 @@ public:
 
 
 
-using Interpolators1D = ::testing::Types<PHARE::Interpolator<GridLayoutImplYee<1, 1>>,
-                                         PHARE::Interpolator<GridLayoutImplYee<1, 2>>,
-                                         PHARE::Interpolator<GridLayoutImplYee<1, 3>>>;
+using Interpolators1D
+    = ::testing::Types<Interpolator<GridLayoutImplYee<1, 1>>, Interpolator<GridLayoutImplYee<1, 2>>,
+                       Interpolator<GridLayoutImplYee<1, 3>>>;
 
 TYPED_TEST_CASE(A1DInterpolator, Interpolators1D);
 
@@ -288,7 +288,7 @@ class A2DInterpolator : public ::testing::Test
 public:
     using VF = VecField<NdArrayVector2D<>, HybridQuantity>;
     Electromag<VF> em;
-    PHARE::ParticleArray<2> particles;
+    ParticleArray<2> particles;
     InterpolatorT interp;
 
     // arbitrary number of cells
@@ -343,9 +343,9 @@ public:
 
 
 
-using Interpolators2D = ::testing::Types<PHARE::Interpolator<GridLayoutImplYee<2, 1>>,
-                                         PHARE::Interpolator<GridLayoutImplYee<2, 2>>,
-                                         PHARE::Interpolator<GridLayoutImplYee<2, 3>>>;
+using Interpolators2D
+    = ::testing::Types<Interpolator<GridLayoutImplYee<2, 1>>, Interpolator<GridLayoutImplYee<2, 2>>,
+                       Interpolator<GridLayoutImplYee<2, 3>>>;
 
 TYPED_TEST_CASE(A2DInterpolator, Interpolators2D);
 
@@ -404,7 +404,7 @@ class A3DInterpolator : public ::testing::Test
 public:
     using VF = VecField<NdArrayVector3D<>, HybridQuantity>;
     Electromag<VF> em;
-    PHARE::ParticleArray<3> particles;
+    ParticleArray<3> particles;
     InterpolatorT interp;
 
     // arbitrary number of cells
@@ -463,9 +463,9 @@ public:
 
 
 
-using Interpolators3D = ::testing::Types<PHARE::Interpolator<GridLayoutImplYee<3, 1>>,
-                                         PHARE::Interpolator<GridLayoutImplYee<3, 2>>,
-                                         PHARE::Interpolator<GridLayoutImplYee<3, 3>>>;
+using Interpolators3D
+    = ::testing::Types<Interpolator<GridLayoutImplYee<3, 1>>, Interpolator<GridLayoutImplYee<3, 2>>,
+                       Interpolator<GridLayoutImplYee<3, 3>>>;
 
 TYPED_TEST_CASE(A3DInterpolator, Interpolators3D);
 
@@ -521,7 +521,7 @@ template<typename Weighter>
 class ASingleParticle : public ::testing::Test
 {
 public:
-    PHARE::Particle<1> particle;
+    Particle<1> particle;
     uint32_t nx = 40;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
     static constexpr std::size_t interp_order = Weighter::interp_order;
@@ -623,8 +623,8 @@ public:
     static constexpr uint32_t nx        = 40;
     static constexpr uint32_t nbrPoints = nbrPointsSupport(Weighter::interp_order);
     static constexpr uint32_t numOfPart = Weighter::interp_order + 2;
-    PHARE::Particle<1> part;
-    PHARE::ParticleArray<1> particles;
+    Particle<1> part;
+    ParticleArray<1> particles;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
     VecField<NdArrayVector1D<>, HybridQuantity> v;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vx;

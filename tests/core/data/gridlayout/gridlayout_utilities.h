@@ -5,8 +5,8 @@
 
 #include "data/ndarray/ndarray_vector.h"
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 template<std::size_t dim>
 struct SelectorDim
 {
@@ -27,6 +27,6 @@ inline NdArrayVector3D<> getNdArrayVecImpl(SelectorDim<3>)
     return NdArrayVector3D<>{0, 0, 0};
 }
 
-} // namespace PHARE
+
 
 #endif

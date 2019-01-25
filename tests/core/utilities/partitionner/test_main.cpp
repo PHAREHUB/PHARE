@@ -13,12 +13,12 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using PHARE::Box;
-using PHARE::makeSelector;
-using PHARE::Particle;
-using PHARE::ParticleArray;
-using PHARE::ParticleSelector;
-using PHARE::Point;
+using PHARE::core::Box;
+using PHARE::core::makeSelector;
+using PHARE::core::Particle;
+using PHARE::core::ParticleArray;
+using PHARE::core::ParticleSelector;
+using PHARE::core::Point;
 
 
 

@@ -9,11 +9,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using PHARE::Field;
-using PHARE::NdArrayVector1D;
-using PHARE::NdArrayVector2D;
-using PHARE::NdArrayVector3D;
-
+using namespace PHARE::core;
 
 
 template<class NdArrayImpl>
@@ -21,13 +17,13 @@ class GenericField1D : public ::testing::Test
 {
 public:
     GenericField1D()
-        : f{"test", PHARE::HybridQuantity::Scalar::rho, nx}
+        : f{"test", HybridQuantity::Scalar::rho, nx}
     {
     }
 
 protected:
     const uint32_t nx = 10;
-    Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
+    Field<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
 
@@ -36,14 +32,14 @@ class GenericField2D : public ::testing::Test
 {
 public:
     GenericField2D()
-        : f{"test", PHARE::HybridQuantity::Scalar::rho, nx, ny}
+        : f{"test", HybridQuantity::Scalar::rho, nx, ny}
     {
     }
 
 protected:
     const uint32_t nx = 10u;
     const uint32_t ny = 12u;
-    Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
+    Field<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
 
@@ -52,7 +48,7 @@ class GenericField3D : public ::testing::Test
 {
 public:
     GenericField3D()
-        : f{"test", PHARE::HybridQuantity::Scalar::rho, nx, ny, nz}
+        : f{"test", HybridQuantity::Scalar::rho, nx, ny, nz}
     {
     }
 
@@ -60,7 +56,7 @@ protected:
     const uint32_t nx = 10;
     const uint32_t ny = 12;
     const uint32_t nz = 12;
-    Field<NdArrayImpl, PHARE::HybridQuantity::Scalar> f;
+    Field<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
 
@@ -158,27 +154,26 @@ TYPED_TEST(GenericField3D, returnName)
 
 TYPED_TEST(GenericField1D, physiscalQuantity)
 {
-    EXPECT_EQ(PHARE::HybridQuantity::Scalar::rho, this->f.physicalQuantity());
+    EXPECT_EQ(HybridQuantity::Scalar::rho, this->f.physicalQuantity());
 }
 
 TYPED_TEST(GenericField2D, physiscalQuantity)
 {
-    EXPECT_EQ(PHARE::HybridQuantity::Scalar::rho, this->f.physicalQuantity());
+    EXPECT_EQ(HybridQuantity::Scalar::rho, this->f.physicalQuantity());
 }
 
 TYPED_TEST(GenericField3D, physiscalQuantity)
 {
-    EXPECT_EQ(PHARE::HybridQuantity::Scalar::rho, this->f.physicalQuantity());
+    EXPECT_EQ(HybridQuantity::Scalar::rho, this->f.physicalQuantity());
 }
 
 
 TEST(Field1D, canBeAssigned)
 {
     auto nx = 10u;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> f{
-        "test", PHARE::HybridQuantity::Scalar::rho, nx};
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> other{
-        "other", PHARE::HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho,
+                                                           nx};
 
     for (auto& v : f)
     {
@@ -200,10 +195,9 @@ TEST(Field2D, canBeAssigned)
 {
     auto nx = 10u;
     auto ny = 11u;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> f{
-        "test", PHARE::HybridQuantity::Scalar::rho, nx, ny};
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> other{
-        "other", PHARE::HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx,
+                                                           ny};
 
     for (auto& v : f)
     {
@@ -226,10 +220,10 @@ TEST(Field3D, canBeAssigned)
     auto nx = 10u;
     auto ny = 11u;
     auto nz = 12u;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> f{
-        "test", PHARE::HybridQuantity::Scalar::rho, nx, ny, nz};
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> other{
-        "other", PHARE::HybridQuantity::Scalar::rho, nx, ny, nz};
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx, ny,
+                                                       nz};
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx,
+                                                           ny, nz};
 
     for (auto& v : f)
     {

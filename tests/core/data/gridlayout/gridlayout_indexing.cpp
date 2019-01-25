@@ -2,8 +2,8 @@
 #include "gridlayout_test.h"
 
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 using GridLayoutTestYeeIndexing1DO1
     = GridLayoutTest<GridLayoutImplYee<1, 1>, GridLayoutIndexingParam>;
 
@@ -318,6 +318,3 @@ INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing3DO2,
 
 INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing3DO3,
                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 3>>()));
-
-
-} // namespace PHARE

@@ -4,8 +4,8 @@
 #include "gridlayout_test.h"
 
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 using GridLayoutFieldCenteredCoordinate1DO1
     = GridLayoutTest<GridLayoutImplYee<1, 1>, GridLayoutFieldCenteringParam>;
 
@@ -116,6 +116,3 @@ INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3D
 
 INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO3,
                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 3>>()));
-
-
-} // namespace PHARE

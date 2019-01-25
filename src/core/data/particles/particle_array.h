@@ -9,9 +9,12 @@
 
 namespace PHARE
 {
-// TODO make a real particleArray class that has copy-deleted Ctor
-template<std::size_t dim>
-using ParticleArray = std::vector<Particle<dim>>;
+namespace core
+{
+    // TODO make a real particleArray class that has copy-deleted Ctor
+    template<std::size_t dim>
+    using ParticleArray = std::vector<Particle<dim>>;
+} // namespace core
 } // namespace PHARE
 
 

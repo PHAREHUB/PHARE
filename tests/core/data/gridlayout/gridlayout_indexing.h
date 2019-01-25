@@ -10,8 +10,8 @@
 #include "gridlayout_utilities.h"
 #include "utilities/point/point.h"
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 template<typename GridLayoutImpl>
 struct GridLayoutIndexingParam
 {
@@ -30,9 +30,9 @@ struct GridLayoutIndexingParam
 
     void init()
     {
-        auto &field           = base.field;
-        auto &layout          = base.layout;
-        auto &currentQuantity = base.currentQuantity;
+        auto& field           = base.field;
+        auto& layout          = base.layout;
+        auto& currentQuantity = base.currentQuantity;
 
         field = base.makeMyField_(layout->allocSize(currentQuantity));
 
@@ -110,6 +110,6 @@ auto createIndexingParam()
     return params;
 }
 
-} // namespace PHARE
+
 
 #endif

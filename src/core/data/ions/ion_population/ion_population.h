@@ -15,244 +15,249 @@
 
 namespace PHARE
 {
-template<typename ParticleArray, typename VecField, typename GridLayout>
-class IonPopulation
+namespace core
 {
-public:
-    using field_type                       = typename VecField::field_type;
-    static constexpr std::size_t dimension = VecField::dimension;
-    using particle_array_type              = ParticleArray;
-    using particle_resource_type           = ParticlesPack<ParticleArray>;
-    using vecfield_type                    = VecField;
-    using particle_initializer_type        = ParticleInitializer<ParticleArray, GridLayout>;
-
-
-    IonPopulation(std::string name, double mass,
-                  std::unique_ptr<particle_initializer_type> particleInitializer)
-        : name_{std::move(name)}
-        , mass_{mass}
-        , flux_{name_ + "_flux", HybridQuantity::Vector::V}
-        , particleInitializer_{std::move(particleInitializer)}
+    template<typename ParticleArray, typename VecField, typename GridLayout>
+    class IonPopulation
     {
-    }
-
-    double mass() const { return mass_; }
-
-    std::string const& name() const { return name_; }
-
-
-
-
-    bool isUsable() const { return particles_ != nullptr && rho_ != nullptr && flux_.isUsable(); }
+    public:
+        using field_type                       = typename VecField::field_type;
+        static constexpr std::size_t dimension = VecField::dimension;
+        using particle_array_type              = ParticleArray;
+        using particle_resource_type           = ParticlesPack<ParticleArray>;
+        using vecfield_type                    = VecField;
+        using particle_initializer_type        = ParticleInitializer<ParticleArray, GridLayout>;
 
 
-    bool isSettable() const
-    {
-        return particles_ == nullptr && rho_ == nullptr && flux_.isSettable();
-    }
-
-
-
-    void loadParticles(GridLayout const& layout)
-    {
-        if (isUsable())
+        IonPopulation(std::string name, double mass,
+                      std::unique_ptr<particle_initializer_type> particleInitializer)
+            : name_{std::move(name)}
+            , mass_{mass}
+            , flux_{name_ + "_flux", HybridQuantity::Vector::V}
+            , particleInitializer_{std::move(particleInitializer)}
         {
-            particleInitializer_->loadParticles(*particles_->domainParticles, layout);
         }
-        else
+
+        double mass() const { return mass_; }
+
+        std::string const& name() const { return name_; }
+
+
+
+
+        bool isUsable() const
         {
-            throw std::runtime_error("Error - cannot load particles, IonPopulation not usable");
+            return particles_ != nullptr && rho_ != nullptr && flux_.isUsable();
         }
-    }
 
 
-
-
-    auto nbrParticles() const
-    {
-        if (isUsable())
+        bool isSettable() const
         {
-            return particles_->domainParticles->size();
+            return particles_ == nullptr && rho_ == nullptr && flux_.isSettable();
         }
-        else
+
+
+
+        void loadParticles(GridLayout const& layout)
         {
-            throw std::runtime_error("Error - cannot access to particles");
+            if (isUsable())
+            {
+                particleInitializer_->loadParticles(*particles_->domainParticles, layout);
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot load particles, IonPopulation not usable");
+            }
         }
-    }
 
 
 
 
-    ParticleArray& domainParticles()
-    {
-        if (isUsable())
+        auto nbrParticles() const
         {
-            return *particles_->domainParticles;
+            if (isUsable())
+            {
+                return particles_->domainParticles->size();
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot access to particles");
+            }
         }
-        else
+
+
+
+
+        ParticleArray& domainParticles()
         {
-            throw std::runtime_error("Error - cannot provide access to particle buffers");
+            if (isUsable())
+            {
+                return *particles_->domainParticles;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot provide access to particle buffers");
+            }
         }
-    }
 
 
 
-    ParticleArray& ghostParticles()
-    {
-        if (isUsable())
+        ParticleArray& ghostParticles()
         {
-            return *particles_->ghostParticles;
+            if (isUsable())
+            {
+                return *particles_->ghostParticles;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot provide access to particle buffers");
+            }
         }
-        else
+
+
+
+        ParticleArray& coarseToFineParticles()
         {
-            throw std::runtime_error("Error - cannot provide access to particle buffers");
+            if (isUsable())
+            {
+                return *particles_->coarseToFineParticles;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot provide access to particle buffers");
+            }
         }
-    }
 
 
 
-    ParticleArray& coarseToFineParticles()
-    {
-        if (isUsable())
+        ParticleArray& coarseToFineOldParticles()
         {
-            return *particles_->coarseToFineParticles;
+            if (isUsable())
+            {
+                return *particles_->coarseToFineParticlesOld;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot provide access to particle buffers");
+            }
         }
-        else
+
+
+
+        ParticleArray& coarseToFineNewParticles()
         {
-            throw std::runtime_error("Error - cannot provide access to particle buffers");
+            if (isUsable())
+            {
+                return *particles_->coarseToFineParticlesNew;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot provide access to particle buffers");
+            }
         }
-    }
 
 
 
-    ParticleArray& coarseToFineOldParticles()
-    {
-        if (isUsable())
+        field_type const& density() const
         {
-            return *particles_->coarseToFineParticlesOld;
+            if (isUsable())
+            {
+                return *rho_;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot provide access to density field");
+            }
         }
-        else
+
+
+        field_type& density()
         {
-            throw std::runtime_error("Error - cannot provide access to particle buffers");
+            return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
         }
-    }
 
 
 
-    ParticleArray& coarseToFineNewParticles()
-    {
-        if (isUsable())
+        //-------------------------------------------------------------------------
+        //                  start the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+
+
+        struct MomentsProperty
         {
-            return *particles_->coarseToFineParticlesNew;
-        }
-        else
+            std::string name;
+            typename HybridQuantity::Scalar qty;
+        };
+
+        using MomentProperties = std::vector<MomentsProperty>;
+
+
+
+        MomentProperties getFieldNamesAndQuantities() const
         {
-            throw std::runtime_error("Error - cannot provide access to particle buffers");
+            return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
         }
-    }
 
 
 
-    field_type const& density() const
-    {
-        if (isUsable())
+        struct ParticleProperty
         {
-            return *rho_;
-        }
-        else
+            std::string name;
+        };
+
+
+
+        using ParticleProperties = std::vector<ParticleProperty>;
+
+        ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
+
+
+
+
+        void setBuffer(std::string const& bufferName, ParticlesPack<ParticleArray>* pack)
         {
-            throw std::runtime_error("Error - cannot provide access to density field");
+            if (bufferName == name_)
+                particles_ = pack;
+            else
+                throw std::runtime_error("Error - invalid particle resource name");
         }
-    }
-
-
-    field_type& density()
-    {
-        return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
-    }
 
 
 
-    //-------------------------------------------------------------------------
-    //                  start the ResourcesUser interface
-    //-------------------------------------------------------------------------
+
+        void setBuffer(std::string const& bufferName, field_type* field)
+        {
+            if (bufferName == name_ + "_rho")
+            {
+                rho_ = field;
+            }
+            else
+            {
+                throw std::runtime_error("Error - invalid density buffer name");
+            }
+        }
 
 
 
-    struct MomentsProperty
-    {
-        std::string name;
-        typename HybridQuantity::Scalar qty;
+        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(flux_); }
+
+
+        //-------------------------------------------------------------------------
+        //                  ends the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+
+
+    private:
+        std::string name_;
+        double mass_;
+        VecField flux_;
+        field_type* rho_{nullptr};
+        ParticlesPack<ParticleArray>* particles_{nullptr};
+        std::unique_ptr<particle_initializer_type> particleInitializer_;
     };
-
-    using MomentProperties = std::vector<MomentsProperty>;
-
-
-
-    MomentProperties getFieldNamesAndQuantities() const
-    {
-        return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
-    }
-
-
-
-    struct ParticleProperty
-    {
-        std::string name;
-    };
-
-
-
-    using ParticleProperties = std::vector<ParticleProperty>;
-
-    ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
-
-
-
-
-    void setBuffer(std::string const& bufferName, ParticlesPack<ParticleArray>* pack)
-    {
-        if (bufferName == name_)
-            particles_ = pack;
-        else
-            throw std::runtime_error("Error - invalid particle resource name");
-    }
-
-
-
-
-    void setBuffer(std::string const& bufferName, field_type* field)
-    {
-        if (bufferName == name_ + "_rho")
-        {
-            rho_ = field;
-        }
-        else
-        {
-            throw std::runtime_error("Error - invalid density buffer name");
-        }
-    }
-
-
-
-    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(flux_); }
-
-
-    //-------------------------------------------------------------------------
-    //                  ends the ResourcesUser interface
-    //-------------------------------------------------------------------------
-
-
-
-private:
-    std::string name_;
-    double mass_;
-    VecField flux_;
-    field_type* rho_{nullptr};
-    ParticlesPack<ParticleArray>* particles_{nullptr};
-    std::unique_ptr<particle_initializer_type> particleInitializer_;
-};
-
+} // namespace core
 } // namespace PHARE
 
 #endif

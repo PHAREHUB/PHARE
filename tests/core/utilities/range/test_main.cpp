@@ -8,8 +8,8 @@
 #include "gtest/gtest.h"
 
 
-using PHARE::makeRange;
-using PHARE::Range;
+using PHARE::core::makeRange;
+using PHARE::core::Range;
 
 TEST(ARangeOnEmptyContainer, hasZeroSize)
 {

@@ -28,6 +28,9 @@ set( SOURCES_INC
      numerics/pusher/pusher_factory.h
      numerics/ampere/ampere.h
      numerics/faraday/faraday.h
+     models/physical_state.h
+     models/hybrid_state.h
+     models/mhd_state.h
      utilities/box/box.h
      utilities/algorithm.h
      utilities/constants.h
@@ -48,6 +51,7 @@ set( SOURCES_CPP
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})
+#target_link_libraries(phare_core PUBLIC wrapper)
 
 target_include_directories(phare_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

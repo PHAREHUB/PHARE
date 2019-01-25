@@ -3,8 +3,8 @@
 #include "gridlayout_params.h"
 #include "gridlayout_test.h"
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 using GridLayoutTestYee1DO1 = GridLayoutTest<GridLayoutImplYee<1, 1>, GridLayoutAllocSizeParam>;
 using GridLayoutTestYee1DO2 = GridLayoutTest<GridLayoutImplYee<1, 2>, GridLayoutAllocSizeParam>;
 using GridLayoutTestYee1DO3 = GridLayoutTest<GridLayoutImplYee<1, 3>, GridLayoutAllocSizeParam>;
@@ -180,6 +180,3 @@ INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee3DO2,
 
 INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee3DO3,
                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 3>>()));
-
-
-} // namespace PHARE

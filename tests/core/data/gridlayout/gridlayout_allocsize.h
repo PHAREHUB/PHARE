@@ -14,9 +14,9 @@
 
 
 
+using namespace PHARE::core;
 
-namespace PHARE
-{
+
 template<typename GridLayoutImpl>
 struct GridLayoutAllocSizeParam
 {
@@ -100,6 +100,6 @@ auto createAllocSizeParam()
     return params;
 }
 
-} // namespace PHARE
+
 
 #endif

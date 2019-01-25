@@ -9,10 +9,10 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using PHARE::Box;
-using PHARE::Particle;
-using PHARE::ParticleSelector;
-using PHARE::Point;
+using PHARE::core::Box;
+using PHARE::core::Particle;
+using PHARE::core::ParticleSelector;
+using PHARE::core::Point;
 
 
 TEST(AParticleSelector1D, returnTrueForParticlesInBox)

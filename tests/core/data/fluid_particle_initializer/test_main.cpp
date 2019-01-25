@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 
 double density(double x)

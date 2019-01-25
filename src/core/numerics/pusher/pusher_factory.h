@@ -2,35 +2,36 @@
 #define PHARE_CORE_NUMERIC_PUSHER_PUSHER_FACTORY_H
 
 #include <cstddef>
-#include <string>
 #include <memory>
+#include <string>
 
-#include "pusher.h"
 #include "boris.h"
+#include "pusher.h"
 
 namespace PHARE
 {
-
-class PusherFactory
+namespace core
 {
-public:
-    template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition>
-    static auto makePusher(std::string pusherName)
+    class PusherFactory
     {
-        if (pusherName == "boris")
+    public:
+        template<std::size_t dim, typename ParticleIterator, typename Electromag,
+                 typename Interpolator, typename ParticleSelector, typename BoundaryCondition>
+        static auto makePusher(std::string pusherName)
         {
-            return std::make_unique<BorisPusher<dim, ParticleIterator, Electromag, Interpolator,
-                    ParticleSelector, BoundaryCondition>>();
-        }
+            if (pusherName == "boris")
+            {
+                return std::make_unique<BorisPusher<dim, ParticleIterator, Electromag, Interpolator,
+                                                    ParticleSelector, BoundaryCondition>>();
+            }
 
-        else
-        {
-            std::runtime_error("Error : Invalid Pusher name");
+            else
+            {
+                std::runtime_error("Error : Invalid Pusher name");
+            }
         }
-    }
-};
-
-}
+    };
+} // namespace core
+} // namespace PHARE
 
 #endif // PUSHER_FACTORY_H

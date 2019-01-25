@@ -11,175 +11,178 @@
 
 namespace PHARE
 {
-template<typename IonPopulation, typename GridLayout>
-class Ions
+namespace core
 {
-public:
-    using field_type    = typename IonPopulation::field_type;
-    using vecfield_type = typename IonPopulation::vecfield_type;
-    using ions_initializer_type
-        = IonsInitializer<typename IonPopulation::particle_array_type, GridLayout>;
-
-    explicit Ions(ions_initializer_type initializer)
-        : name_{std::move(initializer.name)}
-        , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
-        , populations_{}
+    template<typename IonPopulation, typename GridLayout>
+    class Ions
     {
-        // TODO IonPopulation constructor will need to take a ParticleInitializer
-        // from the vector in the initializer
-        populations_.reserve(initializer.nbrPopulations);
-        for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
+    public:
+        using field_type    = typename IonPopulation::field_type;
+        using vecfield_type = typename IonPopulation::vecfield_type;
+        using ions_initializer_type
+            = IonsInitializer<typename IonPopulation::particle_array_type, GridLayout>;
+
+        explicit Ions(ions_initializer_type initializer)
+            : name_{std::move(initializer.name)}
+            , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
+            , populations_{}
         {
-            populations_.push_back(
-                IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop],
-                              std::move(initializer.particleInitializers[ipop])});
+            // TODO IonPopulation constructor will need to take a ParticleInitializer
+            // from the vector in the initializer
+            populations_.reserve(initializer.nbrPopulations);
+            for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
+            {
+                populations_.push_back(
+                    IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop],
+                                  std::move(initializer.particleInitializers[ipop])});
+            }
         }
-    }
 
 
-    field_type const& density() const
-    {
-        if (isUsable())
+        field_type const& density() const
         {
-            return *rho_;
+            if (isUsable())
+            {
+                return *rho_;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot access density data");
+            }
         }
-        else
+
+
+
+        field_type& density()
         {
-            throw std::runtime_error("Error - cannot access density data");
+            if (isUsable())
+            {
+                return *rho_;
+            }
+            else
+            {
+                throw std::runtime_error("Error - cannot access density data");
+            }
         }
-    }
 
 
 
-    field_type& density()
-    {
-        if (isUsable())
+
+        void loadParticles(GridLayout const& layout)
         {
-            return *rho_;
+            for (auto& pop : populations_)
+            {
+                pop.loadParticles(layout);
+            }
         }
-        else
+
+
+        vecfield_type const& velocity() const { return bulkVelocity_; }
+
+        vecfield_type& velocity() { return bulkVelocity_; }
+
+        std::string densityName() const { return name_ + "_rho"; }
+
+
+        void computeDensity()
         {
-            throw std::runtime_error("Error - cannot access density data");
+            rho_->zero();
+
+            for (auto const& pop : populations_)
+            {
+                // we sum over all nodes contiguously, including ghosts
+                // nodes. This is more efficient and easier to code as we don't
+                // have to account for the field dimensionality.
+
+                auto const& popDensity = pop.density();
+                std::transform(std::begin(rho_), std::end(rho_), std::begin(rho_),
+                               std::plus<typename field_type::type>{});
+            }
         }
-    }
 
 
 
+        auto begin() { return std::begin(populations_); }
+        auto end() { return std::end(populations_); }
 
-    void loadParticles(GridLayout const& layout)
-    {
-        for (auto& pop : populations_)
+        auto begin() const { return std::begin(populations_); }
+        auto end() const { return std::end(populations_); }
+
+
+        bool isUsable() const
         {
-            pop.loadParticles(layout);
+            bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
+            for (auto const& pop : populations_)
+            {
+                usable = usable && pop.isUsable();
+            }
+            return usable;
         }
-    }
 
 
-    vecfield_type const& velocity() const { return bulkVelocity_; }
 
-    vecfield_type& velocity() { return bulkVelocity_; }
-
-    std::string densityName() const { return name_ + "_rho"; }
-
-
-    void computeDensity()
-    {
-        rho_->zero();
-
-        for (auto const& pop : populations_)
+        bool isSettable() const
         {
-            // we sum over all nodes contiguously, including ghosts
-            // nodes. This is more efficient and easier to code as we don't
-            // have to account for the field dimensionality.
-
-            auto const& popDensity = pop.density();
-            std::transform(std::begin(rho_), std::end(rho_), std::begin(rho_),
-                           std::plus<typename field_type::type>{});
+            bool settable = rho_ == nullptr && bulkVelocity_.isSettable();
+            for (auto const& pop : populations_)
+            {
+                settable = settable && pop.isSettable();
+            }
+            return settable;
         }
-    }
+
+        //-------------------------------------------------------------------------
+        //                  start the ResourcesUser interface
+        //-------------------------------------------------------------------------
 
 
-
-    auto begin() { return std::begin(populations_); }
-    auto end() { return std::end(populations_); }
-
-    auto begin() const { return std::begin(populations_); }
-    auto end() const { return std::end(populations_); }
-
-
-    bool isUsable() const
-    {
-        bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
-        for (auto const& pop : populations_)
+        struct MomentsProperty
         {
-            usable = usable && pop.isUsable();
-        }
-        return usable;
-    }
+            std::string name;
+            typename HybridQuantity::Scalar qty;
+        };
 
+        using MomentProperties = std::vector<MomentsProperty>;
 
-
-    bool isSettable() const
-    {
-        bool settable = rho_ == nullptr && bulkVelocity_.isSettable();
-        for (auto const& pop : populations_)
+        MomentProperties getFieldNamesAndQuantities() const
         {
-            settable = settable && pop.isSettable();
+            return {{{densityName(), HybridQuantity::Scalar::rho}}};
         }
-        return settable;
-    }
-
-    //-------------------------------------------------------------------------
-    //                  start the ResourcesUser interface
-    //-------------------------------------------------------------------------
 
 
-    struct MomentsProperty
-    {
-        std::string name;
-        typename HybridQuantity::Scalar qty;
+
+        void setBuffer(std::string const& bufferName, field_type* field)
+        {
+            if (bufferName == name_ + "_rho")
+            {
+                rho_ = field;
+            }
+            else
+            {
+                throw std::runtime_error("Error - invalid density buffer name");
+            }
+        }
+
+
+
+        std::vector<IonPopulation>& getRunTimeResourcesUserList() { return populations_; }
+
+        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(bulkVelocity_); }
+
+
+
+        //-------------------------------------------------------------------------
+        //                  ends the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+    private:
+        std::string name_;
+        field_type* rho_{nullptr};
+        vecfield_type bulkVelocity_;
+        std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
+                                                 // although only 1 Ions should exist.
     };
-
-    using MomentProperties = std::vector<MomentsProperty>;
-
-    MomentProperties getFieldNamesAndQuantities() const
-    {
-        return {{{densityName(), HybridQuantity::Scalar::rho}}};
-    }
-
-
-
-    void setBuffer(std::string const& bufferName, field_type* field)
-    {
-        if (bufferName == name_ + "_rho")
-        {
-            rho_ = field;
-        }
-        else
-        {
-            throw std::runtime_error("Error - invalid density buffer name");
-        }
-    }
-
-
-
-    std::vector<IonPopulation>& getRunTimeResourcesUserList() { return populations_; }
-
-    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(bulkVelocity_); }
-
-
-
-    //-------------------------------------------------------------------------
-    //                  ends the ResourcesUser interface
-    //-------------------------------------------------------------------------
-
-private:
-    std::string name_;
-    field_type* rho_{nullptr};
-    vecfield_type bulkVelocity_;
-    std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
-                                             // although only 1 Ions should exist.
-};
+} // namespace core
 } // namespace PHARE
 
 #endif

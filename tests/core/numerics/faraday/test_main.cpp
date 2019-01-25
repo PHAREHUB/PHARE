@@ -15,7 +15,7 @@
 #include "utilities/index/index.h"
 #include "utilities/point/point.h"
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 struct FieldMock
 {
@@ -122,15 +122,15 @@ protected:
     using GridLayoutImpl = GridLayoutImplYee<1, 1>;
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> By;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector1D<>, PHARE::HybridQuantity::Scalar> Bznew;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Ex;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Ey;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Ez;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bxnew;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bynew;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bznew;
     VecField<NdArrayVector1D<>, HybridQuantity> B;
     VecField<NdArrayVector1D<>, HybridQuantity> E;
     VecField<NdArrayVector1D<>, HybridQuantity> Bnew;
@@ -173,15 +173,15 @@ protected:
     using GridLayoutImpl = GridLayoutImplYee<2, 1>;
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> By;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector2D<>, PHARE::HybridQuantity::Scalar> Bznew;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Ex;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Ey;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Ez;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bxnew;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bynew;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bznew;
     VecField<NdArrayVector2D<>, HybridQuantity> B;
     VecField<NdArrayVector2D<>, HybridQuantity> E;
     VecField<NdArrayVector2D<>, HybridQuantity> Bnew;
@@ -224,15 +224,15 @@ protected:
     using GridLayoutImpl = GridLayoutImplYee<3, 1>;
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> By;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector3D<>, PHARE::HybridQuantity::Scalar> Bznew;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Ex;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Ey;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Ez;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bxnew;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bynew;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bznew;
     VecField<NdArrayVector3D<>, HybridQuantity> B;
     VecField<NdArrayVector3D<>, HybridQuantity> E;
     VecField<NdArrayVector3D<>, HybridQuantity> Bnew;

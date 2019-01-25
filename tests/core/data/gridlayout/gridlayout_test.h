@@ -9,8 +9,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-namespace PHARE
-{
+using namespace PHARE::core;
+
 template<typename GridLayoutImpl, template<typename> typename Param>
 class GridLayoutTest : public ::testing::TestWithParam<Param<GridLayoutImpl>>
 {
@@ -24,6 +24,5 @@ public:
 };
 
 
-} // namespace PHARE
 
 #endif

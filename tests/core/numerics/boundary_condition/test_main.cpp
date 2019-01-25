@@ -9,7 +9,7 @@
 
 
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 class ABoundaryConditionWhereAllParticlesLeave : public ::testing::Test
 {

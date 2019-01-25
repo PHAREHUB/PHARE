@@ -10,38 +10,40 @@
 
 namespace PHARE
 {
-using uint32 = std::uint32_t;
-using uint64 = std::uint64_t;
-using int32  = std::int32_t;
-using int64  = std::int64_t;
-
-enum class Basis { Magnetic, Cartesian };
-
-
-
-
-template<typename T>
-std::vector<T> arange(T start, T stop, T step = 1)
+namespace core
 {
-    std::vector<T> values;
-    for (T value = start; value < stop; value += step)
-        values.push_back(value);
-    return values;
-}
+    using uint32 = std::uint32_t;
+    using uint64 = std::uint64_t;
+    using int32  = std::int32_t;
+    using int64  = std::int64_t;
 
-template<typename T>
-T norm(std::array<T, 3> vec)
-{
-    auto squarreSum = std::inner_product(std::begin(vec), std::end(vec), std::begin(vec), 0.);
-    return std::sqrt(squarreSum);
-}
+    enum class Basis { Magnetic, Cartesian };
 
 
 
 
-enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
+    template<typename T>
+    std::vector<T> arange(T start, T stop, T step = 1)
+    {
+        std::vector<T> values;
+        for (T value = start; value < stop; value += step)
+            values.push_back(value);
+        return values;
+    }
+
+    template<typename T>
+    T norm(std::array<T, 3> vec)
+    {
+        auto squarreSum = std::inner_product(std::begin(vec), std::end(vec), std::begin(vec), 0.);
+        return std::sqrt(squarreSum);
+    }
 
 
+
+
+    enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
+
+} // namespace core
 } // namespace PHARE
 
 #endif // TYPES_H

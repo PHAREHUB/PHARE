@@ -4,13 +4,16 @@
 
 namespace PHARE
 {
-template<typename ParticleArray, typename GridLayout>
-class ParticleInitializer
+namespace core
 {
-public:
-    virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const = 0;
-};
+    template<typename ParticleArray, typename GridLayout>
+    class ParticleInitializer
+    {
+    public:
+        virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const = 0;
+    };
 
+} // namespace core
 } // namespace PHARE
 
 #endif

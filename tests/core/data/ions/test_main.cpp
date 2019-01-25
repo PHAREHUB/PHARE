@@ -19,7 +19,7 @@
 #include "gtest/gtest.h"
 
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
