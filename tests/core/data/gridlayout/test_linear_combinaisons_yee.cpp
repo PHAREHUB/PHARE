@@ -29,6 +29,7 @@ TEST(MomentToEx, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -38,6 +39,7 @@ TEST(MomentToEx, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -49,6 +51,7 @@ TEST(MomentToEx, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -124,6 +127,7 @@ TEST(MomentToEy, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -133,6 +137,7 @@ TEST(MomentToEy, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -144,6 +149,7 @@ TEST(MomentToEy, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -219,6 +225,7 @@ TEST(MomentToEz, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -228,6 +235,7 @@ TEST(MomentToEz, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -239,6 +247,7 @@ TEST(MomentToEz, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -314,6 +323,7 @@ TEST(ExToMoment, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -323,6 +333,7 @@ TEST(ExToMoment, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -334,6 +345,7 @@ TEST(ExToMoment, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -410,6 +422,7 @@ TEST(EyToMoment, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -419,6 +432,7 @@ TEST(EyToMoment, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -430,6 +444,7 @@ TEST(EyToMoment, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -506,6 +521,7 @@ TEST(EzToMoment, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -515,6 +531,7 @@ TEST(EzToMoment, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -526,6 +543,7 @@ TEST(EzToMoment, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -601,6 +619,7 @@ TEST(ByToEx, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -610,6 +629,7 @@ TEST(ByToEx, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -621,6 +641,7 @@ TEST(ByToEx, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -697,6 +718,7 @@ TEST(BzToEx, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -706,6 +728,7 @@ TEST(BzToEx, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -717,6 +740,7 @@ TEST(BzToEx, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -793,6 +817,7 @@ TEST(BxToEy, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -802,6 +827,7 @@ TEST(BxToEy, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -813,6 +839,7 @@ TEST(BxToEy, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -889,6 +916,7 @@ TEST(BzToEy, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -898,6 +926,7 @@ TEST(BzToEy, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -909,6 +938,7 @@ TEST(BzToEy, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -985,6 +1015,7 @@ TEST(BxToEz, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -994,6 +1025,7 @@ TEST(BxToEz, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -1005,6 +1037,7 @@ TEST(BxToEz, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 
@@ -1080,6 +1113,7 @@ TEST(ByToEz, combinaisonOk)
             for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f2D = [&combi](auto const& actual) {
@@ -1089,6 +1123,7 @@ TEST(ByToEz, combinaisonOk)
             {
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
         auto f3D = [&combi](auto const& actual) {
@@ -1100,6 +1135,7 @@ TEST(ByToEz, combinaisonOk)
                 EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
                 EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
                 EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+                EXPECT_DOUBLE_EQ(combi.coef, actual[iPoint].coef);
             }
         };
 

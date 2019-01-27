@@ -620,7 +620,7 @@ namespace core
             }
             if constexpr (dimension == 2)
             {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.};
                 return std::array<WeightPoint<dimension>, 1>{P1};
             }
             else if constexpr (dimension == 3)
