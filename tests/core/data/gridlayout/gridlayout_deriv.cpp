@@ -42,15 +42,13 @@ TYPED_TEST(a1DDerivative, DXBY1D)
 
     for (auto ix = 0; ix <= gei_d_X; ++ix)
     {
-        Point<double, 1> point
-            = this->layout.fieldNodeCoordinates(this->By, Point<double, 1>{0.}, ix);
-        this->By(ix) = std::cos(2 * M_PI / 5. * point[0]);
+        Point<double, 1> point = this->layout.fieldNodeCoordinates(this->By, {0.}, ix);
+        this->By(ix)           = std::cos(2 * M_PI / 5. * point[0]);
     }
 
     for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        auto localDerivative
-            = this->layout.deriv(this->By, make_index(ix), DirectionTag<Direction::X>{});
+        auto localDerivative = this->layout.deriv(this->By, {ix}, DirectionTag<Direction::X>{});
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
     }
 }
@@ -70,15 +68,13 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
 
     for (uint32 ix = 0; ix <= gei_p_X; ++ix)
     {
-        Point<double, 1> point
-            = this->layout.fieldNodeCoordinates(this->Ez, Point<double, 1>{0.}, ix);
-        this->Ez(ix) = std::cos(2 * M_PI / 5. * point[0]);
+        Point<double, 1> point = this->layout.fieldNodeCoordinates(this->Ez, {0.}, ix);
+        this->Ez(ix)           = std::cos(2 * M_PI / 5. * point[0]);
     }
 
     for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        auto localDerivative
-            = this->layout.deriv(this->Ez, make_index(ix), DirectionTag<Direction::X>{});
+        auto localDerivative = this->layout.deriv(this->Ez, {ix}, DirectionTag<Direction::X>{});
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
     }
 }
@@ -114,8 +110,7 @@ TYPED_TEST(a2DDerivative, DXBY2D)
     {
         for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(this->By, Point<double, 2>{0., 0.}, ix, iy);
+            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
             this->By(ix, iy)
                 = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
@@ -129,7 +124,7 @@ TYPED_TEST(a2DDerivative, DXBY2D)
         for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
             auto localDerivative
-                = this->layout.deriv(this->By, make_index(ix, iy), DirectionTag<Direction::X>{});
+                = this->layout.deriv(this->By, {ix, iy}, DirectionTag<Direction::X>{});
             uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
@@ -155,8 +150,7 @@ TYPED_TEST(a2DDerivative, DYBY2D)
     {
         for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(this->By, Point<double, 2>{0., 0.}, ix, iy);
+            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
             this->By(ix, iy)
                 = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
@@ -170,7 +164,7 @@ TYPED_TEST(a2DDerivative, DYBY2D)
         for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
             auto localDerivative
-                = this->layout.deriv(this->By, make_index(ix, iy), DirectionTag<Direction::Y>{});
+                = this->layout.deriv(this->By, {ix, iy}, DirectionTag<Direction::Y>{});
             uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
@@ -196,8 +190,7 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
     {
         for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(this->Ez, Point<double, 2>{0., 0.}, ix, iy);
+            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
             this->Ez(ix, iy)
                 = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
@@ -211,7 +204,7 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
         for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
             auto localDerivative
-                = this->layout.deriv(this->Ez, make_index(ix, iy), DirectionTag<Direction::X>{});
+                = this->layout.deriv(this->Ez, {ix, iy}, DirectionTag<Direction::X>{});
             uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
@@ -237,8 +230,7 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
     {
         for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point
-                = this->layout.fieldNodeCoordinates(this->Ez, Point<double, 2>{0., 0.}, ix, iy);
+            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
             this->Ez(ix, iy)
                 = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
@@ -252,7 +244,7 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
         for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
             auto localDerivative
-                = this->layout.deriv(this->Ez, make_index(ix, iy), DirectionTag<Direction::Y>{});
+                = this->layout.deriv(this->Ez, {ix, iy}, DirectionTag<Direction::Y>{});
             uint32 index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
@@ -295,8 +287,8 @@ TYPED_TEST(a3DDerivative, DXBY3D)
         {
             for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(
-                    this->By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point
+                    = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -313,9 +305,9 @@ TYPED_TEST(a3DDerivative, DXBY3D)
         {
             for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                auto localDerivative = this->layout.deriv(this->By, make_index(ix, iy, iz),
-                                                          DirectionTag<Direction::X>{});
-                uint32 index_        = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto localDerivative
+                    = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::X>{});
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -347,8 +339,8 @@ TYPED_TEST(a3DDerivative, DYBY3D)
         {
             for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(
-                    this->By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point
+                    = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -365,9 +357,9 @@ TYPED_TEST(a3DDerivative, DYBY3D)
         {
             for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                auto localDerivative = this->layout.deriv(this->By, make_index(ix, iy, iz),
-                                                          DirectionTag<Direction::Y>{});
-                uint32 index_        = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto localDerivative
+                    = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::Y>{});
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -399,8 +391,8 @@ TYPED_TEST(a3DDerivative, DZBY3D)
         {
             for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(
-                    this->By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point
+                    = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -417,9 +409,9 @@ TYPED_TEST(a3DDerivative, DZBY3D)
         {
             for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                auto localDerivative = this->layout.deriv(this->By, make_index(ix, iy, iz),
-                                                          DirectionTag<Direction::Z>{});
-                uint32 index_        = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto localDerivative
+                    = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::Z>{});
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -451,8 +443,8 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
         {
             for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(
-                    this->Ez, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point
+                    = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -469,9 +461,9 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
         {
             for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                auto localDerivative = this->layout.deriv(this->Ez, make_index(ix, iy, iz),
-                                                          DirectionTag<Direction::X>{});
-                uint32 index_        = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto localDerivative
+                    = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::X>{});
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -503,8 +495,8 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
         {
             for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(
-                    this->Ez, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point
+                    = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -521,9 +513,9 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
         {
             for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                auto localDerivative = this->layout.deriv(this->Ez, make_index(ix, iy, iz),
-                                                          DirectionTag<Direction::Y>{});
-                uint32 index_        = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto localDerivative
+                    = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::Y>{});
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -555,8 +547,8 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
         {
             for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point = this->layout.fieldNodeCoordinates(
-                    this->Ez, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                Point<double, 3> point
+                    = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -573,9 +565,9 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
         {
             for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                auto localDerivative = this->layout.deriv(this->Ez, make_index(ix, iy, iz),
-                                                          DirectionTag<Direction::Z>{});
-                uint32 index_        = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto localDerivative
+                    = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::Z>{});
+                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }

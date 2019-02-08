@@ -35,29 +35,29 @@ struct VecFieldMock
 
 struct GridLayoutMock1D
 {
-    static const int dimension = 1;
-    double deriv(FieldMock const& f, MeshIndex<1> mi, DirectionTag<Direction::X>) {}
-    int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    static const auto dimension = 1u;
+    double deriv(FieldMock const& f, MeshIndex<1u> mi, DirectionTag<Direction::X>) {}
+    std::size_t physicalStartIndex(FieldMock&, Direction dir) { return 0; }
+    std::size_t physicalEndIndex(FieldMock&, Direction dir) { return 0; }
 };
 
 struct GridLayoutMock2D
 {
-    static const int dimension = 2;
-    double deriv(FieldMock const& f, MeshIndex<2> mi, DirectionTag<Direction::X>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<2> mi, DirectionTag<Direction::Y>) { return 0; }
-    int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    static const auto dimension = 2u;
+    double deriv(FieldMock const& f, MeshIndex<2u> mi, DirectionTag<Direction::X>) { return 0; }
+    double deriv(FieldMock const& f, MeshIndex<2u> mi, DirectionTag<Direction::Y>) { return 0; }
+    std::size_t physicalStartIndex(FieldMock&, Direction dir) { return 0; }
+    std::size_t physicalEndIndex(FieldMock&, Direction dir) { return 0; }
 };
 
 struct GridLayoutMock3D
 {
-    static const int dimension = 3;
-    double deriv(FieldMock const& f, MeshIndex<3> mi, DirectionTag<Direction::X>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<3> mi, DirectionTag<Direction::Y>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<3> mi, DirectionTag<Direction::Z>) { return 0; }
-    int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    static const auto dimension = 3u;
+    double deriv(FieldMock const& f, MeshIndex<3u> mi, DirectionTag<Direction::X>) { return 0; }
+    double deriv(FieldMock const& f, MeshIndex<3u> mi, DirectionTag<Direction::Y>) { return 0; }
+    double deriv(FieldMock const& f, MeshIndex<3u> mi, DirectionTag<Direction::Z>) { return 0; }
+    std::size_t physicalStartIndex(FieldMock&, Direction dir) { return 0; }
+    std::size_t physicalEndIndex(FieldMock&, Direction dir) { return 0; }
 };
 
 
@@ -121,7 +121,7 @@ class Faraday1DTest : public ::testing::Test
 protected:
     using GridLayoutImpl = GridLayoutImplYee<1, 1>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr auto interp_order = GridLayoutImpl::interp_order;
     Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bx;
     Field<NdArrayVector1D<>, HybridQuantity::Scalar> By;
     Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bz;
@@ -172,7 +172,7 @@ class Faraday2DTest : public ::testing::Test
 protected:
     using GridLayoutImpl = GridLayoutImplYee<2, 1>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr auto interp_order = GridLayoutImpl::interp_order;
     Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bx;
     Field<NdArrayVector2D<>, HybridQuantity::Scalar> By;
     Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bz;
@@ -223,7 +223,7 @@ class Faraday3DTest : public ::testing::Test
 protected:
     using GridLayoutImpl = GridLayoutImplYee<3, 1>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    static constexpr auto interp_order = GridLayoutImpl::interp_order;
     Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bx;
     Field<NdArrayVector3D<>, HybridQuantity::Scalar> By;
     Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bz;

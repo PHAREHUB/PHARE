@@ -498,8 +498,8 @@ namespace core
 
             if constexpr (Field::dimension == 1)
             {
-                auto next = operand(nextIndex(fieldCentering[dirX], index.i));
-                auto prev = operand(prevIndex(fieldCentering[dirX], index.i));
+                auto next = operand(nextIndex(fieldCentering[dirX], index[0]));
+                auto prev = operand(prevIndex(fieldCentering[dirX], index[0]));
                 return inverseMeshSize_[dirX] * (next - prev);
             }
 
@@ -507,15 +507,15 @@ namespace core
             {
                 if constexpr (DirectionTag::direction == Direction::X)
                 {
-                    auto next = operand(nextIndex(fieldCentering[dirX], index.i), index.j);
-                    auto prev = operand(prevIndex(fieldCentering[dirX], index.i), index.j);
+                    auto next = operand(nextIndex(fieldCentering[dirX], index[0]), index[1]);
+                    auto prev = operand(prevIndex(fieldCentering[dirX], index[0]), index[1]);
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
                 if constexpr (DirectionTag::direction == Direction::Y)
                 {
-                    auto next = operand(index.i, nextIndex(fieldCentering[dirY], index.j));
-                    auto prev = operand(index.i, prevIndex(fieldCentering[dirY], index.j));
+                    auto next = operand(index[0], nextIndex(fieldCentering[dirY], index[1]));
+                    auto prev = operand(index[0], prevIndex(fieldCentering[dirY], index[1]));
                     return inverseMeshSize_[dirY] * (next - prev);
                 }
             }
@@ -523,21 +523,27 @@ namespace core
             {
                 if constexpr (DirectionTag::direction == Direction::X)
                 {
-                    auto next = operand(nextIndex(fieldCentering[dirX], index.i), index.j, index.k);
-                    auto prev = operand(prevIndex(fieldCentering[dirX], index.i), index.j, index.k);
+                    auto next
+                        = operand(nextIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
+                    auto prev
+                        = operand(prevIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
                 if constexpr (DirectionTag::direction == Direction::Y)
                 {
-                    auto next = operand(index.i, nextIndex(fieldCentering[dirY], index.j), index.k);
-                    auto prev = operand(index.i, prevIndex(fieldCentering[dirY], index.j), index.k);
+                    auto next
+                        = operand(index[0], nextIndex(fieldCentering[dirY], index[1]), index[2]);
+                    auto prev
+                        = operand(index[0], prevIndex(fieldCentering[dirY], index[1]), index[2]);
                     return inverseMeshSize_[dirY] * (next - prev);
                 }
                 if constexpr (DirectionTag::direction == Direction::Z)
                 {
-                    auto next = operand(index.i, index.j, nextIndex(fieldCentering[dirZ], index.k));
-                    auto prev = operand(index.i, index.j, prevIndex(fieldCentering[dirZ], index.k));
+                    auto next
+                        = operand(index[0], index[1], nextIndex(fieldCentering[dirZ], index[2]));
+                    auto prev
+                        = operand(index[0], index[1], prevIndex(fieldCentering[dirZ], index[2]));
                     return inverseMeshSize_[dirZ] * (next - prev);
                 }
             }

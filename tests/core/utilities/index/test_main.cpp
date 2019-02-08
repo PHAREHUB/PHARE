@@ -13,16 +13,16 @@ using namespace PHARE::core;
 TEST(AnIndex, isZerobyDefault)
 {
     MeshIndex<1> i1;
-    EXPECT_EQ(0, i1.i);
+    EXPECT_EQ(0, i1[0]);
 
     MeshIndex<2> i2;
-    EXPECT_EQ(0, i2.i);
-    EXPECT_EQ(0, i2.j);
+    EXPECT_EQ(0, i2[0]);
+    EXPECT_EQ(0, i2[1]);
 
     MeshIndex<3> i3;
-    EXPECT_EQ(0, i3.i);
-    EXPECT_EQ(0, i3.j);
-    EXPECT_EQ(0, i3.k);
+    EXPECT_EQ(0, i3[0]);
+    EXPECT_EQ(0, i3[1]);
+    EXPECT_EQ(0, i3[2]);
 }
 
 
@@ -33,14 +33,14 @@ TEST(AnIndex, canBeConstructedWithMakeIndex)
     auto idx2 = make_index(10, 11);
     auto idx3 = make_index(10, 11, 12);
 
-    EXPECT_EQ(10, idx1.i);
+    EXPECT_EQ(10, idx1[0]);
 
-    EXPECT_EQ(10, idx2.i);
-    EXPECT_EQ(11, idx2.j);
+    EXPECT_EQ(10, idx2[0]);
+    EXPECT_EQ(11, idx2[1]);
 
-    EXPECT_EQ(10, idx3.i);
-    EXPECT_EQ(11, idx3.j);
-    EXPECT_EQ(12, idx3.k);
+    EXPECT_EQ(10, idx3[0]);
+    EXPECT_EQ(11, idx3[1]);
+    EXPECT_EQ(12, idx3[2]);
 }
 
 
