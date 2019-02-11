@@ -4,6 +4,7 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "models/hybrid_state.h"
 
 
 static constexpr std::size_t dim         = 1;
@@ -16,6 +17,8 @@ using IonPopulation1D            = IonPopulation<ParticleArray<1>, VecField1D, G
 using Ions1D                     = Ions<IonPopulation1D, GridYee1D>;
 using Electromag1D               = Electromag<VecField1D>;
 using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
+using IonInitializer1D           = IonsInitializer<ParticleArray<1>, GridYee1D>;
+using HybridState1D              = HybridState<Electromag1D, Ions1D, IonInitializer1D>;
 
 
 struct IonPopulation1D_P
@@ -92,12 +95,38 @@ struct Electromag1D_P
 
 
 
+struct HybridState1D_P
+{
+    IonsInitializer<ParticleArray<1>, GridYee1D> createInitializer()
+    {
+        IonsInitializer<ParticleArray<1>, GridYee1D> initializer;
+
+        initializer.masses.push_back(1.);
+        initializer.names.push_back("protons");
+        initializer.nbrPopulations = 1;
+        initializer.name           = "TestIons";
+        initializer.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
+            std::make_unique<ScalarFunction<1>>(density),
+            std::make_unique<VectorFunction<1>>(bulkVelocity),
+            std::make_unique<VectorFunction<1>>(thermalVelocity), -1., 10));
+
+
+        return initializer;
+    }
+
+
+    HybridState1D user{createInitializer()};
+};
+
+
+
 
 using IonPop1DOnly          = std::tuple<IonPopulation1D_P>;
 using VecField1DOnly        = std::tuple<VecField1D_P>;
 using Ions1DOnly            = std::tuple<Ions1D_P>;
 using VecField1DAndIonPop1D = std::tuple<VecField1D_P, IonPopulation1D_P>;
 using Electromag1DOnly      = std::tuple<Electromag1D_P>;
+using HybridState1DOnly     = std::tuple<HybridState1D_P>;
 
 TYPED_TEST_CASE_P(aResourceUserCollection);
 
@@ -134,5 +163,7 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 REGISTER_TYPED_TEST_CASE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
 
 
-typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly> MyTypes;
+typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly,
+                         HybridState1DOnly>
+    MyTypes;
 INSTANTIATE_TYPED_TEST_CASE_P(testResourcesManager, aResourceUserCollection, MyTypes);

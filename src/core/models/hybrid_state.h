@@ -37,6 +37,35 @@ namespace core
         Electromag electromag{"EM"};
         Ions ions;
 
+
+
+
+        //-------------------------------------------------------------------------
+        //                  start the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+        bool isUsable() const { return electromag.isUsable() and ions.isUsable(); }
+
+
+
+        bool isSettable() const { return electromag.isSettable() and ions.isSettable(); }
+
+
+        auto getCompileTimeResourcesUserList() const
+        {
+            return std::forward_as_tuple(electromag, ions);
+        }
+
+        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(electromag, ions); }
+
+
+        //-------------------------------------------------------------------------
+        //                  ends the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+
+
+
         static constexpr std::size_t dimension = Electromag::dimension;
     };
 
