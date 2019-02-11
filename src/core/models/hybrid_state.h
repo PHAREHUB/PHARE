@@ -30,12 +30,6 @@ namespace core
     public:
         static constexpr auto dimension = Ions::dimension;
 
-        [[deprecated]] HybridState(IonsInitializer ionsInitializer)
-            : ions{std::move(ionsInitializer)}
-        {
-        }
-
-
         HybridState(PHARE::initializer::PHAREDict<dimension> dict)
             : ions{dict["ions"]}
         {
@@ -43,7 +37,6 @@ namespace core
 
         Electromag electromag{"EM"};
         Ions ions;
-
 
 
 
