@@ -40,18 +40,6 @@ namespace amr_interface
         std::shared_ptr<resources_manager_type> resourcesManager;
 
 
-        /**
-         * @brief This constructor uses the IonInitializer to build the Ions of the HybridState and
-         * stores the ResourcesManager for allocating data on patches with allocate()
-         */
-        /*[[deprecated]] HybridModel(IonsInitializer ionsInitializer,
-                                   std::shared_ptr<resources_manager_type> resourcesManager)
-            : IPhysicalModel{model_name}
-            , state{std::move(ionsInitializer)}
-            , resourcesManager{std::move(resourcesManager)}
-        {
-        }*/
-
 
         HybridModel(PHARE::initializer::PHAREDict<dimension> dict,
                     std::shared_ptr<resources_manager_type> resourcesManager)

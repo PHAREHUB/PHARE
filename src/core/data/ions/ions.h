@@ -29,21 +29,6 @@ namespace core
 
         static constexpr auto dimension = GridLayout::dimension;
 
-        [[deprecated]] explicit Ions(ions_initializer_type initializer)
-            : name_{std::move(initializer.name)}
-            , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
-            , populations_{}
-        {
-            // TODO IonPopulation constructor will need to take a ParticleInitializer
-            // from the vector in the initializer
-            populations_.reserve(initializer.nbrPopulations);
-            for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
-            {
-                populations_.push_back(
-                    IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop],
-                                  std::move(initializer.particleInitializers[ipop])});
-            }
-        }
 
 
 
@@ -66,6 +51,8 @@ namespace core
                 populations_.push_back(IonPopulation{popName, mass, std::move(initializer)});
             }
         }
+
+
 
 
         field_type const& density() const
