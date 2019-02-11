@@ -29,7 +29,7 @@ namespace core
 
         static constexpr auto dimension = GridLayout::dimension;
 
-        explicit Ions(ions_initializer_type initializer)
+        [[deprecated]] explicit Ions(ions_initializer_type initializer)
             : name_{std::move(initializer.name)}
             , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
             , populations_{}
@@ -52,15 +52,16 @@ namespace core
             , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
             , populations_{}
         {
-            populations_.reserve(dict["nbrPopulations"].template to<std::size_t>());
+            auto nbrPop = dict["nbrPopulations"].template to<std::size_t>();
+            populations_.reserve(nbrPop);
 
-            for (uint32 ipop = 0; ipop < populations_.size(); ++ipop)
+            for (uint32 ipop = 0; ipop < nbrPop; ++ipop)
             {
                 auto& pop    = dict["pop" + std::to_string(ipop)];
                 auto popName = name_ + "_" + pop["name"].template to<std::string>();
                 auto mass    = pop["mass"].template to<double>();
 
-                auto initializer = ParticleInitializerFactoryT::create(dict["ParticleInitializer"]);
+                auto initializer = ParticleInitializerFactoryT::create(pop["ParticleInitializer"]);
 
                 populations_.push_back(IonPopulation{popName, mass, std::move(initializer)});
             }

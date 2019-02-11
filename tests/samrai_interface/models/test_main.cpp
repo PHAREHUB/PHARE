@@ -7,6 +7,7 @@
 #include "data/ions/ions.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/vecfield/vecfield.h"
+#include "data_provider.h"
 #include "evolution/messengers/hybrid_messenger.h"
 #include "evolution/messengers/messenger.h"
 #include "physical_models/hybrid_model.h"
@@ -61,24 +62,47 @@ std::array<double, 3> thermalVelocity(double x)
 
 
 
-auto getIonsInit()
+using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
+using VectorFunction = PHARE::initializer::VectorFunction<1>;
+
+PHARE::initializer::PHAREDict<1> createIonsDict()
 {
-    IonsInit1D ionsInit;
-    ionsInit.name   = "Ions";
-    ionsInit.masses = {{0.1, 0.3}};
+    PHARE::initializer::PHAREDict<1> dict;
+    dict["ions"]["name"]                                = std::string{"ions"};
+    dict["ions"]["nbrPopulations"]                      = std::size_t{2};
+    dict["ions"]["pop0"]["name"]                        = std::string{"protons"};
+    dict["ions"]["pop0"]["mass"]                        = 1.;
+    dict["ions"]["pop0"]["ParticleInitializer"]["name"] = std::string{"FluidParticleInitializer"};
+    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
-    ionsInit.names.emplace_back("specie1");
-    ionsInit.names.emplace_back("specie2");
+    dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
+        = static_cast<VectorFunction>(bulkVelocity);
 
-    ionsInit.nbrPopulations = 2;
+    dict["ions"]["pop0"]["ParticleInitializer"]["thermalVelocity"]
+        = static_cast<VectorFunction>(thermalVelocity);
 
-    ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-        &density, &bulkVelocity, &thermalVelocity, -1., 10));
+    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+    dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
+    dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
 
-    ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-        &density, &bulkVelocity, &thermalVelocity, -1., 10));
 
-    return ionsInit;
+
+    dict["ions"]["pop1"]["name"]                        = std::string{"protons"};
+    dict["ions"]["pop1"]["mass"]                        = 1.;
+    dict["ions"]["pop1"]["ParticleInitializer"]["name"] = std::string{"FluidParticleInitializer"};
+    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+
+    dict["ions"]["pop1"]["ParticleInitializer"]["bulkVelocity"]
+        = static_cast<VectorFunction>(bulkVelocity);
+
+    dict["ions"]["pop1"]["ParticleInitializer"]["thermalVelocity"]
+        = static_cast<VectorFunction>(thermalVelocity);
+
+    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+    dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
+    dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+    return dict;
 }
 
 
@@ -90,7 +114,7 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
         std::make_shared<ResourcesManagerT>()};
 
     std::unique_ptr<HybridModelT> hybridModel{
-        std::make_unique<HybridModelT>(getIonsInit(), resourcesManagerHybrid)};
+        std::make_unique<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
 
 
 
@@ -112,37 +136,37 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
     EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
     EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
 
-    EXPECT_EQ("Ions_rho", modelInfo.modelIonDensity);
-    EXPECT_EQ("Ions_bulkVel", modelInfo.modelIonBulk.vecName);
-    EXPECT_EQ("Ions_bulkVel_x", modelInfo.modelIonBulk.xName);
-    EXPECT_EQ("Ions_bulkVel_y", modelInfo.modelIonBulk.yName);
-    EXPECT_EQ("Ions_bulkVel_z", modelInfo.modelIonBulk.zName);
+    EXPECT_EQ("ions_rho", modelInfo.modelIonDensity);
+    EXPECT_EQ("ions_bulkVel", modelInfo.modelIonBulk.vecName);
+    EXPECT_EQ("ions_bulkVel_x", modelInfo.modelIonBulk.xName);
+    EXPECT_EQ("ions_bulkVel_y", modelInfo.modelIonBulk.yName);
+    EXPECT_EQ("ions_bulkVel_z", modelInfo.modelIonBulk.zName);
 
 
 
     EXPECT_NE(std::end(modelInfo.initIonDensity),
               std::find(std::begin(modelInfo.initIonDensity), std::end(modelInfo.initIonDensity),
-                        "Ions_rho"));
+                        "ions_rho"));
 
     EXPECT_NE(
         std::end(modelInfo.initIonBulk),
         std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.vecName == std::string{"Ions_bulkVel"}; }));
+                     [](auto const& desc) { return desc.vecName == std::string{"ions_bulkVel"}; }));
 
     EXPECT_NE(
         std::end(modelInfo.initIonBulk),
         std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.xName == std::string{"Ions_bulkVel_x"}; }));
+                     [](auto const& desc) { return desc.xName == std::string{"ions_bulkVel_x"}; }));
 
     EXPECT_NE(
         std::end(modelInfo.initIonBulk),
         std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.yName == std::string{"Ions_bulkVel_y"}; }));
+                     [](auto const& desc) { return desc.yName == std::string{"ions_bulkVel_y"}; }));
 
     EXPECT_NE(
         std::end(modelInfo.initIonBulk),
         std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.zName == std::string{"Ions_bulkVel_z"}; }));
+                     [](auto const& desc) { return desc.zName == std::string{"ions_bulkVel_z"}; }));
 }
 
 

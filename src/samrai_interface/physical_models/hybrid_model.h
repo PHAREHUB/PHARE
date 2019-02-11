@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "data_provider.h"
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
 #include "physical_models/physical_model.h"
@@ -24,11 +25,12 @@ namespace amr_interface
     {
     public:
         static const std::string model_name;
-        using gridLayout_type        = GridLayoutT;
-        using electromag_type        = Electromag;
-        using vecfield_type          = typename Electromag::vecfield_type;
-        using ions_type              = Ions;
-        using resources_manager_type = ResourcesManager<gridLayout_type>;
+        using gridLayout_type           = GridLayoutT;
+        using electromag_type           = Electromag;
+        using vecfield_type             = typename Electromag::vecfield_type;
+        using ions_type                 = Ions;
+        using resources_manager_type    = ResourcesManager<gridLayout_type>;
+        static constexpr auto dimension = GridLayoutT::dimension;
 
 
         //! Physical quantities associated with hybrid equations
@@ -42,10 +44,19 @@ namespace amr_interface
          * @brief This constructor uses the IonInitializer to build the Ions of the HybridState and
          * stores the ResourcesManager for allocating data on patches with allocate()
          */
-        HybridModel(IonsInitializer ionsInitializer,
-                    std::shared_ptr<resources_manager_type> resourcesManager)
+        /*[[deprecated]] HybridModel(IonsInitializer ionsInitializer,
+                                   std::shared_ptr<resources_manager_type> resourcesManager)
             : IPhysicalModel{model_name}
             , state{std::move(ionsInitializer)}
+            , resourcesManager{std::move(resourcesManager)}
+        {
+        }*/
+
+
+        HybridModel(PHARE::initializer::PHAREDict<dimension> dict,
+                    std::shared_ptr<resources_manager_type> resourcesManager)
+            : IPhysicalModel{model_name}
+            , state{dict}
             , resourcesManager{std::move(resourcesManager)}
         {
         }

@@ -31,6 +31,7 @@
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/particles/particle_array.h"
 #include "data/vecfield/vecfield.h"
+#include "data_provider.h"
 #include "evolution/integrator/multiphysics_integrator.h"
 #include "evolution/messengers/messenger_factory.h"
 #include "physical_models/hybrid_model.h"
@@ -172,25 +173,53 @@ std::array<double, 3> thermalVelocity(double x)
 // -----------------------------------------------------------------------------
 //                          MULTIPHYSICS INTEGRATOR
 // -----------------------------------------------------------------------------
-auto getIonsInit_()
+
+
+
+using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
+using VectorFunction = PHARE::initializer::VectorFunction<1>;
+
+PHARE::initializer::PHAREDict<1> createIonsDict()
 {
-    IonsInit1D ionsInit;
-    ionsInit.name   = "Ions";
-    ionsInit.masses = {{0.1, 0.3}};
+    PHARE::initializer::PHAREDict<1> dict;
+    dict["ions"]["name"]                                = std::string{"ions"};
+    dict["ions"]["nbrPopulations"]                      = std::size_t{2};
+    dict["ions"]["pop0"]["name"]                        = std::string{"protons"};
+    dict["ions"]["pop0"]["mass"]                        = 1.;
+    dict["ions"]["pop0"]["ParticleInitializer"]["name"] = std::string{"FluidParticleInitializer"};
+    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
-    ionsInit.names.emplace_back("specie1");
-    ionsInit.names.emplace_back("specie2");
+    dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
+        = static_cast<VectorFunction>(bulkVelocity);
 
-    ionsInit.nbrPopulations = 2;
+    dict["ions"]["pop0"]["ParticleInitializer"]["thermalVelocity"]
+        = static_cast<VectorFunction>(thermalVelocity);
 
-    ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-        &density, &bulkVelocity, &thermalVelocity, -1., 10));
+    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+    dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
+    dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
 
-    ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-        &density, &bulkVelocity, &thermalVelocity, -1., 10));
 
-    return ionsInit;
+
+    dict["ions"]["pop1"]["name"]                        = std::string{"alpha"};
+    dict["ions"]["pop1"]["mass"]                        = 1.;
+    dict["ions"]["pop1"]["ParticleInitializer"]["name"] = std::string{"FluidParticleInitializer"};
+    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+
+    dict["ions"]["pop1"]["ParticleInitializer"]["bulkVelocity"]
+        = static_cast<VectorFunction>(bulkVelocity);
+
+    dict["ions"]["pop1"]["ParticleInitializer"]["thermalVelocity"]
+        = static_cast<VectorFunction>(thermalVelocity);
+
+    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+    dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
+    dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+    return dict;
 }
+
+
 
 
 class aMultiPhysicsIntegrator : public ::testing::Test
@@ -201,7 +230,7 @@ public:
     bool initialTime  = true;
     bool canBeRefined = true;
 
-    IonsInit1D ionsInit;
+    // IonsInit1D ionsInit;
 
     using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D, IonsInit1D>;
     using MHDModelT    = MHDModel<GridYee1D, VecField1D>;
@@ -233,10 +262,8 @@ public:
 
 
     aMultiPhysicsIntegrator()
-        : ionsInit{getIonsInit_()}
-        , hybridModel{std::make_shared<HybridModelT>(
-              std::move(ionsInit),
-              std::make_shared<typename HybridModelT::resources_manager_type>())}
+        : hybridModel{std::make_shared<HybridModelT>(
+              createIonsDict(), std::make_shared<typename HybridModelT::resources_manager_type>())}
         , mhdModel{std::make_shared<MHDModelT>(
               std::make_shared<typename MHDModelT::resources_manager_type>())}
         , multiphysInteg{std::make_shared<MultiPhysicsIntegratorT>(maxLevelNbr)}

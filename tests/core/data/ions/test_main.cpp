@@ -64,6 +64,23 @@ protected:
         PHARE::initializer::PHAREDict<1> dict;
         dict["name"]                                   = std::string{"ions"};
         dict["nbrPopulations"]                         = std::size_t{2};
+        dict["pop0"]["name"]                           = std::string{"protons"};
+        dict["pop0"]["mass"]                           = 1.;
+        dict["pop0"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
+        dict["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+
+        dict["pop0"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
+
+        dict["pop0"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["pop0"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+
+
         dict["pop1"]["name"]                           = std::string{"protons"};
         dict["pop1"]["mass"]                           = 1.;
         dict["pop1"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
