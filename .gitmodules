@@ -1,7 +1,10 @@
-[submodule "external/pharein"]
-    path = external/pharein
+[submodule "subprojects/pharein"]
+    path = subprojects/pharein
     url = https://github.com/PHAREHUB/pharein
 
-[submodule "src/initializer/cppdic"]
-    path = src/initializer/cppdict
+[submodule "subprojects/cppdict"]
+    path = subprojects/cppdict
     url = https://github.com/nicolasaunai/cppdict
+[submodule "cppdict"]
+	path = subprojects/cppdict
+	url = https://github.com/nicolasaunai/cppdict

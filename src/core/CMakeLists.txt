@@ -18,6 +18,7 @@ set( SOURCES_INC
      data/ions/ion_initializer.h
      data/ions/particle_initializers/particle_initializer.h
      data/ions/particle_initializers/fluid_particle_initializer.h
+     data/ions/particle_initializers/particle_initializer_factory.h
      data/vecfield/vecfield.h
      data/vecfield/vecfield_component.h
      hybrid/hybrid_quantities.h
@@ -42,6 +43,7 @@ set( SOURCES_INC
      utilities/range/range.h
      utilities/types.h
      utilities/function/function.h
+#     ../../subprojets/cppdict/include/dict.hpp
    )
 
 set( SOURCES_CPP
@@ -51,10 +53,12 @@ set( SOURCES_CPP
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})
-#target_link_libraries(phare_core PUBLIC wrapper)
+target_link_libraries(phare_core PUBLIC initializer)
 
 target_include_directories(phare_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../initializer>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>
   $<INSTALL_INTERFACE:include/phare/core>)
 
 include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

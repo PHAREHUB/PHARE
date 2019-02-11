@@ -39,6 +39,29 @@ namespace core
         }
 
 
+        /*
+         *         explicit Ions(PHARE::initializer::PHAREDict<1>& dict)
+            : name_{dict["name"].to<std::string>()}
+            , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
+            , populations_{}
+        {
+            // TODO IonPopulation constructor will need to take a ParticleInitializer
+            // from the vector in the initializer
+            populations_.reserve(dict["nbrPopulation"].to<std::size_t>());
+            // initializer.nbrPopulations);
+            for (uint32 ipop = 0; ipop < populations_.size(); ++ipop)
+            {
+                auto& pop    = dict["pop" + std::to_string(ipop)];
+                auto popName = pop["name"].to<std::string>();
+                auto mass    = pop["mass"].to<double>();
+                // auto paticleInitializer = std::move();
+
+                // TODO use ParticleInitializerFactory with subdict info
+                populations_.push_back(name_ + "_" + popName, mass, nullptr);
+            }
+        }
+         */
+
         field_type const& density() const
         {
             if (isUsable())

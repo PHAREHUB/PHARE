@@ -27,7 +27,6 @@ namespace core
     class HybridState : public IPhysicalState
     {
     public:
-        // TODO HybridState ResourcesUser
         HybridState(IonsInitializer ionsInitializer)
             : ions{std::move(ionsInitializer)}
         {

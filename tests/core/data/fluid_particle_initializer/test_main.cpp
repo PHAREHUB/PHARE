@@ -50,9 +50,7 @@ public:
     aFluidParticleInitializer1D()
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
         , initializer{std::make_unique<FluidParticleInitializer<ParticleArrayT, GridLayoutT>>(
-              std::make_unique<ScalarFunction<1>>(density),
-              std::make_unique<VectorFunction<1>>(bulkVelocity),
-              std::make_unique<VectorFunction<1>>(thermalvelocity), 1., nbrParticlesPerCell)}
+              density, bulkVelocity, thermalvelocity, 1., nbrParticlesPerCell)}
     {
         //
     }

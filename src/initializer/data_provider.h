@@ -2,7 +2,7 @@
 #define DATA_PROVIDER_H
 
 #include "cppdict/include/dict.hpp"
-#include "models/physical_state.h"
+//#include "models/physical_state.h"
 
 #include <map>
 #include <string>
@@ -67,8 +67,8 @@ namespace initializer
 
 
     template<std::size_t dim>
-    using PHAREDict
-        = cppdict::Dict<int, double, std::string, ScalarFunction<dim>, VectorFunction<dim>>;
+    using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<dim>,
+                                    VectorFunction<dim>>;
 
 
 

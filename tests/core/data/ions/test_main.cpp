@@ -65,9 +65,7 @@ protected:
         initializer.nbrPopulations = 1;
         initializer.name           = "TestIons";
         initializer.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-            std::make_unique<ScalarFunction<1>>(density),
-            std::make_unique<VectorFunction<1>>(bulkVelocity),
-            std::make_unique<VectorFunction<1>>(thermalVelocity), -1., 10));
+            density, bulkVelocity, thermalVelocity, -1., 10));
 
         return initializer;
     }

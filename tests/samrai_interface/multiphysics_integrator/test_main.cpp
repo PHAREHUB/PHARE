@@ -184,14 +184,10 @@ auto getIonsInit_()
     ionsInit.nbrPopulations = 2;
 
     ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-        std::make_unique<ScalarFunction<dim>>(density),
-        std::make_unique<VectorFunction<dim>>(bulkVelocity),
-        std::make_unique<VectorFunction<dim>>(thermalVelocity), -1., 10));
+        &density, &bulkVelocity, &thermalVelocity, -1., 10));
 
     ionsInit.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-        std::make_unique<ScalarFunction<dim>>(density),
-        std::make_unique<VectorFunction<dim>>(bulkVelocity),
-        std::make_unique<VectorFunction<dim>>(thermalVelocity), -1., 10));
+        &density, &bulkVelocity, &thermalVelocity, -1., 10));
 
     return ionsInit;
 }
