@@ -3,6 +3,7 @@
 
 
 #include "data/ions/ion_initializer.h"
+#include "data_provider.h"
 #include "models/physical_state.h"
 
 #include <cstddef>
@@ -27,11 +28,18 @@ namespace core
     class HybridState : public IPhysicalState
     {
     public:
-        HybridState(IonsInitializer ionsInitializer)
+        static constexpr auto dimension = Ions::dimension;
+
+        [[deprecated]] HybridState(IonsInitializer ionsInitializer)
             : ions{std::move(ionsInitializer)}
         {
         }
 
+
+        HybridState(PHARE::initializer::PHAREDict<dimension> dict)
+            : ions{dict["ions"]}
+        {
+        }
 
         Electromag electromag{"EM"};
         Ions ions;
@@ -61,11 +69,6 @@ namespace core
         //-------------------------------------------------------------------------
         //                  ends the ResourcesUser interface
         //-------------------------------------------------------------------------
-
-
-
-
-        static constexpr std::size_t dimension = Electromag::dimension;
     };
 
 

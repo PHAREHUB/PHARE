@@ -6,8 +6,11 @@
 #include <iterator>
 
 #include "data/ions/ion_population/ion_population.h"
+#include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
 #include "ion_initializer.h"
+#include "particle_initializers/particle_initializer_factory.h"
+
 
 namespace PHARE
 {
@@ -17,10 +20,14 @@ namespace core
     class Ions
     {
     public:
-        using field_type    = typename IonPopulation::field_type;
-        using vecfield_type = typename IonPopulation::vecfield_type;
-        using ions_initializer_type
-            = IonsInitializer<typename IonPopulation::particle_array_type, GridLayout>;
+        using field_type          = typename IonPopulation::field_type;
+        using vecfield_type       = typename IonPopulation::vecfield_type;
+        using particle_array_type = typename IonPopulation::particle_array_type;
+        using ParticleInitializerFactoryT
+            = ParticleInitializerFactory<particle_array_type, GridLayout>;
+        using ions_initializer_type = IonsInitializer<particle_array_type, GridLayout>;
+
+        static constexpr auto dimension = GridLayout::dimension;
 
         explicit Ions(ions_initializer_type initializer)
             : name_{std::move(initializer.name)}
@@ -39,28 +46,26 @@ namespace core
         }
 
 
-        /*
-         *         explicit Ions(PHARE::initializer::PHAREDict<1>& dict)
-            : name_{dict["name"].to<std::string>()}
+
+        explicit Ions(PHARE::initializer::PHAREDict<dimension> dict)
+            : name_{dict["name"].template to<std::string>()}
             , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
             , populations_{}
         {
-            // TODO IonPopulation constructor will need to take a ParticleInitializer
-            // from the vector in the initializer
-            populations_.reserve(dict["nbrPopulation"].to<std::size_t>());
-            // initializer.nbrPopulations);
+            populations_.reserve(dict["nbrPopulations"].template to<std::size_t>());
+
             for (uint32 ipop = 0; ipop < populations_.size(); ++ipop)
             {
                 auto& pop    = dict["pop" + std::to_string(ipop)];
-                auto popName = pop["name"].to<std::string>();
-                auto mass    = pop["mass"].to<double>();
-                // auto paticleInitializer = std::move();
+                auto popName = name_ + "_" + pop["name"].template to<std::string>();
+                auto mass    = pop["mass"].template to<double>();
 
-                // TODO use ParticleInitializerFactory with subdict info
-                populations_.push_back(name_ + "_" + popName, mass, nullptr);
+                auto initializer = ParticleInitializerFactoryT::create(dict["ParticleInitializer"]);
+
+                populations_.push_back(IonPopulation{popName, mass, std::move(initializer)});
             }
         }
-         */
+
 
         field_type const& density() const
         {

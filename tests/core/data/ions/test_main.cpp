@@ -14,6 +14,7 @@
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data_provider.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -51,28 +52,39 @@ std::array<double, 3> thermalVelocity(double x)
 class theIons : public ::testing::Test
 {
 protected:
-    using VecField1D = VecField<NdArrayVector1D<>, HybridQuantity>;
+    using VecField1D     = VecField<NdArrayVector1D<>, HybridQuantity>;
+    using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
+    using VectorFunction = PHARE::initializer::VectorFunction<1>;
 
     using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
     Ions<IonPopulation1D, GridYee1D> ions;
 
-    IonsInitializer<ParticleArray<1>, GridYee1D> createInitializer()
+    PHARE::initializer::PHAREDict<1> createIonsDict()
     {
-        IonsInitializer<ParticleArray<1>, GridYee1D> initializer;
+        PHARE::initializer::PHAREDict<1> dict;
+        dict["name"]                                   = std::string{"ions"};
+        dict["nbrPopulations"]                         = std::size_t{2};
+        dict["pop1"]["name"]                           = std::string{"protons"};
+        dict["pop1"]["mass"]                           = 1.;
+        dict["pop1"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
+        dict["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
-        initializer.masses.push_back(1.);
-        initializer.names.push_back("protons");
-        initializer.nbrPopulations = 1;
-        initializer.name           = "TestIons";
-        initializer.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-            density, bulkVelocity, thermalVelocity, -1., 10));
+        dict["pop1"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
 
-        return initializer;
+        dict["pop1"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["pop1"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+        return dict;
     }
 
 
     theIons()
-        : ions{createInitializer()}
+        : ions{createIonsDict()}
     {
     }
 
