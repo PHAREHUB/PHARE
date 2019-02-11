@@ -2,7 +2,7 @@
 #include <type_traits>
 
 
-#include "data/ions/ion_initializer.h"
+
 #include "data/ions/ion_population/ion_population.h"
 #include "data/ions/ions.h"
 #include "data/ndarray/ndarray_vector.h"

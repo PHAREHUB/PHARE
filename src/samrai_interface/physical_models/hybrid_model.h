@@ -20,7 +20,7 @@ namespace amr_interface
      * @brief The HybridModel class is a concrete implementation of a IPhysicalModel. The class
      * holds a HybridState and a ResourcesManager.
      */
-    template<typename GridLayoutT, typename Electromag, typename Ions, typename IonsInitializer>
+    template<typename GridLayoutT, typename Electromag, typename Ions>
     class HybridModel : public IPhysicalModel
     {
     public:
@@ -34,7 +34,7 @@ namespace amr_interface
 
 
         //! Physical quantities associated with hybrid equations
-        core::HybridState<Electromag, Ions, IonsInitializer> state;
+        core::HybridState<Electromag, Ions> state;
 
         //! ResourcesManager used for interacting with SAMRAI databases, patchdata etc.
         std::shared_ptr<resources_manager_type> resourcesManager;
@@ -103,9 +103,8 @@ namespace amr_interface
         //@TODO make it a resourcesUser
     };
 
-    template<typename GridLayoutT, typename Electromag, typename Ions, typename IonsInitializer>
-    const std::string HybridModel<GridLayoutT, Electromag, Ions, IonsInitializer>::model_name
-        = "HybridModel";
+    template<typename GridLayoutT, typename Electromag, typename Ions>
+    const std::string HybridModel<GridLayoutT, Electromag, Ions>::model_name = "HybridModel";
 
 } // namespace amr_interface
 

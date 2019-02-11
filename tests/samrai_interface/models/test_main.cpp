@@ -2,7 +2,6 @@
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/ion_initializer.h"
 #include "data/ions/ion_population/ion_population.h"
 #include "data/ions/ions.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
@@ -35,8 +34,7 @@ using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArra
 using IonsPop1D                          = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D                             = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D                       = Electromag<VecField1D>;
-using IonsInit1D                         = IonsInitializer<ParticleArray<dim>, GridYee1D>;
-using HybridModelT                       = HybridModel<GridYee1D, Electromag1D, Ions1D, IonsInit1D>;
+using HybridModelT                       = HybridModel<GridYee1D, Electromag1D, Ions1D>;
 using MHDModelT                          = MHDModel<GridYee1D, VecField1D>;
 using ResourcesManagerT                  = ResourcesManager<GridYee1D>;
 

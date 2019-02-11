@@ -26,7 +26,6 @@
 #include "data/field/refine/field_refine_operator.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/ion_initializer.h"
 #include "data/ions/ions.h"
 #include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include "data/particles/particle_array.h"
@@ -146,7 +145,6 @@ using GridImplYee1D              = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                  = GridLayout<GridImplYee1D>;
 using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<dim>, GridYee1D>;
 using IonsPop1D                  = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
-using IonsInit1D                 = IonsInitializer<ParticleArray<dim>, GridYee1D>;
 using Ions1D                     = Ions<IonsPop1D, GridYee1D>;
 
 
@@ -232,7 +230,7 @@ public:
 
     // IonsInit1D ionsInit;
 
-    using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D, IonsInit1D>;
+    using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D>;
     using MHDModelT    = MHDModel<GridYee1D, VecField1D>;
     using SolverMHDT   = SolverMHD<MHDModelT>;
     using SolverPPCT   = SolverPPC<HybridModelT>;

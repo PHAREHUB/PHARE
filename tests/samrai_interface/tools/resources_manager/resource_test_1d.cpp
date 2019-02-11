@@ -18,8 +18,7 @@ using IonPopulation1D            = IonPopulation<ParticleArray<1>, VecField1D, G
 using Ions1D                     = Ions<IonPopulation1D, GridYee1D>;
 using Electromag1D               = Electromag<VecField1D>;
 using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
-using IonInitializer1D           = IonsInitializer<ParticleArray<1>, GridYee1D>;
-using HybridState1D              = HybridState<Electromag1D, Ions1D, IonInitializer1D>;
+using HybridState1D              = HybridState<Electromag1D, Ions1D>;
 
 
 struct IonPopulation1D_P

@@ -8,7 +8,6 @@
 #include "data/ions/ion_population/ion_population.h"
 #include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
-#include "ion_initializer.h"
 #include "particle_initializers/particle_initializer_factory.h"
 
 
@@ -25,7 +24,6 @@ namespace core
         using particle_array_type = typename IonPopulation::particle_array_type;
         using ParticleInitializerFactoryT
             = ParticleInitializerFactory<particle_array_type, GridLayout>;
-        using ions_initializer_type = IonsInitializer<particle_array_type, GridLayout>;
 
         static constexpr auto dimension = GridLayout::dimension;
 

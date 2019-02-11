@@ -2,7 +2,6 @@
 #define HYBRID_HYBRID_STATE_H
 
 
-#include "data/ions/ion_initializer.h"
 #include "data_provider.h"
 #include "models/physical_state.h"
 
@@ -13,18 +12,11 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename IonsInitializer>
-    class HybridStateInitializer : public PhysicalStateInitializer
-    {
-    public:
-        IonsInitializer ionInitializer;
-    };
-
     /**
      * @brief The HybridState class is a concrete implementation of a IPhysicalState.
      * It holds an Electromag and Ion object manipulated by Hybrid concrete type of ISolver
      */
-    template<typename Electromag, typename Ions, typename IonsInitializer>
+    template<typename Electromag, typename Ions>
     class HybridState : public IPhysicalState
     {
     public:
