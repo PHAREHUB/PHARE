@@ -40,13 +40,8 @@ namespace core
 
             for (uint32 ipop = 0; ipop < nbrPop; ++ipop)
             {
-                auto& pop    = dict["pop" + std::to_string(ipop)];
-                auto popName = name_ + "_" + pop["name"].template to<std::string>();
-                auto mass    = pop["mass"].template to<double>();
-
-                auto initializer = ParticleInitializerFactoryT::create(pop["ParticleInitializer"]);
-
-                populations_.push_back(IonPopulation{popName, mass, std::move(initializer)});
+                auto& pop = dict["pop" + std::to_string(ipop)];
+                populations_.push_back(IonPopulation{name_, pop});
             }
         }
 
@@ -80,15 +75,6 @@ namespace core
         }
 
 
-
-
-        void loadParticles(GridLayout const& layout)
-        {
-            for (auto& pop : populations_)
-            {
-                pop.loadParticles(layout);
-            }
-        }
 
 
         vecfield_type const& velocity() const { return bulkVelocity_; }

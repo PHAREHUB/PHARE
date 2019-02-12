@@ -30,6 +30,11 @@ namespace amr_interface
     class MessengerFactory
     {
     public:
+        static constexpr auto dimension = HybridModel::dimension;
+        static_assert(dimension == MHDModel::dimension,
+                      "MHDModel::dimension != HybridModel::dimension");
+
+
         MessengerFactory(std::vector<MessengerDescriptor> messengerDescriptors)
             : descriptors_{messengerDescriptors}
         {

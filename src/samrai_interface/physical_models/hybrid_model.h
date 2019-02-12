@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "data/ions/particle_initializers/particle_initializer_factory.h"
 #include "data_provider.h"
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
@@ -31,7 +32,9 @@ namespace amr_interface
         using ions_type                 = Ions;
         using resources_manager_type    = ResourcesManager<gridLayout_type>;
         static constexpr auto dimension = GridLayoutT::dimension;
-
+        using particle_array_type       = typename Ions::particle_array_type;
+        using ParticleInitializerFactory
+            = core::ParticleInitializerFactory<particle_array_type, gridLayout_type>;
 
         //! Physical quantities associated with hybrid equations
         core::HybridState<Electromag, Ions> state;
@@ -48,6 +51,23 @@ namespace amr_interface
             , resourcesManager{std::move(resourcesManager)}
         {
         }
+
+
+        virtual void initialize(SAMRAI::hier::Patch& patch) override
+        {
+            // first initialize the ions
+            auto layout = layoutFromPatch<gridLayout_type>(patch);
+            auto& ions  = state.ions;
+            for (auto& pop : ions)
+            {
+                auto info                = pop.particleInitializerInfo();
+                auto particleInitializer = ParticleInitializerFactory::create(info);
+                particleInitializer->loadParticles(pop.domainParticles(), layout);
+            }
+
+            // now initialize the fields
+        }
+
 
 
         /**

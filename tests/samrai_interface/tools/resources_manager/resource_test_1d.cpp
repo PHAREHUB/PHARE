@@ -21,11 +21,21 @@ using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<1>, Gr
 using HybridState1D              = HybridState<Electromag1D, Ions1D>;
 
 
+PHARE::initializer::PHAREDict<1> getDict()
+{
+    PHARE::initializer::PHAREDict<1> dict;
+    dict["name"]                        = std::string{"protons"};
+    dict["mass"]                        = 1.;
+    dict["ParticleInitializer"]["name"] = std::string{"DummyParticleInitializer"};
+    return dict;
+}
+
+
+
 struct IonPopulation1D_P
 {
-    std::string name = "protons";
-    double mass      = 1.;
-    IonPopulation1D user{name, mass, nullptr};
+    std::string ionName = "ions";
+    IonPopulation1D user{ionName, getDict()};
 };
 
 

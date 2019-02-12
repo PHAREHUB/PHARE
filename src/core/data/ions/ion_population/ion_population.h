@@ -9,9 +9,9 @@
 
 
 #include "data/ions/particle_initializers/particle_initializer.h"
+#include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
 #include "particle_pack.h"
-
 
 namespace PHARE
 {
@@ -26,22 +26,25 @@ namespace core
         using particle_array_type              = ParticleArray;
         using particle_resource_type           = ParticlesPack<ParticleArray>;
         using vecfield_type                    = VecField;
-        using particle_initializer_type        = ParticleInitializer<ParticleArray, GridLayout>;
+        // using particle_initializer_type        = ParticleInitializer<ParticleArray, GridLayout>;
 
 
-        IonPopulation(std::string name, double mass,
-                      std::unique_ptr<particle_initializer_type> particleInitializer)
-            : name_{std::move(name)}
-            , mass_{mass}
+
+        IonPopulation(std::string ionName, initializer::PHAREDict<dimension> initializer)
+            : name_{ionName + "_" + initializer["name"].template to<std::string>()}
+            , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
-            , particleInitializer_{std::move(particleInitializer)}
+            , particleInitializerInfo_{initializer["ParticleInitializer"]}
         {
         }
+
 
         double mass() const { return mass_; }
 
         std::string const& name() const { return name_; }
 
+
+        auto particleInitializerInfo() const { return particleInitializerInfo_; }
 
 
 
@@ -54,20 +57,6 @@ namespace core
         bool isSettable() const
         {
             return particles_ == nullptr && rho_ == nullptr && flux_.isSettable();
-        }
-
-
-
-        void loadParticles(GridLayout const& layout)
-        {
-            if (isUsable())
-            {
-                particleInitializer_->loadParticles(*particles_->domainParticles, layout);
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot load particles, IonPopulation not usable");
-            }
         }
 
 
@@ -255,7 +244,8 @@ namespace core
         VecField flux_;
         field_type* rho_{nullptr};
         ParticlesPack<ParticleArray>* particles_{nullptr};
-        std::unique_ptr<particle_initializer_type> particleInitializer_;
+        // std::unique_ptr<particle_initializer_type> particleInitializer_;
+        initializer::PHAREDict<dimension> particleInitializerInfo_;
     };
 } // namespace core
 } // namespace PHARE

@@ -36,6 +36,12 @@ namespace amr_interface
 
 
         /**
+         * @brief initialize is used to initialize data
+         */
+        virtual void initialize(SAMRAI::hier::Patch& patch) = 0;
+
+
+        /**
          * @brief allocate must be implemented by concrete subclasses to allocate the model
          * quantities onto the given patch at the given allocateTime.
          *
