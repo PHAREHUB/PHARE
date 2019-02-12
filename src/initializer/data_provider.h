@@ -101,7 +101,8 @@ namespace initializer
          * @brief read will read the data from whatever source specific DataProvider classes
          * implement. readData() must be called before passing
          */
-        virtual void read() = 0;
+        virtual void read()     = 0;
+        virtual ~DataProvider() = default;
     };
 
 } // namespace initializer

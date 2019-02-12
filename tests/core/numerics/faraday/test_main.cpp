@@ -36,7 +36,7 @@ struct VecFieldMock
 struct GridLayoutMock1D
 {
     static const int dimension = 1;
-    double deriv(FieldMock const& f, MeshIndex<1> mi, DirectionTag<Direction::X>) {}
+    double deriv(FieldMock const& f, MeshIndex<1> mi, DirectionTag<Direction::X>) { return 0.; }
     int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
     int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
 };

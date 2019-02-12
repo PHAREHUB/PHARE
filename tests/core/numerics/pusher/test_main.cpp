@@ -77,6 +77,7 @@ public:
     template<typename PartIterator, typename Electromag>
     void operator()(PartIterator begin, PartIterator end, Electromag const& em)
     {
+        (void)em;
         for (auto currPart = begin; currPart != end; ++currPart)
         {
             currPart->Ex = 0.01;
@@ -429,9 +430,6 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsSameNbrOfStaying
     {
         newEndWithBC    = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc);
         newEndWithoutBC = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector);
-        auto s2         = rangeOut2.size();
-        auto s1         = rangeOut1.size();
-        auto s          = rangeIn.size();
 
         if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
         {

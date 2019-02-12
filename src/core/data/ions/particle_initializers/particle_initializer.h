@@ -11,6 +11,7 @@ namespace core
     {
     public:
         virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const = 0;
+        virtual ~ParticleInitializer() = default;
     };
 
 } // namespace core

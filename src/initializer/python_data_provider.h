@@ -22,7 +22,7 @@ namespace initializer
     class PythonDataProvider : public DataProvider
     {
     public:
-        PythonDataProvider(int argc, char** argv)
+        PythonDataProvider(int argc, char const* argv)
         {
             if (argc == 2)
             {

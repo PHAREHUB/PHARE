@@ -45,12 +45,14 @@ double density(double x)
 
 std::array<double, 3> bulkVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{1.0, 0.0, 0.0}};
 }
 
 
 std::array<double, 3> thermalVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
 
