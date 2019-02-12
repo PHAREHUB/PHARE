@@ -67,7 +67,6 @@ namespace amr_interface
         {
             if (messengerName == HybridHybridMessengerStrategy<HybridModel>::stratName)
             {
-                // TODO MODEL
                 auto resourcesManager
                     = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
 

@@ -266,14 +266,8 @@ public:
               std::make_shared<typename MHDModelT::resources_manager_type>())}
         , multiphysInteg{std::make_shared<MultiPhysicsIntegratorT>(maxLevelNbr)}
     {
-        // TODO MODEL resourcesManager->registerResources(hybridModel);
-        hybridModel->resourcesManager->registerResources(hybridModel->state.electromag.E);
-        hybridModel->resourcesManager->registerResources(hybridModel->state.electromag.B);
-        hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
-
-        // TODO MODEL resourcesManager->registerResources(mhdModel)
-        mhdModel->resourcesManager->registerResources(mhdModel->state.B);
-        mhdModel->resourcesManager->registerResources(mhdModel->state.V);
+        hybridModel->resourcesManager->registerResources(hybridModel->state);
+        mhdModel->resourcesManager->registerResources(mhdModel->state);
 
 
         auto dimension = SAMRAI::tbox::Dimension{1};

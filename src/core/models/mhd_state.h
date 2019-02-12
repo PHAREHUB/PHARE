@@ -19,12 +19,27 @@ namespace core
     class MHDState : public IPhysicalState
     {
     public:
-        /*virtual void allocate(ResourcesManager const& manager, SAMRAI::hier::Patch& patch)
-        override
-        {
-            manager.allocate(B, patch);
-            manager.allocate(V, patch);
-        }*/
+        //-------------------------------------------------------------------------
+        //                  start the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+        bool isUsable() const { return B.isUsable() and V.isUsable(); }
+
+
+
+        bool isSettable() const { return B.isSettable() and V.isSettable(); }
+
+
+        auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(B, V); }
+
+        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(B, V); }
+
+
+        //-------------------------------------------------------------------------
+        //                  ends the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+
 
         VecFieldT B{"B", MHDQuantity::Vector::B};
         VecFieldT V{"V", MHDQuantity::Vector::V};

@@ -56,9 +56,7 @@ namespace amr_interface
          */
         virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
         {
-            // TODO MODEL could do resourcesManager->allocate(state);
-            resourcesManager->allocate(state.electromag, patch, allocateTime);
-            resourcesManager->allocate(state.ions, patch, allocateTime);
+            resourcesManager->allocate(state, patch, allocateTime);
         }
 
 
@@ -99,8 +97,6 @@ namespace amr_interface
         }
 
         virtual ~HybridModel() override = default;
-
-        //@TODO make it a resourcesUser
     };
 
     template<typename GridLayoutT, typename Electromag, typename Ions>

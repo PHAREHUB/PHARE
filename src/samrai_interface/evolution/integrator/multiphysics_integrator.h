@@ -284,9 +284,6 @@ namespace amr_interface
                 auto level = hierarchy->getPatchLevel(levelNumber);
                 for (auto patch : *level)
                 {
-                    // TODO MODEL rm.allocate(model, *patch, initDataTime);
-                    // TODO MODEL rm.allocate(solver, *patch, initDataTime);
-                    // TODO MODEL rm.allocate(messenger, *patch, initDataTime);
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
                     messenger.allocate(*patch, initDataTime);
