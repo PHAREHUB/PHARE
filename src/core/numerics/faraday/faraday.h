@@ -98,10 +98,9 @@ namespace core
 
             for (auto ix = start; ix <= end; ++ix)
             {
-                Bynew(ix) = By(ix)
-                            + this->dt_
-                                  * this->layout_->deriv(Ez, make_index(ix),
-                                                         DirectionTag<Direction::X>{});
+                Bynew(ix)
+                    = By(ix)
+                      + this->dt_ * this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
             }
 
             start = this->layout_->physicalStartIndex(Bznew, Direction::X);
@@ -109,10 +108,9 @@ namespace core
 
             for (auto ix = start; ix <= end; ++ix)
             {
-                Bznew(ix) = Bz(ix)
-                            - this->dt_
-                                  * this->layout_->deriv(Ey, make_index(ix),
-                                                         DirectionTag<Direction::X>{});
+                Bznew(ix)
+                    = Bz(ix)
+                      - this->dt_ * this->layout_->deriv(Ey, {ix}, DirectionTag<Direction::X>{});
             }
         }
     };
@@ -154,10 +152,10 @@ namespace core
             {
                 for (auto iy = psi_Y; iy <= pei_Y; ++iy)
                 {
-                    Bxnew(ix, iy) = Bx(ix, iy)
-                                    - this->dt_
-                                          * this->layout_->deriv(Ez, make_index(ix, iy),
-                                                                 DirectionTag<Direction::Y>{});
+                    Bxnew(ix, iy)
+                        = Bx(ix, iy)
+                          - this->dt_
+                                * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::Y>{});
                 }
             }
 
@@ -170,10 +168,10 @@ namespace core
             {
                 for (auto iy = psi_Y; iy <= pei_Y; ++iy)
                 {
-                    Bynew(ix, iy) = By(ix, iy)
-                                    + this->dt_
-                                          * this->layout_->deriv(Ez, make_index(ix, iy),
-                                                                 DirectionTag<Direction::X>{});
+                    Bynew(ix, iy)
+                        = By(ix, iy)
+                          + this->dt_
+                                * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::X>{});
                 }
             }
 
@@ -186,13 +184,12 @@ namespace core
             {
                 for (auto iy = psi_Y; iy <= pei_Y; ++iy)
                 {
-                    Bznew(ix, iy) = Bz(ix, iy)
-                                    - this->dt_
-                                          * this->layout_->deriv(Ey, make_index(ix, iy),
-                                                                 DirectionTag<Direction::X>{})
-                                    + this->dt_
-                                          * this->layout_->deriv(Ex, make_index(ix, iy),
-                                                                 DirectionTag<Direction::Y>{});
+                    Bznew(ix, iy)
+                        = Bz(ix, iy)
+                          - this->dt_
+                                * this->layout_->deriv(Ey, {ix, iy}, DirectionTag<Direction::X>{})
+                          + this->dt_
+                                * this->layout_->deriv(Ex, {ix, iy}, DirectionTag<Direction::Y>{});
                 }
             }
         }
@@ -242,10 +239,10 @@ namespace core
                         Bxnew(ix, iy, iz)
                             = Bx(ix, iy, iz)
                               - this->dt_
-                                    * this->layout_->deriv(Ez, make_index(ix, iy, iz),
+                                    * this->layout_->deriv(Ez, {ix, iy, iz},
                                                            DirectionTag<Direction::Y>{})
                               + this->dt_
-                                    * this->layout_->deriv(Ey, make_index(ix, iy, iz),
+                                    * this->layout_->deriv(Ey, {ix, iy, iz},
                                                            DirectionTag<Direction::Z>{});
                     }
                 }
@@ -267,10 +264,10 @@ namespace core
                         Bynew(ix, iy, iz)
                             = By(ix, iy, iz)
                               - this->dt_
-                                    * this->layout_->deriv(Ex, make_index(ix, iy, iz),
+                                    * this->layout_->deriv(Ex, {ix, iy, iz},
                                                            DirectionTag<Direction::Z>{})
                               + this->dt_
-                                    * this->layout_->deriv(Ez, make_index(ix, iy, iz),
+                                    * this->layout_->deriv(Ez, {ix, iy, iz},
                                                            DirectionTag<Direction::X>{});
                     }
                 }
@@ -292,10 +289,10 @@ namespace core
                         Bznew(ix, iy, iz)
                             = Bz(ix, iy, iz)
                               - this->dt_
-                                    * this->layout_->deriv(Ey, make_index(ix, iy, iz),
+                                    * this->layout_->deriv(Ey, {ix, iy, iz},
                                                            DirectionTag<Direction::X>{})
                               + this->dt_
-                                    * this->layout_->deriv(Ex, make_index(ix, iy, iz),
+                                    * this->layout_->deriv(Ex, {ix, iy, iz},
                                                            DirectionTag<Direction::Y>{});
                     }
                 }

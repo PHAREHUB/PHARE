@@ -119,8 +119,8 @@ namespace core
         DataType& operator()(uint32_t i) { return this->data_[i]; }
         DataType const& operator()(uint32_t i) const { return this->data_[i]; }
 
-        static const int dimension = 1;
-        using type                 = DataType;
+        static const std::size_t dimension = 1;
+        using type                         = DataType;
 
     private:
         uint32_t nx_ = 0;
@@ -192,8 +192,8 @@ namespace core
             return this->data_[linearIt(i, j)];
         }
 
-        static const int dimension = 2;
-        using type                 = DataType;
+        static const std::size_t dimension = 2;
+        using type                         = DataType;
 
     private:
         int constexpr linearIt(int i, int j) const { return j + ny_ * i; }
@@ -270,8 +270,8 @@ namespace core
             return this->data_[linearIt(i, j, k)];
         }
 
-        static const int dimension = 3;
-        using type                 = DataType;
+        static const std::size_t dimension = 3;
+        using type                         = DataType;
 
     private:
         int constexpr linearIt(uint32_t i, uint32_t j, uint32_t k) const

@@ -36,7 +36,7 @@ namespace core
         using type                             = Type;
 
         template<typename... Indexes>
-        constexpr explicit Point(Indexes... index)
+        constexpr Point(Indexes... index)
             : r{{index...}}
         {
             allsame(index...);
