@@ -79,7 +79,10 @@ namespace amr_interface
         }
 
 
-        virtual void firstStep(IPhysicalModel const& model) final {}
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double time) final
+        {
+        }
 
 
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}

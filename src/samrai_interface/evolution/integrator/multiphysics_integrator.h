@@ -426,7 +426,7 @@ namespace amr_interface
 
             if (firstStep)
             {
-                fromCoarser.firstStep(model);
+                fromCoarser.firstStep(model, *level, currentTime);
             }
 
             // TODO give firstStep and lastStep bools to the messenger

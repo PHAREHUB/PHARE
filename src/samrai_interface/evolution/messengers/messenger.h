@@ -162,8 +162,11 @@ namespace amr_interface
          * and then use it for time interpolation at each substep.
          *
          * @param model
+         * @param level
+         * @param time
          */
-        virtual void firstStep(IPhysicalModel const& model) = 0;
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level, double time)
+            = 0;
 
 
 

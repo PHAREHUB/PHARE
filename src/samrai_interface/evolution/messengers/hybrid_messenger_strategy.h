@@ -88,7 +88,11 @@ namespace amr_interface
         virtual std::string coarseModelName() const = 0;
 
 
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level, double time)
+            = 0;
+
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+
 
 
         std::string name() const { return stratname_; }

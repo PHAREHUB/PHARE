@@ -45,12 +45,15 @@ namespace amr_interface
             = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::interior,
                                       nbRefinedPart, SplitT>;
 
-        using CoarseToFineRefineOp
+        using CoarseToFineRefineOpOld
             = ParticlesRefineOperator<dimension, interpOrder,
                                       ParticlesDataSplitType::coarseBoundaryOld, nbRefinedPart,
                                       SplitT>;
 
-
+        using CoarseToFineRefineOpNew
+            = ParticlesRefineOperator<dimension, interpOrder,
+                                      ParticlesDataSplitType::coarseBoundaryNew, nbRefinedPart,
+                                      SplitT>;
 
 
     public:
@@ -146,7 +149,7 @@ namespace amr_interface
                 magneticInit_.registerLevel(hierarchy, level);
                 electricInit_.registerLevel(hierarchy, level);
                 interiorParticles_.registerLevel(hierarchy, level);
-                coarseToFineParticles_.registerLevel(hierarchy, level);
+                coarseToFineOldParticles_.registerLevel(hierarchy, level);
             }
         }
 
@@ -215,8 +218,8 @@ namespace amr_interface
             magneticInit_.fill(levelNumber, initDataTime);
             electricInit_.fill(levelNumber, initDataTime);
             interiorParticles_.fill(levelNumber, initDataTime);
-            coarseToFineParticles_.fill(levelNumber, initDataTime);
-            // TODO need to copy coarse to fine old into coarseToFine that is pushed.
+            coarseToFineOldParticles_.fill(levelNumber, initDataTime);
+            // TODO #3331 : need to copy coarse to fine old into coarseToFine that is pushed.
             // ghostParticles_.initialize(levelNumber, initDataTime);
             // TODO #3327 here we need to interpolate all particles to initialize moments...
         }
@@ -301,8 +304,26 @@ namespace amr_interface
         }
 
 
+        /**
+         * @brief firstStep : in the HybridHybridMessengerStrategy, the firstStep method is used to
+         * get level border ghost particles from the next coarser level. These particles are defined
+         * in the future at the time the method is called because the coarser level is ahead in
+         * time. These particles are communicated only at first step of a substepping cycle. They
+         * will be used with the coarseToFineOld particles to get the moments on level border nodes.
+         */
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double time) override
+        {
+            (void)model;
+            auto levelNumber = level.getLevelNumber();
+            coarseToFineNewParticles_.fill(levelNumber, time);
+        }
+
+
+
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
+            // TODO #3329
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
             {
@@ -357,8 +378,12 @@ namespace amr_interface
                                interiorParticles_, info->interiorParticles);
 
 
-            makeCommunicators_(info->coarseToFineParticles, coarseToFineRefineOp_,
-                               coarseToFineParticles_, info->coarseToFineParticles);
+            makeCommunicators_(info->coarseToFineOldParticles, coarseToFineRefineOpOld_,
+                               coarseToFineOldParticles_, info->coarseToFineOldParticles);
+
+
+            makeCommunicators_(info->coarseToFineNewParticles, coarseToFineRefineOpNew_,
+                               coarseToFineNewParticles_, info->coarseToFineNewParticles);
 
 
             makeCommunicators_(info->ghostParticles, nullptr, ghostParticles_,
@@ -446,8 +471,11 @@ namespace amr_interface
         // from coarser level using particleRefineOp<domain>
         Communicators<CommunicatorType::InitInteriorPart> interiorParticles_;
 
-        //! store refiners for coarse to fine particles
-        Communicators<CommunicatorType::LevelBorderParticles> coarseToFineParticles_;
+        //! store communicators for coarse to fine particles old
+        Communicators<CommunicatorType::LevelBorderParticles> coarseToFineOldParticles_;
+
+        //! store communicators for coarse to fine particles new
+        Communicators<CommunicatorType::LevelBorderParticles> coarseToFineNewParticles_;
 
         // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
         Communicators<CommunicatorType::InteriorGhostParticles> ghostParticles_;
@@ -464,8 +492,11 @@ namespace amr_interface
         std::shared_ptr<SAMRAI::hier::RefineOperator> interiorParticleRefineOp_{
             std::make_shared<InteriorParticleRefineOp>()};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> coarseToFineRefineOp_{
-            std::make_shared<CoarseToFineRefineOp>()};
+        std::shared_ptr<SAMRAI::hier::RefineOperator> coarseToFineRefineOpOld_{
+            std::make_shared<CoarseToFineRefineOpOld>()};
+
+        std::shared_ptr<SAMRAI::hier::RefineOperator> coarseToFineRefineOpNew_{
+            std::make_shared<CoarseToFineRefineOpNew>()};
     };
 
     template<typename HybridModel>

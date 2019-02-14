@@ -1,4 +1,5 @@
 
+
 #ifndef PHARE_HYBRID_MESSENGER_H
 #define PHARE_HYBRID_MESSENGER_H
 
@@ -147,7 +148,11 @@ namespace amr_interface
          * @brief see IMessenger::firstStep
          * @param model
          */
-        virtual void firstStep(IPhysicalModel const& model) final {}
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double time) final
+        {
+            strat_->firstStep(model, level, time);
+        }
 
 
 

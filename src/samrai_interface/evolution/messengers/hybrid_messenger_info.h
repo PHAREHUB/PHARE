@@ -84,7 +84,8 @@ namespace amr_interface
 
 
         std::vector<PopulationDescriptor> interiorParticles;
-        std::vector<PopulationDescriptor> coarseToFineParticles;
+        std::vector<PopulationDescriptor> coarseToFineNewParticles;
+        std::vector<PopulationDescriptor> coarseToFineOldParticles;
         std::vector<PopulationDescriptor> ghostParticles;
 
 

@@ -102,11 +102,13 @@ namespace amr_interface
                            std::back_inserter(modelInfo.interiorParticles),
                            [](auto const& pop) { return pop.name(); });
 
-
             std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.coarseToFineParticles),
+                           std::back_inserter(modelInfo.coarseToFineOldParticles),
                            [](auto const& pop) { return pop.name(); });
 
+            std::transform(std::begin(state.ions), std::end(state.ions),
+                           std::back_inserter(modelInfo.coarseToFineNewParticles),
+                           [](auto const& pop) { return pop.name(); });
 
             std::transform(std::begin(state.ions), std::end(state.ions),
                            std::back_inserter(modelInfo.ghostParticles),
