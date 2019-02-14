@@ -45,7 +45,7 @@ std::array<double, 3> thermalVelocity(double x)
 TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleInitializer)
 {
     PHARE::initializer::PHAREDict<1> dict;
-    dict["name"]            = std::string{"FluidParticleInitializer"};
+    dict["name"]            = std::string{"MaxwellianParticleInitializer"};
     dict["density"]         = static_cast<PHARE::initializer::ScalarFunction<1>>(density);
     dict["bulkVelocity"]    = static_cast<PHARE::initializer::VectorFunction<1>>(bulkVelocity);
     dict["thermalVelocity"] = static_cast<PHARE::initializer::VectorFunction<1>>(thermalVelocity);

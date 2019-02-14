@@ -4,7 +4,7 @@
 
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "data/particles/particle_array.h"
 #include "data/particles/particle_utilities.h"
 #include "utilities/box/box.h"
@@ -40,16 +40,16 @@ std::array<double, 3> thermalvelocity(double x)
 
 
 
-class aFluidParticleInitializer1D : public ::testing::Test
+class AMaxwellianParticleInitializer1D : public ::testing::Test
 {
 private:
     using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
     using ParticleArrayT = ParticleArray<1>;
 
 public:
-    aFluidParticleInitializer1D()
+    AMaxwellianParticleInitializer1D()
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
-        , initializer{std::make_unique<FluidParticleInitializer<ParticleArrayT, GridLayoutT>>(
+        , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
               density, bulkVelocity, thermalvelocity, 1., nbrParticlesPerCell)}
     {
         //
@@ -59,13 +59,13 @@ public:
     GridLayoutT layout;
     ParticleArrayT particles;
     uint32 nbrParticlesPerCell{1000};
-    std::unique_ptr<FluidParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
+    std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
 };
 
 
 
 
-TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
+TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 {
     auto nbrCells             = layout.nbrCells();
     auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
@@ -76,7 +76,7 @@ TEST_F(aFluidParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 
 
 
-TEST_F(aFluidParticleInitializer1D, loadsParticlesInTheDomain)
+TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
 {
     initializer->loadParticles(particles, layout);
     auto i = 0u;

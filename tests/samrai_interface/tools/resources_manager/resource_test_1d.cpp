@@ -3,7 +3,7 @@
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "data_provider.h"
 #include "models/hybrid_state.h"
 
@@ -13,12 +13,12 @@ static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using VecField1D                 = VecField<NdArrayVector1D<>, HybridQuantity>;
-using IonPopulation1D            = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
-using Ions1D                     = Ions<IonPopulation1D, GridYee1D>;
-using Electromag1D               = Electromag<VecField1D>;
-using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
-using HybridState1D              = HybridState<Electromag1D, Ions1D>;
+using VecField1D                      = VecField<NdArrayVector1D<>, HybridQuantity>;
+using IonPopulation1D                 = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
+using Ions1D                          = Ions<IonPopulation1D, GridYee1D>;
+using Electromag1D                    = Electromag<VecField1D>;
+using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
+using HybridState1D                   = HybridState<Electromag1D, Ions1D>;
 
 
 PHARE::initializer::PHAREDict<1> getDict()
@@ -77,11 +77,11 @@ struct Ions1D_P
     PHARE::initializer::PHAREDict<1> createIonsDict()
     {
         PHARE::initializer::PHAREDict<1> dict;
-        dict["name"]                                   = std::string{"ions"};
-        dict["nbrPopulations"]                         = std::size_t{2};
-        dict["pop0"]["name"]                           = std::string{"protons"};
-        dict["pop0"]["mass"]                           = 1.;
-        dict["pop0"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
+        dict["name"]                                = std::string{"ions"};
+        dict["nbrPopulations"]                      = std::size_t{2};
+        dict["pop0"]["name"]                        = std::string{"protons"};
+        dict["pop0"]["mass"]                        = 1.;
+        dict["pop0"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
         dict["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
         dict["pop0"]["ParticleInitializer"]["bulkVelocity"]
@@ -96,9 +96,9 @@ struct Ions1D_P
 
 
 
-        dict["pop1"]["name"]                           = std::string{"protons"};
-        dict["pop1"]["mass"]                           = 1.;
-        dict["pop1"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
+        dict["pop1"]["name"]                        = std::string{"protons"};
+        dict["pop1"]["mass"]                        = 1.;
+        dict["pop1"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
         dict["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
         dict["pop1"]["ParticleInitializer"]["bulkVelocity"]
@@ -145,7 +145,7 @@ struct HybridState1D_P
         dict["ions"]["pop0"]["name"]   = std::string{"protons"};
         dict["ions"]["pop0"]["mass"]   = 1.;
         dict["ions"]["pop0"]["ParticleInitializer"]["name"]
-            = std::string{"FluidParticleInitializer"};
+            = std::string{"MaxwellianParticleInitializer"};
         dict["ions"]["pop0"]["ParticleInitializer"]["density"]
             = static_cast<ScalarFunction>(density);
 
@@ -164,7 +164,7 @@ struct HybridState1D_P
         dict["ions"]["pop1"]["name"] = std::string{"protons"};
         dict["ions"]["pop1"]["mass"] = 1.;
         dict["ions"]["pop1"]["ParticleInitializer"]["name"]
-            = std::string{"FluidParticleInitializer"};
+            = std::string{"MaxwellianParticleInitializer"};
         dict["ions"]["pop1"]["ParticleInitializer"]["density"]
             = static_cast<ScalarFunction>(density);
 

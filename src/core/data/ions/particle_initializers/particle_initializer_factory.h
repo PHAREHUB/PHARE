@@ -3,7 +3,7 @@
 
 
 #include "data_provider.h"
-#include "fluid_particle_initializer.h"
+#include "maxwellian_particle_initializer.h"
 #include "particle_initializer.h"
 #include "utilities/types.h"
 
@@ -24,7 +24,7 @@ namespace core
 
             std::string toto;
 
-            if (initializerName == "FluidParticleInitializer")
+            if (initializerName == "MaxwellianParticleInitializer")
             {
                 auto& density = dict["density"].to<PHARE::initializer::ScalarFunction<dimension>>();
                 auto& bulkVel
@@ -43,7 +43,8 @@ namespace core
                 if (basisName == "Cartesian")
                 {
                     Basis basis = Basis::Cartesian;
-                    return std::make_unique<FluidParticleInitializer<ParticleArray, GridLayout>>(
+                    return std::make_unique<
+                        MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, bulkVel, thermalVel, charge, nbrPartPerCell);
                 }
                 else if (basisName == "Magnetic")
@@ -51,7 +52,8 @@ namespace core
                     Basis basis = Basis::Magnetic;
                     auto& magnetic
                         = dict["magnetic"].to<PHARE::initializer::VectorFunction<dimension>>();
-                    return std::make_unique<FluidParticleInitializer<ParticleArray, GridLayout>>(
+                    return std::make_unique<
+                        MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, bulkVel, thermalVel, charge, nbrPartPerCell);
                 }
                 /*

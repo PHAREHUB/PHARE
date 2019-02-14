@@ -29,23 +29,23 @@ namespace core
 
 
 
-    /** @brief a FluidParticleInitializer is a ParticleInitializer that loads particles from a local
-     * Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
+    /** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
+     * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
      */
     template<typename ParticleArray, typename GridLayout>
-    class FluidParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
+    class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
     {
     private:
         static constexpr auto dimension = GridLayout::dimension;
 
     public:
-        FluidParticleInitializer(PHARE::initializer::ScalarFunction<dimension> density,
-                                 PHARE::initializer::VectorFunction<dimension> bulkVelocity,
-                                 PHARE::initializer::VectorFunction<dimension> thermalVelocity,
-                                 double particleCharge, uint32 nbrParticlesPerCell,
-                                 Basis basis = Basis::Cartesian,
-                                 PHARE::initializer::VectorFunction<dimension> magneticField
-                                 = nullptr)
+        MaxwellianParticleInitializer(PHARE::initializer::ScalarFunction<dimension> density,
+                                      PHARE::initializer::VectorFunction<dimension> bulkVelocity,
+                                      PHARE::initializer::VectorFunction<dimension> thermalVelocity,
+                                      double particleCharge, uint32 nbrParticlesPerCell,
+                                      Basis basis = Basis::Cartesian,
+                                      PHARE::initializer::VectorFunction<dimension> magneticField
+                                      = nullptr)
             : density_{density}
             , bulkVelocity_{bulkVelocity}
             , thermalVelocity_{thermalVelocity}
@@ -79,7 +79,7 @@ namespace core
         }
 
 
-        virtual ~FluidParticleInitializer() = default;
+        virtual ~MaxwellianParticleInitializer() = default;
 
 
 

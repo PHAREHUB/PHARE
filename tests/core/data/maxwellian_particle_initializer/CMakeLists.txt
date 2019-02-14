@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.3)
 
-project(test-fluid-particle-initializer)
+project(test-maxwelllian-particle-initializer)
 
 set(SOURCES test_main.cpp)
 

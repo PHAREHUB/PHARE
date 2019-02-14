@@ -16,7 +16,7 @@ set( SOURCES_INC
      data/ions/ion_population/ion_population.h
      data/ions/ions.h
      data/ions/particle_initializers/particle_initializer.h
-     data/ions/particle_initializers/fluid_particle_initializer.h
+     data/ions/particle_initializers/maxwellian_particle_initializer.h
      data/ions/particle_initializers/particle_initializer_factory.h
      data/vecfield/vecfield.h
      data/vecfield/vecfield_component.h
@@ -47,7 +47,7 @@ set( SOURCES_INC
 
 set( SOURCES_CPP
      data/ndarray/ndarray_vector.cpp
-     data/ions/particle_initializers/fluid_particle_initializer.cpp
+     data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
     )
 

@@ -4,7 +4,7 @@
 #include "data/grid/gridlayout_impl.h"
 #include "data/ions/ion_population/ion_population.h"
 #include "data/ions/ions.h"
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "data/vecfield/vecfield.h"
 #include "data_provider.h"
 #include "evolution/messengers/hybrid_messenger.h"
@@ -30,13 +30,14 @@ static constexpr std::size_t interpOrder = 1;
 using VecField1D                         = VecField<NdArrayVector1D<>, HybridQuantity>;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
-using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArray<dim>, GridYee1D>;
-using IonsPop1D                          = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
-using Ions1D                             = Ions<IonsPop1D, GridYee1D>;
-using Electromag1D                       = Electromag<VecField1D>;
-using HybridModelT                       = HybridModel<GridYee1D, Electromag1D, Ions1D>;
-using MHDModelT                          = MHDModel<GridYee1D, VecField1D>;
-using ResourcesManagerT                  = ResourcesManager<GridYee1D>;
+using MaxwellianParticleInitializer1D
+    = MaxwellianParticleInitializer<ParticleArray<dim>, GridYee1D>;
+using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
+using Ions1D            = Ions<IonsPop1D, GridYee1D>;
+using Electromag1D      = Electromag<VecField1D>;
+using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D>;
+using MHDModelT         = MHDModel<GridYee1D, VecField1D>;
+using ResourcesManagerT = ResourcesManager<GridYee1D>;
 
 
 
@@ -66,11 +67,12 @@ using VectorFunction = PHARE::initializer::VectorFunction<1>;
 PHARE::initializer::PHAREDict<1> createIonsDict()
 {
     PHARE::initializer::PHAREDict<1> dict;
-    dict["ions"]["name"]                                = std::string{"ions"};
-    dict["ions"]["nbrPopulations"]                      = std::size_t{2};
-    dict["ions"]["pop0"]["name"]                        = std::string{"protons"};
-    dict["ions"]["pop0"]["mass"]                        = 1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["name"] = std::string{"FluidParticleInitializer"};
+    dict["ions"]["name"]           = std::string{"ions"};
+    dict["ions"]["nbrPopulations"] = std::size_t{2};
+    dict["ions"]["pop0"]["name"]   = std::string{"protons"};
+    dict["ions"]["pop0"]["mass"]   = 1.;
+    dict["ions"]["pop0"]["ParticleInitializer"]["name"]
+        = std::string{"MaxwellianParticleInitializer"};
     dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
@@ -85,9 +87,10 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
 
 
 
-    dict["ions"]["pop1"]["name"]                        = std::string{"protons"};
-    dict["ions"]["pop1"]["mass"]                        = 1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["name"] = std::string{"FluidParticleInitializer"};
+    dict["ions"]["pop1"]["name"] = std::string{"protons"};
+    dict["ions"]["pop1"]["mass"] = 1.;
+    dict["ions"]["pop1"]["ParticleInitializer"]["name"]
+        = std::string{"MaxwellianParticleInitializer"};
     dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["bulkVelocity"]

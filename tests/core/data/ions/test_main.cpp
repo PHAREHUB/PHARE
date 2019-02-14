@@ -13,7 +13,7 @@
 
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "data_provider.h"
 
 #include "gmock/gmock.h"
@@ -26,7 +26,7 @@ static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
-using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
+using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
 
 
 
@@ -62,11 +62,11 @@ protected:
     PHARE::initializer::PHAREDict<1> createIonsDict()
     {
         PHARE::initializer::PHAREDict<1> dict;
-        dict["name"]                                   = std::string{"ions"};
-        dict["nbrPopulations"]                         = std::size_t{2};
-        dict["pop0"]["name"]                           = std::string{"protons"};
-        dict["pop0"]["mass"]                           = 1.;
-        dict["pop0"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
+        dict["name"]                                = std::string{"ions"};
+        dict["nbrPopulations"]                      = std::size_t{2};
+        dict["pop0"]["name"]                        = std::string{"protons"};
+        dict["pop0"]["mass"]                        = 1.;
+        dict["pop0"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
         dict["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
         dict["pop0"]["ParticleInitializer"]["bulkVelocity"]
@@ -81,9 +81,9 @@ protected:
 
 
 
-        dict["pop1"]["name"]                           = std::string{"protons"};
-        dict["pop1"]["mass"]                           = 1.;
-        dict["pop1"]["ParticleInitializer"]["name"]    = std::string{"FluidParticleInitializer"};
+        dict["pop1"]["name"]                        = std::string{"protons"};
+        dict["pop1"]["mass"]                        = 1.;
+        dict["pop1"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
         dict["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
         dict["pop1"]["ParticleInitializer"]["bulkVelocity"]
