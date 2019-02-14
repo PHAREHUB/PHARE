@@ -429,9 +429,8 @@ namespace amr_interface
                 fromCoarser.firstStep(model, *level, currentTime);
             }
 
-            // TODO give firstStep and lastStep bools to the messenger
-            // and levelNumber, so that it knows which schedules to apply later on.
-            // fromCoarser.setStepInfo(firstStep, lastStep, levelNumber)
+
+            fromCoarser.prepareStep(model, *level);
 
             // solver msut have a view on the model from its init
             solver.advanceLevel(hierarchy, iLevel, model, fromCoarser, currentTime, newTime);

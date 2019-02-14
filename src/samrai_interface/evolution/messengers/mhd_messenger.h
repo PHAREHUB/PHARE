@@ -87,6 +87,11 @@ namespace amr_interface
 
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
 
+
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+
+
+
         virtual std::string name() override { return stratName; }
 
         virtual ~MHDMessenger() = default;

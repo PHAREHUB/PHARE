@@ -95,6 +95,9 @@ namespace amr_interface
 
 
 
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+
+
         std::string name() const { return stratname_; }
 
         virtual ~HybridMessengerStrategy() = default;

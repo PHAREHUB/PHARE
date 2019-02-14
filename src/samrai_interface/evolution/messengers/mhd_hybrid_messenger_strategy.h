@@ -125,6 +125,11 @@ namespace amr_interface
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
 
 
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+
+
+
+
     private:
         using Electromag = decltype(std::declval<HybridModel>().state.electromag);
 

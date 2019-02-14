@@ -321,9 +321,23 @@ namespace amr_interface
 
 
 
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
+
+
+
+
+        /**
+         * @brief prepareStep is the concrete implementation of the
+         * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
+         * This method copies the current model electromagnetic field, defined at t=n. Since
+         * prepareStep() is called just before advancing the level, this operation actually saves
+         * the t=n electromagntic field into the messenger. When the time comes that the next finer
+         * level needs to time interpolate the electromagnetic field at its ghost nodes, this level
+         * will have its model EM field at t=n+1 and thanks to this methods, the t=n field will be
+         * in the messenger.
+         */
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
         {
-            // TODO #3329
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
             {
@@ -334,6 +348,8 @@ namespace amr_interface
                 EM_old_.copyData(EM);
             }
         }
+
+
 
 
     private:

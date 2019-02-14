@@ -464,20 +464,31 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
     auto const& level2 = hierarchy.getPatchLevel(2);
     auto& rm           = hybridModel->resourcesManager;
 
+
+    // this prepareStep copies the current model EM into messenger EM
+    messenger->prepareStep(*hybridModel, *level0);
+
+
+    // here we set the level 0 at t=1, this simulates the advanceLevel
     for (auto& patch : *level0)
     {
         auto dataOnPatch = rm->setOnPatch(*patch, hybridModel->state.electromag);
         rm->setTime(hybridModel->state.electromag, *patch, newTime);
     }
 
-    messenger->lastStep(*hybridModel, *level0);
 
+    // this simulates a substep of level 1 to an intermediate time t=0.5
     for (auto& patch : *level1)
     {
         rm->setTime(hybridModel->state.electromag, *patch, 0.5);
     }
 
 
+    // now we want to fill ghosts on level 1
+    // this will need the space/time interpolation of level0 EM fields between
+    // t=0 and t=1. The Model on level0 is at t=1 (above set time) and thanks
+    // to the call to prepareStep() the messenger holds the copy of level 0 EM fields
+    // at t=0. So at this point the ghosts should be filled OK at t=0.5.
     messenger->fillMagneticGhosts(hybridModel->state.electromag.B, 1, 0.5);
     messenger->fillElectricGhosts(hybridModel->state.electromag.E, 1, 0.5);
 
@@ -515,6 +526,15 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
         auto& Bz = hybridModel->state.electromag.B.getComponent(Component::Z);
 
 
+
+        // since we have not changed the fields on level0 between time t=0 and t=1
+        // but just changed the time, the time interpolation at t=0.5 on level 1
+        // should be 0.5*(FieldAtT0 + FieldAtT1) = 0.5*(2*FieldAtT0) = FieldAtT0
+        // moreoever, since the level0 fields are linear function of space
+        // the spatial interpolation on level 1 should be equal to the result of the function
+        // that defined the field on level0.
+        // As a consequence, if the space/time interpolation worked the field on level1
+        // should be equal to the outcome of the function used on level0
         auto checkMyField = [&layout, &iPatch](auto const& field, auto const& func) //
         {
             auto iGhostStart = layout.ghostStartIndex(field, Direction::X);

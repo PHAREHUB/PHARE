@@ -182,6 +182,17 @@ namespace amr_interface
 
 
 
+
+        /**
+         * @brief prepareStep is used by the MultiPhysicsIntegrator just before calling the solver
+         * advanceLevel function. The method sets the Messenger in a state that is ready for the
+         * solver to actually use it during advanceLevel.
+         */
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+
+
+
+
         /**
          * @brief fineModelName returns the name of the fine model involved in the messenger
          * @return

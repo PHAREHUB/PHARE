@@ -168,6 +168,16 @@ namespace amr_interface
 
 
         /**
+         * @brief prepareStep see IMessenger::prepareStep
+         */
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
+        {
+            strat_->prepareStep(model, level);
+        }
+
+
+
+        /**
          * @brief IMessenger::fineModelName
          * @return
          */
