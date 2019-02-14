@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include "data/ions/particle_initializers/particle_initializer_factory.h"
+#include "data_provider.h"
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
 #include "physical_models/physical_model.h"
@@ -19,36 +21,53 @@ namespace amr_interface
      * @brief The HybridModel class is a concrete implementation of a IPhysicalModel. The class
      * holds a HybridState and a ResourcesManager.
      */
-    template<typename GridLayoutT, typename Electromag, typename Ions, typename IonsInitializer>
+    template<typename GridLayoutT, typename Electromag, typename Ions>
     class HybridModel : public IPhysicalModel
     {
     public:
         static const std::string model_name;
-        using gridLayout_type        = GridLayoutT;
-        using electromag_type        = Electromag;
-        using vecfield_type          = typename Electromag::vecfield_type;
-        using ions_type              = Ions;
-        using resources_manager_type = ResourcesManager<gridLayout_type>;
-
+        using gridLayout_type           = GridLayoutT;
+        using electromag_type           = Electromag;
+        using vecfield_type             = typename Electromag::vecfield_type;
+        using ions_type                 = Ions;
+        using resources_manager_type    = ResourcesManager<gridLayout_type>;
+        static constexpr auto dimension = GridLayoutT::dimension;
+        using particle_array_type       = typename Ions::particle_array_type;
+        using ParticleInitializerFactory
+            = core::ParticleInitializerFactory<particle_array_type, gridLayout_type>;
 
         //! Physical quantities associated with hybrid equations
-        core::HybridState<Electromag, Ions, IonsInitializer> state;
+        core::HybridState<Electromag, Ions> state;
 
         //! ResourcesManager used for interacting with SAMRAI databases, patchdata etc.
         std::shared_ptr<resources_manager_type> resourcesManager;
 
 
-        /**
-         * @brief This constructor uses the IonInitializer to build the Ions of the HybridState and
-         * stores the ResourcesManager for allocating data on patches with allocate()
-         */
-        HybridModel(IonsInitializer ionsInitializer,
+
+        HybridModel(PHARE::initializer::PHAREDict<dimension> dict,
                     std::shared_ptr<resources_manager_type> resourcesManager)
             : IPhysicalModel{model_name}
-            , state{std::move(ionsInitializer)}
+            , state{dict}
             , resourcesManager{std::move(resourcesManager)}
         {
         }
+
+
+        virtual void initialize(SAMRAI::hier::Patch& patch) override
+        {
+            // first initialize the ions
+            auto layout = layoutFromPatch<gridLayout_type>(patch);
+            auto& ions  = state.ions;
+            for (auto& pop : ions)
+            {
+                auto info                = pop.particleInitializerInfo();
+                auto particleInitializer = ParticleInitializerFactory::create(info);
+                particleInitializer->loadParticles(pop.domainParticles(), layout);
+            }
+
+            // now initialize the fields
+        }
+
 
 
         /**
@@ -57,9 +76,7 @@ namespace amr_interface
          */
         virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
         {
-            // TODO MODEL could do resourcesManager->allocate(state);
-            resourcesManager->allocate(state.electromag, patch, allocateTime);
-            resourcesManager->allocate(state.ions, patch, allocateTime);
+            resourcesManager->allocate(state, patch, allocateTime);
         }
 
 
@@ -100,13 +117,10 @@ namespace amr_interface
         }
 
         virtual ~HybridModel() override = default;
-
-        //@TODO make it a resourcesUser
     };
 
-    template<typename GridLayoutT, typename Electromag, typename Ions, typename IonsInitializer>
-    const std::string HybridModel<GridLayoutT, Electromag, Ions, IonsInitializer>::model_name
-        = "HybridModel";
+    template<typename GridLayoutT, typename Electromag, typename Ions>
+    const std::string HybridModel<GridLayoutT, Electromag, Ions>::model_name = "HybridModel";
 
 } // namespace amr_interface
 

@@ -6,13 +6,14 @@
 
 #include "data/ions/ion_population/ion_population.h"
 #include "data/particles/particle_array.h"
+#include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 using namespace PHARE::core;
-
+using namespace PHARE::initializer;
 
 
 
@@ -36,10 +37,22 @@ struct DummyParticleInitializer
 };
 
 
+struct DummyLayout
+{
+};
+
+PHAREDict<1> getDict()
+{
+    PHAREDict<1> dict;
+    dict["name"]                        = std::string{"protons"};
+    dict["mass"]                        = 1.;
+    dict["ParticleInitializer"]["name"] = std::string{"DummyParticleInitializer"};
+    return dict;
+}
+
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField, DummyParticleInitializer> protons{"protons", 1.,
-                                                                                     nullptr};
+    IonPopulation<ParticleArray<1>, DummyVecField, DummyLayout> protons{"ions", getDict()};
     virtual ~AnIonPopulation();
 };
 
@@ -57,7 +70,7 @@ TEST_F(AnIonPopulation, hasAMass)
 
 TEST_F(AnIonPopulation, hasAName)
 {
-    EXPECT_EQ("protons", protons.name());
+    EXPECT_EQ("ions_protons", protons.name());
 }
 
 

@@ -30,6 +30,7 @@
 #include "tools/resources_manager.h"
 
 
+
 namespace PHARE
 {
 namespace amr_interface
@@ -81,6 +82,8 @@ namespace amr_interface
                                    public SAMRAI::algs::TimeRefinementLevelStrategy
     {
     public:
+        static constexpr auto dimension = MessengerFactory::dimension;
+
         // model comes with its variables already registered to the manager system
         MultiPhysicsIntegrator(int nbrOfLevels)
             : nbrOfLevels_{nbrOfLevels}
@@ -284,9 +287,6 @@ namespace amr_interface
                 auto level = hierarchy->getPatchLevel(levelNumber);
                 for (auto patch : *level)
                 {
-                    // TODO MODEL rm.allocate(model, *patch, initDataTime);
-                    // TODO MODEL rm.allocate(solver, *patch, initDataTime);
-                    // TODO MODEL rm.allocate(messenger, *patch, initDataTime);
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
                     messenger.allocate(*patch, initDataTime);
@@ -319,7 +319,7 @@ namespace amr_interface
                     // either way it's not our business here, and we use the initializer
                     // we where kindy given
 
-                    // initializer.init(model);
+                    // model.initialize();
                 }
                 else
                 {

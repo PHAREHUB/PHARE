@@ -3,7 +3,9 @@
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
+#include "data_provider.h"
+#include "models/hybrid_state.h"
 
 
 static constexpr std::size_t dim         = 1;
@@ -11,18 +13,29 @@ static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using VecField1D                 = VecField<NdArrayVector1D<>, HybridQuantity>;
-using IonPopulation1D            = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
-using Ions1D                     = Ions<IonPopulation1D, GridYee1D>;
-using Electromag1D               = Electromag<VecField1D>;
-using FluidParticleInitializer1D = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
+using VecField1D                      = VecField<NdArrayVector1D<>, HybridQuantity>;
+using IonPopulation1D                 = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
+using Ions1D                          = Ions<IonPopulation1D, GridYee1D>;
+using Electromag1D                    = Electromag<VecField1D>;
+using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
+using HybridState1D                   = HybridState<Electromag1D, Ions1D>;
+
+
+PHARE::initializer::PHAREDict<1> getDict()
+{
+    PHARE::initializer::PHAREDict<1> dict;
+    dict["name"]                        = std::string{"protons"};
+    dict["mass"]                        = 1.;
+    dict["ParticleInitializer"]["name"] = std::string{"DummyParticleInitializer"};
+    return dict;
+}
+
 
 
 struct IonPopulation1D_P
 {
-    std::string name = "protons";
-    double mass      = 1.;
-    IonPopulation1D user{name, mass, nullptr};
+    std::string ionName = "ions";
+    IonPopulation1D user{ionName, getDict()};
 };
 
 
@@ -42,12 +55,14 @@ double density(double x)
 
 std::array<double, 3> bulkVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{1.0, 0.0, 0.0}};
 }
 
 
 std::array<double, 3> thermalVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
 
@@ -56,25 +71,50 @@ std::array<double, 3> thermalVelocity(double x)
 
 struct Ions1D_P
 {
-    IonsInitializer<ParticleArray<1>, GridYee1D> createInitializer()
+    using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
+    using VectorFunction = PHARE::initializer::VectorFunction<1>;
+
+    PHARE::initializer::PHAREDict<1> createIonsDict()
     {
-        IonsInitializer<ParticleArray<1>, GridYee1D> initializer;
+        PHARE::initializer::PHAREDict<1> dict;
+        dict["name"]                                = std::string{"ions"};
+        dict["nbrPopulations"]                      = std::size_t{2};
+        dict["pop0"]["name"]                        = std::string{"protons"};
+        dict["pop0"]["mass"]                        = 1.;
+        dict["pop0"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
+        dict["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
-        initializer.masses.push_back(1.);
-        initializer.names.push_back("protons");
-        initializer.nbrPopulations = 1;
-        initializer.name           = "TestIons";
-        initializer.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-            std::make_unique<ScalarFunction<1>>(density),
-            std::make_unique<VectorFunction<1>>(bulkVelocity),
-            std::make_unique<VectorFunction<1>>(thermalVelocity), -1., 10));
+        dict["pop0"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
+
+        dict["pop0"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["pop0"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
 
 
-        return initializer;
+
+        dict["pop1"]["name"]                        = std::string{"protons"};
+        dict["pop1"]["mass"]                        = 1.;
+        dict["pop1"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
+        dict["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+
+        dict["pop1"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
+
+        dict["pop1"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["pop1"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+        return dict;
     }
 
-
-    Ions1D user{createInitializer()};
+    Ions1D user{createIonsDict()};
 };
 
 
@@ -92,12 +132,68 @@ struct Electromag1D_P
 
 
 
+struct HybridState1D_P
+{
+    using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
+    using VectorFunction = PHARE::initializer::VectorFunction<1>;
+
+    PHARE::initializer::PHAREDict<1> createIonsDict()
+    {
+        PHARE::initializer::PHAREDict<1> dict;
+        dict["ions"]["name"]           = std::string{"ions"};
+        dict["ions"]["nbrPopulations"] = std::size_t{2};
+        dict["ions"]["pop0"]["name"]   = std::string{"protons"};
+        dict["ions"]["pop0"]["mass"]   = 1.;
+        dict["ions"]["pop0"]["ParticleInitializer"]["name"]
+            = std::string{"MaxwellianParticleInitializer"};
+        dict["ions"]["pop0"]["ParticleInitializer"]["density"]
+            = static_cast<ScalarFunction>(density);
+
+        dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
+
+        dict["ions"]["pop0"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+
+
+        dict["ions"]["pop1"]["name"] = std::string{"protons"};
+        dict["ions"]["pop1"]["mass"] = 1.;
+        dict["ions"]["pop1"]["ParticleInitializer"]["name"]
+            = std::string{"MaxwellianParticleInitializer"};
+        dict["ions"]["pop1"]["ParticleInitializer"]["density"]
+            = static_cast<ScalarFunction>(density);
+
+        dict["ions"]["pop1"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
+
+        dict["ions"]["pop1"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+        return dict;
+    }
+
+
+    HybridState1D user{createIonsDict()};
+};
+
+
+
 
 using IonPop1DOnly          = std::tuple<IonPopulation1D_P>;
 using VecField1DOnly        = std::tuple<VecField1D_P>;
 using Ions1DOnly            = std::tuple<Ions1D_P>;
 using VecField1DAndIonPop1D = std::tuple<VecField1D_P, IonPopulation1D_P>;
 using Electromag1DOnly      = std::tuple<Electromag1D_P>;
+using HybridState1DOnly     = std::tuple<HybridState1D_P>;
 
 TYPED_TEST_CASE_P(aResourceUserCollection);
 
@@ -134,5 +230,7 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 REGISTER_TYPED_TEST_CASE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
 
 
-typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly> MyTypes;
+typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly,
+                         HybridState1DOnly>
+    MyTypes;
 INSTANTIATE_TYPED_TEST_CASE_P(testResourcesManager, aResourceUserCollection, MyTypes);

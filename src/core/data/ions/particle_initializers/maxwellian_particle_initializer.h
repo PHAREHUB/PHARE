@@ -8,8 +8,8 @@
 #include "data/grid/gridlayoutdefs.h"
 #include "data/ions/particle_initializers/particle_initializer.h"
 #include "data/particles/particle.h"
+#include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
-#include "utilities/function/function.h"
 #include "utilities/point/point.h"
 #include "utilities/types.h"
 
@@ -29,29 +29,30 @@ namespace core
 
 
 
-    /** @brief a FluidParticleInitializer is a ParticleInitializer that loads particles from a local
-     * Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
+    /** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
+     * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
      */
     template<typename ParticleArray, typename GridLayout>
-    class FluidParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
+    class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
     {
     private:
         static constexpr auto dimension = GridLayout::dimension;
 
     public:
-        FluidParticleInitializer(std::unique_ptr<ScalarFunction<dimension>> density,
-                                 std::unique_ptr<VectorFunction<dimension>> bulkVelocity,
-                                 std::unique_ptr<VectorFunction<dimension>> thermalVelocity,
-                                 double particleCharge, uint32 nbrParticlesPerCell,
-                                 Basis basis = Basis::Cartesian,
-                                 std::unique_ptr<VectorFunction<dimension>> magneticField = nullptr)
-            : density_{std::move(density)}
-            , bulkVelocity_{std::move(bulkVelocity)}
-            , thermalVelocity_{std::move(thermalVelocity)}
+        MaxwellianParticleInitializer(PHARE::initializer::ScalarFunction<dimension> density,
+                                      PHARE::initializer::VectorFunction<dimension> bulkVelocity,
+                                      PHARE::initializer::VectorFunction<dimension> thermalVelocity,
+                                      double particleCharge, uint32 nbrParticlesPerCell,
+                                      Basis basis = Basis::Cartesian,
+                                      PHARE::initializer::VectorFunction<dimension> magneticField
+                                      = nullptr)
+            : density_{density}
+            , bulkVelocity_{bulkVelocity}
+            , thermalVelocity_{thermalVelocity}
             , particleCharge_{particleCharge}
             , nbrParticlePerCell_{nbrParticlesPerCell}
             , basis_{basis}
-            , magneticField_{std::move(magneticField)}
+            , magneticField_{magneticField}
         {
         }
 
@@ -78,7 +79,7 @@ namespace core
         }
 
 
-        virtual ~FluidParticleInitializer() = default;
+        virtual ~MaxwellianParticleInitializer() = default;
 
 
 
@@ -106,11 +107,10 @@ namespace core
             // GridLayout::cellCenteredCoordinates
             // therefore i(x,y,z)1 must be excluded.
 
-            // grab references for convenience
-            auto& density         = *density_;
-            auto& bulkVelocity    = *bulkVelocity_;
-            auto& thermalVelocity = *thermalVelocity_;
-            auto& magneticField   = *magneticField_;
+            // gab references for convenience
+            // auto& density         = *density_;
+            // auto& bulkVelocity    = *bulkVelocity_;
+            // auto& thermalVelocity = *thermalVelocity_;
 
             for (uint32 ix = ix0; ix < ix1; ++ix)
             {
@@ -125,9 +125,9 @@ namespace core
                 auto x     = coord[0];
 
                 // now get density, velocity and thermal speed values
-                n   = density(x);
-                V   = bulkVelocity(x);
-                Vth = thermalVelocity(x);
+                n   = density_(x);
+                V   = bulkVelocity_(x);
+                Vth = thermalVelocity_(x);
 
                 // weight for all particles in this cell
                 auto cellWeight = n * cellVolume / nbrParticlePerCell_;
@@ -136,7 +136,7 @@ namespace core
 
                 if (basis_ == Basis::Magnetic)
                 {
-                    auto B = magneticField(x);
+                    auto B = magneticField_(x);
                     localMagneticBasis(B, basis);
                 }
 
@@ -194,12 +194,10 @@ namespace core
             // beware: we're looping over the cell but use primal indices because of
             // GridLayout::cellCenteredCoordinates
             // therefore i(x,y,z)1 must be excluded.
-
-            // grab references for convenience
-            auto& density         = *density_;
-            auto& bulkVelocity    = *bulkVelocity_;
-            auto& thermalVelocity = *thermalVelocity_;
-            auto& magneticField   = *magneticField_;
+            // gab references for convenience
+            // auto& density         = *density_;
+            // auto& bulkVelocity    = *bulkVelocity_;
+            // auto& thermalVelocity = *thermalVelocity_;
 
 
             for (uint32 ix = ix0; ix < ix1; ++ix)
@@ -218,9 +216,9 @@ namespace core
                     auto y     = coord[1];
 
                     // now get density, velocity and thermal speed values
-                    n   = density(x, y);
-                    V   = bulkVelocity(x, y);
-                    Vth = thermalVelocity(x, y);
+                    n   = density_(x, y);
+                    V   = bulkVelocity_(x, y);
+                    Vth = thermalVelocity_(x, y);
 
                     // weight for all particles in this cell
                     auto cellWeight = n * cellVolume / nbrParticlePerCell_;
@@ -229,7 +227,7 @@ namespace core
 
                     if (basis_ == Basis::Magnetic)
                     {
-                        auto B = magneticField(x, y, origin.z);
+                        auto B = magneticField_(x, y, origin.z);
                         localMagneticBasis(B, basis);
                     }
 
@@ -294,11 +292,11 @@ namespace core
             // GridLayout::cellCenteredCoordinates
             // therefore i(x,y,z)1 must be excluded.
 
-            // grab references for convenience
-            auto& density         = *density_;
-            auto& bulkVelocity    = *bulkVelocity_;
-            auto& thermalVelocity = *thermalVelocity_;
-            auto& magneticField   = *magneticField_;
+            // gab references for convenience
+            // auto& density         = *density_;
+            // auto& bulkVelocity    = *bulkVelocity_;
+            // auto& thermalVelocity = *thermalVelocity_;
+
 
             for (uint32 ix = ix0; ix < ix1; ++ix)
             {
@@ -319,9 +317,9 @@ namespace core
                         auto z     = coord[2];
 
                         // now get density, velocity and thermal speed values
-                        n   = density(x, y, z);
-                        V   = bulkVelocity(x, y, z);
-                        Vth = thermalVelocity(x, y, z);
+                        n   = density_(x, y, z);
+                        V   = bulkVelocity_(x, y, z);
+                        Vth = thermalVelocity_(x, y, z);
 
                         // weight for all particles in this cell
                         auto cellWeight = n * cellVolume / nbrParticlePerCell_;
@@ -332,7 +330,7 @@ namespace core
 
                         if (basis_ == Basis::Magnetic)
                         {
-                            auto B = magneticField(x, y, z);
+                            auto B = magneticField_(x, y, z);
                             localMagneticBasis(B, basis);
                         }
 
@@ -369,15 +367,14 @@ namespace core
 
 
 
-
-        std::unique_ptr<ScalarFunction<dimension>> density_;
-        std::unique_ptr<VectorFunction<dimension>> bulkVelocity_;
-        std::unique_ptr<VectorFunction<dimension>> thermalVelocity_;
+        PHARE::initializer::ScalarFunction<dimension> density_;
+        PHARE::initializer::VectorFunction<dimension> bulkVelocity_;
+        PHARE::initializer::VectorFunction<dimension> thermalVelocity_;
+        PHARE::initializer::VectorFunction<dimension> magneticField_;
 
         double particleCharge_;
         uint32 nbrParticlePerCell_;
         Basis basis_;
-        std::unique_ptr<VectorFunction<dimension>> magneticField_;
     };
 } // namespace core
 } // namespace PHARE

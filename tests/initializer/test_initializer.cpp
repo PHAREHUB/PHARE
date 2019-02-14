@@ -36,8 +36,8 @@ using ParticleArrayT = PHARE::core::ParticleArray<1>;
 
 TEST(APythonDataProvider, isADataProvider)
 {
-    char* argv                         = "job_super.py";
-    std::unique_ptr<DataProvider> pydp = std::make_unique<PythonDataProvider>(2, &argv);
+    char const* argv                   = "job_super.py";
+    std::unique_ptr<DataProvider> pydp = std::make_unique<PythonDataProvider>(2, argv);
 }
 
 

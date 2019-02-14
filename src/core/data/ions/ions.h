@@ -6,8 +6,10 @@
 #include <iterator>
 
 #include "data/ions/ion_population/ion_population.h"
+#include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
-#include "ion_initializer.h"
+#include "particle_initializers/particle_initializer_factory.h"
+
 
 namespace PHARE
 {
@@ -17,26 +19,33 @@ namespace core
     class Ions
     {
     public:
-        using field_type    = typename IonPopulation::field_type;
-        using vecfield_type = typename IonPopulation::vecfield_type;
-        using ions_initializer_type
-            = IonsInitializer<typename IonPopulation::particle_array_type, GridLayout>;
+        using field_type          = typename IonPopulation::field_type;
+        using vecfield_type       = typename IonPopulation::vecfield_type;
+        using particle_array_type = typename IonPopulation::particle_array_type;
+        using ParticleInitializerFactoryT
+            = ParticleInitializerFactory<particle_array_type, GridLayout>;
 
-        explicit Ions(ions_initializer_type initializer)
-            : name_{std::move(initializer.name)}
+        static constexpr auto dimension = GridLayout::dimension;
+
+
+
+
+        explicit Ions(PHARE::initializer::PHAREDict<dimension> dict)
+            : name_{dict["name"].template to<std::string>()}
             , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
             , populations_{}
         {
-            // TODO IonPopulation constructor will need to take a ParticleInitializer
-            // from the vector in the initializer
-            populations_.reserve(initializer.nbrPopulations);
-            for (uint32 ipop = 0; ipop < initializer.nbrPopulations; ++ipop)
+            auto nbrPop = dict["nbrPopulations"].template to<std::size_t>();
+            populations_.reserve(nbrPop);
+
+            for (uint32 ipop = 0; ipop < nbrPop; ++ipop)
             {
-                populations_.push_back(
-                    IonPopulation{name_ + "_" + initializer.names[ipop], initializer.masses[ipop],
-                                  std::move(initializer.particleInitializers[ipop])});
+                auto& pop = dict["pop" + std::to_string(ipop)];
+                populations_.push_back(IonPopulation{name_, pop});
             }
         }
+
+
 
 
         field_type const& density() const
@@ -66,15 +75,6 @@ namespace core
         }
 
 
-
-
-        void loadParticles(GridLayout const& layout)
-        {
-            for (auto& pop : populations_)
-            {
-                pop.loadParticles(layout);
-            }
-        }
 
 
         vecfield_type const& velocity() const { return bulkVelocity_; }

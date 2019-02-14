@@ -8,8 +8,8 @@
 
 namespace py = pybind11;
 
-#include "models/physical_state.h"
-#include <data/ions/ions.h>
+//#include "models/physical_state.h"
+//#include <data/ions/ions.h>
 
 namespace PHARE
 {
@@ -22,7 +22,7 @@ namespace initializer
     class PythonDataProvider : public DataProvider
     {
     public:
-        PythonDataProvider(int argc, char** argv)
+        PythonDataProvider(int argc, char const* argv)
         {
             if (argc == 2)
             {

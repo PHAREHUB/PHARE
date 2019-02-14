@@ -64,7 +64,6 @@ namespace amr_interface
             , resourcesManager_{std::move(manager)}
             , firstLevel_{firstLevel}
         {
-            // TODO MODEL resourcesManager
             resourcesManager_->registerResources(EM_old_);
         }
 

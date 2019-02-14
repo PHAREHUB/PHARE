@@ -22,7 +22,7 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
             {
                 std::cout << "python input detected, building with python provider...\n";
                 auto provider
-                    = std::make_unique<PHARE::initializer::PythonDataProvider>(argc, argv);
+                    = std::make_unique<PHARE::initializer::PythonDataProvider>(argc, argv[1]);
                 return provider;
             }
 

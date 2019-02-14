@@ -2,7 +2,7 @@
 #include <type_traits>
 
 
-#include "data/ions/ion_initializer.h"
+
 #include "data/ions/ion_population/ion_population.h"
 #include "data/ions/ions.h"
 #include "data/ndarray/ndarray_vector.h"
@@ -13,7 +13,8 @@
 
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/fluid_particle_initializer.h"
+#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
+#include "data_provider.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -25,7 +26,7 @@ static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
-using FluidParticleInitializer1D         = FluidParticleInitializer<ParticleArray<1>, GridYee1D>;
+using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
 
 
 
@@ -51,30 +52,56 @@ std::array<double, 3> thermalVelocity(double x)
 class theIons : public ::testing::Test
 {
 protected:
-    using VecField1D = VecField<NdArrayVector1D<>, HybridQuantity>;
+    using VecField1D     = VecField<NdArrayVector1D<>, HybridQuantity>;
+    using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
+    using VectorFunction = PHARE::initializer::VectorFunction<1>;
 
     using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
     Ions<IonPopulation1D, GridYee1D> ions;
 
-    IonsInitializer<ParticleArray<1>, GridYee1D> createInitializer()
+    PHARE::initializer::PHAREDict<1> createIonsDict()
     {
-        IonsInitializer<ParticleArray<1>, GridYee1D> initializer;
+        PHARE::initializer::PHAREDict<1> dict;
+        dict["name"]                                = std::string{"ions"};
+        dict["nbrPopulations"]                      = std::size_t{2};
+        dict["pop0"]["name"]                        = std::string{"protons"};
+        dict["pop0"]["mass"]                        = 1.;
+        dict["pop0"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
+        dict["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
 
-        initializer.masses.push_back(1.);
-        initializer.names.push_back("protons");
-        initializer.nbrPopulations = 1;
-        initializer.name           = "TestIons";
-        initializer.particleInitializers.push_back(std::make_unique<FluidParticleInitializer1D>(
-            std::make_unique<ScalarFunction<1>>(density),
-            std::make_unique<VectorFunction<1>>(bulkVelocity),
-            std::make_unique<VectorFunction<1>>(thermalVelocity), -1., 10));
+        dict["pop0"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
 
-        return initializer;
+        dict["pop0"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["pop0"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+
+
+        dict["pop1"]["name"]                        = std::string{"protons"};
+        dict["pop1"]["mass"]                        = 1.;
+        dict["pop1"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
+        dict["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+
+        dict["pop1"]["ParticleInitializer"]["bulkVelocity"]
+            = static_cast<VectorFunction>(bulkVelocity);
+
+        dict["pop1"]["ParticleInitializer"]["thermalVelocity"]
+            = static_cast<VectorFunction>(thermalVelocity);
+
+        dict["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+        dict["pop1"]["ParticleInitializer"]["charge"]         = -1.;
+        dict["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+        return dict;
     }
 
 
     theIons()
-        : ions{createInitializer()}
+        : ions{createIonsDict()}
     {
     }
 

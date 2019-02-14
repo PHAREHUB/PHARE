@@ -49,7 +49,7 @@ namespace amr_interface
         /** @brief a priority of 0 means that this operator
          * will be applied first
          */
-        int getOperatorPriority() const { return 0; }
+        virtual int getOperatorPriority() const override { return 0; }
 
 
 
@@ -66,10 +66,10 @@ namespace amr_interface
         /** @brief perform a split and keep those that are inside a fineOverlap
          *
          */
-        void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
-                    int const destinationComponent, int const sourceComponent,
-                    SAMRAI::hier::BoxOverlap const& fineOverlap,
-                    SAMRAI::hier::IntVector const& ratio) const
+        virtual void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
+                            int const destinationComponent, int const sourceComponent,
+                            SAMRAI::hier::BoxOverlap const& fineOverlap,
+                            SAMRAI::hier::IntVector const& ratio) const override
         {
             // For the particles we index them as a CellIndex (for the iCell)
             // ie the particles in the iCell live between lower left node of the iCell

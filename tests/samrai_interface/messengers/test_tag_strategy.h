@@ -140,7 +140,7 @@ public:
                     fillField(Ni, layout, fillDensity);
 
 
-                    model_->state.ions.loadParticles(layout);
+                    model_->initialize(*patch);
                 }
             }
 

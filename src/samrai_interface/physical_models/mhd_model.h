@@ -22,7 +22,8 @@ namespace amr_interface
     {
     public:
         static const std::string model_name;
-        using resources_manager_type = ResourcesManager<GridLayoutT>;
+        static constexpr auto dimension = GridLayoutT::dimension;
+        using resources_manager_type    = ResourcesManager<GridLayoutT>;
 
 
         explicit MHDModel(std::shared_ptr<resources_manager_type> resourcesManager)
@@ -30,6 +31,8 @@ namespace amr_interface
             , resourcesManager{std::move(resourcesManager)}
         {
         }
+
+        virtual void initialize(SAMRAI::hier::Patch& patch) override {}
 
 
         virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
