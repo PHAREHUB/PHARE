@@ -65,6 +65,7 @@ namespace amr_interface
                 particleInitializer->loadParticles(pop.domainParticles(), layout);
             }
 
+
             // now initialize the fields
         }
 

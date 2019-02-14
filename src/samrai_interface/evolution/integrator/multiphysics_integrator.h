@@ -211,7 +211,7 @@ namespace amr_interface
 
             // now setup all messengers we've just created
 
-            registerQuantities_();
+            registerQuantitiesAllLevels_();
         }
 
 
@@ -280,11 +280,11 @@ namespace amr_interface
             // auto &rm = getResourcesManager(levelNumber);
 
             const bool isRegridding = oldLevel != nullptr;
+            auto level              = hierarchy->getPatchLevel(levelNumber);
 
 
             if (allocateData)
             {
-                auto level = hierarchy->getPatchLevel(levelNumber);
                 for (auto patch : *level)
                 {
                     model.allocate(*patch, initDataTime);
@@ -319,7 +319,19 @@ namespace amr_interface
                     // either way it's not our business here, and we use the initializer
                     // we where kindy given
 
-                    // model.initialize();
+                    for (auto patch : *level)
+                    {
+                        model.initialize(*patch);
+                    }
+                    // messenger.fillMagneticGhosts();
+
+                    // domain particles have been loaded for all populations
+                    // magnetic and electric field have been initialized in domain
+                    // now we need to:
+                    // - fill electric and magnetic ghosts
+                    // - fill interior ghost particles
+                    // - fill level border ghost particles (old) and copy them in pushable ones
+                    // - fill ion moment ghosts from interior and level border ghost particles
                 }
                 else
                 {
@@ -589,17 +601,16 @@ namespace amr_interface
 
 
 
-        void registerMessenger_(MessengerFactory const& messenger,
-                                IPhysicalModel const& coarseModel, IPhysicalModel const& fineModel,
-                                int iLevel)
+        void registerMessenger_(MessengerFactory const& factory, IPhysicalModel const& coarseModel,
+                                IPhysicalModel const& fineModel, int iLevel)
         {
-            if (auto messengerName = messenger.name(coarseModel, fineModel); messengerName)
+            if (auto messengerName = factory.name(coarseModel, fineModel); messengerName)
             {
                 auto foundMessenger = messengers_.find(*messengerName);
                 if (foundMessenger == messengers_.end())
                 {
-                    messengers_[*messengerName] = std::move(
-                        messenger.create(*messengerName, coarseModel, fineModel, iLevel));
+                    messengers_[*messengerName]
+                        = std::move(factory.create(*messengerName, coarseModel, fineModel, iLevel));
                 }
 
                 levelDescriptors_[iLevel].messengerName = *messengerName;
@@ -633,16 +644,17 @@ namespace amr_interface
 
 
 
-        void registerQuantities_()
+        void registerQuantitiesAllLevels_()
         {
-            auto messengerName = levelDescriptors_[0].messengerName;
+            auto lastMessengerName = levelDescriptors_[0].messengerName;
             registerQuantities_(0, getMessengerWithCoarser_(0));
 
             for (auto iLevel = 1; iLevel < nbrOfLevels_; ++iLevel)
             {
-                if (messengerName != levelDescriptors_[iLevel].messengerName)
+                auto currentMessengerName = levelDescriptors_[iLevel].messengerName;
+                if (lastMessengerName != currentMessengerName)
                 {
-                    messengerName = levelDescriptors_[iLevel].messengerName;
+                    lastMessengerName = currentMessengerName;
                     registerQuantities_(iLevel, getMessengerWithCoarser_(iLevel));
                 }
             }

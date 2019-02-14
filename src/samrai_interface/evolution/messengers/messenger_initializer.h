@@ -15,6 +15,12 @@ namespace amr_interface
     class MessengerRegistration
     {
     public:
+        /**
+         * @brief registerQuantities asks the fine level model, the coarse level model and the
+         * solver, to fill MessengerInfo structures. Two structures are filled, one for the finer
+         * and one for the coarser level. Once filled, these two structures are given to the
+         * IMessenger which now knows quantities that will need messages.
+         */
         static void registerQuantities(IMessenger& messenger, IPhysicalModel const& coarseModel,
                                        IPhysicalModel const& fineModel, ISolver const& solver)
         {

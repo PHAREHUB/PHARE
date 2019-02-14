@@ -413,7 +413,7 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 
 
 
-TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsSameNbrOfStayingParticles)
+TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
     auto rangeOut1 = makeRange(std::begin(particlesOut1), std::end(particlesOut1));

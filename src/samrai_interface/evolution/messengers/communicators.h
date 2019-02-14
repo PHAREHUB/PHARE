@@ -86,9 +86,9 @@ namespace amr_interface
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                            std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
         {
-            for (auto& [key, refiner] : communicators_)
+            for (auto& [_, communicator] : communicators_)
             {
-                auto& algo       = refiner.algo;
+                auto& algo       = communicator.algo;
                 auto levelNumber = level->getLevelNumber();
 
 
@@ -99,18 +99,19 @@ namespace amr_interface
                 {
                     auto schedule = algo->createSchedule(
                         level, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-                    refiner.add(schedule, levelNumber);
+                    communicator.add(schedule, levelNumber);
                 }
 
-                // this creteSchedule overload is used to initialize fields.
+                // this createSchedule overload is used to initialize fields.
                 // note that here we must take that createsSchedule() overload and put nullptr as
                 // src since we want to take from coarser level everywhere. using the createSchedule
                 // overload that takes level, next_coarser_level only would result in interior ghost
                 // nodes to be filled with interior of neighbor patches but there is nothing there.
                 else if constexpr (Type == CommunicatorType::InitField)
                 {
-                    refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
-                                levelNumber);
+                    communicator.add(
+                        algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                        levelNumber);
                 }
 
 
@@ -124,10 +125,11 @@ namespace amr_interface
                 // deterministic.
                 else if constexpr (Type == CommunicatorType::InitInteriorPart)
                 {
-                    refiner.add(algo->createSchedule(
-                                    std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
-                                    level, nullptr, levelNumber - 1, hierarchy),
-                                levelNumber);
+                    communicator.add(
+                        algo->createSchedule(
+                            std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
+                            nullptr, levelNumber - 1, hierarchy),
+                        levelNumber);
                 }
 
                 // here we create a schedule that will refine particles from coarser level and put
@@ -136,17 +138,18 @@ namespace amr_interface
                 // PatchLevelBorderFillPattern.
                 else if constexpr (Type == CommunicatorType::LevelBorderParticles)
                 {
-                    refiner.add(algo->createSchedule(
-                                    std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
-                                    level, nullptr, levelNumber - 1, hierarchy),
-                                levelNumber);
+                    communicator.add(
+                        algo->createSchedule(
+                            std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
+                            nullptr, levelNumber - 1, hierarchy),
+                        levelNumber);
                 }
 
                 // this branch is used to create a schedule that will transfer particles into the
                 // patches' ghost zones.
                 else if constexpr (Type == CommunicatorType::InteriorGhostParticles)
                 {
-                    refiner.add(algo->createSchedule(level), levelNumber);
+                    communicator.add(algo->createSchedule(level), levelNumber);
                 }
             }
         }
@@ -164,16 +167,16 @@ namespace amr_interface
          * The method registerLevel must have been called before for the given levelNumber otherwise
          * no schedule will be found
          */
-        void initialize(int levelNumber, double initDataTime) const
+        void fill(int levelNumber, double initDataTime) const
         {
-            for (auto& [key, refiner] : communicators_)
+            for (auto& [key, communicator] : communicators_)
             {
-                if (refiner.algo == nullptr)
+                if (communicator.algo == nullptr)
                 {
                     throw std::runtime_error("Algorithm is nullptr");
                 }
 
-                auto schedule = refiner.findSchedule(levelNumber);
+                auto schedule = communicator.findSchedule(levelNumber);
                 if (schedule)
                 {
                     (*schedule)->fillData(initDataTime);
@@ -223,7 +226,7 @@ namespace amr_interface
          * refine schedule will be found and the method will throw an axception.
          */
         template<typename VecFieldT>
-        void fillGhosts(VecFieldT& vec, int const levelNumber, double const fillTime)
+        void fill(VecFieldT& vec, int const levelNumber, double const fillTime)
         {
             auto schedule = findSchedule_(vec.name(), levelNumber);
             if (schedule)

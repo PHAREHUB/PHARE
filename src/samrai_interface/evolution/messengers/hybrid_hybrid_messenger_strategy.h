@@ -216,12 +216,12 @@ namespace amr_interface
          */
         virtual void initLevel(int const levelNumber, double const initDataTime) const override
         {
-            magneticInit_.initialize(levelNumber, initDataTime);
-            electricInit_.initialize(levelNumber, initDataTime);
-            ionBulkInit_.initialize(levelNumber, initDataTime);
-            ionDensityInit_.initialize(levelNumber, initDataTime);
-            interiorParticles_.initialize(levelNumber, initDataTime);
-            coarseToFineParticles_.initialize(levelNumber, initDataTime);
+            magneticInit_.fill(levelNumber, initDataTime);
+            electricInit_.fill(levelNumber, initDataTime);
+            ionBulkInit_.fill(levelNumber, initDataTime);
+            ionDensityInit_.fill(levelNumber, initDataTime);
+            interiorParticles_.fill(levelNumber, initDataTime);
+            coarseToFineParticles_.fill(levelNumber, initDataTime);
             // TODO need to copy coarse to fine old into coarseToFine that is pushed.
             // ghostParticles_.initialize(levelNumber, initDataTime);
         }
@@ -246,7 +246,7 @@ namespace amr_interface
         virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
                                         double const fillTime) override
         {
-            magneticGhosts_.fillGhosts(B, levelNumber, fillTime);
+            magneticGhosts_.fill(B, levelNumber, fillTime);
         }
 
 
@@ -255,7 +255,7 @@ namespace amr_interface
         virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber,
                                         double const fillTime) override
         {
-            electricGhosts_.fillGhosts(E, levelNumber, fillTime);
+            electricGhosts_.fill(E, levelNumber, fillTime);
         }
 
 
@@ -265,7 +265,7 @@ namespace amr_interface
                                            double const fillTime) override
         {
             std::cout << "perform the ghost particle fill\n";
-            ghostParticles_.initialize(levelNumber, fillTime);
+            ghostParticles_.fill(levelNumber, fillTime);
         }
 
 
@@ -373,10 +373,10 @@ namespace amr_interface
 
 
         /**
-         * @brief addToGhostRefinerPool_ adds to the ghost refiner pool all VecFieldDescriptor of
+         * @brief makeCommunicators_ adds to the ghost communicators all VecFieldDescriptor of
          * the given vector field.
          *
-         * Each of the ghost VecFieldDescriptor will have an entry in the ghost refiner pool
+         * Each of the ghost VecFieldDescriptor will have an entry in the ghost communicators
          *
          * @param ghostVec is the collection of VecFieldDescriptor. Each VecFieldDescriptor
          * corresponds to a VecField for which ghosts will be needed.
@@ -386,7 +386,6 @@ namespace amr_interface
          * @param oldModelVec is the VecFieldDescriptor for the VecField for which ghosts are
          * needed, at t_coarse. These are typically internal variables of the messenger, like Eold
          * or Bold.
-         * @param refinerPool is the RefinerPool to which we add the refiner to.
          */
         void makeCommunicators_(std::vector<VecFieldDescriptor> const& ghostVecs,
                                 VecFieldDescriptor const& modelVec,

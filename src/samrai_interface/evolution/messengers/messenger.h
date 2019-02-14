@@ -193,8 +193,6 @@ namespace amr_interface
          */
         virtual std::string coarseModelName() const = 0;
 
-
-
         virtual ~IMessenger() = default;
     };
 
