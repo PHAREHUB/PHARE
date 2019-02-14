@@ -89,15 +89,11 @@ namespace amr_interface
         {
             auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
-            modelInfo.modelMagnetic   = VecFieldDescriptor{state.electromag.B};
-            modelInfo.modelElectric   = VecFieldDescriptor{state.electromag.E};
-            modelInfo.modelIonBulk    = VecFieldDescriptor{state.ions.velocity()};
-            modelInfo.modelIonDensity = FieldDescriptor{state.ions.densityName()};
+            modelInfo.modelMagnetic = VecFieldDescriptor{state.electromag.B};
+            modelInfo.modelElectric = VecFieldDescriptor{state.electromag.E};
 
             modelInfo.initElectric.emplace_back(state.electromag.E);
             modelInfo.initMagnetic.emplace_back(state.electromag.B);
-            modelInfo.initIonBulk.emplace_back(state.ions.velocity());
-            modelInfo.initIonDensity.emplace_back(state.ions.densityName());
 
             modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
             modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);

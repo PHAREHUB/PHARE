@@ -49,12 +49,14 @@ double density(double x)
 
 std::array<double, 3> bulkVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{1.0, 0.0, 0.0}};
 }
 
 
 std::array<double, 3> thermalVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
 
@@ -136,38 +138,6 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
     EXPECT_EQ("EM_E_x", modelInfo.modelElectric.xName);
     EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
     EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
-
-    EXPECT_EQ("ions_rho", modelInfo.modelIonDensity);
-    EXPECT_EQ("ions_bulkVel", modelInfo.modelIonBulk.vecName);
-    EXPECT_EQ("ions_bulkVel_x", modelInfo.modelIonBulk.xName);
-    EXPECT_EQ("ions_bulkVel_y", modelInfo.modelIonBulk.yName);
-    EXPECT_EQ("ions_bulkVel_z", modelInfo.modelIonBulk.zName);
-
-
-
-    EXPECT_NE(std::end(modelInfo.initIonDensity),
-              std::find(std::begin(modelInfo.initIonDensity), std::end(modelInfo.initIonDensity),
-                        "ions_rho"));
-
-    EXPECT_NE(
-        std::end(modelInfo.initIonBulk),
-        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.vecName == std::string{"ions_bulkVel"}; }));
-
-    EXPECT_NE(
-        std::end(modelInfo.initIonBulk),
-        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.xName == std::string{"ions_bulkVel_x"}; }));
-
-    EXPECT_NE(
-        std::end(modelInfo.initIonBulk),
-        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.yName == std::string{"ions_bulkVel_y"}; }));
-
-    EXPECT_NE(
-        std::end(modelInfo.initIonBulk),
-        std::find_if(std::begin(modelInfo.initIonBulk), std::end(modelInfo.initIonBulk),
-                     [](auto const& desc) { return desc.zName == std::string{"ions_bulkVel_z"}; }));
 }
 
 

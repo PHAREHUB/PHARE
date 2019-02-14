@@ -145,8 +145,6 @@ namespace amr_interface
             {
                 magneticInit_.registerLevel(hierarchy, level);
                 electricInit_.registerLevel(hierarchy, level);
-                ionBulkInit_.registerLevel(hierarchy, level);
-                ionDensityInit_.registerLevel(hierarchy, level);
                 interiorParticles_.registerLevel(hierarchy, level);
                 coarseToFineParticles_.registerLevel(hierarchy, level);
             }
@@ -166,8 +164,6 @@ namespace amr_interface
         {
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            ionBulkInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            ionDensityInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             // TODO regrid particle arrays
         }
 
@@ -218,12 +214,11 @@ namespace amr_interface
         {
             magneticInit_.fill(levelNumber, initDataTime);
             electricInit_.fill(levelNumber, initDataTime);
-            ionBulkInit_.fill(levelNumber, initDataTime);
-            ionDensityInit_.fill(levelNumber, initDataTime);
             interiorParticles_.fill(levelNumber, initDataTime);
             coarseToFineParticles_.fill(levelNumber, initDataTime);
             // TODO need to copy coarse to fine old into coarseToFine that is pushed.
             // ghostParticles_.initialize(levelNumber, initDataTime);
+            // TODO #3327 here we need to interpolate all particles to initialize moments...
         }
 
 
