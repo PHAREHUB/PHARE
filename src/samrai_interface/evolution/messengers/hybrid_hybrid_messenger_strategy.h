@@ -321,7 +321,28 @@ namespace amr_interface
 
 
 
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
+        /**
+         * @brief lastStep is used to perform operations at the last step of a substepping cycle.
+         * It is called after the level is advanced. Here for hybrid-hybrid messages, the method
+         * moves coarseToFineNew particles into coarseToFineOld ones. Then coarseToFineNew are
+         * emptied since it will be filled again at firstStep of the next substepping cycle.
+         */
+        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+        {
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            for (auto& patch : level)
+            {
+                auto& ions       = hybridModel.state.ions;
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                for (auto& pop : ions)
+                {
+                    auto& coarseToFineOld = pop.coarseToFineOldParticles();
+                    auto& coarseToFineNew = pop.coarseToFineNewParticles();
+                    core::swap(coarseToFineNew, coarseToFineOld);
+                    core::empty(coarseToFineNew);
+                }
+            }
+        }
 
 
 
