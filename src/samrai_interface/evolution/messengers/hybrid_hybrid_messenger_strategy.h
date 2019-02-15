@@ -338,8 +338,10 @@ namespace amr_interface
                 {
                     auto& coarseToFineOld = pop.coarseToFineOldParticles();
                     auto& coarseToFineNew = pop.coarseToFineNewParticles();
+                    auto& coarseToFine    = pop.coarseToFineParticles();
                     core::swap(coarseToFineNew, coarseToFineOld);
                     core::empty(coarseToFineNew);
+                    core::empty(coarseToFine);
                 }
             }
         }
