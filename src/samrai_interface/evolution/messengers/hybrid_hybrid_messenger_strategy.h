@@ -326,6 +326,8 @@ namespace amr_interface
          * It is called after the level is advanced. Here for hybrid-hybrid messages, the method
          * moves coarseToFineNew particles into coarseToFineOld ones. Then coarseToFineNew are
          * emptied since it will be filled again at firstStep of the next substepping cycle.
+         * the new CoarseToFineOld content is then copied to coarseToFine particles so that they
+         * can be pushed during the next subcycle
          */
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
@@ -339,9 +341,12 @@ namespace amr_interface
                     auto& coarseToFineOld = pop.coarseToFineOldParticles();
                     auto& coarseToFineNew = pop.coarseToFineNewParticles();
                     auto& coarseToFine    = pop.coarseToFineParticles();
+
                     core::swap(coarseToFineNew, coarseToFineOld);
                     core::empty(coarseToFineNew);
                     core::empty(coarseToFine);
+                    std::copy(std::begin(coarseToFineOld), std::end(coarseToFineOld),
+                              std::back_inserter(coarseToFine));
                 }
             }
         }
