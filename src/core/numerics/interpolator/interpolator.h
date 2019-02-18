@@ -258,7 +258,7 @@ namespace core
 
 
     //! ParticleToMesh projects a particle density and flux to given grids
-    template<typename GridLayout, std::size_t dim>
+    template<std::size_t dim>
     class ParticleToMesh
     {
     };
@@ -267,8 +267,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 1D interpolation
      */
-    template<typename GridLayout>
-    class ParticleToMesh<GridLayout, 1>
+    template<>
+    class ParticleToMesh<1>
     {
     public: /** Performs the 1D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -282,32 +282,37 @@ namespace core
              */
         template<typename Field, typename Array1, typename Array2, typename Particle>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
-                               std::array<QtyCentering, 1> const& fieldCentering,
+                               std::array<QtyCentering, 1> const& densityCentering,
+                               std::array<QtyCentering, 1> const& xFluxCentering,
+                               std::array<QtyCentering, 1> const& yFluxCentering,
+                               std::array<QtyCentering, 1> const& zFluxCentering,
                                Particle const& particle, Array1 const& startIndex,
                                Array2 const& weights)
         {
-            auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
-            auto const& xWeights    = weights[static_cast<int>(fieldCentering[0])][0];
-            auto order_size         = xWeights.size();
+            auto const& xDenStartIndex   = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& xDenWeights      = weights[static_cast<int>(densityCentering[0])][0];
+            auto const& xXFluxStartIndex = startIndex[static_cast<int>(xFluxCentering[0])][0];
+            auto const& xXFluxWeights    = weights[static_cast<int>(xFluxCentering[0])][0];
+            auto const& xYFluxStartIndex = startIndex[static_cast<int>(yFluxCentering[0])][0];
+            auto const& xYFluxWeights    = weights[static_cast<int>(yFluxCentering[0])][0];
+            auto const& xZFluxStartIndex = startIndex[static_cast<int>(zFluxCentering[0])][0];
+            auto const& xZFluxWeights    = weights[static_cast<int>(zFluxCentering[0])][0];
+            auto order_size              = xDenWeights.size();
 
-            auto const partRho   = particle.weights * cellVolumeInverse_;
-            auto const xPartFlux = particle.v[0];
-            auto const yPartFlux = particle.v[1];
-            auto const zPartFlux = particle.v[2];
+            auto const partRho   = particle.weight;
+            auto const xPartFlux = particle.v[0] * particle.weight;
+            auto const yPartFlux = particle.v[1] * particle.weight;
+            auto const zPartFlux = particle.v[2] * particle.weight;
 
             for (auto ik = 0u; ik < order_size; ++ik)
             {
-                density(xStartIndex + ik) += partRho * xWeights[ik];
+                density(xDenStartIndex + ik) += partRho * xDenWeights[ik];
 
-                xFlux(xStartIndex + ik) += xPartFlux * xWeights[ik];
-                yFlux(xStartIndex + ik) += yPartFlux * xWeights[ik];
-                zFlux(xStartIndex + ik) += zPartFlux * xWeights[ik];
+                xFlux(xXFluxStartIndex + ik) += xPartFlux * xXFluxWeights[ik];
+                yFlux(xYFluxStartIndex + ik) += yPartFlux * xYFluxWeights[ik];
+                zFlux(xZFluxStartIndex + ik) += zPartFlux * xZFluxWeights[ik];
             }
         }
-
-    private:
-        GridLayout* layout_;
-        double cellVolumeInverse_ = layout_->inverseMeshSize_[0];
     };
 
 
@@ -315,8 +320,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 2D interpolation
      */
-    template<typename GridLayout>
-    class ParticleToMesh<GridLayout, 2>
+    template<>
+    class ParticleToMesh<2>
     {
     public: /** Performs the 2D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -330,19 +335,22 @@ namespace core
              */
         template<typename Field, typename Array1, typename Array2, typename Particle>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
-                               std::array<QtyCentering, 1> const& fieldCentering,
+                               std::array<QtyCentering, 2> const& densityCentering,
+                               std::array<QtyCentering, 2> const& xFluxCentering,
+                               std::array<QtyCentering, 2> const& yFluxCentering,
+                               std::array<QtyCentering, 2> const& zFluxCentering,
                                Particle const& particle, Array1 const& startIndex,
                                Array2 const& weights)
         {
-            auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
-            auto const& yStartIndex = startIndex[static_cast<int>(fieldCentering[1])][1];
-            auto const& xWeights    = weights[static_cast<int>(fieldCentering[0])][0];
-            auto const& yWeights    = weights[static_cast<int>(fieldCentering[1])][1];
+            auto const& xStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& yStartIndex = startIndex[static_cast<int>(densityCentering[1])][1];
+            auto const& xWeights    = weights[static_cast<int>(densityCentering[0])][0];
+            auto const& yWeights    = weights[static_cast<int>(densityCentering[1])][1];
 
-            auto const partRho   = particle.weights * cellVolumeInverse_;
-            auto const xPartFlux = particle.v[0];
-            auto const yPartFlux = particle.v[1];
-            auto const zPartFlux = particle.v[2];
+            auto const partRho   = particle.weight;
+            auto const xPartFlux = particle.v[0] * particle.weight;
+            auto const yPartFlux = particle.v[1] * particle.weight;
+            auto const zPartFlux = particle.v[2] * particle.weight;
 
             auto order_size = xWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
@@ -361,10 +369,6 @@ namespace core
                 }
             }
         }
-
-    private:
-        GridLayout* layout_;
-        double cellVolumeInverse_ = layout_->inverseMeshSize_[0] * layout_->inverseMeshSize_[1];
     };
 
 
@@ -372,8 +376,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 3D interpolation
      */
-    template<typename GridLayout>
-    class ParticleToMesh<GridLayout, 3>
+    template<>
+    class ParticleToMesh<3>
     {
     public: /** Performs the 3D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -387,21 +391,24 @@ namespace core
              */
         template<typename Field, typename Array1, typename Array2, typename Particle>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
-                               std::array<QtyCentering, 1> const& fieldCentering,
+                               std::array<QtyCentering, 3> const& densityCentering,
+                               std::array<QtyCentering, 3> const& xFluxCentering,
+                               std::array<QtyCentering, 3> const& yFluxCentering,
+                               std::array<QtyCentering, 3> const& zFluxCentering,
                                Particle const& particle, Array1 const& startIndex,
                                Array2 const& weights)
         {
-            auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
-            auto const& yStartIndex = startIndex[static_cast<int>(fieldCentering[1])][1];
-            auto const& zStartIndex = startIndex[static_cast<int>(fieldCentering[2])][2];
-            auto const& xWeights    = weights[static_cast<int>(fieldCentering[0])][0];
-            auto const& yWeights    = weights[static_cast<int>(fieldCentering[1])][1];
-            auto const& zWeights    = weights[static_cast<int>(fieldCentering[2])][2];
+            auto const& xStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& yStartIndex = startIndex[static_cast<int>(densityCentering[1])][1];
+            auto const& zStartIndex = startIndex[static_cast<int>(densityCentering[2])][2];
+            auto const& xWeights    = weights[static_cast<int>(densityCentering[0])][0];
+            auto const& yWeights    = weights[static_cast<int>(densityCentering[1])][1];
+            auto const& zWeights    = weights[static_cast<int>(densityCentering[2])][2];
 
-            auto const partRho   = particle.weights * cellVolumeInverse_;
-            auto const xPartFlux = particle.v[0];
-            auto const yPartFlux = particle.v[1];
-            auto const zPartFlux = particle.v[2];
+            auto const partRho   = particle.weight;
+            auto const xPartFlux = particle.v[0] * particle.weight;
+            auto const yPartFlux = particle.v[1] * particle.weight;
+            auto const zPartFlux = particle.v[2] * particle.weigth;
 
             auto order_size = xWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
@@ -425,11 +432,6 @@ namespace core
                 }
             }
         }
-
-    private:
-        GridLayout* layout_;
-        double cellVolumeInverse_ = layout_->inverseMeshSize_[0] * layout_->inverseMeshSize_[1]
-                                    * layout_->inverseMeshSize_[2];
     };
 
 
@@ -442,6 +444,10 @@ namespace core
     class Interpolator : private Weighter<GridLayout::interp_order>
     {
     public:
+        static auto constexpr dimension    = GridLayout::dimension;
+        static auto constexpr interp_order = GridLayout::interp_order;
+
+
         /**\brief interpolate electromagnetic fields on all particles in the range
          *
          * For each particle :
@@ -592,10 +598,8 @@ namespace core
                 indexAndWeightPrimal(*currPart);
                 indexAndWeightDual(*currPart);
 
-                particleToMesh_(density, densityCentering, *currPart, startIndex_, weights_);
-                particleToMesh_(xFlux, xFluxCentering, *currPart, startIndex_, weights_);
-                particleToMesh_(yFlux, yFluxCentering, *currPart, startIndex_, weights_);
-                particleToMesh_(zFlux, zFluxCentering, *currPart, startIndex_, weights_);
+                particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, xFluxCentering,
+                                yFluxCentering, zFluxCentering, *currPart, startIndex_, weights_);
             }
         }
 
@@ -609,6 +613,7 @@ namespace core
 
         Weighter<GridLayout::interp_order> weightComputer_;
         MeshToParticle<GridLayout::dimension> meshToParticle_;
+        ParticleToMesh<GridLayout::dimension> particleToMesh_;
 
         // array[dual/primal][dim]
         std::array<std::array<int, GridLayout::dimension>, 2> startIndex_;

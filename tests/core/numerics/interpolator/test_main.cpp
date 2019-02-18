@@ -11,6 +11,7 @@
 
 #include "data/electromag/electromag.h"
 #include "data/field/field.h"
+#include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "data/ndarray/ndarray_vector.h"
 #include "data/particles/particle.h"
@@ -616,13 +617,17 @@ TYPED_TEST(ASingleParticle, DepositWeightsOnAppropriateIndex)
 
 // set a collection of particle (the number depending on interpOrder) so that
 // their cumulative density equals 1 at index 20. idem for velocity components...
-template<typename Weighter>
+
+
+
+
+template<typename Interpolator>
 class ACollectionOfParticles : public ::testing::Test
 {
 public:
     static constexpr uint32_t nx        = 40;
-    static constexpr uint32_t nbrPoints = nbrPointsSupport(Weighter::interp_order);
-    static constexpr uint32_t numOfPart = Weighter::interp_order + 2;
+    static constexpr uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
+    static constexpr uint32_t numOfPart = Interpolator::interp_order + 2;
     Particle<1> part;
     ParticleArray<1> particles;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
@@ -630,19 +635,24 @@ public:
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vx;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vy;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vz;
-    std::array<double, nbrPointsSupport(Weighter::interp_order)> weights;
+    std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
+
 
 
     ACollectionOfParticles()
         : part{}
         , particles{}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
-        , vx{"field", HybridQuantity::Scalar::Vx, nx}
-        , vy{"field", HybridQuantity::Scalar::Vy, nx}
-        , vz{"field", HybridQuantity::Scalar::Vz, nx}
-        , v{"vecfield", HybridQuantity::Vector::V}
+        , vx{"v_x", HybridQuantity::Scalar::Vx, nx}
+        , vy{"v_y", HybridQuantity::Scalar::Vy, nx}
+        , vz{"v_z", HybridQuantity::Scalar::Vz, nx}
+        , v{"v", HybridQuantity::Vector::V}
     {
-        if constexpr (Weighter::interp_order == 1)
+        v.setBuffer("v_x", &vx);
+        v.setBuffer("v_y", &vy);
+        v.setBuffer("v_z", &vz);
+
+        if constexpr (Interpolator::interp_order == 1)
         {
             part.iCell[0] = 19;
             part.delta[0] = 0.5f;
@@ -669,7 +679,7 @@ public:
             particles.push_back(part);
         }
 
-        if constexpr (Weighter::interp_order == 2)
+        if constexpr (Interpolator::interp_order == 2)
         {
             part.iCell[0] = 19;
             part.delta[0] = 0.0f;
@@ -704,7 +714,7 @@ public:
             particles.push_back(part);
         }
 
-        if constexpr (Weighter::interp_order == 3)
+        if constexpr (Interpolator::interp_order == 3)
         {
             part.iCell[0] = 18;
             part.delta[0] = 0.5f;
@@ -747,44 +757,50 @@ public:
             particles.push_back(part);
         }
 
-        for (auto ip = 0; ip < numOfPart; ++ip)
-        {
-            auto normalizedPosition
-                = static_cast<double>(particles[ip].iCell[0] + particles[ip].delta[0]);
-
-            auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPosition);
-            this->weighter.computeWeight(normalizedPosition, startIndex, weights);
-
-            for (auto ix = 0u; ix < nbrPoints; ++ix)
-            {
-                rho(startIndex + ix) += weights[ix] * particles[ip].weight;
-                vx(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[0];
-                vy(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[1];
-                vz(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[2];
-            }
-        }
+        interpolator(std::begin(particles), std::end(particles), rho, v);
     }
 
+
+
 protected:
-    Weighter weighter;
+    Interpolator interpolator;
 };
 
 
-TYPED_TEST_CASE(ACollectionOfParticles, Weighters);
+
+TYPED_TEST_CASE_P(ACollectionOfParticles);
 
 
-TYPED_TEST(ACollectionOfParticles, DepositCorrectlyTheirWeight)
+TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
 {
     EXPECT_DOUBLE_EQ(this->rho(20), 1.0);
-}
-
-
-TYPED_TEST(ACollectionOfParticles, DepositCorrectlyTheirVelocity)
-{
     EXPECT_DOUBLE_EQ(this->vx(20), 2.0);
     EXPECT_DOUBLE_EQ(this->vy(20), -1.0);
     EXPECT_DOUBLE_EQ(this->vz(20), 1.0);
 }
+
+
+
+REGISTER_TYPED_TEST_CASE_P(ACollectionOfParticles, DepositCorrectlyTheirWeight);
+
+using GridLayoutYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
+using GridLayoutYee1DO2 = GridLayout<GridLayoutImplYee<1, 2>>;
+using GridLayoutYee1DO3 = GridLayout<GridLayoutImplYee<1, 3>>;
+
+/*using GridLayoutYee2DO1 = GridLayout<GridLayoutImplYee<2,1>>;
+using GridLayoutYee2DO2 = GridLayout<GridLayoutImplYee<2,2>>;
+using GridLayoutYee2DO3 = GridLayout<GridLayoutImplYee<2,3>>;
+using GridLayoutYee3DO1 = GridLayout<GridLayoutImplYee<3,1>>;
+using GridLayoutYee3DO2 = GridLayout<GridLayoutImplYee<3,2>>;
+using GridLayoutYee3DO3 = GridLayout<GridLayoutImplYee<3,3>>;*/
+
+
+
+using MyTypes = ::testing::Types<Interpolator<GridLayoutYee1DO1>, Interpolator<GridLayoutYee1DO2>,
+                                 Interpolator<GridLayoutYee1DO3>>;
+INSTANTIATE_TYPED_TEST_CASE_P(testInterpolator, ACollectionOfParticles, MyTypes);
+
+
 
 
 int main(int argc, char** argv)
