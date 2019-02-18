@@ -113,7 +113,7 @@ namespace core
         // ------------------------------------------------------------------------
     public:
         constexpr static std::array<QtyCentering, dim>
-        centering(HybridQuantity::Scalar const& hybridQuantity)
+        centering(HybridQuantity::Scalar hybridQuantity)
         {
             constexpr gridDataT gridData_{};
             if constexpr (dim == 1)
@@ -264,6 +264,39 @@ namespace core
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirZ]}};
                     default: throw std::runtime_error("Wrong hybridQuantity");
                 }
+            }
+        }
+
+
+
+
+        constexpr static std::array<std::array<QtyCentering, dim>, 3>
+        centering(HybridQuantity::Vector hybridQuantity)
+        {
+            switch (hybridQuantity)
+            {
+                case HybridQuantity::Vector::B:
+                    return {{centering(HybridQuantity::Scalar::Bx),
+                             centering(HybridQuantity::Scalar::By),
+                             centering(HybridQuantity::Scalar::Bz)}};
+
+                case HybridQuantity::Vector::V:
+                    return {{centering(HybridQuantity::Scalar::Vx),
+                             centering(HybridQuantity::Scalar::Vy),
+                             centering(HybridQuantity::Scalar::Vz)}};
+
+                case HybridQuantity::Vector::J:
+                    return {{centering(HybridQuantity::Scalar::Jx),
+                             centering(HybridQuantity::Scalar::Jy),
+                             centering(HybridQuantity::Scalar::Jz)}};
+
+                case HybridQuantity::Vector::E:
+                    return {{centering(HybridQuantity::Scalar::Ex),
+                             centering(HybridQuantity::Scalar::Ey),
+                             centering(HybridQuantity::Scalar::Ez)}};
+
+
+                default: throw std::runtime_error("Wrong hybridQuantity");
             }
         }
 

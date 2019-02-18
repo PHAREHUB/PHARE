@@ -280,24 +280,26 @@ namespace core
              * density and flux \param[in] startIndex is the first index for which a particle will
              * contribute \param[in] weights is the arrays of weights for the associated index
              */
-        template<typename Field, typename Array1, typename Array2, typename Particle>
+        template<typename Field, typename Array1, typename Array2, typename Particle,
+                 typename VectorCenteringArray>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 1> const& densityCentering,
-                               std::array<QtyCentering, 1> const& xFluxCentering,
-                               std::array<QtyCentering, 1> const& yFluxCentering,
-                               std::array<QtyCentering, 1> const& zFluxCentering,
-                               Particle const& particle, Array1 const& startIndex,
-                               Array2 const& weights)
+                               VectorCenteringArray const& fluxCentering, Particle const& particle,
+                               Array1 const& startIndex, Array2 const& weights)
         {
-            auto const& xDenStartIndex   = startIndex[static_cast<int>(densityCentering[0])][0];
-            auto const& xDenWeights      = weights[static_cast<int>(densityCentering[0])][0];
-            auto const& xXFluxStartIndex = startIndex[static_cast<int>(xFluxCentering[0])][0];
-            auto const& xXFluxWeights    = weights[static_cast<int>(xFluxCentering[0])][0];
-            auto const& xYFluxStartIndex = startIndex[static_cast<int>(yFluxCentering[0])][0];
-            auto const& xYFluxWeights    = weights[static_cast<int>(yFluxCentering[0])][0];
-            auto const& xZFluxStartIndex = startIndex[static_cast<int>(zFluxCentering[0])][0];
-            auto const& xZFluxWeights    = weights[static_cast<int>(zFluxCentering[0])][0];
-            auto order_size              = xDenWeights.size();
+            auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+
+            auto const& xXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][0])][0];
+            auto const& xXFluxWeights    = weights[static_cast<int>(fluxCentering[0][0])][0];
+
+            auto const& xYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][0])][0];
+            auto const& xYFluxWeights    = weights[static_cast<int>(fluxCentering[1][0])][0];
+
+            auto const& xZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][0])][0];
+            auto const& xZFluxWeights    = weights[static_cast<int>(fluxCentering[2][0])][0];
+
+            auto order_size = xDenWeights.size();
 
             auto const partRho   = particle.weight;
             auto const xPartFlux = particle.v[0] * particle.weight;
@@ -333,39 +335,63 @@ namespace core
              * density and flux \param[in] startIndex is the first index for which a particle will
              * contribute \param[in] weights is the arrays of weights for the associated index
              */
-        template<typename Field, typename Array1, typename Array2, typename Particle>
+        template<typename Field, typename Array1, typename Array2, typename Particle,
+                 typename VectorCenteringArray>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 2> const& densityCentering,
-                               std::array<QtyCentering, 2> const& xFluxCentering,
-                               std::array<QtyCentering, 2> const& yFluxCentering,
-                               std::array<QtyCentering, 2> const& zFluxCentering,
-                               Particle const& particle, Array1 const& startIndex,
-                               Array2 const& weights)
+                               VectorCenteringArray const& fluxCentering, Particle const& particle,
+                               Array1 const& startIndex, Array2 const& weights)
         {
-            auto const& xStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
-            auto const& yStartIndex = startIndex[static_cast<int>(densityCentering[1])][1];
-            auto const& xWeights    = weights[static_cast<int>(densityCentering[0])][0];
-            auto const& yWeights    = weights[static_cast<int>(densityCentering[1])][1];
+            auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+
+            auto const& xXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][0])][0];
+            auto const& xXFluxWeights    = weights[static_cast<int>(fluxCentering[0][0])][0];
+
+            auto const& xYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][0])][0];
+            auto const& xYFluxWeights    = weights[static_cast<int>(fluxCentering[1][0])][0];
+
+            auto const& xZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][0])][0];
+            auto const& xZFluxWeights    = weights[static_cast<int>(fluxCentering[2][0])][0];
+
+
+
+
+            auto const& yDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& yDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+
+            auto const& yXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][1])][0];
+            auto const& yXFluxWeights    = weights[static_cast<int>(fluxCentering[0][1])][0];
+
+            auto const& yYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][1])][0];
+            auto const& yYFluxWeights    = weights[static_cast<int>(fluxCentering[1][1])][0];
+
+            auto const& yZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][1])][0];
+            auto const& yZFluxWeights    = weights[static_cast<int>(fluxCentering[2][1])][0];
+
+
 
             auto const partRho   = particle.weight;
             auto const xPartFlux = particle.v[0] * particle.weight;
             auto const yPartFlux = particle.v[1] * particle.weight;
             auto const zPartFlux = particle.v[2] * particle.weight;
 
-            auto order_size = xWeights.size();
+            auto order_size = xDenWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
             {
                 for (auto iy = 0u; iy < order_size; ++iy)
                 {
-                    density(xStartIndex + ix, yStartIndex + iy)
-                        += partRho * xWeights[ix] * yWeights[iy];
+                    density(xDenStartIndex + ix, yDenStartIndex + iy)
+                        += partRho * xDenWeights[ix] * yDenWeights[iy];
 
-                    xFlux(xStartIndex + ix, yStartIndex + iy)
-                        += xPartFlux * xWeights[ix] * yWeights[iy];
-                    yFlux(xStartIndex + ix, yStartIndex + iy)
-                        += yPartFlux * xWeights[ix] * yWeights[iy];
-                    zFlux(xStartIndex + ix, yStartIndex + iy)
-                        += zPartFlux * xWeights[ix] * yWeights[iy];
+                    xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy)
+                        += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy];
+
+                    yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy)
+                        += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy];
+
+                    zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy)
+                        += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy];
                 }
             }
         }
@@ -389,45 +415,79 @@ namespace core
              * density and flux \param[in] startIndex is the first index for which a particle will
              * contribute \param[in] weights is the arrays of weights for the associated index
              */
-        template<typename Field, typename Array1, typename Array2, typename Particle>
+        template<typename Field, typename Array1, typename Array2, typename Particle,
+                 typename VectorCenteringArray>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 3> const& densityCentering,
-                               std::array<QtyCentering, 3> const& xFluxCentering,
-                               std::array<QtyCentering, 3> const& yFluxCentering,
-                               std::array<QtyCentering, 3> const& zFluxCentering,
-                               Particle const& particle, Array1 const& startIndex,
-                               Array2 const& weights)
+                               VectorCenteringArray const& fluxCentering, Particle const& particle,
+                               Array1 const& startIndex, Array2 const& weights)
         {
-            auto const& xStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
-            auto const& yStartIndex = startIndex[static_cast<int>(densityCentering[1])][1];
-            auto const& zStartIndex = startIndex[static_cast<int>(densityCentering[2])][2];
-            auto const& xWeights    = weights[static_cast<int>(densityCentering[0])][0];
-            auto const& yWeights    = weights[static_cast<int>(densityCentering[1])][1];
-            auto const& zWeights    = weights[static_cast<int>(densityCentering[2])][2];
+            auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+
+            auto const& xXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][0])][0];
+            auto const& xXFluxWeights    = weights[static_cast<int>(fluxCentering[0][0])][0];
+
+            auto const& xYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][0])][0];
+            auto const& xYFluxWeights    = weights[static_cast<int>(fluxCentering[1][0])][0];
+
+            auto const& xZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][0])][0];
+            auto const& xZFluxWeights    = weights[static_cast<int>(fluxCentering[2][0])][0];
+
+
+
+
+            auto const& yDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& yDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+
+            auto const& yXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][1])][0];
+            auto const& yXFluxWeights    = weights[static_cast<int>(fluxCentering[0][1])][0];
+
+            auto const& yYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][1])][0];
+            auto const& yYFluxWeights    = weights[static_cast<int>(fluxCentering[1][1])][0];
+
+            auto const& yZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][1])][0];
+            auto const& yZFluxWeights    = weights[static_cast<int>(fluxCentering[2][1])][0];
+
+
+
+
+            auto const& zDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
+            auto const& zDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+
+            auto const& zXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][2])][0];
+            auto const& zXFluxWeights    = weights[static_cast<int>(fluxCentering[0][2])][0];
+
+            auto const& zYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][2])][0];
+            auto const& zYFluxWeights    = weights[static_cast<int>(fluxCentering[1][2])][0];
+
+            auto const& zZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][2])][0];
+            auto const& zZFluxWeights    = weights[static_cast<int>(fluxCentering[2][2])][0];
 
             auto const partRho   = particle.weight;
             auto const xPartFlux = particle.v[0] * particle.weight;
             auto const yPartFlux = particle.v[1] * particle.weight;
             auto const zPartFlux = particle.v[2] * particle.weigth;
 
-            auto order_size = xWeights.size();
+            auto order_size = xDenWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
             {
                 for (auto iy = 0u; iy < order_size; ++iy)
                 {
                     for (auto iz = 0u; iz < order_size; ++iz)
                     {
-                        density(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                            += partRho * xWeights[ix] * yWeights[iy] * zWeights[iz];
+                        density(xDenStartIndex + ix, yDenStartIndex + iy, zDenStartIndex + iz)
+                            += partRho * xDenWeights[ix] * yDenWeights[iy] * zDenWeights[iz];
 
-                        xFlux(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                            += xPartFlux * xWeights[ix] * yWeights[iy] * zWeights;
+                        xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy, zXFluxStartIndex + iz)
+                            += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy] * zXFluxWeights;
 
-                        yFlux(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                            += yPartFlux * xWeights[ix] * yWeights[iy] * zWeights[iz];
+                        yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy, zYFluxStartIndex + iz)
+                            += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy]
+                               * zYFluxWeights[iz];
 
-                        zFlux(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)
-                            += zPartFlux * xWeights[ix] * yWeights[iy] * zWeights;
+                        zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy, zZFluxStartIndex + iz)
+                            += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy] * zZFluxWeights;
                     }
                 }
             }
@@ -581,10 +641,8 @@ namespace core
             auto& yFlux = flux.getComponent(Component::Y);
             auto& zFlux = flux.getComponent(Component::Z);
 
-            auto const densityCentering = GridLayout::centering(HybridQuantity::Scalar::rho);
-            auto const xFluxCentering   = GridLayout::centering(HybridQuantity::Scalar::Vx);
-            auto const yFluxCentering   = GridLayout::centering(HybridQuantity::Scalar::Vy);
-            auto const zFluxCentering   = GridLayout::centering(HybridQuantity::Scalar::Vz);
+            auto constexpr densityCentering = GridLayout::centering(HybridQuantity::Scalar::rho);
+            auto constexpr fluxCentering    = GridLayout::centering(HybridQuantity::Vector::V);
 
 
             // for each particle, first calculate the startIndex and weights
@@ -598,8 +656,8 @@ namespace core
                 indexAndWeightPrimal(*currPart);
                 indexAndWeightDual(*currPart);
 
-                particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, xFluxCentering,
-                                yFluxCentering, zFluxCentering, *currPart, startIndex_, weights_);
+                particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, fluxCentering,
+                                *currPart, startIndex_, weights_);
             }
         }
 
