@@ -213,14 +213,33 @@ namespace amr_interface
          *  ghost particles are also initialized
          *
          */
-        virtual void initLevel(int const levelNumber, double const initDataTime) const override
+        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double const initDataTime) const override
         {
+            auto levelNumber = level.getLevelNumber();
             magneticInit_.fill(levelNumber, initDataTime);
             electricInit_.fill(levelNumber, initDataTime);
             interiorParticles_.fill(levelNumber, initDataTime);
             coarseToFineOldParticles_.fill(levelNumber, initDataTime);
-            // TODO #3331 : need to copy coarse to fine old into coarseToFine that is pushed.
-            // ghostParticles_.initialize(levelNumber, initDataTime);
+
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            for (auto& patch : level)
+            {
+                auto& ions       = hybridModel.state.ions;
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                for (auto& pop : ions)
+                {
+                    auto& coarseToFineOld = pop.coarseToFineOldParticles();
+                    auto& coarseToFine    = pop.coarseToFineParticles();
+
+                    core::empty(coarseToFine);
+                    std::copy(std::begin(coarseToFineOld), std::end(coarseToFineOld),
+                              std::back_inserter(coarseToFine));
+                }
+            }
+
+
+            // ghostParticles_.fill(levelNumber, initDataTime);
             // TODO #3327 here we need to interpolate all particles to initialize moments...
         }
 

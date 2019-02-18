@@ -56,7 +56,10 @@ namespace amr_interface
         {
         }
 
-        virtual void initLevel(int const levelNumber, double const initDataTime) const override {}
+        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double const initDataTime) const override
+        {
+        }
 
         virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {

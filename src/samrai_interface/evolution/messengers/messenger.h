@@ -144,11 +144,9 @@ namespace amr_interface
          * @brief initLevel is used by the MultiPhysicsIntegrator to initialize a level at time
          * initDataTime from a coarser level iLevel-1. The initialization is performed on all
          * quantities registered during registerQuantities().
-         *
-         * @param iLevel
-         * @param initDataTime
          */
-        virtual void initLevel(int const iLevel, double const initDataTime) const = 0;
+        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double const initDataTime) const = 0;
 
 
 

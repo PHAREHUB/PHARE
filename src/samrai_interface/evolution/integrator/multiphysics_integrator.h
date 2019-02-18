@@ -335,7 +335,7 @@ namespace amr_interface
                 }
                 else
                 {
-                    messenger.initLevel(levelNumber, initDataTime);
+                    messenger.initLevel(model, *level, initDataTime);
                 }
             }
         }

@@ -138,9 +138,10 @@ namespace amr_interface
          * @param levelNumber
          * @param initDataTime
          */
-        virtual void initLevel(int const levelNumber, double const initDataTime) const override
+        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               double const initDataTime) const override
         {
-            strat_->initLevel(levelNumber, initDataTime);
+            strat_->initLevel(model, level, initDataTime);
         }
 
 
