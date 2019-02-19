@@ -6,6 +6,7 @@
 
 #include "data/grid/gridlayout.h"
 #include "data/vecfield/vecfield_component.h"
+#include "utilities/point/point.h"
 
 namespace PHARE
 {
@@ -500,14 +501,12 @@ namespace core
     /** \brief Interpolator is used to perform particle-mesh interpolations using
      * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
      */
-    template<typename GridLayout>
-    class Interpolator : private Weighter<GridLayout::interp_order>
+    template<std::size_t dim, std::size_t interpOrder>
+    class Interpolator : private Weighter<interpOrder>
     {
     public:
-        static auto constexpr dimension    = GridLayout::dimension;
-        static auto constexpr interp_order = GridLayout::interp_order;
-
-
+        auto static constexpr interp_order = interpOrder;
+        auto static constexpr dimension    = dim;
         /**\brief interpolate electromagnetic fields on all particles in the range
          *
          * For each particle :
@@ -516,21 +515,22 @@ namespace core
          *  - then it uses Interpol<> to calculate the interpolation of E and B components
          * onto the particle.
          */
-        template<typename PartIterator, typename Electromag>
-        inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em)
+        template<typename PartIterator, typename Electromag, typename GridLayout>
+        inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+                               GridLayout const& layout)
         {
             // this lambda calculates the startIndex and the nbrPointsSupport() weights for
             // dual field interpolation and puts this at the corresponding location
             // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
             // is offseted compared to primal ones.
-            auto indexAndWeightDual = [this](auto const& part) {
-                for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
+            auto indexAndWeightDual = [this, &layout](auto const& part) {
+                for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
-                    double normalizedPos = part.iCell[iDim] + part.delta[iDim]
-                                           + dualOffset(GridLayout::interp_order);
+                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
+                    double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
 
                     startIndex_[centering2int(QtyCentering::dual)][iDim]
-                        = computeStartIndex<GridLayout::interp_order>(normalizedPos);
+                        = computeStartIndex<interpOrder>(normalizedPos);
 
                     weightComputer_.computeWeight(
                         normalizedPos, startIndex_[centering2int(QtyCentering::dual)][iDim],
@@ -539,13 +539,14 @@ namespace core
             };
 
             // does the same as above but for a primal field
-            auto indexAndWeightPrimal = [this](auto const& part) {
-                for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
+            auto indexAndWeightPrimal = [this, &layout](auto const& part) {
+                for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
-                    double normalizedPos = part.iCell[iDim] + part.delta[iDim];
+                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
+                    double normalizedPos = iCell[iDim] + part.delta[iDim];
 
                     startIndex_[centering2int(QtyCentering::primal)][iDim]
-                        = computeStartIndex<GridLayout::interp_order>(normalizedPos);
+                        = computeStartIndex<interpOrder>(normalizedPos);
 
                     weightComputer_.computeWeight(
                         normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
@@ -599,22 +600,23 @@ namespace core
          *  - then it uses Interpol<> to calculate the interpolation of E and B components
          * onto the particle.
          */
-        template<typename PartIterator, typename VecField,
+        template<typename PartIterator, typename VecField, typename GridLayout,
                  typename Field = typename VecField::field_type>
-        inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux)
+        inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux,
+                               GridLayout const& layout)
         {
             // this lambda calculates the startIndex and the order+1 weights for
             // dual field interpolation and puts this at the corresponding location
             // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
             // is offseted compared to primal ones.
             auto indexAndWeightDual = [this](auto const& part) {
-                for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
+                for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
-                    double normalizedPos = part.iCell[iDim] + part.delta[iDim]
-                                           + dualOffset(GridLayout::interp_order);
+                    double normalizedPos
+                        = part.iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
 
                     startIndex_[centering2int(QtyCentering::dual)][iDim]
-                        = computeStartIndex<GridLayout::interp_order>(normalizedPos);
+                        = computeStartIndex<interpOrder>(normalizedPos);
 
                     weightComputer_.computeWeight(
                         normalizedPos, startIndex_[centering2int(QtyCentering::dual)][iDim],
@@ -624,12 +626,12 @@ namespace core
 
             // does the same as above but for a primal field
             auto indexAndWeightPrimal = [this](auto const& part) {
-                for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
+                for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
                     double normalizedPos = part.iCell[iDim] + part.delta[iDim];
 
                     startIndex_[centering2int(QtyCentering::primal)][iDim]
-                        = computeStartIndex<GridLayout::interp_order>(normalizedPos);
+                        = computeStartIndex<interpOrder>(normalizedPos);
 
                     weightComputer_.computeWeight(
                         normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
@@ -665,19 +667,16 @@ namespace core
 
 
     private:
-        static_assert(GridLayout::dimension <= 3 && GridLayout::dimension > 0
-                          && GridLayout::interp_order >= 1 && GridLayout::interp_order <= 3,
+        static_assert(dimension <= 3 && dimension > 0 && interpOrder >= 1 && interpOrder <= 3,
                       "error");
 
-        Weighter<GridLayout::interp_order> weightComputer_;
-        MeshToParticle<GridLayout::dimension> meshToParticle_;
-        ParticleToMesh<GridLayout::dimension> particleToMesh_;
+        Weighter<interpOrder> weightComputer_;
+        MeshToParticle<dimension> meshToParticle_;
+        ParticleToMesh<dimension> particleToMesh_;
 
         // array[dual/primal][dim]
-        std::array<std::array<int, GridLayout::dimension>, 2> startIndex_;
-        std::array<std::array<std::array<double, nbrPointsSupport(GridLayout::interp_order)>,
-                              GridLayout::dimension>,
-                   2>
+        std::array<std::array<int, dimension>, 2> startIndex_;
+        std::array<std::array<std::array<double, nbrPointsSupport(interpOrder)>, dimension>, 2>
             weights_;
 
         /**

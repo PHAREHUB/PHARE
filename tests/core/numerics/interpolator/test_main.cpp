@@ -181,6 +181,7 @@ public:
 
     // arbitrary number of cells
     static constexpr uint32_t nx = 50;
+    GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {nx}, {0.}};
 
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> by1d_;
@@ -229,8 +230,7 @@ public:
 
 
 using Interpolators1D
-    = ::testing::Types<Interpolator<GridLayoutImplYee<1, 1>>, Interpolator<GridLayoutImplYee<1, 2>>,
-                       Interpolator<GridLayoutImplYee<1, 3>>>;
+    = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
 
 TYPED_TEST_CASE(A1DInterpolator, Interpolators1D);
 
@@ -245,7 +245,7 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em);
+    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(std::all_of(
         std::begin(this->particles), std::end(this->particles),
@@ -295,6 +295,7 @@ public:
     // arbitrary number of cells
     static constexpr uint32_t nx = 50;
     static constexpr uint32_t ny = 50;
+    GridLayout<GridLayoutImplYee<2, 1>> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
 
     Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bx_;
     Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> by_;
@@ -345,8 +346,7 @@ public:
 
 
 using Interpolators2D
-    = ::testing::Types<Interpolator<GridLayoutImplYee<2, 1>>, Interpolator<GridLayoutImplYee<2, 2>>,
-                       Interpolator<GridLayoutImplYee<2, 3>>>;
+    = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
 
 TYPED_TEST_CASE(A2DInterpolator, Interpolators2D);
 
@@ -361,7 +361,7 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em);
+    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(std::all_of(
         std::begin(this->particles), std::end(this->particles),
@@ -412,6 +412,7 @@ public:
     static constexpr uint32_t nx = 50;
     static constexpr uint32_t ny = 50;
     static constexpr uint32_t nz = 50;
+    GridLayout<GridLayoutImplYee<3, 1>> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
 
     Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bx_;
     Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> by_;
@@ -465,8 +466,7 @@ public:
 
 
 using Interpolators3D
-    = ::testing::Types<Interpolator<GridLayoutImplYee<3, 1>>, Interpolator<GridLayoutImplYee<3, 2>>,
-                       Interpolator<GridLayoutImplYee<3, 3>>>;
+    = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
 
 TYPED_TEST_CASE(A3DInterpolator, Interpolators3D);
 
@@ -481,7 +481,7 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em);
+    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(std::all_of(
         std::begin(this->particles), std::end(this->particles),
@@ -529,7 +529,8 @@ template<typename Interpolator>
 class ACollectionOfParticles : public ::testing::Test
 {
 public:
-    static constexpr uint32_t nx        = 40;
+    static constexpr uint32_t nx = 40;
+    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
     static constexpr uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
     static constexpr uint32_t numOfPart = Interpolator::interp_order + 2;
     Particle<1> part;
@@ -661,7 +662,7 @@ public:
             particles.push_back(part);
         }
 
-        interpolator(std::begin(particles), std::end(particles), rho, v);
+        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
     }
 
 
@@ -687,9 +688,7 @@ TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
 
 REGISTER_TYPED_TEST_CASE_P(ACollectionOfParticles, DepositCorrectlyTheirWeight);
 
-using GridLayoutYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
-using GridLayoutYee1DO2 = GridLayout<GridLayoutImplYee<1, 2>>;
-using GridLayoutYee1DO3 = GridLayout<GridLayoutImplYee<1, 3>>;
+
 
 /*using GridLayoutYee2DO1 = GridLayout<GridLayoutImplYee<2,1>>;
 using GridLayoutYee2DO2 = GridLayout<GridLayoutImplYee<2,2>>;
@@ -700,8 +699,7 @@ using GridLayoutYee3DO3 = GridLayout<GridLayoutImplYee<3,3>>;*/
 
 
 
-using MyTypes = ::testing::Types<Interpolator<GridLayoutYee1DO1>, Interpolator<GridLayoutYee1DO2>,
-                                 Interpolator<GridLayoutYee1DO3>>;
+using MyTypes = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
 INSTANTIATE_TYPED_TEST_CASE_P(testInterpolator, ACollectionOfParticles, MyTypes);
 
 
