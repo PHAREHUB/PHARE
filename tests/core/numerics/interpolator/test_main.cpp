@@ -559,7 +559,7 @@ public:
 
         if constexpr (Interpolator::interp_order == 1)
         {
-            part.iCell[0] = 19;
+            part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 1.0;
             part.v[0]     = +2.;
@@ -567,7 +567,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20;
+            part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 0.4;
             part.v[0]     = +2.;
@@ -575,7 +575,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20;
+            part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 0.6;
             part.v[0]     = +2.;
@@ -586,7 +586,7 @@ public:
 
         if constexpr (Interpolator::interp_order == 2)
         {
-            part.iCell[0] = 19;
+            part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.0f;
             part.weight   = 1.0;
             part.v[0]     = +2.;
@@ -594,7 +594,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20;
+            part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0f;
             part.weight   = 0.2;
             part.v[0]     = +2.;
@@ -602,7 +602,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20;
+            part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0f;
             part.weight   = 0.8;
             part.v[0]     = +2.;
@@ -610,7 +610,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21;
+            part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.0f;
             part.weight   = 1.0;
             part.v[0]     = +2.;
@@ -621,7 +621,7 @@ public:
 
         if constexpr (Interpolator::interp_order == 3)
         {
-            part.iCell[0] = 18;
+            part.iCell[0] = 18; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 1.0;
             part.v[0]     = +2.;
@@ -629,7 +629,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 19;
+            part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 1.0;
             part.v[0]     = +2.;
@@ -637,7 +637,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20;
+            part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 1.0;
             part.v[0]     = +2.;
@@ -645,7 +645,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21;
+            part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 0.1;
             part.v[0]     = +2.;
@@ -653,7 +653,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21;
+            part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5f;
             part.weight   = 0.9;
             part.v[0]     = +2.;
@@ -678,10 +678,10 @@ TYPED_TEST_CASE_P(ACollectionOfParticles);
 
 TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
 {
-    EXPECT_DOUBLE_EQ(this->rho(20), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(20), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(20), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(20), 1.0);
+    EXPECT_DOUBLE_EQ(this->rho(25), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(25), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(25), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(25), 1.0);
 }
 
 

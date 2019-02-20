@@ -609,11 +609,11 @@ namespace core
             // dual field interpolation and puts this at the corresponding location
             // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
             // is offseted compared to primal ones.
-            auto indexAndWeightDual = [this](auto const& part) {
+            auto indexAndWeightDual = [this, &layout](auto const& part) {
                 for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
-                    double normalizedPos
-                        = part.iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
+                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
+                    double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
 
                     startIndex_[centering2int(QtyCentering::dual)][iDim]
                         = computeStartIndex<interpOrder>(normalizedPos);
@@ -625,10 +625,11 @@ namespace core
             };
 
             // does the same as above but for a primal field
-            auto indexAndWeightPrimal = [this](auto const& part) {
+            auto indexAndWeightPrimal = [this, &layout](auto const& part) {
                 for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
-                    double normalizedPos = part.iCell[iDim] + part.delta[iDim];
+                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
+                    double normalizedPos = iCell[iDim] + part.delta[iDim];
 
                     startIndex_[centering2int(QtyCentering::primal)][iDim]
                         = computeStartIndex<interpOrder>(normalizedPos);
