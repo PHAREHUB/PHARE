@@ -167,6 +167,13 @@ namespace core
 
 
 
+        VecField const& flux() const { return flux_; }
+
+
+        VecField& flux() { return flux_; }
+
+
+
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
