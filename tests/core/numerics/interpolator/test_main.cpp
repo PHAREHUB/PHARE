@@ -11,6 +11,7 @@
 
 #include "data/electromag/electromag.h"
 #include "data/field/field.h"
+#include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
 #include "data/ndarray/ndarray_vector.h"
 #include "data/particles/particle.h"
@@ -180,6 +181,7 @@ public:
 
     // arbitrary number of cells
     static constexpr uint32_t nx = 50;
+    GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {nx}, {0.}};
 
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> by1d_;
@@ -228,8 +230,7 @@ public:
 
 
 using Interpolators1D
-    = ::testing::Types<Interpolator<GridLayoutImplYee<1, 1>>, Interpolator<GridLayoutImplYee<1, 2>>,
-                       Interpolator<GridLayoutImplYee<1, 3>>>;
+    = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
 
 TYPED_TEST_CASE(A1DInterpolator, Interpolators1D);
 
@@ -244,7 +245,7 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em);
+    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(std::all_of(
         std::begin(this->particles), std::end(this->particles),
@@ -294,6 +295,7 @@ public:
     // arbitrary number of cells
     static constexpr uint32_t nx = 50;
     static constexpr uint32_t ny = 50;
+    GridLayout<GridLayoutImplYee<2, 1>> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
 
     Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bx_;
     Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> by_;
@@ -344,8 +346,7 @@ public:
 
 
 using Interpolators2D
-    = ::testing::Types<Interpolator<GridLayoutImplYee<2, 1>>, Interpolator<GridLayoutImplYee<2, 2>>,
-                       Interpolator<GridLayoutImplYee<2, 3>>>;
+    = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
 
 TYPED_TEST_CASE(A2DInterpolator, Interpolators2D);
 
@@ -360,7 +361,7 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em);
+    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(std::all_of(
         std::begin(this->particles), std::end(this->particles),
@@ -411,6 +412,7 @@ public:
     static constexpr uint32_t nx = 50;
     static constexpr uint32_t ny = 50;
     static constexpr uint32_t nz = 50;
+    GridLayout<GridLayoutImplYee<3, 1>> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
 
     Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bx_;
     Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> by_;
@@ -464,8 +466,7 @@ public:
 
 
 using Interpolators3D
-    = ::testing::Types<Interpolator<GridLayoutImplYee<3, 1>>, Interpolator<GridLayoutImplYee<3, 2>>,
-                       Interpolator<GridLayoutImplYee<3, 3>>>;
+    = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
 
 TYPED_TEST_CASE(A3DInterpolator, Interpolators3D);
 
@@ -480,7 +481,7 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em);
+    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(std::all_of(
         std::begin(this->particles), std::end(this->particles),
@@ -517,112 +518,21 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
-template<typename Weighter>
-class ASingleParticle : public ::testing::Test
-{
-public:
-    Particle<1> particle;
-    uint32_t nx = 40;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
-    static constexpr std::size_t interp_order = Weighter::interp_order;
-    static constexpr std::size_t nbrPoints    = nbrPointsSupport(interp_order);
-    std::array<double, nbrPoints> weights;
-
-    ASingleParticle()
-        : particle{}
-        , rho{"field", HybridQuantity::Scalar::rho, nx}
-    {
-        particle.iCell[0]       = 20;
-        particle.delta[0]       = 0.2f;
-        particle.weight         = 0.24;
-        auto normalizedPosition = static_cast<double>(particle.iCell[0] + particle.delta[0]);
-
-        auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPosition);
-        this->weighter.computeWeight(normalizedPosition, startIndex, weights);
-
-        for (auto ix = 0u; ix < nbrPoints; ++ix)
-        {
-            rho(startIndex + ix) = weights[ix] * particle.weight;
-        }
-    }
-
-protected:
-    Weighter weighter;
-};
-
-
-
-TYPED_TEST_CASE(ASingleParticle, Weighters);
-
-
-// count the number of nodes where density is deposited...
-// this has to be equal to the nbrPoints == interpOrder+1
-TYPED_TEST(ASingleParticle, DepositWeightsOnAppropriateNumOfIndex)
-{
-    auto numOfNodes = 0;
-    auto nx         = this->nx;
-
-    for (auto ix = 0u; ix < nx; ++ix)
-    {
-        if (this->rho(ix) > 0.)
-        {
-            numOfNodes++;
-        }
-    }
-
-    EXPECT_EQ(numOfNodes, ASingleParticle<TypeParam>::nbrPoints);
-}
-
-
-// find the N index the closest to the particle (test all the index & keep the closest one
-// which is not already in the list)
-TYPED_TEST(ASingleParticle, DepositWeightsOnAppropriateIndex)
-{
-    auto nbrPoints = ASingleParticle<TypeParam>::nbrPoints;
-    // auto nx = ASingleParticle<TypeParam>::nx;
-
-    auto normalizedPosition
-        = static_cast<double>(this->particle.iCell[0] + this->particle.delta[0]);
-    auto startIndex
-        = computeStartIndex<ASingleParticle<TypeParam>::interp_order>(normalizedPosition);
-
-    std::list<int> indexList(nbrPoints);
-    std::iota(indexList.begin(), indexList.end(), startIndex);
-
-    int closestIndex;
-    std::array<int, 4> shiftIndices;
-
-    if (this->particle.delta[0] < 0.5)
-    {
-        closestIndex = this->particle.iCell[0];
-        shiftIndices = {+1, -1, +2, -2};
-    }
-    else
-    {
-        closestIndex = this->particle.iCell[0] + 1;
-        shiftIndices = {-1, +1, -2, +2};
-    }
-
-    std::list<int> closestIndices{closestIndex};
-    for (int i = 0; i < nbrPoints - 1; ++i)
-    {
-        closestIndices.push_back(closestIndex + shiftIndices.at(i));
-    }
-    closestIndices.sort();
-
-    EXPECT_EQ(indexList, closestIndices);
-}
-
 
 // set a collection of particle (the number depending on interpOrder) so that
 // their cumulative density equals 1 at index 20. idem for velocity components...
-template<typename Weighter>
+
+
+
+
+template<typename Interpolator>
 class ACollectionOfParticles : public ::testing::Test
 {
 public:
-    static constexpr uint32_t nx        = 40;
-    static constexpr uint32_t nbrPoints = nbrPointsSupport(Weighter::interp_order);
-    static constexpr uint32_t numOfPart = Weighter::interp_order + 2;
+    static constexpr uint32_t nx = 40;
+    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
+    static constexpr uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
+    static constexpr uint32_t numOfPart = Interpolator::interp_order + 2;
     Particle<1> part;
     ParticleArray<1> particles;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
@@ -630,19 +540,24 @@ public:
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vx;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vy;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vz;
-    std::array<double, nbrPointsSupport(Weighter::interp_order)> weights;
+    std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
+
 
 
     ACollectionOfParticles()
         : part{}
         , particles{}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
-        , vx{"field", HybridQuantity::Scalar::Vx, nx}
-        , vy{"field", HybridQuantity::Scalar::Vy, nx}
-        , vz{"field", HybridQuantity::Scalar::Vz, nx}
-        , v{"vecfield", HybridQuantity::Vector::V}
+        , vx{"v_x", HybridQuantity::Scalar::Vx, nx}
+        , vy{"v_y", HybridQuantity::Scalar::Vy, nx}
+        , vz{"v_z", HybridQuantity::Scalar::Vz, nx}
+        , v{"v", HybridQuantity::Vector::V}
     {
-        if constexpr (Weighter::interp_order == 1)
+        v.setBuffer("v_x", &vx);
+        v.setBuffer("v_y", &vy);
+        v.setBuffer("v_z", &vz);
+
+        if constexpr (Interpolator::interp_order == 1)
         {
             part.iCell[0] = 19;
             part.delta[0] = 0.5f;
@@ -669,7 +584,7 @@ public:
             particles.push_back(part);
         }
 
-        if constexpr (Weighter::interp_order == 2)
+        if constexpr (Interpolator::interp_order == 2)
         {
             part.iCell[0] = 19;
             part.delta[0] = 0.0f;
@@ -704,7 +619,7 @@ public:
             particles.push_back(part);
         }
 
-        if constexpr (Weighter::interp_order == 3)
+        if constexpr (Interpolator::interp_order == 3)
         {
             part.iCell[0] = 18;
             part.delta[0] = 0.5f;
@@ -747,44 +662,47 @@ public:
             particles.push_back(part);
         }
 
-        for (auto ip = 0; ip < numOfPart; ++ip)
-        {
-            auto normalizedPosition
-                = static_cast<double>(particles[ip].iCell[0] + particles[ip].delta[0]);
-
-            auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPosition);
-            this->weighter.computeWeight(normalizedPosition, startIndex, weights);
-
-            for (auto ix = 0u; ix < nbrPoints; ++ix)
-            {
-                rho(startIndex + ix) += weights[ix] * particles[ip].weight;
-                vx(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[0];
-                vy(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[1];
-                vz(startIndex + ix) += weights[ix] * particles[ip].weight * particles[ip].v[2];
-            }
-        }
+        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
     }
 
+
+
 protected:
-    Weighter weighter;
+    Interpolator interpolator;
 };
 
 
-TYPED_TEST_CASE(ACollectionOfParticles, Weighters);
+
+TYPED_TEST_CASE_P(ACollectionOfParticles);
 
 
-TYPED_TEST(ACollectionOfParticles, DepositCorrectlyTheirWeight)
+TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
 {
     EXPECT_DOUBLE_EQ(this->rho(20), 1.0);
-}
-
-
-TYPED_TEST(ACollectionOfParticles, DepositCorrectlyTheirVelocity)
-{
     EXPECT_DOUBLE_EQ(this->vx(20), 2.0);
     EXPECT_DOUBLE_EQ(this->vy(20), -1.0);
     EXPECT_DOUBLE_EQ(this->vz(20), 1.0);
 }
+
+
+
+REGISTER_TYPED_TEST_CASE_P(ACollectionOfParticles, DepositCorrectlyTheirWeight);
+
+
+
+/*using GridLayoutYee2DO1 = GridLayout<GridLayoutImplYee<2,1>>;
+using GridLayoutYee2DO2 = GridLayout<GridLayoutImplYee<2,2>>;
+using GridLayoutYee2DO3 = GridLayout<GridLayoutImplYee<2,3>>;
+using GridLayoutYee3DO1 = GridLayout<GridLayoutImplYee<3,1>>;
+using GridLayoutYee3DO2 = GridLayout<GridLayoutImplYee<3,2>>;
+using GridLayoutYee3DO3 = GridLayout<GridLayoutImplYee<3,3>>;*/
+
+
+
+using MyTypes = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
+INSTANTIATE_TYPED_TEST_CASE_P(testInterpolator, ACollectionOfParticles, MyTypes);
+
+
 
 
 int main(int argc, char** argv)
