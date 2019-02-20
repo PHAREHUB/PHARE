@@ -649,7 +649,19 @@ namespace core
          * @brief returns the centering of all hybrid quantities in all directions
          */
         constexpr static std::array<QtyCentering, dimension>
-        centering(HybridQuantity::Scalar const& hybridQuantity)
+        centering(HybridQuantity::Scalar hybridQuantity)
+        {
+            return GridLayoutImpl::centering(hybridQuantity);
+        }
+
+
+
+
+        /**
+         * @brief returns the centering of all hybrid quantities in all directions
+         */
+        constexpr static std::array<std::array<QtyCentering, dimension>, 3>
+        centering(HybridQuantity::Vector hybridQuantity)
         {
             return GridLayoutImpl::centering(hybridQuantity);
         }
