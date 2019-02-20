@@ -86,7 +86,7 @@ namespace amr_interface
             auto& hybridState = hybridModel.state;
             auto& fromCoarser = dynamic_cast<HybridMessenger<HybridModel>&>(fromCoarserMessenger);
 
-
+            auto level = hierarchy->getPatchLevel(levelNumber);
             /*
              * PREDICTOR 1
              */
@@ -115,7 +115,7 @@ namespace amr_interface
 
             // fill PRA and ghostsin purple region so that some of these
             // particles may eventually enter the domain after being pushed
-            fromCoarser.fillIonGhostParticles(hybridState.ions, levelNumber, newTime);
+            fromCoarser.fillIonGhostParticles(hybridState.ions, *level, newTime);
 
             // move all ions in:
             //  - the domain
@@ -165,7 +165,7 @@ namespace amr_interface
 
             // fill PRA and ghostsin purple region so that some of these
             // particles may eventually enter the domain after being pushed
-            fromCoarser.fillIonGhostParticles(hybridState.ions, levelNumber, newTime);
+            fromCoarser.fillIonGhostParticles(hybridState.ions, *level, newTime);
 
 
             // same as for predictor 1, except that we will updates the ions

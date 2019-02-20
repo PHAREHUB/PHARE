@@ -239,7 +239,7 @@ namespace amr_interface
             }
 
 
-            // ghostParticles_.fill(levelNumber, initDataTime);
+            ghostParticles_.fill(levelNumber, initDataTime);
             // TODO #3327 here we need to interpolate all particles to initialize moments...
         }
 
@@ -278,11 +278,25 @@ namespace amr_interface
 
 
 
-        virtual void fillIonGhostParticles(IonsT& ions, int const levelNumber,
+        /**
+         * @brief fillIonGhostParticles will fill the interior ghost particle array from neighbor
+         * patches of the same level. Before doing that, it empties the array for all populations
+         */
+        virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                            double const fillTime) override
         {
             std::cout << "perform the ghost particle fill\n";
-            ghostParticles_.fill(levelNumber, fillTime);
+
+            for (auto patch : level)
+            {
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                for (auto& pop : ions)
+                {
+                    empty(pop.ghostParticles());
+                }
+            }
+
+            ghostParticles_.fill(level.getLevelNumber(), fillTime);
         }
 
 

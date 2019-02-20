@@ -134,13 +134,12 @@ public:
             else
             {
                 messenger_->initLevel(*model_, *level, initDataTime);
-                messenger_->fillIonGhostParticles(model_->state.ions, levelNumber, initDataTime);
             }
         }
 
         if (levelNumber == 0)
         {
-            messenger_->fillIonGhostParticles(model_->state.ions, levelNumber, initDataTime);
+            messenger_->fillIonGhostParticles(model_->state.ions, *level, initDataTime);
         }
     }
 

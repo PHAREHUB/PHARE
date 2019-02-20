@@ -275,9 +275,10 @@ namespace amr_interface
          * @param levelNumber
          * @param fillTime
          */
-        void fillIonGhostParticles(IonsT& ions, int const levelNumber, double const fillTime)
+        void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                   double const fillTime)
         {
-            strat_->fillIonGhostParticles(ions, levelNumber, fillTime);
+            strat_->fillIonGhostParticles(ions, level, fillTime);
         }
 
 
