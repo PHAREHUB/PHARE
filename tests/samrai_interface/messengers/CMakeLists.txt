@@ -9,7 +9,7 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_main.cpp
+  test_messengers.cpp
   test_basichierarchy.h
   test_tag_strategy.h
   test_integrator_strat.h

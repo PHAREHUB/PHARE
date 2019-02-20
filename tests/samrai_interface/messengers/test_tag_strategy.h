@@ -115,12 +115,6 @@ public:
                     auto& By = model_->state.electromag.B.getComponent(Component::Y);
                     auto& Bz = model_->state.electromag.B.getComponent(Component::Z);
 
-                    auto& Ni = model_->state.ions.density();
-
-                    auto& Vix = model_->state.ions.velocity().getComponent(Component::X);
-                    auto& Viy = model_->state.ions.velocity().getComponent(Component::Y);
-                    auto& Viz = model_->state.ions.velocity().getComponent(Component::Z);
-
                     auto fillLevel
                         = [levelNumber](double) { return static_cast<double>(levelNumber); };
 
@@ -132,13 +126,6 @@ public:
                     fillField(Bx, layout, fillBx);
                     fillField(By, layout, fillBy);
                     fillField(Bz, layout, fillBz);
-
-                    fillField(Vix, layout, fillVx);
-                    fillField(Viy, layout, fillVy);
-                    fillField(Viz, layout, fillVz);
-
-                    fillField(Ni, layout, fillDensity);
-
 
                     model_->initialize(*patch);
                 }
@@ -163,6 +150,10 @@ public:
     }
 
 
+    // it is important these functions are linear functions of x
+    // we compare the values obtained on the refined level to the value returned
+    // by these functions. This only works if they are linear functions of x
+    // since the refinement operator is a linear interpolation
     static double fillEx(double x) { return x; }
     static double fillEy(double x) { return 2 * x; }
     static double fillEz(double x) { return 3 * x; }
@@ -170,13 +161,6 @@ public:
     static double fillBx(double x) { return 4 * x; }
     static double fillBy(double x) { return 5 * x; }
     static double fillBz(double x) { return 6 * x; }
-
-    static double fillDensity(double x) { return 7 * x; }
-
-    static double fillVx(double x) { return 8. * x; }
-    static double fillVy(double x) { return 9. * x; }
-    static double fillVz(double x) { return 10. * x; }
-
 
     static double fillInt([[maybe_unused]] double x) { return 1.; }
 

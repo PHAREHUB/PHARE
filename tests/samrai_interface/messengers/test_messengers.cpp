@@ -80,12 +80,14 @@ double density(double x)
 
 std::array<double, 3> bulkVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{1.0, 0.0, 0.0}};
 }
 
 
 std::array<double, 3> thermalVelocity(double x)
 {
+    (void)x;
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
 
@@ -139,6 +141,13 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
 
 
 
+
+// ----------------------------------------------------------------------------
+// The tests below test that hybrid messengers (with either MHDHybrid or HybridHybrid
+// strategies) can take quantities to communicate from models and solvers
+// ----------------------------------------------------------------------------
+
+
 class HybridMessengers : public ::testing::Test
 {
     std::vector<MessengerDescriptor> descriptors{
@@ -183,10 +192,9 @@ public:
 
 
 
-TEST_F(HybridMessengers, canInitializeMHDHybridMessengers)
+TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
-    auto mhdSolver    = std::make_unique<SolverMHD<MHDModelT>>();
 
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
@@ -194,7 +202,7 @@ TEST_F(HybridMessengers, canInitializeMHDHybridMessengers)
 
 
 
-TEST_F(HybridMessengers, canInitializeMHDMessengers)
+TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 {
     auto mhdSolver = std::make_unique<SolverMHD<MHDModelT>>();
     MessengerRegistration::registerQuantities(*messengers[0], *models[0], *models[0], *mhdSolver);
@@ -202,12 +210,38 @@ TEST_F(HybridMessengers, canInitializeMHDMessengers)
 
 
 
-TEST_F(HybridMessengers, canInitializeHybridHybridMessengers)
+TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
+
+
+
+TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
+{
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+
+    auto& hybridhybridMessenger = *messengers[2];
+    auto& mhdModel              = *models[0];
+    auto& hybridModel           = *models[1];
+    EXPECT_ANY_THROW(MessengerRegistration::registerQuantities(hybridhybridMessenger, mhdModel,
+                                                               hybridModel, *hybridSolver));
+}
+
+
+TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleCoarseModel)
+{
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+
+    auto& hybridhybridMessenger = *messengers[2];
+    auto& mhdModel              = *models[0];
+    auto& hybridModel           = *models[1];
+    EXPECT_ANY_THROW(MessengerRegistration::registerQuantities(hybridhybridMessenger, hybridModel,
+                                                               mhdModel, *hybridSolver));
+}
+
 
 
 
@@ -218,6 +252,11 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
     EXPECT_EQ(std::string{"HybridModel-HybridModel"}, messengers[2]->name());
 }
 
+
+
+// ----------------------------------------------------------------------------
+//
+// ----------------------------------------------------------------------------
 
 
 
@@ -461,7 +500,6 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
     auto& hierarchy    = basicHierarchy->getHierarchy();
     auto const& level0 = hierarchy.getPatchLevel(0);
     auto const& level1 = hierarchy.getPatchLevel(1);
-    auto const& level2 = hierarchy.getPatchLevel(2);
     auto& rm           = hybridModel->resourcesManager;
 
 

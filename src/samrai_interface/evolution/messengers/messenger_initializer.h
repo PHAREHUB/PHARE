@@ -24,17 +24,28 @@ namespace amr_interface
         static void registerQuantities(IMessenger& messenger, IPhysicalModel const& coarseModel,
                                        IPhysicalModel const& fineModel, ISolver const& solver)
         {
-            auto fromCoarserInfo = messenger.emptyInfoFromCoarser();
-            auto fromFinerInfo   = messenger.emptyInfoFromFiner();
+            if (messenger.fineModelName() == fineModel.name()
+                && messenger.coarseModelName() == coarseModel.name())
+            {
+                auto fromCoarserInfo = messenger.emptyInfoFromCoarser();
+                auto fromFinerInfo   = messenger.emptyInfoFromFiner();
 
-            fineModel.fillMessengerInfo(fromFinerInfo);
-            coarseModel.fillMessengerInfo(fromCoarserInfo);
+                fineModel.fillMessengerInfo(fromFinerInfo);
+                coarseModel.fillMessengerInfo(fromCoarserInfo);
 
-            // solver only fills fromFinerInfo since
-            // that's on this level it is solving equations
-            solver.fillMessengerInfo(fromFinerInfo);
+                // solver only fills fromFinerInfo since
+                // that's on this level it is solving equations
+                solver.fillMessengerInfo(fromFinerInfo);
 
-            messenger.registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+                messenger.registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+            }
+            else
+            {
+                auto error = std::string("Error ") + fineModel.name() + std::string{" or "}
+                             + coarseModel.name() + std::string{" incompatible with "}
+                             + messenger.name() + std::string{"\n"};
+                throw std::runtime_error(error);
+            }
         }
     };
 
