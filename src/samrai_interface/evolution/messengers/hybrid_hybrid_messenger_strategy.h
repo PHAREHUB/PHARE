@@ -10,7 +10,9 @@
 #include "data/particles/refine/split.h"
 #include "evolution/messengers/hybrid_messenger_info.h"
 #include "evolution/messengers/hybrid_messenger_strategy.h"
+#include "numerics/interpolator/interpolator.h"
 #include "physical_models/physical_model.h"
+#include "tools/amr_utils.h"
 #include "tools/resources_manager_utilities.h"
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
@@ -214,7 +216,7 @@ namespace amr_interface
          *
          */
         virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) const override
+                               double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
             magneticInit_.fill(levelNumber, initDataTime);
@@ -240,6 +242,28 @@ namespace amr_interface
 
 
             ghostParticles_.fill(levelNumber, initDataTime);
+
+            for (auto& patch : level)
+            {
+                auto& ions       = hybridModel.state.ions;
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+
+                for (auto& pop : ions)
+                {
+                    auto& coarseToFineOld = pop.coarseToFineOldParticles();
+                    auto& ghosts          = pop.ghostParticles();
+                    auto& domain          = pop.domainParticles();
+
+                    auto& density = pop.density();
+                    auto& flux    = pop.flux();
+                    interpolate_(std::begin(domain), std::end(domain), density, flux, layout);
+                    interpolate_(std::begin(ghosts), std::end(ghosts), density, flux, layout);
+                    interpolate_(std::begin(coarseToFineOld), std::end(coarseToFineOld), density,
+                                 flux, layout);
+                }
+            }
+
             // TODO #3327 here we need to interpolate all particles to initialize moments...
         }
 
@@ -524,6 +548,8 @@ namespace amr_interface
 
 
         int const firstLevel_;
+
+        core::Interpolator<dimension, interpOrder> interpolate_;
 
 
         //! store communicators for magnetic fields that need ghosts to be filled

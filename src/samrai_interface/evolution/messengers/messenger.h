@@ -146,7 +146,8 @@ namespace amr_interface
          * quantities registered during registerQuantities().
          */
         virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) const = 0;
+                               double const initDataTime)
+            = 0;
 
 
 

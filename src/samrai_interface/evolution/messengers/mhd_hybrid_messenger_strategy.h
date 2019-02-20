@@ -88,7 +88,7 @@ namespace amr_interface
 
 
         virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) const override
+                               double const initDataTime) override
         {
         }
 

@@ -61,7 +61,8 @@ namespace amr_interface
         // domain filling methods
         // used during level creation
         virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) const = 0;
+                               double const initDataTime)
+            = 0;
 
         // ghost filling
 
