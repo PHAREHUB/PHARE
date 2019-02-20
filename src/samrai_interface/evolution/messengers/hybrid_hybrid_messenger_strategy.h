@@ -262,9 +262,10 @@ namespace amr_interface
                     interpolate_(std::begin(coarseToFineOld), std::end(coarseToFineOld), density,
                                  flux, layout);
                 }
-            }
 
-            // TODO #3327 here we need to interpolate all particles to initialize moments...
+                ions.computeDensity();
+                // TODO 3327  and 3347 ions.computeBulkVelocity() too...
+            }
         }
 
 

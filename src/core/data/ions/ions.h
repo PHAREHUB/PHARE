@@ -94,13 +94,14 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto const& popDensity = pop.density();
-                std::transform(std::begin(rho_), std::end(rho_), std::begin(rho_),
-                               std::plus<typename field_type::type>{});
+                auto& popDensity = pop.density();
+                std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
+                               std::begin(*rho_), std::plus<typename field_type::type>{});
             }
         }
 
 
+        // TODO 3347 compute ion bulk velocity
 
         auto begin() { return std::begin(populations_); }
         auto end() { return std::end(populations_); }
