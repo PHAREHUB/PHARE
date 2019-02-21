@@ -96,6 +96,23 @@ namespace core
         }
 
 
+
+        void zero()
+        {
+            if (isUsable())
+            {
+                xComponent_->zero();
+                yComponent_->zero();
+                zComponent_->zero();
+            }
+            else
+            {
+                throw std::runtime_error(
+                    "Error, cannot zero the VecField because it is not usable");
+            }
+        }
+
+
         //-------------------------------------------------------------------------
         //                  ends the ResourcesUser interface
         //-------------------------------------------------------------------------

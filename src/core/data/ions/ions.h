@@ -6,10 +6,10 @@
 #include <iterator>
 
 #include "data/ions/ion_population/ion_population.h"
+#include "data/vecfield/vecfield_component.h"
 #include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
 #include "particle_initializers/particle_initializer_factory.h"
-
 
 namespace PHARE
 {
@@ -98,6 +98,37 @@ namespace core
                 std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
                                std::begin(*rho_), std::plus<typename field_type::type>{});
             }
+        }
+
+
+        void computeBulkVelocity()
+        {
+            bulkVelocity_.zero();
+            auto& vx = bulkVelocity_.getComponent(Component::X);
+            auto& vy = bulkVelocity_.getComponent(Component::Y);
+            auto& vz = bulkVelocity_.getComponent(Component::Z);
+
+            for (auto& pop : populations_)
+            {
+                auto& flux = pop.flux();
+                auto& fx   = flux.getComponent(Component::X);
+                auto& fy   = flux.getComponent(Component::Y);
+                auto& fz   = flux.getComponent(Component::Z);
+
+                std::transform(std::begin(vx), std::end(vx), std::begin(fx), std::begin(vx),
+                               std::plus<field_type>{});
+                std::transform(std::begin(vy), std::end(vy), std::begin(fy), std::begin(vy),
+                               std::plus<field_type>{});
+                std::transform(std::begin(vz), std::end(vz), std::begin(fz), std::begin(vz),
+                               std::plus<field_type>{});
+            }
+
+            std::transform(std::begin(vx), std::end(vx), std::begin(rho_), std::begin(vx),
+                           std::divides<field_type>{});
+            std::transform(std::begin(vy), std::end(vy), std::begin(rho_), std::begin(vy),
+                           std::divides<field_type>{});
+            std::transform(std::begin(vz), std::end(vz), std::begin(rho_), std::begin(vz),
+                           std::divides<field_type>{});
         }
 
 
