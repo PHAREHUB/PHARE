@@ -214,6 +214,9 @@ namespace amr_interface
          *  coarse to fine old
          *  ghost particles are also initialized
          *
+         * the method also copy coarseToFineOld particles into coarseToFine particles
+         * (the particles that are pushed), and compute ion moments from all particles
+         *
          */
         virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                double const initDataTime) override
@@ -264,7 +267,7 @@ namespace amr_interface
                 }
 
                 ions.computeDensity();
-                // TODO 3327  and 3347 ions.computeBulkVelocity() too...
+                ions.computeBulkVelocity();
             }
         }
 

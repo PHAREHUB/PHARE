@@ -116,19 +116,19 @@ namespace core
                 auto& fz   = flux.getComponent(Component::Z);
 
                 std::transform(std::begin(vx), std::end(vx), std::begin(fx), std::begin(vx),
-                               std::plus<field_type>{});
+                               std::plus<typename field_type::type>{});
                 std::transform(std::begin(vy), std::end(vy), std::begin(fy), std::begin(vy),
-                               std::plus<field_type>{});
+                               std::plus<typename field_type::type>{});
                 std::transform(std::begin(vz), std::end(vz), std::begin(fz), std::begin(vz),
-                               std::plus<field_type>{});
+                               std::plus<typename field_type::type>{});
             }
 
-            std::transform(std::begin(vx), std::end(vx), std::begin(rho_), std::begin(vx),
-                           std::divides<field_type>{});
-            std::transform(std::begin(vy), std::end(vy), std::begin(rho_), std::begin(vy),
-                           std::divides<field_type>{});
-            std::transform(std::begin(vz), std::end(vz), std::begin(rho_), std::begin(vz),
-                           std::divides<field_type>{});
+            std::transform(std::begin(vx), std::end(vx), std::begin(*rho_), std::begin(vx),
+                           std::divides<typename field_type::type>{});
+            std::transform(std::begin(vy), std::end(vy), std::begin(*rho_), std::begin(vy),
+                           std::divides<typename field_type::type>{});
+            std::transform(std::begin(vz), std::end(vz), std::begin(*rho_), std::begin(vz),
+                           std::divides<typename field_type::type>{});
         }
 
 
