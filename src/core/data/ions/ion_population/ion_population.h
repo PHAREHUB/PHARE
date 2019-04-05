@@ -91,11 +91,11 @@ namespace core
 
 
 
-        ParticleArray& ghostParticles()
+        ParticleArray& patchGhostParticles()
         {
             if (isUsable())
             {
-                return *particles_->ghostParticles;
+                return *particles_->patchGhostParticles;
             }
             else
             {
@@ -105,11 +105,11 @@ namespace core
 
 
 
-        ParticleArray& coarseToFineParticles()
+        ParticleArray& levelGhostParticles()
         {
             if (isUsable())
             {
-                return *particles_->coarseToFineParticles;
+                return *particles_->levelGhostParticles;
             }
             else
             {
@@ -119,11 +119,11 @@ namespace core
 
 
 
-        ParticleArray& coarseToFineOldParticles()
+        ParticleArray& levelGhostParticlesOld()
         {
             if (isUsable())
             {
-                return *particles_->coarseToFineParticlesOld;
+                return *particles_->levelGhostParticlesOld;
             }
             else
             {
@@ -133,11 +133,11 @@ namespace core
 
 
 
-        ParticleArray& coarseToFineNewParticles()
+        ParticleArray& levelGhostParticlesNew()
         {
             if (isUsable())
             {
-                return *particles_->coarseToFineParticlesNew;
+                return *particles_->levelGhostParticlesNew;
             }
             else
             {

@@ -98,8 +98,8 @@ TEST_F(AnIonPopulation, isSettableIfNonUsable)
 TEST_F(AnIonPopulation, throwsIfOneWantsToAccessParticleBuffersWhileNotUsable)
 {
     EXPECT_ANY_THROW(protons.domainParticles());
-    EXPECT_ANY_THROW(protons.ghostParticles());
-    EXPECT_ANY_THROW(protons.coarseToFineParticles());
+    EXPECT_ANY_THROW(protons.patchGhostParticles());
+    EXPECT_ANY_THROW(protons.levelGhostParticles());
 }
 
 

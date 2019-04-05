@@ -48,7 +48,7 @@ TEST_F(ALevelWithDomainParticles, ghostParticleNumberisZeroBeforeScheduleAndCorr
     {
         auto pdat    = patch->getPatchData(0);
         auto partDat = std::dynamic_pointer_cast<ParticlesData<1>>(pdat);
-        auto& ghosts = partDat->ghostParticles;
+        auto& ghosts = partDat->patchGhostParticles;
         EXPECT_EQ(0u, ghosts.size());
 
         std::cout << "patch has " << ghosts.size() << " ghost particles\n";
@@ -62,7 +62,7 @@ TEST_F(ALevelWithDomainParticles, ghostParticleNumberisZeroBeforeScheduleAndCorr
     {
         auto pdat    = patch->getPatchData(0);
         auto partDat = std::dynamic_pointer_cast<ParticlesData<1>>(pdat);
-        auto& ghosts = partDat->ghostParticles;
+        auto& ghosts = partDat->patchGhostParticles;
         EXPECT_EQ(6, ghosts.size());
         std::cout << "patch has " << ghosts.size() << " ghost particles\n";
     }
@@ -86,7 +86,7 @@ TEST_F(ALevelWithDomainParticles, hasGhostParticlesInGhostAMRCellsAfterSchedule)
         auto nbrLowerParticles  = 0;
         auto nbrUpperParticles  = 0;
         auto anormalParticleNbr = 0;
-        for (auto const& particle : partDat->ghostParticles)
+        for (auto const& particle : partDat->patchGhostParticles)
         {
             if (particle.iCell[0] == lower[0])
                 nbrLowerParticles++;
@@ -111,7 +111,7 @@ TEST_F(ALevelWithDomainParticles, hasGhostParticleFilledFromNeighborFirstCell)
         auto pdat       = patch->getPatchData(0);
         auto partDat    = std::dynamic_pointer_cast<ParticlesData<1>>(pdat);
         auto& particles = partDat->domainParticles;
-        auto& ghosts    = partDat->ghostParticles;
+        auto& ghosts    = partDat->patchGhostParticles;
         std::cout << "patch has " << particles.size() << " domain particles "
                   << "and " << ghosts.size() << " ghost particles\n";
     }
@@ -123,7 +123,7 @@ TEST_F(ALevelWithDomainParticles, hasGhostParticleFilledFromNeighborFirstCell)
         auto pdat       = patch->getPatchData(0);
         auto partDat    = std::dynamic_pointer_cast<ParticlesData<1>>(pdat);
         auto& particles = partDat->domainParticles;
-        auto& ghosts    = partDat->ghostParticles;
+        auto& ghosts    = partDat->patchGhostParticles;
         std::cout << "patch has " << particles.size() << " domain particles "
                   << "and " << ghosts.size() << " ghost particles\n";
     }

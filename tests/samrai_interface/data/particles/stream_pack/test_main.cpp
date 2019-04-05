@@ -90,8 +90,8 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
-    ASSERT_THAT(destData.ghostParticles[0].v, Eq(particle.v));
+    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.patchGhostParticles[0].v, Eq(particle.v));
 }
 
 
@@ -118,8 +118,8 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
     std::array<int, 1> expectediCell{-1};
 
 
-    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
-    ASSERT_THAT(destData.ghostParticles[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.patchGhostParticles[0].iCell, Eq(expectediCell));
 }
 
 
@@ -129,7 +129,7 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 {
     particle.iCell = {{16}};
 
-    sourceData.ghostParticles.push_back(particle);
+    sourceData.patchGhostParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -199,17 +199,17 @@ TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromD
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    EXPECT_THAT(destData.ghostParticles[0].v, Eq(particle.v));
-    EXPECT_THAT(destData.ghostParticles[0].iCell[0], Eq(-1));
-    EXPECT_THAT(destData.ghostParticles[0].delta, Eq(particle.delta));
-    EXPECT_THAT(destData.ghostParticles[0].weight, Eq(particle.weight));
-    EXPECT_THAT(destData.ghostParticles[0].charge, Eq(particle.charge));
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Ex, particle.Ex);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Ey, particle.Ey);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Ez, particle.Ez);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Bx, particle.Bx);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].By, particle.By);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Bz, particle.Bz);
+    EXPECT_THAT(destData.patchGhostParticles[0].v, Eq(particle.v));
+    EXPECT_THAT(destData.patchGhostParticles[0].iCell[0], Eq(-1));
+    EXPECT_THAT(destData.patchGhostParticles[0].delta, Eq(particle.delta));
+    EXPECT_THAT(destData.patchGhostParticles[0].weight, Eq(particle.weight));
+    EXPECT_THAT(destData.patchGhostParticles[0].charge, Eq(particle.charge));
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ex, particle.Ex);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ey, particle.Ey);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ez, particle.Ez);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bx, particle.Bx);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].By, particle.By);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bz, particle.Bz);
 }
 
 

@@ -100,15 +100,14 @@ namespace amr_interface
      * - domainParticles : these particles are those for which iCell is within the physical domain
      * of the patch
      *
-     * - ghostParticles: these particles are located within the ghost layer around the physical
+     * - patchGhostParticles: these particles are located within the ghost layer around the physical
      * domain of the patch. We call the "ghost layer" the layer of ghostCellWidth just outside the
-     * physical domain of the patch, on borders that have neighbors patchs of the same level. Patch
-     * boundaries that are at the level boundary are not ghost layers but coarseToFine boundaries.
+     * physical domain of the patch, on borders that have neighbors patchs of the same level.
      * All the particles in the ghost layer are exact clones of particles located on a neighbor
      * patch of the same level. The ghost particles are getting here when then exit the neighbor
      * patch, and can enter the patch.
      *
-     * - coarseToFineParticles: these particles are located in a layer just passed the patch
+     * - levelGhostParticles: these particles are located in a layer just passed the patch
      * boundaries that also are level boundaries. These particles are getting here when there is a
      * particle refinement from a coarser level
      *
@@ -122,8 +121,8 @@ namespace amr_interface
     public:
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)
-            , pack{&domainParticles, &ghostParticles, &coarseToFineParticles,
-                   &coarseToFineParticlesOld, &coarseToFineParticlesNew}
+            , pack{&domainParticles, &patchGhostParticles, &levelGhostParticles,
+                   &levelGhostParticlesOld, &levelGhostParticlesNew}
             , interiorLocalBox_{AMRToLocal(box, this->getGhostBox())}
         {
         }
@@ -469,7 +468,7 @@ namespace amr_interface
                                 }
                                 else
                                 {
-                                    ghostParticles.push_back(std::move(particle));
+                                    patchGhostParticles.push_back(std::move(particle));
                                 }
                             }
                         } // end species loop
@@ -488,12 +487,12 @@ namespace amr_interface
         // these particles arrays are public because core module is free to use
         // them easily
         core::ParticleArray<dim> domainParticles;
-        core::ParticleArray<dim> ghostParticles;
+        core::ParticleArray<dim> patchGhostParticles;
 
-        core::ParticleArray<dim> coarseToFineParticles;
+        core::ParticleArray<dim> levelGhostParticles;
 
-        core::ParticleArray<dim> coarseToFineParticlesOld;
-        core::ParticleArray<dim> coarseToFineParticlesNew;
+        core::ParticleArray<dim> levelGhostParticlesOld;
+        core::ParticleArray<dim> levelGhostParticlesNew;
 
         core::ParticlesPack<core::ParticleArray<dim>> pack;
 
@@ -513,7 +512,7 @@ namespace amr_interface
                    SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
         {
             std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
-                &sourceData.domainParticles, &sourceData.ghostParticles};
+                &sourceData.domainParticles, &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
 
@@ -535,7 +534,7 @@ namespace amr_interface
                         }
                         else
                         {
-                            ghostParticles.push_back(particle);
+                            patchGhostParticles.push_back(particle);
                         }
                     }
                 }
@@ -551,7 +550,7 @@ namespace amr_interface
                                 ParticlesData const& sourceData)
         {
             std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
-                &sourceData.domainParticles, &sourceData.ghostParticles};
+                &sourceData.domainParticles, &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
 
@@ -583,7 +582,7 @@ namespace amr_interface
                         }
                         else
                         {
-                            ghostParticles.push_back(newParticle);
+                            patchGhostParticles.push_back(newParticle);
                         }
                     }
                 }
@@ -661,7 +660,7 @@ namespace amr_interface
                    SAMRAI::hier::Transformation const& transformation) const
         {
             std::array<decltype(domainParticles) const*, 2> particlesArrays{&domainParticles,
-                                                                            &ghostParticles};
+                                                                            &patchGhostParticles};
 
             for (auto const& sourceParticlesArray : particlesArrays)
             {

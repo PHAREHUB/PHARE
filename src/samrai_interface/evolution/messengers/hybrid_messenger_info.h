@@ -84,9 +84,9 @@ namespace amr_interface
 
 
         std::vector<PopulationDescriptor> interiorParticles;
-        std::vector<PopulationDescriptor> coarseToFineNewParticles;
-        std::vector<PopulationDescriptor> coarseToFineOldParticles;
-        std::vector<PopulationDescriptor> ghostParticles;
+        std::vector<PopulationDescriptor> levelGhostParticlesNew;
+        std::vector<PopulationDescriptor> levelGhostParticlesOld;
+        std::vector<PopulationDescriptor> patchGhostParticles;
 
 
         //! name of the magnetic quantities that will be communicated by

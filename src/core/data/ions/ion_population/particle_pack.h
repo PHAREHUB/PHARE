@@ -19,10 +19,10 @@ namespace core
     struct ParticlesPack
     {
         ParticleArray* domainParticles;
-        ParticleArray* ghostParticles;
-        ParticleArray* coarseToFineParticles;
-        ParticleArray* coarseToFineParticlesOld;
-        ParticleArray* coarseToFineParticlesNew;
+        ParticleArray* patchGhostParticles;
+        ParticleArray* levelGhostParticles;
+        ParticleArray* levelGhostParticlesOld;
+        ParticleArray* levelGhostParticlesNew;
     };
 } // namespace core
 } // namespace PHARE

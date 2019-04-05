@@ -49,11 +49,11 @@ TEST_F(AParticlesData1D, copiesSourceGhostParticleIntoDomainForGhostSrcOverDomai
     // and in domain of the destination patchdata
 
     particle.iCell = {{2}};
-    sourceData.ghostParticles.push_back(particle);
+    sourceData.patchGhostParticles.push_back(particle);
     destData.copy(sourceData);
 
     ASSERT_THAT(destData.domainParticles.size(), Eq(1));
-    ASSERT_THAT(destData.ghostParticles.size(), Eq(0));
+    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(0));
 }
 
 
@@ -68,7 +68,7 @@ TEST_F(AParticlesData1D, copiesSourceDomainParticleIntoGhostForDomainSrcOverGhos
     sourceData.domainParticles.push_back(particle);
     destData.copy(sourceData);
 
-    ASSERT_THAT(destData.ghostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
     ASSERT_THAT(destData.domainParticles.size(), Eq(0));
 }
 
@@ -83,11 +83,11 @@ TEST_F(AParticlesData1D, copiesSourceDomainParticleIntoDomainDestForDomainOverla
         destData.copy(sourceData);
 
         ASSERT_THAT(destData.domainParticles.size(), Eq(1));
-        ASSERT_THAT(destData.ghostParticles.size(), Eq(0));
+        ASSERT_THAT(destData.patchGhostParticles.size(), Eq(0));
 
         sourceData.domainParticles.clear();
-        sourceData.ghostParticles.clear();
-        destData.ghostParticles.clear();
+        sourceData.patchGhostParticles.clear();
+        destData.patchGhostParticles.clear();
         destData.domainParticles.clear();
     }
 }
@@ -117,17 +117,17 @@ TEST_F(AParticlesData1D, PreservesAllParticleAttributesAfterCopy)
     sourceData.domainParticles.push_back(particle);
     destData.copy(sourceData);
 
-    EXPECT_THAT(destData.ghostParticles[0].v, Eq(particle.v));
-    EXPECT_THAT(destData.ghostParticles[0].iCell, Eq(particle.iCell));
-    EXPECT_THAT(destData.ghostParticles[0].delta, Eq(particle.delta));
-    EXPECT_THAT(destData.ghostParticles[0].weight, Eq(particle.weight));
-    EXPECT_THAT(destData.ghostParticles[0].charge, Eq(particle.charge));
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Ex, particle.Ex);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Ey, particle.Ey);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Ez, particle.Ez);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Bx, particle.Bx);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].By, particle.By);
-    EXPECT_DOUBLE_EQ(destData.ghostParticles[0].Bz, particle.Bz);
+    EXPECT_THAT(destData.patchGhostParticles[0].v, Eq(particle.v));
+    EXPECT_THAT(destData.patchGhostParticles[0].iCell, Eq(particle.iCell));
+    EXPECT_THAT(destData.patchGhostParticles[0].delta, Eq(particle.delta));
+    EXPECT_THAT(destData.patchGhostParticles[0].weight, Eq(particle.weight));
+    EXPECT_THAT(destData.patchGhostParticles[0].charge, Eq(particle.charge));
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ex, particle.Ex);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ey, particle.Ey);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ez, particle.Ez);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bx, particle.Bx);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].By, particle.By);
+    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bz, particle.Bz);
 }
 
 
@@ -150,31 +150,31 @@ TEST_F(AParticlesData1D, copiesDataWithOverlapNoTransform)
     SAMRAI::pdat::CellOverlap overlap(container, transfo);
 
     particle.iCell = {{2}};
-    sourceData.ghostParticles.push_back(particle);
+    sourceData.patchGhostParticles.push_back(particle);
     destData.copy(sourceData, overlap);
     EXPECT_THAT(destData.domainParticles.size(), Eq(1));
-    EXPECT_THAT(destData.ghostParticles.size(), Eq(0));
+    EXPECT_THAT(destData.patchGhostParticles.size(), Eq(0));
 
     sourceData.domainParticles.clear();
-    sourceData.ghostParticles.clear();
-    destData.ghostParticles.clear();
+    sourceData.patchGhostParticles.clear();
+    destData.patchGhostParticles.clear();
     destData.domainParticles.clear();
 
     particle.iCell = {{3}};
     sourceData.domainParticles.push_back(particle);
     destData.copy(sourceData, overlap);
     EXPECT_THAT(destData.domainParticles.size(), Eq(1));
-    EXPECT_THAT(destData.ghostParticles.size(), Eq(0));
+    EXPECT_THAT(destData.patchGhostParticles.size(), Eq(0));
 
     sourceData.domainParticles.clear();
-    sourceData.ghostParticles.clear();
-    destData.ghostParticles.clear();
+    sourceData.patchGhostParticles.clear();
+    destData.patchGhostParticles.clear();
     destData.domainParticles.clear();
 
     particle.iCell = {{6}};
     sourceData.domainParticles.push_back(particle);
     destData.copy(sourceData, overlap);
-    EXPECT_THAT(destData.ghostParticles.size(), Eq(1));
+    EXPECT_THAT(destData.patchGhostParticles.size(), Eq(1));
     EXPECT_THAT(destData.domainParticles.size(), Eq(0));
 }
 
@@ -197,33 +197,33 @@ TEST_F(AParticlesData1D, copiesDataWithOverlapWithTransform)
     SAMRAI::pdat::CellOverlap overlap(container, transfo);
 
     particle.iCell = {{4}};
-    sourceData.ghostParticles.push_back(particle);
+    sourceData.patchGhostParticles.push_back(particle);
     destData.copy(sourceData, overlap);
     EXPECT_THAT(destData.domainParticles.size(), Eq(1));
-    EXPECT_THAT(destData.ghostParticles.size(), Eq(0));
+    EXPECT_THAT(destData.patchGhostParticles.size(), Eq(0));
     EXPECT_EQ(2, destData.domainParticles[0].iCell[0]);
 
     sourceData.domainParticles.clear();
-    sourceData.ghostParticles.clear();
-    destData.ghostParticles.clear();
+    sourceData.patchGhostParticles.clear();
+    destData.patchGhostParticles.clear();
     destData.domainParticles.clear();
 
     particle.iCell = {{6}};
     sourceData.domainParticles.push_back(particle);
     destData.copy(sourceData, overlap);
     EXPECT_THAT(destData.domainParticles.size(), Eq(1));
-    EXPECT_THAT(destData.ghostParticles.size(), Eq(0));
+    EXPECT_THAT(destData.patchGhostParticles.size(), Eq(0));
     EXPECT_EQ(4, destData.domainParticles[0].iCell[0]);
 
     sourceData.domainParticles.clear();
-    sourceData.ghostParticles.clear();
-    destData.ghostParticles.clear();
+    sourceData.patchGhostParticles.clear();
+    destData.patchGhostParticles.clear();
     destData.domainParticles.clear();
 
     particle.iCell = {{8}};
     sourceData.domainParticles.push_back(particle);
     destData.copy(sourceData, overlap);
-    EXPECT_THAT(destData.ghostParticles.size(), Eq(1));
+    EXPECT_THAT(destData.patchGhostParticles.size(), Eq(1));
     EXPECT_THAT(destData.domainParticles.size(), Eq(0));
 }
 

@@ -120,10 +120,10 @@ public:
     static constexpr std::size_t dimension = BaseType::dimension;
 
     std::vector<Particle<dimension>>
-    filterCoarseToFineParticles(std::vector<Particle<dimension>> const& refinedParticles,
-                                std::shared_ptr<SAMRAI::hier::Patch> const& patch)
+    filterLevelGhostParticles(std::vector<Particle<dimension>> const& refinedParticles,
+                              std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        std::vector<Particle<dimension>> coarseToFines;
+        std::vector<Particle<dimension>> levelGhosts;
 
         auto pData    = patch->getPatchData(this->dataID);
         auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
@@ -133,26 +133,26 @@ public:
 
 
         // only works with one patch or clearly distinct patches so that all
-        // ghost regions are coarseToFine.
+        // ghost regions are levelGhosts.
         std::copy_if(std::begin(refinedParticles), std::end(refinedParticles),
-                     std::back_inserter(coarseToFines),
+                     std::back_inserter(levelGhosts),
                      [&myBox, &myGhostBox, this](auto const& part) {
                          return isInBox(myGhostBox, part) && !isInBox(myBox, part);
                      });
 
 
-        return coarseToFines;
+        return levelGhosts;
     }
 
 
 
 
-    auto& getCoarseToFine(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
+    auto& getLevelGhosts(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
         auto pDat    = patch->getPatchData(this->dataID);
         auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
 
-        return partDat->coarseToFineParticles;
+        return partDat->levelGhostParticles;
     }
 };
 
@@ -230,8 +230,8 @@ TYPED_TEST_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule)
 
     for (auto const& patch : *this->level1)
     {
-        auto expectedParticles = this->filterCoarseToFineParticles(refinedParticles, patch);
-        auto& actualParticles  = this->getCoarseToFine(patch);
+        auto expectedParticles = this->filterLevelGhostParticles(refinedParticles, patch);
+        auto& actualParticles  = this->getLevelGhosts(patch);
 
         ASSERT_EQ(expectedParticles.size(), actualParticles.size());
         ASSERT_GT(actualParticles.size(), 0);

@@ -88,8 +88,8 @@ TEST_F(twoParticlesDatasTouchingPeriodicBorders, canCopyUpperSourceParticlesInLo
     sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    EXPECT_THAT(destPdat.ghostParticles.size(), Eq(1));
-    EXPECT_EQ(leftDestGhostCell, destPdat.ghostParticles[0].iCell[0]);
+    EXPECT_THAT(destPdat.patchGhostParticles.size(), Eq(1));
+    EXPECT_EQ(leftDestGhostCell, destPdat.patchGhostParticles[0].iCell[0]);
 }
 
 
@@ -101,19 +101,19 @@ TEST_F(twoParticlesDatasTouchingPeriodicBorders, preserveParticleAttributesInCop
     sourcePdat.domainParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
-    EXPECT_THAT(destPdat.ghostParticles.size(), Eq(1));
+    EXPECT_THAT(destPdat.patchGhostParticles.size(), Eq(1));
 
-    EXPECT_THAT(destPdat.ghostParticles[0].v, Eq(particle.v));
+    EXPECT_THAT(destPdat.patchGhostParticles[0].v, Eq(particle.v));
     // EXPECT_THAT(destPdat.ghostParticles[0].iCell, Eq(-1));
-    EXPECT_THAT(destPdat.ghostParticles[0].delta, Eq(particle.delta));
-    EXPECT_THAT(destPdat.ghostParticles[0].weight, Eq(particle.weight));
-    EXPECT_THAT(destPdat.ghostParticles[0].charge, Eq(particle.charge));
-    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Ex, particle.Ex);
-    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Ey, particle.Ey);
-    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Ez, particle.Ez);
-    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Bx, particle.Bx);
-    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].By, particle.By);
-    EXPECT_DOUBLE_EQ(destPdat.ghostParticles[0].Bz, particle.Bz);
+    EXPECT_THAT(destPdat.patchGhostParticles[0].delta, Eq(particle.delta));
+    EXPECT_THAT(destPdat.patchGhostParticles[0].weight, Eq(particle.weight));
+    EXPECT_THAT(destPdat.patchGhostParticles[0].charge, Eq(particle.charge));
+    EXPECT_DOUBLE_EQ(destPdat.patchGhostParticles[0].Ex, particle.Ex);
+    EXPECT_DOUBLE_EQ(destPdat.patchGhostParticles[0].Ey, particle.Ey);
+    EXPECT_DOUBLE_EQ(destPdat.patchGhostParticles[0].Ez, particle.Ez);
+    EXPECT_DOUBLE_EQ(destPdat.patchGhostParticles[0].Bx, particle.Bx);
+    EXPECT_DOUBLE_EQ(destPdat.patchGhostParticles[0].By, particle.By);
+    EXPECT_DOUBLE_EQ(destPdat.patchGhostParticles[0].Bz, particle.Bz);
 }
 
 
@@ -125,7 +125,7 @@ TEST_F(twoParticlesDatasTouchingPeriodicBorders,
     auto lowerDestCell        = 0;
 
     particle.iCell = {{upperSourceGhostCell}};
-    sourcePdat.ghostParticles.push_back(particle);
+    sourcePdat.patchGhostParticles.push_back(particle);
     destPdat.copy(sourcePdat, *cellOverlap);
 
     EXPECT_THAT(destPdat.domainParticles.size(), Eq(1));

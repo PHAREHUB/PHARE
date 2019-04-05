@@ -122,7 +122,7 @@ namespace amr_interface
          *  - ghost particles
          *
          *  ion moments do not need to be filled on ghost node by SAMRAI schedules
-         *  since they will be filled with coarseToFine particles on level ghost nodes
+         *  since they will be filled with levelGhostParticles on level ghost nodes
          *  and computed by ghost particles on interior patch ghost nodes
          *
          * However the level need to be registered to init Communicators only on the non-root level
@@ -133,7 +133,7 @@ namespace amr_interface
          *  - ion bulk velocity (total)
          *  - ion density (total)
          *  - ion interior particle arrays
-         *  - ion coarseToFineOld particle arrays
+         *  - ion levelGhostParticlesOld particle arrays
          */
         virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                    int const levelNumber) override
@@ -142,7 +142,7 @@ namespace amr_interface
 
             magneticGhosts_.registerLevel(hierarchy, level);
             electricGhosts_.registerLevel(hierarchy, level);
-            ghostParticles_.registerLevel(hierarchy, level);
+            patchGhostParticles_.registerLevel(hierarchy, level);
 
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
@@ -151,7 +151,7 @@ namespace amr_interface
                 magneticInit_.registerLevel(hierarchy, level);
                 electricInit_.registerLevel(hierarchy, level);
                 interiorParticles_.registerLevel(hierarchy, level);
-                coarseToFineOldParticles_.registerLevel(hierarchy, level);
+                levelGhostParticlesOld_.registerLevel(hierarchy, level);
             }
         }
 
@@ -214,7 +214,7 @@ namespace amr_interface
          *  coarse to fine old
          *  ghost particles are also initialized
          *
-         * the method also copy coarseToFineOld particles into coarseToFine particles
+         * the method also copy levelGhostParticlesOld particles into levelGhostParticles particles
          * (the particles that are pushed), and compute ion moments from all particles
          *
          */
@@ -225,7 +225,7 @@ namespace amr_interface
             magneticInit_.fill(levelNumber, initDataTime);
             electricInit_.fill(levelNumber, initDataTime);
             interiorParticles_.fill(levelNumber, initDataTime);
-            coarseToFineOldParticles_.fill(levelNumber, initDataTime);
+            levelGhostParticlesOld_.fill(levelNumber, initDataTime);
 
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -234,17 +234,17 @@ namespace amr_interface
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
                 for (auto& pop : ions)
                 {
-                    auto& coarseToFineOld = pop.coarseToFineOldParticles();
-                    auto& coarseToFine    = pop.coarseToFineParticles();
+                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                    auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    core::empty(coarseToFine);
-                    std::copy(std::begin(coarseToFineOld), std::end(coarseToFineOld),
-                              std::back_inserter(coarseToFine));
+                    core::empty(levelGhostParticles);
+                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
+                              std::back_inserter(levelGhostParticles));
                 }
             }
 
 
-            ghostParticles_.fill(levelNumber, initDataTime);
+            patchGhostParticles_.fill(levelNumber, initDataTime);
 
             for (auto& patch : level)
             {
@@ -254,16 +254,16 @@ namespace amr_interface
 
                 for (auto& pop : ions)
                 {
-                    auto& coarseToFineOld = pop.coarseToFineOldParticles();
-                    auto& ghosts          = pop.ghostParticles();
-                    auto& domain          = pop.domainParticles();
+                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                    auto& ghosts                 = pop.patchGhostParticles();
+                    auto& domain                 = pop.domainParticles();
 
                     auto& density = pop.density();
                     auto& flux    = pop.flux();
                     interpolate_(std::begin(domain), std::end(domain), density, flux, layout);
                     interpolate_(std::begin(ghosts), std::end(ghosts), density, flux, layout);
-                    interpolate_(std::begin(coarseToFineOld), std::end(coarseToFineOld), density,
-                                 flux, layout);
+                    interpolate_(std::begin(levelGhostParticlesOld),
+                                 std::end(levelGhostParticlesOld), density, flux, layout);
                 }
 
                 ions.computeDensity();
@@ -320,11 +320,11 @@ namespace amr_interface
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
                 for (auto& pop : ions)
                 {
-                    empty(pop.ghostParticles());
+                    empty(pop.patchGhostParticles());
                 }
             }
 
-            ghostParticles_.fill(level.getLevelNumber(), fillTime);
+            patchGhostParticles_.fill(level.getLevelNumber(), fillTime);
         }
 
 
@@ -370,14 +370,15 @@ namespace amr_interface
          * get level border ghost particles from the next coarser level. These particles are defined
          * in the future at the time the method is called because the coarser level is ahead in
          * time. These particles are communicated only at first step of a substepping cycle. They
-         * will be used with the coarseToFineOld particles to get the moments on level border nodes.
+         * will be used with the levelGhostParticlesOld particles to get the moments on level border
+         * nodes.
          */
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                double time) override
         {
             (void)model;
             auto levelNumber = level.getLevelNumber();
-            coarseToFineNewParticles_.fill(levelNumber, time);
+            levelGhostParticlesNew_.fill(levelNumber, time);
         }
 
 
@@ -385,10 +386,10 @@ namespace amr_interface
         /**
          * @brief lastStep is used to perform operations at the last step of a substepping cycle.
          * It is called after the level is advanced. Here for hybrid-hybrid messages, the method
-         * moves coarseToFineNew particles into coarseToFineOld ones. Then coarseToFineNew are
-         * emptied since it will be filled again at firstStep of the next substepping cycle.
-         * the new CoarseToFineOld content is then copied to coarseToFine particles so that they
-         * can be pushed during the next subcycle
+         * moves levelGhostParticlesNew particles into levelGhostParticlesOld ones. Then
+         * levelGhostParticlesNew are emptied since it will be filled again at firstStep of the next
+         * substepping cycle. the new CoarseToFineOld content is then copied to levelGhostParticles
+         * so that they can be pushed during the next subcycle
          */
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
@@ -399,15 +400,15 @@ namespace amr_interface
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
                 for (auto& pop : ions)
                 {
-                    auto& coarseToFineOld = pop.coarseToFineOldParticles();
-                    auto& coarseToFineNew = pop.coarseToFineNewParticles();
-                    auto& coarseToFine    = pop.coarseToFineParticles();
+                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                    auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    core::swap(coarseToFineNew, coarseToFineOld);
-                    core::empty(coarseToFineNew);
-                    core::empty(coarseToFine);
-                    std::copy(std::begin(coarseToFineOld), std::end(coarseToFineOld),
-                              std::back_inserter(coarseToFine));
+                    core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                    core::empty(levelGhostParticlesNew);
+                    core::empty(levelGhostParticles);
+                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
+                              std::back_inserter(levelGhostParticles));
                 }
             }
         }
@@ -483,16 +484,16 @@ namespace amr_interface
                                interiorParticles_, info->interiorParticles);
 
 
-            makeCommunicators_(info->coarseToFineOldParticles, coarseToFineRefineOpOld_,
-                               coarseToFineOldParticles_, info->coarseToFineOldParticles);
+            makeCommunicators_(info->levelGhostParticlesOld, levelGhostParticlesOldOp_,
+                               levelGhostParticlesOld_, info->levelGhostParticlesOld);
 
 
-            makeCommunicators_(info->coarseToFineNewParticles, coarseToFineRefineOpNew_,
-                               coarseToFineNewParticles_, info->coarseToFineNewParticles);
+            makeCommunicators_(info->levelGhostParticlesNew, levelGhostParticlesNewOp_,
+                               levelGhostParticlesNew_, info->levelGhostParticlesNew);
 
 
-            makeCommunicators_(info->ghostParticles, nullptr, ghostParticles_,
-                               info->ghostParticles);
+            makeCommunicators_(info->patchGhostParticles, nullptr, patchGhostParticles_,
+                               info->patchGhostParticles);
         }
 
 
@@ -579,13 +580,13 @@ namespace amr_interface
         Communicators<CommunicatorType::InitInteriorPart> interiorParticles_;
 
         //! store communicators for coarse to fine particles old
-        Communicators<CommunicatorType::LevelBorderParticles> coarseToFineOldParticles_;
+        Communicators<CommunicatorType::LevelBorderParticles> levelGhostParticlesOld_;
 
         //! store communicators for coarse to fine particles new
-        Communicators<CommunicatorType::LevelBorderParticles> coarseToFineNewParticles_;
+        Communicators<CommunicatorType::LevelBorderParticles> levelGhostParticlesNew_;
 
         // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
-        Communicators<CommunicatorType::InteriorGhostParticles> ghostParticles_;
+        Communicators<CommunicatorType::InteriorGhostParticles> patchGhostParticles_;
 
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
@@ -599,10 +600,10 @@ namespace amr_interface
         std::shared_ptr<SAMRAI::hier::RefineOperator> interiorParticleRefineOp_{
             std::make_shared<InteriorParticleRefineOp>()};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> coarseToFineRefineOpOld_{
+        std::shared_ptr<SAMRAI::hier::RefineOperator> levelGhostParticlesOldOp_{
             std::make_shared<CoarseToFineRefineOpOld>()};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> coarseToFineRefineOpNew_{
+        std::shared_ptr<SAMRAI::hier::RefineOperator> levelGhostParticlesNewOp_{
             std::make_shared<CoarseToFineRefineOpNew>()};
     };
 

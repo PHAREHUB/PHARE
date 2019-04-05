@@ -133,7 +133,7 @@ namespace amr_interface
                 }
 
                 // here we create a schedule that will refine particles from coarser level and put
-                // them into the level coarse to fine boundary. These are the coarseToFineOld
+                // them into the level coarse to fine boundary. These are the levelGhostParticlesOld
                 // particles. we thus take the same createSchedule overload as above but pass it a
                 // PatchLevelBorderFillPattern.
                 else if constexpr (Type == CommunicatorType::LevelBorderParticles)

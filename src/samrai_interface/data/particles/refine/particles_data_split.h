@@ -143,17 +143,17 @@ namespace amr_interface
             // temporary restriction "source" patchData
             // therefore we need references to the domain and ghost particle arrays
             auto const& srcInteriorParticles = srcParticlesData.domainParticles;
-            auto const& srcGhostParticles    = srcParticlesData.ghostParticles;
+            auto const& srcGhostParticles    = srcParticlesData.patchGhostParticles;
 
             // the particle refine operator's job is to fill either domain (during initialization of
             // new patches) or coarse to fine boundaries (during advance), so we need references to
             // these arrays on the destination. We don't fill ghosts with this operator, they are
             // filled from exchanging with neighbor patches.
             auto const& destBoxes                = destFieldOverlap.getDestinationBoxContainer();
-            auto& destCoarseBoundaryParticles    = destParticlesData.coarseToFineParticles;
+            auto& destCoarseBoundaryParticles    = destParticlesData.levelGhostParticles;
             auto& destDomainParticles            = destParticlesData.domainParticles;
-            auto& destCoarseBoundaryOldParticles = destParticlesData.coarseToFineParticlesOld;
-            auto& destCoarseBoundaryNewParticles = destParticlesData.coarseToFineParticlesNew;
+            auto& destCoarseBoundaryOldParticles = destParticlesData.levelGhostParticlesOld;
+            auto& destCoarseBoundaryNewParticles = destParticlesData.levelGhostParticlesNew;
 
 
             // We get the source box that contains ghost region in order to get local index later
@@ -215,7 +215,7 @@ namespace amr_interface
                             split(particleRefinedPos, refinedParticles);
 
 
-                            // we need to know in which of interior or coarseToFineXXXX
+                            // we need to know in which of interior or levelGhostParticlesXXXX
                             // arrays we must put particles
 
                             bool constexpr putParticlesInCoarseBoundary

@@ -379,12 +379,12 @@ TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
 
             for (auto& pop : ions)
             {
-                auto& interiorGhosts       = pop.ghostParticles();
-                auto& oldLevelBorderGhosts = pop.coarseToFineOldParticles();
+                auto& patchGhosts          = pop.patchGhostParticles();
+                auto& oldLevelBorderGhosts = pop.levelGhostParticlesOld();
 
                 auto geom              = patch->getPatchGeometry();
                 auto const& boundaries = geom->getPatchBoundaries();
-                EXPECT_GT(interiorGhosts.size(), 0);
+                EXPECT_GT(patchGhosts.size(), 0);
 
                 // domain particles
                 EXPECT_GT(pop.nbrParticles(), 0);
