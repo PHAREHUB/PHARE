@@ -227,6 +227,37 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 
 
 
+
+TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
+{
+    std::unique_ptr<BasicHierarchy> hierarchy;
+    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager;
+    IonPopulation1D_P pop;
+    auto s    = inputBase + std::string("/input/input_db_1d");
+    hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
+    hierarchy->init();
+    resourcesManager.registerResources(pop.user);
+    auto& patchHierarchy = hierarchy->hierarchy;
+
+    double const initDataTime{3.14};
+
+    for (int iLevel = 0; iLevel < patchHierarchy->getNumberOfLevels(); ++iLevel)
+    {
+        auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
+        for (auto& patch : *patchLevel)
+        {
+            resourcesManager.allocate(pop.user, *patch, initDataTime);
+            auto times = resourcesManager.getTime(pop.user, *patch);
+
+            EXPECT_TRUE(std::equal(std::begin(times) + 1, std::end(times), std::begin(times)));
+            EXPECT_DOUBLE_EQ(initDataTime, times[0]);
+        }
+    }
+}
+
+
+
+
 REGISTER_TYPED_TEST_CASE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
 
 

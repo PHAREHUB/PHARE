@@ -225,6 +225,30 @@ namespace amr_interface
 
 
 
+        /** @brief getTime is used to get the time of the Resources associated with the given
+         * ResourcesUser on the given patch.
+         */
+        template<typename ResourcesUser>
+        auto getTime(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
+        {
+            auto IDs = getIDs(obj);
+            std::vector<double> times;
+            /*std::transform(std::begin(IDs), std::end(IDs), std::back_inserter(times),
+                           [&patch](auto const& id) {
+                               auto patchdata = patch.getPatchData(id);
+                               return patchdata->getTime();
+                           });*/
+
+            for (auto const& id : IDs)
+            {
+                auto patchdata = patch.getPatchData(id);
+                times.push_back(patchdata->getTime());
+            }
+            return times;
+        }
+
+
+
         /** @brief setTime is used to set the time of the Resources associated with the given
          * ResourcesUser on the given patch.
          */
