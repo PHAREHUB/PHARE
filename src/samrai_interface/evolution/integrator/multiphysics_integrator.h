@@ -409,16 +409,11 @@ namespace amr_interface
                                     const bool firstStep, const bool lastStep,
                                     const bool regridAdvance = false) override
         {
-            //
             if (regridAdvance)
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
 
 
-            // TODO messenger needs to copy stuff from the model into internal 'old' variables
-
-
-            auto iLevel = level->getLevelNumber();
-
+            auto iLevel       = level->getLevelNumber();
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
@@ -432,7 +427,7 @@ namespace amr_interface
 
             fromCoarser.prepareStep(model, *level);
 
-            // solver msut have a view on the model from its init
+
             solver.advanceLevel(hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
 
 

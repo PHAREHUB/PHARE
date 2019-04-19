@@ -116,23 +116,24 @@ namespace amr_interface
         /**
          * @brief registerLevel registers the level for all Communicators
          *
-         * The level must always be registered to ghost Communicators
+         * The level must always be registered to ghost Communicators but only to init Communicators
+         * if it is not the root level since root is not initialized by coarser data.
+         *
+         * Ghost communicators that need to know this level :
          *
          *  - magnetic fields
          *  - electric fields
-         *  - ghost particles
+         *  - patch ghost particles
          *
-         *  ion moments do not need to be filled on ghost node by SAMRAI schedules
-         *  since they will be filled with levelGhostParticles on level ghost nodes
+         *  ion moments : do not need to be filled on ghost node by SAMRAI schedules
+         *  since they will be filled with levelGhostParticles[old,new] on level ghost nodes
          *  and computed by ghost particles on interior patch ghost nodes
          *
-         * However the level need to be registered to init Communicators only on the non-root level
-         * since the root level is not initialized by a communication.
+         *
+         * Init communicators that need to know this level :
          *
          *  - magnetic fields
          *  - electric fields
-         *  - ion bulk velocity (total)
-         *  - ion density (total)
          *  - ion interior particle arrays
          *  - ion levelGhostParticlesOld particle arrays
          */
@@ -170,7 +171,7 @@ namespace amr_interface
         {
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            // TODO regrid particle arrays
+            // TODO #3381 regrid particle arrays
         }
 
 
@@ -201,75 +202,28 @@ namespace amr_interface
 
 
         /**
-         * @brief initLevel is used to initialize data on the level levelNumer at time initDataTime.
-         *
-         * The method just calls  initialize() for all init Communicators.
-         * Before this method is called, QuantityCommunicators must be added to the Communicators
-         * and the level levelNumber must have been registered to all Communicators used in the
-         * method:
-         *
-         *  magnetic field
-         *  electric field
-         *  ion bulk
-         *  interior particles
-         *  coarse to fine old
-         *  ghost particles are also initialized
-         *
-         * the method also copy levelGhostParticlesOld particles into levelGhostParticles particles
-         * (the particles that are pushed), and compute ion moments from all particles
-         *
+         * @brief initLevel is used to initialize hybrid data on the level levelNumer at time
+         * initDataTime from hybrid coarser data.
          */
         virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
+
             magneticInit_.fill(levelNumber, initDataTime);
             electricInit_.fill(levelNumber, initDataTime);
             interiorParticles_.fill(levelNumber, initDataTime);
             levelGhostParticlesOld_.fill(levelNumber, initDataTime);
 
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
-
-                    core::empty(levelGhostParticles);
-                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
-                              std::back_inserter(levelGhostParticles));
-                }
-            }
-
-
+            // must be called after all domain particles are filled because
+            // this clones neighbor interior particles into my ghosts
             patchGhostParticles_.fill(levelNumber, initDataTime);
 
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+            // levelGhostParticles will be pushed during the advance phase
+            // they need to be identical to levelGhostParticlesOld before advance
+            copyLevelGhostOldToPushable_(level, model);
 
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& ghosts                 = pop.patchGhostParticles();
-                    auto& domain                 = pop.domainParticles();
-
-                    auto& density = pop.density();
-                    auto& flux    = pop.flux();
-                    interpolate_(std::begin(domain), std::end(domain), density, flux, layout);
-                    interpolate_(std::begin(ghosts), std::end(ghosts), density, flux, layout);
-                    interpolate_(std::begin(levelGhostParticlesOld),
-                                 std::end(levelGhostParticlesOld), density, flux, layout);
-                }
-
-                ions.computeDensity();
-                ions.computeBulkVelocity();
-            }
+            computeIonMoments_(level, model);
         }
 
 
@@ -330,12 +284,19 @@ namespace amr_interface
 
 
 
-        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double const currentTime, double const fillTime) override
-        {
-            std::cout << "perform the moments ghosts fill\n";
 
-            auto alpha = (fillTime - currentTime) / (coarserLastTime_ - firstTime_);
+        /**
+         * @brief fillIonMomentGhosts will compute the ion moments for all species on ghost nodes.
+         *
+         * For patch ghost nodes, patch ghost particles are used.
+         * For level ghost nodes, levelGhostParticlesOld and new are both projected with a time
+         * interpolation coef.
+         */
+        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                         double const beforePushTime,
+                                         double const afterPushTime) override
+        {
+            auto alpha = timeInterpCoef_(beforePushTime, afterPushTime);
 
 
             for (auto patch : level)
@@ -354,13 +315,11 @@ namespace amr_interface
                                  layout);
 
 
-
                     // then grab levelGhostParticlesOld and levelGhostParticlesNew
                     // and project them with alpha and (1-alpha) coefs, respectively
                     auto& levelGhostOld = pop.levelGhostParticlesOld();
                     auto& levelGhostNew = pop.levelGhostParticlesNew();
 
-                    // TODO: hard coded 0.5 for now. Need to get proper alpha coef.
                     interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density, flux,
                                  layout, 1. - alpha);
 
@@ -410,13 +369,17 @@ namespace amr_interface
             auto& hybridModel = static_cast<HybridModel&>(model);
             auto levelNumber  = level.getLevelNumber();
             levelGhostParticlesNew_.fill(levelNumber, time);
-            firstTime_ = time;
+
+            // during firstStep() coarser level and current level are at the same time
+            // so 'time' is also the beforePushCoarseTime_
+            beforePushCoarseTime_ = time;
+
             if (levelNumber != 0)
             {
-                auto coarserLevel = hierarchy->getPatchLevel(levelNumber - 1);
-                auto patch        = *std::begin(*coarserLevel);
-                auto times        = resourcesManager_->getTimes(hybridModel.state.ions, *patch);
-                coarserLastTime_  = times[0];
+                auto coarserLevel    = hierarchy->getPatchLevel(levelNumber - 1);
+                auto patch           = *std::begin(*coarserLevel);
+                auto times           = resourcesManager_->getTimes(hybridModel.state.ions, *patch);
+                afterPushCoarseTime_ = times[0];
             }
         }
 
@@ -581,6 +544,67 @@ namespace amr_interface
 
 
 
+        void copyLevelGhostOldToPushable_(SAMRAI::hier::PatchLevel& level, IPhysicalModel& model)
+        {
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            for (auto& patch : level)
+            {
+                auto& ions       = hybridModel.state.ions;
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                for (auto& pop : ions)
+                {
+                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                    auto& levelGhostParticles    = pop.levelGhostParticles();
+
+                    core::empty(levelGhostParticles);
+                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
+                              std::back_inserter(levelGhostParticles));
+                }
+            }
+        }
+
+
+
+
+        void computeIonMoments_(SAMRAI::hier::PatchLevel& level, IPhysicalModel& model)
+        {
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            for (auto& patch : level)
+            {
+                auto& ions       = hybridModel.state.ions;
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+
+                for (auto& pop : ions)
+                {
+                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                    auto& ghosts                 = pop.patchGhostParticles();
+                    auto& domain                 = pop.domainParticles();
+
+                    auto& density = pop.density();
+                    auto& flux    = pop.flux();
+                    interpolate_(std::begin(domain), std::end(domain), density, flux, layout);
+                    interpolate_(std::begin(ghosts), std::end(ghosts), density, flux, layout);
+                    interpolate_(std::begin(levelGhostParticlesOld),
+                                 std::end(levelGhostParticlesOld), density, flux, layout);
+                }
+
+                ions.computeDensity();
+                ions.computeBulkVelocity();
+            }
+        }
+
+
+
+
+        double timeInterpCoef_(double const beforePushTime, double const afterPushTime)
+        {
+            return (afterPushTime - beforePushTime)
+                   / (afterPushCoarseTime_ - beforePushCoarseTime_);
+        }
+
+
+
 
         //! keeps a copy of the model electromagnetic field at t=n
         ElectromagT EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
@@ -592,8 +616,8 @@ namespace amr_interface
 
 
         int const firstLevel_;
-        double firstTime_;
-        double coarserLastTime_;
+        double beforePushCoarseTime_;
+        double afterPushCoarseTime_;
 
         core::Interpolator<dimension, interpOrder> interpolate_;
 
