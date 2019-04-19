@@ -286,7 +286,7 @@ namespace core
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 1> const& densityCentering,
                                VectorCenteringArray const& fluxCentering, Particle const& particle,
-                               Array1 const& startIndex, Array2 const& weights)
+                               Array1 const& startIndex, Array2 const& weights, double coef = 1.)
         {
             auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
             auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
@@ -309,11 +309,11 @@ namespace core
 
             for (auto ik = 0u; ik < order_size; ++ik)
             {
-                density(xDenStartIndex + ik) += partRho * xDenWeights[ik];
+                density(xDenStartIndex + ik) += partRho * xDenWeights[ik] * coef;
 
-                xFlux(xXFluxStartIndex + ik) += xPartFlux * xXFluxWeights[ik];
-                yFlux(xYFluxStartIndex + ik) += yPartFlux * xYFluxWeights[ik];
-                zFlux(xZFluxStartIndex + ik) += zPartFlux * xZFluxWeights[ik];
+                xFlux(xXFluxStartIndex + ik) += xPartFlux * xXFluxWeights[ik] * coef;
+                yFlux(xYFluxStartIndex + ik) += yPartFlux * xYFluxWeights[ik] * coef;
+                zFlux(xZFluxStartIndex + ik) += zPartFlux * xZFluxWeights[ik] * coef;
             }
         }
     };
@@ -341,7 +341,7 @@ namespace core
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 2> const& densityCentering,
                                VectorCenteringArray const& fluxCentering, Particle const& particle,
-                               Array1 const& startIndex, Array2 const& weights)
+                               Array1 const& startIndex, Array2 const& weights, double coef = 1.)
         {
             auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
             auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
@@ -372,10 +372,10 @@ namespace core
 
 
 
-            auto const partRho   = particle.weight;
-            auto const xPartFlux = particle.v[0] * particle.weight;
-            auto const yPartFlux = particle.v[1] * particle.weight;
-            auto const zPartFlux = particle.v[2] * particle.weight;
+            auto const partRho   = particle.weight * coef;
+            auto const xPartFlux = particle.v[0] * particle.weight * coef;
+            auto const yPartFlux = particle.v[1] * particle.weight * coef;
+            auto const zPartFlux = particle.v[2] * particle.weight * coef;
 
             auto order_size = xDenWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
@@ -421,7 +421,7 @@ namespace core
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 3> const& densityCentering,
                                VectorCenteringArray const& fluxCentering, Particle const& particle,
-                               Array1 const& startIndex, Array2 const& weights)
+                               Array1 const& startIndex, Array2 const& weights, double coef = 1.)
         {
             auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
             auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
@@ -465,10 +465,10 @@ namespace core
             auto const& zZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][2])][0];
             auto const& zZFluxWeights    = weights[static_cast<int>(fluxCentering[2][2])][0];
 
-            auto const partRho   = particle.weight;
-            auto const xPartFlux = particle.v[0] * particle.weight;
-            auto const yPartFlux = particle.v[1] * particle.weight;
-            auto const zPartFlux = particle.v[2] * particle.weigth;
+            auto const partRho   = particle.weight * coef;
+            auto const xPartFlux = particle.v[0] * particle.weight * coef;
+            auto const yPartFlux = particle.v[1] * particle.weight * coef;
+            auto const zPartFlux = particle.v[2] * particle.weigth * coef;
 
             auto order_size = xDenWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
@@ -603,7 +603,7 @@ namespace core
         template<typename PartIterator, typename VecField, typename GridLayout,
                  typename Field = typename VecField::field_type>
         inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux,
-                               GridLayout const& layout)
+                               GridLayout const& layout, double coef = 1.)
         {
             // this lambda calculates the startIndex and the order+1 weights for
             // dual field interpolation and puts this at the corresponding location
@@ -656,11 +656,13 @@ namespace core
             // twice, and not for each E,B component.
             for (auto currPart = begin; currPart != end; ++currPart)
             {
+                // TODO #3375
                 indexAndWeightPrimal(*currPart);
                 indexAndWeightDual(*currPart);
 
+
                 particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, fluxCentering,
-                                *currPart, startIndex_, weights_);
+                                *currPart, startIndex_, weights_, coef);
             }
         }
 

@@ -107,8 +107,8 @@ namespace amr_interface
                                            double const fillTime) override
         {
         }
-        virtual void fillIonMomentGhosts(IonsT& ions, int const levelNumber,
-                                         double const fillTime) override
+        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                         double const currentTime, double const fillTime) override
         {
         }
 
@@ -121,6 +121,7 @@ namespace amr_interface
 
 
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                double time) override
         {
         }

@@ -229,7 +229,7 @@ namespace amr_interface
          * ResourcesUser on the given patch.
          */
         template<typename ResourcesUser>
-        auto getTime(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
+        auto getTimes(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
         {
             auto IDs = getIDs(obj);
             std::vector<double> times;

@@ -130,7 +130,8 @@ namespace amr_interface
             // therefore we need to re-fill the purple region and accumulate that density
             // this is done by calling a messenger to fill the moments.
 
-            fromCoarser.fillIonMomentGhosts(hybridState.ions, levelNumber, newTime);
+            auto coarserLevel = hierarchy->getPatchLevel(levelNumber - 1);
+            fromCoarser.fillIonMomentGhosts(hybridState.ions, *level, currentTime, newTime);
 
 
 
@@ -171,7 +172,7 @@ namespace amr_interface
             // same as for predictor 1, except that we will updates the ions
             // populations
 
-            fromCoarser.fillIonMomentGhosts(hybridState.ions, levelNumber, newTime);
+            fromCoarser.fillIonMomentGhosts(hybridState.ions, *level, currentTime, newTime);
 
 
             // needs predictor2 boolean

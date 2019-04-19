@@ -247,7 +247,7 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
         for (auto& patch : *patchLevel)
         {
             resourcesManager.allocate(pop.user, *patch, initDataTime);
-            auto times = resourcesManager.getTime(pop.user, *patch);
+            auto times = resourcesManager.getTimes(pop.user, *patch);
 
             EXPECT_TRUE(std::equal(std::begin(times) + 1, std::end(times), std::begin(times)));
             EXPECT_DOUBLE_EQ(initDataTime, times[0]);

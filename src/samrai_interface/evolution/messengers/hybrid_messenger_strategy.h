@@ -74,7 +74,8 @@ namespace amr_interface
         virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                            double const fillTime)
             = 0;
-        virtual void fillIonMomentGhosts(IonsT& ions, int const levelNumber, double const fillTime)
+        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                         double currentTime, double const fillTime)
             = 0;
 
 
@@ -90,7 +91,9 @@ namespace amr_interface
         virtual std::string coarseModelName() const = 0;
 
 
-        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level, double time)
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+                               double time)
             = 0;
 
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;

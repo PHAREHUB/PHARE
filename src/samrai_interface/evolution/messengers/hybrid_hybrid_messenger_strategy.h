@@ -19,6 +19,7 @@
 #include <SAMRAI/xfer/RefineSchedule.h>
 
 
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -329,15 +330,44 @@ namespace amr_interface
 
 
 
-
-        virtual void fillIonMomentGhosts(IonsT& ions, int const levelNumber,
-                                         double const fillTime) override
+        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                         double const currentTime, double const fillTime) override
         {
             std::cout << "perform the moments ghosts fill\n";
 
-            // recuperer coarse2fine2 de la transction depuis le coarser level
-            // et calculer alpha*coarse2fine2 + (1-alpha)*coarse2fine1 sur les
-            // density et flux
+            auto alpha = (fillTime - currentTime) / (coarserLastTime_ - firstTime_);
+
+
+            for (auto patch : level)
+            {
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+
+                for (auto& pop : ions)
+                {
+                    // first thing to do is to project patchGhostParitcles moments
+                    auto& patchGhosts = pop.patchGhostParticles();
+                    auto& density     = pop.density();
+                    auto& flux        = pop.flux();
+
+                    interpolate_(std::begin(patchGhosts), std::end(patchGhosts), density, flux,
+                                 layout);
+
+
+
+                    // then grab levelGhostParticlesOld and levelGhostParticlesNew
+                    // and project them with alpha and (1-alpha) coefs, respectively
+                    auto& levelGhostOld = pop.levelGhostParticlesOld();
+                    auto& levelGhostNew = pop.levelGhostParticlesNew();
+
+                    // TODO: hard coded 0.5 for now. Need to get proper alpha coef.
+                    interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density, flux,
+                                 layout, 1. - alpha);
+
+                    interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density, flux,
+                                 layout, alpha);
+                }
+            }
         }
 
 
@@ -374,11 +404,20 @@ namespace amr_interface
          * nodes.
          */
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                double time) override
         {
-            (void)model;
-            auto levelNumber = level.getLevelNumber();
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            auto levelNumber  = level.getLevelNumber();
             levelGhostParticlesNew_.fill(levelNumber, time);
+            firstTime_ = time;
+            if (levelNumber != 0)
+            {
+                auto coarserLevel = hierarchy->getPatchLevel(levelNumber - 1);
+                auto patch        = *std::begin(*coarserLevel);
+                auto times        = resourcesManager_->getTimes(hybridModel.state.ions, *patch);
+                coarserLastTime_  = times[0];
+            }
         }
 
 
@@ -553,6 +592,8 @@ namespace amr_interface
 
 
         int const firstLevel_;
+        double firstTime_;
+        double coarserLastTime_;
 
         core::Interpolator<dimension, interpOrder> interpolate_;
 

@@ -426,7 +426,7 @@ namespace amr_interface
 
             if (firstStep)
             {
-                fromCoarser.firstStep(model, *level, currentTime);
+                fromCoarser.firstStep(model, *level, hierarchy, currentTime);
             }
 
 

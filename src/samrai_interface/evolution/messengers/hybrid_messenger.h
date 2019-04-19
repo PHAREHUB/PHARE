@@ -150,9 +150,10 @@ namespace amr_interface
          * @param model
          */
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                double time) final
         {
-            strat_->firstStep(model, level, time);
+            strat_->firstStep(model, level, hierarchy, time);
         }
 
 
@@ -290,9 +291,10 @@ namespace amr_interface
          * @param levelNumber
          * @param fillTime
          */
-        void fillIonMomentGhosts(IonsT& ions, int const levelNumber, double const fillTime)
+        void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                 double const currentTime, double const fillTime)
         {
-            strat_->fillIonMomentGhosts(ions, levelNumber, fillTime);
+            strat_->fillIonMomentGhosts(ions, level, currentTime, fillTime);
         }
 
 
