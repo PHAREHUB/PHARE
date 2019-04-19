@@ -94,7 +94,10 @@ namespace amr_interface
 
         virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
 
-
+        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                    double const initDataTime) final
+        {
+        }
 
         virtual std::string name() override { return stratName; }
 

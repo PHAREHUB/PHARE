@@ -179,6 +179,14 @@ namespace amr_interface
 
 
 
+        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                    double const initDataTime) final
+        {
+            strat_->fillRootGhosts(model, level, initDataTime);
+        }
+
+
+
         /**
          * @brief IMessenger::fineModelName
          * @return

@@ -323,15 +323,8 @@ namespace amr_interface
                     {
                         model.initialize(*patch);
                     }
-                    // messenger.fillMagneticGhosts();
 
-                    // domain particles have been loaded for all populations
-                    // magnetic and electric field have been initialized in domain
-                    // now we need to:
-                    // - fill electric and magnetic ghosts
-                    // - fill interior ghost particles
-                    // - fill level border ghost particles (old) and copy them in pushable ones
-                    // - fill ion moment ghosts from interior and level border ghost particles
+                    messenger.fillRootGhosts(model, *level, initDataTime);
                 }
                 else
                 {

@@ -212,12 +212,22 @@ namespace amr_interface
 
             magneticInit_.fill(levelNumber, initDataTime);
             electricInit_.fill(levelNumber, initDataTime);
+
+            // no need to call these :
+            // magneticGhosts_.fill(levelNumber, initDataTime);
+            // electricGhosts_.fill(levelNumber, initDataTime);
+            // because the SAMRAI schedules in the 'init' communicators
+            // already fill the patch ghost box from the neighbor interior box.
+            // so ghost nodes are already filled .
+
             interiorParticles_.fill(levelNumber, initDataTime);
+            // however we need to call the ghost communicator for patch ghost particles
+            // since the interior schedules have a restriction to the interior of the patch.
+            patchGhostParticles_.fill(levelNumber, initDataTime);
+
+
             levelGhostParticlesOld_.fill(levelNumber, initDataTime);
 
-            // must be called after all domain particles are filled because
-            // this clones neighbor interior particles into my ghosts
-            patchGhostParticles_.fill(levelNumber, initDataTime);
 
             // levelGhostParticles will be pushed during the advance phase
             // they need to be identical to levelGhostParticlesOld before advance
@@ -439,6 +449,26 @@ namespace amr_interface
                 auto& EM = hybridModel.state.electromag;
                 EM_old_.copyData(EM);
             }
+        }
+
+
+
+
+        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                    double const initDataTime) final
+        {
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            auto levelNumber  = level.getLevelNumber();
+            assert(levelNumber == 0);
+
+            magneticGhosts_.fill(levelNumber, initDataTime);
+            electricGhosts_.fill(levelNumber, initDataTime);
+            patchGhostParticles_.fill(levelNumber, initDataTime);
+
+            // at some point in the future levelGhostParticles could be filled with injected
+            // particles depending on the domain boundary condition.
+
+            computeIonMoments_(level, model);
         }
 
 
