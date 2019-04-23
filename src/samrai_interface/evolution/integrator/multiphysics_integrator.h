@@ -306,7 +306,7 @@ namespace amr_interface
             {
                 // in case of a regrid we need to make a bunch of temporary regriding schedules
                 // using the init algorithms and actually perform the .fillData() for all of them
-                messenger.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+                messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
             }
 
 

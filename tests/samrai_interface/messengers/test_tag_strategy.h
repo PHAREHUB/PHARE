@@ -90,7 +90,7 @@ public:
         {
             // in case of a regrid we need to make a bunch of temporary regriding schedules
             // using the init algorithms and actually perform the .fillData() for all of them
-            messenger_->regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            messenger_->regrid(hierarchy, levelNumber, oldLevel, *model_, initDataTime);
         }
 
 

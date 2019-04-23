@@ -125,9 +125,9 @@ namespace amr_interface
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                             const int levelNumber,
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                            double const initDataTime) final
+                            IPhysicalModel& model, double const initDataTime) final
         {
-            strat_->regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            strat_->regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
         }
 
 
