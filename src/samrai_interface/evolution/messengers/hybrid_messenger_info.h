@@ -63,8 +63,6 @@ namespace amr_interface
     public:
         VecFieldDescriptor modelMagnetic;
         VecFieldDescriptor modelElectric;
-        VecFieldDescriptor modelIonBulk;
-        FieldDescriptor modelIonDensity;
 
 
         //! names of the magnetic quantities that will be communicated by
@@ -75,13 +73,6 @@ namespace amr_interface
         //! names of the electric quantities that will be communicated by
         //! HybridMessenger::initLevel() and HybridMessenger::regrid()
         std::vector<VecFieldDescriptor> initElectric;
-
-
-        std::vector<VecFieldDescriptor> initIonBulk;
-
-
-        std::vector<FieldDescriptor> initIonDensity;
-
 
         std::vector<PopulationDescriptor> interiorParticles;
         std::vector<PopulationDescriptor> levelGhostParticlesNew;

@@ -506,11 +506,6 @@ namespace amr_interface
             makeCommunicators_(info->initElectric, fieldRefineOp_, electricInit_,
                                makeKeys(info->initElectric));
 
-            makeCommunicators_(info->initIonBulk, fieldRefineOp_, ionBulkInit_,
-                               makeKeys(info->initIonBulk));
-
-            makeCommunicators_(info->initIonDensity, fieldRefineOp_, ionDensityInit_,
-                               info->initIonDensity);
 
             makeCommunicators_(info->interiorParticles, interiorParticleRefineOp_,
                                interiorParticles_, info->interiorParticles);
@@ -663,12 +658,6 @@ namespace amr_interface
 
         //! store communicators for electric fields that need to be initializes
         Communicators<CommunicatorType::InitField> electricInit_;
-
-        //! store communicators for ion bulk velocity resources that need to be initialized
-        Communicators<CommunicatorType::InitField> ionBulkInit_;
-
-        //! store communicators for total ion density resources that need to be initialized
-        Communicators<CommunicatorType::InitField> ionDensityInit_;
 
         // algo and schedule used to initialize domain particles
         // from coarser level using particleRefineOp<domain>
