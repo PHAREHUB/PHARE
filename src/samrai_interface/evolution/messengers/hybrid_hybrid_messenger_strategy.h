@@ -154,6 +154,7 @@ namespace amr_interface
                 electricInit_.registerLevel(hierarchy, level);
                 interiorParticles_.registerLevel(hierarchy, level);
                 levelGhostParticlesOld_.registerLevel(hierarchy, level);
+                levelGhostParticlesNew_.registerLevel(hierarchy, level);
             }
         }
 
