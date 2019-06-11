@@ -35,7 +35,7 @@ TYPED_TEST(a1DDerivative, DXBY1D)
     auto expDerValue = read(filename);
     auto gei_d       = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -46,7 +46,7 @@ TYPED_TEST(a1DDerivative, DXBY1D)
         this->By(ix)           = std::cos(2 * M_PI / 5. * point[0]);
     }
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
         auto localDerivative = this->layout.deriv(this->By, {ix}, DirectionTag<Direction::X>{});
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
@@ -66,13 +66,13 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
     auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
     auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
 
-    for (uint32 ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0; ix <= gei_p_X; ++ix)
     {
         Point<double, 1> point = this->layout.fieldNodeCoordinates(this->Ez, {0.}, ix);
         this->Ez(ix)           = std::cos(2 * M_PI / 5. * point[0]);
     }
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
         auto localDerivative = this->layout.deriv(this->Ez, {ix}, DirectionTag<Direction::X>{});
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
@@ -98,17 +98,16 @@ TYPED_TEST(a2DDerivative, DXBY2D)
                            + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
 
-    uint32 psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    uint32 pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    uint32 psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-
-    for (uint32 ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
             Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
             this->By(ix, iy)
@@ -119,13 +118,13 @@ TYPED_TEST(a2DDerivative, DXBY2D)
     std::array<uint32, 2> nPts_
         = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
             auto localDerivative
                 = this->layout.deriv(this->By, {ix, iy}, DirectionTag<Direction::X>{});
-            uint32 index_ = ix * nPts_[1] + iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -138,17 +137,17 @@ TYPED_TEST(a2DDerivative, DYBY2D)
                            + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
 
-    uint32 psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    uint32 pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    uint32 psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    uint32 pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
+    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
+    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
 
-    for (uint32 ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
             Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
             this->By(ix, iy)
@@ -156,16 +155,15 @@ TYPED_TEST(a2DDerivative, DYBY2D)
         }
     }
 
-    std::array<uint32, 2> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
+        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
             auto localDerivative
                 = this->layout.deriv(this->By, {ix, iy}, DirectionTag<Direction::Y>{});
-            uint32 index_ = ix * nPts_[1] + iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -178,17 +176,17 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
                            + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
 
-    uint32 psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    uint32 pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    uint32 psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
 
-    for (uint32 ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
             Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
             this->Ez(ix, iy)
@@ -196,16 +194,15 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
         }
     }
 
-    std::array<uint32, 2> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
             auto localDerivative
                 = this->layout.deriv(this->Ez, {ix, iy}, DirectionTag<Direction::X>{});
-            uint32 index_ = ix * nPts_[1] + iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -218,34 +215,32 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
                            + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
+    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
 
-    uint32 psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    uint32 pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    uint32 psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    uint32 pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
-
-    for (uint32 ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
             this->Ez(ix, iy)
                 = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
     }
 
-    std::array<uint32, 2> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
+        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
             auto localDerivative
                 = this->layout.deriv(this->Ez, {ix, iy}, DirectionTag<Direction::Y>{});
-            uint32 index_ = ix * nPts_[1] + iy;
+            auto index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -270,25 +265,23 @@ TYPED_TEST(a3DDerivative, DXBY3D)
                            + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
+    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    uint32 psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    uint32 pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    uint32 psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    uint32 pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (uint32 ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point
-                    = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -296,18 +289,17 @@ TYPED_TEST(a3DDerivative, DXBY3D)
         }
     }
 
-    std::array<uint32, 3> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
+            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
                     = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::X>{});
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -322,25 +314,23 @@ TYPED_TEST(a3DDerivative, DYBY3D)
                            + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
+    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
+    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
+    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    uint32 psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    uint32 pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    uint32 psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    uint32 pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
-    uint32 psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    uint32 pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (uint32 ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point
-                    = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -348,18 +338,17 @@ TYPED_TEST(a3DDerivative, DYBY3D)
         }
     }
 
-    std::array<uint32, 3> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
+        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
+            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
                     = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::Y>{});
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -374,25 +363,24 @@ TYPED_TEST(a3DDerivative, DZBY3D)
                            + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
 
-    uint32 psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    uint32 pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    uint32 psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
-    uint32 pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
+    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
+    auto pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
 
-    for (uint32 ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point
-                    = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -400,18 +388,17 @@ TYPED_TEST(a3DDerivative, DZBY3D)
         }
     }
 
-    std::array<uint32, 3> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Z);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Z);
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
+            for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
                 auto localDerivative
                     = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::Z>{});
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -426,25 +413,23 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
                            + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
+    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    uint32 psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    uint32 pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    uint32 psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    uint32 pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (uint32 ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point
-                    = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -452,18 +437,17 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
         }
     }
 
-    std::array<uint32, 3> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
+            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
                     = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::X>{});
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -478,25 +462,23 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
                            + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
+    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
+    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
+    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    uint32 psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    uint32 pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    uint32 psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    uint32 pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
-    uint32 psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    uint32 pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (uint32 ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point
-                    = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -504,18 +486,17 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
         }
     }
 
-    std::array<uint32, 3> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
+        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
+            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
                     = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::Y>{});
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }
@@ -530,25 +511,23 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
                            + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto expDerValue = read(filename);
 
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
+    auto psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
+    auto pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
 
-    uint32 psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    uint32 pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    uint32 psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
-    uint32 pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
-
-    for (uint32 ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0; iz <= gei_d_Z; ++iz)
             {
-                Point<double, 3> point
-                    = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                        * std::cos(2 * M_PI / 6. * point[1])
                                        * std::sin(2 * M_PI / 12. * point[2]);
@@ -556,18 +535,17 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
         }
     }
 
-    std::array<uint32, 3> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Z);
+    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Z);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
+            for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
                 auto localDerivative
                     = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::Z>{});
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
         }

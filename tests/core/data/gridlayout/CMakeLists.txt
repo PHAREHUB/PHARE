@@ -7,6 +7,7 @@ set(SOURCES_INC
   gridlayout_base_params.h
   gridlayout_cell_centered_coord.h
   gridlayout_deriv.h
+  gridlayout_laplacian.h
   gridlayout_field_centered_coord.h
   gridlayout_indexing.h
   gridlayout_params.h
@@ -20,6 +21,7 @@ set(SOURCES_CPP
   gridlayout_allocsize.cpp
   gridlayout_cell_centered_coord.cpp
   gridlayout_deriv.cpp
+  gridlayout_laplacian.cpp
   gridlayout_field_centered_coord.cpp
   gridlayout_indexing.cpp
   test_linear_combinaisons_yee.cpp
