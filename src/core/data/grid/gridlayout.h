@@ -550,6 +550,73 @@ namespace core
         }
 
 
+        /** @brief returns the local laplacian of the Field operand
+         * at a multidimensional index.
+         * The function can perform 1D, 2D and 3D laplacian, depending
+         * on the dimensionality of the GridLayout.
+         */
+        template<typename Field>
+        auto laplacian(Field const& operand, MeshIndex<Field::dimension> index)
+        {
+            static_assert(Field::dimension == dimension,
+                          "field dimension must be equal to gridlayout dimension");
+            constexpr uint32 dirX = 0, dirY = 1, dirZ = 2;
+
+            if constexpr (Field::dimension == 1)
+            {
+                auto prevX = operand(index[0] - 1);
+                auto hereX = operand(index[0]);
+                auto nextX = operand(index[0] + 1);
+
+                return inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
+                       * (nextX - 2.0 * hereX + prevX);
+            }
+
+            else if constexpr (Field::dimension == 2)
+            {
+                auto prevX = operand(index[0] - 1, index[1]);
+                auto hereX = operand(index[0], index[1]);
+                auto nextX = operand(index[0] + 1, index[1]);
+
+                auto lapX = inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
+                            * (nextX - 2.0 * hereX + prevX);
+
+                auto prevY = operand(index[0], index[1] - 1);
+                auto hereY = operand(index[0], index[1]);
+                auto nextY = operand(index[0], index[1] + 1);
+
+                auto lapY = inverseMeshSize_[dirY] * inverseMeshSize_[dirY]
+                            * (nextY - 2.0 * hereY + prevY);
+
+                return lapX + lapY;
+            }
+            else if constexpr (Field::dimension == 3)
+            {
+                auto prevX = operand(index[0] - 1, index[1], index[2]);
+                auto hereX = operand(index[0], index[1], index[2]);
+                auto nextX = operand(index[0] + 1, index[1], index[2]);
+
+                auto lapX = inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
+                            * (nextX - 2.0 * hereX + prevX);
+
+                auto prevY = operand(index[0], index[1] - 1, index[2]);
+                auto hereY = operand(index[0], index[1], index[2]);
+                auto nextY = operand(index[0], index[1] + 1, index[2]);
+
+                auto lapY = inverseMeshSize_[dirY] * inverseMeshSize_[dirY]
+                            * (nextY - 2.0 * hereY + prevY);
+
+                auto prevZ = operand(index[0], index[1], index[2] - 1);
+                auto hereZ = operand(index[0], index[1], index[2]);
+                auto nextZ = operand(index[0], index[1], index[2] + 1);
+
+                auto lapZ = inverseMeshSize_[dirZ] * inverseMeshSize_[dirZ]
+                            * (nextZ - 2.0 * hereZ + prevZ);
+
+                return lapX + lapY + lapZ;
+            }
+        }
+
 
 
         /**
@@ -884,6 +951,35 @@ namespace core
          * interpolation necessary to project By onto Ez.
          */
         auto static constexpr ByToEz() { return GridLayoutImpl::ByToEz(); }
+
+
+
+
+        /**
+         * @brief JxToEx return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Jx onto Ex.
+         */
+        auto static constexpr JxToEx() { return GridLayoutImpl::JxToEx(); }
+
+
+
+
+        /**
+         * @brief JyToEy return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Jy onto Ey.
+         */
+        auto static constexpr JyToEy() { return GridLayoutImpl::JyToEy(); }
+
+
+
+
+        /**
+         * @brief JzToEz return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Jz onto Ez.
+         */
+        auto static constexpr JzToEz() { return GridLayoutImpl::JzToEz(); }
+
+
 
 
     private:

@@ -695,6 +695,84 @@ namespace core
                 return std::array<WeightPoint<dimension>, 2>{P1, P2};
             }
         }
+
+
+
+        auto static constexpr JxToEx()
+        {
+            // Jx is dual primal primal
+            // Ex is dual primal primal
+            // operation is thus dpp to dpp
+            // no shift for a yee grid
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+        }
+
+
+
+        auto static constexpr JyToEy()
+        {
+            // Jy is primal dual primal
+            // Ey is primal dual primal
+            // operation is thus pdp to pdp
+            // no shift for a yee grid
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+        }
+
+
+
+        auto static constexpr JzToEz()
+        {
+            // Jz is primal primal dual
+            // Ez is primal primal dual
+            // operation is thus ppd to ppd
+            // no shift for a yee grid
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+        }
     };
 
 

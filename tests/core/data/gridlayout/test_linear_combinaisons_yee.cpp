@@ -1195,3 +1195,289 @@ TEST(ByToEz, combinaisonOk)
         }
     }
 }
+
+
+
+TEST(JxToEx, combinaisonOk)
+{
+    auto expectedCombinaisons = readFile("linear_coefs_yee_JxToEx.txt");
+    for (auto const& combi : expectedCombinaisons)
+    {
+        auto dim         = combi.dimension;
+        auto interpOrder = combi.interpOrder;
+
+        auto f1D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+            }
+        };
+        auto f2D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            EXPECT_EQ(combi.iy.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+            }
+        };
+        auto f3D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            EXPECT_EQ(combi.iy.size(), actual.size());
+            EXPECT_EQ(combi.iz.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+            }
+        };
+
+        switch (dim)
+        {
+            case 1:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout1DO1::JxToEx();
+                    f1D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout1DO2::JxToEx();
+                    f1D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout1DO3::JxToEx();
+                    f1D(actualCombinaison);
+                }
+                break;
+            case 2:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout2DO1::JxToEx();
+                    f2D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout2DO2::JxToEx();
+                    f2D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout2DO3::JxToEx();
+                    f2D(actualCombinaison);
+                }
+                break;
+            case 3:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout3DO1::JxToEx();
+                    f3D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout3DO2::JxToEx();
+                    f3D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout3DO3::JxToEx();
+                    f3D(actualCombinaison);
+                }
+                break;
+        }
+    }
+}
+
+
+
+TEST(JyToEy, combinaisonOk)
+{
+    auto expectedCombinaisons = readFile("linear_coefs_yee_JyToEy.txt");
+    for (auto const& combi : expectedCombinaisons)
+    {
+        auto dim         = combi.dimension;
+        auto interpOrder = combi.interpOrder;
+
+        auto f1D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+            }
+        };
+        auto f2D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            EXPECT_EQ(combi.iy.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+            }
+        };
+        auto f3D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            EXPECT_EQ(combi.iy.size(), actual.size());
+            EXPECT_EQ(combi.iz.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+            }
+        };
+
+        switch (dim)
+        {
+            case 1:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout1DO1::JyToEy();
+                    f1D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout1DO2::JyToEy();
+                    f1D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout1DO3::JyToEy();
+                    f1D(actualCombinaison);
+                }
+                break;
+            case 2:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout2DO1::JyToEy();
+                    f2D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout2DO2::JyToEy();
+                    f2D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout2DO3::JyToEy();
+                    f2D(actualCombinaison);
+                }
+                break;
+            case 3:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout3DO1::JyToEy();
+                    f3D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout3DO2::JyToEy();
+                    f3D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout3DO3::JyToEy();
+                    f3D(actualCombinaison);
+                }
+                break;
+        }
+    }
+}
+
+
+
+TEST(JzToEz, combinaisonOk)
+{
+    auto expectedCombinaisons = readFile("linear_coefs_yee_JzToEz.txt");
+    for (auto const& combi : expectedCombinaisons)
+    {
+        auto dim         = combi.dimension;
+        auto interpOrder = combi.interpOrder;
+
+        auto f1D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+            }
+        };
+        auto f2D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            EXPECT_EQ(combi.iy.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+            }
+        };
+        auto f3D = [&combi](auto const& actual) {
+            EXPECT_EQ(combi.ix.size(), actual.size());
+            EXPECT_EQ(combi.iy.size(), actual.size());
+            EXPECT_EQ(combi.iz.size(), actual.size());
+            for (std::size_t iPoint = 0; iPoint < actual.size(); ++iPoint)
+            {
+                EXPECT_EQ(combi.ix[iPoint], actual[iPoint].indexes[0]);
+                EXPECT_EQ(combi.iy[iPoint], actual[iPoint].indexes[1]);
+                EXPECT_EQ(combi.iz[iPoint], actual[iPoint].indexes[2]);
+            }
+        };
+
+        switch (dim)
+        {
+            case 1:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout1DO1::JzToEz();
+                    f1D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout1DO2::JzToEz();
+                    f1D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout1DO3::JzToEz();
+                    f1D(actualCombinaison);
+                }
+                break;
+            case 2:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout2DO1::JzToEz();
+                    f2D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout2DO2::JzToEz();
+                    f2D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout2DO3::JzToEz();
+                    f2D(actualCombinaison);
+                }
+                break;
+            case 3:
+                if (interpOrder == 1)
+                {
+                    auto actualCombinaison = GridLayout3DO1::JzToEz();
+                    f3D(actualCombinaison);
+                }
+                else if (interpOrder == 2)
+                {
+                    auto actualCombinaison = GridLayout3DO2::JzToEz();
+                    f3D(actualCombinaison);
+                }
+                else if (interpOrder == 3)
+                {
+                    auto actualCombinaison = GridLayout3DO3::JzToEz();
+                    f3D(actualCombinaison);
+                }
+                break;
+        }
+    }
+}
+

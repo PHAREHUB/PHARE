@@ -183,6 +183,41 @@ def BzToEy(dim, interpOrder):
         return tupleToString((dim,interpOrder,2, 0,0,0, dualToPrimal(interpOrder), 0, 0, 0.5))
 
 
+def JxToEx(dim, interpOrder):
+    """
+    dpp to dpp
+    """
+    if dim == 1:
+        return tupleToString((dim,interpOrder,1, 0, 1.0))
+    elif dim == 2:
+        return tupleToString((dim,interpOrder,1, 0,0, 1.0))
+    elif dim==3:
+        return tupleToString((dim,interpOrder,1, 0,0,0, 1.0))
+
+
+def JyToEy(dim, interpOrder):
+    """
+    pdp to pdp
+    """
+    if dim == 1:
+        return tupleToString((dim,interpOrder,1, 0, 1.0))
+    elif dim == 2:
+        return tupleToString((dim,interpOrder,1, 0,0, 1.0))
+    elif dim==3:
+        return tupleToString((dim,interpOrder,1, 0,0,0, 1.0))
+
+
+def JzToEz(dim, interpOrder):
+    """
+    ppd to ppd
+    """
+    if dim == 1:
+        return tupleToString((dim,interpOrder,1, 0, 1.0))
+    elif dim == 2:
+        return tupleToString((dim,interpOrder,1, 0,0, 1.0))
+    elif dim==3:
+        return tupleToString((dim,interpOrder,1, 0,0,0, 1.0))
+
 
 
 def main(path='./'):
@@ -202,7 +237,10 @@ def main(path='./'):
                 "BxToEy":BxToEy,
                 "BzToEy":BzToEy,
                 "BxToEz":BxToEz,
-                "ByToEz":ByToEz}
+                "ByToEz":ByToEz,
+                "JxToEx":JxToEx,
+                "JyToEy":JyToEy,
+                "JzToEz":JzToEz}
 
 
     for case in cases:
