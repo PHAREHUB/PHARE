@@ -180,6 +180,7 @@ if (test)
   add_subdirectory(tests/core/numerics/pusher)
   add_subdirectory(tests/core/numerics/ampere)
   add_subdirectory(tests/core/numerics/faraday)
+  add_subdirectory(tests/core/numerics/ohm)
 
 endif()
 
