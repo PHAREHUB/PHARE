@@ -127,29 +127,11 @@ namespace core
                 auto const& By = B.getComponent(Component::Y);
                 auto const& Bz = B.getComponent(Component::Z);
 
-                auto vyOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    vyOnEx += wp.coef * Vy(index[0] + wp.indexes[0]);
-                }
-
-                auto vzOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    vzOnEx += wp.coef * Vz(index[0] + wp.indexes[0]);
-                }
-
-                auto byOnEx = 0.0;
-                for (auto const& wp : GridLayout::ByToEx())
-                {
-                    byOnEx += wp.coef * By(index[0] + wp.indexes[0]);
-                }
-
-                auto bzOnEx = 0.0;
-                for (auto const& wp : GridLayout::BzToEx())
-                {
-                    bzOnEx += wp.coef * Bz(index[0] + wp.indexes[0]);
-                }
+                auto constexpr momentsToEx = GridLayout::momentsToEx();
+                auto const vyOnEx          = GridLayout::project(Vy, index, momentsToEx);
+                auto const vzOnEx          = GridLayout::project(Vz, index, momentsToEx);
+                auto const byOnEx          = GridLayout::project(By, index, GridLayout::ByToEx());
+                auto const bzOnEx          = GridLayout::project(Bz, index, GridLayout::BzToEx());
 
                 return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
             }
@@ -158,33 +140,14 @@ namespace core
             {
                 auto const& Vx = Ve.getComponent(Component::X);
                 auto const& Vz = Ve.getComponent(Component::Z);
-
                 auto const& Bx = B.getComponent(Component::X);
                 auto const& Bz = B.getComponent(Component::Z);
 
-                auto vxOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    vxOnEy += wp.coef * Vx(index[0] + wp.indexes[0]);
-                }
-
-                auto vzOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    vzOnEy += wp.coef * Vz(index[0] + wp.indexes[0]);
-                }
-
-                auto bxOnEy = 0.0;
-                for (auto const& wp : GridLayout::BxToEy())
-                {
-                    bxOnEy += wp.coef * Bx(index[0] + wp.indexes[0]);
-                }
-
-                auto bzOnEy = 0.0;
-                for (auto const& wp : GridLayout::BzToEy())
-                {
-                    bzOnEy += wp.coef * Bz(index[0] + wp.indexes[0]);
-                }
+                auto constexpr momentsToEy = GridLayout::momentsToEy();
+                auto const vxOnEy          = GridLayout::project(Vx, index, momentsToEy);
+                auto const vzOnEy          = GridLayout::project(Vz, index, momentsToEy);
+                auto const bxOnEy          = GridLayout::project(Bx, index, GridLayout::BxToEy());
+                auto const bzOnEy          = GridLayout::project(Bz, index, GridLayout::BzToEy());
 
                 return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
             }
@@ -193,33 +156,14 @@ namespace core
             {
                 auto const& Vx = Ve.getComponent(Component::X);
                 auto const& Vy = Ve.getComponent(Component::Y);
-
                 auto const& Bx = B.getComponent(Component::X);
                 auto const& By = B.getComponent(Component::Y);
 
-                auto vxOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    vxOnEz += wp.coef * Vx(index[0] + wp.indexes[0]);
-                }
-
-                auto vyOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    vyOnEz += wp.coef * Vy(index[0] + wp.indexes[0]);
-                }
-
-                auto bxOnEz = 0.0;
-                for (auto const& wp : GridLayout::BxToEz())
-                {
-                    bxOnEz += wp.coef * Bx(index[0] + wp.indexes[0]);
-                }
-
-                auto byOnEz = 0.0;
-                for (auto const& wp : GridLayout::ByToEz())
-                {
-                    byOnEz += wp.coef * By(index[0] + wp.indexes[0]);
-                }
+                auto constexpr momentsToEz = GridLayout::momentsToEz();
+                auto const vxOnEz          = GridLayout::project(Vx, index, momentsToEz);
+                auto const vyOnEz          = GridLayout::project(Vy, index, momentsToEz);
+                auto const bxOnEz          = GridLayout::project(Bx, index, GridLayout::BxToEz());
+                auto const byOnEz          = GridLayout::project(By, index, GridLayout::ByToEz());
 
                 return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
             }
@@ -405,70 +349,31 @@ namespace core
             {
                 auto const& Vy = Ve.getComponent(Component::Y);
                 auto const& Vz = Ve.getComponent(Component::Z);
-
                 auto const& By = B.getComponent(Component::Y);
                 auto const& Bz = B.getComponent(Component::Z);
 
-                auto vyOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    vyOnEx += wp.coef * Vy(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                // vyOnEx = linearCombination(Vy, index, GridLayout::momentsToEx());
-
-                auto vzOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    vzOnEx += wp.coef * Vz(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto byOnEx = 0.0;
-                for (auto const& wp : GridLayout::ByToEx())
-                {
-                    byOnEx += wp.coef * By(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto bzOnEx = 0.0;
-                for (auto const& wp : GridLayout::BzToEx())
-                {
-                    bzOnEx += wp.coef * Bz(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
+                auto constexpr momentsToEx = GridLayout::momentsToEx();
+                auto const vyOnEx          = GridLayout::project(Vy, index, momentsToEx);
+                auto const vzOnEx          = GridLayout::project(Vz, index, momentsToEx);
+                auto const byOnEx          = GridLayout::project(By, index, GridLayout::ByToEx());
+                auto const bzOnEx          = GridLayout::project(Bz, index, GridLayout::BzToEx());
 
                 return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
             }
+
 
             if constexpr (ComponentTag::component == Component::Y)
             {
                 auto const& Vx = Ve.getComponent(Component::X);
                 auto const& Vz = Ve.getComponent(Component::Z);
-
                 auto const& Bx = B.getComponent(Component::X);
                 auto const& Bz = B.getComponent(Component::Z);
 
-                auto vxOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    vxOnEy += wp.coef * Vx(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto vzOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    vzOnEy += wp.coef * Vz(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto bxOnEy = 0.0;
-                for (auto const& wp : GridLayout::BxToEy())
-                {
-                    bxOnEy += wp.coef * Bx(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto bzOnEy = 0.0;
-                for (auto const& wp : GridLayout::BzToEy())
-                {
-                    bzOnEy += wp.coef * Bz(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
+                auto constexpr momentsToEy = GridLayout::momentsToEy();
+                auto const vxOnEy          = GridLayout::project(Vx, index, momentsToEy);
+                auto const vzOnEy          = GridLayout::project(Vz, index, momentsToEy);
+                auto const bxOnEy          = GridLayout::project(Bx, index, GridLayout::BxToEy());
+                auto const bzOnEy          = GridLayout::project(Bz, index, GridLayout::BzToEy());
 
                 return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
             }
@@ -477,33 +382,14 @@ namespace core
             {
                 auto const& Vx = Ve.getComponent(Component::X);
                 auto const& Vy = Ve.getComponent(Component::Y);
-
                 auto const& Bx = B.getComponent(Component::X);
                 auto const& By = B.getComponent(Component::Y);
 
-                auto vxOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    vxOnEz += wp.coef * Vx(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto vyOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    vyOnEz += wp.coef * Vy(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto bxOnEz = 0.0;
-                for (auto const& wp : GridLayout::BxToEz())
-                {
-                    bxOnEz += wp.coef * Bx(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
-                auto byOnEz = 0.0;
-                for (auto const& wp : GridLayout::ByToEz())
-                {
-                    byOnEz += wp.coef * By(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
+                auto constexpr momentsToEz = GridLayout::momentsToEz();
+                auto const vxOnEz          = GridLayout::project(Vx, index, momentsToEz);
+                auto const vyOnEz          = GridLayout::project(Vy, index, momentsToEz);
+                auto const bxOnEz          = GridLayout::project(Bx, index, GridLayout::BxToEz());
+                auto const byOnEz          = GridLayout::project(By, index, GridLayout::ByToEz());
 
                 return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
             }
@@ -514,12 +400,14 @@ namespace core
         {
             if constexpr (ComponentTag::component == Component::X)
             {
-                auto nOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    nOnEx += wp.coef * n(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
+                auto const nOnEx = GridLayout::project(n, index, GridLayout::momentsToEx());
 
+                // one problem here is that since P is universally assumed to be ppp
+                // deriv will put it on dpp so this line assumes Ex is on dpp
+                // which is not true for all layouts.
+                // the problem is not that the derivative puts ppp on dpp
+                // but rather that we get a dpp and we should not know it is OK for Ex
+                // this comment is here but applies everywhere gradP falls on E
                 auto gradPOnEx = this->layout_->deriv(
                     Pe, index, DirectionTag<Direction::X>{}); // TODO : issue 3391
 
@@ -528,11 +416,7 @@ namespace core
 
             if constexpr (ComponentTag::component == Component::Y)
             {
-                auto nOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    nOnEy += wp.coef * n(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
+                auto const nOnEy = GridLayout::project(n, index, GridLayout::momentsToEy());
 
                 auto gradPOnEy = this->layout_->deriv(
                     Pe, index, DirectionTag<Direction::Y>{}); // TODO : issue 3391
@@ -551,44 +435,26 @@ namespace core
         template<typename VecField, typename ComponentTag>
         auto resistive_(VecField const& J, MeshIndex<2> index, ComponentTag)
         {
-            auto const eta = 1.0; // TODO : eta should comme from input file
+            auto const eta = 1.0; // TODO :3302  eta should comme from input file
 
             if constexpr (ComponentTag::component == Component::X)
             {
-                auto const& Jx = J.getComponent(Component::X);
-
-                auto jxOnEx = 0.0;
-                for (auto const& wp : GridLayout::JxToEx())
-                {
-                    jxOnEx += wp.coef * Jx(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
+                auto const& Jx    = J.getComponent(Component::X);
+                auto const jxOnEx = GridLayout::project(Jx, index, GridLayout::JxToEx());
                 return eta * jxOnEx;
             }
 
             if constexpr (ComponentTag::component == Component::Y)
             {
-                auto const& Jy = J.getComponent(Component::Y);
-
-                auto jyOnEy = 0.0;
-                for (auto const& wp : GridLayout::JyToEy())
-                {
-                    jyOnEy += wp.coef * Jy(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
+                auto const& Jy    = J.getComponent(Component::Y);
+                auto const jyOnEy = GridLayout::project(Jy, index, GridLayout::JyToEy());
                 return eta * jyOnEy;
             }
 
             if constexpr (ComponentTag::component == Component::Z)
             {
-                auto const& Jz = J.getComponent(Component::Z);
-
-                auto jzOnEz = 0.0;
-                for (auto const& wp : GridLayout::JzToEz())
-                {
-                    jzOnEz += wp.coef * Jz(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-
+                auto const& Jz    = J.getComponent(Component::Z);
+                auto const jzOnEz = GridLayout::project(Jz, index, GridLayout::JzToEz());
                 return eta * jzOnEz;
             }
         }
@@ -597,32 +463,26 @@ namespace core
         template<typename VecField, typename ComponentTag>
         auto hyperresistive_(VecField const& J, MeshIndex<2> index, ComponentTag)
         {
-            auto const nu = 0.001; // TODO : nu should comme from input file
+            auto const nu = 0.001; // TODO 3302 : nu should comme from input file
 
             if constexpr (ComponentTag::component == Component::X)
             {
                 auto const& Jx = J.getComponent(Component::X);
-
-                auto lapJx = this->layout_->laplacian(Jx, index); // TODO : issue 3391
-
+                auto lapJx     = this->layout_->laplacian(Jx, index); // TODO : issue 3391
                 return -nu * lapJx;
             }
 
             if constexpr (ComponentTag::component == Component::Y)
             {
                 auto const& Jy = J.getComponent(Component::Y);
-
-                auto lapJy = this->layout_->laplacian(Jy, index); // TODO : issue 3391
-
+                auto lapJy     = this->layout_->laplacian(Jy, index); // TODO : issue 3391
                 return -nu * lapJy;
             }
 
             if constexpr (ComponentTag::component == Component::Z)
             {
                 auto const& Jz = J.getComponent(Component::Z);
-
-                auto lapJz = this->layout_->laplacian(Jz, index); // TODO : issue 3391
-
+                auto lapJz     = this->layout_->laplacian(Jz, index); // TODO : issue 3391
                 return -nu * lapJz;
             }
         }
@@ -719,41 +579,14 @@ namespace core
             {
                 auto const& Vy = Ve.getComponent(Component::Y);
                 auto const& Vz = Ve.getComponent(Component::Z);
-
                 auto const& By = B.getComponent(Component::Y);
                 auto const& Bz = B.getComponent(Component::Z);
 
-                auto vyOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    vyOnEx += wp.coef
-                              * Vy(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto vzOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    vzOnEx += wp.coef
-                              * Vz(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[1] + wp.indexes[2]);
-                }
-
-                auto byOnEx = 0.0;
-                for (auto const& wp : GridLayout::ByToEx())
-                {
-                    byOnEx += wp.coef
-                              * By(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto bzOnEx = 0.0;
-                for (auto const& wp : GridLayout::BzToEx())
-                {
-                    bzOnEx += wp.coef
-                              * Bz(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
+                auto constexpr momentsToEx = GridLayout::momentsToEx();
+                auto const vyOnEx          = GridLayout::project(Vy, index, momentsToEx);
+                auto const vzOnEx          = GridLayout::project(Vz, index, momentsToEx);
+                auto const byOnEx          = GridLayout::project(By, index, GridLayout::ByToEx());
+                auto const bzOnEx          = GridLayout::project(Bz, index, GridLayout::BzToEx());
 
                 return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
             }
@@ -762,41 +595,14 @@ namespace core
             {
                 auto const& Vx = Ve.getComponent(Component::X);
                 auto const& Vz = Ve.getComponent(Component::Z);
-
                 auto const& Bx = B.getComponent(Component::X);
                 auto const& Bz = B.getComponent(Component::Z);
 
-                auto vxOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    vxOnEy += wp.coef
-                              * Vx(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto vzOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    vzOnEy += wp.coef
-                              * Vz(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto bxOnEy = 0.0;
-                for (auto const& wp : GridLayout::BxToEy())
-                {
-                    bxOnEy += wp.coef
-                              * Bx(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto bzOnEy = 0.0;
-                for (auto const& wp : GridLayout::BzToEy())
-                {
-                    bzOnEy += wp.coef
-                              * Bz(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
+                auto constexpr momentsToEy = GridLayout::momentsToEy();
+                auto const vxOnEy          = GridLayout::project(Vx, index, momentsToEy);
+                auto const vzOnEy          = GridLayout::project(Vz, index, momentsToEy);
+                auto const bxOnEy          = GridLayout::project(Bx, index, GridLayout::BxToEy());
+                auto const bzOnEy          = GridLayout::project(Bz, index, GridLayout::BzToEy());
 
                 return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
             }
@@ -805,41 +611,14 @@ namespace core
             {
                 auto const& Vx = Ve.getComponent(Component::X);
                 auto const& Vy = Ve.getComponent(Component::Y);
-
                 auto const& Bx = B.getComponent(Component::X);
                 auto const& By = B.getComponent(Component::Y);
 
-                auto vxOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    vxOnEz += wp.coef
-                              * Vx(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto vyOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    vyOnEz += wp.coef
-                              * Vy(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto bxOnEz = 0.0;
-                for (auto const& wp : GridLayout::BxToEz())
-                {
-                    bxOnEz += wp.coef
-                              * Bx(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
-                auto byOnEz = 0.0;
-                for (auto const& wp : GridLayout::ByToEz())
-                {
-                    byOnEz += wp.coef
-                              * By(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
+                auto constexpr momentsToEz = GridLayout::momentsToEz();
+                auto const vxOnEz          = GridLayout::project(Vx, index, momentsToEz);
+                auto const vyOnEz          = GridLayout::project(Vy, index, momentsToEz);
+                auto const bxOnEz          = GridLayout::project(Bx, index, GridLayout::BxToEz());
+                auto const byOnEz          = GridLayout::project(By, index, GridLayout::ByToEz());
 
                 return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
             }
@@ -850,13 +629,7 @@ namespace core
         {
             if constexpr (ComponentTag::component == Component::X)
             {
-                auto nOnEx = 0.0;
-                for (auto const& wp : GridLayout::momentsToEx())
-                {
-                    nOnEx += wp.coef
-                             * n(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                 index[2] + wp.indexes[2]);
-                }
+                auto const nOnEx = GridLayout::project(n, index, GridLayout::momentsToEx());
 
                 auto gradPOnEx = this->layout_->deriv(
                     Pe, index, DirectionTag<Direction::X>{}); // TODO : issue 3391
@@ -866,13 +639,7 @@ namespace core
 
             if constexpr (ComponentTag::component == Component::Y)
             {
-                auto nOnEy = 0.0;
-                for (auto const& wp : GridLayout::momentsToEy())
-                {
-                    nOnEy += wp.coef
-                             * n(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                 index[2] + wp.indexes[2]);
-                }
+                auto const nOnEy = GridLayout::project(n, index, GridLayout::momentsToEy());
 
                 auto gradPOnEy = this->layout_->deriv(
                     Pe, index, DirectionTag<Direction::Y>{}); // TODO : issue 3391
@@ -882,13 +649,7 @@ namespace core
 
             if constexpr (ComponentTag::component == Component::Z)
             {
-                auto nOnEz = 0.0;
-                for (auto const& wp : GridLayout::momentsToEz())
-                {
-                    nOnEz += wp.coef
-                             * n(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                 index[2] + wp.indexes[2]);
-                }
+                auto const nOnEz = GridLayout::project(n, index, GridLayout::momentsToEz());
 
                 auto gradPOnEz = this->layout_->deriv(
                     Pe, index, DirectionTag<Direction::Z>{}); // TODO : issue 3391
@@ -905,46 +666,22 @@ namespace core
 
             if constexpr (ComponentTag::component == Component::X)
             {
-                auto const& Jx = J.getComponent(Component::X);
-
-                auto jxOnEx = 0.0;
-                for (auto const& wp : GridLayout::JxToEx())
-                {
-                    jxOnEx += wp.coef
-                              * Jx(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
+                auto const& Jx    = J.getComponent(Component::X);
+                auto const jxOnEx = GridLayout::project(Jx, index, GridLayout::JxToEx());
                 return eta * jxOnEx;
             }
 
             if constexpr (ComponentTag::component == Component::Y)
             {
-                auto const& Jy = J.getComponent(Component::Y);
-
-                auto jyOnEy = 0.0;
-                for (auto const& wp : GridLayout::JyToEy())
-                {
-                    jyOnEy += wp.coef
-                              * Jy(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
+                auto const& Jy    = J.getComponent(Component::Y);
+                auto const jyOnEy = GridLayout::project(Jy, index, GridLayout::JyToEy());
                 return eta * jyOnEy;
             }
 
             if constexpr (ComponentTag::component == Component::Z)
             {
-                auto const& Jz = J.getComponent(Component::Z);
-
-                auto jzOnEz = 0.0;
-                for (auto const& wp : GridLayout::JzToEz())
-                {
-                    jzOnEz += wp.coef
-                              * Jz(index[0] + wp.indexes[0], index[2] + wp.indexes[1],
-                                   index[2] + wp.indexes[2]);
-                }
-
+                auto const& Jz    = J.getComponent(Component::Z);
+                auto const jzOnEz = GridLayout::project(Jz, index, GridLayout::JzToEz());
                 return eta * jzOnEz;
             }
         }
