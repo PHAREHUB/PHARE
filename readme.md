@@ -41,14 +41,15 @@ User documentation can be found here...
 
 ### Active core team
 
-- Dr. Nicolas Aunai ([LPP](www.lpp.fr))
-- Thibault Payet ([LPP](wwww.lpp.fr))
-- Dr. Roch Smets ([LPP](www.lpp.fr))
-- Dr. Andrea Ciardi ([LERMA](https://lerma.obspm.fr))
+- Nicolas Aunai ([LPP](www.lpp.fr))
+- Roch Smets ([LPP](www.lpp.fr))
+- Andrea Ciardi ([LERMA](https://lerma.obspm.fr))
+- Philip Deegan (https://github.com/Dekken)
 
 ### Former collaborators
 
-- Dr. Mathieu Drouin
+- Thibault Payet ([LPP](https://github.com/monwarez))
+- Mathieu Drouin
 
 
 
