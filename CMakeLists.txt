@@ -43,7 +43,7 @@ if (cppcheck)
 
     add_custom_command(
       OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
-      COMMAND ${Cppcheck} --enable=all --std=c++11 --language=c++ --xml
+      COMMAND ${Cppcheck} --enable=all --std=c++11 --language=c++ --xml -i${CMAKE_CURRENT_LIST_DIR}/subprojects
       --project=${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json 2> ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
       )
 
@@ -80,7 +80,7 @@ if (NOT SAMRAI_FOUND)
 
   if (NOT EXISTS ${SAMRAI_SRCDIR})
     execute_process(
-      COMMAND ${Git} clone https://github.com/monwarez/SAMRAI ${SAMRAI_SRCDIR} --branch add-install --recursive
+      COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b master --recursive --depth 10
       )
   endif()
 
@@ -92,8 +92,11 @@ if (NOT SAMRAI_FOUND)
 
 endif()
 
-
-
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/include/SAMRAI")
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/build/include
+)
+endif()
 
 #*******************************************************************************
 #* Test and coverage option
