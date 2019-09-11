@@ -92,8 +92,11 @@ if (NOT SAMRAI_FOUND)
 
 endif()
 
-
-
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/include/SAMRAI")
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/build/include
+)
+endif()
 
 #*******************************************************************************
 #* Test and coverage option
