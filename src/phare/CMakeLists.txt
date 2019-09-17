@@ -8,7 +8,7 @@ target_include_directories(initializer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
 
-target_link_libraries(phare-exe PUBLIC phare_core phare_samrai_interface initializer)
+target_link_libraries(phare-exe PUBLIC phare_core phare_amr initializer)
 
 
 # this is the script that PHARE runs to prepare pythonpath in case pyphare is
