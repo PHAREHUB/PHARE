@@ -63,6 +63,8 @@ namespace amr_interface
     public:
         VecFieldDescriptor modelMagnetic;
         VecFieldDescriptor modelElectric;
+        VecFieldDescriptor modelIonBulkVelocity;
+        FieldDescriptor modelIonDensity;
 
 
         //! names of the magnetic quantities that will be communicated by

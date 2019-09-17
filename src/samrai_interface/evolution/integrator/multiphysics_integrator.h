@@ -443,6 +443,9 @@ namespace amr_interface
                                      const std::vector<double>& oldTimes) override
         {
             // TODO use messengers to sync with coarser
+            auto& toCoarser = getMessengerWithCoarser_(finestLevel);
+            auto level      = hierarchy->getPatchLevel(finestLevel);
+            toCoarser.synchronize(*level);
         }
 
 

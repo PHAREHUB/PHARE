@@ -199,6 +199,9 @@ namespace amr_interface
 
 
 
+        virtual void synchronize(SAMRAI::hier::PatchLevel& level) = 0;
+
+
         /**
          * @brief fineModelName returns the name of the fine model involved in the messenger
          * @return

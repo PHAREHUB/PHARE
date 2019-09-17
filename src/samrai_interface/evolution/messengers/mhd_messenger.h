@@ -99,6 +99,16 @@ namespace amr_interface
         {
         }
 
+
+
+        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        {
+            (void)level;
+            // call coarsning schedules...
+        }
+
+
+
         virtual std::string name() override { return stratName; }
 
         virtual ~MHDMessenger() = default;

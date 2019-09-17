@@ -80,12 +80,6 @@ namespace amr_interface
 
 
 
-        // synchronization/coarsening methods
-        virtual void syncMagnetic(VecFieldT& B)  = 0;
-        virtual void syncElectric(VecFieldT& E)  = 0;
-        virtual void syncIonMoments(IonsT& ions) = 0;
-
-
         virtual std::string fineModelName() const = 0;
 
         virtual std::string coarseModelName() const = 0;
@@ -106,6 +100,9 @@ namespace amr_interface
         virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                     double const initDataTime)
             = 0;
+
+
+        virtual void synchronize(SAMRAI::hier::PatchLevel& level) = 0;
 
 
         std::string name() const { return stratname_; }

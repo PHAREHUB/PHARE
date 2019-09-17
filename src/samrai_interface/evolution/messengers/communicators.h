@@ -15,7 +15,7 @@ namespace PHARE
 {
 namespace amr_interface
 {
-    enum class CommunicatorType {
+    enum class RefinerType {
         GhostField,
         InitField,
         InitInteriorPart,
@@ -29,8 +29,8 @@ namespace amr_interface
      * schedules It contains a QuantityCommunicator for all quantities registered to the Messenger
      * for ghost, init etc.
      */
-    template<CommunicatorType Type>
-    class Communicators
+    template<RefinerType Type>
+    class RefinerPool
     {
     public:
         /**
@@ -46,7 +46,11 @@ namespace amr_interface
                  std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, std::string key,
                  std::shared_ptr<ResourcesManager> const& rm)
         {
-            add_(makeCommunicator(descriptor, rm, refineOp), key);
+            auto const [it, success]
+                = refiners_.insert({key, makeRefiner(descriptor, rm, refineOp)});
+
+            if (!success)
+                throw std::runtime_error(key + " is already registered");
         }
 
 
@@ -66,9 +70,11 @@ namespace amr_interface
                  std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
                  std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp, std::string key)
         {
-            add_(makeCommunicator(ghostDescriptor, modelDescriptor, oldModelDescriptor, rm,
-                                  refineOp, timeOp),
-                 key);
+            auto const [it, success]
+                = refiners_.insert({key, makeRefiner(ghostDescriptor, modelDescriptor,
+                                                     oldModelDescriptor, rm, refineOp, timeOp)});
+            if (!success)
+                throw std::runtime_error(key + " is already registered");
         }
 
 
@@ -86,20 +92,20 @@ namespace amr_interface
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                            std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
         {
-            for (auto& [_, communicator] : communicators_)
+            for (auto& [_, refiner] : refiners_)
             {
-                auto& algo       = communicator.algo;
+                auto& algo       = refiner.algo;
                 auto levelNumber = level->getLevelNumber();
 
 
                 // for GhostField we need schedules that take on the level where there is an overlap
                 // (there is always for patches lying inside the level)
                 // and goes to coarser level where there is not (patch lying on the level border)
-                if constexpr (Type == CommunicatorType::GhostField)
+                if constexpr (Type == RefinerType::GhostField)
                 {
                     auto schedule = algo->createSchedule(
                         level, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-                    communicator.add(schedule, levelNumber);
+                    refiner.add(schedule, levelNumber);
                 }
 
                 // this createSchedule overload is used to initialize fields.
@@ -107,11 +113,10 @@ namespace amr_interface
                 // src since we want to take from coarser level everywhere. using the createSchedule
                 // overload that takes level, next_coarser_level only would result in interior ghost
                 // nodes to be filled with interior of neighbor patches but there is nothing there.
-                else if constexpr (Type == CommunicatorType::InitField)
+                else if constexpr (Type == RefinerType::InitField)
                 {
-                    communicator.add(
-                        algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
-                        levelNumber);
+                    refiner.add(algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                                levelNumber);
                 }
 
 
@@ -123,33 +128,31 @@ namespace amr_interface
                 // the their ghost regions with refined particles would not ensure the ghosts to be
                 // clones of neighbor patches particles if the splitting from coarser levels is not
                 // deterministic.
-                else if constexpr (Type == CommunicatorType::InitInteriorPart)
+                else if constexpr (Type == RefinerType::InitInteriorPart)
                 {
-                    communicator.add(
-                        algo->createSchedule(
-                            std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
-                            nullptr, levelNumber - 1, hierarchy),
-                        levelNumber);
+                    refiner.add(algo->createSchedule(
+                                    std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
+                                    level, nullptr, levelNumber - 1, hierarchy),
+                                levelNumber);
                 }
 
                 // here we create a schedule that will refine particles from coarser level and put
                 // them into the level coarse to fine boundary. These are the levelGhostParticlesOld
                 // particles. we thus take the same createSchedule overload as above but pass it a
                 // PatchLevelBorderFillPattern.
-                else if constexpr (Type == CommunicatorType::LevelBorderParticles)
+                else if constexpr (Type == RefinerType::LevelBorderParticles)
                 {
-                    communicator.add(
-                        algo->createSchedule(
-                            std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                            nullptr, levelNumber - 1, hierarchy),
-                        levelNumber);
+                    refiner.add(algo->createSchedule(
+                                    std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
+                                    level, nullptr, levelNumber - 1, hierarchy),
+                                levelNumber);
                 }
 
                 // this branch is used to create a schedule that will transfer particles into the
                 // patches' ghost zones.
-                else if constexpr (Type == CommunicatorType::InteriorGhostParticles)
+                else if constexpr (Type == RefinerType::InteriorGhostParticles)
                 {
-                    communicator.add(algo->createSchedule(level), levelNumber);
+                    refiner.add(algo->createSchedule(level), levelNumber);
                 }
             }
         }
@@ -169,7 +172,7 @@ namespace amr_interface
          */
         void fill(int levelNumber, double initDataTime) const
         {
-            for (auto& [key, communicator] : communicators_)
+            for (auto& [key, communicator] : refiners_)
             {
                 if (communicator.algo == nullptr)
                 {
@@ -199,7 +202,7 @@ namespace amr_interface
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                             double const initDataTime)
         {
-            for (auto& [key, refiner] : communicators_)
+            for (auto& [key, refiner] : refiners_)
             {
                 auto& algo = refiner.algo;
 
@@ -242,19 +245,10 @@ namespace amr_interface
 
 
     private:
-        void add_(QuantityCommunicator&& communicator, std::string const& key)
-        {
-            if (communicators_.find(key) == std::end(communicators_))
-                communicators_[key] = std::move(communicator);
-            else
-                throw std::runtime_error(key + " is already registered");
-        }
-
-
         std::optional<std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
         findSchedule_(std::string const& name, int levelNumber)
         {
-            if (auto mapIter = communicators_.find(name); mapIter != std::end(communicators_))
+            if (auto mapIter = refiners_.find(name); mapIter != std::end(refiners_))
             {
                 return mapIter->second.findSchedule(levelNumber);
             }
@@ -266,8 +260,82 @@ namespace amr_interface
 
 
 
-        std::map<std::string, QuantityCommunicator> communicators_;
+        std::map<std::string, Communicator<Refiner>> refiners_;
     };
+
+
+
+
+    template<std::size_t dimension>
+    class SynchronizerPool
+    {
+    public:
+        template<typename Descriptor, typename ResourcesManager>
+        void add(Descriptor const& descriptor,
+                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp, std::string key,
+                 std::shared_ptr<ResourcesManager> const& rm)
+        {
+            auto const [it, success] = synchronizers_.insert(
+                {key, makeSynchronizer<ResourcesManager, dimension>(descriptor, rm, coarsenOp)});
+        }
+
+
+
+
+        template<typename ResourcesManager>
+        void add(VecFieldDescriptor const& descriptor, std::shared_ptr<ResourcesManager> const& rm,
+                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp, std::string key)
+        {
+            auto const [it, success] = synchronizers_.insert(
+                {key, makeSynchronizer<ResourcesManager, dimension>(descriptor, rm, coarsenOp)});
+
+            if (!success)
+                throw std::runtime_error(key + " is already registered");
+        }
+
+
+
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+        {
+            for (auto& [_, synchronizer] : synchronizers_)
+            {
+                auto& algo              = synchronizer.algo;
+                auto levelNumber        = level->getLevelNumber();
+                auto const& coarseLevel = hierarchy->getPatchLevel(levelNumber - 1);
+
+                auto schedule = algo->createSchedule(coarseLevel, level);
+                synchronizer.add(std::move(schedule), levelNumber);
+            }
+        }
+
+
+
+        void sync(int const levelNumber)
+        {
+            for (auto& [key, synchronizer] : synchronizers_)
+            {
+                if (synchronizer.algo == nullptr)
+                {
+                    throw std::runtime_error("Algorithm is nullptr");
+                }
+
+                auto schedule = synchronizer.findSchedule(levelNumber);
+                if (schedule)
+                {
+                    (*schedule)->coarsenData();
+                }
+                else
+                {
+                    throw std::runtime_error("Error - schedule cannot be found for this level");
+                }
+            }
+        }
+
+    private:
+        std::map<std::string, Communicator<Synchronizer, dimension>> synchronizers_;
+    };
+
 
 } // namespace amr_interface
 } // namespace PHARE

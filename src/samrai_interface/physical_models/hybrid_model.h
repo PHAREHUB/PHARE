@@ -66,7 +66,7 @@ namespace amr_interface
             }
 
 
-            // now initialize the fields
+            // TODO https://github.com/PHAREHUB/PHARE/issues/11 now initialize the fields
         }
 
 
@@ -89,8 +89,10 @@ namespace amr_interface
         {
             auto& modelInfo = dynamic_cast<HybridMessengerInfo&>(*info);
 
-            modelInfo.modelMagnetic = VecFieldDescriptor{state.electromag.B};
-            modelInfo.modelElectric = VecFieldDescriptor{state.electromag.E};
+            modelInfo.modelMagnetic        = VecFieldDescriptor{state.electromag.B};
+            modelInfo.modelElectric        = VecFieldDescriptor{state.electromag.E};
+            modelInfo.modelIonDensity      = state.ions.densityName();
+            modelInfo.modelIonBulkVelocity = VecFieldDescriptor{state.ions.velocity()};
 
             modelInfo.initElectric.emplace_back(state.electromag.E);
             modelInfo.initMagnetic.emplace_back(state.electromag.B);

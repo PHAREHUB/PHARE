@@ -107,8 +107,9 @@ namespace amr_interface
             std::unique_ptr<HybridMessengerInfo> hybridInfo{
                 dynamic_cast<HybridMessengerInfo*>(fromCoarserInfo.release())};
 
-            registerForSpaceTimeComm_(hybridInfo);
-            registerForSpaceComm_(hybridInfo);
+            registerGhostComms_(hybridInfo);
+            registerInitComms(hybridInfo);
+            registerSyncComms(hybridInfo);
         }
 
 
@@ -150,11 +151,18 @@ namespace amr_interface
             // so we don't create these schedules if root level
             if (levelNumber != rootLevelNumber)
             {
+                // those are for refinement
                 magneticInit_.registerLevel(hierarchy, level);
                 electricInit_.registerLevel(hierarchy, level);
                 interiorParticles_.registerLevel(hierarchy, level);
                 levelGhostParticlesOld_.registerLevel(hierarchy, level);
                 levelGhostParticlesNew_.registerLevel(hierarchy, level);
+
+                // and these for coarsening
+                magnetoSynchronizers_.registerLevel(hierarchy, level);
+                electroSynchronizers_.registerLevel(hierarchy, level);
+                densitySynchronizers_.registerLevel(hierarchy, level);
+                ionBulkVelSynchronizers_.registerLevel(hierarchy, level);
             }
         }
 
@@ -347,29 +355,6 @@ namespace amr_interface
 
 
 
-
-        // synchronization/coarsening methods
-        virtual void syncMagnetic(VecFieldT& B) override
-        {
-            //
-            std::cout << "perform coarse magnetic sync to the next coarser level\n";
-        }
-
-
-        virtual void syncElectric(VecFieldT& E) override
-        {
-            //
-            std::cout << "perform coarse electric sync to the next coarser level\n";
-        }
-
-
-        virtual void syncIonMoments(IonsT& ions) override
-        {
-            //
-            std::cout << "perform coarse moments sync to the next coarser level\n";
-        }
-
-
         /**
          * @brief firstStep : in the HybridHybridMessengerStrategy, the firstStep method is used to
          * get level border ghost particles from the next coarser level. These particles are defined
@@ -479,25 +464,37 @@ namespace amr_interface
 
 
 
+        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        {
+            auto levelNumber = level.getLevelNumber();
+
+            // call coarsning schedules...
+            magnetoSynchronizers_.sync(levelNumber);
+            electroSynchronizers_.sync(levelNumber);
+            densitySynchronizers_.sync(levelNumber);
+            ionBulkVelSynchronizers_.sync(levelNumber);
+        }
+
+
 
     private:
-        void registerForSpaceTimeComm_(std::unique_ptr<HybridMessengerInfo> const& info)
+        void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             auto const& Eold = EM_old_.E;
             auto const& Bold = EM_old_.B;
 
 
-            makeCommunicators_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
-                               electricGhosts_);
+            fillRefiners_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
+                          electricGhosts_);
 
-            makeCommunicators_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
-                               magneticGhosts_);
+            fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
+                          magneticGhosts_);
         }
 
 
 
 
-        void registerForSpaceComm_(std::unique_ptr<HybridMessengerInfo> const& info)
+        void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             auto makeKeys = [](auto const& descriptor) {
                 std::vector<std::string> keys;
@@ -506,29 +503,47 @@ namespace amr_interface
                 return keys;
             };
 
-            makeCommunicators_(info->initMagnetic, fieldRefineOp_, magneticInit_,
-                               makeKeys(info->initMagnetic));
+            fillRefiners_(info->initMagnetic, fieldRefineOp_, magneticInit_,
+                          makeKeys(info->initMagnetic));
 
-            makeCommunicators_(info->initElectric, fieldRefineOp_, electricInit_,
-                               makeKeys(info->initElectric));
-
-
-            makeCommunicators_(info->interiorParticles, interiorParticleRefineOp_,
-                               interiorParticles_, info->interiorParticles);
+            fillRefiners_(info->initElectric, fieldRefineOp_, electricInit_,
+                          makeKeys(info->initElectric));
 
 
-            makeCommunicators_(info->levelGhostParticlesOld, levelGhostParticlesOldOp_,
-                               levelGhostParticlesOld_, info->levelGhostParticlesOld);
+            fillRefiners_(info->interiorParticles, interiorParticleRefineOp_, interiorParticles_,
+                          info->interiorParticles);
 
 
-            makeCommunicators_(info->levelGhostParticlesNew, levelGhostParticlesNewOp_,
-                               levelGhostParticlesNew_, info->levelGhostParticlesNew);
+            fillRefiners_(info->levelGhostParticlesOld, levelGhostParticlesOldOp_,
+                          levelGhostParticlesOld_, info->levelGhostParticlesOld);
 
 
-            makeCommunicators_(info->patchGhostParticles, nullptr, patchGhostParticles_,
-                               info->patchGhostParticles);
+            fillRefiners_(info->levelGhostParticlesNew, levelGhostParticlesNewOp_,
+                          levelGhostParticlesNew_, info->levelGhostParticlesNew);
+
+
+            fillRefiners_(info->patchGhostParticles, nullptr, patchGhostParticles_,
+                          info->patchGhostParticles);
         }
 
+
+
+
+        void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
+        {
+            magnetoSynchronizers_.add(info->modelMagnetic, resourcesManager_, fieldCoarseningOp_,
+                                      info->modelMagnetic.vecName);
+
+            electroSynchronizers_.add(info->modelElectric, resourcesManager_, fieldCoarseningOp_,
+                                      info->modelElectric.vecName);
+
+            ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, resourcesManager_,
+                                         fieldCoarseningOp_, info->modelIonBulkVelocity.vecName);
+
+
+            densitySynchronizers_.add(info->modelIonDensity, fieldCoarseningOp_,
+                                      info->modelIonDensity, resourcesManager_);
+        }
 
 
         /**
@@ -546,30 +561,30 @@ namespace amr_interface
          * needed, at t_coarse. These are typically internal variables of the messenger, like Eold
          * or Bold.
          */
-        void makeCommunicators_(std::vector<VecFieldDescriptor> const& ghostVecs,
-                                VecFieldDescriptor const& modelVec,
-                                VecFieldDescriptor const& oldModelVec,
-                                Communicators<CommunicatorType::GhostField>& communicators)
+        void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
+                           VecFieldDescriptor const& modelVec,
+                           VecFieldDescriptor const& oldModelVec,
+                           RefinerPool<RefinerType::GhostField>& refiners)
         {
             for (auto const& ghostVec : ghostVecs)
             {
-                communicators.add(ghostVec, modelVec, oldModelVec, resourcesManager_,
-                                  fieldRefineOp_, fieldTimeOp_, ghostVec.vecName);
+                refiners.add(ghostVec, modelVec, oldModelVec, resourcesManager_, fieldRefineOp_,
+                             fieldTimeOp_, ghostVec.vecName);
             }
         }
 
 
 
 
-        template<typename Descriptors, typename Communicators>
-        void makeCommunicators_(Descriptors const& descriptors,
-                                std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                                Communicators& communicators, std::vector<std::string> keys)
+        template<typename Descriptors, typename RefinerPool>
+        void fillRefiners_(Descriptors const& descriptors,
+                           std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                           RefinerPool& refiners, std::vector<std::string> keys)
         {
             auto key = std::begin(keys);
             for (auto const& descriptor : descriptors)
             {
-                communicators.add(descriptor, refineOp, *key++, resourcesManager_);
+                refiners.add(descriptor, refineOp, *key++, resourcesManager_);
             }
         }
 
@@ -654,29 +669,37 @@ namespace amr_interface
 
 
         //! store communicators for magnetic fields that need ghosts to be filled
-        Communicators<CommunicatorType::GhostField> magneticGhosts_;
+        RefinerPool<RefinerType::GhostField> magneticGhosts_;
 
         //! store communicators for magnetic fields that need to be initialized
-        Communicators<CommunicatorType::InitField> magneticInit_;
+        RefinerPool<RefinerType::InitField> magneticInit_;
 
         //! store refiners for electric fields that need ghosts to be filled
-        Communicators<CommunicatorType::GhostField> electricGhosts_;
+        RefinerPool<RefinerType::GhostField> electricGhosts_;
 
         //! store communicators for electric fields that need to be initializes
-        Communicators<CommunicatorType::InitField> electricInit_;
+        RefinerPool<RefinerType::InitField> electricInit_;
 
         // algo and schedule used to initialize domain particles
         // from coarser level using particleRefineOp<domain>
-        Communicators<CommunicatorType::InitInteriorPart> interiorParticles_;
+        RefinerPool<RefinerType::InitInteriorPart> interiorParticles_;
 
         //! store communicators for coarse to fine particles old
-        Communicators<CommunicatorType::LevelBorderParticles> levelGhostParticlesOld_;
+        RefinerPool<RefinerType::LevelBorderParticles> levelGhostParticlesOld_;
 
         //! store communicators for coarse to fine particles new
-        Communicators<CommunicatorType::LevelBorderParticles> levelGhostParticlesNew_;
+        RefinerPool<RefinerType::LevelBorderParticles> levelGhostParticlesNew_;
 
         // keys : model particles (initialization and 2nd push), temporaryParticles (firstPush)
-        Communicators<CommunicatorType::InteriorGhostParticles> patchGhostParticles_;
+        RefinerPool<RefinerType::InteriorGhostParticles> patchGhostParticles_;
+
+        SynchronizerPool<dimension> densitySynchronizers_;
+
+        SynchronizerPool<dimension> ionBulkVelSynchronizers_;
+
+        SynchronizerPool<dimension> electroSynchronizers_;
+
+        SynchronizerPool<dimension> magnetoSynchronizers_;
 
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
@@ -695,6 +718,10 @@ namespace amr_interface
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> levelGhostParticlesNewOp_{
             std::make_shared<CoarseToFineRefineOpNew>()};
+
+
+        std::shared_ptr<SAMRAI::hier::CoarsenOperator> fieldCoarseningOp_{
+            std::make_shared<FieldCoarsenOperator<GridLayoutT, FieldT>>()};
     };
 
     template<typename HybridModel>

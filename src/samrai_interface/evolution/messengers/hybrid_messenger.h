@@ -187,6 +187,13 @@ namespace amr_interface
 
 
 
+        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        {
+            strat_->synchronize(level);
+        }
+
+
+
         /**
          * @brief IMessenger::fineModelName
          * @return

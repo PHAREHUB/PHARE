@@ -114,12 +114,6 @@ namespace amr_interface
 
 
 
-        // synchronization/coarsening methods
-        virtual void syncMagnetic(VecFieldT& B) override {}
-        virtual void syncElectric(VecFieldT& E) override {}
-        virtual void syncIonMoments(IonsT& ions) override {}
-
-
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                double time) override
@@ -135,6 +129,15 @@ namespace amr_interface
                                     double const initDataTime) final
         {
         }
+
+
+
+        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        {
+            // call coarsning schedules...
+        }
+
+
 
 
     private:
