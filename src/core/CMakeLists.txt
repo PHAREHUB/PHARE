@@ -53,6 +53,7 @@ set( SOURCES_CPP
     )
 
 add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})
+target_compile_options(phare_core PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(phare_core PUBLIC initializer)
 
 target_include_directories(phare_core PUBLIC

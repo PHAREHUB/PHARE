@@ -69,7 +69,7 @@ namespace core
         bool operator==(Point const& p) const
         {
             bool areEqual = true;
-            for (auto i = 0; i < dim; ++i)
+            for (auto i = 0u; i < dim; ++i)
             {
                 static_assert(std::is_integral_v<Type>,
                               "this function is only valid for integral type of Point");

@@ -133,8 +133,6 @@ namespace amr_interface
     }
 
 
-
-
     /** @brief extractNames returns a vector of strings containing the names of all resources
      * associated with a ResourcesUser
      */
@@ -165,7 +163,7 @@ namespace amr_interface
         extractNames(user, names);
 
         return names;
-    };
+    }
 
 
 } // namespace amr_interface

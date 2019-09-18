@@ -369,7 +369,8 @@ namespace amr_interface
          * is used by getResourcesPointer_ when user code wants the pointer to the data
          */
         template<typename ResourceType>
-        auto getPatchData_(ResourceType resourceType, ResourcesInfo const& resourcesVariableInfo,
+        auto getPatchData_([[maybe_unused]] ResourceType resourceType,
+                           ResourcesInfo const& resourcesVariableInfo,
                            SAMRAI::hier::Patch const& patch) const
         {
             auto patchData = patch.getPatchData(resourcesVariableInfo.variable, context_);
@@ -533,7 +534,8 @@ namespace amr_interface
 
         //! \brief Allocate the data on the given level
         template<typename ResourcesUser, typename ResourcesProperties>
-        void allocate_(ResourcesUser const& obj, ResourcesProperties const& resourcesProperties,
+        void allocate_([[maybe_unused]] ResourcesUser const& obj,
+                       ResourcesProperties const& resourcesProperties,
                        SAMRAI::hier::Patch& patch, double const allocateTime) const
         {
             for (auto const& properties : resourcesProperties)

@@ -23,7 +23,7 @@ namespace amr_interface
     template<std::size_t dim>
     static bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle);
 
-    template<>
+    template<> [[maybe_unused]]
     bool isInBox(SAMRAI::hier::Box const& box, core::Particle<1> const& particle)
     {
         auto const& iCell = particle.iCell;
@@ -185,7 +185,7 @@ namespace amr_interface
          * given to be copied into another kind of PatchData. Here we chose that
          * copy2 throws unconditiionnally.
          */
-        virtual void copy2(SAMRAI::hier::PatchData& destination) const final
+        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const final
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -268,8 +268,8 @@ namespace amr_interface
 
 
 
-        virtual void copy2(SAMRAI::hier::PatchData& destination,
-                           SAMRAI::hier::BoxOverlap const& overlap) const final
+        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
+                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const final
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -507,8 +507,8 @@ namespace amr_interface
 
 
 
-        void copy_(SAMRAI::hier::Box const& sourceGhostBox,
-                   SAMRAI::hier::Box const& destinationGhostBox,
+        void copy_([[maybe_unused]] SAMRAI::hier::Box const& sourceGhostBox,
+                   [[maybe_unused]] SAMRAI::hier::Box const& destinationGhostBox,
                    SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
         {
             std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
@@ -544,7 +544,7 @@ namespace amr_interface
 
 
 
-        void copyWithTransform_(SAMRAI::hier::Box const& sourceGhostBox,
+        void copyWithTransform_([[maybe_unused]] SAMRAI::hier::Box const& sourceGhostBox,
                                 SAMRAI::hier::Box const& intersectionBox,
                                 SAMRAI::hier::Transformation const& transformation,
                                 ParticlesData const& sourceData)
@@ -656,7 +656,8 @@ namespace amr_interface
 
 
         void pack_(std::vector<core::Particle<dim>>& buffer,
-                   SAMRAI::hier::Box const& intersectionBox, SAMRAI::hier::Box const& sourceBox,
+                   SAMRAI::hier::Box const& intersectionBox,
+                   [[maybe_unused]] SAMRAI::hier::Box const& sourceBox,
                    SAMRAI::hier::Transformation const& transformation) const
         {
             std::array<decltype(domainParticles) const*, 2> particlesArrays{&domainParticles,
@@ -668,7 +669,7 @@ namespace amr_interface
                 {
                     auto shiftedParticle{particle};
                     auto offset = transformation.getOffset();
-                    for (auto i = 0; i < dim; ++i)
+                    for (auto i = 0u; i < dim; ++i)
                     {
                         shiftedParticle.iCell[i] += offset[i];
                     }

@@ -14,7 +14,6 @@ option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
 option(cppcheck "Enable cppcheck xml report" ON)
-
 option(asan "build with asan support" OFF)
 option(ubsan "build with ubsan support" OFF)
 option(msan "build with msan support" OFF)
@@ -26,13 +25,17 @@ include(CheckCXXCompilerFlag)
 find_package (PythonInterp  3.0 REQUIRED)
 
 set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
-
-
-
-
+# Pybind errors with clang, it is default in GCC
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set (CMAKE_CXX_FLAGS -fsized-deallocation)
+endif()
+if(MSVC)
+  set (PHARE_WERROR_FLAGS /W4 /WX)
+else()
+  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
+endif()
 
 #*******************************************************************************
 #* Cppcheck option
@@ -43,7 +46,7 @@ if (cppcheck)
 
     add_custom_command(
       OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
-      COMMAND ${Cppcheck} --enable=all --std=c++11 --language=c++ --xml
+      COMMAND ${Cppcheck} --enable=all --std=c++11 --language=c++ --xml -i${CMAKE_CURRENT_LIST_DIR}/subprojects
       --project=${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json 2> ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
       )
 
@@ -64,11 +67,6 @@ if (cppcheck)
   endif()
 endif()
 
-
-
-
-
-
 #*******************************************************************************
 #* SAMRAI build option
 #*******************************************************************************
@@ -80,7 +78,7 @@ if (NOT SAMRAI_FOUND)
 
   if (NOT EXISTS ${SAMRAI_SRCDIR})
     execute_process(
-      COMMAND ${Git} clone https://github.com/monwarez/SAMRAI ${SAMRAI_SRCDIR} --branch add-install --recursive
+      COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b master --recursive --depth 10
       )
   endif()
 
@@ -88,12 +86,13 @@ if (NOT SAMRAI_FOUND)
 
   add_subdirectory(${SAMRAI_SRCDIR})
 
-
-
 endif()
 
-
-
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/include/SAMRAI")
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/build/include
+)
+endif()
 
 #*******************************************************************************
 #* Test and coverage option
@@ -111,7 +110,6 @@ if (test)
   add_subdirectory(subprojects/googletest)
 
   enable_testing()
-
 
   IF(coverage)
       set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g -O0 -Wall -W -Wshadow -Wunused-variable -Wunused-parameter -Wunused-function -Wunused -Wno-system-headers -Wno-deprecated -Woverloaded-virtual -Wwrite-strings -fprofile-arcs -ftest-coverage")

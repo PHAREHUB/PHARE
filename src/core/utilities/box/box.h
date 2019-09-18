@@ -24,9 +24,9 @@ namespace core
         Box() = default;
 
         template<typename T, std::size_t s>
-        Box(Point<T, s> lower, Point<T, s> upper)
-            : lower{lower}
-            , upper{upper}
+        Box(Point<T, s> _lower, Point<T, s> _upper)
+            : lower{_lower}
+            , upper{_upper}
         {
         }
 
