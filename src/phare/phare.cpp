@@ -11,7 +11,7 @@
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
-    using dataProvider = std::unique_ptr<PHARE::initializer::DataProvider>;
+    using dataProvider [[maybe_unused]] = std::unique_ptr<PHARE::initializer::DataProvider>;
 
     switch (argc)
     {

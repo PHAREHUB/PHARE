@@ -35,7 +35,7 @@ endif()
 set(PYBIND11_CPP_STANDARD -std=c++17)
 
 add_library(initializer SHARED ${SOURCE_CPP} ${SOURCE_INC})
-
+target_compile_options(initializer PRIVATE ${PHARE_WERROR_FLAGS})
 
 
 

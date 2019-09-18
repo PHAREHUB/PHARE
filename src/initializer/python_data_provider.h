@@ -3,8 +3,12 @@
 
 #include "data_provider.h"
 
+#include "pragma_disable.h"
+
+DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/functional.h>
+ENABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 
 namespace py = pybind11;
 
@@ -19,7 +23,7 @@ namespace initializer
 
 
 
-    class PythonDataProvider : public DataProvider
+    class __attribute__ ((visibility ("hidden")))  PythonDataProvider : public DataProvider
     {
     public:
         PythonDataProvider(int argc, char const* argv)

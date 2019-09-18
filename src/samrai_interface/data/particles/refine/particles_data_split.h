@@ -33,7 +33,6 @@ namespace amr_interface
         coarseBoundaryNew
     };
 
-
     template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
              std::size_t refinedParticleNbr, typename SplitT>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
@@ -51,17 +50,11 @@ namespace amr_interface
          */
         virtual int getOperatorPriority() const override { return 0; }
 
-
-
-
         virtual SAMRAI::hier::IntVector
         getStencilWidth(SAMRAI::tbox::Dimension const& dimension) const override
         {
             return SAMRAI::hier::IntVector{dimension, ghostWidthForParticles<interpOrder>()};
         }
-
-
-
 
         /** @brief perform a split and keep those that are inside a fineOverlap
          *
@@ -107,8 +100,6 @@ namespace amr_interface
                     *patchGeomDestination, *patchGeomSource);
         }
 
-
-
     private:
         std::string splitName_(ParticlesDataSplitType splitTypeUsed)
         {
@@ -121,8 +112,6 @@ namespace amr_interface
                 default: throw std::runtime_error("End of enum class possible range");
             }
         }
-
-
 
 
         /** @brief given two ParticlesData (destination and source),
@@ -199,7 +188,7 @@ namespace amr_interface
                         std::vector<core::Particle<dim>> refinedParticles;
                         auto particleRefinedPos{particle};
 
-                        for (int iDim = 0; iDim < dim; ++iDim)
+                        for (auto iDim = 0u; iDim < dim; ++iDim)
                         {
                             particleRefinedPos.iCell[iDim]
                                 = particle.iCell[iDim] * ratio[iDim]
@@ -263,14 +252,8 @@ namespace amr_interface
             }             // loop on destination box
         }
 
-
-
-
         // constexpr int maxCellDistanceFromSplit() const { return std::ceil((interpOrder + 1) *
         // 0.5); }
-
-
-
 
         SAMRAI::hier::Box getSplitBox(SAMRAI::hier::Box destinationBox) const
         {
@@ -278,7 +261,7 @@ namespace amr_interface
             SAMRAI::tbox::Dimension dimension{dim};
             auto growingVec = SAMRAI::hier::IntVector::getZero(dimension);
 
-            for (int iDim = 0; iDim < dim; ++iDim)
+            for (auto iDim = 0u; iDim < dim; ++iDim)
             {
                 growingVec[iDim] = SplitT::maxCellDistanceFromSplit();
             }
@@ -286,9 +269,6 @@ namespace amr_interface
 
             return splitBox;
         }
-
-
-
 
         template<typename Particle>
         bool isCandidateForSplit_(Particle const& particle,

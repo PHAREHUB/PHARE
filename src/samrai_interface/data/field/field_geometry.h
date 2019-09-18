@@ -111,10 +111,9 @@ namespace amr_interface
                                             GridLayoutT const& layout, bool withGhost = true)
         {
             SAMRAI::hier::IntVector lower = box.lower();
-            constexpr std::uint32_t dirX{0};
-            constexpr std::uint32_t dirY{1};
-            constexpr std::uint32_t dirZ{2};
-
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
             // lower/upper of 'box' are AMR cell-centered coordinates
 
             // we want a box that starts at lower

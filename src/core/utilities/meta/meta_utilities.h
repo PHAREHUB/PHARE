@@ -54,7 +54,7 @@ namespace core
     // Recursive function
     template<typename T, typename T2, typename... Ts,
              typename = std::enable_if_t<std::is_same<T, T2>::value>>
-    constexpr void allsame(T arg, T2 arg2, Ts... args)
+    constexpr void allsame([[maybe_unused]] T arg, T2 arg2, Ts... args)
     {
         allsame(arg2, args...);
     }

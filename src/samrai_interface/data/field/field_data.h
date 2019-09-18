@@ -66,16 +66,10 @@ namespace amr_interface
         {
         }
 
-
-
-
         FieldData()                 = delete;
         FieldData(FieldData const&) = delete;
         FieldData(FieldData&&)      = default;
-
         FieldData& operator=(FieldData const&) = delete;
-
-
 
         /*** \brief Copy information from another FieldData where data overlap
          *
@@ -142,7 +136,7 @@ namespace amr_interface
         /*** \brief This form should not be called since we cannot derive from FieldData
          * since FieldData is a final implementation of PatchData
          */
-        void copy2(SAMRAI::hier::PatchData& destination) const final
+        void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const final
         {
             throw std::runtime_error("Error cannot cast the PatchData to FieldData");
         }
@@ -184,8 +178,8 @@ namespace amr_interface
 
         /*** \brief This form should not be called since we cannot derive from FieldData
          */
-        void copy2(SAMRAI::hier::PatchData& destination,
-                   const SAMRAI::hier::BoxOverlap& overlap) const final
+        void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
+                   [[maybe_unused]] const SAMRAI::hier::BoxOverlap& overlap) const final
         {
             throw std::runtime_error("Error cannot cast the PatchData to FieldData");
         }
@@ -352,8 +346,9 @@ namespace amr_interface
          *
          */
         void copy_(SAMRAI::hier::Box const& intersectBox, SAMRAI::hier::Box const& sourceBox,
-                   SAMRAI::hier::Box const& destinationBox, FieldData const& source,
-                   FieldImpl const& fieldSource, FieldImpl& fieldDestination)
+                   SAMRAI::hier::Box const& destinationBox,
+                   [[maybe_unused]] FieldData const& source, FieldImpl const& fieldSource,
+                   FieldImpl& fieldDestination)
         {
             // First we represent the intersection that is defined in AMR space to the local space
             // of the source

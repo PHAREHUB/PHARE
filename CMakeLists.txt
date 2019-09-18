@@ -14,7 +14,6 @@ option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
 option(cppcheck "Enable cppcheck xml report" ON)
-
 option(asan "build with asan support" OFF)
 option(ubsan "build with ubsan support" OFF)
 option(msan "build with msan support" OFF)
@@ -26,13 +25,17 @@ include(CheckCXXCompilerFlag)
 find_package (PythonInterp  3.0 REQUIRED)
 
 set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
-
-
-
-
+# Pybind errors with clang, it is default in GCC
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set (CMAKE_CXX_FLAGS -fsized-deallocation)
+endif()
+if(MSVC)
+  set (PHARE_WERROR_FLAGS /W4 /WX)
+else()
+  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
+endif()
 
 #*******************************************************************************
 #* Cppcheck option
@@ -64,11 +67,6 @@ if (cppcheck)
   endif()
 endif()
 
-
-
-
-
-
 #*******************************************************************************
 #* SAMRAI build option
 #*******************************************************************************
@@ -87,8 +85,6 @@ if (NOT SAMRAI_FOUND)
   option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
 
   add_subdirectory(${SAMRAI_SRCDIR})
-
-
 
 endif()
 
@@ -114,7 +110,6 @@ if (test)
   add_subdirectory(subprojects/googletest)
 
   enable_testing()
-
 
   IF(coverage)
       set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g -O0 -Wall -W -Wshadow -Wunused-variable -Wunused-parameter -Wunused-function -Wunused -Wno-system-headers -Wno-deprecated -Woverloaded-virtual -Wwrite-strings -fprofile-arcs -ftest-coverage")
