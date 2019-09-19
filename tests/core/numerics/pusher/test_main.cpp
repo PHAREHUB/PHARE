@@ -464,9 +464,9 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsReturnEqualStayi
     {
         newEndWithBC    = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc);
         newEndWithoutBC = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector);
-        auto s2         = rangeOut2.size();
-        auto s1         = rangeOut1.size();
-        auto s          = rangeIn.size();
+        [[maybe_unused]] auto s2 = rangeOut2.size();
+        [[maybe_unused]] auto s1 = rangeOut1.size();
+        [[maybe_unused]] auto s  = rangeIn.size();
 
         if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
         {
@@ -479,7 +479,7 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsReturnEqualStayi
     auto part1 = std::begin(particlesOut1);
     auto part2 = std::begin(particlesOut2);
 
-    for (; part1 < newEndWithBC, part2 < newEndWithoutBC; ++part1, ++part2)
+    for (; part1 < newEndWithBC && part2 < newEndWithoutBC; ++part1, ++part2)
     {
         EXPECT_FLOAT_EQ(part1->delta[0], part2->delta[0]);
         EXPECT_FLOAT_EQ(part1->delta[1], part2->delta[1]);

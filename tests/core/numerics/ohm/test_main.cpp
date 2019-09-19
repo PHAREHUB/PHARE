@@ -18,45 +18,79 @@ using namespace PHARE::core;
 struct FieldMock
 {
     double data;
-    double& operator()(uint32 i) { return data; }
-    double const& operator()(uint32 i) const { return data; }
+    double& operator()([[maybe_unused]] uint32 i) { return data; }
+    double const& operator()([[maybe_unused]] uint32 i) const { return data; }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
 };
 
 struct VecFieldMock
 {
     FieldMock fm;
-    FieldMock& getComponent(Component comp) { return fm; }
-    FieldMock const& getComponent(Component comp) const { return fm; }
+    FieldMock& getComponent([[maybe_unused]] Component comp) { return fm; }
+    FieldMock const& getComponent([[maybe_unused]] Component comp) const { return fm; }
 };
 
 
 struct GridLayoutMock1D
 {
     static const int dimension = 1;
-    double deriv(FieldMock const& f, MeshIndex<1> mi, DirectionTag<Direction::X>) {}
-    int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
-    std::array<WeightPoint<dimension>, 2> momentsToEx(){};
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<1> mi,
+                 [[maybe_unused]] DirectionTag<Direction::X>)
+    {
+        return 0;
+    }
+    int physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
+    int physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir) { return 0; }
+    // unused function with no return (Werror)
+    // std::array<WeightPoint<dimension>, 2> momentsToEx() { };
 };
 
 struct GridLayoutMock2D
 {
     static const int dimension = 2;
-    double deriv(FieldMock const& f, MeshIndex<2> mi, DirectionTag<Direction::X>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<2> mi, DirectionTag<Direction::Y>) { return 0; }
-    int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2> mi,
+                 [[maybe_unused]] DirectionTag<Direction::X>)
+    {
+        return 0;
+    }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2> mi,
+                 [[maybe_unused]] DirectionTag<Direction::Y>)
+    {
+        return 0;
+    }
+    int physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
+    int physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir) { return 0; }
 };
 
 struct GridLayoutMock3D
 {
     static const int dimension = 3;
-    double deriv(FieldMock const& f, MeshIndex<3> mi, DirectionTag<Direction::X>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<3> mi, DirectionTag<Direction::Y>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<3> mi, DirectionTag<Direction::Z>) { return 0; }
-    int physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    int physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3> mi,
+                 [[maybe_unused]] DirectionTag<Direction::X>)
+    {
+        return 0;
+    }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3> mi,
+                 [[maybe_unused]] DirectionTag<Direction::Y>)
+    {
+        return 0;
+    }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3> mi,
+                 [[maybe_unused]] DirectionTag<Direction::Z>)
+    {
+        return 0;
+    }
+    int physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
+    int physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir) { return 0; }
 };
 
 
@@ -83,8 +117,8 @@ TEST(Ohm, canBe3D)
 
 TEST(Ohm, shouldBeGivenAGridLayoutPointerToBeOperational)
 {
-    FieldMock n, Pe;
-    VecFieldMock Ve, B, J, Enew;
+    [[maybe_unused]] FieldMock n, Pe;
+    [[maybe_unused]] VecFieldMock Ve, B, J, Enew;
 
     Ohm<GridLayoutMock1D> ohm1d;
     auto layout1d = std::make_unique<GridLayoutMock1D>();
@@ -578,8 +612,8 @@ TEST_F(Ohm2DTest, Ohm2DCalculatedOk)
     {
         for (auto iy = psi_Y; iy <= pei_Y; ++iy)
         {
-            auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ey);
-            auto index_ = ix * nPts_[1] + iy;
+            auto nPts_                   = this->layout.allocSize(HybridQuantity::Scalar::Ey);
+            [[maybe_unused]] auto index_ = ix * nPts_[1] + iy;
             // EXPECT_THAT(Eynew(ix, iy), ::testing::DoubleNear((expected_ohmy[index_]), 1e-12));
         }
     }
@@ -593,8 +627,8 @@ TEST_F(Ohm2DTest, Ohm2DCalculatedOk)
     {
         for (auto iy = psi_Y; iy <= pei_Y; ++iy)
         {
-            auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ez);
-            auto index_ = ix * nPts_[1] + iy;
+            auto nPts_                   = this->layout.allocSize(HybridQuantity::Scalar::Ez);
+            [[maybe_unused]] auto index_ = ix * nPts_[1] + iy;
             // EXPECT_THAT(Eznew(ix, iy), ::testing::DoubleNear((expected_ohmz[index_]), 1e-12));
         }
     }
@@ -629,8 +663,8 @@ TEST_F(Ohm3DTest, Ohm3DCalculatedOk)
         {
             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
             {
-                auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ex);
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto nPts_                   = this->layout.allocSize(HybridQuantity::Scalar::Ex);
+                [[maybe_unused]] auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 // EXPECT_THAT(Exnew(ix, iy, iz),
                 //             ::testing::DoubleNear((expected_ohmx[index_]), 1e-12));
             }
@@ -650,8 +684,8 @@ TEST_F(Ohm3DTest, Ohm3DCalculatedOk)
         {
             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
             {
-                auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ey);
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto nPts_                   = this->layout.allocSize(HybridQuantity::Scalar::Ey);
+                [[maybe_unused]] auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 // EXPECT_THAT(Eynew(ix, iy, iz),
                 //             ::testing::DoubleNear((expected_ohmy[index_]), 1e-12));
             }
@@ -671,8 +705,8 @@ TEST_F(Ohm3DTest, Ohm3DCalculatedOk)
         {
             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
             {
-                auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ez);
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                auto nPts_                   = this->layout.allocSize(HybridQuantity::Scalar::Ez);
+                [[maybe_unused]] auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 // EXPECT_THAT(Eznew(ix, iy, iz),
                 //             ::testing::DoubleNear((expected_ohmz[index_]), 1e-12));
             }

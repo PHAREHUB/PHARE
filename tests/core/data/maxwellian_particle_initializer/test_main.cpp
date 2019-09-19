@@ -18,26 +18,22 @@
 using namespace PHARE::core;
 
 
-double density(double x)
+double density([[maybe_unused]] double x)
 {
     return 1.;
 }
 
-
-
-std::array<double, 3> bulkVelocity(double x)
+std::array<double, 3> bulkVelocity([[maybe_unused]] double x)
 {
     return {{1.0, 0., 0.}};
 }
 
 
 
-std::array<double, 3> thermalvelocity(double x)
+std::array<double, 3> thermalvelocity([[maybe_unused]] double x)
 {
     return {{0.2, 0.2, 0.2}};
 }
-
-
 
 
 class AMaxwellianParticleInitializer1D : public ::testing::Test

@@ -25,6 +25,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   )
 
+target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_samrai_interface
   gtest

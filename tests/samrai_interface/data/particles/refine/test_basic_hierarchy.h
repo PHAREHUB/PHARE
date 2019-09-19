@@ -63,17 +63,17 @@ public:
      *
      */
 
-    std::string inputString(int ratio)
+    std::string inputString(int _ratio)
     {
         return inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
-               + std::to_string(ratio) + ".txt";
+               + std::to_string(_ratio) + ".txt";
     }
 
 
-    explicit BasicHierarchy(int ratio)
-        : ratio{SAMRAI::tbox::Dimension{dimension}, ratio}
+    explicit BasicHierarchy(int _ratio)
+        : ratio{SAMRAI::tbox::Dimension{dimension}, _ratio}
         , inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
-              inputString(ratio))}
+              inputString(_ratio))}
 
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}

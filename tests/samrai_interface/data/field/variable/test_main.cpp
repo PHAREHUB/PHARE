@@ -89,11 +89,11 @@ createParams(std::map<std::string, HybridQuantity::Scalar> const& qtyMap)
     return params;
 }
 
-INSTANTIATE_TEST_CASE_P(FieldVariable, TestWithQuantityThatLivesOnPatchBoundary1D,
-                        ::testing::ValuesIn(createParams(quantityThatLivesOnPatchBoundary1D)));
+INSTANTIATE_TEST_SUITE_P(FieldVariable, TestWithQuantityThatLivesOnPatchBoundary1D,
+                         ::testing::ValuesIn(createParams(quantityThatLivesOnPatchBoundary1D)));
 
-INSTANTIATE_TEST_CASE_P(FieldVariable, TestWithQuantityThatLivesInsidePatchBoundary1D,
-                        ::testing::ValuesIn(createParams(quantityThatLivesInsidePatchBoundary1D)));
+INSTANTIATE_TEST_SUITE_P(FieldVariable, TestWithQuantityThatLivesInsidePatchBoundary1D,
+                         ::testing::ValuesIn(createParams(quantityThatLivesInsidePatchBoundary1D)));
 
 
 int main(int argc, char** argv)

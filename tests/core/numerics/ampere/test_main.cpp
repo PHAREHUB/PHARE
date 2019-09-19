@@ -19,45 +19,91 @@ using namespace PHARE::core;
 struct FieldMock
 {
     double data;
-    double& operator()(uint32 i) { return data; }
-    double& operator()(uint32 i, uint32 j) { return data; }
-    double& operator()(uint32 i, uint32 j, uint32 k) { return data; }
+    double& operator()([[maybe_unused]] uint32 i) { return data; }
+    double& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j) { return data; }
+    double& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j,
+                       [[maybe_unused]] uint32 k)
+    {
+        return data;
+    }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
 };
 
 struct VecFieldMock
 {
     FieldMock fm;
-    FieldMock& getComponent(Component comp) { return fm; }
-    FieldMock const& getComponent(Component comp) const { return fm; }
+    FieldMock& getComponent([[maybe_unused]] Component comp) { return fm; }
+    FieldMock const& getComponent([[maybe_unused]] Component comp) const { return fm; }
 };
 
 
 struct GridLayoutMock1D
 {
     static const std::size_t dimension = 1u;
-    double deriv(FieldMock const& f, MeshIndex<1u> mi, DirectionTag<Direction::X>) { return 0; }
-    std::size_t physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    std::size_t physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<1u> mi,
+                 [[maybe_unused]] DirectionTag<Direction::X>)
+    {
+        return 0;
+    }
+    std::size_t physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
+    std::size_t physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
 };
 
 struct GridLayoutMock2D
 {
     static const std::size_t dimension = 2u;
-    double deriv(FieldMock const& f, MeshIndex<2u> mi, DirectionTag<Direction::X>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<2u> mi, DirectionTag<Direction::Y>) { return 0; }
-    std::size_t physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    std::size_t physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2u> mi,
+                 DirectionTag<Direction::X>)
+    {
+        return 0;
+    }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2u> mi,
+                 DirectionTag<Direction::Y>)
+    {
+        return 0;
+    }
+    std::size_t physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
+    std::size_t physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
 };
 
 struct GridLayoutMock3D
 {
     static const std::size_t dimension = 3u;
-    double deriv(FieldMock const& f, MeshIndex<3u> mi, DirectionTag<Direction::X>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<3u> mi, DirectionTag<Direction::Y>) { return 0; }
-    double deriv(FieldMock const& f, MeshIndex<3u> mi, DirectionTag<Direction::Z>) { return 0; }
-    std::size_t physicalStartIndex(FieldMock&, Direction dir) { return 0; }
-    std::size_t physicalEndIndex(FieldMock&, Direction dir) { return 0; }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3u> mi,
+                 [[maybe_unused]] DirectionTag<Direction::X>)
+    {
+        return 0;
+    }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3u> mi,
+                 [[maybe_unused]] DirectionTag<Direction::Y>)
+    {
+        return 0;
+    }
+    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3u> mi,
+                 [[maybe_unused]] DirectionTag<Direction::Z>)
+    {
+        return 0;
+    }
+    std::size_t physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
+    std::size_t physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
 };
 
 

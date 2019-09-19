@@ -64,9 +64,9 @@ using NdArrays1D = ::testing::Types<NdArrayVector1D<>>;
 using NdArrays2D = ::testing::Types<NdArrayVector2D<>>;
 using NdArrays3D = ::testing::Types<NdArrayVector3D<>>;
 
-TYPED_TEST_CASE(GenericField1D, NdArrays1D);
-TYPED_TEST_CASE(GenericField2D, NdArrays2D);
-TYPED_TEST_CASE(GenericField3D, NdArrays3D);
+TYPED_TEST_SUITE(GenericField1D, NdArrays1D);
+TYPED_TEST_SUITE(GenericField2D, NdArrays2D);
+TYPED_TEST_SUITE(GenericField3D, NdArrays3D);
 
 
 

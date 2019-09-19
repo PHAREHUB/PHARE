@@ -46,13 +46,13 @@ public:
         for (auto i = 0u; i < nbr_tests; ++i)
         {
             auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPositions[i]);
-            this->weighter.computeWeight(normalizedPositions[i], startIndex, weights[i]);
+            this->weighter.computeWeight(normalizedPositions[i], startIndex, weights_[i]);
         }
 
 
         // for each particle, we have N(interp_order) weights
         // the sum of these N(interp_order) weights for each particle is stored in weightsSum
-        std::transform(std::begin(weights), std::end(weights), std::begin(weightsSums),
+        std::transform(std::begin(weights_), std::end(weights_), std::begin(weightsSums),
                        [](auto const& weight_list) {
                            return std::accumulate(std::begin(weight_list), std::end(weight_list),
                                                   0.);
@@ -64,7 +64,7 @@ protected:
     static const int nbr_tests = 100000;
     std::array<double, nbr_tests> normalizedPositions;
     std::array<double, nbr_tests> weightsSums;
-    std::array<std::array<double, nbrPointsSupport(Weighter::interp_order)>, nbr_tests> weights;
+    std::array<std::array<double, nbrPointsSupport(Weighter::interp_order)>, nbr_tests> weights_;
 };
 
 
@@ -73,7 +73,7 @@ using Weighters = ::testing::Types<Weighter<1>, Weighter<2>, Weighter<3>>;
 
 
 
-TYPED_TEST_CASE(AWeighter, Weighters);
+TYPED_TEST_SUITE(AWeighter, Weighters);
 
 
 TYPED_TEST(AWeighter, ComputesWeightThatSumIsOne)
@@ -232,7 +232,7 @@ public:
 using Interpolators1D
     = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
 
-TYPED_TEST_CASE(A1DInterpolator, Interpolators1D);
+TYPED_TEST_SUITE(A1DInterpolator, Interpolators1D);
 
 
 
@@ -348,7 +348,7 @@ public:
 using Interpolators2D
     = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
 
-TYPED_TEST_CASE(A2DInterpolator, Interpolators2D);
+TYPED_TEST_SUITE(A2DInterpolator, Interpolators2D);
 
 
 
@@ -468,7 +468,7 @@ public:
 using Interpolators3D
     = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
 
-TYPED_TEST_CASE(A3DInterpolator, Interpolators3D);
+TYPED_TEST_SUITE(A3DInterpolator, Interpolators3D);
 
 
 
@@ -536,10 +536,10 @@ public:
     Particle<1> part;
     ParticleArray<1> particles;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
-    VecField<NdArrayVector1D<>, HybridQuantity> v;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vx;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vy;
     Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vz;
+    VecField<NdArrayVector1D<>, HybridQuantity> v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
 
 
@@ -673,7 +673,7 @@ protected:
 
 
 
-TYPED_TEST_CASE_P(ACollectionOfParticles);
+TYPED_TEST_SUITE_P(ACollectionOfParticles);
 
 
 TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
@@ -686,7 +686,7 @@ TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
 
 
 
-REGISTER_TYPED_TEST_CASE_P(ACollectionOfParticles, DepositCorrectlyTheirWeight);
+REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles, DepositCorrectlyTheirWeight);
 
 
 
@@ -700,7 +700,7 @@ using GridLayoutYee3DO3 = GridLayout<GridLayoutImplYee<3,3>>;*/
 
 
 using MyTypes = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
-INSTANTIATE_TYPED_TEST_CASE_P(testInterpolator, ACollectionOfParticles, MyTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles, MyTypes);
 
 
 

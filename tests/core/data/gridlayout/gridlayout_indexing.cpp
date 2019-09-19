@@ -286,35 +286,35 @@ TEST_P(GridLayoutTestYeeIndexing3DO3, GhostEndIndexIsCorrect)
 
 
 
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing1DO1,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<1, 1>>()));
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing1DO1,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<1, 1>>()));
 
 
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing1DO2,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<1, 2>>()));
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing1DO2,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<1, 2>>()));
 
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing1DO3,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<1, 3>>()));
-
-
-
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing2DO1,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<2, 1>>()));
-
-
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing2DO2,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<2, 2>>()));
-
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing2DO3,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<2, 3>>()));
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing1DO3,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<1, 3>>()));
 
 
 
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing3DO1,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 1>>()));
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing2DO1,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<2, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing3DO2,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 2>>()));
 
-INSTANTIATE_TEST_CASE_P(IndexingTest, GridLayoutTestYeeIndexing3DO3,
-                        ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 3>>()));
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing2DO2,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<2, 2>>()));
+
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing2DO3,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<2, 3>>()));
+
+
+
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing3DO1,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 1>>()));
+
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing3DO2,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 2>>()));
+
+INSTANTIATE_TEST_SUITE_P(IndexingTest, GridLayoutTestYeeIndexing3DO3,
+                         ::testing::ValuesIn(createIndexingParam<GridLayoutImplYee<3, 3>>()));

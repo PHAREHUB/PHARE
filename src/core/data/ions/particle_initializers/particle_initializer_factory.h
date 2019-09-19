@@ -42,27 +42,22 @@ namespace core
 
                 if (basisName == "Cartesian")
                 {
-                    Basis basis = Basis::Cartesian;
+                    [[maybe_unused]] Basis basis = Basis::Cartesian;
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, bulkVel, thermalVel, charge, nbrPartPerCell);
                 }
                 else if (basisName == "Magnetic")
                 {
-                    Basis basis = Basis::Magnetic;
-                    auto& magnetic
+                    [[maybe_unused]] Basis basis = Basis::Magnetic;
+                    [[maybe_unused]] auto& magnetic
                         = dict["magnetic"].to<PHARE::initializer::VectorFunction<dimension>>();
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, bulkVel, thermalVel, charge, nbrPartPerCell);
                 }
-                /*
-
-                auto& magnetic
-                    =
- dict["magnetic"].to<PHARE::initializer::VectorFunction<dimension>>();*/
             }
-
+            // TODO throw?
             return nullptr;
         }
     };

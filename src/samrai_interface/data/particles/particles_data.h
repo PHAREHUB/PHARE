@@ -23,8 +23,8 @@ namespace amr_interface
     template<std::size_t dim>
     static bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle);
 
-    template<> [[maybe_unused]]
-    bool isInBox(SAMRAI::hier::Box const& box, core::Particle<1> const& particle)
+    template<>
+    [[maybe_unused]] bool isInBox(SAMRAI::hier::Box const& box, core::Particle<1> const& particle)
     {
         auto const& iCell = particle.iCell;
 
@@ -564,7 +564,7 @@ namespace amr_interface
                     // but before its iCell must be shifted by the transformation offset
 
                     auto newParticle{particle};
-                    for (auto iDir = 0; iDir < newParticle.iCell.size(); ++iDir)
+                    for (auto iDir = 0u; iDir < newParticle.iCell.size(); ++iDir)
                     {
                         newParticle.iCell[iDir] += offset[iDir];
                     }

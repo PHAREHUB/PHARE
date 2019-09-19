@@ -154,29 +154,29 @@ TEST_P(GridLayoutTestYee3DO3, AllocSizeDerivedIsCorrect)
 }
 
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee1DO1,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<1, 1>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee1DO1,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<1, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee1DO2,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<1, 2>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee1DO2,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<1, 2>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee1DO3,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<1, 3>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee1DO3,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<1, 3>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee2DO1,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<2, 1>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee2DO1,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<2, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee2DO2,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<2, 2>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee2DO2,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<2, 2>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee2DO3,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<2, 3>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee2DO3,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<2, 3>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee3DO1,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 1>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee3DO1,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee3DO2,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 2>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee3DO2,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 2>>()));
 
-INSTANTIATE_TEST_CASE_P(AllocSize, GridLayoutTestYee3DO3,
-                        ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 3>>()));
+INSTANTIATE_TEST_SUITE_P(AllocSize, GridLayoutTestYee3DO3,
+                         ::testing::ValuesIn(createAllocSizeParam<GridLayoutImplYee<3, 3>>()));

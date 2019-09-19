@@ -20,6 +20,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   )
 
+target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
   test-field-data
   )

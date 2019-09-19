@@ -7,7 +7,7 @@ using namespace PHARE::amr_interface;
 
 
 
-TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx);
+TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEx);
 
 
 TYPED_TEST_P(AFieldData1DCenteredOnEx, PackStreamLikeACellData)
@@ -77,10 +77,10 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, PackStreamARegionWithPeriodicsLikeACellDa
 
 
 
-REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx, PackStreamLikeACellData,
-                           PackStreamWithPeriodicsLikeACellData,
-                           PackStreamARegionWithPeriodicsLikeACellData);
+REGISTER_TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEx, PackStreamLikeACellData,
+                            PackStreamWithPeriodicsLikeACellData,
+                            PackStreamARegionWithPeriodicsLikeACellData);
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
-                              FieldDataTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
+                               FieldDataTestList);

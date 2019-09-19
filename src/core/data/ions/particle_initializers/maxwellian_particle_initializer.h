@@ -49,10 +49,10 @@ namespace core
             : density_{density}
             , bulkVelocity_{bulkVelocity}
             , thermalVelocity_{thermalVelocity}
+            , magneticField_{magneticField}
             , particleCharge_{particleCharge}
             , nbrParticlePerCell_{nbrParticlesPerCell}
             , basis_{basis}
-            , magneticField_{magneticField}
         {
         }
 
@@ -94,8 +94,8 @@ namespace core
             uint32 ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
             uint32 ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-            double cellVolume = dx;
-            Point origin      = layout.origin();
+            double cellVolume             = dx;
+            [[maybe_unused]] Point origin = layout.origin();
 
             // random seed and generator needed to load maxwellian velocity
             // and random position with the cell

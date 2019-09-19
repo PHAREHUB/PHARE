@@ -195,7 +195,7 @@ using VecField1DAndIonPop1D = std::tuple<VecField1D_P, IonPopulation1D_P>;
 using Electromag1DOnly      = std::tuple<Electromag1D_P>;
 using HybridState1DOnly     = std::tuple<HybridState1D_P>;
 
-TYPED_TEST_CASE_P(aResourceUserCollection);
+TYPED_TEST_SUITE_P(aResourceUserCollection);
 
 
 
@@ -205,12 +205,12 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
     TypeParam resourceUserCollection;
 
     auto check = [this](auto& resourceUserPack) {
-        auto& hierarchy    = this->hierarchy->hierarchy;
+        auto& hierarchy_   = this->hierarchy->hierarchy;
         auto& resourceUser = resourceUserPack.user;
 
-        for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (int iLevel = 0; iLevel < hierarchy_->getNumberOfLevels(); ++iLevel)
         {
-            auto patchLevel = hierarchy->getPatchLevel(iLevel);
+            auto patchLevel = hierarchy_->getPatchLevel(iLevel);
             for (auto const& patch : *patchLevel)
             {
                 auto dataOnPatch = this->resourcesManager.setOnPatch(*patch, resourceUser);
@@ -258,10 +258,10 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 
 
 
-REGISTER_TYPED_TEST_CASE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
+REGISTER_TYPED_TEST_SUITE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
 
 
 typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly,
                          HybridState1DOnly>
     MyTypes;
-INSTANTIATE_TYPED_TEST_CASE_P(testResourcesManager, aResourceUserCollection, MyTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, aResourceUserCollection, MyTypes);

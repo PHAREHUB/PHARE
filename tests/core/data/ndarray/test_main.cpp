@@ -148,9 +148,9 @@ TEST(NdArray2D, AccessWholeArray)
     }
 
     std::vector<double>::size_type idx = 0;
-    for (int i = 0; i < nx; ++i)
+    for (auto i = 0u; i < nx; ++i)
     {
-        for (int j = 0; j < ny; ++j)
+        for (auto j = 0u; j < ny; ++j)
         {
             array2d(i, j) = numbers[idx++];
         }
@@ -158,9 +158,9 @@ TEST(NdArray2D, AccessWholeArray)
 
     // TODO find better way to compare...
     idx = 0;
-    for (int i = 0; i < nx; ++i)
+    for (auto i = 0u; i < nx; ++i)
     {
-        for (int j = 0; j < ny; ++j)
+        for (auto j = 0u; j < ny; ++j)
         {
             EXPECT_DOUBLE_EQ(numbers[idx++], array2d(i, j));
         }
@@ -185,11 +185,11 @@ TEST(NdArray3D, AccessWholeArray)
     }
 
     std::vector<double>::size_type idx = 0;
-    for (int i = 0; i < nx; ++i)
+    for (auto i = 0u; i < nx; ++i)
     {
-        for (int j = 0; j < ny; ++j)
+        for (auto j = 0u; j < ny; ++j)
         {
-            for (int k = 0; k < nz; ++k)
+            for (auto k = 0u; k < nz; ++k)
             {
                 array3d(i, j, k) = numbers[idx++];
             }
@@ -198,11 +198,11 @@ TEST(NdArray3D, AccessWholeArray)
 
     // TODO find better way to compare...
     idx = 0;
-    for (int i = 0; i < nx; ++i)
+    for (auto i = 0u; i < nx; ++i)
     {
-        for (int j = 0; j < ny; ++j)
+        for (auto j = 0u; j < ny; ++j)
         {
-            for (int k = 0; k < nz; ++k)
+            for (auto k = 0u; k < nz; ++k)
             {
                 EXPECT_DOUBLE_EQ(numbers[idx++], array3d(i, j, k));
             }

@@ -53,7 +53,7 @@ namespace core
         template<typename Container, is_subscriptable<Container> = dummy::value>
         Point(Container c)
         {
-            for (int i = 0; i < dim; ++i)
+            for (auto i = 0u; i < dim; ++i)
             {
                 r[i] = c[i];
             }

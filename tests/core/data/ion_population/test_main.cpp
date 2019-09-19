@@ -26,7 +26,7 @@ struct DummyVecField
 {
     static constexpr std::size_t dimension = 1;
     using field_type                       = DummyField;
-    DummyVecField(std::string name, HybridQuantity::Vector v) {}
+    DummyVecField(std::string name, [[maybe_unused]] HybridQuantity::Vector v) { (void)name; }
     bool isUsable() const { return false; }
     bool isSettable() const { return true; }
 };
@@ -125,7 +125,8 @@ TEST_F(AnIonPopulation, isResourceUserAndHasFieldNamesAndQuantitiesOK)
 
 TEST_F(AnIonPopulation, hasAVecFieldSubResource)
 {
-    DummyVecField const& vf = std::get<0>(protons.getCompileTimeResourcesUserList());
+    [[maybe_unused]] DummyVecField const& vf
+        = std::get<0>(protons.getCompileTimeResourcesUserList());
 }
 
 

@@ -4,7 +4,7 @@ using namespace PHARE;
 
 
 
-TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx);
+TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEx);
 
 
 
@@ -70,9 +70,10 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyOnARegionWithPeriodicsLikeACellData)
 
 
 
-REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx, CopyWithOverlapLikeACellData,
-                           CopyWithPeriodicsLikeACellData, CopyOnARegionWithPeriodicsLikeACellData);
+REGISTER_TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEx, CopyWithOverlapLikeACellData,
+                            CopyWithPeriodicsLikeACellData,
+                            CopyOnARegionWithPeriodicsLikeACellData);
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
-                              FieldDataTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
+                               FieldDataTestList);

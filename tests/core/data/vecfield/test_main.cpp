@@ -32,9 +32,7 @@ protected:
 using NdArrays = ::testing::Types<NdArrayVector1D<>, NdArrayVector2D<>, NdArrayVector3D<>>;
 
 
-TYPED_TEST_CASE(VecFieldGeneric, NdArrays);
-
-
+TYPED_TEST_SUITE(VecFieldGeneric, NdArrays);
 
 
 class VecFieldTest : public ::testing::Test

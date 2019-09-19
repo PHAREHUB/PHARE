@@ -87,32 +87,32 @@ TEST_P(GridLayoutFieldCenteredCoordinate3DO3, CoordinateIsOK)
 
 
 
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate1DO1,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<1, 1>>()));
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate1DO1,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<1, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate1DO2,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<1, 2>>()));
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate1DO2,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<1, 2>>()));
 
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate1DO3,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<1, 3>>()));
-
-
-
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate2DO1,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<2, 1>>()));
-
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate2DO2,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<2, 2>>()));
-
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate2DO3,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<2, 3>>()));
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate1DO3,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<1, 3>>()));
 
 
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO1,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO2,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 2>>()));
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate2DO1,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<2, 1>>()));
 
-INSTANTIATE_TEST_CASE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO3,
-                        ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 3>>()));
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate2DO2,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<2, 2>>()));
+
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate2DO3,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<2, 3>>()));
+
+
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO1,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 1>>()));
+
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO2,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 2>>()));
+
+INSTANTIATE_TEST_SUITE_P(FieldCoordinateTest, GridLayoutFieldCenteredCoordinate3DO3,
+                         ::testing::ValuesIn(createFieldCenteringParam<GridLayoutImplYee<3, 3>>()));

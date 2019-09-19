@@ -396,10 +396,9 @@ TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
                 // level and have 'boundaries' without having any coarse-to-fine ones but only
                 // physical and the test would fail. However here since we are periodic, there are
                 // no physical boundaries wo we're ok.
-                if (iLevel > 0)
+                if (iLevel > 0 && boundaries[0].size() > 0)
                 {
-                    if (boundaries[0].size() > 0)
-                        EXPECT_GT(oldLevelBorderGhosts.size(), 0);
+                    EXPECT_GT(oldLevelBorderGhosts.size(), 0);
                 }
             }
         }

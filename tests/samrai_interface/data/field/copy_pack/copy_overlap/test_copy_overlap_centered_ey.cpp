@@ -5,7 +5,7 @@ using namespace PHARE;
 
 
 
-TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy);
+TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEy);
 
 TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyWithOverlapLikeANodeData)
 {
@@ -68,9 +68,10 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyOnARegionWithPeriodicsLikeANodeData)
 
 
 
-REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy, CopyWithOverlapLikeANodeData,
-                           CopyWithPeriodicsLikeANodeData, CopyOnARegionWithPeriodicsLikeANodeData);
+REGISTER_TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEy, CopyWithOverlapLikeANodeData,
+                            CopyWithPeriodicsLikeANodeData,
+                            CopyOnARegionWithPeriodicsLikeANodeData);
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
-                              FieldDataTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
+                               FieldDataTestList);

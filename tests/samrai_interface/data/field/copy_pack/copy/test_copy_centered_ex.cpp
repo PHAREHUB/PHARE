@@ -8,7 +8,7 @@ using testing::Eq;
 using namespace PHARE::core;
 using namespace PHARE::amr_interface;
 
-TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx);
+TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEx);
 
 TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyLikeACellData)
 {
@@ -72,10 +72,10 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyLikeACellData)
     }
 }
 
-REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEx, CopyLikeACellData);
+REGISTER_TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEx, CopyLikeACellData);
 
 
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
-                              FieldDataTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEx,
+                               FieldDataTestList);

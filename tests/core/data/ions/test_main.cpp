@@ -30,18 +30,18 @@ using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleAr
 
 
 
-double density(double x)
+double density([[maybe_unused]] double x)
 {
     return x * x + 2.;
 }
 
-std::array<double, 3> bulkVelocity(double x)
+std::array<double, 3> bulkVelocity([[maybe_unused]] double x)
 {
     return std::array<double, 3>{{1.0, 0.0, 0.0}};
 }
 
 
-std::array<double, 3> thermalVelocity(double x)
+std::array<double, 3> thermalVelocity([[maybe_unused]] double x)
 {
     return std::array<double, 3>{{0.5, 0.0, 0.0}};
 }
