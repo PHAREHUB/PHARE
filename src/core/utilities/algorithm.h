@@ -29,10 +29,9 @@ namespace core
     template<typename Container, typename ContainedT = typename Container::value_type>
     bool notIn(ContainedT& obj, Container& list)
     {
-        auto sameItem
-            = std::find_if(std::begin(list), std::end(list), [&obj, &list](auto& currentItem) {
-                  return obj->name() == currentItem->name();
-              });
+        auto sameItem = std::find_if(std::begin(list), std::end(list), [&obj](auto& currentItem) {
+            return obj->name() == currentItem->name();
+        });
 
         return sameItem == std::end(list);
     }

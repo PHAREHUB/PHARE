@@ -88,5 +88,5 @@ TEST_P(ALinearFieldRefine1DO1, conserveLinearFunction)
 
 
 
-INSTANTIATE_TEST_CASE_P(WithRatioFrom2To10TestThat, ALinearFieldRefine1DO1,
-                        ::testing::Values(2, 3, 4, 5, 6, 7, 8, 9, 10));
+INSTANTIATE_TEST_SUITE_P(WithRatioFrom2To10TestThat, ALinearFieldRefine1DO1,
+                         ::testing::Values(2, 3, 4, 5, 6, 7, 8, 9, 10));

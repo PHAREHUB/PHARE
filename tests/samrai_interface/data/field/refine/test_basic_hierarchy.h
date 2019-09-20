@@ -63,11 +63,11 @@ public:
      * a GriddingAlgorithm with the previous objects
      *
      */
-    explicit BasicHierarchy(int ratio)
-        : ratio{SAMRAI::tbox::Dimension{dimension}, ratio}
+    explicit BasicHierarchy(int _ratio)
+        : ratio{SAMRAI::tbox::Dimension{dimension}, _ratio}
         , inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
               inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
-              + std::to_string(ratio) + ".txt")}
+              + std::to_string(_ratio) + ".txt")}
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()} //
         /* Ex Ey Ez */

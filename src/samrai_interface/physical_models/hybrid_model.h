@@ -45,10 +45,10 @@ namespace amr_interface
 
 
         HybridModel(PHARE::initializer::PHAREDict<dimension> dict,
-                    std::shared_ptr<resources_manager_type> resourcesManager)
+                    std::shared_ptr<resources_manager_type> const& _resourcesManager)
             : IPhysicalModel{model_name}
             , state{dict}
-            , resourcesManager{std::move(resourcesManager)}
+            , resourcesManager{std::move(_resourcesManager)}
         {
         }
 

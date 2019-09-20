@@ -67,12 +67,11 @@ namespace core
          * size and time step in the domain where particles are to be pushed.
          */
         virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) = 0;
+
+        virtual ~Pusher() {}
     };
 
-
 } // namespace core
-
-}; // namespace PHARE
-
+} // namespace PHARE
 
 #endif

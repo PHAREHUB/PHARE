@@ -101,12 +101,12 @@ namespace amr_interface
     {
         QuantityCommunicator refiner;
 
-        auto registerRefine = [&rm, &refiner, &refineOp, &timeOp](std::string const& model,
-                                                                  std::string const& ghost,
-                                                                  std::string const& oldModel) {
-            auto src_id  = rm->getID(model);
-            auto dest_id = rm->getID(ghost);
-            auto old_id  = rm->getID(oldModel);
+        auto registerRefine = [&rm, &refiner, &refineOp, &timeOp](std::string const& modelName,
+                                                                  std::string const& ghostName,
+                                                                  std::string const& oldModelName) {
+            auto src_id  = rm->getID(modelName);
+            auto dest_id = rm->getID(ghostName);
+            auto old_id  = rm->getID(oldModelName);
 
             if (src_id && dest_id && old_id)
             {
@@ -136,7 +136,7 @@ namespace amr_interface
      * called is the one that allows initialization of a vector field quantity.
      */
     template<typename ResourcesManager>
-    QuantityCommunicator makeCommunicator(VecFieldDescriptor const& name,
+    QuantityCommunicator makeCommunicator(VecFieldDescriptor const& _name,
                                           ResourcesManager const& rm,
                                           std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
     {
@@ -151,9 +151,9 @@ namespace amr_interface
             }
         };
 
-        registerRefine(name.xName);
-        registerRefine(name.yName);
-        registerRefine(name.zName);
+        registerRefine(_name.xName);
+        registerRefine(_name.yName);
+        registerRefine(_name.zName);
 
         return refiner;
     }

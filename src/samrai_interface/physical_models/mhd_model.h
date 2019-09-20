@@ -26,9 +26,9 @@ namespace amr_interface
         using resources_manager_type    = ResourcesManager<GridLayoutT>;
 
 
-        explicit MHDModel(std::shared_ptr<resources_manager_type> resourcesManager)
+        explicit MHDModel(std::shared_ptr<resources_manager_type> const& _resourcesManager)
             : IPhysicalModel{model_name}
-            , resourcesManager{std::move(resourcesManager)}
+            , resourcesManager{std::move(_resourcesManager)}
         {
         }
 

@@ -95,7 +95,7 @@ public:
             {
                 auto coarseOnRefinedGrid{part};
 
-                for (int iDim = 0; iDim < dimension; ++iDim)
+                for (auto iDim = 0u; iDim < dimension; ++iDim)
                 {
                     auto delta                      = static_cast<int>(part.delta[iDim] * ratio);
                     coarseOnRefinedGrid.iCell[iDim] = part.iCell[iDim] * ratio + delta;
@@ -135,8 +135,7 @@ public:
         // only works with one patch or clearly distinct patches so that all
         // ghost regions are levelGhosts.
         std::copy_if(std::begin(refinedParticles), std::end(refinedParticles),
-                     std::back_inserter(levelGhosts),
-                     [&myBox, &myGhostBox, this](auto const& part) {
+                     std::back_inserter(levelGhosts), [&myBox, &myGhostBox](auto const& part) {
                          return isInBox(myGhostBox, part) && !isInBox(myBox, part);
                      });
 
@@ -159,7 +158,7 @@ public:
 
 
 
-TYPED_TEST_CASE_P(levelOneCoarseBoundaries);
+TYPED_TEST_SUITE_P(levelOneCoarseBoundaries);
 
 
 template<typename Type>
@@ -202,7 +201,7 @@ public:
 
 
 
-TYPED_TEST_CASE_P(levelOneInterior);
+TYPED_TEST_SUITE_P(levelOneInterior);
 
 
 
@@ -247,7 +246,7 @@ TYPED_TEST_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule)
                     bool sameCell  = true;
                     bool sameDelta = true;
 
-                    for (int iDim = 0; iDim < TypeParam::dimension; ++iDim)
+                    for (auto iDim = 0u; iDim < TypeParam::dimension; ++iDim)
                     {
                         sameCell  = sameCell && actualPart.iCell[iDim] == particle.iCell[iDim];
                         sameDelta = sameDelta
@@ -292,7 +291,7 @@ TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
                     bool sameCell  = true;
                     bool sameDelta = true;
 
-                    for (int iDim = 0; iDim < TypeParam::dimension; ++iDim)
+                    for (auto iDim = 0u; iDim < TypeParam::dimension; ++iDim)
                     {
                         sameCell  = sameCell && actualPart.iCell[iDim] == particle.iCell[iDim];
                         sameDelta = sameDelta
@@ -313,9 +312,9 @@ TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
 
 
 
-REGISTER_TYPED_TEST_CASE_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule);
+REGISTER_TYPED_TEST_SUITE_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule);
 
-REGISTER_TYPED_TEST_CASE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule);
+REGISTER_TYPED_TEST_SUITE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule);
 
 
 
@@ -374,13 +373,13 @@ typedef ::testing::Types<
 
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestCoarseToFine, levelOneCoarseBoundaries,
-                              ParticlesCoarseToFineDataDescriptorsRange);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestCoarseToFine, levelOneCoarseBoundaries,
+                               ParticlesCoarseToFineDataDescriptorsRange);
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestInterior, levelOneInterior,
-                              ParticlesInteriorDataDescriptorsRange);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneInterior,
+                               ParticlesInteriorDataDescriptorsRange);
 
 
 
-// INSTANTIATE_TYPED_TEST_CASE_P(TestInterior, levelOneCoarseBoundaries, TestTest);
+// INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneCoarseBoundaries, TestTest);

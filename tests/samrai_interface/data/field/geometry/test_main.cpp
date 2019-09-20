@@ -118,7 +118,7 @@ struct FieldGeometry1D : public ::testing::Test
 
 
 
-TYPED_TEST_CASE_P(FieldGeometry1D);
+TYPED_TEST_SUITE_P(FieldGeometry1D);
 
 TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
 {
@@ -309,7 +309,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
 
 
-REGISTER_TYPED_TEST_CASE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
+REGISTER_TYPED_TEST_SUITE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
 
 using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 1>>, Field1D>;
 using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 2>>, Field1D>;
@@ -319,7 +319,7 @@ using FieldGeometry1DTestList
     = ::testing::Types<FieldGeometryTest1DOrder1, FieldGeometryTest1DOrder2,
                        FieldGeometryTest1DOrder3>;
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, FieldGeometry1D, FieldGeometry1DTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, FieldGeometry1D, FieldGeometry1DTestList);
 
 
 int main(int argc, char** argv)

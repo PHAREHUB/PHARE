@@ -24,12 +24,10 @@ TEST(AParticleSelector1D, returnTrueForParticlesInBox)
     boxes.push_back(std::move(box1));
     boxes.push_back(std::move(box2));
 
-    Particle<1> part{0.01, 1, {{4}}, {{0.002f}}, {{1.8, 1.83, 2.28}}};
+    [[maybe_unused]] Particle<1> part{0.01, 1, {{4}}, {{0.002f}}, {{1.8, 1.83, 2.28}}};
 
-    auto selector = makeSelector(boxes);
+    [[maybe_unused]] auto selector = makeSelector(boxes);
 }
-
-
 
 int main(int argc, char** argv)
 {

@@ -25,10 +25,7 @@ namespace core
                                                     ParticleSelector, BoundaryCondition>>();
             }
 
-            else
-            {
-                std::runtime_error("Error : Invalid Pusher name");
-            }
+            throw std::runtime_error("Error : Invalid Pusher name");
         }
     };
 } // namespace core

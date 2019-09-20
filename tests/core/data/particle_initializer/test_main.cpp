@@ -15,26 +15,23 @@
 using namespace PHARE::core;
 using namespace PHARE::initializer;
 
-
 using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
 using ParticleArrayT = ParticleArray<1>;
 
-
-
-double density(double x)
+double density([[maybe_unused]] double x)
 {
     return 1.;
 }
 
 
-std::array<double, 3> bulkVelocity(double x)
+std::array<double, 3> bulkVelocity([[maybe_unused]] double x)
 {
     return {{1.0, 0., 0.}};
 }
 
 
 
-std::array<double, 3> thermalVelocity(double x)
+std::array<double, 3> thermalVelocity([[maybe_unused]] double x)
 {
     return {{0.2, 0.2, 0.2}};
 }

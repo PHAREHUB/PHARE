@@ -132,10 +132,7 @@ namespace core
                     case Component::Z: return *zComponent_;
                 }
             }
-            else
-            {
-                throw std::runtime_error("Error - VecField not usable");
-            }
+            throw std::runtime_error("Error - VecField not usable");
         }
 
 
@@ -153,12 +150,8 @@ namespace core
                     case Component::Z: return *zComponent_;
                 }
             }
-            else
-            {
-                throw std::runtime_error("Error - VecField not usable");
-            }
+            throw std::runtime_error("Error - VecField not usable");
         }
-
 
 
 
@@ -170,8 +163,8 @@ namespace core
                 case Component::Y: return componentNames_[1];
                 case Component::Z: return componentNames_[2];
             }
+            throw std::runtime_error("Error - VecField not usable");
         }
-
 
 
 

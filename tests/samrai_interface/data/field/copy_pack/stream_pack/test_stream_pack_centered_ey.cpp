@@ -6,14 +6,12 @@ using namespace PHARE::core;
 using namespace PHARE::amr_interface;
 
 
-TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy);
+TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEy);
 
 
 TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamLikeANodeData)
 {
     auto& destinationLayout = this->param.destinationFieldData->gridLayout;
-
-
 
     int lower = 6;
     int upper = 9;
@@ -38,9 +36,9 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamLikeANodeData)
 
 TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamWithPeriodicsLikeANodeData)
 {
-    auto& param = this->param;
-    SAMRAI::hier::IntVector shift{param.destinationPatch.getBox().lower()
-                                  - param.sourcePatch.getBox().upper()};
+    auto& param_ = this->param;
+    SAMRAI::hier::IntVector shift{param_.destinationPatch.getBox().lower()
+                                  - param_.sourcePatch.getBox().upper()};
     SAMRAI::hier::Transformation transformation{shift};
 
 
@@ -55,10 +53,10 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamWithPeriodicsLikeANodeData)
 
 TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamARegionWithPeriodicsLikeANodeData)
 {
-    auto& param = this->param;
+    auto& param_ = this->param;
 
-    SAMRAI::hier::IntVector shift{param.destinationPatch.getBox().lower()
-                                  - param.sourcePatch.getBox().upper()};
+    SAMRAI::hier::IntVector shift{param_.destinationPatch.getBox().lower()
+                                  - param_.sourcePatch.getBox().upper()};
     SAMRAI::hier::Transformation transformation{shift};
 
 
@@ -73,10 +71,10 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamARegionWithPeriodicsLikeANodeDa
 
 
 
-REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy, PackStreamLikeANodeData,
-                           PackStreamWithPeriodicsLikeANodeData,
-                           PackStreamARegionWithPeriodicsLikeANodeData);
+REGISTER_TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEy, PackStreamLikeANodeData,
+                            PackStreamWithPeriodicsLikeANodeData,
+                            PackStreamARegionWithPeriodicsLikeANodeData);
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
-                              FieldDataTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
+                               FieldDataTestList);

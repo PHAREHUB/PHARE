@@ -364,7 +364,7 @@ namespace core
             // moments are primal primal primal
             // operation is thus pPp to pDp
             // shift only in the Y direction
-            auto constexpr iShift = primalToDual();
+            [[maybe_unused]] auto constexpr iShift = primalToDual();
 
             if constexpr (dimension == 1)
             {
@@ -397,7 +397,7 @@ namespace core
             // moments are primal primal primal
             // operation is thus ppP to ppD
             // shift only in the Z direction
-            auto constexpr iShift = primalToDual();
+            [[maybe_unused]] auto constexpr iShift = primalToDual();
 
             if constexpr (dimension == 1)
             {
@@ -461,7 +461,7 @@ namespace core
             // moments are primal primal primal
             // operation is thus pDp to pPp
             // shift only in the Y direction
-            auto constexpr iShift = dualToPrimal();
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
             if constexpr (dimension == 1)
             {
@@ -491,7 +491,7 @@ namespace core
             // moments are primal primal primal
             // operation is thus ppD to ppP
             // shift only in the Z direction
-            auto constexpr iShift = dualToPrimal();
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
             if constexpr (dimension == 1)
             {
@@ -520,7 +520,7 @@ namespace core
             // Ex is dual primal primal
             // operation is thus dpD to dpP
             // shift only in the Z direction
-            auto constexpr iShift = dualToPrimal();
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
             if constexpr (dimension == 1)
             {
@@ -549,7 +549,7 @@ namespace core
             // Ex is dual primal primal
             // operation is thus pDp to pPp
             // shift only in the Y direction
-            auto constexpr iShift = dualToPrimal();
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
             if constexpr (dimension == 1)
             {
@@ -613,7 +613,7 @@ namespace core
             // Ez is primal primal dual
             // operation is thus pDd to pPd
             // shift only in the Y direction
-            auto constexpr iShift = dualToPrimal();
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
             if constexpr (dimension == 1)
             {
@@ -644,7 +644,7 @@ namespace core
             // Ey is primal dual primal
             // operation is thus pdD to pdP
             // shift only in the Z direction
-            auto constexpr iShift = dualToPrimal();
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
             if constexpr (dimension == 1)
             {

@@ -19,7 +19,7 @@ protected:
 using layoutImpls
     = ::testing::Types<GridLayoutImplYee<1, 1>, GridLayoutImplYee<1, 2>, GridLayoutImplYee<1, 3>>;
 
-TYPED_TEST_CASE(NextPrevTest, layoutImpls);
+TYPED_TEST_SUITE(NextPrevTest, layoutImpls);
 
 
 

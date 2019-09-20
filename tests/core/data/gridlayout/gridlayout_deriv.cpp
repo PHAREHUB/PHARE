@@ -24,7 +24,7 @@ std::vector<double> read(std::string filename)
 using layoutImpls1D
     = ::testing::Types<GridLayoutImplYee<1, 1>, GridLayoutImplYee<1, 2>, GridLayoutImplYee<1, 3>>;
 
-TYPED_TEST_CASE(a1DDerivative, layoutImpls1D);
+TYPED_TEST_SUITE(a1DDerivative, layoutImpls1D);
 
 
 
@@ -32,15 +32,15 @@ TYPED_TEST(a1DDerivative, DXBY1D)
 {
     std::string filename = std::string("dxBy_interpOrder_")
                            + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
-    auto expDerValue = read(filename);
-    auto gei_d       = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto expDerValue            = read(filename);
+    [[maybe_unused]] auto gei_d = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
     auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-    for (auto ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0u; ix <= gei_d_X; ++ix)
     {
         Point<double, 1> point = this->layout.fieldNodeCoordinates(this->By, {0.}, ix);
         this->By(ix)           = std::cos(2 * M_PI / 5. * point[0]);
@@ -66,7 +66,7 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
     auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
     auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
 
-    for (auto ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0u; ix <= gei_p_X; ++ix)
     {
         Point<double, 1> point = this->layout.fieldNodeCoordinates(this->Ez, {0.}, ix);
         this->Ez(ix)           = std::cos(2 * M_PI / 5. * point[0]);
@@ -88,7 +88,7 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
 using layoutImpls2D
     = ::testing::Types<GridLayoutImplYee<2, 1>, GridLayoutImplYee<2, 2>, GridLayoutImplYee<2, 3>>;
 
-TYPED_TEST_CASE(a2DDerivative, layoutImpls2D);
+TYPED_TEST_SUITE(a2DDerivative, layoutImpls2D);
 
 
 
@@ -105,9 +105,9 @@ TYPED_TEST(a2DDerivative, DXBY2D)
     auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
     auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
 
-    for (auto ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0u; ix <= gei_d_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
             Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
             this->By(ix, iy)
@@ -145,9 +145,9 @@ TYPED_TEST(a2DDerivative, DYBY2D)
     auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
     auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
 
-    for (auto ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0u; ix <= gei_d_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
             Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
             this->By(ix, iy)
@@ -184,9 +184,9 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
     auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
     auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
 
-    for (auto ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0u; ix <= gei_p_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
             Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
             this->Ez(ix, iy)
@@ -222,9 +222,9 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
     auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
     auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
 
-    for (auto ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0u; ix <= gei_p_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
             auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
             this->Ez(ix, iy)
@@ -255,7 +255,7 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
 using layoutImpls3D
     = ::testing::Types<GridLayoutImplYee<3, 1>, GridLayoutImplYee<3, 2>, GridLayoutImplYee<3, 3>>;
 
-TYPED_TEST_CASE(a3DDerivative, layoutImpls3D);
+TYPED_TEST_SUITE(a3DDerivative, layoutImpls3D);
 
 
 
@@ -275,11 +275,11 @@ TYPED_TEST(a3DDerivative, DXBY3D)
     auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
     auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    for (auto ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0u; ix <= gei_d_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
-            for (auto iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
             {
                 auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
@@ -324,11 +324,11 @@ TYPED_TEST(a3DDerivative, DYBY3D)
     auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
     auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    for (auto ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0u; ix <= gei_d_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
-            for (auto iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
             {
                 auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
@@ -374,11 +374,11 @@ TYPED_TEST(a3DDerivative, DZBY3D)
     auto psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
     auto pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
 
-    for (auto ix = 0; ix <= gei_d_X; ++ix)
+    for (auto ix = 0u; ix <= gei_d_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
-            for (auto iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
             {
                 auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
                 this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
@@ -423,11 +423,11 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
     auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
     auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    for (auto ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0u; ix <= gei_p_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
-            for (auto iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
             {
                 auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
@@ -472,11 +472,11 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
     auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
     auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    for (auto ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0u; ix <= gei_p_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
-            for (auto iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
             {
                 auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
@@ -521,11 +521,11 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
     auto psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
     auto pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
 
-    for (auto ix = 0; ix <= gei_p_X; ++ix)
+    for (auto ix = 0u; ix <= gei_p_X; ++ix)
     {
-        for (auto iy = 0; iy <= gei_p_Y; ++iy)
+        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
         {
-            for (auto iz = 0; iz <= gei_d_Z; ++iz)
+            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
             {
                 auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
                 this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])

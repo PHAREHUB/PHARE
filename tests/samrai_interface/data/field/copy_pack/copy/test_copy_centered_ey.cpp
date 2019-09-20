@@ -7,7 +7,7 @@ using namespace PHARE::amr_interface;
 
 
 
-TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy);
+TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEy);
 
 TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
 {
@@ -69,8 +69,8 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
     }
 }
 
-REGISTER_TYPED_TEST_CASE_P(AFieldData1DCenteredOnEy, CopyLikeACellData);
+REGISTER_TYPED_TEST_SUITE_P(AFieldData1DCenteredOnEy, CopyLikeACellData);
 
 
-INSTANTIATE_TYPED_TEST_CASE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
-                              FieldDataTestList);
+INSTANTIATE_TYPED_TEST_SUITE_P(TestWithOrderFrom1To3That, AFieldData1DCenteredOnEy,
+                               FieldDataTestList);

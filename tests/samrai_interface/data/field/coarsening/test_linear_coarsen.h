@@ -318,8 +318,8 @@ std::vector<FieldCoarsenTestData> createParam()
 
 
 
-INSTANTIATE_TEST_CASE_P(TestWithMultipleFunctionThat, AFieldCoarsenOperator,
-                        testing::ValuesIn(createParam()));
+INSTANTIATE_TEST_SUITE_P(TestWithMultipleFunctionThat, AFieldCoarsenOperator,
+                         testing::ValuesIn(createParam()));
 
 
 

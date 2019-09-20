@@ -170,7 +170,8 @@ namespace core
         }
 
         template<typename Field, typename ComponentTag>
-        auto pressure_(Field const& n, Field const& Pe, MeshIndex<1> index, ComponentTag)
+        auto pressure_(Field const& n, Field const& Pe, [[maybe_unused]] MeshIndex<1> index,
+                       ComponentTag)
         {
             if constexpr (ComponentTag::component == Component::X)
             {
@@ -396,7 +397,8 @@ namespace core
         }
 
         template<typename Field, typename ComponentTag>
-        auto pressure_(Field const& n, Field const& Pe, MeshIndex<2> index, ComponentTag)
+        auto pressure_(Field const& n, Field const& Pe, [[maybe_unused]] MeshIndex<2> index,
+                       ComponentTag)
         {
             if constexpr (ComponentTag::component == Component::X)
             {
