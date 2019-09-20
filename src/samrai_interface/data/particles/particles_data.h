@@ -21,25 +21,7 @@ namespace PHARE
 namespace amr_interface
 {
     template<std::size_t dim>
-    static bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle);
-
-    template<>
-    [[maybe_unused]] bool isInBox(SAMRAI::hier::Box const& box, core::Particle<1> const& particle)
-    {
-        auto const& iCell = particle.iCell;
-
-        auto const& lower = box.lower();
-        auto const& upper = box.upper();
-
-        if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
-        {
-            return true;
-        }
-        return false;
-    }
-
-    template<>
-    inline bool isInBox(SAMRAI::hier::Box const& box, core::Particle<2> const& particle)
+    inline bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle)
     {
         auto const& iCell = particle.iCell;
 
@@ -49,45 +31,30 @@ namespace amr_interface
 
         if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
         {
-            if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
+            if constexpr (dim > 1)
+            {
+                if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
+                {
+                    if constexpr (dim > 2)
+                    {
+                        if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+            }
+            else
             {
                 return true;
             }
         }
         return false;
     }
-
-    template<>
-    inline bool isInBox(SAMRAI::hier::Box const& box, core::Particle<3> const& particle)
-    {
-        auto const& iCell = particle.iCell;
-
-        auto const& lower = box.lower();
-        auto const& upper = box.upper();
-
-
-        if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
-        {
-            if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
-            {
-                if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-
-    /*template<>
-    bool isInBox(SAMRAI::hier::Box const& box, Particle<1> const& particle);
-
-    template<>
-    bool isInBox(SAMRAI::hier::Box const& box, Particle<1> const& particle);
-
-    template<>
-    bool isInBox(SAMRAI::hier::Box const& box, Particle<1> const& particle);*/
 
 
     /** @brief ParticlesData is a concrete SAMRAI::hier::PatchData subclass to store Particle data
