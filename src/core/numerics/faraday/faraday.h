@@ -80,17 +80,14 @@ namespace core
             // dBydt =  dxEz
             // dBzdt = -dxEy
 
-            [[maybe_unused]] auto const& Bx = B.getComponent(Component::X);
-            auto const& By                  = B.getComponent(Component::Y);
-            auto const& Bz                  = B.getComponent(Component::Z);
+            auto const& By = B.getComponent(Component::Y);
+            auto const& Bz = B.getComponent(Component::Z);
 
-            [[maybe_unused]] auto const& Ex = E.getComponent(Component::X);
-            auto const& Ey                  = E.getComponent(Component::Y);
-            auto const& Ez                  = E.getComponent(Component::Z);
+            auto const& Ey = E.getComponent(Component::Y);
+            auto const& Ez = E.getComponent(Component::Z);
 
-            [[maybe_unused]] auto& Bxnew = Bnew.getComponent(Component::X);
-            auto& Bynew                  = Bnew.getComponent(Component::Y);
-            auto& Bznew                  = Bnew.getComponent(Component::Z);
+            auto& Bynew = Bnew.getComponent(Component::Y);
+            auto& Bznew = Bnew.getComponent(Component::Z);
 
             // Direction should not be in gridlayoutdef but in utilities somehow
             auto start = this->layout_->physicalStartIndex(Bynew, Direction::X);
