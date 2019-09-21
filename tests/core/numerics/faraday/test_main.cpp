@@ -37,7 +37,7 @@ struct GridLayoutMock1D
 {
     static const auto dimension = 1u;
     double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<1u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::X>)
+                 [[maybe_unused]] Direction::X_t)
     {
         return 0;
     }
@@ -55,12 +55,12 @@ struct GridLayoutMock2D
 {
     static const auto dimension = 2u;
     double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::X>)
+                 [[maybe_unused]] Direction::X_t)
     {
         return 0;
     }
     double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::Y>)
+                 [[maybe_unused]] Direction::Y_t)
     {
         return 0;
     }
@@ -78,17 +78,17 @@ struct GridLayoutMock3D
 {
     static const auto dimension = 3u;
     double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::X>)
+                 [[maybe_unused]] Direction::X_t)
     {
         return 0;
     }
     double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::Y>)
+                 [[maybe_unused]] Direction::Y_t)
     {
         return 0;
     }
     double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::Z>)
+                 [[maybe_unused]] Direction::Z_t)
     {
         return 0;
     }

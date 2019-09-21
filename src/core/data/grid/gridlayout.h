@@ -240,7 +240,8 @@ namespace core
          * in a given direction. This is always zero by convention. This function exists only
          * for readibility reasons, not to have literal '0' in the code.
          */
-        uint32 ghostStartIndex([[maybe_unused]] QtyCentering centering, [[maybe_unused]] Direction direction) const
+        uint32 ghostStartIndex([[maybe_unused]] QtyCentering centering,
+                               [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
@@ -256,8 +257,9 @@ namespace core
 
 
         template<typename NdArrayImpl>
-        uint32 ghostStartIndex([[maybe_unused]] Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                               [[maybe_unused]] Direction direction) const
+        uint32
+        ghostStartIndex([[maybe_unused]] Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
+                        [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
@@ -326,8 +328,7 @@ namespace core
 
 
             uint32 iQuantity       = static_cast<uint32>(field.physicalQuantity());
-            constexpr uint32 iDual = static_cast<uint32>(QtyCentering::dual);
-
+            constexpr uint32 iDual = QtyCentering::dual;
 
             constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
 
@@ -375,7 +376,7 @@ namespace core
             static_assert(sizeof...(Indexes) == dimension,
                           "Error dimension does not match number of arguments");
 
-            uint32 constexpr iPrimal = static_cast<uint32>(QtyCentering::primal);
+            constexpr uint32 iPrimal = QtyCentering::primal;
 
             constexpr double halfCell = 0.5;
             // A shift of +dx/2, +dy/2, +dz/2 is necessary to get the
@@ -465,7 +466,7 @@ namespace core
         template<typename Field, typename DirectionTag>
         auto deriv(Field const& operand, MeshIndex<Field::dimension> index, DirectionTag)
         {
-            auto fieldCentering   = centering(operand.physicalQuantity());
+            auto fieldCentering = centering(operand.physicalQuantity());
             using PHARE::core::dirX;
             using PHARE::core::dirY;
             using PHARE::core::dirZ;
@@ -479,14 +480,14 @@ namespace core
 
             else if constexpr (Field::dimension == 2)
             {
-                if constexpr (DirectionTag::direction == Direction::X)
+                if constexpr (std::is_same<DirectionTag, Direction::X_t>::value)
                 {
                     auto next = operand(nextIndex(fieldCentering[dirX], index[0]), index[1]);
                     auto prev = operand(prevIndex(fieldCentering[dirX], index[0]), index[1]);
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
-                if constexpr (DirectionTag::direction == Direction::Y)
+                if constexpr (std::is_same<DirectionTag, Direction::Y_t>::value)
                 {
                     auto next = operand(index[0], nextIndex(fieldCentering[dirY], index[1]));
                     auto prev = operand(index[0], prevIndex(fieldCentering[dirY], index[1]));
@@ -495,7 +496,7 @@ namespace core
             }
             else if constexpr (Field::dimension == 3)
             {
-                if constexpr (DirectionTag::direction == Direction::X)
+                if constexpr (std::is_same<DirectionTag, Direction::X_t>::value)
                 {
                     auto next
                         = operand(nextIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
@@ -504,7 +505,7 @@ namespace core
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
-                if constexpr (DirectionTag::direction == Direction::Y)
+                if constexpr (std::is_same<DirectionTag, Direction::Y_t>::value)
                 {
                     auto next
                         = operand(index[0], nextIndex(fieldCentering[dirY], index[1]), index[2]);
@@ -512,7 +513,7 @@ namespace core
                         = operand(index[0], prevIndex(fieldCentering[dirY], index[1]), index[2]);
                     return inverseMeshSize_[dirY] * (next - prev);
                 }
-                if constexpr (DirectionTag::direction == Direction::Z)
+                if constexpr (std::is_same<DirectionTag, Direction::Z_t>::value)
                 {
                     auto next
                         = operand(index[0], index[1], nextIndex(fieldCentering[dirZ], index[2]));

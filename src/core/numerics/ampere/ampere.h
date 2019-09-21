@@ -90,7 +90,7 @@ namespace core
 
             for (auto ix = start; ix <= end; ++ix)
             {
-                Jy(ix) = -this->layout_->deriv(Bz, {ix}, DirectionTag<Direction::X>{});
+                Jy(ix) = -this->layout_->deriv(Bz, {ix}, Direction::X);
             }
 
             start = this->layout_->physicalStartIndex(Jz, Direction::X);
@@ -98,7 +98,7 @@ namespace core
 
             for (auto ix = start; ix <= end; ++ix)
             {
-                Jz(ix) = this->layout_->deriv(By, {ix}, DirectionTag<Direction::X>{});
+                Jz(ix) = this->layout_->deriv(By, {ix}, Direction::X);
             }
         }
     };
@@ -132,7 +132,7 @@ namespace core
             {
                 for (auto iy = psi_Y; iy <= pei_Y; ++iy)
                 {
-                    Jx(ix, iy) = this->layout_->deriv(Bz, {ix, iy}, DirectionTag<Direction::Y>{});
+                    Jx(ix, iy) = this->layout_->deriv(Bz, {ix, iy}, Direction::Y);
                 }
             }
 
@@ -145,7 +145,7 @@ namespace core
             {
                 for (auto iy = psi_Y; iy <= pei_Y; ++iy)
                 {
-                    Jy(ix, iy) = -this->layout_->deriv(Bz, {ix, iy}, DirectionTag<Direction::X>{});
+                    Jy(ix, iy) = -this->layout_->deriv(Bz, {ix, iy}, Direction::X);
                 }
             }
 
@@ -158,8 +158,8 @@ namespace core
             {
                 for (uint32 iy = psi_Y; iy <= pei_Y; ++iy)
                 {
-                    Jz(ix, iy) = this->layout_->deriv(By, {ix, iy}, DirectionTag<Direction::X>{})
-                                 - this->layout_->deriv(Bx, {ix, iy}, DirectionTag<Direction::Y>{});
+                    Jz(ix, iy) = this->layout_->deriv(By, {ix, iy}, Direction::X)
+                                 - this->layout_->deriv(Bx, {ix, iy}, Direction::Y);
                 }
             }
         }
@@ -198,10 +198,8 @@ namespace core
                 {
                     for (auto iz = psi_Z; iz <= pei_Z; ++iz)
                     {
-                        Jx(ix, iy, iz)
-                            = this->layout_->deriv(Bz, {ix, iy, iz}, DirectionTag<Direction::Y>{})
-                              - this->layout_->deriv(By, {ix, iy, iz},
-                                                     DirectionTag<Direction::Z>{});
+                        Jx(ix, iy, iz) = this->layout_->deriv(Bz, {ix, iy, iz}, Direction::Y)
+                                         - this->layout_->deriv(By, {ix, iy, iz}, Direction::Z);
                     }
                 }
             }
@@ -219,10 +217,8 @@ namespace core
                 {
                     for (auto iz = psi_Z; iz <= pei_Z; ++iz)
                     {
-                        Jy(ix, iy, iz)
-                            = this->layout_->deriv(Bx, {ix, iy, iz}, DirectionTag<Direction::Z>{})
-                              - this->layout_->deriv(Bz, {ix, iy, iz},
-                                                     DirectionTag<Direction::X>{});
+                        Jy(ix, iy, iz) = this->layout_->deriv(Bx, {ix, iy, iz}, Direction::Z)
+                                         - this->layout_->deriv(Bz, {ix, iy, iz}, Direction::X);
                     }
                 }
             }
@@ -240,10 +236,8 @@ namespace core
                 {
                     for (auto iz = psi_Z; iz <= pei_Z; ++iz)
                     {
-                        Jz(ix, iy, iz)
-                            = this->layout_->deriv(By, {ix, iy, iz}, DirectionTag<Direction::X>{})
-                              - this->layout_->deriv(Bx, {ix, iy, iz},
-                                                     DirectionTag<Direction::Y>{});
+                        Jz(ix, iy, iz) = this->layout_->deriv(By, {ix, iy, iz}, Direction::X)
+                                         - this->layout_->deriv(Bx, {ix, iy, iz}, Direction::Y);
                     }
                 }
             }

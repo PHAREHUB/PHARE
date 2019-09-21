@@ -181,8 +181,7 @@ namespace core
                     nOnEx += wp.coef * n(index[0] + wp.indexes[0]);
                 }
 
-                auto gradPOnEx = this->layout_->deriv(
-                    Pe, index, DirectionTag<Direction::X>{}); // TODO : issue 3391
+                auto gradPOnEx = this->layout_->deriv(Pe, index, Direction::X); // TODO : issue 3391
 
                 return gradPOnEx / nOnEx;
             }
@@ -410,8 +409,7 @@ namespace core
                 // the problem is not that the derivative puts ppp on dpp
                 // but rather that we get a dpp and we should not know it is OK for Ex
                 // this comment is here but applies everywhere gradP falls on E
-                auto gradPOnEx = this->layout_->deriv(
-                    Pe, index, DirectionTag<Direction::X>{}); // TODO : issue 3391
+                auto gradPOnEx = this->layout_->deriv(Pe, index, Direction::X); // TODO : issue 3391
 
                 return gradPOnEx / nOnEx;
             }
@@ -420,8 +418,7 @@ namespace core
             {
                 auto const nOnEy = GridLayout::project(n, index, GridLayout::momentsToEy());
 
-                auto gradPOnEy = this->layout_->deriv(
-                    Pe, index, DirectionTag<Direction::Y>{}); // TODO : issue 3391
+                auto gradPOnEy = this->layout_->deriv(Pe, index, Direction::Y); // TODO : issue 3391
 
                 return gradPOnEy / nOnEy;
             }
@@ -633,8 +630,7 @@ namespace core
             {
                 auto const nOnEx = GridLayout::project(n, index, GridLayout::momentsToEx());
 
-                auto gradPOnEx = this->layout_->deriv(
-                    Pe, index, DirectionTag<Direction::X>{}); // TODO : issue 3391
+                auto gradPOnEx = this->layout_->deriv(Pe, index, Direction::X); // TODO : issue 3391
 
                 return gradPOnEx / nOnEx;
             }
@@ -643,8 +639,7 @@ namespace core
             {
                 auto const nOnEy = GridLayout::project(n, index, GridLayout::momentsToEy());
 
-                auto gradPOnEy = this->layout_->deriv(
-                    Pe, index, DirectionTag<Direction::Y>{}); // TODO : issue 3391
+                auto gradPOnEy = this->layout_->deriv(Pe, index, Direction::Y); // TODO : issue 3391
 
                 return gradPOnEy / nOnEy;
             }
@@ -653,8 +648,7 @@ namespace core
             {
                 auto const nOnEz = GridLayout::project(n, index, GridLayout::momentsToEz());
 
-                auto gradPOnEz = this->layout_->deriv(
-                    Pe, index, DirectionTag<Direction::Z>{}); // TODO : issue 3391
+                auto gradPOnEz = this->layout_->deriv(Pe, index, Direction::Z); // TODO : issue 3391
 
                 return gradPOnEz / nOnEz;
             }

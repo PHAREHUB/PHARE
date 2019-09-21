@@ -11,34 +11,72 @@ namespace PHARE
 {
 namespace core
 {
-    enum class Direction { X, Y, Z };
-
-    template<Direction value>
-    struct DirectionTag
+    template<typename T>
+    class StrongType
     {
+    public:
+        constexpr StrongType(T val)
+            : value_(val)
+        {
+        }
+        constexpr StrongType()
+            : value_(0)
+        {
+        }
+        constexpr operator T() const noexcept { return value_; }
+        constexpr inline const T& value() const { return value_; }
+
+    private:
+        T value_;
     };
 
-    template<>
-    struct DirectionTag<Direction::X>
+    struct Direction : public StrongType<uint32_t>
     {
-        static const auto direction = Direction::X;
+        struct X_t;
+        static X_t const X;
+        struct Y_t;
+        static Y_t const Y;
+        struct Z_t;
+        static Z_t const Z;
+        constexpr bool operator==(const Direction& that) { return this->value() == that.value(); }
+        constexpr operator uint32_t() const noexcept { return value(); }
     };
-
-    template<>
-    struct DirectionTag<Direction::Y>
+    struct Direction::X_t : public Direction
     {
-        static const auto direction = Direction::Y;
     };
+    inline Direction::X_t constexpr const Direction::X{0};
 
-    template<>
-    struct DirectionTag<Direction::Z>
+    struct Direction::Y_t : public Direction
     {
-        static const auto direction = Direction::Z;
     };
+    inline Direction::Y_t constexpr const Direction::Y{1};
 
+    struct Direction::Z_t : public Direction
+    {
+    };
+    inline Direction::Z_t constexpr const Direction::Z{2};
 
-    enum class QtyCentering { primal = 0, dual = 1 };
+    struct QtyCentering : public StrongType<uint32_t>
+    {
+        struct primal_t;
+        static primal_t const primal;
+        struct dual_t;
+        static dual_t const dual;
+        constexpr bool operator==(const QtyCentering& that)
+        {
+            return this->value() == that.value();
+        }
+        constexpr operator uint32_t() const noexcept { return value(); }
+    };
+    struct QtyCentering::primal_t : public QtyCentering
+    {
+    };
+    inline QtyCentering::primal_t constexpr const QtyCentering::primal{0};
 
+    struct QtyCentering::dual_t : public QtyCentering
+    {
+    };
+    inline QtyCentering::dual_t constexpr const QtyCentering::dual{1};
 
     template<std::size_t dim>
     struct WeightPoint
@@ -74,9 +112,9 @@ namespace core
         static constexpr QtyCentering primal = QtyCentering::primal;
         static constexpr QtyCentering dual   = QtyCentering::dual;
 
-        static constexpr uint32 idirX = static_cast<uint32>(Direction::X);
-        static constexpr uint32 idirY = static_cast<uint32>(Direction::Y);
-        static constexpr uint32 idirZ = static_cast<uint32>(Direction::Z);
+        static constexpr uint32 idirX = Direction::X;
+        static constexpr uint32 idirY = Direction::Y;
+        static constexpr uint32 idirZ = Direction::Z;
 
         static constexpr uint32 iBx = static_cast<uint32>(HybridQuantity::Scalar::Bx);
         static constexpr uint32 iBy = static_cast<uint32>(HybridQuantity::Scalar::By);

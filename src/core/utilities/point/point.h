@@ -91,7 +91,7 @@ namespace core
             return destArray;
         }
 
-
+        Point operator+(const Point& that) { return *this; } // TODO THIS IS NOT RIGHT
 
     private:
         std::array<Type, dim> r;
