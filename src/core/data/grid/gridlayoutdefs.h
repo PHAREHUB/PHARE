@@ -44,17 +44,17 @@ namespace core
     struct Direction::X_t : public Direction
     {
     };
-    inline Direction::X_t constexpr const Direction::X{0};
+    inline Direction::X_t constexpr const Direction::X{{0}};
 
     struct Direction::Y_t : public Direction
     {
     };
-    inline Direction::Y_t constexpr const Direction::Y{1};
+    inline Direction::Y_t constexpr const Direction::Y{{1}};
 
     struct Direction::Z_t : public Direction
     {
     };
-    inline Direction::Z_t constexpr const Direction::Z{2};
+    inline Direction::Z_t constexpr const Direction::Z{{2}};
 
     struct QtyCentering : public StrongType<uint32_t>
     {
@@ -71,12 +71,12 @@ namespace core
     struct QtyCentering::primal_t : public QtyCentering
     {
     };
-    inline QtyCentering::primal_t constexpr const QtyCentering::primal{0};
+    inline QtyCentering::primal_t constexpr const QtyCentering::primal{{0}};
 
     struct QtyCentering::dual_t : public QtyCentering
     {
     };
-    inline QtyCentering::dual_t constexpr const QtyCentering::dual{1};
+    inline QtyCentering::dual_t constexpr const QtyCentering::dual{{1}};
 
     template<std::size_t dim>
     struct WeightPoint
