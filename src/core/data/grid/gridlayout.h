@@ -480,14 +480,14 @@ namespace core
 
             else if constexpr (Field::dimension == 2)
             {
-                if constexpr (std::is_same<DirectionTag, Direction::X_t>::value)
+                if constexpr (Direction::is_X<DirectionTag>)
                 {
                     auto next = operand(nextIndex(fieldCentering[dirX], index[0]), index[1]);
                     auto prev = operand(prevIndex(fieldCentering[dirX], index[0]), index[1]);
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
-                if constexpr (std::is_same<DirectionTag, Direction::Y_t>::value)
+                if constexpr (Direction::is_Y<DirectionTag>)
                 {
                     auto next = operand(index[0], nextIndex(fieldCentering[dirY], index[1]));
                     auto prev = operand(index[0], prevIndex(fieldCentering[dirY], index[1]));
@@ -496,7 +496,7 @@ namespace core
             }
             else if constexpr (Field::dimension == 3)
             {
-                if constexpr (std::is_same<DirectionTag, Direction::X_t>::value)
+                if constexpr (Direction::is_X<DirectionTag>)
                 {
                     auto next
                         = operand(nextIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
@@ -505,7 +505,7 @@ namespace core
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
-                if constexpr (std::is_same<DirectionTag, Direction::Y_t>::value)
+                if constexpr (Direction::is_Y<DirectionTag>)
                 {
                     auto next
                         = operand(index[0], nextIndex(fieldCentering[dirY], index[1]), index[2]);
@@ -513,7 +513,7 @@ namespace core
                         = operand(index[0], prevIndex(fieldCentering[dirY], index[1]), index[2]);
                     return inverseMeshSize_[dirY] * (next - prev);
                 }
-                if constexpr (std::is_same<DirectionTag, Direction::Z_t>::value)
+                if constexpr (Direction::is_Z<DirectionTag>)
                 {
                     auto next
                         = operand(index[0], index[1], nextIndex(fieldCentering[dirZ], index[2]));

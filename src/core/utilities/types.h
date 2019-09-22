@@ -43,6 +43,26 @@ namespace core
 
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
 
+    template<typename T>
+    class StrongType
+    {
+    public:
+        constexpr StrongType(T val)
+            : value_(val)
+        {
+        }
+        constexpr StrongType()
+            : value_(0)
+        {
+        }
+        constexpr operator T() const noexcept { return value_; }
+        constexpr inline const T& value() const { return value_; }
+
+    private:
+        T value_;
+    }; 
+
+
 } // namespace core
 } // namespace PHARE
 
