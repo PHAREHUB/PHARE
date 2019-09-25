@@ -30,7 +30,7 @@ using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleAr
 
 
 
-double density([[maybe_unused]] double x)
+double density(double x)
 {
     return x * x + 2.;
 }

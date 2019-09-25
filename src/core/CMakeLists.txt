@@ -52,13 +52,12 @@ set( SOURCES_CPP
      utilities/index/index.cpp
     )
 
-add_library(phare_core ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(phare_core PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(phare_core PUBLIC initializer)
+add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})
+target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
+target_link_libraries(${PROJECT_NAME}  PUBLIC initializer)
 
-target_include_directories(phare_core PUBLIC
+target_include_directories(${PROJECT_NAME}  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../initializer>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>
   $<INSTALL_INTERFACE:include/phare/core>)
 
