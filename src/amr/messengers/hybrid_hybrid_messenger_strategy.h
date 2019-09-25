@@ -11,8 +11,10 @@
 #include "messengers/hybrid_messenger_info.h"
 #include "messengers/hybrid_messenger_strategy.h"
 #include "numerics/interpolator/interpolator.h"
+#include "numerics/moments/moments.h"
 #include "resources_manager/amr_utils.h"
 #include "resources_manager/resources_manager_utilities.h"
+
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
@@ -621,22 +623,7 @@ namespace amr
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
                 auto layout      = layoutFromPatch<GridLayoutT>(*patch);
 
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& ghosts                 = pop.patchGhostParticles();
-                    auto& domain                 = pop.domainParticles();
-
-                    auto& density = pop.density();
-                    auto& flux    = pop.flux();
-                    interpolate_(std::begin(domain), std::end(domain), density, flux, layout);
-                    interpolate_(std::begin(ghosts), std::end(ghosts), density, flux, layout);
-                    interpolate_(std::begin(levelGhostParticlesOld),
-                                 std::end(levelGhostParticlesOld), density, flux, layout);
-                }
-
-                ions.computeDensity();
-                ions.computeBulkVelocity();
+                core::computeIonMoments(ions, layout, interpolate_);
             }
         }
 

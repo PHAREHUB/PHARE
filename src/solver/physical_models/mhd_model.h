@@ -6,6 +6,9 @@
 
 #include <string>
 
+
+#include <SAMRAI/hier/PatchLevel.h>
+
 #include "messengers/mhd_messenger_info.h"
 #include "models/mhd_state.h"
 #include "physical_models/physical_model.h"
@@ -32,7 +35,7 @@ namespace solver
         {
         }
 
-        virtual void initialize(SAMRAI::hier::Patch& patch) override {}
+        virtual void initialize(SAMRAI::hier::PatchLevel& level) override {}
 
 
         virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
@@ -43,8 +46,8 @@ namespace solver
 
 
 
-        virtual void fillMessengerInfo(
-            std::unique_ptr<amr::IMessengerInfo> const& info) const override
+        virtual void
+        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
         {
         }
 

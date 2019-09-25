@@ -53,19 +53,22 @@ namespace solver
         }
 
 
-        virtual void initialize(SAMRAI::hier::Patch& patch) override
+        virtual void initialize(SAMRAI::hier::PatchLevel& level) override
         {
-            // first initialize the ions
-            auto layout = amr::layoutFromPatch<gridLayout_type>(patch);
-            auto& ions  = state.ions;
-            for (auto& pop : ions)
+            for (auto& patch : level)
             {
-                auto info                = pop.particleInitializerInfo();
-                auto particleInitializer = ParticleInitializerFactory::create(info);
-                particleInitializer->loadParticles(pop.domainParticles(), layout);
+                // first initialize the ions
+                auto layout = amr::layoutFromPatch<gridLayout_type>(*patch);
+                auto& ions  = state.ions;
+                auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions);
+
+                for (auto& pop : ions)
+                {
+                    auto info                = pop.particleInitializerInfo();
+                    auto particleInitializer = ParticleInitializerFactory::create(info);
+                    particleInitializer->loadParticles(pop.domainParticles(), layout);
+                }
             }
-
-
             // TODO https://github.com/PHAREHUB/PHARE/issues/11 now initialize the fields
         }
 
