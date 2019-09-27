@@ -315,10 +315,7 @@ namespace solver
                     // either way it's not our business here, and we use the initializer
                     // we where kindy given
 
-                    for (auto patch : *level)
-                    {
-                        model.initialize(*patch);
-                    }
+                    model.initialize(*level);
 
                     messenger.fillRootGhosts(model, *level, initDataTime);
                 }

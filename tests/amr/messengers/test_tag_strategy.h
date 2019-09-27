@@ -103,8 +103,7 @@ public:
 
                 for (auto& patch : *level)
                 {
-                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag,
-                                                                  model_->state.ions);
+                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag);
 
                     auto layout = layoutFromPatch<typename HybridModel::gridLayout_type>(*patch);
 
@@ -127,9 +126,8 @@ public:
                     fillField(Bx, layout, fillBx);
                     fillField(By, layout, fillBy);
                     fillField(Bz, layout, fillBz);
-
-                    model_->initialize(*patch);
                 }
+                model_->initialize(*level);
             }
 
             else

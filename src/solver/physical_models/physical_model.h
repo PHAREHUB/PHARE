@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-#include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/PatchLevel.h>
 
 #include "messengers/messenger_info.h"
 
@@ -38,7 +38,7 @@ namespace solver
         /**
          * @brief initialize is used to initialize data
          */
-        virtual void initialize(SAMRAI::hier::Patch& patch) = 0;
+        virtual void initialize(SAMRAI::hier::PatchLevel& level) = 0;
 
 
         /**
@@ -61,8 +61,7 @@ namespace solver
          * by the MessengerRegistration class to register the quantities the model needs to be
          * initialized, filled on ghosts.
          */
-        virtual void
-        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
+        virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
 
 
 
