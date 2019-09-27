@@ -7,7 +7,7 @@
 #include <string>
 
 #include "data/ions/particle_initializers/particle_initializer_factory.h"
-#include "data_provider.h"
+#include "initializer/data_provider.h"
 #include "messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
 #include "physical_models/physical_model.h"
@@ -68,8 +68,9 @@ namespace solver
                     auto particleInitializer = ParticleInitializerFactory::create(info);
                     particleInitializer->loadParticles(pop.domainParticles(), layout);
                 }
+
+                state.electromag.initialize(layout);
             }
-            // TODO https://github.com/PHAREHUB/PHARE/issues/11 now initialize the fields
         }
 
 

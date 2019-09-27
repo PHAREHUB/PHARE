@@ -30,6 +30,7 @@ namespace core
         VecField& operator=(VecField const& source) = delete;
         VecField& operator=(VecField&& source) = default;
 
+        static constexpr std::size_t dimension = NdArrayImpl::dimension;
 
 
         /**
@@ -45,7 +46,7 @@ namespace core
         {
         }
 
-        static constexpr std::size_t dimension = NdArrayImpl::dimension;
+
 
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface

@@ -282,7 +282,6 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
-
 template<typename InterpolatorT>
 class A2DInterpolator : public ::testing::Test
 {
@@ -701,7 +700,6 @@ using GridLayoutYee3DO3 = GridLayout<GridLayoutImplYee<3,3>>;*/
 
 using MyTypes = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles, MyTypes);
-
 
 
 

@@ -22,6 +22,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_amr
   phare_solver
+  initializer
   gtest
   gmock)
 

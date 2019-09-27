@@ -99,34 +99,6 @@ public:
         {
             if (levelNumber == 0)
             {
-                // initializer.init(model);
-
-                for (auto& patch : *level)
-                {
-                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag);
-
-                    auto layout = layoutFromPatch<typename HybridModel::gridLayout_type>(*patch);
-
-                    auto& Ex = model_->state.electromag.E.getComponent(Component::X);
-                    auto& Ey = model_->state.electromag.E.getComponent(Component::Y);
-                    auto& Ez = model_->state.electromag.E.getComponent(Component::Z);
-
-                    auto& Bx = model_->state.electromag.B.getComponent(Component::X);
-                    auto& By = model_->state.electromag.B.getComponent(Component::Y);
-                    auto& Bz = model_->state.electromag.B.getComponent(Component::Z);
-
-                    auto fillLevel
-                        = [levelNumber](double) { return static_cast<double>(levelNumber); };
-
-
-                    fillField(Ex, layout, fillEx);
-                    fillField(Ey, layout, fillEy);
-                    fillField(Ez, layout, fillEz);
-
-                    fillField(Bx, layout, fillBx);
-                    fillField(By, layout, fillBy);
-                    fillField(Bz, layout, fillBz);
-                }
                 model_->initialize(*level);
             }
 
