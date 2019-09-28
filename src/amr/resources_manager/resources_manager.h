@@ -1,3 +1,4 @@
+
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 
@@ -474,6 +475,11 @@ namespace amr
 
                         nameToResourceInfo_.emplace(resourcesName, info);
                     }
+                    else
+                    {
+                        throw std::runtime_error(
+                            "registerResources<isUserFieldType> failed: key already in map");
+                    }
                 }
             }
 
@@ -495,6 +501,11 @@ namespace amr
                             info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
                         nameToResourceInfo_.emplace(name, info);
+                    }
+                    else
+                    {
+                        throw std::runtime_error(
+                            "registerResources<isUserParticleType> failed: key already in map");
                     }
                 }
             }
@@ -535,8 +546,8 @@ namespace amr
         //! \brief Allocate the data on the given level
         template<typename ResourcesUser, typename ResourcesProperties>
         void allocate_([[maybe_unused]] ResourcesUser const& obj,
-                       ResourcesProperties const& resourcesProperties,
-                       SAMRAI::hier::Patch& patch, double const allocateTime) const
+                       ResourcesProperties const& resourcesProperties, SAMRAI::hier::Patch& patch,
+                       double const allocateTime) const
         {
             for (auto const& properties : resourcesProperties)
             {
