@@ -26,7 +26,7 @@ namespace initializer
     template<>
     struct ScalarFunctionHelper<double, 2>
     {
-        using type = std::function<double(double)>;
+        using type = std::function<double(double, double)>;
     };
 
     template<>
