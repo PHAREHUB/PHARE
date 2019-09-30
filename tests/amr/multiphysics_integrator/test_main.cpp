@@ -21,7 +21,7 @@
 #include <memory>
 
 
-#include "amr/types/amr_types.h"
+#include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"

@@ -40,7 +40,17 @@ set( SOURCES_INC
      messengers/hybrid_messenger_info.h
      messengers/mhd_messenger_info.h
      types/amr_types.h
+     ${PROJECT_SOURCE_DIR}/diagnostic/samrai_diagnostic.h
    )
+
+if (HighFive)
+ set(PROJECT_FLAGS -DPHARE_WITH_HIGHFIVE)
+ set(SOURCES_INC
+   ${SOURCES_INC}
+   ${PROJECT_SOURCE_DIR}/diagnostic/detail/samrai_highfive.h
+ )
+endif()
+
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
      data/particles/refine/split.cpp
@@ -51,7 +61,7 @@ set( SOURCES_CPP
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS} ${PROJECT_FLAGS})
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include/phare/amr>)

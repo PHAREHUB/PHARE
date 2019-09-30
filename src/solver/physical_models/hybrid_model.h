@@ -7,7 +7,7 @@
 #include <string>
 
 #include "data/ions/particle_initializers/particle_initializer_factory.h"
-#include "initializer/data_provider.h"
+#include "data_provider.h"
 #include "messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
 #include "physical_models/physical_model.h"

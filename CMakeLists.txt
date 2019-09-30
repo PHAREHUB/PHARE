@@ -10,6 +10,7 @@ endif()
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+option(HighFive "Build with highfive usage" ON)
 option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
@@ -102,6 +103,11 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/build/include
 )
 endif()
+if(HighFive)
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive/include
+)
+endif()
 
 #*******************************************************************************
 #* Test and coverage option
@@ -154,6 +160,9 @@ if (test)
           )
   ENDIF(coverage)
 
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests
+  )
 
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
@@ -167,6 +176,7 @@ if (test)
   add_subdirectory(tests/amr/messengers)
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
+  add_subdirectory(tests/diagnostic)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/initializer)
@@ -202,6 +212,7 @@ endif()
 
 add_subdirectory(src/core)
 add_subdirectory(src/solver)
+add_subdirectory(src/diagnostic)
 add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
 add_subdirectory(src/amr)

@@ -86,7 +86,6 @@ PHARE::initializer::PHAREDict<1> createInitDict()
     dict["ions"]["pop0"]["ParticleInitializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
     dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
-
     dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
         = static_cast<VectorFunctionT>(bulkVelocity);
 
@@ -96,8 +95,6 @@ PHARE::initializer::PHAREDict<1> createInitDict()
     dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
     dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
     dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
-
-
 
     dict["ions"]["pop1"]["name"] = std::string{"alpha"};
     dict["ions"]["pop1"]["mass"] = 1.;
@@ -147,13 +144,10 @@ struct VecField1D_P
 
 
 
-
 struct Ions1D_P
 {
     Ions1D user{createInitDict()["ions"]};
 };
-
-
 
 
 struct Electromag1D_P
