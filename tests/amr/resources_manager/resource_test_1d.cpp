@@ -96,7 +96,7 @@ struct Ions1D_P
 
 
 
-        dict["pop1"]["name"]                        = std::string{"protons"};
+        dict["pop1"]["name"]                        = std::string{"alpha"};
         dict["pop1"]["mass"]                        = 1.;
         dict["pop1"]["ParticleInitializer"]["name"] = std::string{"MaxwellianParticleInitializer"};
         dict["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
@@ -161,7 +161,7 @@ struct HybridState1D_P
 
 
 
-        dict["ions"]["pop1"]["name"] = std::string{"protons"};
+        dict["ions"]["pop1"]["name"] = std::string{"alpha"};
         dict["ions"]["pop1"]["mass"] = 1.;
         dict["ions"]["pop1"]["ParticleInitializer"]["name"]
             = std::string{"MaxwellianParticleInitializer"};

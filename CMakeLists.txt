@@ -34,7 +34,7 @@ endif()
 if(MSVC)
   set (PHARE_WERROR_FLAGS /W4 /WX)
 else()
-  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
+#  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS}
                         -Wno-unused-variable -Wno-unused-parameter
@@ -102,6 +102,10 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/build/include
 )
 endif()
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/mkn.kul/inc
+)
 
 #*******************************************************************************
 #* Test and coverage option
@@ -154,6 +158,9 @@ if (test)
           )
   ENDIF(coverage)
 
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests
+  )
 
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
@@ -167,6 +174,7 @@ if (test)
   add_subdirectory(tests/amr/messengers)
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
+  add_subdirectory(tests/diagnostic)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/initializer)
