@@ -14,8 +14,8 @@ namespace PHARE
 {
 namespace solver
 {
-    template<typename HybridModel>
-    class SolverPPC : public ISolver
+    template<typename HybridModel, typename AMR_Types>
+    class SolverPPC : public ISolver<AMR_Types>
     {
     private:
         using Electromag = decltype(std::declval<HybridModel>().state.electromag);
@@ -27,8 +27,11 @@ namespace solver
 
 
     public:
+        using patch_t = typename AMR_Types::patch_t;
+        using level_t = typename AMR_Types::level_t;
+
         explicit SolverPPC()
-            : ISolver{"PPC"}
+            : ISolver<AMR_Types>{"PPC"}
         {
         }
 
@@ -40,8 +43,8 @@ namespace solver
 
 
 
-        virtual void fillMessengerInfo(
-            std::unique_ptr<amr::IMessengerInfo> const& info) const override
+        virtual void
+        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
         {
             auto& modelInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
@@ -55,7 +58,7 @@ namespace solver
 
 
 
-        virtual void registerResources(IPhysicalModel& model) override
+        virtual void registerResources(IPhysicalModel<AMR_Types>& model) override
         {
             auto& hmodel = dynamic_cast<HybridModel&>(model);
             hmodel.resourcesManager->registerResources(electromagPred_);
@@ -65,7 +68,7 @@ namespace solver
 
 
 
-        virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
+        virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
                               double const allocateTime) const override
         {
             auto& hmodel = dynamic_cast<HybridModel&>(model);
@@ -76,18 +79,17 @@ namespace solver
 
 
 
-        virtual void
-        advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                     int const levelNumber, IPhysicalModel& model,
-                     amr::IMessenger<IPhysicalModel>& fromCoarserMessenger,
-                     const double currentTime, const double newTime) override
+        virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                  int const levelNumber, IPhysicalModel<AMR_Types>& model,
+                                  amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarserMessenger,
+                                  const double currentTime, const double newTime) override
         {
             // bool constexpr withTemporal{true};
 
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
             auto& hybridState = hybridModel.state;
             auto& fromCoarser
-                = dynamic_cast<amr::HybridMessenger<HybridModel, IPhysicalModel>&>(
+                = dynamic_cast<amr::HybridMessenger<HybridModel, IPhysicalModel<AMR_Types>>&>(
                     fromCoarserMessenger);
 
             auto level = hierarchy->getPatchLevel(levelNumber);

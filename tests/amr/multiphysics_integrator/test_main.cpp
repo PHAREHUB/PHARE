@@ -21,6 +21,7 @@
 #include <memory>
 
 
+#include "amr/types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"
@@ -279,10 +280,10 @@ public:
 
     // IonsInit1D ionsInit;
 
-    using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D>;
-    using MHDModelT    = MHDModel<GridYee1D, VecField1D>;
-    using SolverMHDT   = SolverMHD<MHDModelT>;
-    using SolverPPCT   = SolverPPC<HybridModelT>;
+    using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
+    using MHDModelT    = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
+    using SolverMHDT   = SolverMHD<MHDModelT, SAMRAI_Types>;
+    using SolverPPCT   = SolverPPC<HybridModelT, SAMRAI_Types>;
 
 
     // physical models that can be used
@@ -301,8 +302,8 @@ public:
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy;
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator;
 
-    using MultiPhysicsIntegratorT
-        = MultiPhysicsIntegrator<MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel>>;
+    using MultiPhysicsIntegratorT = MultiPhysicsIntegrator<
+        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>>, SAMRAI_Types>;
 
     std::shared_ptr<MultiPhysicsIntegratorT> multiphysInteg;
 
@@ -326,7 +327,8 @@ public:
         descriptors.push_back({"MHDModel", "HybridModel"});
         descriptors.push_back({"HybridModel", "HybridModel"});
 
-        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel> messengerFactory{descriptors};
+        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
+            descriptors};
 
         // hierarchy
         auto inputDatabase = SAMRAI::tbox::InputManager::getManager()->parseInputFile(

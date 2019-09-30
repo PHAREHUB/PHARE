@@ -1,4 +1,5 @@
 
+#include "amr/types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
@@ -12,7 +13,6 @@
 #include "physical_models/hybrid_model.h"
 #include "physical_models/mhd_model.h"
 #include "resources_manager/resources_manager.h"
-
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
@@ -36,8 +36,8 @@ using MaxwellianParticleInitializer1D
 using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D            = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D      = Electromag<VecField1D>;
-using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D>;
-using MHDModelT         = MHDModel<GridYee1D, VecField1D>;
+using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
+using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
 using ResourcesManagerT = ResourcesManager<GridYee1D>;
 
 

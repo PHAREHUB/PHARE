@@ -2,6 +2,7 @@
 #define PHARE_TEST_TAG_STRATEGY_H
 
 
+#include "amr/types/amr_types.h"
 #include "data/field/field_data.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield_component.h"
@@ -42,13 +43,14 @@ class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 {
 private:
     std::shared_ptr<HybridModel> model_;
-    std::shared_ptr<SolverPPC<HybridModel>> solver_;
-    std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel>> messenger_;
+    std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver_;
+    std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel<SAMRAI_Types>>> messenger_;
 
 public:
-    explicit TagStrategy(std::shared_ptr<HybridModel> model,
-                         std::shared_ptr<SolverPPC<HybridModel>> solver,
-                         std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel>> messenger)
+    explicit TagStrategy(
+        std::shared_ptr<HybridModel> model,
+        std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver,
+        std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel<SAMRAI_Types>>> messenger)
         : model_{std::move(model)}
         , solver_{std::move(solver)}
         , messenger_{std::move(messenger)}

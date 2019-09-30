@@ -1,3 +1,4 @@
+#include "amr/types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
@@ -24,6 +25,7 @@
 
 
 
+#include "amr/types/amr_types.h"
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -66,12 +68,13 @@ using MaxwellianParticleInitializer1D
 using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D            = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D      = Electromag<VecField1D>;
-using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D>;
-using MHDModelT         = MHDModel<GridYee1D, VecField1D>;
+using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
+using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
 using ResourcesManagerT = ResourcesManager<GridYee1D>;
-using hybhybStratT      = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel>;
-using mhdhybStratT      = MHDHybridMessengerStrategy<MHDModelT, HybridModelT, IPhysicalModel>;
-using HybridMessengerT  = HybridMessenger<HybridModelT, IPhysicalModel>;
+using hybhybStratT      = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+using mhdhybStratT
+    = MHDHybridMessengerStrategy<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+using HybridMessengerT = HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
 
 
 
@@ -198,12 +201,13 @@ class HybridMessengers : public ::testing::Test
 {
     std::vector<MessengerDescriptor> descriptors{
         {"MHDModel", "MHDModel"}, {"MHDModel", "HybridModel"}, {"HybridModel", "HybridModel"}};
-    MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel> messengerFactory{descriptors};
+    MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
+        descriptors};
 
 
 public:
-    std::vector<std::unique_ptr<IMessenger<IPhysicalModel>>> messengers;
-    std::vector<std::unique_ptr<IPhysicalModel>> models;
+    std::vector<std::unique_ptr<IMessenger<IPhysicalModel<SAMRAI_Types>>>> messengers;
+    std::vector<std::unique_ptr<IPhysicalModel<SAMRAI_Types>>> models;
 
     HybridMessengers()
     {
@@ -240,7 +244,7 @@ public:
 
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
 
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
@@ -250,7 +254,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 {
-    auto mhdSolver = std::make_unique<SolverMHD<MHDModelT>>();
+    auto mhdSolver = std::make_unique<SolverMHD<MHDModelT, SAMRAI_Types>>();
     MessengerRegistration::registerQuantities(*messengers[0], *models[0], *models[0], *mhdSolver);
 }
 
@@ -258,7 +262,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 
 TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
@@ -267,7 +271,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -279,7 +283,7 @@ TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleCoarseModel)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -312,7 +316,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
     int const ratio{2};
     short unsigned const dimension = 1;
 
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel>;
+    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
 
 
 
@@ -323,13 +327,15 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
         std::make_shared<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
 
 
-    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel>> hybhybStrat{
-        std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
+    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
+        hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
 
-    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel>> messenger{
-        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel>>(std::move(hybhybStrat))};
+    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>> messenger{
+        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>>(
+            std::move(hybhybStrat))};
 
-    std::shared_ptr<SolverPPC<HybridModelT>> solver{std::make_shared<SolverPPC<HybridModelT>>()};
+    std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
+        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>()};
 
     std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 

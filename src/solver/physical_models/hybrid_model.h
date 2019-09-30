@@ -21,10 +21,12 @@ namespace solver
      * @brief The HybridModel class is a concrete implementation of a IPhysicalModel. The class
      * holds a HybridState and a ResourcesManager.
      */
-    template<typename GridLayoutT, typename Electromag, typename Ions>
-    class HybridModel : public IPhysicalModel
+    template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>
+    class HybridModel : public IPhysicalModel<AMR_Types>
     {
     public:
+        using patch_t = typename AMR_Types::patch_t;
+        using level_t = typename AMR_Types::level_t;
         static const std::string model_name;
         using gridLayout_type           = GridLayoutT;
         using electromag_type           = Electromag;
@@ -46,14 +48,14 @@ namespace solver
 
         HybridModel(PHARE::initializer::PHAREDict<dimension> dict,
                     std::shared_ptr<resources_manager_type> const& _resourcesManager)
-            : IPhysicalModel{model_name}
+            : IPhysicalModel<AMR_Types>{model_name}
             , state{dict}
             , resourcesManager{std::move(_resourcesManager)}
         {
         }
 
 
-        virtual void initialize(SAMRAI::hier::PatchLevel& level) override
+        virtual void initialize(level_t& level) override
         {
             for (auto& patch : level)
             {
@@ -79,7 +81,7 @@ namespace solver
          * @brief allocate uses the ResourcesManager to allocate HybridState physical quantities on
          * the given Patch at the given allocateTime
          */
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
+        virtual void allocate(patch_t& patch, double const allocateTime) override
         {
             resourcesManager->allocate(state, patch, allocateTime);
         }
@@ -125,8 +127,9 @@ namespace solver
         virtual ~HybridModel() override = default;
     };
 
-    template<typename GridLayoutT, typename Electromag, typename Ions>
-    const std::string HybridModel<GridLayoutT, Electromag, Ions>::model_name = "HybridModel";
+    template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>
+    const std::string HybridModel<GridLayoutT, Electromag, Ions, AMR_Types>::model_name
+        = "HybridModel";
 
 } // namespace solver
 

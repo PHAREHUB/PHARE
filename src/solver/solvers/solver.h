@@ -24,7 +24,7 @@ namespace solver
      * advanceLevel().
      *
      */
-    // template<typename IMessenger>
+    template<typename AMR_Types>
     class ISolver
     {
     public:
@@ -48,7 +48,7 @@ namespace solver
          * IPhysicalModel
          * @param model
          */
-        virtual void registerResources(IPhysicalModel& model) = 0;
+        virtual void registerResources(IPhysicalModel<AMR_Types>& model) = 0;
 
 
 
@@ -58,8 +58,7 @@ namespace solver
          * quantities that need to be communicated by a IMessenger.
          * @param info
          */
-        virtual void
-        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
+        virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
 
 
 
@@ -68,8 +67,8 @@ namespace solver
          * @brief advanceLevel advances the given level from t to t+dt
          */
         virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                  int const levelNumber, IPhysicalModel& model,
-                                  amr::IMessenger<IPhysicalModel>& fromCoarser,
+                                  int const levelNumber, IPhysicalModel<AMR_Types>& model,
+                                  amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarser,
                                   const double currentTime, const double newTime)
             = 0;
 
@@ -80,7 +79,7 @@ namespace solver
          * @brief allocate is used to allocate ISolver variables previously registered to the
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
-        virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
+        virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
                               double const allocateTime) const = 0;
 
 
@@ -103,13 +102,23 @@ namespace solver
      */
 
 
-    bool areCompatible(amr::IMessenger<IPhysicalModel> const& messenger,
-                       ISolver const& solver);
+    template<typename AMR_Types>
+    bool areCompatible(amr::IMessenger<IPhysicalModel<AMR_Types>> const& messenger,
+                       ISolver<AMR_Types> const& solver)
+    {
+        return solver.modelName() == messenger.fineModelName()
+               || solver.modelName() == messenger.coarseModelName();
+    }
+
 
     /**
      * @brief areCompatible returns true if the model name is equal to the solver modelname
      */
-    bool areCompatible(IPhysicalModel const& model, ISolver const& solver);
+    template<typename AMR_Types>
+    bool areCompatible(IPhysicalModel<AMR_Types> const& model, ISolver<AMR_Types> const& solver)
+    {
+        return model.name() == solver.modelName();
+    }
 
 
 } // namespace solver
