@@ -41,8 +41,8 @@ User documentation can be found here...
 
 ### Active core team
 
-- Nicolas Aunai ([LPP](www.lpp.fr))
-- Roch Smets ([LPP](www.lpp.fr))
+- Nicolas Aunai ([LPP](https://www.lpp.polytechnique.fr))
+- Roch Smets ([LPP](https://www.lpp.polytechnique.fr))
 - Andrea Ciardi ([LERMA](https://lerma.obspm.fr))
 - Philip Deegan (https://github.com/Dekken)
 
@@ -59,5 +59,5 @@ Acknowledgments
 The project PHARE is supported by:
 
 - [Plas@Par](http://www.plasapar.com)
-- [Laboratory of Plasma Physics (LPP)](www.lpp.fr)
+- [Laboratory of Plasma Physics (LPP)](https://www.lpp.polytechnique.fr)
 - [LERMA](https://lerma.obspm.fr)
