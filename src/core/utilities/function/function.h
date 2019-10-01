@@ -24,7 +24,11 @@ namespace core
             : f{func}
         {
         }
-        R operator()(double x) { return f(x); }
+        Function() = default;
+
+        Function(Function<R, 1> const& other) = default;
+
+        R operator()(double x) const { return f(x); }
 
     private:
         std::function<R(double)> f;
@@ -40,7 +44,12 @@ namespace core
             : f{func}
         {
         }
-        R operator()(double x, double y) { return f(x, y); }
+
+        Function() = default;
+
+        Function(Function<R, 2> const& other) = default;
+
+        R operator()(double x, double y) const { return f(x, y); }
 
     private:
         std::function<R(double, double)> f;
@@ -55,7 +64,12 @@ namespace core
             : f{func}
         {
         }
-        R operator()(double x, double y, double z) { return f(x, y, z); }
+
+        Function() = default;
+
+        Function(Function<R, 3> const& other) = default;
+
+        R operator()(double x, double y, double z) const { return f(x, y, z); }
 
     private:
         std::function<R(double, double, double)> f;

@@ -6,22 +6,50 @@
 #include <string>
 #include <tuple>
 
-#include <hybrid/hybrid_quantities.h>
+#include "data/vecfield/vecfield_initializer.h"
+#include "data_provider.h"
+#include "hybrid/hybrid_quantities.h"
+
 
 namespace PHARE
 {
 namespace core
 {
     template<typename VecFieldT>
-    struct Electromag
+    class Electromag
     {
+    public:
+        static constexpr std::size_t dimension = VecFieldT::dimension;
+
         explicit Electromag(std::string name)
             : E{name + "_E", HybridQuantity::Vector::E}
             , B{name + "_B", HybridQuantity::Vector::B}
+            , Einit_{}
+            , Binit_{}
+        {
+        }
+
+        explicit Electromag(initializer::PHAREDict<dimension> dict)
+            : E{dict["name"].template to<std::string>() + "_"
+                    + dict["electric"]["name"].template to<std::string>(),
+                HybridQuantity::Vector::E}
+            , B{dict["name"].template to<std::string>() + "_"
+                    + dict["magnetic"]["name"].template to<std::string>(),
+                HybridQuantity::Vector::B}
+            , Einit_{dict["electric"]["initializer"]}
+            , Binit_{dict["magnetic"]["initializer"]}
         {
         }
 
         using vecfield_type = VecFieldT;
+
+
+        template<typename GridLayout>
+        void initialize(GridLayout const& layout)
+        {
+            Einit_.initialize(E, layout);
+            Binit_.initialize(B, layout);
+        }
 
 
         //-------------------------------------------------------------------------
@@ -30,10 +58,7 @@ namespace core
 
         bool isUsable() const { return E.isUsable() && B.isUsable(); }
 
-
-
         bool isSettable() const { return E.isSettable() && B.isSettable(); }
-
 
         auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(E, B); }
 
@@ -53,7 +78,9 @@ namespace core
         VecFieldT E;
         VecFieldT B;
 
-        static constexpr std::size_t dimension = VecFieldT::dimension;
+    private:
+        VecFieldInitializer<dimension> Einit_;
+        VecFieldInitializer<dimension> Binit_;
     };
 } // namespace core
 } // namespace PHARE

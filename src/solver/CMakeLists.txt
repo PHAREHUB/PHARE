@@ -25,16 +25,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_core
   phare_amr
-  SAMRAI_algs
-  SAMRAI_appu
-  SAMRAI_geom
-  SAMRAI_hier
-  SAMRAI_math
-  SAMRAI_mesh
-  SAMRAI_pdat
-  SAMRAI_solv
-  SAMRAI_tbox
-  SAMRAI_xfer
   )
 
 

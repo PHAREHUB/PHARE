@@ -21,6 +21,7 @@
 #include <memory>
 
 
+#include "amr/types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"
@@ -170,14 +171,46 @@ std::array<double, 3> thermalVelocity(double x)
 
 
 
+double bx(double x)
+{
+    return 4. * x;
+}
+
+double by(double x)
+{
+    return 5. * x;
+}
+
+double bz(double x)
+{
+    return 6. * x;
+}
+
+double ex(double x)
+{
+    return x;
+}
+
+double ey(double x)
+{
+    return 2. * x;
+}
+
+double ez(double x)
+{
+    return 3. * x;
+}
+
+
+
 // -----------------------------------------------------------------------------
 //                          MULTIPHYSICS INTEGRATOR
 // -----------------------------------------------------------------------------
 
 
 
-using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
-using VectorFunction = PHARE::initializer::VectorFunction<1>;
+using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using VectorFunctionT = PHARE::initializer::VectorFunction<1>;
 
 PHARE::initializer::PHAREDict<1> createIonsDict()
 {
@@ -188,13 +221,13 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
     dict["ions"]["pop0"]["mass"]   = 1.;
     dict["ions"]["pop0"]["ParticleInitializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
-        = static_cast<VectorFunction>(bulkVelocity);
+        = static_cast<VectorFunctionT>(bulkVelocity);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["thermalVelocity"]
-        = static_cast<VectorFunction>(thermalVelocity);
+        = static_cast<VectorFunctionT>(thermalVelocity);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
     dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
@@ -206,17 +239,30 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
     dict["ions"]["pop1"]["mass"] = 1.;
     dict["ions"]["pop1"]["ParticleInitializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["bulkVelocity"]
-        = static_cast<VectorFunction>(bulkVelocity);
+        = static_cast<VectorFunctionT>(bulkVelocity);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["thermalVelocity"]
-        = static_cast<VectorFunction>(thermalVelocity);
+        = static_cast<VectorFunctionT>(thermalVelocity);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
     dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
     dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+
+    dict["electromag"]["name"]             = std::string{"EM"};
+    dict["electromag"]["electric"]["name"] = std::string{"E"};
+    dict["electromag"]["magnetic"]["name"] = std::string{"B"};
+
+    dict["electromag"]["electric"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(ex);
+    dict["electromag"]["electric"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(ey);
+    dict["electromag"]["electric"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(ez);
+
+    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
+    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
+    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
 
     return dict;
 }
@@ -234,10 +280,10 @@ public:
 
     // IonsInit1D ionsInit;
 
-    using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D>;
-    using MHDModelT    = MHDModel<GridYee1D, VecField1D>;
-    using SolverMHDT   = SolverMHD<MHDModelT>;
-    using SolverPPCT   = SolverPPC<HybridModelT>;
+    using HybridModelT = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
+    using MHDModelT    = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
+    using SolverMHDT   = SolverMHD<MHDModelT, SAMRAI_Types>;
+    using SolverPPCT   = SolverPPC<HybridModelT, SAMRAI_Types>;
 
 
     // physical models that can be used
@@ -256,8 +302,8 @@ public:
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy;
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator;
 
-    using MultiPhysicsIntegratorT
-        = MultiPhysicsIntegrator<MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel>>;
+    using MultiPhysicsIntegratorT = MultiPhysicsIntegrator<
+        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>>, SAMRAI_Types>;
 
     std::shared_ptr<MultiPhysicsIntegratorT> multiphysInteg;
 
@@ -281,7 +327,8 @@ public:
         descriptors.push_back({"MHDModel", "HybridModel"});
         descriptors.push_back({"HybridModel", "HybridModel"});
 
-        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel> messengerFactory{descriptors};
+        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
+            descriptors};
 
         // hierarchy
         auto inputDatabase = SAMRAI::tbox::InputManager::getManager()->parseInputFile(

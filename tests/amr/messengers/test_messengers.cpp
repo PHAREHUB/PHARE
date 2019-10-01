@@ -1,3 +1,4 @@
+#include "amr/types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
@@ -24,6 +25,7 @@
 
 
 
+#include "amr/types/amr_types.h"
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -66,12 +68,13 @@ using MaxwellianParticleInitializer1D
 using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D            = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D      = Electromag<VecField1D>;
-using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D>;
-using MHDModelT         = MHDModel<GridYee1D, VecField1D>;
+using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
+using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
 using ResourcesManagerT = ResourcesManager<GridYee1D>;
-using hybhybStratT      = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel>;
-using mhdhybStratT      = MHDHybridMessengerStrategy<MHDModelT, HybridModelT, IPhysicalModel>;
-using HybridMessengerT  = HybridMessenger<HybridModelT, IPhysicalModel>;
+using hybhybStratT      = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+using mhdhybStratT
+    = MHDHybridMessengerStrategy<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+using HybridMessengerT = HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
 
 
 
@@ -95,9 +98,40 @@ std::array<double, 3> thermalVelocity(double x)
 
 
 
+double bx(double x)
+{
+    return 4. * x;
+}
 
-using ScalarFunction = PHARE::initializer::ScalarFunction<1>;
-using VectorFunction = PHARE::initializer::VectorFunction<1>;
+double by(double x)
+{
+    return 5. * x;
+}
+
+double bz(double x)
+{
+    return 6. * x;
+}
+
+double ex(double x)
+{
+    return x;
+}
+
+double ey(double x)
+{
+    return 2. * x;
+}
+
+double ez(double x)
+{
+    return 3. * x;
+}
+
+
+
+using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using VectorFunctionT = PHARE::initializer::VectorFunction<1>;
 
 PHARE::initializer::PHAREDict<1> createIonsDict()
 {
@@ -108,13 +142,13 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
     dict["ions"]["pop0"]["mass"]   = 1.;
     dict["ions"]["pop0"]["ParticleInitializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["bulkVelocity"]
-        = static_cast<VectorFunction>(bulkVelocity);
+        = static_cast<VectorFunctionT>(bulkVelocity);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["thermalVelocity"]
-        = static_cast<VectorFunction>(thermalVelocity);
+        = static_cast<VectorFunctionT>(thermalVelocity);
 
     dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
     dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
@@ -126,17 +160,30 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
     dict["ions"]["pop1"]["mass"] = 1.;
     dict["ions"]["pop1"]["ParticleInitializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunction>(density);
+    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["bulkVelocity"]
-        = static_cast<VectorFunction>(bulkVelocity);
+        = static_cast<VectorFunctionT>(bulkVelocity);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["thermalVelocity"]
-        = static_cast<VectorFunction>(thermalVelocity);
+        = static_cast<VectorFunctionT>(thermalVelocity);
 
     dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
     dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
     dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+
+    dict["electromag"]["name"]             = std::string{"EM"};
+    dict["electromag"]["electric"]["name"] = std::string{"E"};
+    dict["electromag"]["magnetic"]["name"] = std::string{"B"};
+
+    dict["electromag"]["electric"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(ex);
+    dict["electromag"]["electric"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(ey);
+    dict["electromag"]["electric"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(ez);
+
+    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
+    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
+    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
+
 
     return dict;
 }
@@ -154,12 +201,13 @@ class HybridMessengers : public ::testing::Test
 {
     std::vector<MessengerDescriptor> descriptors{
         {"MHDModel", "MHDModel"}, {"MHDModel", "HybridModel"}, {"HybridModel", "HybridModel"}};
-    MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel> messengerFactory{descriptors};
+    MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
+        descriptors};
 
 
 public:
-    std::vector<std::unique_ptr<IMessenger<IPhysicalModel>>> messengers;
-    std::vector<std::unique_ptr<IPhysicalModel>> models;
+    std::vector<std::unique_ptr<IMessenger<IPhysicalModel<SAMRAI_Types>>>> messengers;
+    std::vector<std::unique_ptr<IPhysicalModel<SAMRAI_Types>>> models;
 
     HybridMessengers()
     {
@@ -196,7 +244,7 @@ public:
 
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
 
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
@@ -206,7 +254,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 {
-    auto mhdSolver = std::make_unique<SolverMHD<MHDModelT>>();
+    auto mhdSolver = std::make_unique<SolverMHD<MHDModelT, SAMRAI_Types>>();
     MessengerRegistration::registerQuantities(*messengers[0], *models[0], *models[0], *mhdSolver);
 }
 
@@ -214,7 +262,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 
 TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
@@ -223,7 +271,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -235,7 +283,7 @@ TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleCoarseModel)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -268,7 +316,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
     int const ratio{2};
     short unsigned const dimension = 1;
 
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel>;
+    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
 
 
 
@@ -279,13 +327,15 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
         std::make_shared<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
 
 
-    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel>> hybhybStrat{
-        std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
+    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
+        hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
 
-    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel>> messenger{
-        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel>>(std::move(hybhybStrat))};
+    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>> messenger{
+        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>>(
+            std::move(hybhybStrat))};
 
-    std::shared_ptr<SolverPPC<HybridModelT>> solver{std::make_shared<SolverPPC<HybridModelT>>()};
+    std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
+        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>()};
 
     std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 
@@ -350,12 +400,12 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
                 }
             };
 
-            checkMyField(Ex, TagStrategy<HybridModelT>::fillEx);
-            checkMyField(Ey, TagStrategy<HybridModelT>::fillEy);
-            checkMyField(Ez, TagStrategy<HybridModelT>::fillEz);
-            checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
-            checkMyField(By, TagStrategy<HybridModelT>::fillBy);
-            checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
+            checkMyField(Ex, ex);
+            checkMyField(Ey, ey);
+            checkMyField(Ez, ez);
+            checkMyField(Bx, bx);
+            checkMyField(By, by);
+            checkMyField(Bz, bz);
         }
     }
 }
@@ -603,13 +653,13 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
             }
         };
 
-        checkMyField(Bx, TagStrategy<HybridModelT>::fillBx);
-        checkMyField(By, TagStrategy<HybridModelT>::fillBy);
-        checkMyField(Bz, TagStrategy<HybridModelT>::fillBz);
+        checkMyField(Bx, bx);
+        checkMyField(By, by);
+        checkMyField(Bz, bz);
 
-        checkMyField(Ex, TagStrategy<HybridModelT>::fillEx);
-        checkMyField(Ey, TagStrategy<HybridModelT>::fillEy);
-        checkMyField(Ez, TagStrategy<HybridModelT>::fillEz);
+        checkMyField(Ex, ex);
+        checkMyField(Ey, ey);
+        checkMyField(Ez, ez);
 
         iPatch++;
     }

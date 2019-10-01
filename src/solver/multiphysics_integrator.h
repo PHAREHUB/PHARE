@@ -73,7 +73,7 @@ namespace solver
      * registered IPhysicalModel and ISolver objects
      *
      */
-    template<typename MessengerFactory>
+    template<typename MessengerFactory, typename AMR_Types>
     class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                    public SAMRAI::algs::TimeRefinementLevelStrategy
     {
@@ -126,7 +126,7 @@ namespace solver
          * have been registered already.
          */
         void registerModel(int coarsestLevel, int finestLevel,
-                           std::shared_ptr<IPhysicalModel> model)
+                           std::shared_ptr<IPhysicalModel<AMR_Types>> model)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -167,7 +167,7 @@ namespace solver
          * be compatible with all models in the given range and not yet registered.
          */
         void registerAndInitSolver(int coarsestLevel, int finestLevel,
-                                   std::unique_ptr<ISolver> solver)
+                                   std::unique_ptr<ISolver<AMR_Types>> solver)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -469,10 +469,10 @@ namespace solver
 
     private:
         int nbrOfLevels_;
-        using IMessengerT = amr::IMessenger<IPhysicalModel>;
+        using IMessengerT = amr::IMessenger<IPhysicalModel<AMR_Types>>;
         std::vector<LevelDescriptor> levelDescriptors_;
-        std::vector<std::unique_ptr<ISolver>> solvers_;
-        std::vector<std::shared_ptr<IPhysicalModel>> models_;
+        std::vector<std::unique_ptr<ISolver<AMR_Types>>> solvers_;
+        std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
 
 
@@ -505,7 +505,8 @@ namespace solver
 
 
 
-        void addModel_(std::shared_ptr<IPhysicalModel> model, int coarsestLevel, int finestLevel)
+        void addModel_(std::shared_ptr<IPhysicalModel<AMR_Types>> model, int coarsestLevel,
+                       int finestLevel)
         {
             if (core::notIn(model, models_))
             {
@@ -526,7 +527,8 @@ namespace solver
 
 
 
-        void addSolver_(std::unique_ptr<ISolver> solver, int coarsestLevel, int finestLevel)
+        void addSolver_(std::unique_ptr<ISolver<AMR_Types>> solver, int coarsestLevel,
+                        int finestLevel)
         {
             if (core::notIn(solver, solvers_))
             {
@@ -546,7 +548,7 @@ namespace solver
 
 
 
-        bool canBeRegistered_(int coarsestLevel, int finestLevel, ISolver const& solver)
+        bool canBeRegistered_(int coarsestLevel, int finestLevel, ISolver<AMR_Types> const& solver)
         {
             bool itCan = true;
 
@@ -585,8 +587,9 @@ namespace solver
 
 
 
-        void registerMessenger_(MessengerFactory const& factory, IPhysicalModel const& coarseModel,
-                                IPhysicalModel const& fineModel, int iLevel)
+        void registerMessenger_(MessengerFactory const& factory,
+                                IPhysicalModel<AMR_Types> const& coarseModel,
+                                IPhysicalModel<AMR_Types> const& fineModel, int iLevel)
         {
             if (auto messengerName = factory.name(coarseModel, fineModel); messengerName)
             {
@@ -647,16 +650,16 @@ namespace solver
 
 
 
-        ISolver& getSolver_(int iLevel)
+        ISolver<AMR_Types>& getSolver_(int iLevel)
         {
-            return const_cast<ISolver&>(
+            return const_cast<ISolver<AMR_Types>&>(
                 const_cast<std::remove_pointer_t<decltype(this)> const*>(this)->getSolver_(iLevel));
         }
 
 
 
 
-        ISolver const& getSolver_(int iLevel) const
+        ISolver<AMR_Types> const& getSolver_(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
             return *solvers_[descriptor.solverIndex];
@@ -665,16 +668,16 @@ namespace solver
 
 
 
-        IPhysicalModel& getModel_(int iLevel)
+        IPhysicalModel<AMR_Types>& getModel_(int iLevel)
         {
-            return const_cast<IPhysicalModel&>(
+            return const_cast<IPhysicalModel<AMR_Types>&>(
                 const_cast<std::remove_pointer_t<decltype(this)> const*>(this)->getModel_(iLevel));
         }
 
 
 
 
-        IPhysicalModel const& getModel_(int iLevel) const
+        IPhysicalModel<AMR_Types> const& getModel_(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
             return *models_[descriptor.modelIndex];

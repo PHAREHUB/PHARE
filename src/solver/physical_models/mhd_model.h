@@ -20,25 +20,28 @@ namespace PHARE
 {
 namespace solver
 {
-    template<typename GridLayoutT, typename VecFieldT>
-    class MHDModel : public IPhysicalModel
+    template<typename GridLayoutT, typename VecFieldT, typename AMR_Types>
+    class MHDModel : public IPhysicalModel<AMR_Types>
     {
     public:
+        using patch_t = typename AMR_Types::patch_t;
+        using level_t = typename AMR_Types::level_t;
+
         static const std::string model_name;
         static constexpr auto dimension = GridLayoutT::dimension;
         using resources_manager_type    = amr::ResourcesManager<GridLayoutT>;
 
 
         explicit MHDModel(std::shared_ptr<resources_manager_type> const& _resourcesManager)
-            : IPhysicalModel{model_name}
+            : IPhysicalModel<AMR_Types>{model_name}
             , resourcesManager{std::move(_resourcesManager)}
         {
         }
 
-        virtual void initialize(SAMRAI::hier::PatchLevel& level) override {}
+        virtual void initialize(level_t& level) override {}
 
 
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) override
+        virtual void allocate(patch_t& patch, double const allocateTime) override
         {
             resourcesManager->allocate(state.B, patch, allocateTime);
             resourcesManager->allocate(state.V, patch, allocateTime);
@@ -57,8 +60,8 @@ namespace solver
         std::shared_ptr<resources_manager_type> resourcesManager;
     };
 
-    template<typename GridLayoutT, typename VecFieldT>
-    const std::string MHDModel<GridLayoutT, VecFieldT>::model_name = "MHDModel";
+    template<typename GridLayoutT, typename VecFieldT, typename AMR_Types>
+    const std::string MHDModel<GridLayoutT, VecFieldT, AMR_Types>::model_name = "MHDModel";
 
 
 } // namespace solver

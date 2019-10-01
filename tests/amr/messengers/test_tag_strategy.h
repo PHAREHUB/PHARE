@@ -2,6 +2,7 @@
 #define PHARE_TEST_TAG_STRATEGY_H
 
 
+#include "amr/types/amr_types.h"
 #include "data/field/field_data.h"
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield_component.h"
@@ -42,13 +43,14 @@ class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 {
 private:
     std::shared_ptr<HybridModel> model_;
-    std::shared_ptr<SolverPPC<HybridModel>> solver_;
-    std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel>> messenger_;
+    std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver_;
+    std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel<SAMRAI_Types>>> messenger_;
 
 public:
-    explicit TagStrategy(std::shared_ptr<HybridModel> model,
-                         std::shared_ptr<SolverPPC<HybridModel>> solver,
-                         std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel>> messenger)
+    explicit TagStrategy(
+        std::shared_ptr<HybridModel> model,
+        std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver,
+        std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel<SAMRAI_Types>>> messenger)
         : model_{std::move(model)}
         , solver_{std::move(solver)}
         , messenger_{std::move(messenger)}
@@ -99,34 +101,6 @@ public:
         {
             if (levelNumber == 0)
             {
-                // initializer.init(model);
-
-                for (auto& patch : *level)
-                {
-                    auto _ = model_->resourcesManager->setOnPatch(*patch, model_->state.electromag);
-
-                    auto layout = layoutFromPatch<typename HybridModel::gridLayout_type>(*patch);
-
-                    auto& Ex = model_->state.electromag.E.getComponent(Component::X);
-                    auto& Ey = model_->state.electromag.E.getComponent(Component::Y);
-                    auto& Ez = model_->state.electromag.E.getComponent(Component::Z);
-
-                    auto& Bx = model_->state.electromag.B.getComponent(Component::X);
-                    auto& By = model_->state.electromag.B.getComponent(Component::Y);
-                    auto& Bz = model_->state.electromag.B.getComponent(Component::Z);
-
-                    auto fillLevel
-                        = [levelNumber](double) { return static_cast<double>(levelNumber); };
-
-
-                    fillField(Ex, layout, fillEx);
-                    fillField(Ey, layout, fillEy);
-                    fillField(Ez, layout, fillEz);
-
-                    fillField(Bx, layout, fillBx);
-                    fillField(By, layout, fillBy);
-                    fillField(Bz, layout, fillBz);
-                }
                 model_->initialize(*level);
             }
 
