@@ -70,30 +70,6 @@ namespace initializer
     using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<dim>,
                                     VectorFunction<dim>>;
 
-
-
-    extern PHAREDict<1> phareDict1D;
-    extern PHAREDict<2> phareDict2D;
-    extern PHAREDict<3> phareDict3D;
-
-    template<std::size_t dim>
-    auto& dict()
-    {
-        static_assert(dim >= 1 and dim <= 3, "error, invalid dimension in dict<dim>()");
-        if constexpr (dim == 1)
-        {
-            return phareDict1D;
-        }
-        else if constexpr (dim == 2)
-        {
-            return phareDict2D;
-        }
-        else if constexpr (dim == 3)
-        {
-            return phareDict3D;
-        }
-    }
-
     class DataProvider
     {
     public:
