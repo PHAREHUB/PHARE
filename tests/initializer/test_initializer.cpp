@@ -48,6 +48,17 @@ TEST(ARestartTimeDataProvider, isADataProvider)
 
 
 
+TEST(APythonDataProvider, providesAProperTree)
+{
+    char const* argv                         = "init.py";
+    std::unique_ptr<PythonDataProvider> pydp = std::make_unique<PythonDataProvider>(2, argv);
+    pydp->read();
+    auto& input = dict<1>();
+
+    EXPECT_EQ("simulation_test", input["simulation"]["name"].to<std::string>());
+}
+
+
 
 int main(int argc, char** argv)
 {
