@@ -6,5 +6,11 @@ namespace PHARE
 {
 namespace initializer
 {
-} // namespace initializer
-} // namespace PHARE
+    PythonDictHandler& PythonDictHandler::INSTANCE()
+    {
+        static PythonDictHandler handler;
+        return handler;
+    }
+
+} /*namespace initializer*/
+} /*namespace PHARE*/

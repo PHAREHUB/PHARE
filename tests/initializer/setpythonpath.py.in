@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
+print("SETUP PYTHONPATH")
 import os
 import subprocess
 import sys
 
 
-
+cmake_build_dir = "@CMAKE_BINARY_DIR@"
 venv_path = os.environ.get('VIRTUAL_ENV')
 
 if venv_path is not None:
@@ -16,6 +17,9 @@ if venv_path is not None:
     s = s.replace('[','').replace(']','').replace('"',"").replace("\n","").replace("'",'')
     s = s.split(",")[1:]
     pythonpath = [ss.strip() for ss in s]
-    sys.path = sys.path + pythonpath
+    sys.path = sys.path + pythonpath +  [cmake_build_dir]
+
+else:
+    sys.path  = sys.path + [cmake_build_dir]
 
 
