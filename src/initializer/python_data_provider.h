@@ -54,6 +54,7 @@ namespace initializer
                       << " and density(2) = " << density(2.) << "\n";*/
         }
 
+        virtual ~PythonDataProvider() { std::cout << "hello\n"; }
 
     private:
         void preparePythonPath_() { py::eval_file("setpythonpath.py", scope_); }
