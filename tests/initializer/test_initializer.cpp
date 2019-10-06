@@ -64,7 +64,6 @@ int main(int argc, char** argv)
 {
     //::testing::InitGoogleTest(&argc, argv);
 
-
     char const* name                         = "init.py";
     std::unique_ptr<PythonDataProvider> pydp = std::make_unique<PythonDataProvider>(2, name);
     pydp->read();
