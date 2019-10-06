@@ -3,6 +3,9 @@ cmake_minimum_required (VERSION 3.3)
 project(PHARE VERSION 0.1)
 
 set(CMAKE_CXX_STANDARD 17)
+if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
+  cmake_policy(SET CMP0074 NEW)
+endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
@@ -82,18 +85,22 @@ endif()
 find_package(SAMRAI CONFIG QUIET)
 if (NOT SAMRAI_FOUND)
 
-  set(SAMRAI_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/samrai)
-  set(SAMRAI_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/samrai)
+  if(DEFINED SAMRAI_ROOT)
+    find_package(SAMRAI PATHS ${SAMRAI_ROOT} REQUIRED)
+  else()
+    set(SAMRAI_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/samrai)
+    set(SAMRAI_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/samrai)
 
-  if (NOT EXISTS ${SAMRAI_SRCDIR})
-    execute_process(
-      COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b master --recursive --depth 10
-      )
+    if (NOT EXISTS ${SAMRAI_SRCDIR})
+      execute_process(
+        COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b master --recursive --depth 10
+        )
+    endif()
+
+    option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
+
+    add_subdirectory(${SAMRAI_SRCDIR})
   endif()
-
-  option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
-
-  add_subdirectory(${SAMRAI_SRCDIR})
 
 endif()
 
