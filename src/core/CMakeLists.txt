@@ -44,8 +44,6 @@ set( SOURCES_INC
      utilities/point/point.h
      utilities/range/range.h
      utilities/types.h
-     utilities/function/function.h
-#     ../../subprojets/cppdict/include/dict.hpp
    )
 
 set( SOURCES_CPP

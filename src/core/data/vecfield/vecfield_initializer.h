@@ -4,7 +4,6 @@
 #include "data/grid/gridlayoutdefs.h"
 #include "data/vecfield/vecfield_component.h"
 #include "data_provider.h"
-#include "utilities/function/function.h"
 
 #include <array>
 
@@ -44,7 +43,7 @@ namespace core
     private:
         template<typename Field, typename GridLayout>
         void initializeComponent_(Field& field, GridLayout const& layout,
-                                  ScalarFunction<dimension> const& init)
+                                  initializer::ScalarFunction<dimension> const& init)
         {
             auto psi_X = layout.physicalStartIndex(field, Direction::X);
             auto pei_X = layout.physicalEndIndex(field, Direction::X);
@@ -88,9 +87,9 @@ namespace core
 
 
 
-        ScalarFunction<dimension> x_;
-        ScalarFunction<dimension> y_;
-        ScalarFunction<dimension> z_;
+        initializer::ScalarFunction<dimension> x_;
+        initializer::ScalarFunction<dimension> y_;
+        initializer::ScalarFunction<dimension> z_;
     };
 
 } // namespace core
