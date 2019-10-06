@@ -8,7 +8,6 @@
 #include "data/particles/particle_array.h"
 #include "data/particles/particle_utilities.h"
 #include "utilities/box/box.h"
-#include "utilities/function/function.h"
 #include "utilities/point/point.h"
 
 #include "gmock/gmock.h"
