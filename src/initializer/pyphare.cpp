@@ -18,17 +18,20 @@ void add(std::string path, T&& value)
     if constexpr (dim == 1)
     {
         std::cout << path + "\n";
-        cppdict::add(path, std::forward<T>(value), PHARE::initializer::PythonDictHandler::INSTANCE().dict<dim>());
+        cppdict::add(path, std::forward<T>(value),
+                     PHARE::initializer::PHAREDictHandler::INSTANCE().dict<dim>());
     }
     if constexpr (dim == 2)
     {
         std::cout << path + "\n";
-        cppdict::add(path, std::forward<T>(value), PHARE::initializer::PythonDictHandler::INSTANCE().dict<dim>());
+        cppdict::add(path, std::forward<T>(value),
+                     PHARE::initializer::PHAREDictHandler::INSTANCE().dict<dim>());
     }
     if constexpr (dim == 3)
     {
         std::cout << path + "\n";
-        cppdict::add(path, std::forward<T>(value), PHARE::initializer::PythonDictHandler::INSTANCE().dict<dim>());
+        cppdict::add(path, std::forward<T>(value),
+                     PHARE::initializer::PHAREDictHandler::INSTANCE().dict<dim>());
     }
 }
 

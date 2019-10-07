@@ -23,40 +23,7 @@ namespace initializer
 {
     extern py::scoped_interpreter guard;
 
-    class PythonDataProvider;
 
-    class PythonDictHandler
-    {
-        friend class PythonDataProvider;
-        std::unique_ptr<PHAREDict<1>> phareDict1D;
-        std::unique_ptr<PHAREDict<2>> phareDict2D;
-        std::unique_ptr<PHAREDict<3>> phareDict3D;
-        PythonDictHandler()
-            : phareDict1D(std::make_unique<PHAREDict<1>>())
-        {
-        }
-
-    public:
-        static PythonDictHandler& INSTANCE();
-
-        template<std::size_t dim>
-        auto& dict()
-        {
-            static_assert(dim >= 1 and dim <= 3, "error, invalid dimension in dict<dim>()");
-            if constexpr (dim == 1)
-            {
-                return *phareDict1D;
-            }
-            else if constexpr (dim == 2)
-            {
-                return *phareDict2D;
-            }
-            else if constexpr (dim == 3)
-            {
-                return *phareDict3D;
-            }
-        }
-    };
 
     class __attribute__((visibility("hidden"))) PythonDataProvider : public DataProvider
     {
@@ -87,11 +54,7 @@ namespace initializer
                       << " and density(2) = " << density(2.) << "\n";*/
         }
 
-        virtual ~PythonDataProvider()
-        {
-            PythonDictHandler::INSTANCE().phareDict1D.release();
-            std::cout << "hello\n";
-        }
+        virtual ~PythonDataProvider() { std::cout << "hello\n"; }
 
     private:
         void preparePythonPath_() { py::eval_file("setpythonpath.py", scope_); }
