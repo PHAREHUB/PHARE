@@ -39,13 +39,13 @@ namespace core
         static constexpr auto dimension = GridLayout::dimension;
 
     public:
-        MaxwellianParticleInitializer(PHARE::initializer::ScalarFunction<dimension> density,
-                                      PHARE::initializer::VectorFunction<dimension> bulkVelocity,
-                                      PHARE::initializer::VectorFunction<dimension> thermalVelocity,
-                                      double particleCharge, uint32 nbrParticlesPerCell,
-                                      Basis basis = Basis::Cartesian,
-                                      PHARE::initializer::VectorFunction<dimension> magneticField
-                                      = nullptr)
+        MaxwellianParticleInitializer(
+            PHARE::initializer::ScalarFunction<dimension> density,
+            std::array<PHARE::initializer::ScalarFunction<dimension>, 3> bulkVelocity,
+            std::array<PHARE::initializer::ScalarFunction<dimension>, 3> thermalVelocity,
+            double particleCharge, uint32 nbrParticlesPerCell, Basis basis = Basis::Cartesian,
+            std::array<PHARE::initializer::ScalarFunction<dimension>, 3> magneticField
+            = {nullptr, nullptr, nullptr})
             : density_{density}
             , bulkVelocity_{bulkVelocity}
             , thermalVelocity_{thermalVelocity}
@@ -114,9 +114,7 @@ namespace core
 
             for (uint32 ix = ix0; ix < ix1; ++ix)
             {
-                double n;                  // cell centered density
-                std::array<double, 3> Vth; // cell centered thermal speed
-                std::array<double, 3> V;   // cell centered bulk velocity
+                double n; // cell centered density
                 std::array<double, 3> particleVelocity;
                 std::array<std::array<double, 3>, 3> basis;
 
@@ -125,9 +123,14 @@ namespace core
                 auto x     = coord[0];
 
                 // now get density, velocity and thermal speed values
-                n   = density_(x);
-                V   = bulkVelocity_(x);
-                Vth = thermalVelocity_(x);
+                n       = density_(x);
+                auto Vx = bulkVelocity_[0](x);
+                auto Vy = bulkVelocity_[1](x);
+                auto Vz = bulkVelocity_[2](x);
+
+                auto Vthx = thermalVelocity_[0](x);
+                auto Vthy = thermalVelocity_[1](x);
+                auto Vthz = thermalVelocity_[2](x);
 
                 // weight for all particles in this cell
                 auto cellWeight = n * cellVolume / nbrParticlePerCell_;
@@ -136,13 +139,17 @@ namespace core
 
                 if (basis_ == Basis::Magnetic)
                 {
-                    auto B = magneticField_(x);
-                    localMagneticBasis(B, basis);
+                    auto Bx = magneticField_[0](x);
+                    auto By = magneticField_[1](x);
+                    auto Bz = magneticField_[2](x);
+
+                    localMagneticBasis({Bx, By, Bz}, basis);
                 }
 
                 for (uint32 ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
                 {
-                    maxwellianVelocity(V, Vth, generator, particleVelocity);
+                    maxwellianVelocity({Vx, Vy, Vz}, {Vthx, Vthy, Vthz}, generator,
+                                       particleVelocity);
 
                     if (basis_ == Basis::Magnetic)
                     {
@@ -204,9 +211,7 @@ namespace core
             {
                 for (uint32 iy = iy0; iy < iy1; ++iy)
                 {
-                    double n;                  // cell centered density
-                    std::array<double, 3> Vth; // cell centered thermal speed
-                    std::array<double, 3> V;   // cell centered bulk velocity
+                    double n; // cell centered density
                     std::array<double, 3> particleVelocity;
                     std::array<std::array<double, 3>, 3> basis;
 
@@ -216,9 +221,13 @@ namespace core
                     auto y     = coord[1];
 
                     // now get density, velocity and thermal speed values
-                    n   = density_(x, y);
-                    V   = bulkVelocity_(x, y);
-                    Vth = thermalVelocity_(x, y);
+                    n         = density_(x, y);
+                    auto Vx   = bulkVelocity_[0](x, y);
+                    auto Vy   = bulkVelocity_[1](x, y);
+                    auto Vz   = bulkVelocity_[2](x, y);
+                    auto Vthx = thermalVelocity_[0](x, y);
+                    auto Vthy = thermalVelocity_[1](x, y);
+                    auto Vthz = thermalVelocity_[2](x, y);
 
                     // weight for all particles in this cell
                     auto cellWeight = n * cellVolume / nbrParticlePerCell_;
@@ -227,14 +236,18 @@ namespace core
 
                     if (basis_ == Basis::Magnetic)
                     {
-                        auto B = magneticField_(x, y, origin.z);
-                        localMagneticBasis(B, basis);
+                        auto Bx = magneticField_[0](x, y, origin.z);
+                        auto By = magneticField_[1](x, y, origin.z);
+                        auto Bz = magneticField_[2](x, y, origin.z);
+
+                        localMagneticBasis({Bx, By, Bz}, basis);
                     }
 
 
                     for (uint32 ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
                     {
-                        maxwellianVelocity(V, Vth, generator, particleVelocity);
+                        maxwellianVelocity({Vx, Vy, Vz}, {Vthx, Vthy, Vthz}, generator,
+                                           particleVelocity);
 
                         if (basis_ == Basis::Magnetic)
                         {
@@ -304,9 +317,7 @@ namespace core
                 {
                     for (uint32 iz = iz0; iz < iz1; ++iz)
                     {
-                        double n;                  // cell centered density
-                        std::array<double, 3> Vth; // cell centered thermal speed
-                        std::array<double, 3> V;   // cell centered bulk velocity
+                        double n; // cell centered density
                         std::array<double, 3> particleVelocity;
                         std::array<std::array<double, 3>, 3> basis;
 
@@ -317,9 +328,13 @@ namespace core
                         auto z     = coord[2];
 
                         // now get density, velocity and thermal speed values
-                        n   = density_(x, y, z);
-                        V   = bulkVelocity_(x, y, z);
-                        Vth = thermalVelocity_(x, y, z);
+                        n         = density_(x, y, z);
+                        auto Vx   = bulkVelocity_[0](x, y, z);
+                        auto Vy   = bulkVelocity_[1](x, y, z);
+                        auto Vz   = bulkVelocity_[2](x, y, z);
+                        auto Vthx = thermalVelocity_[0](x, y, z);
+                        auto Vthy = thermalVelocity_[1](x, y, z);
+                        auto Vthz = thermalVelocity_[2](x, y, z);
 
                         // weight for all particles in this cell
                         auto cellWeight = n * cellVolume / nbrParticlePerCell_;
@@ -330,13 +345,17 @@ namespace core
 
                         if (basis_ == Basis::Magnetic)
                         {
-                            auto B = magneticField_(x, y, z);
-                            localMagneticBasis(B, basis);
+                            auto Bx = magneticField_[0](x, y, z);
+                            auto By = magneticField_[0](x, y, z);
+                            auto Bz = magneticField_[0](x, y, z);
+
+                            localMagneticBasis({Bx, By, Bz}, basis);
                         }
 
                         for (uint32 ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
                         {
-                            maxwellianVelocity(V, Vth, generator, particleVelocity);
+                            maxwellianVelocity({Vx, Vy, Vz}, {Vthx, Vthy, Vthz}, generator,
+                                               particleVelocity);
 
                             if (basis_ == Basis::Magnetic)
                             {
@@ -368,9 +387,9 @@ namespace core
 
 
         PHARE::initializer::ScalarFunction<dimension> density_;
-        PHARE::initializer::VectorFunction<dimension> bulkVelocity_;
-        PHARE::initializer::VectorFunction<dimension> thermalVelocity_;
-        PHARE::initializer::VectorFunction<dimension> magneticField_;
+        std::array<PHARE::initializer::ScalarFunction<dimension>, 3> bulkVelocity_;
+        std::array<PHARE::initializer::ScalarFunction<dimension>, 3> thermalVelocity_;
+        std::array<PHARE::initializer::ScalarFunction<dimension>, 3> magneticField_;
 
         double particleCharge_;
         uint32 nbrParticlePerCell_;

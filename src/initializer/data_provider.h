@@ -2,7 +2,6 @@
 #define DATA_PROVIDER_H
 
 #include "cppdict/include/dict.hpp"
-//#include "models/physical_state.h"
 
 #include <map>
 #include <string>
@@ -35,40 +34,14 @@ namespace initializer
         using type = std::function<double(double, double, double)>;
     };
 
-    template<typename ReturnType, std::size_t dim>
-    struct VectorFunctionHelper
-    {
-    };
-
-    template<>
-    struct VectorFunctionHelper<std::array<double, 3>, 1>
-    {
-        using type = std::function<std::array<double, 3>(double)>;
-    };
-
-    template<>
-    struct VectorFunctionHelper<std::array<double, 3>, 2>
-    {
-        using type = std::function<std::array<double, 3>(double, double)>;
-    };
-
-    template<>
-    struct VectorFunctionHelper<std::array<double, 3>, 3>
-    {
-        using type = std::function<std::array<double, 3>(double, double, double)>;
-    };
 
     template<std::size_t dim>
     using ScalarFunction = typename ScalarFunctionHelper<double, dim>::type;
 
-    template<std::size_t dim>
-    using VectorFunction = typename VectorFunctionHelper<std::array<double, 3>, dim>::type;
-
 
 
     template<std::size_t dim>
-    using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<dim>,
-                                    VectorFunction<dim>>;
+    using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<dim>>;
 
 
 

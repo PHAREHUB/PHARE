@@ -58,21 +58,44 @@ TEST(APythonDataProvider, providesAValidTree)
     char const* name                         = "init.py";
     std::unique_ptr<PythonDataProvider> pydp = std::make_unique<PythonDataProvider>(2, name);
     pydp->read();
-    auto& input = PHAREDictHandler::INSTANCE().dict<1>(); // dict<1>();
+    auto& input = PHAREDictHandler::INSTANCE().dict<1>();
 
-    EXPECT_EQ("simulation_test", input["simulation"]["name"].to<std::string>());
-    EXPECT_EQ(2, input["simulation"]["ions"]["nbr_populations"].to<int>());
+    auto simulationName = input["simulation"]["name"].to<std::string>();
+    auto nbrPopulations = input["simulation"]["ions"]["nbr_populations"].to<int>();
 
-    auto& pop0 = input["simulation"]["ions"]["pop0"];
-    EXPECT_EQ("protons", pop0["name"].to<std::string>());
-    EXPECT_EQ(1., pop0["mass"].to<double>());
-    EXPECT_EQ(1., pop0["charge"].to<double>());
-    EXPECT_EQ("maxwellian", pop0["particle_initializer"]["name"].to<std::string>());
+    auto& pop0                       = input["simulation"]["ions"]["pop0"];
+    auto pop0Name                    = pop0["name"].to<std::string>();
+    auto pop0Mass                    = pop0["mass"].to<double>();
+    auto& pop0ParticleInitializer    = pop0["particle_initializer"];
+    auto pop0ParticleInitializerName = pop0ParticleInitializer["name"].to<std::string>();
+    auto pop0density                 = pop0ParticleInitializer["density"].to<ScalarFunction<1>>();
+    auto bulk0x             = pop0ParticleInitializer["bulk_velocity_x"].to<ScalarFunction<1>>();
+    auto bulk0y             = pop0ParticleInitializer["bulk_velocity_y"].to<ScalarFunction<1>>();
+    auto bulk0z             = pop0ParticleInitializer["bulk_velocity_z"].to<ScalarFunction<1>>();
+    auto vth0x              = pop0ParticleInitializer["thermal_velocity_x"].to<ScalarFunction<1>>();
+    auto vth0y              = pop0ParticleInitializer["thermal_velocity_y"].to<ScalarFunction<1>>();
+    auto vth0z              = pop0ParticleInitializer["thermal_velocity_z"].to<ScalarFunction<1>>();
+    auto pop0NbrPartPerCell = pop0ParticleInitializer["nbr_part_per_cell"].to<int>();
+    auto pop0Charge         = pop0ParticleInitializer["charge"].to<double>();
+    auto pop0Basis          = pop0ParticleInitializer["basis"].to<std::string>();
 
-    auto density0
-        = pop0["particle_initializer"]["density"].to<PHARE::initializer::ScalarFunction<1>>();
-    auto d = density0(2.);
-    EXPECT_EQ(4., d);
+
+    EXPECT_EQ("simulation_test", simulationName);
+    EXPECT_EQ(2, nbrPopulations);
+    EXPECT_EQ("protons", pop0Name);
+    EXPECT_DOUBLE_EQ(1., pop0Mass);
+    EXPECT_EQ("maxwellian", pop0ParticleInitializerName);
+    EXPECT_DOUBLE_EQ(4., pop0density(2.));
+    EXPECT_DOUBLE_EQ(4., bulk0x(2.));
+    EXPECT_DOUBLE_EQ(6., bulk0y(2.));
+    EXPECT_DOUBLE_EQ(8., bulk0z(2.));
+    EXPECT_DOUBLE_EQ(10., vth0x(2.));
+    EXPECT_DOUBLE_EQ(12., vth0y(2.));
+    EXPECT_DOUBLE_EQ(14., vth0z(2.));
+    EXPECT_EQ(100, pop0NbrPartPerCell);
+    EXPECT_DOUBLE_EQ(1., pop0Charge);
+    EXPECT_EQ("cartesian", pop0Basis);
+
     PHAREDictHandler::INSTANCE().stop<1>();
 }
 

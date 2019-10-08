@@ -15,6 +15,7 @@
 
 
 using namespace PHARE::core;
+using namespace PHARE::initializer;
 
 
 double density([[maybe_unused]] double x)
@@ -22,17 +23,50 @@ double density([[maybe_unused]] double x)
     return 1.;
 }
 
-std::array<double, 3> bulkVelocity([[maybe_unused]] double x)
+
+double vx(double x)
 {
-    return {{1.0, 0., 0.}};
+    (void)x;
+    return 1.;
+}
+
+
+double vy(double x)
+{
+    (void)x;
+    return 1.;
+}
+
+
+double vz(double x)
+{
+    (void)x;
+    return 1.;
+}
+
+
+double vthx(double x)
+{
+    (void)x;
+    return 1.;
+}
+
+
+double vthy(double x)
+{
+    (void)x;
+    return 1.;
 }
 
 
 
-std::array<double, 3> thermalvelocity([[maybe_unused]] double x)
+double vthz(double x)
 {
-    return {{0.2, 0.2, 0.2}};
+    (void)x;
+    return 1.;
 }
+
+
 
 
 class AMaxwellianParticleInitializer1D : public ::testing::Test
@@ -40,12 +74,14 @@ class AMaxwellianParticleInitializer1D : public ::testing::Test
 private:
     using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
     using ParticleArrayT = ParticleArray<1>;
+    using VectorFunction = std::array<ScalarFunction<1>, 3>;
 
 public:
     AMaxwellianParticleInitializer1D()
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
         , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
-              density, bulkVelocity, thermalvelocity, 1., nbrParticlesPerCell)}
+              density, VectorFunction{vx, vy, vz}, VectorFunction{vthx, vthy, vthz}, 1.,
+              nbrParticlesPerCell)}
     {
         //
     }
