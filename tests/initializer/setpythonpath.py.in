@@ -6,6 +6,8 @@ import sys
 
 
 cmake_build_dir = "@CMAKE_BINARY_DIR@"
+cmake_source_dir = "@CMAKE_SOURCE_DIR@"
+pharein_dir      = os.path.join(cmake_source_dir, "subprojects")
 venv_path = os.environ.get('VIRTUAL_ENV')
 
 if venv_path is not None:
@@ -19,6 +21,7 @@ if venv_path is not None:
     sys.path = sys.path + pythonpath +  [cmake_build_dir]
 
 else:
-    sys.path  = sys.path + [cmake_build_dir]
+    sys.path  = sys.path + [cmake_build_dir, pharein_dir]
+
 
 

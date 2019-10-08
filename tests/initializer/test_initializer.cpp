@@ -61,6 +61,8 @@ TEST(APythonDataProvider, providesAValidTree)
     auto& input = PHAREDictHandler::INSTANCE().dict<1>();
 
     auto simulationName = input["simulation"]["name"].to<std::string>();
+    auto dim            = input["simulation"]["dimension"].to<int>();
+    auto nx             = input["simulation"]["nbr_cells"]["x"].to<int>();
     auto nbrPopulations = input["simulation"]["ions"]["nbr_populations"].to<int>();
 
     auto& pop0                       = input["simulation"]["ions"]["pop0"];
@@ -81,6 +83,8 @@ TEST(APythonDataProvider, providesAValidTree)
 
 
     EXPECT_EQ("simulation_test", simulationName);
+    EXPECT_EQ(1, dim);
+    EXPECT_EQ(80, nx);
     EXPECT_EQ(2, nbrPopulations);
     EXPECT_EQ("protons", pop0Name);
     EXPECT_DOUBLE_EQ(1., pop0Mass);

@@ -2,6 +2,8 @@
 
 
 import src.initializer.pyphare as pp
+import job
+
 
 def density(x):
     return 2.*x
@@ -26,8 +28,16 @@ def vthz(x):
     return 7*x
 
 
+simulation = job.ph.globals.sim
 
 pp.add("simulation/name", "simulation_test")
+pp.add("simulation/dimension", simulation.dims)
+pp.add("simulation/nbr_cells/x", simulation.cells[0])
+if (simulation.dims>1):
+    pp.add("simulation/nbr_cells/x", simulation.cells[1])
+    if (simulation.dims >1):
+        pp.add("simulation/nbr_cells/x", simulation.cells[2])
+
 pp.add("simulation/ions/nbr_populations", 2)
 pp.add("simulation/ions/pop0/name", "protons")
 pp.add("simulation/ions/pop0/mass", 1.)
