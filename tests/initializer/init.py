@@ -32,11 +32,30 @@ simulation = job.ph.globals.sim
 
 pp.add("simulation/name", "simulation_test")
 pp.add("simulation/dimension", simulation.dims)
-pp.add("simulation/nbr_cells/x", simulation.cells[0])
+
+
+pp.add("simulation/grid/layout_type", simulation.layout)
+pp.add("simulation/grid/nbr_cells/x", simulation.cells[0])
+pp.add("simulation/grid/meshsize/x", simulation.dl[0])
+pp.add("simulation/grid/origin/x", simulation.origin[0])
+
 if (simulation.dims>1):
-    pp.add("simulation/nbr_cells/x", simulation.cells[1])
-    if (simulation.dims >1):
-        pp.add("simulation/nbr_cells/x", simulation.cells[2])
+    pp.add("simulation/grid/nbr_cells/y", simulation.cells[1])
+    pp.add("simulation/grid/meshsize/y", simulation.dl[1])
+    pp.add("simulation/grid/origin/y", simulation.origin[1])
+
+    if (simulation.dims >2):
+        pp.add("simulation/grid/nbr_cells/z", simulation.cells[2])
+        pp.add("simulation/grid/meshsize/z", simulation.dl[2])
+        pp.add("simulation/grid/origin/z", simulation.origin[2])
+
+
+
+pp.add("simulation/interp_order", simulation.interp_order)
+pp.add("simulation/time_step", simulation.time_step)
+
+
+pp.add("simulation/algo/pusher/name", simulation.particle_pusher)
 
 pp.add("simulation/ions/nbr_populations", 2)
 pp.add("simulation/ions/pop0/name", "protons")

@@ -62,9 +62,18 @@ TEST(APythonDataProvider, providesAValidTree)
 
     auto simulationName = input["simulation"]["name"].to<std::string>();
     auto dim            = input["simulation"]["dimension"].to<int>();
-    auto nx             = input["simulation"]["nbr_cells"]["x"].to<int>();
-    auto nbrPopulations = input["simulation"]["ions"]["nbr_populations"].to<int>();
+    auto interp_order   = input["simulation"]["interp_order"].to<int>();
+    auto dt             = input["simulation"]["time_step"].to<double>();
 
+    auto layout = input["simulation"]["grid"]["layout_type"].to<std::string>();
+    auto nx     = input["simulation"]["grid"]["nbr_cells"]["x"].to<int>();
+    auto dx     = input["simulation"]["grid"]["meshsize"]["x"].to<double>();
+    auto origin = input["simulation"]["grid"]["origin"]["x"].to<double>();
+
+    auto pusherName = input["simulation"]["algo"]["pusher"]["name"].to<std::string>();
+
+
+    auto nbrPopulations              = input["simulation"]["ions"]["nbr_populations"].to<int>();
     auto& pop0                       = input["simulation"]["ions"]["pop0"];
     auto pop0Name                    = pop0["name"].to<std::string>();
     auto pop0Mass                    = pop0["mass"].to<double>();
@@ -83,8 +92,17 @@ TEST(APythonDataProvider, providesAValidTree)
 
 
     EXPECT_EQ("simulation_test", simulationName);
+    EXPECT_EQ(1, interp_order);
+
     EXPECT_EQ(1, dim);
     EXPECT_EQ(80, nx);
+    EXPECT_DOUBLE_EQ(0.1, dx);
+    EXPECT_DOUBLE_EQ(0.001, dt);
+    EXPECT_DOUBLE_EQ(0., origin);
+    EXPECT_EQ("yee", layout);
+
+    EXPECT_EQ("modified_boris", pusherName);
+
     EXPECT_EQ(2, nbrPopulations);
     EXPECT_EQ("protons", pop0Name);
     EXPECT_DOUBLE_EQ(1., pop0Mass);
