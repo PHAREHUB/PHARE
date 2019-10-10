@@ -2,7 +2,6 @@
 #define DATA_PROVIDER_H
 
 #include "cppdict/include/dict.hpp"
-//#include "models/physical_state.h"
 
 #include <map>
 #include <string>
@@ -35,64 +34,82 @@ namespace initializer
         using type = std::function<double(double, double, double)>;
     };
 
-    template<typename ReturnType, std::size_t dim>
-    struct VectorFunctionHelper
-    {
-    };
-
-    template<>
-    struct VectorFunctionHelper<std::array<double, 3>, 1>
-    {
-        using type = std::function<std::array<double, 3>(double)>;
-    };
-
-    template<>
-    struct VectorFunctionHelper<std::array<double, 3>, 2>
-    {
-        using type = std::function<std::array<double, 3>(double, double)>;
-    };
-
-    template<>
-    struct VectorFunctionHelper<std::array<double, 3>, 3>
-    {
-        using type = std::function<std::array<double, 3>(double, double, double)>;
-    };
 
     template<std::size_t dim>
     using ScalarFunction = typename ScalarFunctionHelper<double, dim>::type;
 
-    template<std::size_t dim>
-    using VectorFunction = typename VectorFunctionHelper<std::array<double, 3>, dim>::type;
-
 
 
     template<std::size_t dim>
-    using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<dim>,
-                                    VectorFunction<dim>>;
+    using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<dim>>;
 
 
 
-    extern PHAREDict<1> phareDict1D;
-    extern PHAREDict<2> phareDict2D;
-    extern PHAREDict<3> phareDict3D;
 
-    template<std::size_t dim>
-    auto& dict()
+    class PHAREDictHandler
     {
-        static_assert(dim >= 1 and dim <= 3, "error, invalid dimension in dict<dim>()");
-        if constexpr (dim == 1)
+        std::unique_ptr<PHAREDict<1>> phareDict1D;
+        std::unique_ptr<PHAREDict<2>> phareDict2D;
+        std::unique_ptr<PHAREDict<3>> phareDict3D;
+
+    private:
+        PHAREDictHandler() = default;
+
+
+
+    public:
+        template<std::size_t dim>
+        void init()
         {
-            return phareDict1D;
+            if constexpr (dim == 1)
+                phareDict1D = std::make_unique<PHAREDict<1>>();
+
+            else if constexpr (dim == 2)
+            {
+                phareDict2D = std::make_unique<PHAREDict<2>>();
+            }
+
+            else if constexpr (dim == 3)
+            {
+                phareDict3D = std::make_unique<PHAREDict<3>>();
+            }
         }
-        else if constexpr (dim == 2)
+
+        template<std::size_t dim>
+        void stop()
         {
-            return phareDict2D;
+            if constexpr (dim == 1)
+                phareDict1D.release();
+
+            else if constexpr (dim == 2)
+                phareDict2D.release();
+
+            else if constexpr (dim == 3)
+                phareDict3D.release();
         }
-        else if constexpr (dim == 3)
+
+
+        static PHAREDictHandler& INSTANCE();
+
+        template<std::size_t dim>
+        auto& dict()
         {
-            return phareDict3D;
+            static_assert(dim >= 1 and dim <= 3, "error, invalid dimension in dict<dim>()");
+            if constexpr (dim == 1)
+            {
+                return *phareDict1D;
+            }
+            else if constexpr (dim == 2)
+            {
+                return *phareDict2D;
+            }
+            else if constexpr (dim == 3)
+            {
+                return *phareDict3D;
+            }
         }
-    }
+    };
+
 
     class DataProvider
     {

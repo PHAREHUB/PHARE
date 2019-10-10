@@ -6,5 +6,5 @@ namespace PHARE
 {
 namespace initializer
 {
-} // namespace initializer
-} // namespace PHARE
+} /*namespace initializer*/
+} /*namespace PHARE*/

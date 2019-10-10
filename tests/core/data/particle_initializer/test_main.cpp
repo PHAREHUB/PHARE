@@ -24,16 +24,47 @@ double density([[maybe_unused]] double x)
 }
 
 
-std::array<double, 3> bulkVelocity([[maybe_unused]] double x)
+
+double vx(double x)
 {
-    return {{1.0, 0., 0.}};
+    (void)x;
+    return 1.;
+}
+
+
+double vy(double x)
+{
+    (void)x;
+    return 1.;
+}
+
+
+double vz(double x)
+{
+    (void)x;
+    return 1.;
+}
+
+
+double vthx(double x)
+{
+    (void)x;
+    return 1.;
+}
+
+
+double vthy(double x)
+{
+    (void)x;
+    return 1.;
 }
 
 
 
-std::array<double, 3> thermalVelocity([[maybe_unused]] double x)
+double vthz(double x)
 {
-    return {{0.2, 0.2, 0.2}};
+    (void)x;
+    return 1.;
 }
 
 
@@ -44,11 +75,17 @@ TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleInitializer)
     PHARE::initializer::PHAREDict<1> dict;
     dict["name"]            = std::string{"MaxwellianParticleInitializer"};
     dict["density"]         = static_cast<PHARE::initializer::ScalarFunction<1>>(density);
-    dict["bulkVelocity"]    = static_cast<PHARE::initializer::VectorFunction<1>>(bulkVelocity);
-    dict["thermalVelocity"] = static_cast<PHARE::initializer::VectorFunction<1>>(thermalVelocity);
-    dict["charge"]          = 1.;
-    dict["nbrPartPerCell"]  = std::size_t{100};
-    dict["basis"]           = std::string{"Cartesian"};
+    dict["bulk_velocity_x"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vx);
+    dict["bulk_velocity_y"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vx);
+    dict["bulk_velocity_z"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vx);
+
+    dict["thermal_velocity_x"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vthx);
+    dict["thermal_velocity_y"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vthy);
+    dict["thermal_velocity_z"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vthz);
+
+    dict["charge"]         = 1.;
+    dict["nbrPartPerCell"] = std::size_t{100};
+    dict["basis"]          = std::string{"Cartesian"};
 
     auto initializer = ParticleInitializerFactory<ParticleArrayT, GridLayoutT>::create(dict);
 }

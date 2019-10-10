@@ -7,6 +7,8 @@
 #include "particle_initializer.h"
 #include "utilities/types.h"
 
+#include <memory>
+
 namespace PHARE
 {
 namespace core
@@ -27,11 +29,24 @@ namespace core
             if (initializerName == "MaxwellianParticleInitializer")
             {
                 auto& density = dict["density"].to<PHARE::initializer::ScalarFunction<dimension>>();
-                auto& bulkVel
-                    = dict["bulkVelocity"].to<PHARE::initializer::VectorFunction<dimension>>();
 
-                auto& thermalVel
-                    = dict["thermalVelocity"].to<PHARE::initializer::VectorFunction<dimension>>();
+                auto& bulkVelx
+                    = dict["bulk_velocity_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+
+                auto& bulkVely
+                    = dict["bulk_velocity_y"].to<PHARE::initializer::ScalarFunction<dimension>>();
+
+                auto& bulkVelz
+                    = dict["bulk_velocity_z"].to<PHARE::initializer::ScalarFunction<dimension>>();
+
+                auto& vthx = dict["thermal_velocity_x"]
+                                 .to<PHARE::initializer::ScalarFunction<dimension>>();
+
+                auto& vthy = dict["thermal_velocity_y"]
+                                 .to<PHARE::initializer::ScalarFunction<dimension>>();
+
+                auto& vthz = dict["thermal_velocity_z"]
+                                 .to<PHARE::initializer::ScalarFunction<dimension>>();
 
                 auto charge = dict["charge"].to<double>();
 
@@ -39,22 +54,31 @@ namespace core
 
                 auto basisName = dict["basis"].to<std::string>();
 
+                std::array<PHARE::initializer::ScalarFunction<dimension>, 3> v
+                    = {bulkVelx, bulkVely, bulkVelz};
+
+                std::array<PHARE::initializer::ScalarFunction<dimension>, 3> vth
+                    = {vthx, vthy, vthz};
 
                 if (basisName == "Cartesian")
                 {
-                    [[maybe_unused]] Basis basis = Basis::Cartesian;
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, bulkVel, thermalVel, charge, nbrPartPerCell);
+                        density, v, vth, charge, nbrPartPerCell);
                 }
                 else if (basisName == "Magnetic")
                 {
                     [[maybe_unused]] Basis basis = Basis::Magnetic;
-                    [[maybe_unused]] auto& magnetic
-                        = dict["magnetic"].to<PHARE::initializer::VectorFunction<dimension>>();
+                    [[maybe_unused]] auto& bx
+                        = dict["magnetic_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                    [[maybe_unused]] auto& by
+                        = dict["magnetic_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                    [[maybe_unused]] auto& bz
+                        = dict["magnetic_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, bulkVel, thermalVel, charge, nbrPartPerCell);
+                        density, v, vth, charge, nbrPartPerCell);
                 }
             }
             // TODO throw?
