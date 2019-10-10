@@ -52,6 +52,8 @@ namespace initializer
         std::unique_ptr<PHAREDict<2>> phareDict2D;
         std::unique_ptr<PHAREDict<3>> phareDict3D;
 
+    private:
+        PHAREDictHandler() = default;
 
 
 
@@ -77,13 +79,13 @@ namespace initializer
         void stop()
         {
             if constexpr (dim == 1)
-                PHAREDictHandler::INSTANCE().phareDict1D.release();
+                phareDict1D.release();
 
             else if constexpr (dim == 2)
-                PHAREDictHandler::INSTANCE().phareDict2D.release();
+                phareDict2D.release();
 
             else if constexpr (dim == 3)
-                PHAREDictHandler::INSTANCE().phareDict3D.release();
+                phareDict3D.release();
         }
 
 

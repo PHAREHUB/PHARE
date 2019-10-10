@@ -55,9 +55,9 @@ TEST(APythonDataProvider, providesAValidTree)
 {
     PHAREDictHandler::INSTANCE().init<1>();
 
-    char const* name                         = "init.py";
-    std::unique_ptr<PythonDataProvider> pydp = std::make_unique<PythonDataProvider>(2, name);
-    pydp->read();
+    char const* name = "init.py";
+    PythonDataProvider pydp{2, name};
+    pydp.read();
     auto& input = PHAREDictHandler::INSTANCE().dict<1>();
 
     auto simulationName = input["simulation"]["name"].to<std::string>();

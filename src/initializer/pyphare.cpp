@@ -7,8 +7,6 @@
 
 
 using PHARE::initializer::ScalarFunction;
-// using PHARE::initializer::VectorFunction;
-// using PHARE::initializer::VectorFunction2;
 
 
 template<std::size_t dim, typename T,
