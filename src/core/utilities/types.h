@@ -38,10 +38,17 @@ namespace core
         return std::sqrt(squarreSum);
     }
 
-
-
-
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
+
+    template<class T> // this is so we can use struct {} initializtion with shared_ptrs/forwarding
+    struct aggregate_adapter : public T
+    {
+        template<class... Args>
+        aggregate_adapter(Args&&... args)
+            : T{std::forward<Args>(args)...}
+        {
+        }
+    };
 
 } // namespace core
 } // namespace PHARE

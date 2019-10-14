@@ -158,18 +158,11 @@ namespace core
 
                     std::array<float, dimension> delta = {{randPosX(generator)}};
 
-                    Particle<dimension> tmpParticle;
-
-                    // particle iCell is in AMR index
                     auto AMRCellIndex = layout.localToAMR(Point{ix});
 
-                    tmpParticle.weight = cellWeight;
-                    tmpParticle.charge = particleCharge_;
-                    tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
-                    tmpParticle.delta  = delta;
-                    tmpParticle.v      = particleVelocity;
-
-                    particles.push_back(std::move(tmpParticle));
+                    particles.emplace_back(aggregate_adapter<Particle<dimension>>(
+                        cellWeight, particleCharge_, AMRCellIndex.template toArray<int>(), delta,
+                        particleVelocity));
                 }
             }
         }
@@ -257,19 +250,12 @@ namespace core
                         std::array<float, dimension> delta
                             = {{randPosX(generator), randPosY(generator)}};
 
-                        Particle<dimension> tmpParticle;
-
                         // particle iCell is in AMR index
                         auto AMRCellIndex = layout.localToAMR(Point{ix, iy});
 
-
-                        tmpParticle.weight = cellWeight;
-                        tmpParticle.charge = particleCharge_;
-                        tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
-                        tmpParticle.delta  = delta;
-                        tmpParticle.v      = particleVelocity;
-
-                        particles.push_back(std::move(tmpParticle));
+                        particles.emplace_back(aggregate_adapter<Particle<dimension>>(
+                            cellWeight, particleCharge_, AMRCellIndex.template toArray<int>(),
+                            delta, particleVelocity));
                     }
                 }
             }
@@ -365,19 +351,13 @@ namespace core
                             std::array<float, 3> delta
                                 = {{randPosX(generator), randPosY(generator), randPosZ(generator)}};
 
-
-                            Particle<dimension> tmpParticle;
-
                             // particle iCell is in AMR index
                             auto AMRCellIndex = layout.localToAMR(Point{ix, iy, iz});
 
-                            tmpParticle.weight = cellWeight;
-                            tmpParticle.charge = particleCharge_;
-                            tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
-                            tmpParticle.delta  = delta;
-                            tmpParticle.v      = particleVelocity;
+                            particles.emplace_back(aggregate_adapter<Particle<dimension>>(
+                                cellWeight, particleCharge_, AMRCellIndex.template toArray<int>(),
+                                delta, particleVelocity));
 
-                            particles.push_back(std::move(tmpParticle));
                         } // end particle looop
                     }     // end z
                 }         // end y
