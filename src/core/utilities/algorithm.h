@@ -6,6 +6,7 @@
 
 
 #include <algorithm>
+#include <string>
 
 namespace PHARE
 {
@@ -22,6 +23,13 @@ namespace core
         {
             return lhs;
         }
+    }
+
+
+    template<typename T>
+    std::string to_str(T&& t)
+    {
+        return t.to_str();
     }
 
 

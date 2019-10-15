@@ -236,9 +236,9 @@ namespace core
 
                     if (basis_ == Basis::Magnetic)
                     {
-                        auto Bx = magneticField_[0](x, y, origin.z);
-                        auto By = magneticField_[1](x, y, origin.z);
-                        auto Bz = magneticField_[2](x, y, origin.z);
+                        auto Bx = magneticField_[0](x, y);
+                        auto By = magneticField_[1](x, y);
+                        auto Bz = magneticField_[2](x, y);
 
                         localMagneticBasis({Bx, By, Bz}, basis);
                     }

@@ -72,7 +72,7 @@ double vthz(double x)
 
 TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleInitializer)
 {
-    PHARE::initializer::PHAREDict<1> dict;
+    PHARE::initializer::PHAREDict dict;
     dict["name"]            = std::string{"MaxwellianParticleInitializer"};
     dict["density"]         = static_cast<PHARE::initializer::ScalarFunction<1>>(density);
     dict["bulk_velocity_x"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vx);
@@ -84,7 +84,7 @@ TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleInitializer)
     dict["thermal_velocity_z"] = static_cast<PHARE::initializer::ScalarFunction<1>>(vthz);
 
     dict["charge"]         = 1.;
-    dict["nbrPartPerCell"] = std::size_t{100};
+    dict["nbrPartPerCell"] = int{100};
     dict["basis"]          = std::string{"Cartesian"};
 
     auto initializer = ParticleInitializerFactory<ParticleArrayT, GridLayoutT>::create(dict);

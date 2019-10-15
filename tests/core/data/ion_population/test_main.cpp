@@ -41,9 +41,9 @@ struct DummyLayout
 {
 };
 
-PHAREDict<1> getDict()
+PHAREDict getDict()
 {
-    PHAREDict<1> dict;
+    PHAREDict dict;
     dict["name"]                        = std::string{"protons"};
     dict["mass"]                        = 1.;
     dict["ParticleInitializer"]["name"] = std::string{"DummyParticleInitializer"};

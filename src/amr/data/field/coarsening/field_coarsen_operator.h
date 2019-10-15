@@ -138,13 +138,13 @@ namespace amr
 
             if constexpr (dimension > 1)
             {
-                startIndex[dirY] = intersectionBox.lower[dirY];
-                endIndex[dirY]   = intersectionBox.upper[dirY];
+                startIndex[dirY] = intersectionBox.lower(dirY);
+                endIndex[dirY]   = intersectionBox.upper(dirY);
             }
             if constexpr (dimension > 2)
             {
-                startIndex[dirZ] = intersectionBox.lower[dirZ];
-                endIndex[dirZ]   = intersectionBox.upper[dirZ];
+                startIndex[dirZ] = intersectionBox.lower(dirZ);
+                endIndex[dirZ]   = intersectionBox.upper(dirZ);
             }
 
             if constexpr (dimension == 1)

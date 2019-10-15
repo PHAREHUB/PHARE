@@ -1,9 +1,10 @@
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutimplyee.h"
-#include "data/particles/particle_array.h"
-#include "models/physical_state.h"
-#include "python_data_provider.h"
+
+#include "data_provider.h"
+#include "initializer/data_provider.h"
+#include "initializer/python_data_provider.h"
+#include "simulator/simulator.h"
+#include "utilities/algorithm.h"
 
 #include <iostream>
 
@@ -21,15 +22,33 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
             if (arg.substr(arg.find_last_of(".") + 1) == "py")
             {
                 std::cout << "python input detected, building with python provider...\n";
-                auto provider
-                    = std::make_unique<PHARE::initializer::PythonDataProvider>(argc, argv[1]);
-                return provider;
+                return std::make_unique<PHARE::initializer::PythonDataProvider>(argc, argv[1]);
             }
 
             break;
     }
     return nullptr;
 }
+
+
+class SamraiLifeCycle
+{
+public:
+    SamraiLifeCycle(int argc, char** argv)
+    {
+        SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
+        SAMRAI::tbox::SAMRAIManager::initialize();
+        SAMRAI::tbox::SAMRAIManager::startup();
+    }
+    ~SamraiLifeCycle()
+    {
+        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
+        SAMRAI::tbox::SAMRAIManager::shutdown();
+        SAMRAI::tbox::SAMRAIManager::finalize();
+        SAMRAI::tbox::SAMRAI_MPI::finalize();
+    }
+};
+
 
 
 
@@ -46,6 +65,28 @@ int main(int argc, char** argv)
     std::cout << "\n";
     std::cout << "\n";
 
-    auto provider = fromCommandLine(argc, argv);
+    SamraiLifeCycle slc{argc, argv};
+
+    std::cerr << "creating python data provider\n";
+    auto provider = std::make_unique<PHARE::initializer::PythonDataProvider>(
+        2, "init.py"); // fromCommandLine(argc, argv);
+
+    std::cerr << "reading user inputs...";
     provider->read();
+    std::cerr << "done!\n";
+
+    auto simulator = PHARE::getSimulator();
+
+    std::cout << PHARE::core::to_str(*simulator) << "\n";
+
+
+    simulator->initialize();
+    //
+    // auto time = simulator.startTime();
+    //
+    // while (time < simulator.endTime())
+    //{
+    //    simulator.advance();
+    //    time += simulator.timeStep();
+    //}
 }
