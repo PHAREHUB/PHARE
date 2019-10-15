@@ -156,70 +156,68 @@ double ez(double x)
 
 using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 
-PHARE::initializer::PHAREDict<1> createIonsDict()
+PHARE::initializer::PHAREDict createIonsDict()
 {
-    PHARE::initializer::PHAREDict<1> dict;
-    dict["ions"]["name"]           = std::string{"ions"};
-    dict["ions"]["nbrPopulations"] = std::size_t{2};
-    dict["ions"]["pop0"]["name"]   = std::string{"protons"};
-    dict["ions"]["pop0"]["mass"]   = 1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["name"]
-        = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
+    PHARE::initializer::PHAREDict dict;
+    dict["ions"]["name"]                                    = std::string{"ions"};
+    dict["ions"]["nbrPopulations"]                          = int{2};
+    dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
+    dict["ions"]["pop0"]["mass"]                            = 1.;
+    dict["ions"]["pop0"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
+    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_x"]
+    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
         = static_cast<ScalarFunctionT>(vx);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_y"]
+    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
         = static_cast<ScalarFunctionT>(vy);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_z"]
+    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
         = static_cast<ScalarFunctionT>(vz);
 
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_x"]
+    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
         = static_cast<ScalarFunctionT>(vthx);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_y"]
+    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
         = static_cast<ScalarFunctionT>(vthy);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_z"]
+    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
-    dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
+    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = -1.;
+    dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
-    dict["ions"]["pop1"]["name"] = std::string{"alpha"};
-    dict["ions"]["pop1"]["mass"] = 1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["name"]
-        = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
+    dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
+    dict["ions"]["pop1"]["mass"]                            = 1.;
+    dict["ions"]["pop1"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
+    dict["ions"]["pop1"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_x"]
+    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
         = static_cast<ScalarFunctionT>(vx);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_y"]
+    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
         = static_cast<ScalarFunctionT>(vy);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_z"]
+    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
         = static_cast<ScalarFunctionT>(vz);
 
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_x"]
+    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
         = static_cast<ScalarFunctionT>(vthx);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_y"]
+    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
         = static_cast<ScalarFunctionT>(vthy);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_z"]
+    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
-    dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
+    dict["ions"]["pop1"]["particle_initializer"]["charge"]            = -1.;
+    dict["ions"]["pop1"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
     dict["electromag"]["name"]             = std::string{"EM"};
     dict["electromag"]["electric"]["name"] = std::string{"E"};
@@ -236,6 +234,29 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
     return dict;
 }
 
+
+TEST(MessengerDescriptors, areObtainedFromAModelList)
+{
+    auto modelList   = std::vector<std::string>{"MHDModel", "HybridModel"};
+    auto descriptors = makeDescriptors(modelList);
+
+    EXPECT_EQ(3, descriptors.size());
+    EXPECT_EQ("MHDModel", descriptors[0].coarseModel);
+    EXPECT_EQ("MHDModel", descriptors[0].fineModel);
+
+    EXPECT_EQ("MHDModel", descriptors[1].coarseModel);
+    EXPECT_EQ("HybridModel", descriptors[1].fineModel);
+
+    EXPECT_EQ("HybridModel", descriptors[2].coarseModel);
+    EXPECT_EQ("HybridModel", descriptors[2].fineModel);
+
+    modelList   = std::vector<std::string>{"HybridModel"};
+    descriptors = makeDescriptors(modelList);
+
+    EXPECT_EQ(1, descriptors.size());
+    EXPECT_EQ("HybridModel", descriptors[0].coarseModel);
+    EXPECT_EQ("HybridModel", descriptors[0].fineModel);
+}
 
 
 

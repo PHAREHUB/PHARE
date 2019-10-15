@@ -680,6 +680,9 @@ namespace solver
         IPhysicalModel<AMR_Types> const& getModel_(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
+            if (models_[descriptor.modelIndex] == nullptr)
+                throw std::runtime_error("Error - no model assigned to level "
+                                         + std::to_string(iLevel));
             return *models_[descriptor.modelIndex];
         }
 

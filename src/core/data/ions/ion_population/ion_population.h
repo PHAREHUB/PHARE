@@ -2,6 +2,7 @@
 #define PHARE_ION_POPULATION_H
 
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -12,6 +13,7 @@
 #include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
 #include "particle_pack.h"
+#include "utilities/algorithm.h"
 
 namespace PHARE
 {
@@ -30,11 +32,11 @@ namespace core
 
 
 
-        IonPopulation(std::string ionName, initializer::PHAREDict<dimension> initializer)
+        IonPopulation(std::string ionName, initializer::PHAREDict initializer)
             : name_{ionName + "_" + initializer["name"].template to<std::string>()}
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
-            , particleInitializerInfo_{initializer["ParticleInitializer"]}
+            , particleInitializerInfo_{initializer["particle_initializer"]}
         {
         }
 
@@ -245,6 +247,15 @@ namespace core
 
 
 
+        std::string to_str()
+        {
+            std::stringstream ss;
+            ss << "Ions Population\n";
+            ss << "------------------------------------\n";
+            ss << "name                : " << name() << "\n";
+            return ss.str();
+        }
+
     private:
         std::string name_;
         double mass_;
@@ -252,7 +263,7 @@ namespace core
         field_type* rho_{nullptr};
         ParticlesPack<ParticleArray>* particles_{nullptr};
         // std::unique_ptr<particle_initializer_type> particleInitializer_;
-        initializer::PHAREDict<dimension> particleInitializerInfo_;
+        initializer::PHAREDict particleInitializerInfo_;
     };
 } // namespace core
 } // namespace PHARE

@@ -5,8 +5,8 @@
 #include <cinttypes>
 #include <cmath>
 #include <numeric>
+#include <tuple>
 #include <vector>
-
 
 namespace PHARE
 {
@@ -42,6 +42,14 @@ namespace core
 
 
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
+
+
+
+    template<typename Tuple, typename Func>
+    void apply(Tuple tuple, Func func)
+    {
+        std::apply([&](auto&... args) { (func(args), ...); }, tuple);
+    }
 
 } // namespace core
 } // namespace PHARE

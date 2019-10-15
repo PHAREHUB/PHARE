@@ -468,7 +468,7 @@ namespace core
             auto const partRho   = particle.weight * coef;
             auto const xPartFlux = particle.v[0] * particle.weight * coef;
             auto const yPartFlux = particle.v[1] * particle.weight * coef;
-            auto const zPartFlux = particle.v[2] * particle.weigth * coef;
+            auto const zPartFlux = particle.v[2] * particle.weight * coef;
 
             auto order_size = xDenWeights.size();
             for (auto ix = 0u; ix < order_size; ++ix)
@@ -481,14 +481,16 @@ namespace core
                             += partRho * xDenWeights[ix] * yDenWeights[iy] * zDenWeights[iz];
 
                         xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy, zXFluxStartIndex + iz)
-                            += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy] * zXFluxWeights;
+                            += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy]
+                               * zXFluxWeights[iz];
 
                         yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy, zYFluxStartIndex + iz)
                             += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy]
                                * zYFluxWeights[iz];
 
                         zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy, zZFluxStartIndex + iz)
-                            += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy] * zZFluxWeights;
+                            += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy]
+                               * zZFluxWeights[iz];
                     }
                 }
             }

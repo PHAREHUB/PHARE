@@ -37,10 +37,10 @@ using ParticleArrayT = PHARE::core::ParticleArray<1>;
 
 TEST(APythonDataProvider, isADataProvider)
 {
-    PHAREDictHandler::INSTANCE().init<1>();
+    PHAREDictHandler::INSTANCE().init();
     char const* argv                   = "job_super.py";
     std::unique_ptr<DataProvider> pydp = std::make_unique<PythonDataProvider>(2, argv);
-    PHAREDictHandler::INSTANCE().stop<1>();
+    PHAREDictHandler::INSTANCE().stop();
 }
 
 
@@ -53,12 +53,12 @@ TEST(ARestartTimeDataProvider, isADataProvider)
 
 TEST(APythonDataProvider, providesAValidTree)
 {
-    PHAREDictHandler::INSTANCE().init<1>();
+    PHAREDictHandler::INSTANCE().init();
 
     char const* name = "init.py";
     PythonDataProvider pydp{2, name};
     pydp.read();
-    auto& input = PHAREDictHandler::INSTANCE().dict<1>();
+    auto& input = PHAREDictHandler::INSTANCE().dict();
 
     auto simulationName = input["simulation"]["name"].to<std::string>();
     auto dim            = input["simulation"]["dimension"].to<int>();
@@ -118,7 +118,7 @@ TEST(APythonDataProvider, providesAValidTree)
     EXPECT_DOUBLE_EQ(1., pop0Charge);
     EXPECT_EQ("cartesian", pop0Basis);
 
-    PHAREDictHandler::INSTANCE().stop<1>();
+    PHAREDictHandler::INSTANCE().stop();
 }
 
 
