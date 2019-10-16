@@ -31,7 +31,14 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     return nullptr;
 }
 
-
+namespace PHARE
+{
+struct Unwinder
+{
+    Unwinder() { PHARE::initializer::PHAREDictHandler::INSTANCE().init<1>(); }
+    ~Unwinder() { PHARE::initializer::PHAREDictHandler::INSTANCE().stop<1>(); }
+};
+} /*namespace PHARE*/
 
 int main(int argc, char** argv)
 {
@@ -47,5 +54,12 @@ int main(int argc, char** argv)
     std::cout << "\n";
 
     auto provider = fromCommandLine(argc, argv);
+    if (!provider)
+    {
+        std::cerr << "Invalid input detected" << std::endl;
+        return 1;
+    }
+    PHARE::Unwinder unwind;
     provider->read();
+    return 0;
 }
