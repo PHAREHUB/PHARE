@@ -13,6 +13,7 @@ endif()
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+option(HighFive "Build with highfive usage" ON)
 option(test "Build test with google test" ON)
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
@@ -110,6 +111,30 @@ include_directories(
 )
 endif()
 
+if(HighFive)
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive/include
+  )
+
+  if(DEFINED HDF5_ROOT)
+    find_package(HDF5 PATHS ${HDF5_ROOT} REQUIRED)
+  else()
+    find_package(HDF5 REQUIRED)
+  endif()
+
+  message("HighFive enabled - checking HDF5")
+  if(${HDF5_IS_PARALLEL})
+      message("HDF5 PARALLEL detected")
+      add_definitions(-DH5_HAVE_PARALLEL)
+  else()
+      message(WARNING "HDF5 NOT PARALLEL")
+  endif()
+
+  message(STATUS "HDF5_LIBRARIES " ${HDF5_LIBRARIES})
+  message(STATUS "HDF5_INCLUDE_DIRS " ${HDF5_INCLUDE_DIRS})
+  message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
+endif()
+
 #*******************************************************************************
 #* Test and coverage option
 #*******************************************************************************
@@ -161,7 +186,6 @@ if (test)
           )
   ENDIF(coverage)
 
-
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)
@@ -209,6 +233,7 @@ endif()
 
 add_subdirectory(src/core)
 add_subdirectory(src/solver)
+add_subdirectory(src/diagnostic)
 add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
 add_subdirectory(src/amr)

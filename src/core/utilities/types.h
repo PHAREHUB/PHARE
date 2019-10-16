@@ -40,8 +40,32 @@ namespace core
 
 
 
-
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
+
+
+    template<class T> // this is so we can use struct {} initializtion with shared_ptrs/forwarding
+    struct aggregate_adapter : public T
+    {
+        template<class... Args>
+        aggregate_adapter(Args&&... args)
+            : T{std::forward<Args>(args)...}
+        {
+        }
+    };
+
+    template<typename... Args> // this is so we can specialize
+    struct type_list           // templates with only the outter most type
+    {
+    };
+
+    template<class T, size_t size>
+    struct is_std_array : std::false_type
+    {
+    };
+    template<class T, size_t size>
+    struct is_std_array<std::array<T, size>, size> : std::true_type
+    {
+    };
 
 } // namespace core
 } // namespace PHARE

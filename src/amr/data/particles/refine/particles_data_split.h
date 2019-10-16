@@ -148,9 +148,12 @@ namespace amr
             // We get the source box that contains ghost region in order to get local index later
             // same for destinationGhostBox and destinationDomainBox the later will allow to get an
             // index relative to the interior
+
+            /*
             auto const& sourceGhostBox = srcParticlesData.getGhostBox();
             auto const& destGhostBox   = destParticlesData.getGhostBox();
             auto const& destDomainBox  = destParticlesData.getBox();
+            */
 
             /*auto computeRatio = [&ratio]() {
                 Point<int32, dim> pointRatio;

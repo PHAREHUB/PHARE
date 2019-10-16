@@ -21,7 +21,7 @@
 #include <memory>
 
 
-#include "amr/types/amr_types.h"
+#include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/field/coarsening/field_coarsen_operator.h"
 #include "data/field/refine/field_refine_operator.h"
@@ -366,7 +366,7 @@ public:
 
     aMultiPhysicsIntegrator()
         : hybridModel{std::make_shared<HybridModelT>(
-              createIonsDict(), std::make_shared<typename HybridModelT::resources_manager_type>())}
+            createIonsDict(), std::make_shared<typename HybridModelT::resources_manager_type>())}
         , mhdModel{std::make_shared<MHDModelT>(
               std::make_shared<typename MHDModelT::resources_manager_type>())}
         , multiphysInteg{std::make_shared<MultiPhysicsIntegratorT>(maxLevelNbr)}

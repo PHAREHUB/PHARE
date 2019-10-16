@@ -386,7 +386,7 @@ namespace amr
          * the client code wants to get a pointer to a patch data resource
          */
         template<typename ResourceType, typename RequestedPtr>
-        auto getResourcesPointer_(ResourceType resourceType,
+        auto getResourcesPointer_([[maybe_unused]] ResourceType resourceType,
                                   ResourcesInfo const& resourcesVariableInfo,
                                   SAMRAI::hier::Patch const& patch) const
         {

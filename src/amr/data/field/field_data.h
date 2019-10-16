@@ -466,7 +466,7 @@ namespace amr
 
                 finalBox = finalBox
                            * FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                                 getBox(), quantity_, gridLayout);
+                               getBox(), quantity_, gridLayout);
 
                 size_t size = 1;
 

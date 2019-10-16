@@ -1,4 +1,4 @@
-#include "amr/types/amr_types.h"
+#include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"
@@ -25,7 +25,6 @@
 
 
 
-#include "amr/types/amr_types.h"
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>

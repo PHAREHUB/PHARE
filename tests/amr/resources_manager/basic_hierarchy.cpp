@@ -15,7 +15,6 @@ BasicHierarchy::BasicHierarchy(std::string const& inputFile)
 
 
 
-
 void BasicHierarchy::init()
 {
     auto dim

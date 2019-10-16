@@ -7,7 +7,7 @@
 #include <string>
 
 #include "data/ions/particle_initializers/particle_initializer_factory.h"
-#include "initializer/data_provider.h"
+#include "data_provider.h"
 #include "messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
 #include "physical_models/physical_model.h"
@@ -25,12 +25,14 @@ namespace solver
     class HybridModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using patch_t = typename AMR_Types::patch_t;
-        using level_t = typename AMR_Types::level_t;
+        using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, AMR_Types>;
+        using patch_t   = typename AMR_Types::patch_t;
+        using level_t   = typename AMR_Types::level_t;
         static const std::string model_name;
         using gridLayout_type           = GridLayoutT;
         using electromag_type           = Electromag;
         using vecfield_type             = typename Electromag::vecfield_type;
+        using field_type                = typename vecfield_type::field_type;
         using ions_type                 = Ions;
         using resources_manager_type    = amr::ResourcesManager<gridLayout_type>;
         static constexpr auto dimension = GridLayoutT::dimension;
@@ -130,6 +132,18 @@ namespace solver
     template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>
     const std::string HybridModel<GridLayoutT, Electromag, Ions, AMR_Types>::model_name
         = "HybridModel";
+
+    template<typename... Args>
+    HybridModel<Args...> hybrid_model_from_type_list(core::type_list<Args...>);
+
+    template<typename TypeList>
+    struct type_list_to_hybrid_model
+    {
+        using type = decltype(hybrid_model_from_type_list(std::declval<TypeList>()));
+    };
+
+    template<typename TypeList>
+    using type_list_to_hybrid_model_t = typename type_list_to_hybrid_model<TypeList>::type;
 
 } // namespace solver
 
