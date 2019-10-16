@@ -1,10 +1,15 @@
 cmake_minimum_required (VERSION 3.3)
 
 project(test-diagnostics)
+<<<<<<< HEAD
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
+=======
+
+set(SOURCES_INC
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
   ${PROJECT_SOURCE_DIR}/include.h
   ${PROJECT_SOURCE_DIR}/func.h
   ${PROJECT_SOURCE_DIR}/defs.h
@@ -12,21 +17,32 @@ set(SOURCES_INC
   ${PROJECT_SOURCE_DIR}/samrai_lifecycle.h
   ${PROJECT_SOURCE_DIR}/tag_strat.h
   ${PROJECT_SOURCE_DIR}/hierarchy.h
+<<<<<<< HEAD
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
+=======
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 )
 
 set(SOURCES_CPP
   ${PROJECT_SOURCE_DIR}/test_main.cpp
 )
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 if(HighFive)
   add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
   target_include_directories(${PROJECT_NAME} PRIVATE
+<<<<<<< HEAD
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+=======
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
     $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>
     )
@@ -49,3 +65,7 @@ if(HighFive)
 
   include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
 endif()
+<<<<<<< HEAD
+=======
+
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL

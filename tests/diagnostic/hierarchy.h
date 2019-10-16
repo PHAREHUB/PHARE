@@ -2,9 +2,12 @@
 #ifndef PHARE_TEST_DIAGNOSTIC_HIERARCHY
 #define PHARE_TEST_DIAGNOSTIC_HIERARCHY
 
+<<<<<<< HEAD
 #include "include.h"
 #include "input_config.h"
 
+=======
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 class BasicHierarchy
 {
 public:
@@ -62,12 +65,21 @@ public:
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> integrator;
 };
 
+<<<<<<< HEAD
 struct AfullHybridBasicHierarchy
+=======
+struct AfullHybridBasicHierarchy : public ::testing::Test
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 {
     uint8_t const dimension = 1;
     int const firstHybLevel{0};
     int const ratio{2};
+<<<<<<< HEAD
     std::string input = inputBase + "/input/input_1d_ratio_" + std::to_string(ratio) + ".txt";
+=======
+    std::string input
+        = "tests/amr/messengers/input/input_1d_ratio_" + std::to_string(ratio) + ".txt";
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 
     std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
         std::make_shared<ResourcesManagerT>()};
@@ -75,6 +87,10 @@ struct AfullHybridBasicHierarchy
     std::shared_ptr<HybridModelT> hybridModel{
         std::make_shared<HybridModelT>(CREATE_IONS_DICT(), resourcesManagerHybrid)};
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
     std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
         hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
 

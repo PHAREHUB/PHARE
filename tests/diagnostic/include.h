@@ -25,6 +25,12 @@
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
+<<<<<<< HEAD
+=======
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 #include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"

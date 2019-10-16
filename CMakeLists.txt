@@ -156,6 +156,7 @@ if(HighFive)
   message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
 endif()
 
+<<<<<<< HEAD
 #*******************************************************************************
 #* Pybind11 build option
 #*******************************************************************************
@@ -176,6 +177,8 @@ if (NOT pybind11_FOUND)
 
 endif()
 
+=======
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 #*******************************************************************************
 #* Test and coverage option
 #*******************************************************************************
@@ -227,10 +230,13 @@ if (test)
           )
   ENDIF(coverage)
 
+<<<<<<< HEAD
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/tests
   )
 
+=======
+>>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)

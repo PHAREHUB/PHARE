@@ -65,6 +65,7 @@ namespace core
     {
     };
     template<typename T, size_t size>
+
     struct is_std_array<std::array<T, size>, size> : std::true_type
     {
     };
@@ -78,25 +79,6 @@ namespace core
               !std::is_same_v<Val, cppdict::NoValue> && !std::is_same_v<Val, typename Dict::map_t>,
               std::true_type, std::false_type>::type
     {
-    };
-
-    template<typename HasNext, typename NextItems>
-    class HasNextIterable
-    {
-    public:
-        HasNextIterable(NextItems const& items)
-            : hasNext_{items}
-        {
-        }
-
-        auto& keys() const { return hasNext_.keys(); }
-        bool hasNext() const { return hasNext_.hasNext(); }
-        auto next() { return hasNext_.next(); }
-
-        auto first() const { return hasNext_.get(0); }
-
-    private:
-        HasNext hasNext_;
     };
 
 } // namespace core

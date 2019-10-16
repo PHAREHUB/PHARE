@@ -21,14 +21,6 @@ namespace diagnostic
                                           space_box = "space_box";
     };
 
-
-
-    struct FieldInfo
-    {
-        double const* const data; // B/E xyz
-        size_t const size;        // B/E xyz
-        std::string const id;
-    };
 } /*namespace diagnostic*/
 
 
@@ -62,7 +54,7 @@ public:
     {
         return addDiagDict(dict);
     }
-    void addDiagnostic(DiagnosticDAO& diagnostic) { return diagnostics_.push_back(diagnostic); }
+    void addDiagnostic(DiagnosticDAO& diagnostic) { diagnostics_.emplace_back(diagnostic); }
 
     virtual void dump() = 0;
 
@@ -84,13 +76,13 @@ public:
 
 IDiagnosticsManager& IDiagnosticsManager::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
 {
-    size_t &compute_every   = dict["diag"]["compute_every"].template to<std::size_t>(),
-           &write_every     = dict["diag"]["write_every"].template to<std::size_t>(),
-           &start_iteration = dict["diag"]["start_iteration"].template to<std::size_t>(),
-           &end_iteration   = dict["diag"]["end_iteration"].template to<std::size_t>();
-    std::string &name       = dict["diag"]["name"].template to<std::string>(),
-                &species    = dict["diag"]["species"].template to<std::string>(),
-                &type       = dict["diag"]["type"].template to<std::string>();
+    size_t &compute_every   = dict["compute_every"].template to<std::size_t>(),
+           &write_every     = dict["write_every"].template to<std::size_t>(),
+           &start_iteration = dict["start_iteration"].template to<std::size_t>(),
+           &end_iteration   = dict["end_iteration"].template to<std::size_t>();
+    std::string &name       = dict["name"].template to<std::string>(),
+                &species    = dict["species"].template to<std::string>(),
+                &type       = dict["type"].template to<std::string>();
 
     diagnostics_.emplace_back(PHARE::core::aggregate_adapter<DiagnosticDAO>(
         compute_every, write_every, start_iteration, end_iteration, name, species, type));
@@ -175,41 +167,27 @@ public:
     using Model      = solver::type_list_to_hybrid_model_t<ModelParams>;
     using VecField   = typename Model::vecfield_type;
     using GridLayout = typename Model::gridLayout_type;
-    using Fields     = std::vector<std::shared_ptr<diagnostic::FieldInfo>>;
     using Attributes = cppdict::Dict<float, double, size_t, std::string>;
 
-    static constexpr auto dimensions = Model::dimension;
+    static constexpr auto dimension = Model::dimension;
 
     DiagnosticModelView(Model& model)
         : model_{model}
     {
     }
 
-    std::vector<Fields> getElectromagFields() const { return {getB(), getE()}; }
+    std::vector<VecField*> getElectromagFields() const
+    {
+        return {&model_.state.electromag.B, &model_.state.electromag.E};
+    }
 
     auto& getIons() const { return model_.state.ions; }
 
-    auto getParticlePacker(std::vector<core::Particle<1>> const&);
+    auto getParticlePacker(std::vector<core::Particle<dimension>> const&);
 
     auto getPatchAttributes(GridLayout& grid);
 
 protected:
-    Fields getB() const { return get(model_.state.electromag.B); }
-
-    Fields getE() const { return get(model_.state.electromag.E); }
-
-    auto get(VecField& vecField) const
-    {
-        std::vector<std::shared_ptr<diagnostic::FieldInfo>> fInfo;
-        for (auto const& key : {"x", "y", "z"})
-        {
-            auto& field = vecField.getComponent(core::Components::at(key));
-            fInfo.emplace_back(std::make_shared<core::aggregate_adapter<diagnostic::FieldInfo>>(
-                field.data(), field.size(), field.name()));
-        }
-        return fInfo;
-    }
-
     std::string getPatchOrigin(GridLayout& grid)
     {
         auto& bieldx = model_.state.electromag.B.getComponent(core::Component::X);
@@ -230,18 +208,19 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
                          ModelParams>::getPatchAttributes(GridLayout& grid)
 {
     Attributes dict;
-    dict["id"]     = std::string("id");
-    dict["float"]  = 0.0f;
-    dict["double"] = 0.0;
-    dict["size_t"] = size_t{0};
+    // dict["id"]     = std::string("id");
+    // dict["float"]  = 0.0f;
+    // dict["double"] = 0.0;
+    // dict["size_t"] = size_t{0};
     dict["origin"] = getPatchOrigin(grid);
     return dict;
 }
 
+template<size_t dim>
 class ParticlePacker
 {
 public:
-    ParticlePacker(core::ParticleArray<1> const& particles)
+    ParticlePacker(core::ParticleArray<dim> const& particles)
         : particles_{particles}
         , keys_{{"weight", "charge", "iCell", "delta", "v"}}
     {
@@ -257,85 +236,20 @@ public:
     auto& keys() const { return keys_; }
     bool hasNext() const { return it_ < particles_.size(); }
     auto next() { return get(it_++); }
+    auto first() const { return get(0u); }
 
 private:
-    size_t it_ = 0;
-    core::ParticleArray<1> const& particles_;
+    core::ParticleArray<dim> const& particles_;
     std::array<std::string, 5> keys_;
+    size_t it_ = 0;
 };
 
 template<typename ModelParams>
 auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>::
-    getParticlePacker(std::vector<core::Particle<1>> const& particles)
+    getParticlePacker(std::vector<core::Particle<dimension>> const& particles)
 {
-    return core::HasNextIterable<ParticlePacker, core::ParticleArray<1>>{particles};
+    return PHARE::ParticlePacker{particles};
 }
-
-
-
-
-// generic subclass of model specialized superclass
-template<typename AMRTypes, typename Model>
-class AMRDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>
-{
-public:
-    using Super      = DiagnosticModelView<Model, typename Model::type_list>;
-    using ResMan     = typename Model::resources_manager_type;
-    using GridLayout = typename Model::gridLayout_type;
-    using Guard      = amr::ResourcesGuard<ResMan, Model>;
-    using Hierarchy  = typename AMRTypes::hierarchy_t;
-    using Patch      = typename AMRTypes::patch_t;
-    using Super::model_;
-    static constexpr auto dimension = Model::dimension;
-
-    AMRDiagnosticModelView(Hierarchy& hierarchy, Model& model)
-        : Super{model}
-        , hierarchy_{hierarchy}
-    {
-    }
-
-    auto guardedGrid(Patch& patch) { return GuardedGrid{patch, Super::model_}; }
-
-
-
-    template<typename Action, typename... Args>
-    void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
-    {
-        amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
-                                        std::forward<Action>(action), minLevel, maxLevel, model_);
-    }
-
-
-
-protected:
-    struct GuardedGrid
-    {
-        using Guard = typename AMRDiagnosticModelView<AMRTypes, Model>::Guard;
-
-        GuardedGrid(Patch& patch, Model& model)
-            : guard_{model.resourcesManager->setOnPatch(patch, model)}
-            , grid_{PHARE::amr::layoutFromPatch<GridLayout>(patch)}
-        {
-        }
-
-        operator GridLayout&() { return grid_; }
-
-        Guard guard_;
-        GridLayout grid_;
-    };
-
-
-private:
-    Hierarchy& hierarchy_;
-
-    AMRDiagnosticModelView(const AMRDiagnosticModelView&)             = delete;
-    AMRDiagnosticModelView(const AMRDiagnosticModelView&&)            = delete;
-    AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&)  = delete;
-    AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&&) = delete;
-};
-
-
-
 
 } // namespace PHARE
 
