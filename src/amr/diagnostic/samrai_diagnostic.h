@@ -23,7 +23,7 @@ public:
     using Patch = ::SAMRAI::hier::Patch;
 
     SamraiModelDiagnosticView(Model& model)
-        : Super(model)
+        : Super{model}
     {
     }
 

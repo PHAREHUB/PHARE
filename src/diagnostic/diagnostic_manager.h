@@ -120,8 +120,8 @@ class DiagnosticModelView
 public:
     using Fields = std::vector<std::shared_ptr<diagnostic::FieldInfo>>;
 
-    std::vector<Fields> getFields() = 0;
-    std::tuple<void> getResources() = 0;
+    std::vector<Fields> getElectromagFields() = 0;
+    std::tuple<void> getResources()           = 0;
 };
 
 // HybridModel<Args...> specialization
@@ -150,11 +150,11 @@ public:
     {
     }
 
-    std::vector<Fields> getFields() const { return {getB(), getE()}; }
+    std::vector<Fields> getElectromagFields() const { return {getB(), getE()}; }
 
     auto& getParticles() const { return model_.state.ions; };
 
-    auto getParticleInfo(core::Particle<dimensions>& particle);
+    auto getParticlePacker(std::vector<core::Particle<1>> const&);
 
     auto getPatchAttributes(Grid& grid);
 
@@ -207,23 +207,64 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
     return dict;
 }
 
-template<typename ModelParams>
-auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
-                         ModelParams>::getParticleInfo(core::Particle<dimensions>& particle)
+class ParticularParticlePartPackerPicker
 {
-    ParticleInfo pInfo;
-    pInfo["weight"] = particle.weight;
-    pInfo["charge"] = particle.charge;
-    pInfo["Ex"]     = particle.Ex;
-    pInfo["Ey"]     = particle.Ey;
-    pInfo["Ez"]     = particle.Ez;
-    pInfo["Bx"]     = particle.Bx;
-    pInfo["By"]     = particle.By;
-    pInfo["Bz"]     = particle.Bz;
-    pInfo["iCell"]  = particle.iCell;
-    pInfo["delta"]  = particle.delta;
-    pInfo["v"]      = particle.v;
-    return pInfo;
+public:
+    ParticularParticlePartPackerPicker(std::vector<core::Particle<1>> const& particles)
+        : particles_{particles}
+        , keys_{{"weight", "charge", "iCell", "delta", "v"}}
+    {
+    }
+
+    auto get(size_t i) const
+    {
+        auto& particle = particles_[i];
+        return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
+                                     particle.delta, particle.v);
+    }
+
+    auto& keys() const { return keys_; }
+    bool hasNext() const { return it_ < particles_.size(); }
+    auto next() { return get(it_++); }
+
+private:
+    size_t it_ = 0;
+    std::vector<core::Particle<1>> const& particles_;
+    std::vector<std::string> keys_;
+};
+
+template<typename PartPicker>
+class ParticularPacker
+{
+public:
+    ParticularPacker(std::vector<core::Particle<1>> const& particles)
+        : picker_{particles}
+    {
+    }
+
+    auto& keys() const { return picker_.keys(); }
+    bool hasNext() const { return picker_.hasNext(); }
+    auto next() { return picker_.next(); }
+
+    std::vector<size_t> sizes()
+    {
+        auto tuple = first();
+        std::vector<size_t> ss;
+        auto sizeOf = [](auto& v) { return sizeof(v); };
+        std::apply([&](auto&... args) { (ss.emplace_back(sizeOf(args)), ...); }, tuple);
+        return ss;
+    }
+    auto first() const { return picker_.get(0); }
+
+private:
+    PartPicker picker_;
+};
+
+template<typename ModelParams>
+auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>::
+    getParticlePacker(std::vector<core::Particle<1>> const& particles)
+{
+    return ParticularPacker<ParticularParticlePartPackerPicker>{particles};
 }
 
 } // namespace PHARE
