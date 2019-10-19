@@ -246,16 +246,7 @@ public:
     bool hasNext() const { return picker_.hasNext(); }
     auto next() { return picker_.next(); }
 
-    std::vector<size_t> sizes()
-    {
-        auto tuple = first();
-        std::vector<size_t> ss;
-        auto sizeOf = [](auto& v) { return sizeof(v); };
-        std::apply([&](auto&... args) { (ss.emplace_back(sizeOf(args)), ...); }, tuple);
-        return ss;
-    }
     auto first() const { return picker_.get(0); }
-
 private:
     PartPicker picker_;
 };

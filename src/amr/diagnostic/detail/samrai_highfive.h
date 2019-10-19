@@ -116,9 +116,9 @@ private:
     }
 
     template<typename Dataset, typename Array>
-    void writeDataSetPart(Dataset dataSet, size_t start, size_t end, Array const* const array)
+    void writeDataSetPart(Dataset dataSet, size_t start, size_t size, Array const* const array)
     {
-        dataSet.select({start, end}).write(array);
+        dataSet.select({start}, {size}).write(array);
     }
 
     template<typename Array, typename String>
@@ -232,58 +232,54 @@ public:
 };
 /*TODO
   finish
+  needs formatting
 */
 template<typename Model>
 void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
     [maybe_unused]] Diagnostic& diagnostic)
 {
     auto& outer = this->outer_;
-    auto inc    = [](auto& in, auto& idx) {
-        idx++;
-        return in;
-    };
-    auto createDataSetLam = [&outer](auto&& path, auto size, auto const& value) {
-        using Val = std::decay_t<decltype(value)>;
+    auto createDataSet = [&outer](auto&& path, auto size, auto const& value) {
+        using Val  = std::decay_t<decltype(value)>;
         if constexpr (is_std_array<Val, dimensions>::value || is_std_array<Val, 3>::value)
-            return outer.template createDataSet<typename Val::value_type>(path, size);
+            return outer.template createDataSet<typename Val::value_type>(path, size * value.size());
         else
             return outer.template createDataSet<Val>(path, size);
     };
-    auto writeDatSetLam = [&outer](auto& datasets, auto& idx, auto& part_idx, auto& sizes,
-                                   auto const& value) {
+    auto writeDatSet = [&outer](auto& dataset, auto& start, auto const& value) {
         using Val  = std::decay_t<decltype(value)>;
-        auto start = idx * sizes[part_idx];
         if constexpr (is_std_array<Val, dimensions>::value || is_std_array<Val, 3>::value)
-            outer.writeDataSetPart(datasets[part_idx], start, start + sizes[part_idx] - 1,
-                                   &value[0]);
+            outer.writeDataSetPart(dataset, start, value.size(), &value[0]);
         else
-            outer.writeDataSetPart(datasets[part_idx], start, start + sizes[part_idx] - 1, &value);
-        part_idx++;
+            outer.writeDataSetPart(dataset, start, 1, &value); // not array, write 1 value
     };
 
     auto writeParticles = [&](auto& particles, auto&& path) {
-        if (!particles.size())
-            return;
+        if (!particles.size()) return;
         auto packer = outer.modelView_.getParticlePacker(particles);
-
         std::vector<HighFive::DataSet> datasets;
-        auto sizes = packer.sizes();
-        size_t idx = 0;
+        size_t part_idx = 0;
         std::apply(
             [&](auto&... args) {
-                (inc(datasets.emplace_back(createDataSetLam(path + packer.keys()[idx],
-                                                            sizes[idx] * particles.size(), args)),
-                     idx),
-                 ...);
+                ([&](){
+                  datasets.emplace_back(
+                    createDataSet(path + packer.keys()[part_idx], particles.size(), args));
+                  part_idx++;
+                }(), ...);
             },
             packer.first());
 
-        idx = 0;
+        size_t idx = 0;
         while (packer.hasNext())
         {
-            size_t part_idx = 0;
+            part_idx = 0;
             std::apply(
-                [&](auto&... args) { (writeDatSetLam(datasets, idx, part_idx, sizes, args), ...); },
+                [&](auto&... args) {
+                    ([&](){
+                      writeDatSet(datasets[part_idx], idx, args);
+                      part_idx++;
+                    }(), ...);
+                  },
                 packer.next());
             idx++;
         }
@@ -292,10 +288,9 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
     size_t pop_idx = 0;
     for (auto& pop : outer.modelView_.getParticles())
     {
-        std::stringstream particlePath;
+        std::stringstream particlePath, domainPath;
         particlePath << outer.patchPath_ << "/ions/pop/" << pop_idx++ << "/"; // bulkV
 
-        std::stringstream domainPath;
         domainPath << particlePath.str() << "domain/";
         writeParticles(pop.domainParticles(), domainPath.str());
     }
