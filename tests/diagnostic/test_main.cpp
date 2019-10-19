@@ -14,10 +14,9 @@ using namespace PHARE_test::_1d;
 #include "diagnostic/tag_strat.h"
 #include "diagnostic/hierarchy.h"
 
-
 struct Hi5Diagnostic : public AfullHybridBasicHierarchy
 {
-    HighFive::File file{PHARE::hi5::Diagnostic::createHighFiveFile("/tmp/hi.5")};
+    HighFive::File file{PHARE::hi5::Diagnostic::createHighFiveFile(filename())};
     ~Hi5Diagnostic() {}
 
     auto dict(std::string&& type)
@@ -31,6 +30,14 @@ struct Hi5Diagnostic : public AfullHybridBasicHierarchy
         dict["diag"]["start_iteration"] = std::size_t{0};
         dict["diag"]["end_iteration"]   = std::numeric_limits<std::size_t>::max();
         return dict;
+    }
+
+    /*use object address as uuid in case of parallelism*/
+    std::string filename() const
+    {
+      std::stringstream ss;
+      ss << "hi_" << this << ".5";
+      return ss.str();
     }
 };
 

@@ -143,14 +143,6 @@ private:
         writeDict(dict, str);
     }
 
-    // template<typename Tuple>
-    // void writeTuple(std::vector<std::string> const&, Tuple, std::string const&);
-    // template<typename Tuple>
-    // void writeTuple(std::vector<std::string> const keys&, Tuple tuple, std::string const&& str)
-    // {
-    //     writeDict(keys, tuple, str);
-    // }
-
     SamraiHighFiveDiagnostic(const SamraiHighFiveDiagnostic&)             = delete;
     SamraiHighFiveDiagnostic(const SamraiHighFiveDiagnostic&&)            = delete;
     SamraiHighFiveDiagnostic& operator&(const SamraiHighFiveDiagnostic&)  = delete;
