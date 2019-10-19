@@ -17,7 +17,6 @@ using namespace PHARE_test::_1d;
 struct Hi5Diagnostic : public AfullHybridBasicHierarchy
 {
     HighFive::File file{PHARE::hi5::Diagnostic::createHighFiveFile(filename())};
-    ~Hi5Diagnostic() {}
 
     auto dict(std::string&& type)
     {
@@ -36,7 +35,7 @@ struct Hi5Diagnostic : public AfullHybridBasicHierarchy
     std::string filename() const
     {
       std::stringstream ss;
-      ss << "hi_" << this << ".5";
+      ss << "/tmp/hi_" << this << ".5";
       return ss.str();
     }
 };

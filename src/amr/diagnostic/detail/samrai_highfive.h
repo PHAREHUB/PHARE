@@ -80,7 +80,7 @@ private:
     template<typename String>
     auto getOrCreateGroup(String const& path)
     {
-        if (!hi5_.file_.exist(path))
+        if (path != std::string("/") && !hi5_.file_.exist(path))
             hi5_.file_.createGroup(path);
         return hi5_.file_.getGroup(path);
     }
