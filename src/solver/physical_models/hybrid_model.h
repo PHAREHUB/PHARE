@@ -109,24 +109,39 @@ namespace solver
             modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
             modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
 
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.interiorParticles),
-                           [](auto const& pop) { return pop.name(); });
-
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.levelGhostParticlesOld),
-                           [](auto const& pop) { return pop.name(); });
-
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.levelGhostParticlesNew),
-                           [](auto const& pop) { return pop.name(); });
-
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.patchGhostParticles),
-                           [](auto const& pop) { return pop.name(); });
+            auto transform_ = [](auto& ions, auto& inserter) {
+                std::transform(std::begin(ions), std::end(ions), std::back_inserter(inserter),
+                               [](auto const& pop) { return pop.name(); });
+            };
+            transform_(state.ions, modelInfo.interiorParticles);
+            transform_(state.ions, modelInfo.levelGhostParticlesOld);
+            transform_(state.ions, modelInfo.levelGhostParticlesNew);
+            transform_(state.ions, modelInfo.patchGhostParticles);
         }
 
-        virtual ~HybridModel() override = default;
+        virtual ~HybridModel() override {}
+
+        //-------------------------------------------------------------------------
+        //                  start the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+        bool isUsable() const { return state.electromag.isUsable() && state.ions.isUsable(); }
+
+        bool isSettable() const { return state.electromag.isSettable() && state.ions.isSettable(); }
+
+        auto getCompileTimeResourcesUserList() const
+        {
+            return std::forward_as_tuple(state.electromag, state.ions);
+        }
+
+        auto getCompileTimeResourcesUserList()
+        {
+            return std::forward_as_tuple(state.electromag, state.ions);
+        }
+
+        //-------------------------------------------------------------------------
+        //                  ends the ResourcesUser interface
+        //-------------------------------------------------------------------------
     };
 
     template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>

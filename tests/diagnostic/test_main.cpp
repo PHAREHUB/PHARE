@@ -34,9 +34,9 @@ struct Hi5Diagnostic : public AfullHybridBasicHierarchy
     /*use object address as uuid in case of parallelism*/
     std::string filename() const
     {
-      std::stringstream ss;
-      ss << "/tmp/hi_" << this << ".5";
-      return ss.str();
+        std::stringstream ss;
+        ss << "/tmp/hi_" << this << ".5";
+        return ss.str();
     }
 };
 
@@ -88,32 +88,38 @@ TEST_F(Hi5Diagnostic, hdf5Particles)
     PHARE::DiagnosticsManager<Samraive> dMan{samhighfo};
     dMan.addDiagDict(this->dict("particles")).dump();
 
-    auto checkAttribute = [&](auto key, auto& path, auto const& original) {
-        std::decay_t<decltype(original)> copy;
-        this->file.getGroup(path).getAttribute(key).read(copy);
-        ASSERT_TRUE(original == copy);
-    };
-    auto checkDataset = [&](auto key, auto& path, auto const& original) {
-        std::decay_t<decltype(original)> copy;
-        this->file.getDataSet(path + key).read(copy);
-        ASSERT_TRUE(original == copy);
-    };
+    auto checkParticle = [&](auto& particles, auto path) {
+        std::vector<double> weightV, chargeV, vV;
+        this->file.getDataSet(path + "weight").read(weightV);
+        this->file.getDataSet(path + "charge").read(chargeV);
+        this->file.getDataSet(path + "v").read(vV);
+        std::vector<int> iCellV;
+        this->file.getDataSet(path + "iCell").read(iCellV);
+        std::vector<float> deltaV;
+        this->file.getDataSet(path + "delta").read(deltaV);
 
-    auto checkParticle = [&](auto& particle, auto path) {
-        checkAttribute("weight", path, particle.weight);
-        checkAttribute("charge", path, particle.charge);
+        PHARE::ParticularPacker<PHARE::ParticlePackerPart> packer(particles);
 
-        checkAttribute("Ex", path, particle.Ex);
-        checkAttribute("Ey", path, particle.Ey);
-        checkAttribute("Ez", path, particle.Ez);
+        auto first       = packer.first();
+        size_t iCellSize = std::get<2>(first).size();
+        size_t deltaSize = std::get<3>(first).size();
+        size_t vSize     = std::get<4>(first).size();
+        size_t part_idx  = 0;
+        while (packer.hasNext())
+        {
+            auto next = packer.next();
 
-        checkAttribute("Bx", path, particle.Bx);
-        checkAttribute("By", path, particle.By);
-        checkAttribute("Bz", path, particle.Bz);
+            for (size_t i = 0; i < iCellSize; i++)
+                EXPECT_EQ(iCellV[(part_idx * iCellSize) + i], std::get<2>(next)[i]);
 
-        checkDataset("iCell", path, particle.iCell);
-        checkDataset("delta", path, particle.delta);
-        checkDataset("v", path, particle.v);
+            for (size_t i = 0; i < deltaSize; i++)
+                EXPECT_FLOAT_EQ(deltaV[(part_idx * deltaSize) + i], std::get<3>(next)[i]);
+
+            for (size_t i = 0; i < vSize; i++)
+                EXPECT_DOUBLE_EQ(vV[(part_idx * vSize) + i], std::get<4>(next)[i]);
+
+            part_idx++;
+        }
     };
 
     size_t patch_idx = 0;
@@ -127,15 +133,12 @@ TEST_F(Hi5Diagnostic, hdf5Particles)
         {
             std::stringstream particlePath;
             particlePath << patchPath.str() << "/ions/pop/" << pop_idx << "/";
-            size_t particle_idx = 0;
-            // for (auto& particle : pop.domainParticles())
-            // {
-            //     std::stringstream domainPath;
-            //     domainPath << particlePath.str() << "domain/" << particle_idx << "/";
-            //     checkParticle(particle, domainPath.str());
-            //     particle_idx++;
-            // }
-            // pop_idx++;
+            {
+                std::stringstream domainPath;
+                domainPath << particlePath.str() << "domain/";
+                checkParticle(pop.domainParticles(), domainPath.str());
+            }
+            pop_idx++;
         }
         patch_idx++;
     }

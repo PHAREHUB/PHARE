@@ -13,35 +13,27 @@ template<typename Model>
 class SamraiModelDiagnosticView : public DiagnosticModelView<Model, typename Model::type_list>
 {
 public:
-    using Super = DiagnosticModelView<Model, typename Model::type_list>;
-    using Grid  = typename Model::gridLayout_type;
-    using Guard = typename Super::Guard;
-    using Super::getResources;
+    using Super  = DiagnosticModelView<Model, typename Model::type_list>;
+    using ResMan = typename Model::resources_manager_type;
+    using Grid   = typename Model::gridLayout_type;
+    using Guard  = amr::ResourcesGuard<ResMan, Model>;
+    using Patch  = ::SAMRAI::hier::Patch;
     using Super::model_;
-    using typename Super::ResMan;
-    using typename Super::Resources;
-    using Patch = ::SAMRAI::hier::Patch;
 
     SamraiModelDiagnosticView(Model& model)
         : Super{model}
     {
     }
 
-    auto guardedGrid(Patch& patch)
-    {
-        return std::apply(
-            [&patch, this](auto&... args) { return GuardedGrid(patch, model_, args...); },
-            getResources());
-    }
+    auto guardedGrid(Patch& patch) { return GuardedGrid(patch, Super::model_); }
 
 protected:
     struct GuardedGrid
     {
         using Guard = typename SamraiModelDiagnosticView<Model>::Guard;
 
-        template<typename... Args>
-        GuardedGrid(Patch& patch, Model& model, Args&... args)
-            : guard_(model.resourcesManager->setOnPatch(patch, args...))
+        GuardedGrid(Patch& patch, Model& model)
+            : guard_(model.resourcesManager->setOnPatch(patch, model))
             , grid_(PHARE::amr::layoutFromPatch<Grid>(patch))
         {
         }

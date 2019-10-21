@@ -93,10 +93,7 @@ private:
         return hi5_.file_.getDataSet(path);
     }
 
-    auto getDataSet(std::string const& path)
-    {
-        return hi5_.file_.getDataSet(path);
-    }
+    auto getDataSet(std::string const& path) { return hi5_.file_.getDataSet(path); }
 
     template<typename Type, typename Size>
     auto createDataSet(std::string const& path, Size size)
@@ -109,14 +106,8 @@ private:
         return hi5_.file_.getDataSet(path);
     }
 
-    template<typename Data>
-    void writeData(std::string const&& path, Data const& value)
-    {
-        createDataSet<Data>(path, value).write(value);
-    }
-
     template<typename Dataset, typename Array>
-    void writeDataSetPart(Dataset dataSet, size_t start, size_t size, Array const* const array)
+    void writeDataSetPart(Dataset dataSet, size_t start, size_t size, Array const& array)
     {
         dataSet.select({start}, {size}).write(array);
     }
@@ -205,7 +196,6 @@ void SamraiHighFiveDiagnostic<Model>::write(PatchLevel& level, std::string&& pat
     }
 }
 
-
 template<typename Model>
 class SamraiHighFiveDiagnostic<Model>::Hi5DiagnosticWriter : public PHARE::DiagnosticWriter
 {
@@ -238,34 +228,39 @@ template<typename Model>
 void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
     [maybe_unused]] Diagnostic& diagnostic)
 {
-    auto& outer = this->outer_;
+    auto& outer        = this->outer_;
     auto createDataSet = [&outer](auto&& path, auto size, auto const& value) {
-        using Val  = std::decay_t<decltype(value)>;
+        using Val = std::decay_t<decltype(value)>;
         if constexpr (is_std_array<Val, dimensions>::value || is_std_array<Val, 3>::value)
-            return outer.template createDataSet<typename Val::value_type>(path, size * value.size());
+            return outer.template createDataSet<typename Val::value_type>(path,
+                                                                          size * value.size());
         else
             return outer.template createDataSet<Val>(path, size);
     };
     auto writeDatSet = [&outer](auto& dataset, auto& start, auto const& value) {
-        using Val  = std::decay_t<decltype(value)>;
+        using Val = std::decay_t<decltype(value)>;
         if constexpr (is_std_array<Val, dimensions>::value || is_std_array<Val, 3>::value)
-            outer.writeDataSetPart(dataset, start, value.size(), &value[0]);
+            outer.writeDataSetPart(dataset, start * value.size(), value.size(), value);
         else
-            outer.writeDataSetPart(dataset, start, 1, &value); // not array, write 1 value
+            outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
     };
 
     auto writeParticles = [&](auto& particles, auto&& path) {
-        if (!particles.size()) return;
+        if (!particles.size())
+            return;
         auto packer = outer.modelView_.getParticlePacker(particles);
         std::vector<HighFive::DataSet> datasets;
         size_t part_idx = 0;
+
         std::apply(
             [&](auto&... args) {
-                ([&](){
-                  datasets.emplace_back(
-                    createDataSet(path + packer.keys()[part_idx], particles.size(), args));
-                  part_idx++;
-                }(), ...);
+                (
+                    [&]() {
+                        datasets.emplace_back(
+                            createDataSet(path + packer.keys()[part_idx], particles.size(), args));
+                        part_idx++;
+                    }(),
+                    ...);
             },
             packer.first());
 
@@ -275,11 +270,13 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
             part_idx = 0;
             std::apply(
                 [&](auto&... args) {
-                    ([&](){
-                      writeDatSet(datasets[part_idx], idx, args);
-                      part_idx++;
-                    }(), ...);
-                  },
+                    (
+                        [&]() {
+                            writeDatSet(datasets[part_idx], idx, args);
+                            part_idx++;
+                        }(),
+                        ...);
+                },
                 packer.next());
             idx++;
         }

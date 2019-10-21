@@ -130,20 +130,12 @@ class DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, Mode
 {
 public:
     using Model      = solver::type_list_to_hybrid_model_t<ModelParams>;
-    using ResMan     = typename Model::resources_manager_type;
     using VecField   = typename Model::vecfield_type;
-    using Electromag = typename Model::electromag_type;
-    using Ions       = typename Model::ions_type;
     using Grid       = typename Model::gridLayout_type;
-    using Guard      = amr::ResourcesGuard<ResMan, Electromag, Ions>; // inherited
-    using Resources  = std::tuple<Electromag&, Ions&>;
     using Fields     = std::vector<std::shared_ptr<diagnostic::FieldInfo>>;
     using Attributes = cppdict::Dict<float, double, size_t, std::string>;
 
     static constexpr auto dimensions = Model::dimension;
-
-    using ParticleInfo = cppdict::Dict<std::array<int, dimensions>, std::array<float, dimensions>,
-                                       std::array<double, 3>, size_t, double>;
 
     DiagnosticModelView(Model& model)
         : model_(model)
@@ -157,12 +149,6 @@ public:
     auto getParticlePacker(std::vector<core::Particle<1>> const&);
 
     auto getPatchAttributes(Grid& grid);
-
-    Resources getResources()
-    {
-        return std::forward_as_tuple(model_.state.electromag, model_.state.ions);
-    }
-
 
 protected:
     Fields getB() const { return get(model_.state.electromag.B, "B"); }
@@ -207,10 +193,10 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
     return dict;
 }
 
-class ParticularParticlePartPackerPicker
+class ParticlePackerPart
 {
 public:
-    ParticularParticlePartPackerPicker(std::vector<core::Particle<1>> const& particles)
+    ParticlePackerPart(std::vector<core::Particle<1>> const& particles)
         : particles_{particles}
         , keys_{{"weight", "charge", "iCell", "delta", "v"}}
     {
@@ -247,6 +233,7 @@ public:
     auto next() { return picker_.next(); }
 
     auto first() const { return picker_.get(0); }
+
 private:
     PartPicker picker_;
 };
@@ -255,7 +242,7 @@ template<typename ModelParams>
 auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>::
     getParticlePacker(std::vector<core::Particle<1>> const& particles)
 {
-    return ParticularPacker<ParticularParticlePartPackerPicker>{particles};
+    return ParticularPacker<ParticlePackerPart>{particles};
 }
 
 } // namespace PHARE
