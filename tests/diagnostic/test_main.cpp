@@ -42,26 +42,23 @@ struct Hi5Diagnostic : public AfullHybridBasicHierarchy
 
 TEST_F(Hi5Diagnostic, hdf5Electromag)
 {
-    using Model         = HybridModelT;
-    using Samraive      = PHARE::SamraiHighFiveDiagnostic<Model>;
-    constexpr auto mode = PHARE::diagnostic::Mode::LIGHT;
+    using SamFive = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
 
-    PHARE::hi5::Diagnostic hi5{this->file, mode};
-    Samraive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
-    PHARE::DiagnosticsManager<Samraive> dMan{samhighfo};
+    PHARE::hi5::Diagnostic hi5{this->file, PHARE::diagnostic::Mode::LIGHT};
+    SamFive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
+    PHARE::DiagnosticsManager<SamFive> dMan{samhighfo};
     dMan.addDiagDict(this->dict("electromag")).dump();
 
     auto checkField = [&](auto& vecField, auto vecFieldID, auto& path) {
         for (auto const key : {"x", "y", "z"})
         {
+            std::string fieldPath(path + "/" + vecFieldID + key);
+            std::vector<double> readData;
+            this->file.getDataSet(fieldPath).read(readData);
             auto& field = vecField.getComponent(PHARE::core::Components::at(key));
-            std::stringstream fieldPath;
-            fieldPath << path.str() << "/" << vecFieldID << key;
-            std::vector<double> readData(field.size());
-            this->file.getDataSet(fieldPath.str()).read(readData);
-            ASSERT_TRUE(readData.size() == field.size());
+            EXPECT_EQ(readData.size(), field.size());
             for (size_t i = 0; i < field.size(); i++)
-                ASSERT_TRUE(readData[i] == field.data()[i]);
+                EXPECT_DOUBLE_EQ(readData[i], field.data()[i]);
         }
     };
 
@@ -69,8 +66,7 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
     for (auto patch : *basicHierarchy->getHierarchy().getPatchLevel(0))
     {
         auto guardedGrid = samhighfo.modelView().guardedGrid(*patch);
-        std::stringstream patchPath;
-        patchPath << "/t#/pl0/p" << patch_idx;
+        std::string patchPath("/t#/pl0/p" + std::to_string(patch_idx));
         checkField(hybridModel->state.electromag.B, "B", patchPath);
         checkField(hybridModel->state.electromag.E, "E", patchPath);
         patch_idx++;
@@ -79,16 +75,16 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
 
 TEST_F(Hi5Diagnostic, hdf5Particles)
 {
-    using Model         = HybridModelT;
-    using Samraive      = PHARE::SamraiHighFiveDiagnostic<Model>;
-    constexpr auto mode = PHARE::diagnostic::Mode::LIGHT;
+    using SamFive = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
 
-    PHARE::hi5::Diagnostic hi5{this->file, mode};
-    Samraive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
-    PHARE::DiagnosticsManager<Samraive> dMan{samhighfo};
+    PHARE::hi5::Diagnostic hi5{this->file, PHARE::diagnostic::Mode::LIGHT};
+    SamFive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
+    PHARE::DiagnosticsManager<SamFive> dMan{samhighfo};
     dMan.addDiagDict(this->dict("particles")).dump();
 
     auto checkParticle = [&](auto& particles, auto path) {
+        if (!particles.size())
+            return;
         std::vector<double> weightV, chargeV, vV;
         this->file.getDataSet(path + "weight").read(weightV);
         this->file.getDataSet(path + "charge").read(chargeV);
@@ -126,18 +122,14 @@ TEST_F(Hi5Diagnostic, hdf5Particles)
     for (auto patch : *basicHierarchy->getHierarchy().getPatchLevel(0))
     {
         auto guardedGrid = samhighfo.modelView().guardedGrid(*patch);
-        std::stringstream patchPath;
-        patchPath << "/t#/pl0/p" << patch_idx;
+        std::string patchPath("/t#/pl0/p" + std::to_string(patch_idx));
         size_t pop_idx = 0;
         for (auto& pop : hybridModel->state.ions)
         {
-            std::stringstream particlePath;
-            particlePath << patchPath.str() << "/ions/pop/" << pop_idx << "/";
-            {
-                std::stringstream domainPath;
-                domainPath << particlePath.str() << "domain/";
-                checkParticle(pop.domainParticles(), domainPath.str());
-            }
+            std::string particlePath(patchPath + "/ions/pop/" + std::to_string(pop_idx) + "/");
+            checkParticle(pop.domainParticles(), particlePath + "domain/");
+            checkParticle(pop.levelGhostParticles(), particlePath + "lvlGhost/");
+            checkParticle(pop.patchGhostParticles(), particlePath + "patchGhost/");
             pop_idx++;
         }
         patch_idx++;

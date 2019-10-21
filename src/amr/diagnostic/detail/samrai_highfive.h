@@ -181,9 +181,7 @@ void SamraiHighFiveDiagnostic<Model>::write(PatchLevel& level, std::string&& pat
     for (auto& patch : level)
     {
         auto guardedGrid = modelView_.guardedGrid(*patch);
-        std::stringstream patchPath;
-        patchPath << path << "/p" << patch_idx;
-        patchPath_ = patchPath.str();
+        patchPath_       = path + "/p" + std::to_string(patch_idx);
         getOrCreateGroup(patchPath_);
 
         for (auto& [diagnostic, writer] : diagnostics)
@@ -245,12 +243,13 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
             outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
     };
 
-    auto writeParticles = [&](auto& particles, auto&& path) {
+    auto writeParticles = [&](auto path, auto& particles) {
         if (!particles.size())
             return;
-        auto packer = outer.modelView_.getParticlePacker(particles);
-        std::vector<HighFive::DataSet> datasets;
+
         size_t part_idx = 0;
+        std::vector<HighFive::DataSet> datasets;
+        auto packer = outer.modelView_.getParticlePacker(particles);
 
         std::apply(
             [&](auto&... args) {
@@ -283,13 +282,12 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
     };
 
     size_t pop_idx = 0;
-    for (auto& pop : outer.modelView_.getParticles())
+    for (auto& pop : outer.modelView_.getParticles()) // bulkV
     {
-        std::stringstream particlePath, domainPath;
-        particlePath << outer.patchPath_ << "/ions/pop/" << pop_idx++ << "/"; // bulkV
-
-        domainPath << particlePath.str() << "domain/";
-        writeParticles(pop.domainParticles(), domainPath.str());
+        std::string path(outer.patchPath_ + "/ions/pop/" + std::to_string(pop_idx++) + "/");
+        writeParticles(path + "domain/", pop.domainParticles());
+        writeParticles(path + "lvlGhost/", pop.levelGhostParticles());
+        writeParticles(path + "patchGhost/", pop.patchGhostParticles());
     }
 }
 
@@ -316,9 +314,8 @@ void SamraiHighFiveDiagnostic<Model>::ElectromagDiagnosticWriter::write([
     {
         for (auto& field : fields)
         {
-            std::stringstream fieldPath;
-            fieldPath << outer.patchPath_ << "/" << field->id;
-            outer.writeDataSet(fieldPath.str(), field->data, field->size);
+            std::string fieldPath(outer.patchPath_ + "/" + field->id);
+            outer.writeDataSet(fieldPath, field->data, field->size);
         }
     };
 }
@@ -350,30 +347,17 @@ void SamraiHighFiveDiagnostic<Model>::writeDict(Dict dict, std::string const& pa
     auto visitor     = [&](auto&& map) {
         using Map_t = std::decay_t<decltype(map)>;
         if constexpr (std::is_same_v<Map_t, dict_map_t>)
-        {
             for (auto& pair : map)
-            {
                 std::visit(
                     [&](auto&& val) {
                         using Val = std::decay_t<decltype(val)>;
-                        if constexpr (is_std_array<Val, dimensions>::value
-                                      || is_std_array<Val, 3>::value)
-                        {
-                            writeDataSet(path + pair.first, &val[0], val.size());
-                        }
-                        else if constexpr (
-                            !std::is_same_v<Val,
-                                            cppdict::NoValue> && !std::is_same_v<Val, dict_map_t>)
-                        {
+                        if constexpr (is_dict_leaf<Val, Dict>::value)
                             writeAttribute(path, pair.first, val);
-                        }
                         else
                             throw std::runtime_error(std::string("Expecting Writable value got ")
                                                      + typeid(Map_t).name());
                     },
                     pair.second.get()->data);
-            }
-        }
         else
             // static_assert fails without if ! constexpr all possible types
             //   regardless of what it actually is.

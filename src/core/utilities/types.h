@@ -7,6 +7,7 @@
 #include <numeric>
 #include <vector>
 
+#include "cppdict/include/dict.hpp"
 
 namespace PHARE
 {
@@ -43,7 +44,8 @@ namespace core
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
 
 
-    template<class T> // this is so we can use struct {} initializtion with shared_ptrs/forwarding
+    template<typename T> // this is so we can use struct {} initializtion with
+                         // shared_ptrs/forwarding
     struct aggregate_adapter : public T
     {
         template<class... Args>
@@ -58,12 +60,20 @@ namespace core
     {
     };
 
-    template<class T, size_t size>
+    template<typename T, size_t size>
     struct is_std_array : std::false_type
     {
     };
-    template<class T, size_t size>
+    template<typename T, size_t size>
     struct is_std_array<std::array<T, size>, size> : std::true_type
+    {
+    };
+
+    template<typename Val, typename Dict>
+    struct is_dict_leaf
+        : std::conditional<
+              !std::is_same_v<Val, cppdict::NoValue> && !std::is_same_v<Val, typename Dict::map_t>,
+              std::true_type, std::false_type>::type
     {
     };
 
