@@ -25,9 +25,6 @@
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-
 #include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"

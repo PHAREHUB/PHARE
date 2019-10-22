@@ -1,14 +1,23 @@
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutimplyee.h"
-#include "data/particles/particle_array.h"
-#include "models/physical_state.h"
-#include "python_data_provider.h"
-
 #include <iostream>
 
+#include "python_data_provider.h"
 
+#include "diagnostic/include.h"
+#include "diagnostic/samrai_lifecycle.h"
 
+#include "diagnostic/func.h"
+#include "diagnostic/defs.h"
+using namespace PHARE_test::_1d;
+
+#include "diagnostic/detail/samrai_highfive.h"
+
+#include "diagnostic/integrator.h"
+#include "diagnostic/tag_strat.h"
+#include "diagnostic/hierarchy.h"
+
+namespace PHARE
+{
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
     using dataProvider [[maybe_unused]] = std::unique_ptr<PHARE::initializer::DataProvider>;
@@ -31,7 +40,29 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     return nullptr;
 }
 
+class GlobalLifeCycle
+{
+    using Writer = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
 
+public:
+    GlobalLifeCycle(std::string path = "/tmp/roflcopter.hi5")
+        : hi5{path}
+        , samhighfo{fullHybrid.basicHierarchy->getHierarchy(), *fullHybrid.hybridModel, hi5}
+        , dMan{new PHARE::DiagnosticsManager<Writer>(samhighfo)}
+    {
+        PHARE::initializer::PHAREDictHandler::INSTANCE().init<1>();
+    }
+    ~GlobalLifeCycle() { PHARE::initializer::PHAREDictHandler::INSTANCE().stop<1>(); }
+
+    AfullHybridBasicHierarchy fullHybrid;
+    PHARE::hi5::Diagnostic hi5;
+    PHARE::SamraiHighFiveDiagnostic<HybridModelT> samhighfo;
+    std::unique_ptr<PHARE::ADiagnosticsManager> dMan;
+};
+
+// global extern for python addition of diagnostics
+PHARE::ADiagnosticsManager* diagnosticManager;
+} /*namespace PHARE*/
 
 int main(int argc, char** argv)
 {
@@ -42,10 +73,16 @@ int main(int argc, char** argv)
                  |  ___/ |  __  |  / /\ \  |  _  / |  __|
                  | |     | |  | | / ____ \ | | \ \ | |____
                  |_|     |_|  |_|/_/    \_\|_|  \_\|______|)~";
-    std::cout << welcome;
-    std::cout << "\n";
-    std::cout << "\n";
 
-    auto provider = fromCommandLine(argc, argv);
+    std::cout << welcome << "\n\n";
+    PHARE_test::SamraiLifeCycle samrai{argc, argv};
+    auto provider = PHARE::fromCommandLine(argc, argv);
+    if (!provider)
+    {
+        std::cerr << "Invalid input detected" << std::endl;
+        return 1;
+    }
+    PHARE::GlobalLifeCycle lifeCycle;
+    PHARE::diagnosticManager = lifeCycle.dMan.get();
     provider->read();
 }

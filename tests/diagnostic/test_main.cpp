@@ -1,6 +1,9 @@
 
 #include <mpi.h>
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
 #include "diagnostic/include.h"
 #include "diagnostic/samrai_lifecycle.h"
 
@@ -14,10 +17,8 @@ using namespace PHARE_test::_1d;
 #include "diagnostic/tag_strat.h"
 #include "diagnostic/hierarchy.h"
 
-struct Hi5Diagnostic : public AfullHybridBasicHierarchy
+struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
 {
-    HighFive::File file{PHARE::hi5::Diagnostic::createHighFiveFile(filename())};
-
     auto dict(std::string&& type)
     {
         PHARE::initializer::PHAREDict<1> dict;
@@ -44,7 +45,7 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
 {
     using SamFive = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
 
-    PHARE::hi5::Diagnostic hi5{this->file, PHARE::diagnostic::Mode::LIGHT};
+    PHARE::hi5::Diagnostic hi5{filename()};
     SamFive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
     PHARE::DiagnosticsManager<SamFive> dMan{samhighfo};
     dMan.addDiagDict(this->dict("electromag")).dump();
@@ -54,7 +55,7 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
         {
             std::string fieldPath(path + "/" + vecFieldID + key);
             std::vector<double> readData;
-            this->file.getDataSet(fieldPath).read(readData);
+            hi5.file_.getDataSet(fieldPath).read(readData);
             auto& field = vecField.getComponent(PHARE::core::Components::at(key));
             EXPECT_EQ(readData.size(), field.size());
             for (size_t i = 0; i < field.size(); i++)
@@ -77,7 +78,7 @@ TEST_F(Hi5Diagnostic, hdf5Particles)
 {
     using SamFive = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
 
-    PHARE::hi5::Diagnostic hi5{this->file, PHARE::diagnostic::Mode::LIGHT};
+    PHARE::hi5::Diagnostic hi5{filename()};
     SamFive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
     PHARE::DiagnosticsManager<SamFive> dMan{samhighfo};
     dMan.addDiagDict(this->dict("particles")).dump();
@@ -86,13 +87,13 @@ TEST_F(Hi5Diagnostic, hdf5Particles)
         if (!particles.size())
             return;
         std::vector<double> weightV, chargeV, vV;
-        this->file.getDataSet(path + "weight").read(weightV);
-        this->file.getDataSet(path + "charge").read(chargeV);
-        this->file.getDataSet(path + "v").read(vV);
+        hi5.file_.getDataSet(path + "weight").read(weightV);
+        hi5.file_.getDataSet(path + "charge").read(chargeV);
+        hi5.file_.getDataSet(path + "v").read(vV);
         std::vector<int> iCellV;
-        this->file.getDataSet(path + "iCell").read(iCellV);
+        hi5.file_.getDataSet(path + "iCell").read(iCellV);
         std::vector<float> deltaV;
-        this->file.getDataSet(path + "delta").read(deltaV);
+        hi5.file_.getDataSet(path + "delta").read(deltaV);
 
         PHARE::ParticularPacker<PHARE::ParticlePackerPart> packer(particles);
 

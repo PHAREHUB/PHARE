@@ -25,6 +25,7 @@ option(msan "build with msan support" OFF)
 find_program(Git git)
 
 include(CheckCXXCompilerFlag)
+include(ExternalProject)
 
 find_package (PythonInterp  3.0 REQUIRED)
 
@@ -136,6 +137,26 @@ if(HighFive)
 endif()
 
 #*******************************************************************************
+#* Pybind11 build option
+#*******************************************************************************
+find_package(pybind11 CONFIG QUIET)
+
+if (NOT pybind11_FOUND)
+
+    message("downloading subproject pybind11")
+    set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
+
+    if (NOT EXISTS ${PYBIND11_SRCDIR})
+      execute_process(
+        COMMAND ${Git} clone https://github.com/pybind/pybind11 ${PYBIND11_SRCDIR}
+        )
+    endif()
+
+    add_subdirectory(${PYBIND11_SRCDIR})
+
+endif()
+
+#*******************************************************************************
 #* Test and coverage option
 #*******************************************************************************
 if (test)
@@ -236,6 +257,7 @@ add_subdirectory(src/solver)
 add_subdirectory(src/diagnostic)
 add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
+add_subdirectory(src/pyphare)
 add_subdirectory(src/amr)
 
 

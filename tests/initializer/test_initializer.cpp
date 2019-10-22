@@ -1,28 +1,26 @@
 
 
 #include <string>
+#include <memory>
 
 #include "data/grid/gridlayoutdefs.h"
-
-
-
-
-#include "utilities/index/index.h"
-
-
-#include "data_provider.h"
-#include "python_data_provider.h"
-#include "restart_data_provider.h"
-
-
-
-
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayoutimplyee.h"
 #include "data/particles/particle_array.h"
 
-#include <memory>
+#include "utilities/index/index.h"
+
+#include "data_provider.h"
+#include "python_data_provider.h"
+#include "restart_data_provider.h"
+
+#include "diagnostic_manager.h"
+namespace PHARE
+{
+// global extern for python addition of diagnostics
+ADiagnosticsManager* diagnosticManager = new NoOpDiagnosticManager{};
+} // namespace PHARE
 
 using namespace PHARE::initializer;
 
@@ -31,8 +29,6 @@ using ParticleArrayT = PHARE::core::ParticleArray<1>;
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-
 
 
 TEST(APythonDataProvider, isADataProvider)
@@ -126,7 +122,14 @@ TEST(APythonDataProvider, providesAValidTree)
 int main(int argc, char** argv)
 
 {
-    ::testing::InitGoogleTest(&argc, argv);
+    try
+    {
+        ::testing::InitGoogleTest(&argc, argv);
+    }
+    catch (std::exception const& e)
+    {
+        std::cerr << __FILE__ << " " << __LINE__ << e.what() << std::endl;
+    }
 
     return RUN_ALL_TESTS();
 }

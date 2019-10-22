@@ -14,13 +14,8 @@ namespace hi5
 {
     struct Diagnostic
     {
-        HighFive::File& file_;
+        HighFive::File file_;
         PHARE::diagnostic::Mode mode_ = PHARE::diagnostic::Mode::LIGHT;
-
-        Diagnostic(const Diagnostic&)             = delete;
-        Diagnostic(const Diagnostic&&)            = delete;
-        Diagnostic& operator&(const Diagnostic&)  = delete;
-        Diagnostic& operator&(const Diagnostic&&) = delete;
 
         static auto createHighFiveFile(std::string const path)
         {
@@ -33,6 +28,18 @@ namespace hi5
 #endif
             };
         }
+
+        Diagnostic(std::string const path,
+                   PHARE::diagnostic::Mode mode = PHARE::diagnostic::Mode::LIGHT)
+            : file_{createHighFiveFile(path)}
+            , mode_{mode}
+        {
+        }
+
+        Diagnostic(const Diagnostic&)             = delete;
+        Diagnostic(const Diagnostic&&)            = delete;
+        Diagnostic& operator&(const Diagnostic&)  = delete;
+        Diagnostic& operator&(const Diagnostic&&) = delete;
     };
 } // namespace hi5
 template<typename Model>

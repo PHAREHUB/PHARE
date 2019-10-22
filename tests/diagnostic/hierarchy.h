@@ -59,7 +59,7 @@ public:
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> integrator;
 };
 
-struct AfullHybridBasicHierarchy : public ::testing::Test
+struct AfullHybridBasicHierarchy
 {
     uint8_t const dimension = 1;
     int const firstHybLevel{0};
@@ -103,5 +103,6 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
     }
     ~AfullHybridBasicHierarchy() {}
 };
+
 
 #endif /*PHARE_TEST_DIAGNOSTIC_HIERARCHY*/

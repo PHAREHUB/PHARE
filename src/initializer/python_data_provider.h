@@ -5,12 +5,15 @@
 
 #include "pragma_disable.h"
 
+#if !defined(PHARE_PYBINDED)
+#define PHARE_PYBINDED
 // clang-format off
 DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/functional.h>
 ENABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 // clang-format on
+#endif
 
 namespace py = pybind11;
 

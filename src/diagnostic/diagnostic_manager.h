@@ -2,7 +2,6 @@
 #ifndef PHARE_Diagnostic_MANAGER_HPP_
 #define PHARE_Diagnostic_MANAGER_HPP_
 
-#include "data_provider.h"
 #include "utilities/types.h"
 #include "physical_models/hybrid_model.h"
 #include "resources_manager/resources_manager.h"
@@ -42,10 +41,34 @@ public:
     virtual ~DiagnosticWriter() {}
 };
 
-template<typename Writer>
-class DiagnosticsManager
+class ADiagnosticsManager
 {
 public:
+    virtual ~ADiagnosticsManager() {}
+    virtual ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict) = 0;
+    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>&& dict)
+    {
+        return addDiagDict(dict);
+    }
+
+    virtual void dump() = 0;
+};
+
+class NoOpDiagnosticManager : public ADiagnosticsManager
+{
+public:
+    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict) override
+    {
+        return *this;
+    }
+    void dump() override {}
+};
+
+template<typename Writer>
+class DiagnosticsManager : public ADiagnosticsManager
+{
+public:
+    using ADiagnosticsManager::addDiagDict;
     using DiagnosticWritingList = std::vector<
         std::tuple<std::reference_wrapper<Diagnostic>, std::shared_ptr<DiagnosticWriter>>>;
     DiagnosticsManager(Writer& writer)
@@ -53,13 +76,9 @@ public:
     {
     }
 
-    DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict);
-    DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>&& dict)
-    {
-        return addDiagDict(dict);
-    }
+    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict) override;
 
-    void dump();
+    void dump() override;
 
 private:
     Writer& writer_;
@@ -97,8 +116,7 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 }
 
 template<typename Writer>
-DiagnosticsManager<Writer>&
-    DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
+ADiagnosticsManager& DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
 {
     size_t &compute_every   = dict["diag"]["compute_every"].template to<std::size_t>(),
            &write_every     = dict["diag"]["write_every"].template to<std::size_t>(),
