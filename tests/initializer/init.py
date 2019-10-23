@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 
+from src.pyphare.phare import Diagnostic
 import src.pyphare.pyphare as pp
 import job
 
@@ -30,12 +31,16 @@ def vthz(x):
 
 simulation = job.ph.globals.sim
 
-pp.diagnostic("particles")
-pp.diagnostic("electromag")
+# pp.diagnostic("particles")
+# pp.diagnostic("electromag")
+Diagnostic(
+  name = "diagnostic1",
+  species = "protons",
+  type = "electromag"
+).add_to_simulation(pp)
 
 pp.add("simulation/name", "simulation_test")
 pp.add("simulation/dimension", simulation.dims)
-
 
 pp.add("simulation/grid/layout_type", simulation.layout)
 pp.add("simulation/grid/nbr_cells/x", simulation.cells[0])

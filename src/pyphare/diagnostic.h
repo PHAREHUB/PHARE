@@ -8,23 +8,28 @@ namespace PHARE
 extern ADiagnosticsManager* diagnosticManager;
 namespace pybind
 {
-    void dict(std::string type)
+    void addDiagnostic(size_t compute_every, size_t write_every, size_t start_iteration,
+                       size_t end_iteration, std::string name, std::string species,
+                       std::string type)
     {
-        PHARE::initializer::PHAREDict<1> dict;
-        dict["diag"]["name"]            = type;
-        dict["diag"]["type"]            = type;
-        dict["diag"]["species"]         = std::string{"SPECIES_" + type};
-        dict["diag"]["compute_every"]   = std::size_t{1};
-        dict["diag"]["write_every"]     = std::size_t{1};
-        dict["diag"]["start_iteration"] = std::size_t{0};
-        dict["diag"]["end_iteration"]   = std::numeric_limits<std::size_t>::max();
-        diagnosticManager->addDiagDict(dict);
+        PHARE::Diagnostic diagnostic{
+            compute_every, write_every, start_iteration, end_iteration, name, species, type};
+        diagnosticManager->addDiagnostic(diagnostic);
     }
 
     template<typename PyBindModule>
     void diagnostic(PyBindModule& m)
     {
-        m.def("diagnostic", dict, "diagnostic");
+        // py::class_<PHARE::Diagnostic>(m, "Diagnostic")
+        //     .def_readwrite("name", &PHARE::Diagnostic::name)
+        //     .def_readwrite("species", &PHARE::Diagnostic::species)
+        //     .def_readwrite("type", &PHARE::Diagnostic::type)
+        //     .def_readwrite("compute_every", &PHARE::Diagnostic::compute_every)
+        //     .def_readwrite("write_every", &PHARE::Diagnostic::write_every)
+        //     .def_readwrite("start_iteration", &PHARE::Diagnostic::start_iteration)
+        //     .def_readwrite("end_iteration", &PHARE::Diagnostic::end_iteration);
+
+        m.def("addDiagnostic", addDiagnostic, "diagnostic");
     }
 
 } /* namespace pybind*/

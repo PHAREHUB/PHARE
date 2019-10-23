@@ -1,6 +1,3 @@
-#! /usr/bin/env python3
+from .pyphare import *
+from .phare import *
 
-import numpy as np
-
-def density(x):
-    return 2*x

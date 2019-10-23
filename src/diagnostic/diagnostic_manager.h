@@ -45,30 +45,44 @@ class ADiagnosticsManager
 {
 public:
     virtual ~ADiagnosticsManager() {}
-    virtual ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict) = 0;
+    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict);
     ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>&& dict)
     {
         return addDiagDict(dict);
     }
+    void addDiagnostic(Diagnostic& diagnostic) { return diagnostics.push_back(diagnostic); }
 
     virtual void dump() = 0;
+
+protected:
+    std::vector<Diagnostic> diagnostics;
 };
 
 class NoOpDiagnosticManager : public ADiagnosticsManager
 {
 public:
-    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict) override
-    {
-        return *this;
-    }
     void dump() override {}
 };
+
+ADiagnosticsManager& ADiagnosticsManager::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
+{
+    size_t &compute_every   = dict["diag"]["compute_every"].template to<std::size_t>(),
+           &write_every     = dict["diag"]["write_every"].template to<std::size_t>(),
+           &start_iteration = dict["diag"]["start_iteration"].template to<std::size_t>(),
+           &end_iteration   = dict["diag"]["end_iteration"].template to<std::size_t>();
+    std::string &name       = dict["diag"]["name"].template to<std::string>(),
+                &species    = dict["diag"]["species"].template to<std::string>(),
+                &type       = dict["diag"]["type"].template to<std::string>();
+
+    diagnostics.emplace_back(PHARE::core::aggregate_adapter<Diagnostic>(
+        compute_every, write_every, start_iteration, end_iteration, name, species, type));
+    return *this;
+}
 
 template<typename Writer>
 class DiagnosticsManager : public ADiagnosticsManager
 {
 public:
-    using ADiagnosticsManager::addDiagDict;
     using DiagnosticWritingList = std::vector<
         std::tuple<std::reference_wrapper<Diagnostic>, std::shared_ptr<DiagnosticWriter>>>;
     DiagnosticsManager(Writer& writer)
@@ -76,13 +90,10 @@ public:
     {
     }
 
-    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict) override;
-
     void dump() override;
 
 private:
     Writer& writer_;
-    std::vector<Diagnostic> diagnostics;
 
     DiagnosticsManager(const DiagnosticsManager&)             = delete;
     DiagnosticsManager(const DiagnosticsManager&&)            = delete;
@@ -113,22 +124,6 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
         }
     }
     writer_.dump(diagnosticWriters);
-}
-
-template<typename Writer>
-ADiagnosticsManager& DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
-{
-    size_t &compute_every   = dict["diag"]["compute_every"].template to<std::size_t>(),
-           &write_every     = dict["diag"]["write_every"].template to<std::size_t>(),
-           &start_iteration = dict["diag"]["start_iteration"].template to<std::size_t>(),
-           &end_iteration   = dict["diag"]["end_iteration"].template to<std::size_t>();
-    std::string &name       = dict["diag"]["name"].template to<std::string>(),
-                &species    = dict["diag"]["species"].template to<std::string>(),
-                &type       = dict["diag"]["type"].template to<std::string>();
-
-    diagnostics.emplace_back(PHARE::core::aggregate_adapter<Diagnostic>(
-        compute_every, write_every, start_iteration, end_iteration, name, species, type));
-    return *this;
 }
 
 // Generic Template declaration, to override per Concrete model type
