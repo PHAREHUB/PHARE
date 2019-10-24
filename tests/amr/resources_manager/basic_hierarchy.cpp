@@ -1,10 +1,10 @@
 #include "basic_hierarchy.h"
 
-BasicHierarchy::BasicHierarchy(std::string const &inputFile)
+BasicHierarchy::BasicHierarchy(std::string const& inputFile)
     : inputDatabase{SAMRAI::tbox::InputManager::getManager()->parseInputFile(inputFile)}
-    , patchHierarchyDatabase{inputDatabase->getDatabase("PatchHierarchy")}
     , dimension{static_cast<unsigned short int>(
           inputDatabase->getDatabase("Main")->getInteger("dim"))}
+    , patchHierarchyDatabase{inputDatabase->getDatabase("PatchHierarchy")}
     , gridGeometry{std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
           dimension, "cartesian", inputDatabase->getDatabase("CartesianGridGeometry"))}
     , hierarchy{std::make_shared<SAMRAI::hier::PatchHierarchy>("PatchHierarchy", gridGeometry,
@@ -18,6 +18,15 @@ BasicHierarchy::BasicHierarchy(std::string const &inputFile)
 
 void BasicHierarchy::init()
 {
+    auto dim
+        = static_cast<unsigned short int>(inputDatabase->getDatabase("Main")->getInteger("dim"));
+    std::vector<int> lowerIndex, upperIndex;
+    for (size_t i = 0; i < dim; i++)
+    {
+        lowerIndex.emplace_back(0);
+        upperIndex.emplace_back(64);
+    }
+
     SAMRAI::hier::Box boxLevel0{dimension};
 
     int const ownerRank  = SAMRAI::tbox::SAMRAI_MPI::getSAMRAIWorld().getRank();
@@ -29,8 +38,8 @@ void BasicHierarchy::init()
     boxLevel0.setBlockId(SAMRAI::hier::BlockId{0});
     boxLevel0.setId(SAMRAI::hier::BoxId{idLevel0});
 
-    boxLevel0.setLower(SAMRAI::hier::Index(0, 0, 0));
-    boxLevel0.setUpper(SAMRAI::hier::Index(64, 64, 64));
+    boxLevel0.setLower(SAMRAI::hier::Index(lowerIndex));
+    boxLevel0.setUpper(SAMRAI::hier::Index(upperIndex));
 
     SAMRAI::hier::BoxContainer level0Container;
 
