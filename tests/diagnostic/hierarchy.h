@@ -67,14 +67,18 @@ struct AfullHybridBasicHierarchy
     uint8_t const dimension = 1;
     int const firstHybLevel{0};
     int const ratio{2};
+<<<<<<< HEAD
+    std::string input
+        = inputBase + "tests/amr/messengers/input/input_1d_ratio_" + std::to_string(ratio) + ".txt";
+=======
     std::string input = inputBase + "/input/input_1d_ratio_" + std::to_string(ratio) + ".txt";
+>>>>>>> 05be4484279084b1fffe46ec769a5fa1c7aa253f
 
     std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
         std::make_shared<ResourcesManagerT>()};
 
     std::shared_ptr<HybridModelT> hybridModel{
         std::make_shared<HybridModelT>(CREATE_IONS_DICT(), resourcesManagerHybrid)};
-
 
     std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
         hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
@@ -105,6 +109,5 @@ struct AfullHybridBasicHierarchy
     }
     ~AfullHybridBasicHierarchy() {}
 };
-
 
 #endif /*PHARE_TEST_DIAGNOSTIC_HIERARCHY*/

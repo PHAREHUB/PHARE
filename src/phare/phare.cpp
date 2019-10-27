@@ -3,6 +3,8 @@
 
 #include "python_data_provider.h"
 
+// These includes are shared with diagnostic tests until we finalise another
+// approach
 #include "diagnostic/include.h"
 #include "diagnostic/samrai_lifecycle.h"
 

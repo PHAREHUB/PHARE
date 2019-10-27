@@ -3,6 +3,8 @@ cmake_minimum_required (VERSION 3.3)
 project(test-diagnostics)
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
+configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
+
 set(SOURCES_INC
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
   ${PROJECT_SOURCE_DIR}/include.h
@@ -12,6 +14,7 @@ set(SOURCES_INC
   ${PROJECT_SOURCE_DIR}/samrai_lifecycle.h
   ${PROJECT_SOURCE_DIR}/tag_strat.h
   ${PROJECT_SOURCE_DIR}/hierarchy.h
+  ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
 )
 
 set(SOURCES_CPP
@@ -25,7 +28,7 @@ if(HighFive)
 
   target_include_directories(${PROJECT_NAME} PRIVATE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
     $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>
     )
@@ -48,4 +51,3 @@ if(HighFive)
 
   include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
 endif()
-
