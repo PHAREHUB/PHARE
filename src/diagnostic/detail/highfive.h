@@ -43,7 +43,6 @@ struct HighFiveFile
 };
 
 
-
 template<typename ModelView>
 class HighFiveDiagnostic
 {
@@ -55,6 +54,7 @@ public:
     HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath)
         : hi5_{hifivePath}
         , modelView_{modelView}
+
     {
     }
 
@@ -149,7 +149,10 @@ private:
     class ElectromagDiagnosticWriter; // : public Hi5DiagnosticWriter
     class ParticlesDiagnosticWriter;  // : public Hi5DiagnosticWriter
     class FluidDiagnosticWriter;      // : public Hi5DiagnosticWriter
-};
+};                                    // namespace PHARE
+
+
+
 
 /*TO DO
   investigate level > 0 for MPI
@@ -240,6 +243,7 @@ void HighFiveDiagnostic<ModelView>::ParticlesDiagnosticWriter::write([
             outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
     };
 
+
     auto writeParticles = [&](auto path, auto& particles) {
         if (!particles.size())
             return;
@@ -298,6 +302,8 @@ public:
     void write(DiagnosticDAO&) override;
     void compute(DiagnosticDAO&) override{};
 };
+
+
 /*TODO
   finish
 */
@@ -310,10 +316,10 @@ void HighFiveDiagnostic<ModelView>::ElectromagDiagnosticWriter::write([
     {
         for (auto& field : fields)
         {
-            std::string fieldPath(outer.patchPath_ + "/" + field->id);
+            std::string fieldPath{outer.patchPath_ + "/" + field->id};
             outer.writeDataSet(fieldPath, field->data, field->size);
         }
-    };
+    }
 }
 
 template<typename ModelView>

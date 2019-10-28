@@ -2,14 +2,20 @@ cmake_minimum_required (VERSION 3.3)
 
 project(test-diagnostics)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> wip diag pr
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
+<<<<<<< HEAD
 =======
 
 set(SOURCES_INC
 >>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
+=======
+>>>>>>> wip diag pr
   ${PROJECT_SOURCE_DIR}/include.h
   ${PROJECT_SOURCE_DIR}/func.h
   ${PROJECT_SOURCE_DIR}/defs.h
@@ -28,10 +34,15 @@ set(SOURCES_CPP
 )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
 =======
 >>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
+=======
+
+
+>>>>>>> wip diag pr
 if(HighFive)
   add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 

@@ -10,20 +10,33 @@ namespace PHARE
 {
 // generic subclass of model specialized superclass
 template<typename Model>
-class SamraiModelDiagnosticView : public DiagnosticModelView<Model, typename Model::type_list>
+class SamraiDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>
 {
 public:
+<<<<<<< HEAD
     using Super = DiagnosticModelView<Model, typename Model::type_list>;
     using Grid  = typename Model::gridLayout_type;
     using Guard = typename Super::Guard;
     using Super::getResources;
+=======
+    using Super      = DiagnosticModelView<Model, typename Model::type_list>;
+    using ResMan     = typename Model::resources_manager_type;
+    using GridLayout = typename Model::gridLayout_type;
+    using Guard      = amr::ResourcesGuard<ResMan, Model>;
+    using Patch      = ::SAMRAI::hier::Patch;
+>>>>>>> wip diag pr
     using Super::model_;
     using typename Super::ResMan;
     using typename Super::Resources;
     using Patch = ::SAMRAI::hier::Patch;
 
+<<<<<<< HEAD
     SamraiModelDiagnosticView(Model& model)
         : Super(model)
+=======
+    SamraiDiagnosticModelView(Model& model)
+        : Super{model}
+>>>>>>> wip diag pr
     {
     }
 
@@ -37,30 +50,36 @@ public:
 protected:
     struct GuardedGrid
     {
-        using Guard = typename SamraiModelDiagnosticView<Model>::Guard;
+        using Guard = typename SamraiDiagnosticModelView<Model>::Guard;
 
+<<<<<<< HEAD
         template<typename... Args>
         GuardedGrid(Patch& patch, Model& model, Args&... args)
             : guard_(model.resourcesManager->setOnPatch(patch, args...))
             , grid_(PHARE::amr::layoutFromPatch<Grid>(patch))
+=======
+        GuardedGrid(Patch& patch, Model& model)
+            : guard_{model.resourcesManager->setOnPatch(patch, model)}
+            , grid_{PHARE::amr::layoutFromPatch<GridLayout>(patch)}
+>>>>>>> wip diag pr
         {
         }
 
-        operator Grid&() { return grid_; }
+        operator GridLayout&() { return grid_; }
 
         Guard guard_;
-        Grid grid_;
+        GridLayout grid_;
     };
 
 private:
-    SamraiModelDiagnosticView(const SamraiModelDiagnosticView&)             = delete;
-    SamraiModelDiagnosticView(const SamraiModelDiagnosticView&&)            = delete;
-    SamraiModelDiagnosticView& operator&(const SamraiModelDiagnosticView&)  = delete;
-    SamraiModelDiagnosticView& operator&(const SamraiModelDiagnosticView&&) = delete;
+    SamraiDiagnosticModelView(const SamraiDiagnosticModelView&)             = delete;
+    SamraiDiagnosticModelView(const SamraiDiagnosticModelView&&)            = delete;
+    SamraiDiagnosticModelView& operator&(const SamraiDiagnosticModelView&)  = delete;
+    SamraiDiagnosticModelView& operator&(const SamraiDiagnosticModelView&&) = delete;
 };
 
 
-template<typename Model>
+template<typename ModelView>
 class SamraiDiagnostic
 {
 public:
@@ -70,13 +89,13 @@ public:
     auto& modelView() { return modelView_; }
 
 protected:
-    SamraiDiagnostic(Hierarchy& hierarchy, Model& model)
-        : modelView_(model)
-        , hierarchy_(hierarchy)
+    SamraiDiagnostic(Hierarchy& hierarchy, ModelView& model)
+        : modelView_{model}
+        , hierarchy_{hierarchy}
     {
     }
 
-    SamraiModelDiagnosticView<Model> modelView_;
+    SamraiDiagnosticModelView<ModelView> modelView_;
     Hierarchy& hierarchy_;
 
 private:
