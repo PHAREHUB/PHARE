@@ -6,6 +6,9 @@
 #include "physical_models/hybrid_model.h"
 #include "resources_manager/resources_manager.h"
 
+
+#include <utility>
+
 namespace PHARE
 {
 namespace diagnostic
@@ -17,6 +20,9 @@ namespace diagnostic
         static std::string_view constexpr rho_s = "rho_s", flux_s = "flux_s", E = "E", B = "B",
                                           space_box = "space_box";
     };
+
+
+
     struct FieldInfo
     {
         double const* const data; // B/E xyz
@@ -25,13 +31,19 @@ namespace diagnostic
     };
 } /*namespace diagnostic*/
 
+
+
+
 struct Diagnostic
 {
     size_t compute_every = 1, write_every = 1;
-    size_t start_iteration = 0, end_iteration = -1; /* likely to be time rather than index*/
-                                                    /* do we allow ranges?*/
+    size_t start_iteration = 0, end_iteration = 100; /* likely to be time rather than index*/
+                                                     /* do we allow ranges?*/
     std::string name, species, type;
 };
+
+
+
 
 class DiagnosticWriter
 {
@@ -40,6 +52,9 @@ public:
     virtual void compute(Diagnostic&) = 0;
     virtual ~DiagnosticWriter() {}
 };
+
+
+
 
 class ADiagnosticsManager
 {
@@ -58,11 +73,17 @@ protected:
     std::vector<Diagnostic> diagnostics;
 };
 
+
+
+
 class NoOpDiagnosticManager : public ADiagnosticsManager
 {
 public:
     void dump() override {}
 };
+
+
+
 
 ADiagnosticsManager& ADiagnosticsManager::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
 {
@@ -79,12 +100,15 @@ ADiagnosticsManager& ADiagnosticsManager::addDiagDict(PHARE::initializer::PHARED
     return *this;
 }
 
+
+
+
 template<typename Writer>
 class DiagnosticsManager : public ADiagnosticsManager
 {
 public:
     using DiagnosticWritingList = std::vector<
-        std::tuple<std::reference_wrapper<Diagnostic>, std::shared_ptr<DiagnosticWriter>>>;
+        std::pair<std::reference_wrapper<Diagnostic>, std::shared_ptr<DiagnosticWriter>>>;
     DiagnosticsManager(Writer& writer)
         : writer_(writer)
     {
@@ -101,6 +125,9 @@ private:
     DiagnosticsManager& operator&(const DiagnosticsManager&&) = delete;
 };
 
+
+
+
 /*TODO
    iterations
 */
@@ -108,23 +135,38 @@ template<typename Writer>
 void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 {
     size_t iter = 1; // TODO replace with time/iteration idx
-    auto active = [](size_t current, size_t start, size_t end, size_t every) {
-        return (current >= start && current <= end) && current % every == 0;
+
+    auto active = [](auto const& diag, size_t current, size_t every) {
+        return (current >= diag.start_iteration && current <= diag.end_iteration)
+               && current % every == 0;
     };
+
+    auto needs_write = [&active](auto const& diag, size_t current) {
+        return active(diag, current, diag.write_every);
+    };
+
+    auto needs_compute = [&active](auto const& diag, size_t current) {
+        return active(diag, current, diag.compute_every);
+    };
+
+
     DiagnosticWritingList diagnosticWriters;
     for (auto& diag : diagnostics)
     {
-        if (active(iter, diag.start_iteration, diag.end_iteration, diag.compute_every))
+        if (needs_compute(diag, iter))
         {
             writer_.getWriter(diag.type)->compute(diag);
         }
-        if (active(iter, diag.start_iteration, diag.end_iteration, diag.write_every))
+        if (needs_write(diag, iter))
         {
             diagnosticWriters.emplace_back(diag, writer_.getWriter(diag.type));
         }
     }
     writer_.dump(diagnosticWriters);
 }
+
+
+
 
 // Generic Template declaration, to override per Concrete model type
 template<typename Model, typename ModelParams>
@@ -137,6 +179,9 @@ public:
     std::tuple<void> getResources()           = 0;
 };
 
+
+
+
 // HybridModel<Args...> specialization
 template<typename ModelParams>
 class DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>
@@ -144,24 +189,24 @@ class DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, Mode
 public:
     using Model      = solver::type_list_to_hybrid_model_t<ModelParams>;
     using VecField   = typename Model::vecfield_type;
-    using Grid       = typename Model::gridLayout_type;
+    using GridLayout = typename Model::gridLayout_type;
     using Fields     = std::vector<std::shared_ptr<diagnostic::FieldInfo>>;
     using Attributes = cppdict::Dict<float, double, size_t, std::string>;
 
     static constexpr auto dimensions = Model::dimension;
 
     DiagnosticModelView(Model& model)
-        : model_(model)
+        : model_{model}
     {
     }
 
     std::vector<Fields> getElectromagFields() const { return {getB(), getE()}; }
 
-    auto& getParticles() const { return model_.state.ions; };
+    auto& getParticles() const { return model_.state.ions; }
 
     auto getParticlePacker(std::vector<core::Particle<1>> const&);
 
-    auto getPatchAttributes(Grid& grid);
+    auto getPatchAttributes(GridLayout& grid);
 
 protected:
     Fields getB() const { return get(model_.state.electromag.B, "B"); }
@@ -180,7 +225,7 @@ protected:
         return fInfo;
     }
 
-    std::string getPatchOrigin(Grid& grid)
+    std::string getPatchOrigin(GridLayout& grid)
     {
         auto& bieldx = model_.state.electromag.B.getComponent(core::Component::X);
         return grid
@@ -193,9 +238,12 @@ protected:
     Model& model_;
 };
 
+
+
+
 template<typename ModelParams>
 auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
-                         ModelParams>::getPatchAttributes(Grid& grid)
+                         ModelParams>::getPatchAttributes(GridLayout& grid)
 {
     Attributes dict;
     dict["id"]     = std::string("id");

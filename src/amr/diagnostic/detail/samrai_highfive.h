@@ -42,6 +42,10 @@ namespace hi5
         Diagnostic& operator&(const Diagnostic&&) = delete;
     };
 } // namespace hi5
+
+
+
+
 template<typename Model>
 class SamraiHighFiveDiagnostic : public SamraiDiagnostic<Model>
 {
@@ -52,11 +56,11 @@ public:
     using PatchLevel  = SAMRAI::hier::PatchLevel;
     using Diagnostics = typename DiagnosticsManager<Model>::DiagnosticWritingList;
 
-    static constexpr auto dimensions = Model::dimension;
+    static constexpr auto dimension = Model::dimension;
 
-    SamraiHighFiveDiagnostic(Hierarchy& h, Model& r, hi5::Diagnostic& hifive)
-        : PHARE::SamraiDiagnostic<Model>(h, r)
-        , hi5_(hifive)
+    SamraiHighFiveDiagnostic(Hierarchy& hier, Model& model, hi5::Diagnostic& hifive)
+        : PHARE::SamraiDiagnostic<Model>{hier, model}
+        , hi5_{hifive}
     {
     }
 
@@ -152,6 +156,9 @@ private:
     class FluidDiagnosticWriter;      // : public Hi5DiagnosticWriter
 };
 
+
+
+
 /*TO DO
   investigate level > 0 for MPI
   finalise HDF5 Path format
@@ -205,8 +212,8 @@ template<typename Model>
 class SamraiHighFiveDiagnostic<Model>::Hi5DiagnosticWriter : public PHARE::DiagnosticWriter
 {
 public:
-    Hi5DiagnosticWriter(SamraiHighFiveDiagnostic& _outer)
-        : outer_(_outer)
+    Hi5DiagnosticWriter(SamraiHighFiveDiagnostic& outer)
+        : outer_{outer}
     {
     }
 
@@ -214,17 +221,24 @@ protected:
     SamraiHighFiveDiagnostic& outer_;
 };
 
+
+
+
 template<typename Model>
 class SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter : public Hi5DiagnosticWriter
 {
 public:
-    ParticlesDiagnosticWriter(SamraiHighFiveDiagnostic& _outer)
-        : Hi5DiagnosticWriter(_outer)
+    ParticlesDiagnosticWriter(SamraiHighFiveDiagnostic& outer)
+        : Hi5DiagnosticWriter(outer)
     {
     }
     void write(Diagnostic&) override;
-    void compute(Diagnostic&) override{};
+    void compute(Diagnostic&) override {}
 };
+
+
+
+
 /*TODO
   finish
   needs formatting
@@ -233,22 +247,29 @@ template<typename Model>
 void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
     [maybe_unused]] Diagnostic& diagnostic)
 {
-    auto& outer        = this->outer_;
+    auto& outer = this->outer_;
+
+    template<typename T, std::size_t>
+    using is_array_dataset = core::is_std_array_v<Val, dimension> || core::is_std_array_v<Val, 3>;
+
     auto createDataSet = [&outer](auto&& path, auto size, auto const& value) {
         using Val = std::decay_t<decltype(value)>;
-        if constexpr (is_std_array<Val, dimensions>::value || is_std_array<Val, 3>::value)
+        if constexpr (is_array_dataset<Val, dimension>)
             return outer.template createDataSet<typename Val::value_type>(path,
                                                                           size * value.size());
         else
             return outer.template createDataSet<Val>(path, size);
     };
+
+
     auto writeDatSet = [&outer](auto& dataset, auto& start, auto const& value) {
         using Val = std::decay_t<decltype(value)>;
-        if constexpr (is_std_array<Val, dimensions>::value || is_std_array<Val, 3>::value)
+        if constexpr (core::is_std_array_v<Val, dimension> || core::is_std_array_v<Val, 3>)
             outer.writeDataSetPart(dataset, start * value.size(), value.size(), value);
         else
             outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
     };
+
 
     auto writeParticles = [&](auto path, auto& particles) {
         if (!particles.size())
@@ -307,8 +328,12 @@ public:
     {
     }
     void write(Diagnostic&) override;
-    void compute(Diagnostic&) override{};
+    void compute(Diagnostic&) override {}
 };
+
+
+
+
 /*TODO
   finish
 */
@@ -321,10 +346,10 @@ void SamraiHighFiveDiagnostic<Model>::ElectromagDiagnosticWriter::write([
     {
         for (auto& field : fields)
         {
-            std::string fieldPath(outer.patchPath_ + "/" + field->id);
+            std::string fieldPath{outer.patchPath_ + "/" + field->id};
             outer.writeDataSet(fieldPath, field->data, field->size);
         }
-    };
+    }
 }
 
 template<typename Model>

@@ -12,9 +12,9 @@ using namespace PHARE_test::_1d;
 
 #include "diagnostic/detail/samrai_highfive.h"
 
-#include "diagnostic/integrator.h"
+/*#include "diagnostic/integrator.h"
 #include "diagnostic/tag_strat.h"
-#include "diagnostic/hierarchy.h"
+#include "diagnostic/hierarchy.h"*/
 
 namespace PHARE
 {
@@ -46,18 +46,18 @@ class GlobalLifeCycle
 
 public:
     GlobalLifeCycle(std::string path = "/tmp/roflcopter.hi5")
-        : hi5{path}
-        , samhighfo{fullHybrid.basicHierarchy->getHierarchy(), *fullHybrid.hybridModel, hi5}
-        , dMan{new PHARE::DiagnosticsManager<Writer>(samhighfo)}
+    /*: hi5{path}
+    , samhighfo{fullHybrid.basicHierarchy->getHierarchy(), *fullHybrid.hybridModel, hi5}
+    , dMan{new PHARE::DiagnosticsManager<Writer>(samhighfo)}*/
     {
         PHARE::initializer::PHAREDictHandler::INSTANCE().init<1>();
     }
     ~GlobalLifeCycle() { PHARE::initializer::PHAREDictHandler::INSTANCE().stop<1>(); }
 
-    AfullHybridBasicHierarchy fullHybrid;
-    PHARE::hi5::Diagnostic hi5;
-    PHARE::SamraiHighFiveDiagnostic<HybridModelT> samhighfo;
-    std::unique_ptr<PHARE::ADiagnosticsManager> dMan;
+    // AfullHybridBasicHierarchy fullHybrid;
+    // PHARE::hi5::Diagnostic hi5;
+    // PHARE::SamraiHighFiveDiagnostic<HybridModelT> samhighfo;
+    // std::unique_ptr<PHARE::ADiagnosticsManager> dMan;
 };
 
 // global extern for python addition of diagnostics
@@ -83,6 +83,6 @@ int main(int argc, char** argv)
         return 1;
     }
     PHARE::GlobalLifeCycle lifeCycle;
-    PHARE::diagnosticManager = lifeCycle.dMan.get();
+    // PHARE::diagnosticManager = lifeCycle.dMan.get();
     provider->read();
 }

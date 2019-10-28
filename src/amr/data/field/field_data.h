@@ -91,6 +91,7 @@ namespace amr
 
             if (fieldSource != nullptr)
             {
+                TBOX_ASSERT(quantity_ == fieldSource->quantity_);
                 // First step is to translate the AMR box into proper index space of the given
                 // quantity_ using the source gridlayout to accomplish that we get the interior box,
                 // from the FieldData. and we call toFieldBox (with the default parameter withGhost

@@ -1,8 +1,10 @@
 cmake_minimum_required (VERSION 3.3)
 
 project(test-diagnostics)
+configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
+  ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
   ${PROJECT_SOURCE_DIR}/include.h
   ${PROJECT_SOURCE_DIR}/func.h
   ${PROJECT_SOURCE_DIR}/defs.h
@@ -15,6 +17,8 @@ set(SOURCES_INC
 set(SOURCES_CPP
   ${PROJECT_SOURCE_DIR}/test_main.cpp
 )
+
+
 
 if(HighFive)
   add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

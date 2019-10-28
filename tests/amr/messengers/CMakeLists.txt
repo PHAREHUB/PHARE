@@ -6,13 +6,13 @@ configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
+  test_basichierarchy.h
+  test_tag_strategy.h
+  test_integrator_strat.h
    )
 
 set(SOURCES_CPP
   test_messengers.cpp
-  test_basichierarchy.h
-  test_tag_strategy.h
-  test_integrator_strat.h
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

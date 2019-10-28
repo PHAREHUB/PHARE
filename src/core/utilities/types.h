@@ -69,6 +69,9 @@ namespace core
     {
     };
 
+    template<typename T, size_t size>
+    static constexpr auto is_std_array_v = is_std_array<T, size>::value;
+
     template<typename Val, typename Dict>
     struct is_dict_leaf
         : std::conditional<

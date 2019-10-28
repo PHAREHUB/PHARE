@@ -2,6 +2,9 @@
 #ifndef PHARE_TEST_DIAGNOSTIC_HIERARCHY
 #define PHARE_TEST_DIAGNOSTIC_HIERARCHY
 
+#include "include.h"
+#include "input_config.h"
+
 class BasicHierarchy
 {
 public:
@@ -64,8 +67,7 @@ struct AfullHybridBasicHierarchy
     uint8_t const dimension = 1;
     int const firstHybLevel{0};
     int const ratio{2};
-    std::string input
-        = "tests/amr/messengers/input/input_1d_ratio_" + std::to_string(ratio) + ".txt";
+    std::string input = inputBase + "/input/input_1d_ratio_" + std::to_string(ratio) + ".txt";
 
     std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
         std::make_shared<ResourcesManagerT>()};

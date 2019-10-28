@@ -10,17 +10,17 @@ namespace PHARE
 {
 // generic subclass of model specialized superclass
 template<typename Model>
-class SamraiModelDiagnosticView : public DiagnosticModelView<Model, typename Model::type_list>
+class SamraiDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>
 {
 public:
-    using Super  = DiagnosticModelView<Model, typename Model::type_list>;
-    using ResMan = typename Model::resources_manager_type;
-    using Grid   = typename Model::gridLayout_type;
-    using Guard  = amr::ResourcesGuard<ResMan, Model>;
-    using Patch  = ::SAMRAI::hier::Patch;
+    using Super      = DiagnosticModelView<Model, typename Model::type_list>;
+    using ResMan     = typename Model::resources_manager_type;
+    using GridLayout = typename Model::gridLayout_type;
+    using Guard      = amr::ResourcesGuard<ResMan, Model>;
+    using Patch      = ::SAMRAI::hier::Patch;
     using Super::model_;
 
-    SamraiModelDiagnosticView(Model& model)
+    SamraiDiagnosticModelView(Model& model)
         : Super{model}
     {
     }
@@ -30,29 +30,29 @@ public:
 protected:
     struct GuardedGrid
     {
-        using Guard = typename SamraiModelDiagnosticView<Model>::Guard;
+        using Guard = typename SamraiDiagnosticModelView<Model>::Guard;
 
         GuardedGrid(Patch& patch, Model& model)
-            : guard_(model.resourcesManager->setOnPatch(patch, model))
-            , grid_(PHARE::amr::layoutFromPatch<Grid>(patch))
+            : guard_{model.resourcesManager->setOnPatch(patch, model)}
+            , grid_{PHARE::amr::layoutFromPatch<GridLayout>(patch)}
         {
         }
 
-        operator Grid&() { return grid_; }
+        operator GridLayout&() { return grid_; }
 
         Guard guard_;
-        Grid grid_;
+        GridLayout grid_;
     };
 
 private:
-    SamraiModelDiagnosticView(const SamraiModelDiagnosticView&)             = delete;
-    SamraiModelDiagnosticView(const SamraiModelDiagnosticView&&)            = delete;
-    SamraiModelDiagnosticView& operator&(const SamraiModelDiagnosticView&)  = delete;
-    SamraiModelDiagnosticView& operator&(const SamraiModelDiagnosticView&&) = delete;
+    SamraiDiagnosticModelView(const SamraiDiagnosticModelView&)             = delete;
+    SamraiDiagnosticModelView(const SamraiDiagnosticModelView&&)            = delete;
+    SamraiDiagnosticModelView& operator&(const SamraiDiagnosticModelView&)  = delete;
+    SamraiDiagnosticModelView& operator&(const SamraiDiagnosticModelView&&) = delete;
 };
 
 
-template<typename Model>
+template<typename ModelView>
 class SamraiDiagnostic
 {
 public:
@@ -62,13 +62,13 @@ public:
     auto& modelView() { return modelView_; }
 
 protected:
-    SamraiDiagnostic(Hierarchy& hierarchy, Model& model)
-        : modelView_(model)
-        , hierarchy_(hierarchy)
+    SamraiDiagnostic(Hierarchy& hierarchy, ModelView& model)
+        : modelView_{model}
+        , hierarchy_{hierarchy}
     {
     }
 
-    SamraiModelDiagnosticView<Model> modelView_;
+    SamraiDiagnosticModelView<ModelView> modelView_;
     Hierarchy& hierarchy_;
 
 private:
