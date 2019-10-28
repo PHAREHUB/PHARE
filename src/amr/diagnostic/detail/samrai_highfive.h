@@ -7,6 +7,7 @@
 #include <highfive/H5Easy.hpp>
 
 #include "diagnostic/samrai_diagnostic.h"
+#include "utilities/types.h"
 
 namespace PHARE
 {
@@ -80,13 +81,19 @@ private:
         {"electromag", make_writer<ElectromagDiagnosticWriter>()},
         {"particles", make_writer<ParticlesDiagnosticWriter>()}};
 
+
+
     template<typename Writer>
     std::shared_ptr<PHARE::DiagnosticWriter> make_writer()
     {
         return std::make_shared<Writer>(*this);
     }
 
+
+
     void write(PatchLevel&, std::string&&, Diagnostics const&);
+
+
 
     template<typename String>
     auto getOrCreateGroup(String const& path)
@@ -96,6 +103,9 @@ private:
         return hi5_.file_.getGroup(path);
     }
 
+
+
+
     template<typename Type, typename Size>
     auto getOrCreateDataSet(std::string const& path, Size size)
     {
@@ -104,7 +114,11 @@ private:
         return hi5_.file_.getDataSet(path);
     }
 
+
+
     auto getDataSet(std::string const& path) { return hi5_.file_.getDataSet(path); }
+
+
 
     template<typename Type, typename Size>
     auto createDataSet(std::string const& path, Size size)
@@ -117,17 +131,25 @@ private:
         return hi5_.file_.getDataSet(path);
     }
 
+
+
+
     template<typename Dataset, typename Array>
     void writeDataSetPart(Dataset dataSet, size_t start, size_t size, Array const& array)
     {
         dataSet.select({start}, {size}).write(array);
     }
 
+
+
     template<typename Array, typename String>
     void writeDataSet(String path, Array const* const array, size_t size)
     {
         createDataSet<Array>(path, size).write(array);
     }
+
+
+
 
     template<typename String, typename Data>
     void writeAttribute(String path, std::string const& key, Data const& value)
@@ -137,8 +159,13 @@ private:
             .write(value);
     }
 
+
+
+
     template<typename Dict>
     void writeDict(Dict, std::string const&);
+
+
     template<typename Dict> // template String causes internal compiler error in GCC 8.2
     void writeDict(Dict dict, std::string const&& str)
     {
@@ -243,28 +270,30 @@ public:
   finish
   needs formatting
 */
+template<typename T, std::size_t dimension>
+inline constexpr auto is_array_dataset
+    = (core::is_std_array_v<T, dimension> || core::is_std_array_v<T, 3>);
+
 template<typename Model>
 void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
     [maybe_unused]] Diagnostic& diagnostic)
 {
     auto& outer = this->outer_;
 
-    template<typename T, std::size_t>
-    using is_array_dataset = core::is_std_array_v<Val, dimension> || core::is_std_array_v<Val, 3>;
 
     auto createDataSet = [&outer](auto&& path, auto size, auto const& value) {
-        using Val = std::decay_t<decltype(value)>;
-        if constexpr (is_array_dataset<Val, dimension>)
-            return outer.template createDataSet<typename Val::value_type>(path,
-                                                                          size * value.size());
+        using ValueType = std::decay_t<decltype(value)>;
+        if constexpr (is_array_dataset<ValueType, dimension>)
+            return outer.template createDataSet<typename ValueType::value_type>(
+                path, size * value.size());
         else
-            return outer.template createDataSet<Val>(path, size);
+            return outer.template createDataSet<ValueType>(path, size);
     };
 
 
     auto writeDatSet = [&outer](auto& dataset, auto& start, auto const& value) {
-        using Val = std::decay_t<decltype(value)>;
-        if constexpr (core::is_std_array_v<Val, dimension> || core::is_std_array_v<Val, 3>)
+        using ValueType = std::decay_t<decltype(value)>;
+        if constexpr (is_array_dataset<ValueType, dimension>)
             outer.writeDataSetPart(dataset, start * value.size(), value.size(), value);
         else
             outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
@@ -309,8 +338,9 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
         }
     };
 
+
     size_t pop_idx = 0;
-    for (auto& pop : outer.modelView_.getParticles()) // bulkV
+    for (auto& pop : outer.modelView_.getIons()) // bulkV
     {
         std::string path(outer.patchPath_ + "/ions/pop/" + std::to_string(pop_idx++) + "/");
         writeParticles(path + "domain/", pop.domainParticles());
@@ -318,6 +348,9 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
         writeParticles(path + "patchGhost/", pop.patchGhostParticles());
     }
 }
+
+
+
 
 template<typename Model>
 class SamraiHighFiveDiagnostic<Model>::ElectromagDiagnosticWriter : public Hi5DiagnosticWriter

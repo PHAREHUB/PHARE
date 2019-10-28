@@ -53,10 +53,10 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
     auto checkField = [&](auto& vecField, auto vecFieldID, auto& path) {
         for (auto const key : {"x", "y", "z"})
         {
-            std::string fieldPath(path + "/" + vecFieldID + key);
+            auto& field = vecField.getComponent(PHARE::core::Components::at(key));
+            std::string fieldPath(path + "/" + field.name());
             std::vector<double> readData;
             hi5.file_.getDataSet(fieldPath).read(readData);
-            auto& field = vecField.getComponent(PHARE::core::Components::at(key));
             EXPECT_EQ(readData.size(), field.size());
             for (size_t i = 0; i < field.size(); i++)
                 EXPECT_DOUBLE_EQ(readData[i], field.data()[i]);

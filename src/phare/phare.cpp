@@ -61,7 +61,7 @@ public:
 };
 
 // global extern for python addition of diagnostics
-PHARE::ADiagnosticsManager* diagnosticManager;
+PHARE::IDiagnosticsManager* diagnosticManager;
 } /*namespace PHARE*/
 
 int main(int argc, char** argv)

@@ -56,27 +56,27 @@ public:
 
 
 
-class ADiagnosticsManager
+class IDiagnosticsManager
 {
 public:
-    virtual ~ADiagnosticsManager() {}
-    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict);
-    ADiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>&& dict)
+    virtual ~IDiagnosticsManager() {}
+    IDiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>& dict);
+    IDiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict<1>&& dict)
     {
         return addDiagDict(dict);
     }
-    void addDiagnostic(Diagnostic& diagnostic) { return diagnostics.push_back(diagnostic); }
+    void addDiagnostic(Diagnostic& diagnostic) { return diagnostics_.push_back(diagnostic); }
 
     virtual void dump() = 0;
 
 protected:
-    std::vector<Diagnostic> diagnostics;
+    std::vector<Diagnostic> diagnostics_;
 };
 
 
 
 
-class NoOpDiagnosticManager : public ADiagnosticsManager
+class NoOpDiagnosticManager : public IDiagnosticsManager
 {
 public:
     void dump() override {}
@@ -85,7 +85,7 @@ public:
 
 
 
-ADiagnosticsManager& ADiagnosticsManager::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
+IDiagnosticsManager& IDiagnosticsManager::addDiagDict(PHARE::initializer::PHAREDict<1>& dict)
 {
     size_t &compute_every   = dict["diag"]["compute_every"].template to<std::size_t>(),
            &write_every     = dict["diag"]["write_every"].template to<std::size_t>(),
@@ -95,7 +95,7 @@ ADiagnosticsManager& ADiagnosticsManager::addDiagDict(PHARE::initializer::PHARED
                 &species    = dict["diag"]["species"].template to<std::string>(),
                 &type       = dict["diag"]["type"].template to<std::string>();
 
-    diagnostics.emplace_back(PHARE::core::aggregate_adapter<Diagnostic>(
+    diagnostics_.emplace_back(PHARE::core::aggregate_adapter<Diagnostic>(
         compute_every, write_every, start_iteration, end_iteration, name, species, type));
     return *this;
 }
@@ -104,7 +104,7 @@ ADiagnosticsManager& ADiagnosticsManager::addDiagDict(PHARE::initializer::PHARED
 
 
 template<typename Writer>
-class DiagnosticsManager : public ADiagnosticsManager
+class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
     using DiagnosticWritingList = std::vector<
@@ -151,7 +151,7 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 
 
     DiagnosticWritingList diagnosticWriters;
-    for (auto& diag : diagnostics)
+    for (auto& diag : diagnostics_)
     {
         if (needs_compute(diag, iter))
         {
@@ -172,11 +172,6 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 template<typename Model, typename ModelParams>
 class DiagnosticModelView
 {
-public:
-    using Fields = std::vector<std::shared_ptr<diagnostic::FieldInfo>>;
-
-    std::vector<Fields> getElectromagFields() = 0;
-    std::tuple<void> getResources()           = 0;
 };
 
 
@@ -202,25 +197,25 @@ public:
 
     std::vector<Fields> getElectromagFields() const { return {getB(), getE()}; }
 
-    auto& getParticles() const { return model_.state.ions; }
+    auto& getIons() const { return model_.state.ions; }
 
     auto getParticlePacker(std::vector<core::Particle<1>> const&);
 
     auto getPatchAttributes(GridLayout& grid);
 
 protected:
-    Fields getB() const { return get(model_.state.electromag.B, "B"); }
+    Fields getB() const { return get(model_.state.electromag.B); }
 
-    Fields getE() const { return get(model_.state.electromag.E, "E"); }
+    Fields getE() const { return get(model_.state.electromag.E); }
 
-    auto get(VecField& vecField, std::string&& id) const
+    auto get(VecField& vecField) const
     {
         std::vector<std::shared_ptr<diagnostic::FieldInfo>> fInfo;
         for (auto const& key : {"x", "y", "z"})
         {
             auto& field = vecField.getComponent(core::Components::at(key));
             fInfo.emplace_back(std::make_shared<core::aggregate_adapter<diagnostic::FieldInfo>>(
-                field.data(), field.size(), id + key));
+                field.data(), field.size(), field.name()));
         }
         return fInfo;
     }

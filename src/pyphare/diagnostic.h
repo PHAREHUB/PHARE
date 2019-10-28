@@ -5,7 +5,7 @@
 
 namespace PHARE
 {
-extern ADiagnosticsManager* diagnosticManager;
+extern IDiagnosticsManager* diagnosticManager;
 namespace pybind
 {
     void addDiagnostic(size_t compute_every, size_t write_every, size_t start_iteration,

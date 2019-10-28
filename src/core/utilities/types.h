@@ -44,7 +44,7 @@ namespace core
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
 
 
-    template<typename T> // this is so we can use struct {} initializtion with
+    template<typename T> // this is so we can use struct {} initialization with
                          // shared_ptrs/forwarding
     struct aggregate_adapter : public T
     {
@@ -69,8 +69,8 @@ namespace core
     {
     };
 
-    template<typename T, size_t size>
-    static constexpr auto is_std_array_v = is_std_array<T, size>::value;
+    template<typename T, std::size_t size>
+    inline constexpr auto is_std_array_v = is_std_array<T, size>::value;
 
     template<typename Val, typename Dict>
     struct is_dict_leaf

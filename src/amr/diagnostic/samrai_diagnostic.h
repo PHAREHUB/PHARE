@@ -25,7 +25,7 @@ public:
     {
     }
 
-    auto guardedGrid(Patch& patch) { return GuardedGrid(patch, Super::model_); }
+    auto guardedGrid(Patch& patch) { return GuardedGrid{patch, Super::model_}; }
 
 protected:
     struct GuardedGrid
