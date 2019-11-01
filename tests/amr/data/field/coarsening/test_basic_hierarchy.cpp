@@ -11,10 +11,14 @@
 #include "data/grid/gridlayoutdefs.h"
 #include "resources_manager/amr_utils.h"
 
+
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
 using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
 
-
+#include <chrono>
+#include <thread>
 template<typename GridLayoutT, typename FieldT>
 class ALinearFieldCoarsen : public testing::TestWithParam<int>
 {
@@ -29,6 +33,8 @@ public:
 
 protected:
     //
+    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
+
     std::shared_ptr<BasicHierarchy<GridLayoutT, FieldT>> basicHierarchy_;
 };
 
@@ -39,6 +45,10 @@ using ALinearFieldCoarsen1DO1 = ALinearFieldCoarsen<GridYee1DO1, Field1D>;
 
 TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
 {
+    if (this->mpi.getSize() > 1)
+    {
+        GTEST_SKIP();
+    }
     auto& basicHierarchy = *basicHierarchy_;
 
     auto& hierarchy = basicHierarchy.getHierarchy();

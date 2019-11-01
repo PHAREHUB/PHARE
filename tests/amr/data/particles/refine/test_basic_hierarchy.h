@@ -141,7 +141,6 @@ public:
 
         auto particlesVariableTypeName = typeid(ParticlesVariable<dimension>).name();
 
-
         gridGeometry_->addRefineOperator(particlesVariableTypeName, refineOperator_);
     }
 
@@ -176,6 +175,7 @@ private:
 
         return variablesIds;
     }
+
 
     std::shared_ptr<SAMRAI::tbox::Database> inputDatabase_;
     std::shared_ptr<SAMRAI::tbox::Database> patchHierarchyDatabase_;

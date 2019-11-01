@@ -123,7 +123,7 @@ namespace amr
          * the source PatchData was not a ParticleData like we are, we'd give ourselves
          * to its copy2 function, assuming it can copy its source content into us.
          */
-        virtual void copy(SAMRAI::hier::PatchData const& source) final
+        virtual void copy(SAMRAI::hier::PatchData const& source) override
         {
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
@@ -152,7 +152,7 @@ namespace amr
          * given to be copied into another kind of PatchData. Here we chose that
          * copy2 throws unconditiionnally.
          */
-        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const final
+        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const override
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -165,7 +165,7 @@ namespace amr
          * The copy is done between the source patch data and myself
          */
         virtual void copy(SAMRAI::hier::PatchData const& source,
-                          SAMRAI::hier::BoxOverlap const& overlap) final
+                          SAMRAI::hier::BoxOverlap const& overlap) override
         {
             const ParticlesData* pSource = dynamic_cast<const ParticlesData*>(&source);
             const SAMRAI::pdat::CellOverlap* pOverlap
@@ -181,34 +181,30 @@ namespace amr
                         = pOverlap->getDestinationBoxContainer();
                     for (auto const& overlapBox : boxList)
                     {
-                        SAMRAI::hier::Box sourceGhostBox      = pSource->getGhostBox();
-                        SAMRAI::hier::Box destinationGhostBox = this->getGhostBox();
+                        SAMRAI::hier::Box sourceGhostBox = pSource->getGhostBox();
+                        SAMRAI::hier::Box myGhostBox     = this->getGhostBox();
                         SAMRAI::hier::Box intersectionBox{sourceGhostBox.getDim()};
 
                         if (isSameBlock(transformation))
                         {
                             if (offsetIsZero(transformation))
                             {
-                                intersectionBox = overlapBox * sourceGhostBox * destinationGhostBox;
+                                intersectionBox = overlapBox * sourceGhostBox * myGhostBox;
 
                                 if (!intersectionBox.empty())
                                 {
-                                    copy_(sourceGhostBox, destinationGhostBox, intersectionBox,
-                                          *pSource);
+                                    copy_(sourceGhostBox, myGhostBox, intersectionBox, *pSource);
                                 }
                             }
                             else
                             {
                                 SAMRAI::hier::Box shiftedSourceBox{sourceGhostBox};
                                 transformation.transform(shiftedSourceBox);
-                                intersectionBox
-                                    = overlapBox * shiftedSourceBox * destinationGhostBox;
+                                intersectionBox = overlapBox * shiftedSourceBox * myGhostBox;
+
 
                                 if (!intersectionBox.empty())
                                 {
-                                    /* copy_(sourceGhostBox, destinationGhostBox, intersectionBox,
-                                     *pSource);*/
-
                                     copyWithTransform_(sourceGhostBox, intersectionBox,
                                                        transformation, *pSource);
                                 }
@@ -236,7 +232,7 @@ namespace amr
 
 
         virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
-                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const final
+                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -255,9 +251,8 @@ namespace amr
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
 
             std::size_t numberParticles = countNumberParticlesIn_(*pOverlap);
-
-            return SAMRAI::tbox::MemoryUtilities::align(numberParticles
-                                                        * sizeof(core::ParticleArray<dim>));
+            auto size                   = numberParticles * sizeof(core::Particle<dim>);
+            return size;
         }
 
 
@@ -278,31 +273,9 @@ namespace amr
          *
          * Note that step 2 could be done upon reception of the pack, we chose to do it before.
          *
-         * Thus, by convention, the local iCell of the packed particles is translated to the
-         * destination AMR index space, i.e. it is moved to AMR space and shifted by the
-         * offset transformation given in the overlap.
-         *
-         * example : say we have an AMR domain [0,15] with two patches P1[0,5] and P2[10,15]
-         * with periodic boundaries. AMR index 15 is thus equivalent to AMR index -1, and 16 to 0
-         *
-         * Say we have one ghost cell.
-         *
-         * A particle on patch P2 with local iCell == 7 is thus on AMR index 16
-         * we want to stream it to P1.
-         *
-         * moving local iCell 7 to AMR means iCell = 16
-         * applying offset P2-->P1 means iCell becomes 0 (16 - offset_P2P1=16)
-         *
-         * at this point we pack it, SAMRAI communicates it to destination
-         * in unpack we get iCell = 0
-         *
-         * then we move it from AMR to P1 local means iCell becomes 1
-         * at this point with iCell=1 we know the particle should be placed into the interior
-         * particle buffer
-         *
          */
         virtual void packStream(SAMRAI::tbox::MessageStream& stream,
-                                SAMRAI::hier::BoxOverlap const& overlap) const final
+                                SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap{
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
@@ -324,17 +297,26 @@ namespace amr
                     SAMRAI::hier::BoxContainer const& boxContainer
                         = pOverlap->getDestinationBoxContainer();
 
-                    auto const& sourceBox = getGhostBox();
+                    auto const& sourceGhostBox = getGhostBox();
 
-                    SAMRAI::hier::Box transformedSource{sourceBox};
+                    // sourceBox + offset = source on destination
+                    // we are given boxes in the Overlap in destination
+                    // index space. And we want to select all particles
+                    // in the ghost source box that lie in this overlapBox
+                    // we thus need to first shift the sourceGhostBox to the
+                    // destination index space so that its cells (partly) overlap the one
+                    // of the given overlap boxes.
+                    // Then pack_ will take all particles which iCell, shifted by the
+                    // transformation offset onto the overlapBox index space,
+                    // lie in the overlap box.
+                    SAMRAI::hier::Box transformedSource{sourceGhostBox};
                     transformation.transform(transformedSource);
 
-
-                    for (auto const& destinationBox : boxContainer)
+                    for (auto const& overlapBox : boxContainer)
                     {
-                        SAMRAI::hier::Box intersectionBox{transformedSource * destinationBox};
+                        SAMRAI::hier::Box intersectionBox{transformedSource * overlapBox};
 
-                        pack_(specie, intersectionBox, sourceBox, transformation);
+                        pack_(specie, intersectionBox, sourceGhostBox, transformation);
                     }
                 }
                 else
@@ -342,6 +324,7 @@ namespace amr
                     throw std::runtime_error("Error - rotations not handled in PHARE");
                 }
                 stream << specie.size();
+                stream.growBufferAsNeeded();
                 stream.pack(specie.data(), specie.size());
             }
         }
@@ -362,7 +345,7 @@ namespace amr
          *
          */
         virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                                  SAMRAI::hier::BoxOverlap const& overlap) final
+                                  SAMRAI::hier::BoxOverlap const& overlap) override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap
                 = dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap);
@@ -388,45 +371,22 @@ namespace amr
                     // we have to first take the intersection of each of these boxes
                     // with our ghostBox. This is where unpacked particles should go.
 
-                    SAMRAI::hier::BoxContainer const& destinationBoxes
+                    SAMRAI::hier::BoxContainer const& overlapBoxes
                         = pOverlap->getDestinationBoxContainer();
 
                     auto myBox      = getBox();
                     auto myGhostBox = getGhostBox();
 
-                    for (auto const& box : destinationBoxes)
+                    for (auto const& overlapBox : overlapBoxes)
                     {
                         // our goal here is :
-                        // 1/ to check if the each particle is in the intersect of the overlap boxes
+                        // 1/ to check if each particle is in the intersect of the overlap boxes
                         // and our ghostBox 2/ if yes, check if these particles should go within the
                         // interior array or ghost array
-
-                        // first we need to calculate the intersect between our ghostBox and the
-                        // overlapBox these and the resulting intersect are in AMR index space
-                        // unpacked particles have their iCell in our AMR index space. we could :
-                        //  1- compare their iCell with the intersect right away, if within shit
-                        //  them to local indexing and push them in proper array
-                        // or
-                        // 2- translate the intersect from  AMR to local indexing, shift the
-                        // particles from AMR to local, and do the comparison in local index space
-                        // and then push them in the proper array
-
-                        auto const intersect = getGhostBox() * box;
-
-
-                        // we chose first option, so get the intersect in local index space
-                        // and get the vector to shift a particle from our AMR space to local index
-                        // space
-                        // auto intersectLocalSource = AMRToLocal(intersect, getGhostBox());
-                        // auto particleShift        = AMRToLocal(getGhostBox());
+                        auto const intersect = getGhostBox() * overlapBox;
 
                         for (auto const& particle : particleArray)
                         {
-                            // shift the particle to local index space
-                            // and if it is in intersection, decide in which array to push it.
-                            // auto shiftedParticle{particle};
-                            // shiftParticle_(particleShift, shiftedParticle);
-
                             if (isInBox(intersect, particle))
                             {
                                 if (isInBox(myBox, particle))
@@ -473,7 +433,6 @@ namespace amr
 
 
 
-
         void copy_([[maybe_unused]] SAMRAI::hier::Box const& sourceGhostBox,
                    [[maybe_unused]] SAMRAI::hier::Box const& destinationGhostBox,
                    SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
@@ -482,7 +441,6 @@ namespace amr
                 &sourceData.domainParticles, &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
-
 
             // for each particles in the source ghost and domain particle arrays
             // we check if it is in the intersectionBox
@@ -569,8 +527,10 @@ namespace amr
 
 
         /**
-         * @brief countNumberParticlesIn_ counts the number of interior particles that lie
-         * within the boxes of an overlap
+         * @brief countNumberParticlesIn_ counts the number of particles that lie
+         * within the boxes of an overlap. This function count both patchGhost and
+         * domain particles since both could be streamed and we want an upperbound
+         * on the number of bytes that could be streamed.
          */
         std::size_t countNumberParticlesIn_(SAMRAI::pdat::CellOverlap const& overlap) const
         {
@@ -581,14 +541,23 @@ namespace amr
                 return numberParticles;
             }
 
-            auto const& boxes = overlap.getDestinationBoxContainer();
+            auto const& overlapBoxes = overlap.getDestinationBoxContainer();
 
-            for (auto const& box : boxes)
+            for (auto const& overlapBox : overlapBoxes)
             {
-                SAMRAI::hier::Box shiftedBox{box};
+                // we are given boxes from the overlap
+                // we want to know how many of our local particles
+                // lie in that overlap. Overlap is given in the destination
+                // index space (see overlap documentation)
+                // so we need to transform that overlap box into our box index space.
+                // Since source index space + offset = destination indexspace
+                // we need to apply an inverseTransform to the overlapBox.
+                // then we intersect it with our Box and count how many of domain particles
+                // our inside that intersection.
+                SAMRAI::hier::Box shiftedOverlapBox{overlapBox};
                 SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
-                transformation.transform(shiftedBox);
-                SAMRAI::hier::Box intersectionBox{shiftedBox * getBox()};
+                transformation.inverseTransform(shiftedOverlapBox);
+                SAMRAI::hier::Box intersectionBox{shiftedOverlapBox * getGhostBox()};
 
                 numberParticles += countNumberParticlesIn_(intersectionBox);
             }
@@ -607,11 +576,9 @@ namespace amr
         {
             std::size_t numberParticles{0};
 
-            auto localSourceBox = AMRToLocal(box, getBox());
-
             for (auto const& particle : domainParticles)
             {
-                if (isInBox(localSourceBox, particle))
+                if (isInBox(box, particle))
                 {
                     ++numberParticles;
                 }

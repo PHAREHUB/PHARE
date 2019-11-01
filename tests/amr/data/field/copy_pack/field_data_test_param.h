@@ -11,6 +11,9 @@
 #include <SAMRAI/pdat/NodeData.h>
 #include <SAMRAI/pdat/NodeDataFactory.h>
 #include <SAMRAI/pdat/NodeVariable.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
+
 
 #include "data/field/field_data.h"
 #include "data/field/field_overlap.h"
@@ -181,6 +184,7 @@ struct Patches1D
 template<typename T>
 struct AFieldData1DCenteredOnEx : public ::testing::Test
 {
+    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
 
@@ -227,6 +231,7 @@ struct AFieldData1DCenteredOnEx : public ::testing::Test
 template<typename T>
 struct AFieldData1DCenteredOnEy : public ::testing::Test
 {
+    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
 

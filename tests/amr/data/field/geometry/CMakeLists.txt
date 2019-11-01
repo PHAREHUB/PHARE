@@ -29,6 +29,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${SAMRAI_LIBRARIES})
 
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

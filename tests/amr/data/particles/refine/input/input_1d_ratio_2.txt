@@ -18,11 +18,6 @@ PatchHierarchy
     {
         level_1 =   2
     }
-    largest_patch_size
-    {
-        level_0 =   64
-        // All finer level will use same values in as level_0
-    }
     smallest_patch_size
     {
         level_0 =   10

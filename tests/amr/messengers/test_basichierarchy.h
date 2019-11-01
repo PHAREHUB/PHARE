@@ -14,6 +14,9 @@
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
 #include <SAMRAI/mesh/TileClustering.h>
+
+#include <SAMRAI/mesh/BergerRigoutsos.h>
+#include <SAMRAI/mesh/TreeLoadBalancer.h>
 #include <SAMRAI/tbox/InputManager.h>
 
 
@@ -67,15 +70,14 @@ public:
               dimension_, "cartesian", inputDatabase_->getDatabase("CartesianGridGeometry"))}
         , hierarchy_{std::make_shared<SAMRAI::hier::PatchHierarchy>("PatchHierarchy", gridGeometry_,
                                                                     patchHierarchyDatabase_)}
-        , loadBalancer_{std::make_shared<SAMRAI::mesh::ChopAndPackLoadBalancer>(
-              dimension_, "ChopAndPackLoadBalancer",
-              inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
+        , loadBalancer_{std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
+              dimension_, "LoadBalancer", inputDatabase_->getDatabase("LoadBalancer"))}
         , standardTag_{std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
               "StandardTagAndInitialize", tagStrat,
               inputDatabase_->getDatabase("StandardTagAndInitialize"))}
-
-        , clustering_{std::make_shared<SAMRAI::mesh::TileClustering>(
-              dimension_, inputDatabase_->getDatabase("TileClustering"))}
+        , clustering_{std::make_shared<SAMRAI::mesh::BergerRigoutsos>(
+              dimension_, inputDatabase_->getDatabaseWithDefault(
+                              "BergerRigoutsos", std::shared_ptr<SAMRAI::tbox::Database>()))}
         , gridding{std::make_shared<SAMRAI::mesh::GriddingAlgorithm>(
               hierarchy_, "GriddingAlgorithm", inputDatabase_->getDatabase("GriddingAlgorithm"),
               standardTag_, clustering_, loadBalancer_)}
@@ -100,10 +102,10 @@ private:
     std::shared_ptr<SAMRAI::geom::CartesianGridGeometry> gridGeometry_;
 
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy_;
-    std::shared_ptr<SAMRAI::mesh::ChopAndPackLoadBalancer> loadBalancer_;
+    std::shared_ptr<SAMRAI::mesh::TreeLoadBalancer> loadBalancer_;
 
     std::shared_ptr<SAMRAI::mesh::StandardTagAndInitialize> standardTag_;
-    std::shared_ptr<SAMRAI::mesh::TileClustering> clustering_;
+    std::shared_ptr<SAMRAI::mesh::BergerRigoutsos> clustering_;
 
 public:
     std::shared_ptr<SAMRAI::mesh::GriddingAlgorithm> gridding;

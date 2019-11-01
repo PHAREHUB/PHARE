@@ -91,13 +91,12 @@ namespace amr
 
             if (fieldSource != nullptr)
             {
+                TBOX_ASSERT(quantity_ == fieldSource->quantity_);
                 // First step is to translate the AMR box into proper index space of the given
                 // quantity_ using the source gridlayout to accomplish that we get the interior box,
                 // from the FieldData. and we call toFieldBox (with the default parameter withGhost
                 // = true). note that we could have stored the ghost box of the field data at
                 // creation
-
-                TBOX_ASSERT(quantity_ == fieldSource->quantity_);
 
                 SAMRAI::hier::Box sourceBox
                     = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
@@ -466,7 +465,7 @@ namespace amr
 
                 finalBox = finalBox
                            * FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                                 getBox(), quantity_, gridLayout);
+                               getBox(), quantity_, gridLayout);
 
                 size_t size = 1;
 
@@ -479,8 +478,8 @@ namespace amr
                 // since it will be the max memory used
                 totalSize += size;
             }
-            totalSize = SAMRAI::tbox::MemoryUtilities::align(totalSize
-                                                             * sizeof(typename FieldImpl::type));
+            totalSize = totalSize * sizeof(typename FieldImpl::type);
+
             return totalSize;
         }
 

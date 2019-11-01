@@ -10,8 +10,8 @@ set(SOURCES_INC
 
 set(SOURCES_CPP
   test_main.cpp
-#  test_stream_pack_centered_ex.cpp disabled cause it's b0rked
-#  test_stream_pack_centered_ey.cpp disabled cause it's b0rked
+  test_stream_pack_centered_ex.cpp
+  test_stream_pack_centered_ey.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
@@ -26,6 +26,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   )
 
 
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
