@@ -15,6 +15,7 @@ set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 option(HighFive "Build with highfive usage" ON)
 option(test "Build test with google test" ON)
+option(testMPI "Build test with google test" OFF) # 2 processes on one host
 option(coverage "Generate coverage" ON)
 option(documentation "Add doxygen target to generate documentation" ON)
 option(cppcheck "Enable cppcheck xml report" ON)
@@ -36,6 +37,21 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (CMAKE_CXX_FLAGS -fsized-deallocation)
 endif()
+
+if(coverage AND NOT MSVC)
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3")
+endif()
+if(testMPI)
+  function(add_phare_test binary directory)
+    add_test(NAME ${binary} COMMAND mpirun -n 2 ./${binary} WORKING_DIRECTORY ${directory})
+    set_tests_properties(${binary} PROPERTIES ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary}) #
+  endfunction(add_phare_test)
+else()
+  function(add_phare_test binary directory)
+    add_test(NAME ${binary} COMMAND ${binary} WORKING_DIRECTORY ${directory})
+  endfunction(add_phare_test)
+endif(testMPI)
+
 if(MSVC)
   set (PHARE_WERROR_FLAGS /W4 /WX)
 else()
@@ -323,5 +339,15 @@ endif(documentation)
 #* Install PHAREIN
 #*******************************************************************************
 set(PHAREIN_DIR "${PROJECT_SOURCE_DIR}/external/pharein")
+
+message("PHARE CMAKE OPTION LIST ")
+message("Build test with google test                 : " ${test})
+message("Run test with MPI                           : " ${testMPI})
+message("Generate coverage                           : " ${coverage})
+message("Enable cppcheck xml report                  : " ${cppcheck})
+message("build with asan support                     : " ${asan})
+message("build with ubsan support                    : " ${ubsan})
+message("build with msan support                     : " ${msan})
+message("Add doxygen target to generate documentation: " ${documentation})
 
 

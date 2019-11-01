@@ -45,9 +45,11 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <chrono>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <thread>
 #include <vector>
 
 
@@ -55,7 +57,6 @@
 using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::amr;
-
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
@@ -133,7 +134,7 @@ double bx(double x)
 
 double by(double x)
 {
-    return x + 3.;
+    return 2; // x + 2.;
 }
 
 double bz(double x)
@@ -410,8 +411,6 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
 };
 
 
-
-
 TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
 {
     auto& hierarchy = basicHierarchy->getHierarchy();
@@ -420,8 +419,6 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
     for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
         auto const& level = hierarchy.getPatchLevel(iLevel);
-
-        std::cout << "iLevel = " << iLevel << "\n";
 
         for (auto& patch : *level)
         {
@@ -436,7 +433,6 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
             auto& Bx = hybridModel->state.electromag.B.getComponent(Component::X);
             auto& By = hybridModel->state.electromag.B.getComponent(Component::Y);
             auto& Bz = hybridModel->state.electromag.B.getComponent(Component::Z);
-
 
             auto checkMyField = [&layout](auto const& field, auto const& func) //
             {
@@ -461,8 +457,6 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
         }
     }
 }
-
-
 
 
 TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
@@ -753,7 +747,6 @@ private:
 #include <thread>
 #include <chrono>
 
-
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
@@ -762,14 +755,19 @@ int main(int argc, char** argv)
     SAMRAI::tbox::SAMRAIManager::initialize();
     SAMRAI::tbox::SAMRAIManager::startup();
 
+    int world_size, world_rank, name_len;
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Get_processor_name(processor_name, &name_len);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(20000));
+
+    SAMRAI::tbox::SAMRAI_MPI::setCallAbortInParallelInsteadOfMPIAbort(true);
+
     std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
         = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
     SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
-
-
-
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(20000));
 
     int testResult = RUN_ALL_TESTS();
 
@@ -777,7 +775,6 @@ int main(int argc, char** argv)
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::finalize();
     SAMRAI::tbox::SAMRAI_MPI::finalize();
-
 
     return testResult;
 }

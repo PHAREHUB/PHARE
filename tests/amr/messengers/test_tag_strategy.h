@@ -74,7 +74,6 @@ public:
                              bool const allocateData = true) override
     {
         auto level = hierarchy->getPatchLevel(levelNumber);
-
         if (allocateData)
         {
             for (auto patch : *level)
@@ -85,9 +84,7 @@ public:
             }
         }
 
-
         messenger_->registerLevel(hierarchy, levelNumber);
-
 
         if (oldLevel)
         {

@@ -336,7 +336,7 @@ namespace amr
                     // transformation offset onto the overlapBox index space,
                     // lie in the overlap box.
                     SAMRAI::hier::Box transformedSource{sourceBox};
-                    transformation.transform(transformedSource);
+                    transformation.inverseTransform(transformedSource);
 
                     for (auto const& overlapBox : boxContainer)
                     {
