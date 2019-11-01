@@ -48,7 +48,7 @@ namespace amr
                         core::Point<int, dimension> coarseIndex)
         {
             // For the moment we only take the case of field with the same centering
-            TBOX_ASSERT(fineField.physicalQuantities() == coarseField.physicalQuantities());
+            TBOX_ASSERT(fineField.physicalQuantity() == coarseField.physicalQuantity());
 
             core::Point<int, dimension> fineStartIndex
                 = indexesAndWeights_.computeStartIndexes(coarseIndex);

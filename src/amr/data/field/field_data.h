@@ -51,13 +51,15 @@ namespace amr
             : SAMRAI::hier::PatchData(domain, ghost)
             , gridLayout{std::move(layout)}
             , field(name, qty, gridLayout.allocSize(qty))
-            , quantity_{qty} {} //
+            , quantity_{qty}
+        {
+        } //
 
-                  [[deprecated]] FieldData(
-                      SAMRAI::hier::Box const& domain, SAMRAI::hier::IntVector const& ghost,
-                      std::string name, std::array<double, dimension> const& dl,
-                      std::array<uint32, dimension> const& nbrCells,
-                      core::Point<double, dimension> const& origin, PhysicalQuantity qty)
+        [[deprecated]] FieldData(SAMRAI::hier::Box const& domain,
+                                 SAMRAI::hier::IntVector const& ghost, std::string name,
+                                 std::array<double, dimension> const& dl,
+                                 std::array<uint32, dimension> const& nbrCells,
+                                 core::Point<double, dimension> const& origin, PhysicalQuantity qty)
 
             : SAMRAI::hier::PatchData(domain, ghost)
             , gridLayout{dl, nbrCells, origin}
@@ -84,10 +86,8 @@ namespace amr
             // error
 
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
-            TBOX_ASSERT(quantity_ == fieldSource->quantity_);
 
             auto fieldSource = dynamic_cast<FieldData const*>(&source);
-
 
             if (fieldSource != nullptr)
             {
@@ -96,6 +96,8 @@ namespace amr
                 // from the FieldData. and we call toFieldBox (with the default parameter withGhost
                 // = true). note that we could have stored the ghost box of the field data at
                 // creation
+
+                TBOX_ASSERT(quantity_ == fieldSource->quantity_);
 
                 SAMRAI::hier::Box sourceBox
                     = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(

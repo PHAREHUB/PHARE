@@ -55,7 +55,7 @@ namespace amr
         void operator()(FieldT const& sourceField, FieldT& destinationField,
                         core::Point<int, dimension> fineIndex)
         {
-            TBOX_ASSERT(sourceField.physicalQuantities() == coarseField.physicalQuantities());
+            TBOX_ASSERT(sourceField.physicalQuantity() == destinationField.physicalQuantity());
 
             // First we get the coarseStartIndex for a given fineIndex
             // then we get the index in weights table for a given fineIndex.

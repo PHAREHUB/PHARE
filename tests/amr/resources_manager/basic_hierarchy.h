@@ -11,17 +11,15 @@
 class BasicHierarchy
 {
 public:
-    explicit BasicHierarchy(std::string const &inputFile);
-
+    explicit BasicHierarchy(std::string const& inputFile);
 
     std::shared_ptr<SAMRAI::tbox::Database> inputDatabase;
-    std::shared_ptr<SAMRAI::tbox::Database> patchHierarchyDatabase;
+
     SAMRAI::tbox::Dimension dimension;
 
+    std::shared_ptr<SAMRAI::tbox::Database> patchHierarchyDatabase;
     std::shared_ptr<SAMRAI::geom::CartesianGridGeometry> gridGeometry;
-
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy;
-
 
     void init();
 };
