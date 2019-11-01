@@ -480,8 +480,8 @@ namespace amr
                 // since it will be the max memory used
                 totalSize += size;
             }
-            totalSize = SAMRAI::tbox::MemoryUtilities::align(totalSize
-                                                             * sizeof(typename FieldImpl::type));
+            totalSize = totalSize * sizeof(typename FieldImpl::type);
+
             return totalSize;
         }
 

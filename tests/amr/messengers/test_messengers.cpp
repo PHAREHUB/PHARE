@@ -750,6 +750,8 @@ private:
 };
 
 
+#include <thread>
+#include <chrono>
 
 
 int main(int argc, char** argv)
@@ -764,6 +766,10 @@ int main(int argc, char** argv)
         = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
     SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
 
+
+
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(20000));
 
     int testResult = RUN_ALL_TESTS();
 

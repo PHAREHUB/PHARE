@@ -255,9 +255,8 @@ namespace amr
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
 
             std::size_t numberParticles = countNumberParticlesIn_(*pOverlap);
-
-            return SAMRAI::tbox::MemoryUtilities::align(numberParticles
-                                                        * sizeof(core::ParticleArray<dim>));
+            auto size                   = numberParticles * sizeof(core::Particle<dim>);
+            return size;
         }
 
 
@@ -302,7 +301,7 @@ namespace amr
          *
          */
         virtual void packStream(SAMRAI::tbox::MessageStream& stream,
-                                SAMRAI::hier::BoxOverlap const& overlap) const final
+                                SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap{
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
@@ -327,7 +326,7 @@ namespace amr
                     auto const& sourceBox = getGhostBox();
 
                     SAMRAI::hier::Box transformedSource{sourceBox};
-                    transformation.transform(transformedSource);
+                    transformation.inverseTransform(transformedSource);
 
 
                     for (auto const& destinationBox : boxContainer)
@@ -342,6 +341,7 @@ namespace amr
                     throw std::runtime_error("Error - rotations not handled in PHARE");
                 }
                 stream << specie.size();
+                stream.growBufferAsNeeded();
                 stream.pack(specie.data(), specie.size());
             }
         }
@@ -362,7 +362,7 @@ namespace amr
          *
          */
         virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                                  SAMRAI::hier::BoxOverlap const& overlap) final
+                                  SAMRAI::hier::BoxOverlap const& overlap) override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap
                 = dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap);
@@ -587,7 +587,7 @@ namespace amr
             {
                 SAMRAI::hier::Box shiftedBox{box};
                 SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
-                transformation.transform(shiftedBox);
+                transformation.inverseTransform(shiftedBox);
                 SAMRAI::hier::Box intersectionBox{shiftedBox * getBox()};
 
                 numberParticles += countNumberParticlesIn_(intersectionBox);
@@ -607,11 +607,9 @@ namespace amr
         {
             std::size_t numberParticles{0};
 
-            auto localSourceBox = AMRToLocal(box, getBox());
-
             for (auto const& particle : domainParticles)
             {
-                if (isInBox(localSourceBox, particle))
+                if (isInBox(box, particle))
                 {
                     ++numberParticles;
                 }
