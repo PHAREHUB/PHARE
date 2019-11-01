@@ -26,5 +26,3 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 add_subdirectory(copy)
 add_subdirectory(copy_overlap)
-add_subdirectory(stream_pack)
-

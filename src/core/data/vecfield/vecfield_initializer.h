@@ -45,22 +45,22 @@ namespace core
         void initializeComponent_(Field& field, GridLayout const& layout,
                                   initializer::ScalarFunction<dimension> const& init)
         {
-            auto psi_X = layout.physicalStartIndex(field, Direction::X);
-            auto pei_X = layout.physicalEndIndex(field, Direction::X);
+            auto psi_X = layout.ghostStartIndex(field, Direction::X);
+            auto pei_X = layout.ghostEndIndex(field, Direction::X);
 
             for (auto ix = psi_X; ix <= pei_X; ++ix)
             {
                 if constexpr (dimension > 1)
                 {
-                    auto psi_Y = layout.physicalStartIndex(field, Direction::Y);
-                    auto pei_Y = layout.physicalEndIndex(field, Direction::Y);
+                    auto psi_Y = layout.ghostStartIndex(field, Direction::Y);
+                    auto pei_Y = layout.ghostEndIndex(field, Direction::Y);
 
                     for (auto iy = psi_Y; iy <= pei_Y; ++iy)
                     {
                         if constexpr (dimension > 2)
                         {
-                            auto psi_Z = layout.physicalStartIndex(field, Direction::Z);
-                            auto pei_Z = layout.physicalEndIndex(field, Direction::Z);
+                            auto psi_Z = layout.ghostStartIndex(field, Direction::Z);
+                            auto pei_Z = layout.ghostEndIndex(field, Direction::Z);
 
                             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
                             {
