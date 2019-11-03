@@ -356,16 +356,7 @@ namespace amr
                     for (auto const& overlapBox : boxContainer)
                     {
                         SAMRAI::hier::Box intersectionBox{transformedSource * overlapBox};
-
-                        std::cout << "SourceGhostBox " << sourceGhostBox
-                                  << " moved into dest. idx space " << transformedSource
-                                  << " and intersected with overlapBox" << overlapBox << " gives "
-                                  << intersectionBox << "\n";
-
-                        std::cout << sourceGhostBox << transformedSource << overlapBox << "\n";
                         pack_(specie, intersectionBox, sourceGhostBox, transformation);
-                        std::cout << "shipping " << specie.size() << " particles existing in "
-                                  << intersectionBox << "\n";
                     }
                 }
                 else
