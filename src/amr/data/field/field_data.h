@@ -98,8 +98,6 @@ namespace amr
                 // = true). note that we could have stored the ghost box of the field data at
                 // creation
 
-                TBOX_ASSERT(quantity_ == fieldSource->quantity_);
-
                 SAMRAI::hier::Box sourceBox
                     = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
                         fieldSource->getBox(), quantity_, fieldSource->gridLayout);
