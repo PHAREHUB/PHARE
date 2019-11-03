@@ -134,6 +134,10 @@ namespace amr
                 SAMRAI::hier::Box const& myGhostBox     = getGhostBox();
                 const SAMRAI::hier::Box intersectionBox{sourceGhostBox * myGhostBox};
 
+                std::cout << "Copy : SourceGhostBox " << sourceGhostBox
+                          << " intersected with my ghostBox " << myGhostBox << " gives "
+                          << intersectionBox << "\n";
+
                 if (!intersectionBox.empty())
                 {
                     copy_(sourceGhostBox, myGhostBox, intersectionBox, *pSource);
@@ -181,28 +185,39 @@ namespace amr
                         = pOverlap->getDestinationBoxContainer();
                     for (auto const& overlapBox : boxList)
                     {
-                        SAMRAI::hier::Box sourceGhostBox      = pSource->getGhostBox();
-                        SAMRAI::hier::Box destinationGhostBox = this->getGhostBox();
+                        SAMRAI::hier::Box sourceGhostBox = pSource->getGhostBox();
+                        SAMRAI::hier::Box myGhostBox     = this->getGhostBox();
                         SAMRAI::hier::Box intersectionBox{sourceGhostBox.getDim()};
 
                         if (isSameBlock(transformation))
                         {
                             if (offsetIsZero(transformation))
                             {
-                                intersectionBox = overlapBox * sourceGhostBox * destinationGhostBox;
+                                intersectionBox = overlapBox * sourceGhostBox * myGhostBox;
+
+                                std::cout << "Copy without transform : SourceGhostBox "
+                                          << sourceGhostBox << " intersected with my ghostBox "
+                                          << myGhostBox << " and intersected with overlapBox"
+                                          << overlapBox << " gives " << intersectionBox << "\n";
 
                                 if (!intersectionBox.empty())
                                 {
-                                    copy_(sourceGhostBox, destinationGhostBox, intersectionBox,
-                                          *pSource);
+                                    copy_(sourceGhostBox, myGhostBox, intersectionBox, *pSource);
                                 }
                             }
                             else
                             {
                                 SAMRAI::hier::Box shiftedSourceBox{sourceGhostBox};
                                 transformation.transform(shiftedSourceBox);
-                                intersectionBox
-                                    = overlapBox * shiftedSourceBox * destinationGhostBox;
+                                intersectionBox = overlapBox * shiftedSourceBox * myGhostBox;
+
+
+                                std::cout
+                                    << "Copy without transform : SourceGhostBox " << sourceGhostBox
+                                    << " shifted by the transform " << shiftedSourceBox
+                                    << " and intersected with my ghostBox " << myGhostBox
+                                    << " and intersected with overlapBox" << overlapBox << " gives "
+                                    << intersectionBox << "\n";
 
                                 if (!intersectionBox.empty())
                                 {
@@ -323,7 +338,7 @@ namespace amr
                     SAMRAI::hier::BoxContainer const& boxContainer
                         = pOverlap->getDestinationBoxContainer();
 
-                    auto const& sourceBox = getGhostBox();
+                    auto const& sourceGhostBox = getGhostBox();
 
                     // sourceBox + offset = source on destination
                     // we are given boxes in the Overlap in destination
@@ -335,15 +350,20 @@ namespace amr
                     // Then pack_ will take all particles which iCell, shifted by the
                     // transformation offset onto the overlapBox index space,
                     // lie in the overlap box.
-                    SAMRAI::hier::Box transformedSource{sourceBox};
+                    SAMRAI::hier::Box transformedSource{sourceGhostBox};
                     transformation.transform(transformedSource);
 
                     for (auto const& overlapBox : boxContainer)
                     {
                         SAMRAI::hier::Box intersectionBox{transformedSource * overlapBox};
 
-                        std::cout << sourceBox << transformedSource << overlapBox << "\n";
-                        pack_(specie, intersectionBox, sourceBox, transformation);
+                        std::cout << "SourceGhostBox " << sourceGhostBox
+                                  << " moved into dest. idx space " << transformedSource
+                                  << " and intersected with overlapBox" << overlapBox << " gives "
+                                  << intersectionBox << "\n";
+
+                        std::cout << sourceGhostBox << transformedSource << overlapBox << "\n";
+                        pack_(specie, intersectionBox, sourceGhostBox, transformation);
                         std::cout << "shipping " << specie.size() << " particles existing in "
                                   << intersectionBox << "\n";
                     }

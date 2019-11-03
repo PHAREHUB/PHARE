@@ -265,7 +265,7 @@ TYPED_TEST_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule)
 }
 
 
-
+#if 0
 
 TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
 {
@@ -313,7 +313,7 @@ TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
 
 
 REGISTER_TYPED_TEST_SUITE_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule);
-
+#endif
 REGISTER_TYPED_TEST_SUITE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule);
 
 
@@ -372,14 +372,14 @@ typedef ::testing::Types<
 // typedef ::testing::Types<ParticlesDataSplitDescriptors1Dr2o1ref2C2F> TestTest;
 
 
-
 INSTANTIATE_TYPED_TEST_SUITE_P(TestCoarseToFine, levelOneCoarseBoundaries,
                                ParticlesCoarseToFineDataDescriptorsRange);
 
+#if 0
 
 INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneInterior,
                                ParticlesInteriorDataDescriptorsRange);
 
-
+#endif
 
 // INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneCoarseBoundaries, TestTest);

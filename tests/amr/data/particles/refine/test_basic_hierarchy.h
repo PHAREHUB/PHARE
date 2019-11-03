@@ -20,6 +20,8 @@
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -143,6 +145,29 @@ public:
 
 
         gridGeometry_->addRefineOperator(particlesVariableTypeName, refineOperator_);
+
+        if (true)
+        {
+            std::cout << "hierarchy has " << hierarchy_->getNumberOfLevels() << " levels\n";
+            mpi.Barrier();
+
+            for (auto iLevel = 0; iLevel < hierarchy_->getNumberOfLevels(); ++iLevel)
+            {
+                mpi.Barrier();
+                auto const& level = hierarchy_->getPatchLevel(iLevel);
+                std::cout << "rank : " << mpi.getRank() << " level " << iLevel << " has "
+                          << level->getNumberOfPatches() << " patches \n";
+                mpi.Barrier();
+
+                auto cpt = 0u;
+                for (auto& patch : *level)
+                {
+                    std::cout << "rank : " << mpi.getRank() << " level " << iLevel << " patch "
+                              << cpt << " box is " << patch->getBox() << "\n";
+                    mpi.Barrier();
+                }
+            }
+        }
     }
 
 
@@ -162,6 +187,7 @@ public:
     }
 
     SAMRAI::hier::IntVector const ratio;
+    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
 
 private:
     std::map<std::string, int> getVariablesIds_()
@@ -176,6 +202,7 @@ private:
 
         return variablesIds;
     }
+
 
     std::shared_ptr<SAMRAI::tbox::Database> inputDatabase_;
     std::shared_ptr<SAMRAI::tbox::Database> patchHierarchyDatabase_;
