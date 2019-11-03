@@ -11,13 +11,8 @@ Main
 }
 PatchHierarchy
 {
-    max_levels  =   2
+    max_levels  =   1
     // vector of coarse ratio with dim dimension
-    largest_patch_size
-    {
-        level_0 =   4
-        // All finer level will use same values in as level_0
-    }
     smallest_patch_size
     {
         level_0 =   4

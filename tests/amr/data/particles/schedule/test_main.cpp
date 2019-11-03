@@ -44,6 +44,9 @@ public:
 
 TEST_F(ALevelWithDomainParticles, ghostParticleNumberisZeroBeforeScheduleAndCorrectAfterSchedule)
 {
+    std::cout << "nBrLevels = " << hierarchy.getNumberOfLevels() << "\n";
+    std::cout << "nBrpatches = " << level->getNumberOfPatches() << "\n";
+
     for (auto const& patch : *level)
     {
         auto pdat    = patch->getPatchData(0);
@@ -51,6 +54,8 @@ TEST_F(ALevelWithDomainParticles, ghostParticleNumberisZeroBeforeScheduleAndCorr
         auto& ghosts = partDat->patchGhostParticles;
         EXPECT_EQ(0u, ghosts.size());
 
+        std::cout << "Box : " << patch->getBox() << " GhostBox : " << partDat->getGhostBox()
+                  << "\n";
         std::cout << "patch has " << ghosts.size() << " ghost particles\n";
     }
 

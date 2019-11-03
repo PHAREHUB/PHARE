@@ -83,6 +83,7 @@ public:
                     for (int iCellPos = particlesBox.lower(dirX);
                          iCellPos <= particlesBox.upper(dirX); ++iCellPos)
                     {
+                        std::cout << "putting 3 in cell " << iCellPos << "\n";
                         float middle = 0.5;
                         float delta  = 0.30;
 
