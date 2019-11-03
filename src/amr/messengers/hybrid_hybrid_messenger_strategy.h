@@ -449,8 +449,7 @@ namespace amr
         virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                     double const initDataTime) final
         {
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            auto levelNumber  = level.getLevelNumber();
+            auto levelNumber = level.getLevelNumber();
             assert(levelNumber == 0);
 
             magneticGhosts_.fill(levelNumber, initDataTime);

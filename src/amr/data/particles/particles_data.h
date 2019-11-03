@@ -325,15 +325,27 @@ namespace amr
 
                     auto const& sourceBox = getGhostBox();
 
+                    // sourceBox + offset = source on destination
+                    // we are given boxes in the Overlap in destination
+                    // index space. And we want to select all particles
+                    // in the ghost source box that lie in this overlapBox
+                    // we thus need to first shift the sourceGhostBox to the
+                    // destination index space so that its cells (partly) overlap the one
+                    // of the given overlap boxes.
+                    // Then pack_ will take all particles which iCell, shifted by the
+                    // transformation offset onto the overlapBox index space,
+                    // lie in the overlap box.
                     SAMRAI::hier::Box transformedSource{sourceBox};
-                    transformation.inverseTransform(transformedSource);
+                    transformation.transform(transformedSource);
 
-
-                    for (auto const& destinationBox : boxContainer)
+                    for (auto const& overlapBox : boxContainer)
                     {
-                        SAMRAI::hier::Box intersectionBox{transformedSource * destinationBox};
+                        SAMRAI::hier::Box intersectionBox{transformedSource * overlapBox};
 
+                        std::cout << sourceBox << transformedSource << overlapBox << "\n";
                         pack_(specie, intersectionBox, sourceBox, transformation);
+                        std::cout << "shipping " << specie.size() << " particles existing in "
+                                  << intersectionBox << "\n";
                     }
                 }
                 else
@@ -388,16 +400,16 @@ namespace amr
                     // we have to first take the intersection of each of these boxes
                     // with our ghostBox. This is where unpacked particles should go.
 
-                    SAMRAI::hier::BoxContainer const& destinationBoxes
+                    SAMRAI::hier::BoxContainer const& overlapBoxes
                         = pOverlap->getDestinationBoxContainer();
 
                     auto myBox      = getBox();
                     auto myGhostBox = getGhostBox();
 
-                    for (auto const& box : destinationBoxes)
+                    for (auto const& overlapBox : overlapBoxes)
                     {
                         // our goal here is :
-                        // 1/ to check if the each particle is in the intersect of the overlap boxes
+                        // 1/ to check if each particle is in the intersect of the overlap boxes
                         // and our ghostBox 2/ if yes, check if these particles should go within the
                         // interior array or ghost array
 
@@ -411,7 +423,7 @@ namespace amr
                         // particles from AMR to local, and do the comparison in local index space
                         // and then push them in the proper array
 
-                        auto const intersect = getGhostBox() * box;
+                        auto const intersect = getGhostBox() * overlapBox;
 
 
                         // we chose first option, so get the intersect in local index space
@@ -482,7 +494,7 @@ namespace amr
                 &sourceData.domainParticles, &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
-
+            std::cout << "copying particles\n";
 
             // for each particles in the source ghost and domain particle arrays
             // we check if it is in the intersectionBox
@@ -497,10 +509,12 @@ namespace amr
                     {
                         if (isInBox(myDomainBox, particle))
                         {
+                            std::cout << "copy a particle in domain at " << intersectionBox << "\n";
                             domainParticles.push_back(particle);
                         }
                         else
                         {
+                            std::cout << "copy a particle in ghost at " << intersectionBox << "\n";
                             patchGhostParticles.push_back(particle);
                         }
                     }
@@ -545,10 +559,14 @@ namespace amr
 
                         if (isInBox(myDomainBox, newParticle))
                         {
+                            std::cout << "copy (w. trans) a particle in domain at "
+                                      << intersectionBox << "\n";
                             domainParticles.push_back(newParticle);
                         }
                         else
                         {
+                            std::cout << "copy (w. trans) a particle in ghost at "
+                                      << intersectionBox << "\n";
                             patchGhostParticles.push_back(newParticle);
                         }
                     }
@@ -569,8 +587,10 @@ namespace amr
 
 
         /**
-         * @brief countNumberParticlesIn_ counts the number of interior particles that lie
-         * within the boxes of an overlap
+         * @brief countNumberParticlesIn_ counts the number of particles that lie
+         * within the boxes of an overlap. This function count both patchGhost and
+         * domain particles since both could be streamed and we want an upperbound
+         * on the number of bytes that could be streamed.
          */
         std::size_t countNumberParticlesIn_(SAMRAI::pdat::CellOverlap const& overlap) const
         {
@@ -581,14 +601,23 @@ namespace amr
                 return numberParticles;
             }
 
-            auto const& boxes = overlap.getDestinationBoxContainer();
+            auto const& overlapBoxes = overlap.getDestinationBoxContainer();
 
-            for (auto const& box : boxes)
+            for (auto const& overlapBox : overlapBoxes)
             {
-                SAMRAI::hier::Box shiftedBox{box};
+                // we are given boxes from the overlap
+                // we want to know how many of our local particles
+                // lie in that overlap. Overlap is given in the destination
+                // index space (see overlap documentation)
+                // so we need to transform that overlap box into our box index space.
+                // Since source index space + offset = destination indexspace
+                // we need to apply an inverseTransform to the overlapBox.
+                // then we intersect it with our Box and count how many of domain particles
+                // our inside that intersection.
+                SAMRAI::hier::Box shiftedOverlapBox{overlapBox};
                 SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
-                transformation.inverseTransform(shiftedBox);
-                SAMRAI::hier::Box intersectionBox{shiftedBox * getBox()};
+                transformation.inverseTransform(shiftedOverlapBox);
+                SAMRAI::hier::Box intersectionBox{shiftedOverlapBox * getGhostBox()};
 
                 numberParticles += countNumberParticlesIn_(intersectionBox);
             }
