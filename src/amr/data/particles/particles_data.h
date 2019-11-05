@@ -519,12 +519,10 @@ namespace amr
                     {
                         if (isInBox(myDomainBox, particle))
                         {
-                            std::cout << "copy a particle in domain at " << intersectionBox << "\n";
                             domainParticles.push_back(particle);
                         }
                         else
                         {
-                            std::cout << "copy a particle in ghost at " << intersectionBox << "\n";
                             patchGhostParticles.push_back(particle);
                         }
                     }
@@ -569,14 +567,10 @@ namespace amr
 
                         if (isInBox(myDomainBox, newParticle))
                         {
-                            std::cout << "copy (w. trans) a particle in domain at "
-                                      << intersectionBox << "\n";
                             domainParticles.push_back(newParticle);
                         }
                         else
                         {
-                            std::cout << "copy (w. trans) a particle in ghost at "
-                                      << intersectionBox << "\n";
                             patchGhostParticles.push_back(newParticle);
                         }
                     }

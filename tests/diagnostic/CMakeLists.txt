@@ -3,8 +3,11 @@ cmake_minimum_required (VERSION 3.3)
 project(test-diagnostics)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> wip diag pr
+=======
+>>>>>>> implement visitor pattern to remove samrai visibility for highfive diagnostics
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
@@ -48,6 +51,9 @@ if(HighFive)
 
   target_include_directories(${PROJECT_NAME} PRIVATE
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> implement visitor pattern to remove samrai visibility for highfive diagnostics
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
 =======

@@ -81,6 +81,25 @@ namespace core
     {
     };
 
+    template<typename HasNext, typename NextItems>
+    class HasNextIterable
+    {
+    public:
+        HasNextIterable(NextItems const& items)
+            : hasNext_{items}
+        {
+        }
+
+        auto& keys() const { return hasNext_.keys(); }
+        bool hasNext() const { return hasNext_.hasNext(); }
+        auto next() { return hasNext_.next(); }
+
+        auto first() const { return hasNext_.get(0); }
+
+    private:
+        HasNext hasNext_;
+    };
+
 } // namespace core
 } // namespace PHARE
 

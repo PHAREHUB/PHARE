@@ -231,12 +231,18 @@ if (test)
   ENDIF(coverage)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> implement visitor pattern to remove samrai visibility for highfive diagnostics
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/tests
   )
 
+<<<<<<< HEAD
 =======
 >>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
+=======
+>>>>>>> implement visitor pattern to remove samrai visibility for highfive diagnostics
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)

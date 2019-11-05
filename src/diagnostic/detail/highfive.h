@@ -36,6 +36,7 @@ struct HighFiveFile
 
     HighFive::File& file() { return file_; }
 
+
     HighFiveFile(const HighFiveFile&)             = delete;
     HighFiveFile(const HighFiveFile&&)            = delete;
     HighFiveFile& operator&(const HighFiveFile&)  = delete;
@@ -54,7 +55,6 @@ public:
     HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath)
         : hi5_{hifivePath}
         , modelView_{modelView}
-
     {
     }
 
@@ -151,9 +151,6 @@ private:
     class FluidDiagnosticWriter;      // : public Hi5DiagnosticWriter
 };                                    // namespace PHARE
 
-
-
-
 /*TO DO
   investigate level > 0 for MPI
   finalise HDF5 Path format
@@ -169,7 +166,6 @@ void HighFiveDiagnostic<ModelView>::dump(std::vector<DiagnosticDAO*> const& diag
     /*TODO
       add time/iterations
     */
-
     modelView_.visitHierarchy([&](GridLayout& gridLayout, std::string patchID, int iLevel) {
         patchPath_ = levelPath(iLevel) + "/p" + patchID;
         getOrCreateGroup(patchPath_);
@@ -179,16 +175,6 @@ void HighFiveDiagnostic<ModelView>::dump(std::vector<DiagnosticDAO*> const& diag
         }
         writeDict(modelView_.getPatchAttributes(gridLayout), patchPath_);
     });
-
-    /* CAUSES APP TO HANG ON EXIT WITH MPI */
-    /*if (hi5_.mode_ == PHARE::diagnostic::Mode::FULL)
-    {
-        for (int iLevel = 1; iLevel < this->hierarchy_.getNumberOfLevels(); iLevel++)
-        {
-            write(this->hierarchy_.getPatchLevel(iLevel), levelPath(iLevel),
-                diagnostics);
-        }
-    }*/
 }
 
 template<typename ModelView>
@@ -242,7 +228,6 @@ void HighFiveDiagnostic<ModelView>::ParticlesDiagnosticWriter::write([
         else
             outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
     };
-
 
     auto writeParticles = [&](auto path, auto& particles) {
         if (!particles.size())
@@ -316,10 +301,10 @@ void HighFiveDiagnostic<ModelView>::ElectromagDiagnosticWriter::write([
     {
         for (auto& field : fields)
         {
-            std::string fieldPath{outer.patchPath_ + "/" + field->id};
+            std::string fieldPath(outer.patchPath_ + "/" + field->id);
             outer.writeDataSet(fieldPath, field->data, field->size);
         }
-    }
+    };
 }
 
 template<typename ModelView>
