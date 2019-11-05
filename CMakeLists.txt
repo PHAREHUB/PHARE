@@ -14,13 +14,17 @@ endif()
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 option(test "Build test with google test" ON)
-option(testMPI "Build test with google test" OFF) # 2 processes on one host
-option(coverage "Generate coverage" ON)
-option(documentation "Add doxygen target to generate documentation" ON)
-option(cppcheck "Enable cppcheck xml report" ON)
+option(testMPI "Run tests in parallel with mpiriun" OFF) # -n = PHARE_MPI_PROCS or 2 if unset
+option(coverage "Generate coverage" OFF)
+option(documentation "Add doxygen target to generate documentation" OFF)
+option(cppcheck "Enable cppcheck xml report" OFF)
 option(asan "build with asan support" OFF)
 option(ubsan "build with ubsan support" OFF)
 option(msan "build with msan support" OFF)
+
+if (NOT DEFINED PHARE_MPI_PROCS)
+  set(PHARE_MPI_PROCS 2)
+endif()
 
 find_program(Git git)
 
@@ -41,8 +45,8 @@ if(coverage AND NOT MSVC)
 endif()
 if(testMPI)
   function(add_phare_test binary directory)
-    add_test(NAME ${binary} COMMAND mpirun -n 2 ./${binary} WORKING_DIRECTORY ${directory})
-    set_tests_properties(${binary} PROPERTIES ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary}) #
+    add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ./${binary} WORKING_DIRECTORY ${directory})
+    set_tests_properties(${binary} PROPERTIES ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
   endfunction(add_phare_test)
 else()
   function(add_phare_test binary directory)

@@ -46,15 +46,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <chrono>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <thread>
-#include <vector>
-
-
-
 using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::amr;
@@ -759,8 +750,6 @@ int main(int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Get_processor_name(processor_name, &name_len);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(20000));
 
     SAMRAI::tbox::SAMRAI_MPI::setCallAbortInParallelInsteadOfMPIAbort(true);
 
