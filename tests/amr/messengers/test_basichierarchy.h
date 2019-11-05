@@ -70,18 +70,11 @@ public:
               dimension_, "cartesian", inputDatabase_->getDatabase("CartesianGridGeometry"))}
         , hierarchy_{std::make_shared<SAMRAI::hier::PatchHierarchy>("PatchHierarchy", gridGeometry_,
                                                                     patchHierarchyDatabase_)}
-        // , loadBalancer_{std::make_shared<SAMRAI::mesh::ChopAndPackLoadBalancer>(
-        //       dimension_, "ChopAndPackLoadBalancer",
-        //       inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
         , loadBalancer_{std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
               dimension_, "LoadBalancer", inputDatabase_->getDatabase("LoadBalancer"))}
         , standardTag_{std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
               "StandardTagAndInitialize", tagStrat,
               inputDatabase_->getDatabase("StandardTagAndInitialize"))}
-
-        // , clustering_{std::make_shared<SAMRAI::mesh::TileClustering>(
-        //       dimension_, inputDatabase_->getDatabase("TileClustering"))}
-
         , clustering_{std::make_shared<SAMRAI::mesh::BergerRigoutsos>(
               dimension_, inputDatabase_->getDatabaseWithDefault(
                               "BergerRigoutsos", std::shared_ptr<SAMRAI::tbox::Database>()))}
