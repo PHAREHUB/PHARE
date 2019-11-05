@@ -6,94 +6,81 @@
 #include <highfive/H5File.hpp>
 #include <highfive/H5Easy.hpp>
 
-#include "diagnostic/samrai_diagnostic.h"
-#include "utilities/types.h"
+#include "diagnostic_manager.h"
 
 namespace PHARE
 {
-namespace hi5
+struct HighFiveFile
 {
-    struct Diagnostic
+    HighFive::File file_;
+    PHARE::diagnostic::Mode mode_ = PHARE::diagnostic::Mode::LIGHT;
+
+    static auto createHighFiveFile(std::string const path)
     {
-        HighFive::File file_;
-        PHARE::diagnostic::Mode mode_ = PHARE::diagnostic::Mode::LIGHT;
-
-        static auto createHighFiveFile(std::string const path)
+        return HighFive::File
         {
-            return HighFive::File
-            {
-                path, HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate
+            path, HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate
 #if defined(H5_HAVE_PARALLEL)
-                    ,
-                    HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
+                ,
+                HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
 #endif
-            };
-        }
+        };
+    }
 
-        Diagnostic(std::string const path,
-                   PHARE::diagnostic::Mode mode = PHARE::diagnostic::Mode::LIGHT)
-            : file_{createHighFiveFile(path)}
-            , mode_{mode}
-        {
-        }
-
-        Diagnostic(const Diagnostic&)             = delete;
-        Diagnostic(const Diagnostic&&)            = delete;
-        Diagnostic& operator&(const Diagnostic&)  = delete;
-        Diagnostic& operator&(const Diagnostic&&) = delete;
-    };
-} // namespace hi5
-
-
-
-
-template<typename Model>
-class SamraiHighFiveDiagnostic : public SamraiDiagnostic<Model>
-{
-public:
-    using SamraiDiagnostic<Model>::modelView_;
-
-    using Hierarchy   = SAMRAI::hier::PatchHierarchy;
-    using PatchLevel  = SAMRAI::hier::PatchLevel;
-    using Diagnostics = typename DiagnosticsManager<Model>::DiagnosticWritingList;
-
-    static constexpr auto dimension = Model::dimension;
-
-    SamraiHighFiveDiagnostic(Hierarchy& hier, Model& model, hi5::Diagnostic& hifive)
-        : PHARE::SamraiDiagnostic<Model>{hier, model}
-        , hi5_{hifive}
+    HighFiveFile(std::string const path,
+                 PHARE::diagnostic::Mode mode = PHARE::diagnostic::Mode::LIGHT)
+        : file_{createHighFiveFile(path)}
+        , mode_{mode}
     {
     }
 
-    void dump(Diagnostics const&);
+    HighFive::File& file() { return file_; }
+
+    HighFiveFile(const HighFiveFile&)             = delete;
+    HighFiveFile(const HighFiveFile&&)            = delete;
+    HighFiveFile& operator&(const HighFiveFile&)  = delete;
+    HighFiveFile& operator&(const HighFiveFile&&) = delete;
+};
+
+
+
+template<typename ModelView>
+class HighFiveDiagnostic
+{
+public:
+    using GridLayout                = typename ModelView::GridLayout;
+    static constexpr auto dimension = ModelView::dimension;
+
+    HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath)
+        : modelView_(modelView)
+        , hi5_(hifivePath)
+    {
+    }
+
+    void dump(std::vector<DiagnosticDAO*> const&);
+
+    HighFive::File& file() { return hi5_.file(); }
 
     template<typename String>
-    auto getWriter(String& writer)
+    auto getDiagnosticWriterForType(String& writer)
     {
         return writers.at(writer);
     }
 
 private:
-    hi5::Diagnostic& hi5_;
+    HighFiveFile hi5_;
+    ModelView& modelView_;
     std::string patchPath_; // is passed around as "virtual write()" has no parameters
 
     std::unordered_map<std::string, std::shared_ptr<PHARE::DiagnosticWriter>> writers{
         {"electromag", make_writer<ElectromagDiagnosticWriter>()},
         {"particles", make_writer<ParticlesDiagnosticWriter>()}};
 
-
-
     template<typename Writer>
     std::shared_ptr<PHARE::DiagnosticWriter> make_writer()
     {
         return std::make_shared<Writer>(*this);
     }
-
-
-
-    void write(PatchLevel&, std::string&&, Diagnostics const&);
-
-
 
     template<typename String>
     auto getOrCreateGroup(String const& path)
@@ -103,9 +90,6 @@ private:
         return hi5_.file_.getGroup(path);
     }
 
-
-
-
     template<typename Type, typename Size>
     auto getOrCreateDataSet(std::string const& path, Size size)
     {
@@ -114,11 +98,7 @@ private:
         return hi5_.file_.getDataSet(path);
     }
 
-
-
     auto getDataSet(std::string const& path) { return hi5_.file_.getDataSet(path); }
-
-
 
     template<typename Type, typename Size>
     auto createDataSet(std::string const& path, Size size)
@@ -131,25 +111,17 @@ private:
         return hi5_.file_.getDataSet(path);
     }
 
-
-
-
     template<typename Dataset, typename Array>
     void writeDataSetPart(Dataset dataSet, size_t start, size_t size, Array const& array)
     {
         dataSet.select({start}, {size}).write(array);
     }
 
-
-
     template<typename Array, typename String>
     void writeDataSet(String path, Array const* const array, size_t size)
     {
         createDataSet<Array>(path, size).write(array);
     }
-
-
-
 
     template<typename String, typename Data>
     void writeAttribute(String path, std::string const& key, Data const& value)
@@ -159,23 +131,18 @@ private:
             .write(value);
     }
 
-
-
-
     template<typename Dict>
     void writeDict(Dict, std::string const&);
-
-
     template<typename Dict> // template String causes internal compiler error in GCC 8.2
     void writeDict(Dict dict, std::string const&& str)
     {
         writeDict(dict, str);
     }
 
-    SamraiHighFiveDiagnostic(const SamraiHighFiveDiagnostic&)             = delete;
-    SamraiHighFiveDiagnostic(const SamraiHighFiveDiagnostic&&)            = delete;
-    SamraiHighFiveDiagnostic& operator&(const SamraiHighFiveDiagnostic&)  = delete;
-    SamraiHighFiveDiagnostic& operator&(const SamraiHighFiveDiagnostic&&) = delete;
+    HighFiveDiagnostic(const HighFiveDiagnostic&)             = delete;
+    HighFiveDiagnostic(const HighFiveDiagnostic&&)            = delete;
+    HighFiveDiagnostic& operator&(const HighFiveDiagnostic&)  = delete;
+    HighFiveDiagnostic& operator&(const HighFiveDiagnostic&&) = delete;
 
     class Hi5DiagnosticWriter;
     class ElectromagDiagnosticWriter; // : public Hi5DiagnosticWriter
@@ -183,22 +150,30 @@ private:
     class FluidDiagnosticWriter;      // : public Hi5DiagnosticWriter
 };
 
-
-
-
 /*TO DO
   investigate level > 0 for MPI
   finalise HDF5 Path format
 */
-template<typename Model>
-void SamraiHighFiveDiagnostic<Model>::dump(Diagnostics const& diagnostics)
+template<typename ModelView>
+void HighFiveDiagnostic<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics)
 {
     auto levelPath = [](auto idx) { return "/t#/pl" + std::to_string(idx); };
 
     writeAttribute("/", "dim", dim);
     writeAttribute("/", "interpOrder", interpOrder);
 
-    write(*this->hierarchy_.getPatchLevel(0), levelPath(0), diagnostics);
+    /*TODO
+      add time/iterations
+    */
+    modelView_.visitLevel(0, [&](GridLayout& gridLayout, std::string patchID, int iLevel) {
+        patchPath_ = levelPath(iLevel) + "/p" + patchID;
+        getOrCreateGroup(patchPath_);
+        for (auto* diagnostic : diagnostics)
+        {
+            writers.at(diagnostic->type)->write(*diagnostic);
+        }
+        writeDict(modelView_.getPatchAttributes(gridLayout), patchPath_);
+    });
 
     /* CAUSES APP TO HANG ON EXIT WITH MPI */
     /*if (hi5_.mode_ == PHARE::diagnostic::Mode::FULL)
@@ -211,75 +186,40 @@ void SamraiHighFiveDiagnostic<Model>::dump(Diagnostics const& diagnostics)
     }*/
 }
 
-/*TODO
-  add time/iterations
-*/
-template<typename Model>
-void SamraiHighFiveDiagnostic<Model>::write(PatchLevel& level, std::string&& path,
-                                            Diagnostics const& diagnostics)
-{
-    size_t patch_idx = 0;
-    for (auto& patch : level)
-    {
-        auto guardedGrid = modelView_.guardedGrid(*patch);
-        patchPath_       = path + "/p" + std::to_string(patch_idx);
-        getOrCreateGroup(patchPath_);
-
-        for (auto& [diagnostic, writer] : diagnostics)
-        {
-            writer->write(diagnostic.get());
-        }
-
-        writeDict(modelView_.getPatchAttributes(guardedGrid), patchPath_);
-        patch_idx++;
-    }
-}
-
-template<typename Model>
-class SamraiHighFiveDiagnostic<Model>::Hi5DiagnosticWriter : public PHARE::DiagnosticWriter
+template<typename ModelView>
+class HighFiveDiagnostic<ModelView>::Hi5DiagnosticWriter : public PHARE::DiagnosticWriter
 {
 public:
-    Hi5DiagnosticWriter(SamraiHighFiveDiagnostic& outer)
-        : outer_{outer}
+    Hi5DiagnosticWriter(HighFiveDiagnostic& _outer)
+        : outer_(_outer)
     {
     }
 
 protected:
-    SamraiHighFiveDiagnostic& outer_;
+    HighFiveDiagnostic& outer_;
 };
 
-
-
-
-template<typename Model>
-class SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter : public Hi5DiagnosticWriter
+template<typename ModelView>
+class HighFiveDiagnostic<ModelView>::ParticlesDiagnosticWriter : public Hi5DiagnosticWriter
 {
 public:
-    ParticlesDiagnosticWriter(SamraiHighFiveDiagnostic& outer)
-        : Hi5DiagnosticWriter(outer)
+    ParticlesDiagnosticWriter(HighFiveDiagnostic& _outer)
+        : Hi5DiagnosticWriter(_outer)
     {
     }
-    void write(Diagnostic&) override;
-    void compute(Diagnostic&) override {}
+    void write(DiagnosticDAO&) override;
+    void compute(DiagnosticDAO&) override{};
 };
 
-
-
-
-/*TODO
-  finish
-  needs formatting
-*/
 template<typename T, std::size_t dimension>
 inline constexpr auto is_array_dataset
     = (core::is_std_array_v<T, dimension> || core::is_std_array_v<T, 3>);
 
-template<typename Model>
-void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
-    [maybe_unused]] Diagnostic& diagnostic)
+template<typename ModelView>
+void HighFiveDiagnostic<ModelView>::ParticlesDiagnosticWriter::write([
+    [maybe_unused]] DiagnosticDAO& diagnostic)
 {
     auto& outer = this->outer_;
-
 
     auto createDataSet = [&outer](auto&& path, auto size, auto const& value) {
         using ValueType = std::decay_t<decltype(value)>;
@@ -290,7 +230,6 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
             return outer.template createDataSet<ValueType>(path, size);
     };
 
-
     auto writeDatSet = [&outer](auto& dataset, auto& start, auto const& value) {
         using ValueType = std::decay_t<decltype(value)>;
         if constexpr (is_array_dataset<ValueType, dimension>)
@@ -298,7 +237,6 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
         else
             outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
     };
-
 
     auto writeParticles = [&](auto path, auto& particles) {
         if (!particles.size())
@@ -338,75 +276,66 @@ void SamraiHighFiveDiagnostic<Model>::ParticlesDiagnosticWriter::write([
         }
     };
 
-
-    size_t pop_idx = 0;
     for (auto& pop : outer.modelView_.getIons()) // bulkV
     {
-        std::string path(outer.patchPath_ + "/ions/pop/" + std::to_string(pop_idx++) + "/");
+        std::string path(outer.patchPath_ + "/ions/pop/" + pop.name() + "/");
         writeParticles(path + "domain/", pop.domainParticles());
         writeParticles(path + "lvlGhost/", pop.levelGhostParticles());
         writeParticles(path + "patchGhost/", pop.patchGhostParticles());
     }
 }
 
-
-
-
-template<typename Model>
-class SamraiHighFiveDiagnostic<Model>::ElectromagDiagnosticWriter : public Hi5DiagnosticWriter
+template<typename ModelView>
+class HighFiveDiagnostic<ModelView>::ElectromagDiagnosticWriter : public Hi5DiagnosticWriter
 {
 public:
-    ElectromagDiagnosticWriter(SamraiHighFiveDiagnostic& _outer)
+    ElectromagDiagnosticWriter(HighFiveDiagnostic& _outer)
         : Hi5DiagnosticWriter(_outer)
     {
     }
-    void write(Diagnostic&) override;
-    void compute(Diagnostic&) override {}
+    void write(DiagnosticDAO&) override;
+    void compute(DiagnosticDAO&) override{};
 };
-
-
-
-
 /*TODO
   finish
 */
-template<typename Model>
-void SamraiHighFiveDiagnostic<Model>::ElectromagDiagnosticWriter::write([
-    [maybe_unused]] Diagnostic& diagnostic)
+template<typename ModelView>
+void HighFiveDiagnostic<ModelView>::ElectromagDiagnosticWriter::write([
+    [maybe_unused]] DiagnosticDAO& diagnostic)
 {
     auto& outer = this->outer_;
     for (auto& fields : outer.modelView_.getElectromagFields())
     {
         for (auto& field : fields)
         {
-            std::string fieldPath{outer.patchPath_ + "/" + field->id};
+            std::string fieldPath(outer.patchPath_ + "/" + field->id);
             outer.writeDataSet(fieldPath, field->data, field->size);
         }
-    }
+    };
 }
 
-template<typename Model>
-class SamraiHighFiveDiagnostic<Model>::FluidDiagnosticWriter : public Hi5DiagnosticWriter
+template<typename ModelView>
+class HighFiveDiagnostic<ModelView>::FluidDiagnosticWriter : public Hi5DiagnosticWriter
 {
 public:
-    FluidDiagnosticWriter(SamraiHighFiveDiagnostic& _outer)
+    FluidDiagnosticWriter(HighFiveDiagnostic& _outer)
         : Hi5DiagnosticWriter(_outer)
     {
     }
-    void write(Diagnostic&) override;
-    void compute(Diagnostic&) override{};
+    void write(DiagnosticDAO&) override;
+    void compute(DiagnosticDAO&) override{};
 };
 
-template<typename Model>
-void SamraiHighFiveDiagnostic<Model>::FluidDiagnosticWriter::write([
-    [maybe_unused]] Diagnostic& diagnostic)
+template<typename ModelView>
+void HighFiveDiagnostic<ModelView>::FluidDiagnosticWriter::write([
+    [maybe_unused]] DiagnosticDAO& diagnostic)
 {
 }
 
 // turns a dict of std::map<std::string, T> to hdf5 attributes
-template<typename Model>
+template<typename ModelView>
 template<typename Dict>
-void SamraiHighFiveDiagnostic<Model>::writeDict(Dict dict, std::string const& path)
+void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string const& path)
 {
     using dict_map_t = typename Dict::map_t;
     auto visitor     = [&](auto&& map) {

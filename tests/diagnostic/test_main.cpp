@@ -4,18 +4,19 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "diagnostic/include.h"
-#include "diagnostic/samrai_lifecycle.h"
+#include "include.h"
+#include "samrai_lifecycle.h"
 
-#include "diagnostic/func.h"
-#include "diagnostic/defs.h"
+#include "func.h"
+#include "defs.h"
 using namespace PHARE_test::_1d;
 
-#include "diagnostic/detail/samrai_highfive.h"
+#include "integrator.h"
+#include "tag_strat.h"
+#include "hierarchy.h"
 
-#include "diagnostic/integrator.h"
-#include "diagnostic/tag_strat.h"
-#include "diagnostic/hierarchy.h"
+#include "diagnostic/samrai_diagnostic.h"
+#include "detail/highfive.h"
 
 struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
 {
@@ -43,11 +44,12 @@ struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
 
 TEST_F(Hi5Diagnostic, hdf5Electromag)
 {
-    using SamFive = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
+    using DiagnosticModelView = PHARE::SamraiDiagnosticModelView<HybridModelT>;
+    using DiagnosticWriter    = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
 
-    PHARE::hi5::Diagnostic hi5{filename()};
-    SamFive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
-    PHARE::DiagnosticsManager<SamFive> dMan{samhighfo};
+    DiagnosticModelView modelView{basicHierarchy->getHierarchy(), *hybridModel};
+    DiagnosticWriter writer{modelView, filename()};
+    PHARE::DiagnosticsManager<DiagnosticWriter> dMan{writer};
     dMan.addDiagDict(this->dict("electromag")).dump();
 
     auto checkField = [&](auto& vecField, auto vecFieldID, auto& path) {
@@ -56,7 +58,7 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
             auto& field = vecField.getComponent(PHARE::core::Components::at(key));
             std::string fieldPath(path + "/" + field.name());
             std::vector<double> readData;
-            hi5.file_.getDataSet(fieldPath).read(readData);
+            writer.file().getDataSet(fieldPath).read(readData);
             EXPECT_EQ(readData.size(), field.size());
             for (size_t i = 0; i < field.size(); i++)
                 EXPECT_DOUBLE_EQ(readData[i], field.data()[i]);
@@ -66,8 +68,10 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
     size_t patch_idx = 0;
     for (auto patch : *basicHierarchy->getHierarchy().getPatchLevel(0))
     {
-        auto guardedGrid = samhighfo.modelView().guardedGrid(*patch);
-        std::string patchPath("/t#/pl0/p" + std::to_string(patch_idx));
+        auto guardedGrid = modelView.guardedGrid(*patch);
+        std::stringstream patchID;
+        patchID << patch->getGlobalId();
+        std::string patchPath("/t#/pl0/p" + patchID.str());
         checkField(hybridModel->state.electromag.B, "B", patchPath);
         checkField(hybridModel->state.electromag.E, "E", patchPath);
         patch_idx++;
@@ -76,26 +80,28 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
 
 TEST_F(Hi5Diagnostic, hdf5Particles)
 {
-    using SamFive = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
+    using DiagnosticModelView = PHARE::SamraiDiagnosticModelView<HybridModelT>;
+    using DiagnosticWriter    = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
 
-    PHARE::hi5::Diagnostic hi5{filename()};
-    SamFive samhighfo{basicHierarchy->getHierarchy(), *hybridModel, hi5};
-    PHARE::DiagnosticsManager<SamFive> dMan{samhighfo};
+    DiagnosticModelView modelView{basicHierarchy->getHierarchy(), *hybridModel};
+    DiagnosticWriter writer{modelView, filename()};
+    PHARE::DiagnosticsManager<DiagnosticWriter> dMan{writer};
     dMan.addDiagDict(this->dict("particles")).dump();
 
     auto checkParticle = [&](auto& particles, auto path) {
         if (!particles.size())
             return;
         std::vector<double> weightV, chargeV, vV;
-        hi5.file_.getDataSet(path + "weight").read(weightV);
-        hi5.file_.getDataSet(path + "charge").read(chargeV);
-        hi5.file_.getDataSet(path + "v").read(vV);
+        writer.file().getDataSet(path + "weight").read(weightV);
+        writer.file().getDataSet(path + "charge").read(chargeV);
+        writer.file().getDataSet(path + "v").read(vV);
         std::vector<int> iCellV;
-        hi5.file_.getDataSet(path + "iCell").read(iCellV);
+        writer.file().getDataSet(path + "iCell").read(iCellV);
         std::vector<float> deltaV;
-        hi5.file_.getDataSet(path + "delta").read(deltaV);
+        writer.file().getDataSet(path + "delta").read(deltaV);
 
-        PHARE::ParticularPacker<PHARE::ParticlePackerPart> packer(particles);
+        PHARE::core::HasNextIterable<PHARE::ParticlePacker, PHARE::core::ParticleArray<1>> packer{
+            particles};
 
         auto first       = packer.first();
         size_t iCellSize = std::get<2>(first).size();
@@ -122,12 +128,14 @@ TEST_F(Hi5Diagnostic, hdf5Particles)
     size_t patch_idx = 0;
     for (auto patch : *basicHierarchy->getHierarchy().getPatchLevel(0))
     {
-        auto guardedGrid = samhighfo.modelView().guardedGrid(*patch);
-        std::string patchPath("/t#/pl0/p" + std::to_string(patch_idx));
+        auto guardedGrid = modelView.guardedGrid(*patch);
+        std::stringstream patchID;
+        patchID << patch->getGlobalId();
+        std::string patchPath("/t#/pl0/p" + patchID.str());
         size_t pop_idx = 0;
         for (auto& pop : hybridModel->state.ions)
         {
-            std::string particlePath(patchPath + "/ions/pop/" + std::to_string(pop_idx) + "/");
+            std::string particlePath(patchPath + "/ions/pop/" + pop.name() + "/");
             checkParticle(pop.domainParticles(), particlePath + "domain/");
             checkParticle(pop.levelGhostParticles(), particlePath + "lvlGhost/");
             checkParticle(pop.patchGhostParticles(), particlePath + "patchGhost/");

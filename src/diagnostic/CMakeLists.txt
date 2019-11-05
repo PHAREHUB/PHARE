@@ -6,6 +6,13 @@ set(SOURCES_INC
   ${PROJECT_SOURCE_DIR}/diagnostic_manager.h
 )
 
+if (HighFive)
+ set(SOURCES_INC
+   ${SOURCES_INC}
+   ${PROJECT_SOURCE_DIR}/detail/highfive.h
+ )
+endif()
+
 set(SOURCES_CPP
   ${PROJECT_SOURCE_DIR}/diagnostic_manager.cpp
 )

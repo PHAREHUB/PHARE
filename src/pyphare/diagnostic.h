@@ -12,7 +12,7 @@ namespace pybind
                        size_t end_iteration, std::string name, std::string species,
                        std::string type)
     {
-        PHARE::Diagnostic diagnostic{
+        PHARE::DiagnosticDAO diagnostic{
             compute_every, write_every, start_iteration, end_iteration, name, species, type};
         diagnosticManager->addDiagnostic(diagnostic);
     }
@@ -20,15 +20,6 @@ namespace pybind
     template<typename PyBindModule>
     void diagnostic(PyBindModule& m)
     {
-        // py::class_<PHARE::Diagnostic>(m, "Diagnostic")
-        //     .def_readwrite("name", &PHARE::Diagnostic::name)
-        //     .def_readwrite("species", &PHARE::Diagnostic::species)
-        //     .def_readwrite("type", &PHARE::Diagnostic::type)
-        //     .def_readwrite("compute_every", &PHARE::Diagnostic::compute_every)
-        //     .def_readwrite("write_every", &PHARE::Diagnostic::write_every)
-        //     .def_readwrite("start_iteration", &PHARE::Diagnostic::start_iteration)
-        //     .def_readwrite("end_iteration", &PHARE::Diagnostic::end_iteration);
-
         m.def("addDiagnostic", addDiagnostic, "diagnostic");
     }
 

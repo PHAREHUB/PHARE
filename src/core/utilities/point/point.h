@@ -54,11 +54,7 @@ namespace core
         template<typename Container, is_subscriptable<Container> = dummy::value>
         Point(Container c)
         {
-<<<<<<< HEAD
-            for (auto i = 0u; i < dim; ++i)
-=======
             for (size_t i = 0; i < dim; ++i)
->>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
             {
                 r[i] = c[i];
             }

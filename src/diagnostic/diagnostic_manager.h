@@ -33,8 +33,7 @@ namespace diagnostic
 
 
 
-
-struct Diagnostic
+struct DiagnosticDAO // DAO = DataAccessObject
 {
     size_t compute_every = 1, write_every = 1;
     size_t start_iteration = 0, end_iteration = 100; /* likely to be time rather than index*/
@@ -44,15 +43,13 @@ struct Diagnostic
 
 
 
-
 class DiagnosticWriter
 {
 public:
-    virtual void write(Diagnostic&)   = 0;
-    virtual void compute(Diagnostic&) = 0;
+    virtual void write(DiagnosticDAO&)   = 0;
+    virtual void compute(DiagnosticDAO&) = 0;
     virtual ~DiagnosticWriter() {}
 };
-
 
 
 
@@ -65,12 +62,12 @@ public:
     {
         return addDiagDict(dict);
     }
-    void addDiagnostic(Diagnostic& diagnostic) { return diagnostics_.push_back(diagnostic); }
+    void addDiagnostic(DiagnosticDAO& diagnostic) { return diagnostics_.push_back(diagnostic); }
 
     virtual void dump() = 0;
 
 protected:
-    std::vector<Diagnostic> diagnostics_;
+    std::vector<DiagnosticDAO> diagnostics_;
 };
 
 
@@ -95,11 +92,10 @@ IDiagnosticsManager& IDiagnosticsManager::addDiagDict(PHARE::initializer::PHARED
                 &species    = dict["diag"]["species"].template to<std::string>(),
                 &type       = dict["diag"]["type"].template to<std::string>();
 
-    diagnostics_.emplace_back(PHARE::core::aggregate_adapter<Diagnostic>(
+    diagnostics_.emplace_back(PHARE::core::aggregate_adapter<DiagnosticDAO>(
         compute_every, write_every, start_iteration, end_iteration, name, species, type));
     return *this;
 }
-
 
 
 
@@ -107,8 +103,6 @@ template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
-    using DiagnosticWritingList = std::vector<
-        std::pair<std::reference_wrapper<Diagnostic>, std::shared_ptr<DiagnosticWriter>>>;
     DiagnosticsManager(Writer& writer)
         : writer_(writer)
     {
@@ -124,7 +118,6 @@ private:
     DiagnosticsManager& operator&(const DiagnosticsManager&)  = delete;
     DiagnosticsManager& operator&(const DiagnosticsManager&&) = delete;
 };
-
 
 
 
@@ -149,22 +142,20 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
         return active(diag, current, diag.compute_every);
     };
 
-
-    DiagnosticWritingList diagnosticWriters;
+    std::vector<DiagnosticDAO*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
         if (needs_compute(diag, iter))
         {
-            writer_.getWriter(diag.type)->compute(diag);
+            writer_.getDiagnosticWriterForType(diag.type)->compute(diag);
         }
         if (needs_write(diag, iter))
         {
-            diagnosticWriters.emplace_back(diag, writer_.getWriter(diag.type));
+            activeDiagnostics.emplace_back(&diag);
         }
     }
-    writer_.dump(diagnosticWriters);
+    writer_.dump(activeDiagnostics);
 }
-
 
 
 
@@ -173,7 +164,6 @@ template<typename Model, typename ModelParams>
 class DiagnosticModelView
 {
 };
-
 
 
 
@@ -235,7 +225,6 @@ protected:
 
 
 
-
 template<typename ModelParams>
 auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
                          ModelParams>::getPatchAttributes(GridLayout& grid)
@@ -249,10 +238,10 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
     return dict;
 }
 
-class ParticlePackerPart
+class ParticlePacker
 {
 public:
-    ParticlePackerPart(std::vector<core::Particle<1>> const& particles)
+    ParticlePacker(core::ParticleArray<1> const& particles)
         : particles_{particles}
         , keys_{{"weight", "charge", "iCell", "delta", "v"}}
     {
@@ -271,34 +260,15 @@ public:
 
 private:
     size_t it_ = 0;
-    std::vector<core::Particle<1>> const& particles_;
-    std::vector<std::string> keys_;
-};
-
-template<typename PartPicker>
-class ParticularPacker
-{
-public:
-    ParticularPacker(std::vector<core::Particle<1>> const& particles)
-        : picker_{particles}
-    {
-    }
-
-    auto& keys() const { return picker_.keys(); }
-    bool hasNext() const { return picker_.hasNext(); }
-    auto next() { return picker_.next(); }
-
-    auto first() const { return picker_.get(0); }
-
-private:
-    PartPicker picker_;
+    core::ParticleArray<1> const& particles_;
+    std::array<std::string, 5> keys_;
 };
 
 template<typename ModelParams>
 auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>::
     getParticlePacker(std::vector<core::Particle<1>> const& particles)
 {
-    return ParticularPacker<ParticlePackerPart>{particles};
+    return core::HasNextIterable<ParticlePacker, core::ParticleArray<1>>{particles};
 }
 
 } // namespace PHARE

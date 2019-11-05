@@ -1,6 +1,7 @@
 #ifndef PHARE_AMR_DIAGNOSTIC_SAMRAI_DIAGNOSTIC_H
 #define PHARE_AMR_DIAGNOSTIC_SAMRAI_DIAGNOSTIC_H
 
+#include "types/amr_types.h"
 #include "diagnostic_manager.h"
 #include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/PatchLevel.h>
@@ -17,15 +18,26 @@ public:
     using ResMan     = typename Model::resources_manager_type;
     using GridLayout = typename Model::gridLayout_type;
     using Guard      = amr::ResourcesGuard<ResMan, Model>;
-    using Patch      = ::SAMRAI::hier::Patch;
+    using Hierarchy  = amr::SAMRAI_Types::hierarchy_t;
+    using Patch      = amr::SAMRAI_Types::patch_t;
     using Super::model_;
+    static constexpr auto dimension = Model::dimension;
 
-    SamraiDiagnosticModelView(Model& model)
+    SamraiDiagnosticModelView(Hierarchy& hierarchy, Model& model)
         : Super{model}
+        , hierarchy_{hierarchy}
     {
     }
 
     auto guardedGrid(Patch& patch) { return GuardedGrid{patch, Super::model_}; }
+
+
+    template<typename Action, typename... Args>
+    void visitLevel(int level, Action&& action)
+    {
+        amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(level), *model_.resourcesManager,
+                                    action, model_);
+    }
 
 protected:
     struct GuardedGrid
@@ -44,39 +56,16 @@ protected:
         GridLayout grid_;
     };
 
+
 private:
+    Hierarchy& hierarchy_;
+
     SamraiDiagnosticModelView(const SamraiDiagnosticModelView&)             = delete;
     SamraiDiagnosticModelView(const SamraiDiagnosticModelView&&)            = delete;
     SamraiDiagnosticModelView& operator&(const SamraiDiagnosticModelView&)  = delete;
     SamraiDiagnosticModelView& operator&(const SamraiDiagnosticModelView&&) = delete;
 };
 
-
-template<typename ModelView>
-class SamraiDiagnostic
-{
-public:
-    using Hierarchy  = SAMRAI::hier::PatchHierarchy;
-    using PatchLevel = std::shared_ptr<SAMRAI::hier::PatchLevel>;
-
-    auto& modelView() { return modelView_; }
-
-protected:
-    SamraiDiagnostic(Hierarchy& hierarchy, ModelView& model)
-        : modelView_{model}
-        , hierarchy_{hierarchy}
-    {
-    }
-
-    SamraiDiagnosticModelView<ModelView> modelView_;
-    Hierarchy& hierarchy_;
-
-private:
-    SamraiDiagnostic(const SamraiDiagnostic&)             = delete;
-    SamraiDiagnostic(const SamraiDiagnostic&&)            = delete;
-    SamraiDiagnostic& operator&(const SamraiDiagnostic&)  = delete;
-    SamraiDiagnostic& operator&(const SamraiDiagnostic&&) = delete;
-};
 
 } /*namespace PHARE*/
 

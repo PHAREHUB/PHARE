@@ -12,11 +12,13 @@
 #include "diagnostic/defs.h"
 using namespace PHARE_test::_1d;
 
-#include "diagnostic/detail/samrai_highfive.h"
+#include "detail/highfive.h"
 
-/*#include "diagnostic/integrator.h"
+/*
+#include "diagnostic/integrator.h"
 #include "diagnostic/tag_strat.h"
-#include "diagnostic/hierarchy.h"*/
+#include "diagnostic/hierarchy.h"
+*/
 
 namespace PHARE
 {
@@ -44,7 +46,10 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
 
 class GlobalLifeCycle
 {
-    using Writer = PHARE::SamraiHighFiveDiagnostic<HybridModelT>;
+    /*
+    using DiagnosticModelView = PHARE::SamraiDiagnosticModelView<HybridModelT>;
+    using Writer              = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
+    */
 
 public:
     GlobalLifeCycle(std::string path = "/tmp/roflcopter.hi5")

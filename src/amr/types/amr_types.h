@@ -4,6 +4,7 @@
 
 #include "SAMRAI/hier/Patch.h"
 #include "SAMRAI/hier/PatchLevel.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
 
 namespace PHARE
 {
@@ -11,8 +12,9 @@ namespace amr
 {
     struct SAMRAI_Types
     {
-        using patch_t = SAMRAI::hier::Patch;
-        using level_t = SAMRAI::hier::PatchLevel;
+        using patch_t     = SAMRAI::hier::Patch;
+        using level_t     = SAMRAI::hier::PatchLevel;
+        using hierarchy_t = SAMRAI::hier::PatchHierarchy;
     };
 } // namespace amr
 } // namespace PHARE
