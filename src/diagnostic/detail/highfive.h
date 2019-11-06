@@ -1,6 +1,8 @@
 #ifndef PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H
 #define PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H
 
+#include "kul/log.hpp"
+
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataSpace.hpp>
 #include <highfive/H5File.hpp>
@@ -33,9 +35,9 @@ struct HighFiveFile
         , mode_{mode}
     {
     }
+    ~HighFiveFile() { KLOG(INF); }
 
     HighFive::File& file() { return file_; }
-
 
     HighFiveFile(const HighFiveFile&)             = delete;
     HighFiveFile(const HighFiveFile&&)            = delete;
@@ -58,6 +60,8 @@ public:
     {
     }
 
+    ~HighFiveDiagnostic() { KLOG(INF); }
+
     void dump(std::vector<DiagnosticDAO*> const&);
 
     HighFive::File& file() { return hi5_.file(); }
@@ -68,12 +72,19 @@ public:
         return writers.at(writer);
     }
 
+    std::string getPatchPath([[maybe_unused]] std::string time, int iLevel,
+                             std::string globalCoords)
+    {
+        return "/t#/pl" + std::to_string(iLevel) + "/p" + globalCoords;
+    }
+
 private:
     HighFiveFile hi5_;
     ModelView& modelView_;
     std::string patchPath_; // is passed around as "virtual write()" has no parameters
 
     std::unordered_map<std::string, std::shared_ptr<PHARE::DiagnosticWriter>> writers{
+        {"fluid", make_writer<FluidDiagnosticWriter>()},
         {"electromag", make_writer<ElectromagDiagnosticWriter>()},
         {"particles", make_writer<ParticlesDiagnosticWriter>()}};
 
@@ -132,6 +143,17 @@ private:
             .write(value);
     }
 
+    template<typename VecField>
+    void writeVecFieldAsDataset(std::string path, VecField& vecField)
+    {
+        for (auto& [id, type] : Components::componentMap)
+        {
+            auto& field = vecField.getComponent(type);
+            KLOG(INF) << path << "/" << id << " [0] " << field.data()[0];
+            writeDataSet(path + "/" + id, field.data(), field.size());
+        }
+    }
+
     template<typename Dict>
     void writeDict(Dict, std::string const&);
     template<typename Dict> // template String causes internal compiler error in GCC 8.2
@@ -152,29 +174,28 @@ private:
 };                                    // namespace PHARE
 
 /*TO DO
-  investigate level > 0 for MPI
-  finalise HDF5 Path format
-*/
+ * investigate level > 0 for MPI
+ *  finalise HDF5 Path format
+ */
 template<typename ModelView>
 void HighFiveDiagnostic<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics)
 {
-    auto levelPath = [](auto idx) { return "/t#/pl" + std::to_string(idx); };
-
     writeAttribute("/", "dim", dimension);
-    writeAttribute("/", "interpOrder", interp_order);
+    writeAttribute("/", "interpOrder", interpOrder);
 
     /*TODO
       add time/iterations
     */
-    modelView_.visitHierarchy([&](GridLayout& gridLayout, std::string patchID, int iLevel) {
-        patchPath_ = levelPath(iLevel) + "/p" + patchID;
-        getOrCreateGroup(patchPath_);
+    auto visitPatch = [&](GridLayout& gridLayout, std::string patchID, int iLevel) {
+        patchPath_ = getPatchPath("time", 0, patchID);
         for (auto* diagnostic : diagnostics)
         {
             writers.at(diagnostic->type)->write(*diagnostic);
         }
         writeDict(modelView_.getPatchAttributes(gridLayout), patchPath_);
-    });
+    };
+
+    modelView_.visitHierarchy(visitPatch);
 }
 
 template<typename ModelView>
@@ -297,14 +318,11 @@ void HighFiveDiagnostic<ModelView>::ElectromagDiagnosticWriter::write([
     [maybe_unused]] DiagnosticDAO& diagnostic)
 {
     auto& outer = this->outer_;
-    for (auto& fields : outer.modelView_.getElectromagFields())
+
+    for (auto* vecField : outer.modelView_.getElectromagFields())
     {
-        for (auto& field : fields)
-        {
-            std::string fieldPath(outer.patchPath_ + "/" + field->id);
-            outer.writeDataSet(fieldPath, field->data, field->size);
-        }
-    };
+        outer.writeVecFieldAsDataset(outer.patchPath_ + "/" + vecField->name(), *vecField);
+    }
 }
 
 template<typename ModelView>
@@ -323,9 +341,26 @@ template<typename ModelView>
 void HighFiveDiagnostic<ModelView>::FluidDiagnosticWriter::write([
     [maybe_unused]] DiagnosticDAO& diagnostic)
 {
+    auto& outer = this->outer_;
+    auto& ions  = outer.modelView_.getIons();
+    std::string path(outer.patchPath_ + "/ions/");
+
+    for (auto& pop : outer.modelView_.getIons())
+    {
+        std::string popPath(path + "pop/" + pop.name() + "/");
+        auto& density = pop.density();
+        outer.writeDataSet(popPath + "density", density.data(), density.size());
+        outer.writeVecFieldAsDataset(popPath + "flux", pop.flux());
+    }
+
+    auto& density = ions.density();
+    outer.writeDataSet(path + "density", density.data(), density.size());
+    outer.writeVecFieldAsDataset(path + "bulkVelocity", ions.velocity());
 }
 
-// turns a dict of std::map<std::string, T> to hdf5 attributes
+/*
+ * turns a dict of std::map<std::string, T> to hdf5 attributes
+ */
 template<typename ModelView>
 template<typename Dict>
 void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string const& path)
@@ -354,6 +389,6 @@ void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string const& path
     std::visit(visitor, dict.data);
 }
 
-} /*namespace PHARE*/
+} /* namespace PHARE */
 
-#endif /*PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H*/
+#endif /* PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H */

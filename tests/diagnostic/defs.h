@@ -10,14 +10,14 @@ namespace PHARE_test
 {
 namespace _1d
 {
-    static constexpr std::size_t dim         = 1;
-    static constexpr std::size_t interpOrder = 1;
+    static constexpr std::size_t dim_         = 1;
+    static constexpr std::size_t interpOrder_ = 1;
 
-    using GridImplYeeT  = GridLayoutImplYee<dim, interpOrder>;
+    using GridImplYeeT  = GridLayoutImplYee<dim_, interpOrder_>;
     using GridYeeT      = GridLayout<GridImplYeeT>;
     using FieldT        = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
     using VecFieldT     = VecField<NdArrayVector1D<>, HybridQuantity>;
-    using IonsPopT      = IonPopulation<ParticleArray<dim>, VecFieldT, GridYeeT>;
+    using IonsPopT      = IonPopulation<ParticleArray<dim_>, VecFieldT, GridYeeT>;
     using IonsT         = Ions<IonsPopT, GridYeeT>;
     using ElectromagT   = Electromag<VecFieldT>;
     using HybridModelT  = HybridModel<GridYeeT, ElectromagT, IonsT, SAMRAI_Types>;

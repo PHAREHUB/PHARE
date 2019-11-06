@@ -41,7 +41,7 @@ public:
 
     SAMRAI::hier::PatchHierarchy& getHierarchy() { return *hierarchy_; }
 
-    ~BasicHierarchy() {}
+    ~BasicHierarchy() { KLOG(INF); }
 
 private:
     std::shared_ptr<SAMRAI::tbox::Database> inputDatabase_;

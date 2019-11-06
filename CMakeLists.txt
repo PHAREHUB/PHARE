@@ -59,7 +59,7 @@ endif(testMPI)
 if(MSVC)
   set (PHARE_WERROR_FLAGS /W4 /WX)
 else()
-  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
+  set (PHARE_WERROR_FLAGS )
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS}
                         -Wno-unused-variable -Wno-unused-parameter
@@ -131,6 +131,10 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/build/include
 )
 endif()
+
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/mkn.kul/inc
+)
 
 if(HighFive)
   include_directories(
@@ -258,6 +262,7 @@ if (test)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/initializer)
+  add_subdirectory(tests/diagnostic)
   add_subdirectory(tests/core/data/gridlayout)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)

@@ -38,6 +38,7 @@ set(SOURCES_CPP
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
 =======
@@ -46,6 +47,8 @@ set(SOURCES_CPP
 
 
 >>>>>>> wip diag pr
+=======
+>>>>>>> pre mpi merge for hdf5 tests
 if(HighFive)
   add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
@@ -76,8 +79,8 @@ if(HighFive)
     gmock
     ${HDF5_LIBRARIES})
 
-  add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME}
-           WORKING_DIRECTORY ${PHARE_PROJECT_DIR})
+  add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+
   message(STATUS "diagnostic working directory " ${PHARE_PROJECT_DIR})
 
   include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

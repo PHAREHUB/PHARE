@@ -47,32 +47,32 @@ double vthz(double x)
 
 double bx(double x)
 {
-    return 4. * x;
+    return 4.; //* x;
 }
 
 double by(double x)
 {
-    return 5. * x;
+    return 5.; // * x;
 }
 
 double bz(double x)
 {
-    return 6. * x;
+    return 6.; // * x;
 }
 
 double ex(double x)
 {
-    return x;
+    return 1;
 }
 
 double ey(double x)
 {
-    return 2. * x;
+    return 2.; // * x;
 }
 
 double ez(double x)
 {
-    return 3. * x;
+    return 3.; // * x;
 }
 
 } // namespace PHARE_test

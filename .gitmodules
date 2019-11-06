@@ -10,3 +10,6 @@
 [submodule "subprojects/highfive"]
 	path = subprojects/highfive
 	url = https://github.com/BlueBrain/HighFive
+[submodule "subprojects/mkn.kul"]
+	path = subprojects/mkn.kul
+	url = https://github.com/mkn/mkn.kul
