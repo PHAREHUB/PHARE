@@ -15,7 +15,8 @@ using namespace PHARE_test::_1d;
 #include "tag_strat.h"
 #include "hierarchy.h"
 
-#include "diagnostic/samrai_diagnostic.h"
+
+#include "types/amr_types.h"
 #include "detail/highfive.h"
 
 struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
@@ -44,8 +45,10 @@ struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
 
 TEST_F(Hi5Diagnostic, hdf5Electromag)
 {
-    using DiagnosticModelView = PHARE::SamraiDiagnosticModelView<HybridModelT>;
-    using DiagnosticWriter    = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
+    using DiagnosticModelView
+        = PHARE::AMRDiagnosticModelView<PHARE::amr::SAMRAI_Types, HybridModelT>;
+
+    using DiagnosticWriter = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
 
     DiagnosticModelView modelView{basicHierarchy->getHierarchy(), *hybridModel};
     DiagnosticWriter writer{modelView, filename()};
@@ -80,8 +83,9 @@ TEST_F(Hi5Diagnostic, hdf5Electromag)
 
 TEST_F(Hi5Diagnostic, hdf5Particles)
 {
-    using DiagnosticModelView = PHARE::SamraiDiagnosticModelView<HybridModelT>;
-    using DiagnosticWriter    = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
+    using DiagnosticModelView
+        = PHARE::AMRDiagnosticModelView<PHARE::amr::SAMRAI_Types, HybridModelT>;
+    using DiagnosticWriter = PHARE::HighFiveDiagnostic<DiagnosticModelView>;
 
     DiagnosticModelView modelView{basicHierarchy->getHierarchy(), *hybridModel};
     DiagnosticWriter writer{modelView, filename()};

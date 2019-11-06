@@ -48,12 +48,13 @@ template<typename ModelView>
 class HighFiveDiagnostic
 {
 public:
-    using GridLayout                = typename ModelView::GridLayout;
-    static constexpr auto dimension = ModelView::dimension;
+    using GridLayout                   = typename ModelView::GridLayout;
+    static constexpr auto dimension    = ModelView::dimension;
+    static constexpr auto interp_order = GridLayout::interp_order;
 
     HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath)
-        : modelView_(modelView)
-        , hi5_(hifivePath)
+        : hi5_{hifivePath}
+        , modelView_{modelView}
     {
     }
 
@@ -159,13 +160,14 @@ void HighFiveDiagnostic<ModelView>::dump(std::vector<DiagnosticDAO*> const& diag
 {
     auto levelPath = [](auto idx) { return "/t#/pl" + std::to_string(idx); };
 
-    writeAttribute("/", "dim", dim);
-    writeAttribute("/", "interpOrder", interpOrder);
+    writeAttribute("/", "dim", dimension);
+    writeAttribute("/", "interpOrder", interp_order);
 
     /*TODO
       add time/iterations
     */
-    modelView_.visitLevel(0, [&](GridLayout& gridLayout, std::string patchID, int iLevel) {
+
+    modelView_.visitHierarchy([&](GridLayout& gridLayout, std::string patchID, int iLevel) {
         patchPath_ = levelPath(iLevel) + "/p" + patchID;
         getOrCreateGroup(patchPath_);
         for (auto* diagnostic : diagnostics)
@@ -345,7 +347,7 @@ void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string const& path
                 std::visit(
                     [&](auto&& val) {
                         using Val = std::decay_t<decltype(val)>;
-                        if constexpr (is_dict_leaf<Val, Dict>::value)
+                        if constexpr (core::is_dict_leaf<Val, Dict>::value)
                             writeAttribute(path, pair.first, val);
                         else
                             throw std::runtime_error(std::string("Expecting Writable value got ")

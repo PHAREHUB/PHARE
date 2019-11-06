@@ -204,7 +204,8 @@ namespace amr
 
 
     template<typename GridLayout, typename ResMan, typename Action, typename... Args>
-    void visitLevel(SAMRAI_Types::level_t& level, ResMan& resman, Action&& action, Args&&... args)
+    void visitLevel(SAMRAI::hier::PatchLevel& level, ResMan& resman, Action&& action,
+                    Args&&... args)
     {
         for (auto& patch : level)
         {
@@ -219,12 +220,13 @@ namespace amr
 
 
     template<typename GridLayout, typename ResMan, typename Action, typename... Args>
-    void visitHierarchy(SAMRAI_Types::hierarchy_t& hierarchy, ResMan& resman, Action&& action,
-                        Args&&... args)
+    void visitHierarchy(SAMRAI::hier::PatchHierarchy& hierarchy, ResMan& resman, Action&& action,
+                        int minLevel, int maxLevel, Args&&... args)
     {
-        for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); iLevel++)
+        assert(hierarchy.getNumberOfLevels() > maxLevel);
+        for (int iLevel = minLevel; iLevel <= maxLevel; iLevel++)
         {
-            visitLevel<GridLayout>(hierarchy.getPatchLevel(iLevel), resman, action, args...);
+            visitLevel<GridLayout>(*hierarchy.getPatchLevel(iLevel), resman, action, args...);
         }
     }
 
