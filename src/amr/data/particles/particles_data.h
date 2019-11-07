@@ -195,11 +195,6 @@ namespace amr
                             {
                                 intersectionBox = overlapBox * sourceGhostBox * myGhostBox;
 
-                                std::cout << "Copy without transform : SourceGhostBox "
-                                          << sourceGhostBox << " intersected with my ghostBox "
-                                          << myGhostBox << " and intersected with overlapBox"
-                                          << overlapBox << " gives " << intersectionBox << "\n";
-
                                 if (!intersectionBox.empty())
                                 {
                                     copy_(sourceGhostBox, myGhostBox, intersectionBox, *pSource);
@@ -211,19 +206,8 @@ namespace amr
                                 transformation.transform(shiftedSourceBox);
                                 intersectionBox = overlapBox * shiftedSourceBox * myGhostBox;
 
-
-                                std::cout
-                                    << "Copy without transform : SourceGhostBox " << sourceGhostBox
-                                    << " shifted by the transform " << shiftedSourceBox
-                                    << " and intersected with my ghostBox " << myGhostBox
-                                    << " and intersected with overlapBox" << overlapBox << " gives "
-                                    << intersectionBox << "\n";
-
                                 if (!intersectionBox.empty())
                                 {
-                                    /* copy_(sourceGhostBox, destinationGhostBox, intersectionBox,
-                                     *pSource);*/
-
                                     copyWithTransform_(sourceGhostBox, intersectionBox,
                                                        transformation, *pSource);
                                 }

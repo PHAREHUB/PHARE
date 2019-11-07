@@ -47,7 +47,9 @@ double vthz(double x)
 
 double bx(double x)
 {
-    return 4.; //* x;
+    int mpi_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    return 4. + mpi_rank; //* x;
 }
 
 double by(double x)

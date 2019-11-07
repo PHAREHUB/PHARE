@@ -160,7 +160,6 @@ if(HighFive)
   message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
 endif()
 
-<<<<<<< HEAD
 #*******************************************************************************
 #* Pybind11 build option
 #*******************************************************************************
@@ -181,8 +180,6 @@ if (NOT pybind11_FOUND)
 
 endif()
 
-=======
->>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 #*******************************************************************************
 #* Test and coverage option
 #*******************************************************************************
@@ -234,19 +231,10 @@ if (test)
           )
   ENDIF(coverage)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> implement visitor pattern to remove samrai visibility for highfive diagnostics
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/tests
   )
 
-<<<<<<< HEAD
-=======
->>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
-=======
->>>>>>> implement visitor pattern to remove samrai visibility for highfive diagnostics
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)
@@ -281,7 +269,6 @@ if (test)
   add_subdirectory(tests/core/numerics/ampere)
   add_subdirectory(tests/core/numerics/faraday)
   add_subdirectory(tests/core/numerics/ohm)
-  add_subdirectory(tests/diagnostic)
 
 endif()
 
@@ -370,5 +357,5 @@ message("build with asan support                     : " ${asan})
 message("build with ubsan support                    : " ${ubsan})
 message("build with msan support                     : " ${msan})
 message("Add doxygen target to generate documentation: " ${documentation})
-
+message("Build with highfive usage                   : " ${HighFive})
 

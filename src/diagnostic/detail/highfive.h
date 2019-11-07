@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H
 #define PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H
 
-#include "kul/log.hpp"
+#include "kul/dbg.hpp"
 
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataSpace.hpp>
@@ -35,7 +35,7 @@ struct HighFiveFile
         , mode_{mode}
     {
     }
-    ~HighFiveFile() { KLOG(INF); }
+    ~HighFiveFile() {}
 
     HighFive::File& file() { return file_; }
 
@@ -50,9 +50,9 @@ template<typename ModelView>
 class HighFiveDiagnostic
 {
 public:
-    using GridLayout                   = typename ModelView::GridLayout;
-    static constexpr auto dimension    = ModelView::dimension;
-    static constexpr auto interp_order = GridLayout::interp_order;
+    using GridLayout                  = typename ModelView::GridLayout;
+    static constexpr auto dimension   = ModelView::dimension;
+    static constexpr auto interpOrder = GridLayout::interp_order;
 
     HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath)
         : hi5_{hifivePath}
@@ -60,7 +60,7 @@ public:
     {
     }
 
-    ~HighFiveDiagnostic() { KLOG(INF); }
+    ~HighFiveDiagnostic() {}
 
     void dump(std::vector<DiagnosticDAO*> const&);
 
@@ -94,34 +94,15 @@ private:
         return std::make_shared<Writer>(*this);
     }
 
-    template<typename String>
-    auto getOrCreateGroup(String const& path)
+    template<typename Type>
+    auto createDataSet(std::string const& path, size_t size)
     {
-        if (path != std::string("/") && !hi5_.file_.exist(path))
-            hi5_.file_.createGroup(path);
-        return hi5_.file_.getGroup(path);
-    }
-
-    template<typename Type, typename Size>
-    auto getOrCreateDataSet(std::string const& path, Size size)
-    {
-        if (!hi5_.file_.exist(path))
-            return createDataSet<Type>(path, size);
+        this->template createDatasetsPerMPI<Type>(path, size);
         return hi5_.file_.getDataSet(path);
     }
 
-    auto getDataSet(std::string const& path) { return hi5_.file_.getDataSet(path); }
-
-    template<typename Type, typename Size>
-    auto createDataSet(std::string const& path, Size size)
-    {
-        H5Easy::detail::createGroupsToDataSet(hi5_.file_, path);
-        if constexpr (std::is_same_v<Size, size_t>)
-            hi5_.file_.template createDataSet<Type>(path, HighFive::DataSpace(size));
-        else
-            hi5_.file_.template createDataSet<Type>(path, HighFive::DataSpace::From(size));
-        return hi5_.file_.getDataSet(path);
-    }
+    template<typename Type>
+    void createDatasetsPerMPI(std::string path, size_t dataSetSize);
 
     template<typename Dataset, typename Array>
     void writeDataSetPart(Dataset dataSet, size_t start, size_t size, Array const& array)
@@ -130,7 +111,7 @@ private:
     }
 
     template<typename Array, typename String>
-    void writeDataSet(String path, Array const* const array, size_t size)
+    void writeNewDataSet(String path, Array const* const array, size_t size)
     {
         createDataSet<Array>(path, size).write(array);
     }
@@ -138,10 +119,11 @@ private:
     template<typename String, typename Data>
     void writeAttribute(String path, std::string const& key, Data const& value)
     {
-        getOrCreateGroup(path)
+        hi5_.file_.getGroup(path)
             .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
             .write(value);
     }
+
 
     template<typename VecField>
     void writeVecFieldAsDataset(std::string path, VecField& vecField)
@@ -149,18 +131,13 @@ private:
         for (auto& [id, type] : Components::componentMap)
         {
             auto& field = vecField.getComponent(type);
-            KLOG(INF) << path << "/" << id << " [0] " << field.data()[0];
-            writeDataSet(path + "/" + id, field.data(), field.size());
+            std::string dataSetPath{path + "/" + id};
+            writeNewDataSet(dataSetPath, field.data(), field.size());
         }
     }
 
     template<typename Dict>
-    void writeDict(Dict, std::string const&);
-    template<typename Dict> // template String causes internal compiler error in GCC 8.2
-    void writeDict(Dict dict, std::string const&& str)
-    {
-        writeDict(dict, str);
-    }
+    void writeDict(Dict, std::string);
 
     HighFiveDiagnostic(const HighFiveDiagnostic&)             = delete;
     HighFiveDiagnostic(const HighFiveDiagnostic&&)            = delete;
@@ -168,10 +145,10 @@ private:
     HighFiveDiagnostic& operator&(const HighFiveDiagnostic&&) = delete;
 
     class Hi5DiagnosticWriter;
-    class ElectromagDiagnosticWriter; // : public Hi5DiagnosticWriter
-    class ParticlesDiagnosticWriter;  // : public Hi5DiagnosticWriter
-    class FluidDiagnosticWriter;      // : public Hi5DiagnosticWriter
-};                                    // namespace PHARE
+    class ElectromagDiagnosticWriter; /* : public Hi5DiagnosticWriter*/
+    class ParticlesDiagnosticWriter;  /* : public Hi5DiagnosticWriter*/
+    class FluidDiagnosticWriter;      /* : public Hi5DiagnosticWriter*/
+};
 
 /*TO DO
  * investigate level > 0 for MPI
@@ -247,7 +224,7 @@ void HighFiveDiagnostic<ModelView>::ParticlesDiagnosticWriter::write([
         if constexpr (is_array_dataset<ValueType, dimension>)
             outer.writeDataSetPart(dataset, start * value.size(), value.size(), value);
         else
-            outer.writeDataSetPart(dataset, start, 1, value); // not array, write 1 value
+            outer.writeDataSetPart(dataset, start, 1, value); /*not array, write 1 value*/
     };
 
     auto writeParticles = [&](auto path, auto& particles) {
@@ -288,7 +265,7 @@ void HighFiveDiagnostic<ModelView>::ParticlesDiagnosticWriter::write([
         }
     };
 
-    for (auto& pop : outer.modelView_.getIons()) // bulkV
+    for (auto& pop : outer.modelView_.getIons())
     {
         std::string path(outer.patchPath_ + "/ions/pop/" + pop.name() + "/");
         writeParticles(path + "domain/", pop.domainParticles());
@@ -310,9 +287,6 @@ public:
 };
 
 
-/*TODO
-  finish
-*/
 template<typename ModelView>
 void HighFiveDiagnostic<ModelView>::ElectromagDiagnosticWriter::write([
     [maybe_unused]] DiagnosticDAO& diagnostic)
@@ -349,12 +323,12 @@ void HighFiveDiagnostic<ModelView>::FluidDiagnosticWriter::write([
     {
         std::string popPath(path + "pop/" + pop.name() + "/");
         auto& density = pop.density();
-        outer.writeDataSet(popPath + "density", density.data(), density.size());
+        outer.writeNewDataSet(popPath + "density", density.data(), density.size());
         outer.writeVecFieldAsDataset(popPath + "flux", pop.flux());
     }
 
     auto& density = ions.density();
-    outer.writeDataSet(path + "density", density.data(), density.size());
+    outer.writeNewDataSet(path + "density", density.data(), density.size());
     outer.writeVecFieldAsDataset(path + "bulkVelocity", ions.velocity());
 }
 
@@ -363,7 +337,7 @@ void HighFiveDiagnostic<ModelView>::FluidDiagnosticWriter::write([
  */
 template<typename ModelView>
 template<typename Dict>
-void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string const& path)
+void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string path)
 {
     using dict_map_t = typename Dict::map_t;
     auto visitor     = [&](auto&& map) {
@@ -381,12 +355,41 @@ void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string const& path
                     },
                     pair.second.get()->data);
         else
-            // static_assert fails without if ! constexpr all possible types
-            //   regardless of what it actually is.
+            /* static_assert fails without if ! constexpr all possible types
+             * regardless of what it actually is.
+             */
             throw std::runtime_error(std::string("Expecting map<string, T> got ")
                                      + typeid(Map_t).name());
     };
     std::visit(visitor, dict.data);
+}
+
+
+/*
+ * Communicate all dataset paths and sizes to all MPI process to allow each to create all datasets
+ * independently.  This is a requirement of HDF5. all paths must be the same length
+ */
+template<typename ModelView>
+template<typename Type>
+void HighFiveDiagnostic<ModelView>::createDatasetsPerMPI(std::string path, size_t dataSetSize)
+{
+    int mpi_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    uint64_t pathSize = path.size();
+    uint64_t datasetSizes[mpi_size];
+    MPI_Allgather(&dataSetSize, 1, MPI_UINT64_T, datasetSizes, 1, MPI_UINT64_T, MPI_COMM_WORLD);
+
+    char chars[pathSize * mpi_size];
+    MPI_Allgather(path.c_str(), path.size(), MPI_CHAR, &chars, path.size(), MPI_CHAR,
+                  MPI_COMM_WORLD);
+
+    for (uint64_t i = 0; i < mpi_size; i++)
+    {
+        std::string datasetPath{&chars[pathSize * i], pathSize};
+        H5Easy::detail::createGroupsToDataSet(hi5_.file_, datasetPath);
+        hi5_.file_.createDataSet<Type>(datasetPath, HighFive::DataSpace(datasetSizes[i]));
+    }
 }
 
 } /* namespace PHARE */

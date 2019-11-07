@@ -251,6 +251,70 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, Model
     return PHARE::ParticlePacker{particles};
 }
 
+
+
+// generic subclass of model specialized superclass
+template<typename AMRTypes, typename Model>
+class AMRDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>
+{
+public:
+    using Super      = DiagnosticModelView<Model, typename Model::type_list>;
+    using ResMan     = typename Model::resources_manager_type;
+    using GridLayout = typename Model::gridLayout_type;
+    using Guard      = amr::ResourcesGuard<ResMan, Model>;
+    using Hierarchy  = typename AMRTypes::hierarchy_t;
+    using Patch      = typename AMRTypes::patch_t;
+    using Super::model_;
+    static constexpr auto dimension = Model::dimension;
+
+    AMRDiagnosticModelView(Hierarchy& hierarchy, Model& model)
+        : Super{model}
+        , hierarchy_{hierarchy}
+    {
+    }
+
+    auto guardedGrid(Patch& patch) { return GuardedGrid{patch, Super::model_}; }
+
+
+
+    template<typename Action, typename... Args>
+    void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
+    {
+        amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
+                                        std::forward<Action>(action), minLevel, maxLevel, model_);
+    }
+
+
+
+protected:
+    struct GuardedGrid
+    {
+        using Guard = typename AMRDiagnosticModelView<AMRTypes, Model>::Guard;
+
+        GuardedGrid(Patch& patch, Model& model)
+            : guard_{model.resourcesManager->setOnPatch(patch, model)}
+            , grid_{PHARE::amr::layoutFromPatch<GridLayout>(patch)}
+        {
+        }
+
+        operator GridLayout&() { return grid_; }
+
+        Guard guard_;
+        GridLayout grid_;
+    };
+
+
+private:
+    Hierarchy& hierarchy_;
+
+    AMRDiagnosticModelView(const AMRDiagnosticModelView&)             = delete;
+    AMRDiagnosticModelView(const AMRDiagnosticModelView&&)            = delete;
+    AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&)  = delete;
+    AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&&) = delete;
+};
+
+
+
 } // namespace PHARE
 
 #endif //  PHARE_Diagnostic_MANAGER_HPP_

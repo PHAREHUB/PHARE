@@ -28,9 +28,8 @@ PatchHierarchy
         // All finer level will use same values in as level_0
      }
 }
-ChopAndPackLoadBalancer
+LoadBalancer
 {
-    bin_pack_method = "SPATIAL"
 }
 StandardTagAndInitialize
 {
@@ -58,9 +57,6 @@ StandardTagAndInitialize
             }
         }
     }
-}
-TileClustering
-{
 }
 GriddingAlgorithm
 {

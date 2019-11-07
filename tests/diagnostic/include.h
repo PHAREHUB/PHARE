@@ -13,24 +13,18 @@
 #include <SAMRAI/geom/CartesianGridGeometry.h>
 #include <SAMRAI/hier/CoarsenOperator.h>
 #include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/mesh/ChopAndPackLoadBalancer.h>
 #include <SAMRAI/mesh/GriddingAlgorithm.h>
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TileClustering.h>
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/Logger.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/mesh/BergerRigoutsos.h>
+#include <SAMRAI/mesh/TreeLoadBalancer.h>
 
-<<<<<<< HEAD
-=======
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-
->>>>>>> Enable Hi5 MPI if HDF5_IS_PARALLEL
 #include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
