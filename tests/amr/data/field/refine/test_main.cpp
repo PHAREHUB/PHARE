@@ -27,7 +27,6 @@ using testing::Eq;
 
 
 
-
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalEven)
 {
     auto ratio = 2u;

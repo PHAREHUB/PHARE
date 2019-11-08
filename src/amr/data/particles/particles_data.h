@@ -123,7 +123,7 @@ namespace amr
          * the source PatchData was not a ParticleData like we are, we'd give ourselves
          * to its copy2 function, assuming it can copy its source content into us.
          */
-        virtual void copy(SAMRAI::hier::PatchData const& source) final
+        virtual void copy(SAMRAI::hier::PatchData const& source) override
         {
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
@@ -133,10 +133,6 @@ namespace amr
                 SAMRAI::hier::Box const& sourceGhostBox = pSource->getGhostBox();
                 SAMRAI::hier::Box const& myGhostBox     = getGhostBox();
                 const SAMRAI::hier::Box intersectionBox{sourceGhostBox * myGhostBox};
-
-                std::cout << "Copy : SourceGhostBox " << sourceGhostBox
-                          << " intersected with my ghostBox " << myGhostBox << " gives "
-                          << intersectionBox << "\n";
 
                 if (!intersectionBox.empty())
                 {
@@ -156,7 +152,7 @@ namespace amr
          * given to be copied into another kind of PatchData. Here we chose that
          * copy2 throws unconditiionnally.
          */
-        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const final
+        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const override
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -169,7 +165,7 @@ namespace amr
          * The copy is done between the source patch data and myself
          */
         virtual void copy(SAMRAI::hier::PatchData const& source,
-                          SAMRAI::hier::BoxOverlap const& overlap) final
+                          SAMRAI::hier::BoxOverlap const& overlap) override
         {
             const ParticlesData* pSource = dynamic_cast<const ParticlesData*>(&source);
             const SAMRAI::pdat::CellOverlap* pOverlap
@@ -195,11 +191,6 @@ namespace amr
                             {
                                 intersectionBox = overlapBox * sourceGhostBox * myGhostBox;
 
-                                std::cout << "Copy without transform : SourceGhostBox "
-                                          << sourceGhostBox << " intersected with my ghostBox "
-                                          << myGhostBox << " and intersected with overlapBox"
-                                          << overlapBox << " gives " << intersectionBox << "\n";
-
                                 if (!intersectionBox.empty())
                                 {
                                     copy_(sourceGhostBox, myGhostBox, intersectionBox, *pSource);
@@ -212,18 +203,8 @@ namespace amr
                                 intersectionBox = overlapBox * shiftedSourceBox * myGhostBox;
 
 
-                                std::cout
-                                    << "Copy without transform : SourceGhostBox " << sourceGhostBox
-                                    << " shifted by the transform " << shiftedSourceBox
-                                    << " and intersected with my ghostBox " << myGhostBox
-                                    << " and intersected with overlapBox" << overlapBox << " gives "
-                                    << intersectionBox << "\n";
-
                                 if (!intersectionBox.empty())
                                 {
-                                    /* copy_(sourceGhostBox, destinationGhostBox, intersectionBox,
-                                     *pSource);*/
-
                                     copyWithTransform_(sourceGhostBox, intersectionBox,
                                                        transformation, *pSource);
                                 }
@@ -251,7 +232,7 @@ namespace amr
 
 
         virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
-                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const final
+                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -291,28 +272,6 @@ namespace amr
          * 4- move back iCell from the shifted AMR index space to the local destination index space
          *
          * Note that step 2 could be done upon reception of the pack, we chose to do it before.
-         *
-         * Thus, by convention, the local iCell of the packed particles is translated to the
-         * destination AMR index space, i.e. it is moved to AMR space and shifted by the
-         * offset transformation given in the overlap.
-         *
-         * example : say we have an AMR domain [0,15] with two patches P1[0,5] and P2[10,15]
-         * with periodic boundaries. AMR index 15 is thus equivalent to AMR index -1, and 16 to 0
-         *
-         * Say we have one ghost cell.
-         *
-         * A particle on patch P2 with local iCell == 7 is thus on AMR index 16
-         * we want to stream it to P1.
-         *
-         * moving local iCell 7 to AMR means iCell = 16
-         * applying offset P2-->P1 means iCell becomes 0 (16 - offset_P2P1=16)
-         *
-         * at this point we pack it, SAMRAI communicates it to destination
-         * in unpack we get iCell = 0
-         *
-         * then we move it from AMR to P1 local means iCell becomes 1
-         * at this point with iCell=1 we know the particle should be placed into the interior
-         * particle buffer
          *
          */
         virtual void packStream(SAMRAI::tbox::MessageStream& stream,
@@ -357,15 +316,7 @@ namespace amr
                     {
                         SAMRAI::hier::Box intersectionBox{transformedSource * overlapBox};
 
-                        std::cout << "SourceGhostBox " << sourceGhostBox
-                                  << " moved into dest. idx space " << transformedSource
-                                  << " and intersected with overlapBox" << overlapBox << " gives "
-                                  << intersectionBox << "\n";
-
-                        std::cout << sourceGhostBox << transformedSource << overlapBox << "\n";
                         pack_(specie, intersectionBox, sourceGhostBox, transformation);
-                        std::cout << "shipping " << specie.size() << " particles existing in "
-                                  << intersectionBox << "\n";
                     }
                 }
                 else
@@ -432,33 +383,10 @@ namespace amr
                         // 1/ to check if each particle is in the intersect of the overlap boxes
                         // and our ghostBox 2/ if yes, check if these particles should go within the
                         // interior array or ghost array
-
-                        // first we need to calculate the intersect between our ghostBox and the
-                        // overlapBox these and the resulting intersect are in AMR index space
-                        // unpacked particles have their iCell in our AMR index space. we could :
-                        //  1- compare their iCell with the intersect right away, if within shit
-                        //  them to local indexing and push them in proper array
-                        // or
-                        // 2- translate the intersect from  AMR to local indexing, shift the
-                        // particles from AMR to local, and do the comparison in local index space
-                        // and then push them in the proper array
-
                         auto const intersect = getGhostBox() * overlapBox;
-
-
-                        // we chose first option, so get the intersect in local index space
-                        // and get the vector to shift a particle from our AMR space to local index
-                        // space
-                        // auto intersectLocalSource = AMRToLocal(intersect, getGhostBox());
-                        // auto particleShift        = AMRToLocal(getGhostBox());
 
                         for (auto const& particle : particleArray)
                         {
-                            // shift the particle to local index space
-                            // and if it is in intersection, decide in which array to push it.
-                            // auto shiftedParticle{particle};
-                            // shiftParticle_(particleShift, shiftedParticle);
-
                             if (isInBox(intersect, particle))
                             {
                                 if (isInBox(myBox, particle))
@@ -505,7 +433,6 @@ namespace amr
 
 
 
-
         void copy_([[maybe_unused]] SAMRAI::hier::Box const& sourceGhostBox,
                    [[maybe_unused]] SAMRAI::hier::Box const& destinationGhostBox,
                    SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
@@ -514,7 +441,6 @@ namespace amr
                 &sourceData.domainParticles, &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
-            std::cout << "copying particles\n";
 
             // for each particles in the source ghost and domain particle arrays
             // we check if it is in the intersectionBox
@@ -529,12 +455,10 @@ namespace amr
                     {
                         if (isInBox(myDomainBox, particle))
                         {
-                            std::cout << "copy a particle in domain at " << intersectionBox << "\n";
                             domainParticles.push_back(particle);
                         }
                         else
                         {
-                            std::cout << "copy a particle in ghost at " << intersectionBox << "\n";
                             patchGhostParticles.push_back(particle);
                         }
                     }
@@ -579,14 +503,10 @@ namespace amr
 
                         if (isInBox(myDomainBox, newParticle))
                         {
-                            std::cout << "copy (w. trans) a particle in domain at "
-                                      << intersectionBox << "\n";
                             domainParticles.push_back(newParticle);
                         }
                         else
                         {
-                            std::cout << "copy (w. trans) a particle in ghost at "
-                                      << intersectionBox << "\n";
                             patchGhostParticles.push_back(newParticle);
                         }
                     }
