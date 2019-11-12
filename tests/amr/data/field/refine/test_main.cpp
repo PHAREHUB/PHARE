@@ -1,9 +1,14 @@
+
+#include <functional>
+#include <iostream>
+#include <numeric>
+#include <sstream>
+
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
 
 #include "data/field/refine/field_linear_refine.h"
 #include "data/field/refine/field_refine_operator.h"
@@ -11,11 +16,6 @@
 #include "data/grid/gridlayout.h"
 
 #include "test_basic_hierarchy.h"
-
-
-#include <functional>
-#include <iostream>
-#include <numeric>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
