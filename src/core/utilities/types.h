@@ -8,6 +8,10 @@
 #include <tuple>
 #include <vector>
 
+
+#include "cppdict/include/dict.hpp"
+
+
 namespace PHARE
 {
 namespace core
@@ -40,10 +44,45 @@ namespace core
 
 
 
-
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
 
 
+    template<typename T> // this is so we can use struct {} initialization with
+                         // shared_ptrs/forwarding
+    struct aggregate_adapter : public T
+    {
+        template<class... Args>
+        aggregate_adapter(Args&&... args)
+            : T{std::forward<Args>(args)...}
+        {
+        }
+    };
+
+    template<typename... Args> // this is so we can specialize
+    struct type_list           // templates with only the outter most type
+    {
+    };
+
+    template<typename T, size_t size>
+    struct is_std_array : std::false_type
+    {
+    };
+    template<typename T, size_t size>
+
+    struct is_std_array<std::array<T, size>, size> : std::true_type
+    {
+    };
+
+    template<typename T, std::size_t size>
+    inline constexpr auto is_std_array_v = is_std_array<T, size>::value;
+
+    template<typename Val, typename Dict>
+    struct is_dict_leaf
+        : std::conditional<
+              !std::is_same_v<Val, cppdict::NoValue> && !std::is_same_v<Val, typename Dict::map_t>,
+              std::true_type, std::false_type>::type
+    {
+    };
 
     template<typename Tuple, typename Func>
     void apply(Tuple tuple, Func func)

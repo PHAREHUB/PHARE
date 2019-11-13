@@ -13,6 +13,7 @@ endif()
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+option(HighFive "Build with highfive usage" ON)
 option(test "Build test with google test" ON)
 option(testMPI "Run tests in parallel with mpiriun" OFF) # -n = PHARE_MPI_PROCS or 2 if unset
 option(coverage "Generate coverage" OFF)
@@ -43,6 +44,9 @@ include("${PHARE_PROJECT_DIR}/res/cmake/samrai.cmake")
 #* pybind
 include("${PHARE_PROJECT_DIR}/res/cmake/pybind.cmake")
 
+#* HighFive
+include("${PHARE_PROJECT_DIR}/res/cmake/highfive.cmake")
+
 include_directories(${PHARE_PROJECT_DIR}/src)
 
 #* coverage and Test option
@@ -55,6 +59,7 @@ include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 
 add_subdirectory(src/core)
 add_subdirectory(src/solver)
+add_subdirectory(src/diagnostic)
 add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
 add_subdirectory(src/amr)
@@ -77,5 +82,4 @@ message("build with asan support                     : " ${asan})
 message("build with ubsan support                    : " ${ubsan})
 message("build with msan support                     : " ${msan})
 message("Add doxygen target to generate documentation: " ${documentation})
-
-
+message("Build with highfive usage                   : " ${HighFive})

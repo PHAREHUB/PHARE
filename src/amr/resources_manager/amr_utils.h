@@ -8,11 +8,11 @@
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchData.h>
 
+
+#include "amr/types/amr_types.h"
 #include "core/utilities/box/box.h"
 #include "core/utilities/constants.h"
 #include "core/utilities/point/point.h"
-
-
 
 
 namespace PHARE
@@ -198,6 +198,33 @@ namespace amr
         }
 
         return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
+    }
+
+
+    template<typename GridLayout, typename ResMan, typename Action, typename... Args>
+    void visitLevel(SAMRAI_Types::level_t& level, ResMan& resman, Action&& action, Args&&... args)
+    {
+        for (auto& patch : level)
+        {
+            auto guard        = resman.setOnPatch(*patch, args...);
+            GridLayout layout = layoutFromPatch<GridLayout>(*patch);
+            std::stringstream patchID;
+            patchID << patch->getGlobalId();
+            action(layout, patchID.str(), static_cast<size_t>(level.getLevelNumber()));
+        }
+    }
+
+
+    template<typename GridLayout, typename ResMan, typename Action, typename... Args>
+    void visitHierarchy(SAMRAI::hier::PatchHierarchy& hierarchy, ResMan& resman, Action&& action,
+                        int minLevel, int maxLevel, Args&&... args)
+    {
+        for (int iLevel = minLevel; iLevel < hierarchy.getNumberOfLevels() && iLevel <= maxLevel;
+             iLevel++)
+        {
+            visitLevel<GridLayout>(*hierarchy.getPatchLevel(iLevel), resman,
+                                   std::forward<Action>(action), std::forward<Args...>(args...));
+        }
     }
 
 } // namespace amr
