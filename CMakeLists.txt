@@ -13,6 +13,7 @@ endif()
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+option(HighFive "Build with highfive usage" ON)
 option(test "Build test with google test" ON)
 option(testMPI "Run tests in parallel with mpiriun" OFF) # -n = PHARE_MPI_PROCS or 2 if unset
 option(coverage "Generate coverage" OFF)
@@ -57,7 +58,7 @@ endif(testMPI)
 if(MSVC)
   set (PHARE_WERROR_FLAGS /W4 /WX)
 else()
-  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
+  set (PHARE_WERROR_FLAGS )
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS}
                         -Wno-unused-variable -Wno-unused-parameter
@@ -130,6 +131,50 @@ include_directories(
 )
 endif()
 
+if(HighFive)
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive/include
+  )
+
+  if(DEFINED HDF5_ROOT)
+    find_package(HDF5 PATHS ${HDF5_ROOT} REQUIRED)
+  else()
+    find_package(HDF5 REQUIRED)
+  endif()
+
+  message("HighFive enabled - checking HDF5")
+  if(${HDF5_IS_PARALLEL})
+      message("HDF5 PARALLEL detected")
+      add_definitions(-DH5_HAVE_PARALLEL)
+  else()
+      message(WARNING "HDF5 NOT PARALLEL")
+  endif()
+
+  message(STATUS "HDF5_LIBRARIES " ${HDF5_LIBRARIES})
+  message(STATUS "HDF5_INCLUDE_DIRS " ${HDF5_INCLUDE_DIRS})
+  message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
+endif()
+
+#*******************************************************************************
+#* Pybind11 build option
+#*******************************************************************************
+find_package(pybind11 CONFIG QUIET)
+
+if (NOT pybind11_FOUND)
+
+  message("downloading subproject pybind11")
+  set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
+
+  if (NOT EXISTS ${PYBIND11_SRCDIR})
+    execute_process(
+      COMMAND ${Git} clone https://github.com/pybind/pybind11 ${PYBIND11_SRCDIR}
+    )
+  endif()
+
+  add_subdirectory(${PYBIND11_SRCDIR})
+
+endif()
+
 #*******************************************************************************
 #* Test and coverage option
 #*******************************************************************************
@@ -181,7 +226,6 @@ if (test)
           )
   ENDIF(coverage)
 
-
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)
@@ -197,6 +241,7 @@ if (test)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/initializer)
+  add_subdirectory(tests/diagnostic)
   add_subdirectory(tests/core/data/gridlayout)
   add_subdirectory(tests/core/data/vecfield)
   add_subdirectory(tests/core/data/particles)
@@ -218,24 +263,16 @@ if (test)
 
 endif()
 
-
-
-
-
-
 #*******************************************************************************
 #* Build the different libs and executables
 #*******************************************************************************
 
 add_subdirectory(src/core)
 add_subdirectory(src/solver)
+add_subdirectory(src/diagnostic)
 add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
 add_subdirectory(src/amr)
-
-
-
-
 
 #*******************************************************************************
 #* Documentation option
@@ -301,5 +338,4 @@ message("build with asan support                     : " ${asan})
 message("build with ubsan support                    : " ${ubsan})
 message("build with msan support                     : " ${msan})
 message("Add doxygen target to generate documentation: " ${documentation})
-
-
+message("Build with highfive usage                   : " ${HighFive})

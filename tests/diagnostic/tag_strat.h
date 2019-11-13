@@ -1,25 +1,5 @@
-#ifndef PHARE_TEST_TAG_STRATEGY_H
-#define PHARE_TEST_TAG_STRATEGY_H
-
-
-#include "types/amr_types.h"
-#include "data/field/field_data.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "data/vecfield/vecfield_component.h"
-#include "messengers/hybrid_messenger.h"
-#include "physical_models/hybrid_model.h"
-#include "resources_manager/amr_utils.h"
-#include "solvers/solver_ppc.h"
-
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
-
-#include <map>
-#include <string>
-
-
-using namespace PHARE::core;
-using namespace PHARE::amr;
-using namespace PHARE::solver;
+#ifndef PHARE_TEST_DIAGNOSTIC_TAG_STRAT
+#define PHARE_TEST_DIAGNOSTIC_TAG_STRAT
 
 template<typename Field, typename GridLayout, typename Func>
 void fillField(Field& field, GridLayout& layout, Func f)
@@ -34,9 +14,6 @@ void fillField(Field& field, GridLayout& layout, Func f)
         field(ix)   = f(x[0]);
     }
 }
-
-
-
 
 template<typename HybridModel>
 class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
@@ -68,12 +45,14 @@ public:
 
     void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                              int const levelNumber, double const initDataTime,
-                             bool const canBeRefined, bool const initialTime,
+                             [[maybe_unused]] bool const canBeRefined,
+                             [[maybe_unused]] bool const initialTime,
                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
                              = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                              bool const allocateData = true) override
     {
         auto level = hierarchy->getPatchLevel(levelNumber);
+
         if (allocateData)
         {
             for (auto patch : *level)
@@ -92,15 +71,12 @@ public:
             // using the init algorithms and actually perform the .fillData() for all of them
             messenger_->regrid(hierarchy, levelNumber, oldLevel, *model_, initDataTime);
         }
-
-
         else // we're creating a brand new finest level in the hierarchy
         {
             if (levelNumber == 0)
             {
                 model_->initialize(*level);
             }
-
             else
             {
                 messenger_->initLevel(*model_, *level, initDataTime);
@@ -113,27 +89,11 @@ public:
         }
     }
 
-    void resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                     int const coarsestLevel, int const finestLevel) override
+    void resetHierarchyConfiguration(
+        [[maybe_unused]] std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+        [[maybe_unused]] int const coarsestLevel, [[maybe_unused]] int const finestLevel) override
     {
     }
-
-
-    // it is important these functions are linear functions of x
-    // we compare the values obtained on the refined level to the value returned
-    // by these functions. This only works if they are linear functions of x
-    // since the refinement operator is a linear interpolation
-    static double fillEx(double x) { return x; }
-    static double fillEy(double x) { return 2 * x; }
-    static double fillEz(double x) { return 3 * x; }
-
-    static double fillBx(double x) { return 4 * x; }
-    static double fillBy(double x) { return 5 * x; }
-    static double fillBz(double x) { return 6 * x; }
-
-    static double fillInt([[maybe_unused]] double x) { return 1.; }
-
-private:
 };
 
-#endif
+#endif /* PHARE_TEST_DIAGNOSTIC_TAG_STRAT*/

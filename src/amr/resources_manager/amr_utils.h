@@ -8,11 +8,11 @@
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchData.h>
 
+
+#include "types/amr_types.h"
 #include "utilities/box/box.h"
 #include "utilities/constants.h"
 #include "utilities/point/point.h"
-
-
 
 
 namespace PHARE
@@ -198,6 +198,32 @@ namespace amr
         }
 
         return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
+    }
+
+
+    template<typename GridLayout, typename ResMan, typename Action, typename... Args>
+    void visitLevel(SAMRAI_Types::level_t& level, ResMan& resman, Action&& action, Args&&... args)
+    {
+        for (auto& patch : level)
+        {
+            auto guard        = resman.setOnPatch(*patch, args...);
+            GridLayout layout = layoutFromPatch<GridLayout>(*patch);
+            std::stringstream patchID;
+            patchID << patch->getGlobalId();
+            action(layout, patchID.str(), level.getLevelNumber());
+        }
+    }
+
+
+    template<typename GridLayout, typename ResMan, typename Action, typename... Args>
+    void visitHierarchy(SAMRAI::hier::PatchHierarchy& hierarchy, ResMan& resman, Action&& action,
+                        int minLevel, int maxLevel, Args&&... args)
+    {
+        assert(hierarchy.getNumberOfLevels() > maxLevel);
+        for (int iLevel = minLevel; iLevel <= maxLevel; iLevel++)
+        {
+            visitLevel<GridLayout>(*hierarchy.getPatchLevel(iLevel), resman, action, args...);
+        }
     }
 
 } // namespace amr

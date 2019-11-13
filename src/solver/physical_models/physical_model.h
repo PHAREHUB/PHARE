@@ -7,8 +7,6 @@
 #include <memory>
 #include <string>
 
-#include <SAMRAI/hier/PatchLevel.h>
-
 #include "messengers/messenger_info.h"
 
 namespace PHARE
