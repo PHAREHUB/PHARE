@@ -11,7 +11,7 @@ Main
 }
 PatchHierarchy
 {
-    max_levels  =   4
+    max_levels  =   2
     // vector of coarse ratio with dim dimension
     ratio_to_coarser
     {
@@ -28,9 +28,8 @@ PatchHierarchy
         // All finer level will use same values in as level_0
      }
 }
-ChopAndPackLoadBalancer
+LoadBalancer
 {
-    bin_pack_method = "SPATIAL"
 }
 StandardTagAndInitialize
 {
@@ -44,23 +43,8 @@ StandardTagAndInitialize
             {
                 boxes = [ (10) , (50)]
             }
-            level_1
-            {
-                boxes = [ (30) , (80)]
-            }
-            level_2
-            {
-                boxes = [ (72) , (144)]
-            }
-            level_3
-            {
-                boxes = [ (160) , (260)]
-            }
         }
     }
-}
-TileClustering
-{
 }
 GriddingAlgorithm
 {

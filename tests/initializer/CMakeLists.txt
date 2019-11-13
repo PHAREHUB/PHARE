@@ -21,7 +21,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setpythonpath.py.in ${CMAKE_CURRENT_B
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init.py ${CMAKE_CURRENT_BINARY_DIR}/init.py @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)
 
-
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

@@ -14,6 +14,9 @@
 #include <vector>
 
 
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
+
 using testing::DoubleNear;
 using testing::Eq;
 
@@ -61,6 +64,7 @@ public:
 
 
     int dataID;
+    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
 
 
     ~aSimpleBasicHierarchyWithTwoLevels()
@@ -161,6 +165,59 @@ public:
 TYPED_TEST_SUITE_P(levelOneCoarseBoundaries);
 
 
+
+
+TYPED_TEST_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule)
+{
+    // this test can only work with one patch on L1
+    // since parallel execution will make more
+    // disable the test for parallel runs.
+    if (this->mpi.getSize() > 1)
+    {
+        GTEST_SKIP();
+    }
+    auto refinedParticles = this->getRefinedL0Particles();
+
+    for (auto const& patch : *this->level1)
+    {
+        auto expectedParticles = this->filterLevelGhostParticles(refinedParticles, patch);
+        auto& actualParticles  = this->getLevelGhosts(patch);
+
+        ASSERT_EQ(expectedParticles.size(), actualParticles.size());
+        ASSERT_GT(actualParticles.size(), 0);
+
+        bool allFound = true;
+        for (auto const& particle : expectedParticles)
+        {
+            auto foundActual = std::find_if(
+                std::begin(actualParticles), std::end(actualParticles),
+
+                [&particle](auto const& actualPart) //
+                {
+                    bool sameCell  = true;
+                    bool sameDelta = true;
+
+                    for (auto iDim = 0u; iDim < TypeParam::dimension; ++iDim)
+                    {
+                        sameCell  = sameCell && actualPart.iCell[iDim] == particle.iCell[iDim];
+                        sameDelta = sameDelta
+                                    && std::fabs(actualPart.delta[iDim] - particle.delta[iDim])
+                                           < std::numeric_limits<float>::epsilon();
+                    }
+
+                    return sameCell && sameDelta;
+                });
+
+            allFound = allFound && (foundActual != std::end(expectedParticles));
+        }
+
+        EXPECT_TRUE(allFound);
+    }
+}
+
+
+
+
 template<typename Type>
 class levelOneInterior : public aSimpleBasicHierarchyWithTwoLevels<Type>
 {
@@ -223,50 +280,6 @@ MATCHER_P2(PositionNearEq, epsilon, dimension, "")
 
 
 
-TYPED_TEST_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule)
-{
-    auto refinedParticles = this->getRefinedL0Particles();
-
-    for (auto const& patch : *this->level1)
-    {
-        auto expectedParticles = this->filterLevelGhostParticles(refinedParticles, patch);
-        auto& actualParticles  = this->getLevelGhosts(patch);
-
-        ASSERT_EQ(expectedParticles.size(), actualParticles.size());
-        ASSERT_GT(actualParticles.size(), 0);
-
-        bool allFound = true;
-        for (auto const& particle : expectedParticles)
-        {
-            auto foundActual = std::find_if(
-                std::begin(actualParticles), std::end(actualParticles),
-
-                [&particle](auto const& actualPart) //
-                {
-                    bool sameCell  = true;
-                    bool sameDelta = true;
-
-                    for (auto iDim = 0u; iDim < TypeParam::dimension; ++iDim)
-                    {
-                        sameCell  = sameCell && actualPart.iCell[iDim] == particle.iCell[iDim];
-                        sameDelta = sameDelta
-                                    && std::fabs(actualPart.delta[iDim] - particle.delta[iDim])
-                                           < std::numeric_limits<float>::epsilon();
-                    }
-
-                    return sameCell && sameDelta;
-                });
-
-            allFound = allFound && (foundActual != std::end(expectedParticles));
-        }
-
-        EXPECT_TRUE(allFound);
-    }
-}
-
-
-
-
 TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
 {
     auto refinedParticles = this->getRefinedL0Particles();
@@ -313,8 +326,8 @@ TYPED_TEST_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule)
 
 
 REGISTER_TYPED_TEST_SUITE_P(levelOneInterior, isCorrectlyFilledByRefinedSchedule);
-
 REGISTER_TYPED_TEST_SUITE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefinedSchedule);
+
 
 
 
@@ -373,13 +386,13 @@ typedef ::testing::Types<
 
 
 
+
 INSTANTIATE_TYPED_TEST_SUITE_P(TestCoarseToFine, levelOneCoarseBoundaries,
                                ParticlesCoarseToFineDataDescriptorsRange);
 
 
+
 INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneInterior,
                                ParticlesInteriorDataDescriptorsRange);
-
-
 
 // INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneCoarseBoundaries, TestTest);

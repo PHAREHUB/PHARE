@@ -36,7 +36,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   gmock)
 
 
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(TARGET ${PROJECT_NAME}
                    POST_BUILD

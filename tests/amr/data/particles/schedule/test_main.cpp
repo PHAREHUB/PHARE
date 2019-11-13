@@ -63,6 +63,8 @@ TEST_F(ALevelWithDomainParticles, ghostParticleNumberisZeroBeforeScheduleAndCorr
         auto pdat    = patch->getPatchData(0);
         auto partDat = std::dynamic_pointer_cast<ParticlesData<1>>(pdat);
         auto& ghosts = partDat->patchGhostParticles;
+
+        // expect 3 particles in each (left/right) ghost cell
         EXPECT_EQ(6, ghosts.size());
         std::cout << "patch has " << ghosts.size() << " ghost particles\n";
     }
