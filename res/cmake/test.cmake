@@ -1,0 +1,50 @@
+
+if (test)
+
+  set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
+
+  if (NOT EXISTS ${GOOGLE_TEST_DIR})
+     execute_process(
+     COMMAND ${Git} clone https://github.com/google/googletest ${GOOGLE_TEST_DIR}
+     )
+  endif()
+
+  add_subdirectory(subprojects/googletest)
+
+  enable_testing()
+
+  add_subdirectory(tests/amr/data/particles)
+  add_subdirectory(tests/amr/data/field/coarsening)
+  add_subdirectory(tests/amr/data/field/copy_pack)
+  add_subdirectory(tests/amr/data/field/geometry)
+  add_subdirectory(tests/amr/data/field/overlap)
+  add_subdirectory(tests/amr/data/field/refine)
+  add_subdirectory(tests/amr/data/field/variable)
+  add_subdirectory(tests/amr/data/field/time_interpolate)
+  add_subdirectory(tests/amr/resources_manager/)
+  add_subdirectory(tests/amr/messengers)
+  add_subdirectory(tests/amr/models)
+  add_subdirectory(tests/amr/multiphysics_integrator)
+  add_subdirectory(tests/core/data/ndarray)
+  add_subdirectory(tests/core/data/field)
+  add_subdirectory(tests/initializer)
+  add_subdirectory(tests/core/data/gridlayout)
+  add_subdirectory(tests/core/data/vecfield)
+  add_subdirectory(tests/core/data/particles)
+  add_subdirectory(tests/core/data/ions)
+  add_subdirectory(tests/core/data/ion_population)
+  add_subdirectory(tests/core/data/maxwellian_particle_initializer)
+  add_subdirectory(tests/core/data/particle_initializer)
+  add_subdirectory(tests/core/utilities/box)
+  add_subdirectory(tests/core/utilities/particle_selector)
+  add_subdirectory(tests/core/utilities/partitionner)
+  add_subdirectory(tests/core/utilities/range)
+  add_subdirectory(tests/core/utilities/index)
+  add_subdirectory(tests/core/numerics/boundary_condition)
+  add_subdirectory(tests/core/numerics/interpolator)
+  add_subdirectory(tests/core/numerics/pusher)
+  add_subdirectory(tests/core/numerics/ampere)
+  add_subdirectory(tests/core/numerics/faraday)
+  add_subdirectory(tests/core/numerics/ohm)
+
+endif()
