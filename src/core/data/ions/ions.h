@@ -129,6 +129,9 @@ namespace core
                            std::divides<typename field_type::type>{});
             std::transform(std::begin(vz), std::end(vz), std::begin(*rho_), std::begin(vz),
                            std::divides<typename field_type::type>{});
+
+            assert(!std::isnan(vx.data()[0]));
+            assert(!std::isnan(vx.data()[vx.size() - 1]));
         }
 
 

@@ -43,6 +43,8 @@ namespace core
         }
 
 
+        auto data() const { return data_.data(); }
+        auto size() const { return data_.size(); }
 
         auto begin() const { return std::begin(data_); }
         auto begin() { return std::begin(data_); }
