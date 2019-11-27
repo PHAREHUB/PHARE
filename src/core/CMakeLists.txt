@@ -62,5 +62,4 @@ target_include_directories(${PROJECT_NAME}  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>
   $<INSTALL_INTERFACE:include/phare/core>)
 
-include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
 

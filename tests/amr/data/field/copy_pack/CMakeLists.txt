@@ -13,16 +13,13 @@ add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>
+  ${GTEST_INCLUDE_DIRS}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   )
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_amr
-  gtest
-  gmock)
+  ${GTEST_LIBS})
 
 add_subdirectory(copy)
 add_subdirectory(copy_overlap)

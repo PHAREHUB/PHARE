@@ -32,16 +32,13 @@ add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
 
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_include_directories(${PROJECT_NAME} PRIVATE
-  $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>
+  ${GTEST_INCLUDE_DIRS}
   )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_core
-  gtest
-  gmock)
+  ${GTEST_LIBS})
 
 add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -50,4 +47,4 @@ add_custom_command(TARGET ${PROJECT_NAME}
   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gridlayout_generate_test_files.py
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
-include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
+

@@ -1,15 +1,24 @@
 
 if (test)
 
-  set(GOOGLE_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
+  if(DEFINED GTEST_ROOT)
+    set(GTEST_ROOT ${GTEST_ROOT} CACHE PATH "Path to googletest")
+    find_package(GTest REQUIRED)
+    set(GTEST_LIBS GTest::GTest GTest::Main)
+  else()
+    set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
 
-  if (NOT EXISTS ${GOOGLE_TEST_DIR})
-     execute_process(
-     COMMAND ${Git} clone https://github.com/google/googletest ${GOOGLE_TEST_DIR}
-     )
+    if (NOT EXISTS ${GTEST_ROOT})
+       execute_process(
+       COMMAND ${Git} clone https://github.com/google/googletest ${GTEST_ROOT}
+       )
+    endif()
+
+    add_subdirectory(subprojects/googletest)
+    set(GTEST_INCLUDE_DIRS $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include> $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>)
+    set(GTEST_LIBS gtest gmock)
+
   endif()
-
-  add_subdirectory(subprojects/googletest)
 
   enable_testing()
 
@@ -21,7 +30,7 @@ if (test)
   add_subdirectory(tests/amr/data/field/refine)
   add_subdirectory(tests/amr/data/field/variable)
   add_subdirectory(tests/amr/data/field/time_interpolate)
-  add_subdirectory(tests/amr/resources_manager/)
+  add_subdirectory(tests/amr/resources_manager)
   add_subdirectory(tests/amr/messengers)
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
