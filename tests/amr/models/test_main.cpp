@@ -127,11 +127,11 @@ double ez(double x)
 
 using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 
-PHARE::initializer::PHAREDict<1> createIonsDict()
+PHARE::initializer::PHAREDict createIonsDict()
 {
-    PHARE::initializer::PHAREDict<1> dict;
+    PHARE::initializer::PHAREDict dict;
     dict["ions"]["name"]           = std::string{"ions"};
-    dict["ions"]["nbrPopulations"] = std::size_t{2};
+    dict["ions"]["nbrPopulations"] = int{2};
     dict["ions"]["pop0"]["name"]   = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]   = 1.;
     dict["ions"]["pop0"]["ParticleInitializer"]["name"]
@@ -158,7 +158,7 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
     dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
     dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
 
@@ -188,7 +188,7 @@ PHARE::initializer::PHAREDict<1> createIonsDict()
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = std::size_t{100};
+    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
     dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
     dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
 

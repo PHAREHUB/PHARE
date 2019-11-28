@@ -4,12 +4,15 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
+#include <sstream>
+#include <string>
 
 #include "data/ions/ion_population/ion_population.h"
 #include "data/vecfield/vecfield_component.h"
 #include "data_provider.h"
 #include "hybrid/hybrid_quantities.h"
 #include "particle_initializers/particle_initializer_factory.h"
+#include "utilities/algorithm.h"
 
 namespace PHARE
 {
@@ -30,15 +33,15 @@ namespace core
 
 
 
-        explicit Ions(PHARE::initializer::PHAREDict<dimension> dict)
+        explicit Ions(PHARE::initializer::PHAREDict dict)
             : name_{dict["name"].template to<std::string>()}
             , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
             , populations_{}
         {
-            auto nbrPop = dict["nbrPopulations"].template to<std::size_t>();
+            auto nbrPop = dict["nbrPopulations"].template to<int>();
             populations_.reserve(nbrPop);
 
-            for (uint32 ipop = 0; ipop < nbrPop; ++ipop)
+            for (int ipop = 0; ipop < nbrPop; ++ipop)
             {
                 auto& pop = dict["pop" + std::to_string(ipop)];
                 populations_.push_back(IonPopulation{name_, pop});
@@ -46,6 +49,7 @@ namespace core
         }
 
 
+        auto nbrPopulations() const { return populations_.size(); }
 
 
         field_type const& density() const
@@ -207,6 +211,19 @@ namespace core
         //                  ends the ResourcesUser interface
         //-------------------------------------------------------------------------
 
+
+        std::string to_str()
+        {
+            std::stringstream ss;
+            ss << "Ions\n";
+            ss << "------------------------------------\n";
+            ss << "number of populations  : " << nbrPopulations() << "\n";
+            for (auto& pop : populations_)
+                ss << core::to_str(pop);
+            return ss.str();
+        }
+
+
     private:
         std::string name_;
         field_type* rho_{nullptr};
@@ -214,6 +231,10 @@ namespace core
         std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
                                                  // although only 1 Ions should exist.
     };
+
+
+
+
 } // namespace core
 } // namespace PHARE
 

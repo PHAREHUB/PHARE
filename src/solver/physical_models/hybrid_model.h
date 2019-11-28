@@ -46,7 +46,7 @@ namespace solver
 
 
 
-        HybridModel(PHARE::initializer::PHAREDict<dimension> dict,
+        HybridModel(PHARE::initializer::PHAREDict dict,
                     std::shared_ptr<resources_manager_type> const& _resourcesManager)
             : IPhysicalModel<AMR_Types>{model_name}
             , state{dict}

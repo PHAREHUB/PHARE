@@ -283,6 +283,20 @@ namespace core
         uint32_t nz_ = 0;
     };
 
+
+
+    template<std::size_t dim>
+    auto makeNdArray(std::array<std::uint32_t, dim> sizes)
+    {
+        if constexpr (dim == 1)
+            return NdArrayVector1D{sizes[0]};
+        if constexpr (dim == 2)
+            return NdArrayVector2D{sizes[0], sizes[1]};
+        if constexpr (dim == 3)
+            return NdArrayVector3D{sizes[0], sizes[1], sizes[2]};
+    }
+
+
 } // namespace core
 } // namespace PHARE
 #endif // PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H

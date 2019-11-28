@@ -4,8 +4,11 @@
 
 #include "data_provider.h"
 #include "models/physical_state.h"
+#include "utilities/algorithm.h"
 
 #include <cstddef>
+#include <sstream>
+#include <string>
 #include <utility>
 
 namespace PHARE
@@ -22,7 +25,7 @@ namespace core
     public:
         static constexpr auto dimension = Ions::dimension;
 
-        HybridState(PHARE::initializer::PHAREDict<dimension> dict)
+        HybridState(PHARE::initializer::PHAREDict dict)
             : electromag{dict["electromag"]}
             , ions{dict["ions"]}
         {
@@ -31,6 +34,14 @@ namespace core
         Electromag electromag;
         Ions ions;
 
+        std::string to_str()
+        {
+            std::stringstream ss;
+            ss << "Hybrid State\n";
+            ss << "------------------------------------\n";
+            ss << core::to_str(ions);
+            return ss.str();
+        }
 
 
         //-------------------------------------------------------------------------
@@ -56,6 +67,7 @@ namespace core
         //                  ends the ResourcesUser interface
         //-------------------------------------------------------------------------
     };
+
 
 
 } // namespace core

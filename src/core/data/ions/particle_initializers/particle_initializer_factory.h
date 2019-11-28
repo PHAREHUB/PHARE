@@ -20,39 +20,38 @@ namespace core
         static constexpr auto dimension = GridLayout::dimension;
 
     public:
-        static std::unique_ptr<ParticleInitializerT> create(PHARE::initializer::PHAREDict<1>& dict)
+        static std::unique_ptr<ParticleInitializerT> create(PHARE::initializer::PHAREDict& dict)
         {
-            auto initializerName = dict["name"].to<std::string>();
+            auto initializerName = dict["name"].template to<std::string>();
 
-            std::string toto;
-
-            if (initializerName == "MaxwellianParticleInitializer")
+            if (initializerName == "maxwellian")
             {
-                auto& density = dict["density"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& density
+                    = dict["density"].template to<PHARE::initializer::ScalarFunction<dimension>>();
 
-                auto& bulkVelx
-                    = dict["bulk_velocity_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& bulkVelx = dict["bulk_velocity_x"]
+                                     .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
-                auto& bulkVely
-                    = dict["bulk_velocity_y"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& bulkVely = dict["bulk_velocity_y"]
+                                     .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
-                auto& bulkVelz
-                    = dict["bulk_velocity_z"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& bulkVelz = dict["bulk_velocity_z"]
+                                     .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
                 auto& vthx = dict["thermal_velocity_x"]
-                                 .to<PHARE::initializer::ScalarFunction<dimension>>();
+                                 .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
                 auto& vthy = dict["thermal_velocity_y"]
-                                 .to<PHARE::initializer::ScalarFunction<dimension>>();
+                                 .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
                 auto& vthz = dict["thermal_velocity_z"]
-                                 .to<PHARE::initializer::ScalarFunction<dimension>>();
+                                 .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
-                auto charge = dict["charge"].to<double>();
+                auto charge = dict["charge"].template to<double>();
 
-                auto nbrPartPerCell = dict["nbrPartPerCell"].to<std::size_t>();
+                auto nbrPartPerCell = dict["nbr_part_per_cell"].template to<int>();
 
-                auto basisName = dict["basis"].to<std::string>();
+                auto basisName = dict["basis"].template to<std::string>();
 
                 std::array<PHARE::initializer::ScalarFunction<dimension>, 3> v
                     = {bulkVelx, bulkVely, bulkVelz};
@@ -60,21 +59,24 @@ namespace core
                 std::array<PHARE::initializer::ScalarFunction<dimension>, 3> vth
                     = {vthx, vthy, vthz};
 
-                if (basisName == "Cartesian")
+                if (basisName == "cartesian")
                 {
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
                         density, v, vth, charge, nbrPartPerCell);
                 }
-                else if (basisName == "Magnetic")
+                else if (basisName == "magnetic")
                 {
                     [[maybe_unused]] Basis basis = Basis::Magnetic;
                     [[maybe_unused]] auto& bx
-                        = dict["magnetic_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                        = dict["magnetic_x"]
+                              .template to<PHARE::initializer::ScalarFunction<dimension>>();
                     [[maybe_unused]] auto& by
-                        = dict["magnetic_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                        = dict["magnetic_x"]
+                              .template to<PHARE::initializer::ScalarFunction<dimension>>();
                     [[maybe_unused]] auto& bz
-                        = dict["magnetic_x"].to<PHARE::initializer::ScalarFunction<dimension>>();
+                        = dict["magnetic_x"]
+                              .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(

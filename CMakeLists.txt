@@ -40,6 +40,9 @@ include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 #* SAMRAI build option
 include("${PHARE_PROJECT_DIR}/res/cmake/samrai.cmake")
 
+#* pybind
+include("${PHARE_PROJECT_DIR}/res/cmake/pybind.cmake")
+
 #* coverage and Test option
 include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
@@ -53,6 +56,7 @@ add_subdirectory(src/solver)
 add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
 add_subdirectory(src/amr)
+add_subdirectory(src/simulator)
 
 #* Documentation option
 include("${PHARE_PROJECT_DIR}/res/cmake/doc.cmake")

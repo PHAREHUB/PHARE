@@ -1,10 +1,10 @@
 #ifndef PHARE_CORE_UTILITIES_POINT_POINT_H
 #define PHARE_CORE_UTILITIES_POINT_POINT_H
 
-#include "utilities/meta/meta_utilities.h"
-
 #include <array>
 #include <cstddef>
+
+#include "utilities/meta/meta_utilities.h"
 
 namespace PHARE
 {
