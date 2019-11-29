@@ -7,7 +7,7 @@
 #include <string>
 
 #include "data/ions/particle_initializers/particle_initializer_factory.h"
-#include "initializer/data_provider.h"
+#include "data_provider.h"
 #include "messengers/hybrid_messenger_info.h"
 #include "models/hybrid_state.h"
 #include "physical_models/physical_model.h"
@@ -25,12 +25,14 @@ namespace solver
     class HybridModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using patch_t = typename AMR_Types::patch_t;
-        using level_t = typename AMR_Types::level_t;
+        using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, AMR_Types>;
+        using patch_t   = typename AMR_Types::patch_t;
+        using level_t   = typename AMR_Types::level_t;
         static const std::string model_name;
         using gridLayout_type           = GridLayoutT;
         using electromag_type           = Electromag;
         using vecfield_type             = typename Electromag::vecfield_type;
+        using field_type                = typename vecfield_type::field_type;
         using ions_type                 = Ions;
         using resources_manager_type    = amr::ResourcesManager<gridLayout_type>;
         static constexpr auto dimension = GridLayoutT::dimension;
@@ -107,29 +109,56 @@ namespace solver
             modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
             modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
 
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.interiorParticles),
-                           [](auto const& pop) { return pop.name(); });
-
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.levelGhostParticlesOld),
-                           [](auto const& pop) { return pop.name(); });
-
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.levelGhostParticlesNew),
-                           [](auto const& pop) { return pop.name(); });
-
-            std::transform(std::begin(state.ions), std::end(state.ions),
-                           std::back_inserter(modelInfo.patchGhostParticles),
-                           [](auto const& pop) { return pop.name(); });
+            auto transform_ = [](auto& ions, auto& inserter) {
+                std::transform(std::begin(ions), std::end(ions), std::back_inserter(inserter),
+                               [](auto const& pop) { return pop.name(); });
+            };
+            transform_(state.ions, modelInfo.interiorParticles);
+            transform_(state.ions, modelInfo.levelGhostParticlesOld);
+            transform_(state.ions, modelInfo.levelGhostParticlesNew);
+            transform_(state.ions, modelInfo.patchGhostParticles);
         }
 
-        virtual ~HybridModel() override = default;
+        virtual ~HybridModel() override {}
+
+        //-------------------------------------------------------------------------
+        //                  start the ResourcesUser interface
+        //-------------------------------------------------------------------------
+
+        bool isUsable() const { return state.electromag.isUsable() && state.ions.isUsable(); }
+
+        bool isSettable() const { return state.electromag.isSettable() && state.ions.isSettable(); }
+
+        auto getCompileTimeResourcesUserList() const
+        {
+            return std::forward_as_tuple(state.electromag, state.ions);
+        }
+
+        auto getCompileTimeResourcesUserList()
+        {
+            return std::forward_as_tuple(state.electromag, state.ions);
+        }
+
+        //-------------------------------------------------------------------------
+        //                  ends the ResourcesUser interface
+        //-------------------------------------------------------------------------
     };
 
     template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>
     const std::string HybridModel<GridLayoutT, Electromag, Ions, AMR_Types>::model_name
         = "HybridModel";
+
+    template<typename... Args>
+    HybridModel<Args...> hybrid_model_from_type_list(core::type_list<Args...>);
+
+    template<typename TypeList>
+    struct type_list_to_hybrid_model
+    {
+        using type = decltype(hybrid_model_from_type_list(std::declval<TypeList>()));
+    };
+
+    template<typename TypeList>
+    using type_list_to_hybrid_model_t = typename type_list_to_hybrid_model<TypeList>::type;
 
 } // namespace solver
 

@@ -26,14 +26,14 @@ endif(testMPI)
 if(MSVC)
   set (PHARE_WERROR_FLAGS /W4 /WX)
 else()
-  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror
-        -Wno-unused-variable -Wno-unused-parameter)
+  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS}
-      -Wno-gnu-zero-variadic-macro-arguments)
+                        -Wno-unused-variable -Wno-unused-parameter
+                        -Wno-gnu-zero-variadic-macro-arguments)
 else()
   set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS}
-      -Wno-class-memaccess
-      -Wno-unused-but-set-variable -Wno-unused-but-set-parameter)
+                          -Wno-unused-variable -Wno-unused-parameter
+                          -Wno-unused-but-set-variable -Wno-unused-but-set-parameter)
 endif()
 endif()

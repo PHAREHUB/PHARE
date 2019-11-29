@@ -36,6 +36,7 @@ namespace core
     public:
         static constexpr std::size_t dimension    = dim;
         static constexpr std::size_t interp_order = interpOrder;
+        static constexpr std::string_view type    = "yee";
 
         /*
         void constexpr initLinearCombinations_();

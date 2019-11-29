@@ -1,9 +1,8 @@
 
 
 #include "data_provider.h"
-#include "initializer/data_provider.h"
-#include "initializer/python_data_provider.h"
-#include "simulator/simulator.h"
+#include "python_data_provider.h"
+#include "simulator.h"
 #include "utilities/algorithm.h"
 
 #include <iostream>

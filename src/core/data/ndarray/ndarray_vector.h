@@ -17,6 +17,24 @@ namespace core
     template<typename DataType = double>
     class NdArrayVectorBase
     {
+    public:
+        using data_type = DataType;
+        //! user can check data_type to know of which type the elements are
+        static constexpr bool is_contiguous = 1;
+
+    public:
+        //! return the total number of elements in the container
+        auto data() const { return data_.data(); }
+        auto size() const { return data_.size(); }
+
+        auto begin() const { return std::begin(data_); }
+        auto begin() { return std::begin(data_); }
+
+        auto end() { return std::end(data_); }
+        auto end() const { return std::end(data_); }
+
+        void zero() { data_ = std::vector<DataType>(data_.size(), {0}); }
+
     protected:
         NdArrayVectorBase() = delete;
         explicit NdArrayVectorBase(std::size_t size)
@@ -30,34 +48,6 @@ namespace core
         NdArrayVectorBase& operator=(NdArrayVectorBase&& source) = default;
 
         std::vector<DataType> data_;
-
-    public:
-        //! user can check data_type to know of which type the elements are
-        using data_type = DataType;
-
-        //! return the total number of elements in the container
-        std::size_t size()
-        {
-            auto s = data_.size();
-            return static_cast<std::size_t>(s);
-        }
-
-
-
-        auto begin() const { return std::begin(data_); }
-        auto begin() { return std::begin(data_); }
-
-        auto end() { return std::end(data_); }
-        auto end() const { return std::end(data_); }
-
-
-        void zero()
-        {
-            for (auto& v : data_)
-            {
-                v = DataType{0};
-            }
-        }
     };
 
 
@@ -71,6 +61,8 @@ namespace core
     class NdArrayVector1D : public NdArrayVectorBase<DataType>
     {
     public:
+        static constexpr bool is_contiguous = 1;
+
         //! builds an NdArrayVector1D by specifying its number of elements
         explicit NdArrayVector1D(uint32_t nx)
             : NdArrayVectorBase<DataType>(nx)
@@ -282,8 +274,6 @@ namespace core
         uint32_t ny_ = 0;
         uint32_t nz_ = 0;
     };
-
-
 
     template<std::size_t dim>
     auto makeNdArray(std::array<std::uint32_t, dim> sizes)

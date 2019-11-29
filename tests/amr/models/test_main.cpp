@@ -1,5 +1,5 @@
 
-#include "amr/types/amr_types.h"
+#include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayout_impl.h"

@@ -3,7 +3,7 @@
 
 #include "python_data_provider.h"
 // intended blank HAVE_SYS_TIMES_His defined by samrai
-#include "amr/types/amr_types.h"
+#include "types/amr_types.h"
 #include "data/electromag/electromag.h"
 #include "data/grid/gridlayout.h"
 #include "data/grid/gridlayoutimplyee.h"
