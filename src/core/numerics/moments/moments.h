@@ -10,34 +10,56 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename Ions, typename GridLayout>
-    void
-    computeIonMoments(Ions& ions, GridLayout& layout,
-                      Interpolator<GridLayout::dimension, GridLayout::interp_order> interpolate)
+    template<typename Ions>
+    void resetMoments(Ions& ions)
     {
         for (auto& pop : ions)
         {
-            auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-            auto& ghosts                 = pop.patchGhostParticles();
-            auto& domain                 = pop.domainParticles();
+            pop.density().zero();
+            pop.flux().zero();
+        }
+    }
 
+
+    struct DomainDeposit
+    {
+    };
+
+    struct PatchGhostDeposit
+    {
+    };
+    struct LevelGhostDeposit
+    {
+    };
+
+
+    template<typename Ions, typename GridLayout, typename DepositTag>
+    void depositParticles(Ions& ions, GridLayout& layout,
+                          Interpolator<GridLayout::dimension, GridLayout::interp_order> interpolate,
+                          DepositTag)
+    {
+        for (auto& pop : ions)
+        {
             auto& density = pop.density();
             auto& flux    = pop.flux();
 
-            // need to reset flux and density before interpolating particles
-            flux.zero();
-            density.zero();
-
-            interpolate(std::begin(domain), std::end(domain), density, flux, layout);
-            interpolate(std::begin(ghosts), std::end(ghosts), density, flux, layout);
-            interpolate(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
-                        density, flux, layout);
+            if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
+            {
+                auto& partArray = pop.domainParticles();
+                interpolate(std::begin(partArray), std::end(partArray), density, flux, layout);
+            }
+            else if constexpr (std::is_same_v<DepositTag, PatchGhostDeposit>)
+            {
+                auto& partArray = pop.patchGhostParticles();
+                interpolate(std::begin(partArray), std::end(partArray), density, flux, layout);
+            }
+            else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
+            {
+                auto& partArray = pop.levelGhostParticlesOld();
+                interpolate(std::begin(partArray), std::end(partArray), density, flux, layout);
+            }
         }
-
-        ions.computeDensity();
-        ions.computeBulkVelocity();
     }
-
 
 } // namespace core
 } // namespace PHARE

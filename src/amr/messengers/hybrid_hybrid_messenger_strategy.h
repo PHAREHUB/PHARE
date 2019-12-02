@@ -186,7 +186,7 @@ namespace amr
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
-            computeIonMoments_(*level, model);
+            // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
         }
 
@@ -249,7 +249,7 @@ namespace amr
             // they need to be identical to levelGhostParticlesOld before advance
             copyLevelGhostOldToPushable_(level, model);
 
-            computeIonMoments_(level, model);
+            // computeIonMoments_(level, model);
         }
 
 
@@ -459,7 +459,7 @@ namespace amr
             // at some point in the future levelGhostParticles could be filled with injected
             // particles depending on the domain boundary condition.
 
-            computeIonMoments_(level, model);
+            // computeIonMoments_(level, model);
         }
 
 
@@ -606,22 +606,6 @@ namespace amr
                     std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
                               std::back_inserter(levelGhostParticles));
                 }
-            }
-        }
-
-
-
-
-        void computeIonMoments_(SAMRAI::hier::PatchLevel& level, IPhysicalModel& model)
-        {
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
-
-                core::computeIonMoments(ions, layout, interpolate_);
             }
         }
 
