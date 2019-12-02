@@ -9,10 +9,10 @@
 
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "messengers/mhd_messenger_info.h"
-#include "models/mhd_state.h"
-#include "physical_models/physical_model.h"
-#include "resources_manager/resources_manager.h"
+#include "amr/messengers/mhd_messenger_info.h"
+#include "core/models/mhd_state.h"
+#include "solver/physical_models/physical_model.h"
+#include "amr/resources_manager/resources_manager.h"
 
 
 

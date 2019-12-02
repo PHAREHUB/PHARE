@@ -19,9 +19,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 
 
 target_include_directories(${PROJECT_NAME}  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>
-  $<INSTALL_INTERFACE:include/phare/initializer>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC pybind11::embed)
 

@@ -2,8 +2,8 @@
 #include <string>
 #include <vector>
 
-#include "utilities/box/box.h"
-#include "utilities/point/point.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

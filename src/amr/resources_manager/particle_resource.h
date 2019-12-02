@@ -3,9 +3,9 @@
 
 
 
-#include "data/particles/particle_array.h"
-#include "data/particles/particles_data.h"
-#include "data/particles/particles_variable.h"
+#include "core/data/particles/particle_array.h"
+#include "amr/data/particles/particles_data.h"
+#include "amr/data/particles/particles_variable.h"
 
 namespace PHARE
 {

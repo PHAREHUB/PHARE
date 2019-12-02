@@ -3,18 +3,18 @@
 
 
 
-#include "data/ions/ion_population/ion_population.h"
-#include "data/ions/ions.h"
-#include "data/ndarray/ndarray_vector.h"
-#include "data/particles/particle_array.h"
-#include "data/vecfield/vecfield.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/data/ions/ion_population/ion_population.h"
+#include "core/data/ions/ions.h"
+#include "core/data/ndarray/ndarray_vector.h"
+#include "core/data/particles/particle_array.h"
+#include "core/data/vecfield/vecfield.h"
+#include "core/hybrid/hybrid_quantities.h"
 
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "data_provider.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
+#include "initializer/data_provider.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

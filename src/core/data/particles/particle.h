@@ -1,7 +1,7 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 
-#include "utilities/point/point.h"
+#include "core/utilities/point/point.h"
 
 #include <array>
 #include <type_traits>

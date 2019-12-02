@@ -2,10 +2,10 @@
 #define PHARE_LINEAR_WEIGHTER_H
 
 
-#include "data/field/field.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "utilities/constants.h"
-#include "utilities/point/point.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/field/field.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
 
 #include <SAMRAI/hier/Box.h>
 

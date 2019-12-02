@@ -9,7 +9,7 @@
 
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "messengers/messenger_info.h"
+#include "amr/messengers/messenger_info.h"
 
 namespace PHARE
 {

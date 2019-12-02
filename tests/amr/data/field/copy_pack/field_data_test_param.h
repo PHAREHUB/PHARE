@@ -15,12 +15,12 @@
 
 
 
-#include "data/field/field_data.h"
-#include "data/field/field_overlap.h"
-#include "data/field/field_variable.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "utilities/point/point.h"
+#include "amr/data/field/field_data.h"
+#include "amr/data/field/field_overlap.h"
+#include "amr/data/field/field_variable.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

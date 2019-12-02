@@ -4,11 +4,11 @@
 #include "gtest/gtest.h"
 
 
-#include "data/field/field.h"
-#include "data/field/field_geometry.h"
-#include "data/grid/gridlayout_impl.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "resources_manager/amr_utils.h"
+#include "core/data/field/field.h"
+#include "amr/data/field/field_geometry.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "amr/resources_manager/amr_utils.h"
 
 using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;

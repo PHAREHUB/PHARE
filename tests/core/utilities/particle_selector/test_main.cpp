@@ -1,10 +1,10 @@
 
 #include <string>
 
-#include "data/particles/particle.h"
-#include "utilities/box/box.h"
-#include "utilities/particle_selector/particle_selector.h"
-#include "utilities/point/point.h"
+#include "core/data/particles/particle.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/particle_selector/particle_selector.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

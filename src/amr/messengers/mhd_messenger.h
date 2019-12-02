@@ -9,12 +9,10 @@
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/RefineOperator.h>
 
-#include "messengers/messenger.h"
-#include "messengers/messenger_info.h"
-#include "messengers/mhd_messenger_info.h"
-#include "hybrid/hybrid_quantities.h"
-//#include "physical_models/mhd_model.h"
-//#include "physical_models/physical_model.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "amr/messengers/messenger.h"
+#include "amr/messengers/messenger_info.h"
+#include "amr/messengers/mhd_messenger_info.h"
 
 namespace PHARE
 {

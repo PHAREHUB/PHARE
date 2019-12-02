@@ -2,9 +2,9 @@
 #define PHARE_TEST_BASIC_HIERARCHY_H
 
 
-#include "data/particles/particles_variable.h"
-#include "data/particles/refine/particles_data_split.h"
-#include "data/particles/refine/split.h"
+#include "amr/data/particles/particles_variable.h"
+#include "amr/data/particles/refine/particles_data_split.h"
+#include "amr/data/particles/refine/split.h"
 #include "test_tag_strategy.h"
 
 

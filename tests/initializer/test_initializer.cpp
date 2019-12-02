@@ -1,28 +1,21 @@
 
 
+#include <memory>
 #include <string>
 
-#include "data/grid/gridlayoutdefs.h"
+
+#include "initializer/data_provider.h"
+#include "initializer/python_data_provider.h"
+#include "initializer/restart_data_provider.h"
 
 
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/index/index.h"
+#include "core/data/electromag/electromag.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayoutimplyee.h"
+#include "core/data/particles/particle_array.h"
 
-
-#include "utilities/index/index.h"
-
-
-#include "data_provider.h"
-#include "python_data_provider.h"
-#include "restart_data_provider.h"
-
-
-
-
-#include "data/electromag/electromag.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutimplyee.h"
-#include "data/particles/particle_array.h"
-
-#include <memory>
 
 using namespace PHARE::initializer;
 

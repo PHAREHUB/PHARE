@@ -1,12 +1,12 @@
 #ifndef PHARE_FIELD_DATA_COARSEN_H
 #define PHARE_FIELD_DATA_COARSEN_H
 
-#include "data/field/field_data.h"
-#include "data/field/field_geometry.h"
+#include "amr/data/field/field_data.h"
+#include "amr/data/field/field_geometry.h"
 #include "field_coarsen_index_weight.h"
 #include "field_coarsener.h"
-#include "utilities/constants.h"
-#include "utilities/point/point.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/CoarsenOperator.h>

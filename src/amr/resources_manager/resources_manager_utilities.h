@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_H
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_H
 
-#include "utilities/meta/meta_utilities.h"
+#include "core/utilities/meta/meta_utilities.h"
 
 #include <string>
 #include <type_traits>

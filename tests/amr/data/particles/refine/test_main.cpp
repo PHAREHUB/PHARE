@@ -1,9 +1,9 @@
-#include "data/particles/particles_data.h"
-#include "data/particles/particles_variable.h"
-#include "data/particles/refine/particles_data_split.h"
-#include "data/particles/refine/split.h"
+#include "amr/data/particles/particles_data.h"
+#include "amr/data/particles/particles_variable.h"
+#include "amr/data/particles/refine/particles_data_split.h"
+#include "amr/data/particles/refine/split.h"
 #include "test_basic_hierarchy.h"
-#include "resources_manager/amr_utils.h"
+#include "amr/resources_manager/amr_utils.h"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>

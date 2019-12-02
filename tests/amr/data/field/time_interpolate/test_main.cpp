@@ -11,13 +11,13 @@
 #include "gtest/gtest.h"
 
 
-#include "data/field/time_interpolate/field_linear_time_interpolate.h"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
 
-#include "data/field/field.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "hybrid/hybrid_quantities.h"
-#include "resources_manager/amr_utils.h"
+#include "core/data/field/field.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "amr/resources_manager/amr_utils.h"
 
 
 

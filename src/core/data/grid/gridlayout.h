@@ -2,15 +2,15 @@
 #define PHARE_CORE_GRID_GridLayout_H
 
 
-#include "data/field/field.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/utilities/types.h"
+#include "core/data/field/field.h"
 #include "gridlayoutdefs.h"
-#include "hybrid/hybrid_quantities.h"
-#include "utilities/algorithm.h"
-#include "utilities/box/box.h"
-#include "utilities/constants.h"
-#include "utilities/index/index.h"
-#include "utilities/point/point.h"
-#include "utilities/types.h"
+#include "core/utilities/algorithm.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/index/index.h"
+#include "core/utilities/point/point.h"
 
 #include <array>
 #include <cmath>
@@ -240,7 +240,8 @@ namespace core
          * in a given direction. This is always zero by convention. This function exists only
          * for readibility reasons, not to have literal '0' in the code.
          */
-        uint32 ghostStartIndex([[maybe_unused]] QtyCentering centering, [[maybe_unused]] Direction direction) const
+        uint32 ghostStartIndex([[maybe_unused]] QtyCentering centering,
+                               [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
@@ -256,8 +257,9 @@ namespace core
 
 
         template<typename NdArrayImpl>
-        uint32 ghostStartIndex([[maybe_unused]] Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                               [[maybe_unused]] Direction direction) const
+        uint32
+        ghostStartIndex([[maybe_unused]] Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
+                        [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
@@ -465,7 +467,7 @@ namespace core
         template<typename Field, typename DirectionTag>
         auto deriv(Field const& operand, MeshIndex<Field::dimension> index, DirectionTag)
         {
-            auto fieldCentering   = centering(operand.physicalQuantity());
+            auto fieldCentering = centering(operand.physicalQuantity());
             using PHARE::core::dirX;
             using PHARE::core::dirY;
             using PHARE::core::dirZ;

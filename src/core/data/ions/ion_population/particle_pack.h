@@ -1,7 +1,7 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_H
 
-#include "data/particles/particle_array.h"
+#include "core/data/particles/particle_array.h"
 
 namespace PHARE
 {

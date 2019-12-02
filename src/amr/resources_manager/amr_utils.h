@@ -8,9 +8,9 @@
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchData.h>
 
-#include "utilities/box/box.h"
-#include "utilities/constants.h"
-#include "utilities/point/point.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
 
 
 

@@ -1,9 +1,9 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_H
 #define PHARE_FIELD_REFINE_OPERATOR_H
 
-#include "data/field/field_data.h"
-#include "data/field/field_geometry.h"
-#include "data/grid/gridlayout.h"
+#include "amr/data/field/field_data.h"
+#include "amr/data/field/field_geometry.h"
+#include "core/data/grid/gridlayout.h"
 #include "field_linear_refine.h"
 #include "field_refiner.h"
 

@@ -2,15 +2,15 @@
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_DERIV_H
 
 
-#include "data/field/field.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
+#include "core/data/field/field.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
 #include "gridlayout_base_params.h"
 #include "gridlayout_params.h"
 #include "gridlayout_utilities.h"
-#include "hybrid/hybrid_quantities.h"
-#include "utilities/box/box.h"
-#include "utilities/point/point.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

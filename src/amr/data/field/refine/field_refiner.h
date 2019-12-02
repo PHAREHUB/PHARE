@@ -2,11 +2,11 @@
 #define PHARE_FIELD_REFINER_H
 
 
-#include "data/field/field.h"
-#include "data/grid/gridlayoutdefs.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/field/field.h"
 #include "field_linear_refine.h"
-#include "utilities/constants.h"
-#include "utilities/point/point.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
 
 #include <SAMRAI/hier/Box.h>
 

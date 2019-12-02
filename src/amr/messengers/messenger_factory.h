@@ -7,12 +7,11 @@
 #include <optional>
 #include <string>
 
-#include "messengers/hybrid_hybrid_messenger_strategy.h"
-#include "messengers/hybrid_messenger.h"
-#include "messengers/messenger.h"
-#include "messengers/mhd_hybrid_messenger_strategy.h"
-#include "messengers/mhd_messenger.h"
-//#include "physical_models/physical_model.h"
+#include "amr/messengers/hybrid_hybrid_messenger_strategy.h"
+#include "amr/messengers/hybrid_messenger.h"
+#include "amr/messengers/messenger.h"
+#include "amr/messengers/mhd_hybrid_messenger_strategy.h"
+#include "amr/messengers/mhd_messenger.h"
 
 
 namespace PHARE

@@ -1,10 +1,10 @@
 #ifndef PHARE_PARTICLES_DATA_SPLIT_H
 #define PHARE_PARTICLES_DATA_SPLIT_H
 
-#include "data/particles/particles_data.h"
-#include "resources_manager/amr_utils.h"
+#include "amr/data/particles/particles_data.h"
+#include "amr/resources_manager/amr_utils.h"
 #include "split.h"
-#include "utilities/constants.h"
+#include "core/utilities/constants.h"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>

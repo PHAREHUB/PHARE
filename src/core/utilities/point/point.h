@@ -4,7 +4,7 @@
 #include <array>
 #include <cstddef>
 
-#include "utilities/meta/meta_utilities.h"
+#include "core/utilities/meta/meta_utilities.h"
 
 namespace PHARE
 {

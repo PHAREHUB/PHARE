@@ -7,9 +7,9 @@
 #include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "messengers/messenger.h"
-#include "messengers/messenger_info.h"
-#include "physical_models/physical_model.h"
+#include "amr/messengers/messenger.h"
+#include "amr/messengers/messenger_info.h"
+#include "solver/physical_models/physical_model.h"
 
 
 

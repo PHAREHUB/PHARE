@@ -3,7 +3,7 @@
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
 
 #include "field_resource.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/hybrid/hybrid_quantities.h"
 #include "particle_resource.h"
 #include "resources_guards.h"
 #include "resources_manager_utilities.h"

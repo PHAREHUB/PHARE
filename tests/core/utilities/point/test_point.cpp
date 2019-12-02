@@ -1,6 +1,6 @@
 
 
-#include "utilities/point/point.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -10,9 +10,9 @@ using namespace PHARE;
 
 TEST(Point, canBeBuiltByTemplateDeduction)
 {
-    [[maybe_unused]] Point p3D { -1, 4, 3 };
-    [[maybe_unused]] Point p2D { -1, 4 };
-    [[maybe_unused]] Point p1D { -1 };
+    [[maybe_unused]] Point p3D{-1, 4, 3};
+    [[maybe_unused]] Point p2D{-1, 4};
+    [[maybe_unused]] Point p1D{-1};
 }
 
 

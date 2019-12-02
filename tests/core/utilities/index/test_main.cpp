@@ -1,8 +1,8 @@
 
 #include <string>
 
-#include "data/grid/gridlayoutdefs.h"
-#include "utilities/index/index.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/index/index.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

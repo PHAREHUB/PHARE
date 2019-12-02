@@ -2,9 +2,9 @@
 #define HYBRID_HYBRID_STATE_H
 
 
-#include "data_provider.h"
-#include "models/physical_state.h"
-#include "utilities/algorithm.h"
+#include "core/models/physical_state.h"
+#include "initializer/data_provider.h"
+#include "core/utilities/algorithm.h"
 
 #include <cstddef>
 #include <sstream>

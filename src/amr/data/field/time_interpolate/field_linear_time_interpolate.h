@@ -6,8 +6,8 @@
 //     FieldLinearTimeInterpolate
 // -------------------------------------
 
-#include "data/field/field_data.h"
-#include "data/field/field_geometry.h"
+#include "amr/data/field/field_data.h"
+#include "amr/data/field/field_geometry.h"
 
 #include <SAMRAI/hier/TimeInterpolateOperator.h>
 

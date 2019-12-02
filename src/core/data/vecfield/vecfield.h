@@ -4,7 +4,7 @@
 #include <array>
 #include <utility>
 
-#include "data/field/field.h"
+#include "core/data/field/field.h"
 #include "vecfield_component.h"
 
 namespace PHARE

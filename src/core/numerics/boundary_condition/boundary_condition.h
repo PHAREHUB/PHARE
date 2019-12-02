@@ -3,8 +3,8 @@
 
 #include <cstddef>
 
-#include "utilities/box/box.h"
-#include "utilities/partitionner/partitionner.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/partitionner/partitionner.h"
 
 
 namespace PHARE

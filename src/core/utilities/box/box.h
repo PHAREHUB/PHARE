@@ -4,8 +4,8 @@
 
 #include <cstddef>
 
-#include "utilities/meta/meta_utilities.h"
-#include "utilities/point/point.h"
+#include "core/utilities/point/point.h"
+#include "core/utilities/meta/meta_utilities.h"
 
 
 namespace PHARE

@@ -1,9 +1,9 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_TEST_H
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_TEST_H
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutimplyee.h"
-#include "utilities/types.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayoutimplyee.h"
+#include "core/utilities/types.h"
 
 
 #include "gmock/gmock.h"

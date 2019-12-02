@@ -43,6 +43,8 @@ include("${PHARE_PROJECT_DIR}/res/cmake/samrai.cmake")
 #* pybind
 include("${PHARE_PROJECT_DIR}/res/cmake/pybind.cmake")
 
+include_directories(${PHARE_PROJECT_DIR}/src)
+
 #* coverage and Test option
 include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")

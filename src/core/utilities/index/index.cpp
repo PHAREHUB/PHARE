@@ -1,7 +1,7 @@
 
 #include "index.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "utilities/types.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/types.h"
 
 namespace PHARE
 {

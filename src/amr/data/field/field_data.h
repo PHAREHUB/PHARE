@@ -5,9 +5,9 @@
 #include <SAMRAI/tbox/MemoryUtilities.h>
 #include <utility>
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "resources_manager/amr_utils.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "amr/resources_manager/amr_utils.h"
 
 #include "field_geometry.h"
 

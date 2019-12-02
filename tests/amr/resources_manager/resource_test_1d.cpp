@@ -1,11 +1,11 @@
 
 #include "resource_test_1d.h"
-#include "data/electromag/electromag.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "data_provider.h"
-#include "models/hybrid_state.h"
+#include "core/data/electromag/electromag.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
+#include "initializer/data_provider.h"
+#include "core/models/hybrid_state.h"
 
 
 static constexpr std::size_t dim         = 1;

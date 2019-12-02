@@ -1,9 +1,9 @@
 #ifndef PHARE_FIELD_COARSENER_H
 #define PHARE_FIELD_COARSENER_H
 
-#include "data/field/coarsening/field_coarsen_index_weight.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "utilities/constants.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "amr/data/field/coarsening/field_coarsen_index_weight.h"
+#include "core/utilities/constants.h"
 
 #include <SAMRAI/hier/Box.h>
 

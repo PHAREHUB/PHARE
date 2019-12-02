@@ -2,13 +2,13 @@
 #include <type_traits>
 
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "data/particles/particle_array.h"
-#include "data/particles/particle_utilities.h"
-#include "utilities/box/box.h"
-#include "utilities/point/point.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
+#include "core/data/particles/particle_array.h"
+#include "core/data/particles/particle_utilities.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

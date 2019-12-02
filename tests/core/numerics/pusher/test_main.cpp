@@ -9,12 +9,12 @@
 #include <string>
 #include <vector>
 
-#include "data/particles/particle_array.h"
-#include "numerics/boundary_condition/boundary_condition.h"
-#include "numerics/pusher/boris.h"
-#include "numerics/pusher/pusher_factory.h"
-#include "utilities/particle_selector/particle_selector.h"
-#include "utilities/range/range.h"
+#include "core/data/particles/particle_array.h"
+#include "core/numerics/boundary_condition/boundary_condition.h"
+#include "core/numerics/pusher/boris.h"
+#include "core/numerics/pusher/pusher_factory.h"
+#include "core/utilities/particle_selector/particle_selector.h"
+#include "core/utilities/range/range.h"
 
 using namespace PHARE::core;
 

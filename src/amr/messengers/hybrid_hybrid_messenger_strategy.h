@@ -3,17 +3,17 @@
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
 
 #include "communicators.h"
-#include "data/field/coarsening/field_coarsen_operator.h"
-#include "data/field/refine/field_refine_operator.h"
-#include "data/field/time_interpolate/field_linear_time_interpolate.h"
-#include "data/particles/refine/particles_data_split.h"
-#include "data/particles/refine/split.h"
-#include "messengers/hybrid_messenger_info.h"
-#include "messengers/hybrid_messenger_strategy.h"
-#include "numerics/interpolator/interpolator.h"
-#include "numerics/moments/moments.h"
-#include "resources_manager/amr_utils.h"
-#include "resources_manager/resources_manager_utilities.h"
+#include "amr/data/field/coarsening/field_coarsen_operator.h"
+#include "amr/data/field/refine/field_refine_operator.h"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
+#include "amr/data/particles/refine/particles_data_split.h"
+#include "amr/data/particles/refine/split.h"
+#include "amr/messengers/hybrid_messenger_info.h"
+#include "amr/messengers/hybrid_messenger_strategy.h"
+#include "core/numerics/interpolator/interpolator.h"
+#include "core/numerics/moments/moments.h"
+#include "amr/resources_manager/amr_utils.h"
+#include "amr/resources_manager/resources_manager_utilities.h"
 
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>

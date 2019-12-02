@@ -4,9 +4,9 @@
 #include <cstddef>
 #include <iostream>
 
-#include "data/grid/gridlayoutdefs.h"
-#include "data/vecfield/vecfield_component.h"
-#include "utilities/index/index.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/vecfield/vecfield_component.h"
+#include "core/utilities/index/index.h"
 
 namespace PHARE
 {

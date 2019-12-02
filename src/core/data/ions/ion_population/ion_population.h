@@ -9,11 +9,11 @@
 #include <vector>
 
 
-#include "data/ions/particle_initializers/particle_initializer.h"
-#include "data_provider.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/ions/particle_initializers/particle_initializer.h"
+#include "initializer/data_provider.h"
 #include "particle_pack.h"
-#include "utilities/algorithm.h"
+#include "core/utilities/algorithm.h"
 
 namespace PHARE
 {

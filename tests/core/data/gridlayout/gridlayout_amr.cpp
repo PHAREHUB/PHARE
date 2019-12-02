@@ -1,9 +1,9 @@
 
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "utilities/box/box.h"
-#include "utilities/index/index.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/index/index.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

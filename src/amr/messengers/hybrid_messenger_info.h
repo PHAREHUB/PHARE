@@ -2,7 +2,7 @@
 #ifndef PHARE_HYBRID_MESSENGER_INFO_H
 #define PHARE_HYBRID_MESSENGER_INFO_H
 
-#include "data/vecfield/vecfield_component.h"
+#include "core/data/vecfield/vecfield_component.h"
 #include "messenger_info.h"
 
 #include <string>

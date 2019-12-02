@@ -1,8 +1,8 @@
 #ifndef PHARE_MHD_STATE_H
 #define PHARE_MHD_STATE_H
 
-#include "hybrid/hybrid_quantities.h"
-#include "models/physical_state.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/models/physical_state.h"
 
 namespace PHARE
 {

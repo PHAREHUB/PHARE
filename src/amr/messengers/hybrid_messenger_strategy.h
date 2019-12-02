@@ -2,8 +2,7 @@
 #ifndef PHARE_HYBRID_MESSENGER_STRATEGY_H
 #define PHARE_HYBRID_MESSENGER_STRATEGY_H
 
-#include "messengers/messenger_info.h"
-//#include "physical_models/physical_model.h"
+#include "amr/messengers/messenger_info.h"
 
 
 #include <SAMRAI/hier/PatchHierarchy.h>

@@ -2,8 +2,8 @@
 #define PHARE_TEST_BASIC_HIERARCHY_H
 
 
-#include "data/field/coarsening/field_coarsen_operator.h"
-#include "data/field/field_variable.h"
+#include "amr/data/field/coarsening/field_coarsen_operator.h"
+#include "amr/data/field/field_variable.h"
 #include "test_tag_strategy.h"
 
 
@@ -62,8 +62,8 @@ public:
      */
     explicit BasicHierarchy(int ratio)
         : inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
-              inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
-              + std::to_string(ratio) + ".txt")}
+            inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
+            + std::to_string(ratio) + ".txt")}
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()} //
         /* Ex Ey Ez */

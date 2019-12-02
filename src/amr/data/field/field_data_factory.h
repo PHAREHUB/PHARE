@@ -8,8 +8,8 @@
 
 #include <utility>
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
 #include "field_data.h"
 
 namespace PHARE
@@ -31,7 +31,7 @@ namespace amr
         FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
                          std::string const& name, PhysicalQuantity qty)
             : SAMRAI::hier::PatchDataFactory(
-                  SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), 5})
+                SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), 5})
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{dataLivesOnPatchBorder}
             , quantity_{qty}
