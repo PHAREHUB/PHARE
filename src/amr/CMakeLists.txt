@@ -71,4 +71,3 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   SAMRAI_xfer
   )
 
-include(${PHARE_PROJECT_DIR}/sanitizer.cmake)

@@ -20,5 +20,3 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   pybind11::embed
   )
 
-
-include(${PHARE_PROJECT_DIR}/sanitizer.cmake)
