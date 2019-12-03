@@ -3,9 +3,9 @@
 
 #include <cstddef>
 
-#include "data/grid/gridlayoutdefs.h"
-#include "utilities/point/point.h"
-#include "utilities/types.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/point/point.h"
+#include "core/utilities/types.h"
 
 namespace PHARE
 {

@@ -3,9 +3,9 @@
 
 #include <cstddef>
 
-#include "hybrid/hybrid_quantities.h"
-#include "utilities/point/point.h"
-#include "utilities/types.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/utilities/types.h"
+#include "core/utilities/point/point.h"
 
 namespace PHARE
 {

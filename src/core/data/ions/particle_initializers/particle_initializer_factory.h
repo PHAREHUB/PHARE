@@ -2,10 +2,10 @@
 #define PHARE_PARTICLE_INITIALIZER_FACTORY_H
 
 
-#include "data_provider.h"
+#include "core/utilities/types.h"
+#include "initializer/data_provider.h"
 #include "maxwellian_particle_initializer.h"
 #include "particle_initializer.h"
-#include "utilities/types.h"
 
 #include <memory>
 

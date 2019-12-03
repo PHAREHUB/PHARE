@@ -1,8 +1,8 @@
 #ifndef PHARE_FIELD_RESOURCE_H
 #define PHARE_FIELD_RESOURCE_H
 
-#include "data/field/field_data.h"
-#include "data/field/field_variable.h"
+#include "amr/data/field/field_data.h"
+#include "amr/data/field/field_variable.h"
 
 namespace PHARE
 {

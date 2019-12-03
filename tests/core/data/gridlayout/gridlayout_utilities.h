@@ -3,7 +3,7 @@
 
 #include <array>
 
-#include "data/ndarray/ndarray_vector.h"
+#include "core/data/ndarray/ndarray_vector.h"
 
 using namespace PHARE::core;
 

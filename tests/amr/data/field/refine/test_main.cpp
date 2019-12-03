@@ -5,10 +5,10 @@
 #include "gtest/gtest.h"
 
 
-#include "data/field/refine/field_linear_refine.h"
-#include "data/field/refine/field_refine_operator.h"
-#include "data/field/refine/field_refiner.h"
-#include "data/grid/gridlayout.h"
+#include "amr/data/field/refine/field_linear_refine.h"
+#include "amr/data/field/refine/field_refine_operator.h"
+#include "amr/data/field/refine/field_refiner.h"
+#include "core/data/grid/gridlayout.h"
 
 #include "test_basic_hierarchy.h"
 

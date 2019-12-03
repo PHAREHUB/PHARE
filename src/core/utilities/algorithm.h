@@ -1,7 +1,7 @@
 #ifndef PHARE_ALGORITHM_H
 #define PHARE_ALGORITHM_H
 
-#include "utilities/types.h"
+#include "core/utilities/types.h"
 
 
 

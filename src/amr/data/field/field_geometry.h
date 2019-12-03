@@ -3,11 +3,11 @@
 
 #include <SAMRAI/hier/BoxGeometry.h>
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
-#include "data/grid/gridlayoutdefs.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/types.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
 #include "field_overlap.h"
-#include "utilities/types.h"
 
 namespace PHARE
 {

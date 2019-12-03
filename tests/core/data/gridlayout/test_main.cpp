@@ -1,7 +1,7 @@
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutimplyee.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayoutimplyee.h"
 #include "gridlayout_test.h"
-#include "utilities/types.h"
+#include "core/utilities/types.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

@@ -2,12 +2,12 @@
 #define TESTS_CORE_DATA_GRIDLAYOUT_ALLOCSIZE_H
 
 
-#include "data/grid/gridlayout.h"
-#include "data/ndarray/ndarray_vector.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/ndarray/ndarray_vector.h"
 #include "gridlayout_base_params.h"
 #include "gridlayout_params.h"
 #include "gridlayout_utilities.h"
-#include "utilities/point/point.h"
+#include "core/utilities/point/point.h"
 
 #include <fstream>
 #include <vector>

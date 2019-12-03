@@ -2,9 +2,9 @@
 #ifndef PHARE_MHD_HYBRID_MESSENGER_STRATEGY_H
 #define PHARE_MHD_HYBRID_MESSENGER_STRATEGY_H
 
-#include "messengers/hybrid_messenger_info.h"
-#include "messengers/hybrid_messenger_strategy.h"
-#include "messengers/mhd_messenger_info.h"
+#include "amr/messengers/hybrid_messenger_info.h"
+#include "amr/messengers/hybrid_messenger_strategy.h"
+#include "amr/messengers/mhd_messenger_info.h"
 
 #include <string>
 

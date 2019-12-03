@@ -3,8 +3,8 @@
 
 #include <cstddef>
 
-#include "data/particles/particle.h"
-#include "utilities/box/box.h"
+#include "core/data/particles/particle.h"
+#include "core/utilities/box/box.h"
 
 namespace PHARE
 {

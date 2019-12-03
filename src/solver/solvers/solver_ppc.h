@@ -6,9 +6,9 @@
 #include <SAMRAI/hier/Patch.h>
 
 
-#include "messengers/hybrid_messenger.h"
-#include "messengers/hybrid_messenger_info.h"
-#include "solvers/solver.h"
+#include "amr/messengers/hybrid_messenger.h"
+#include "amr/messengers/hybrid_messenger_info.h"
+#include "solver/solvers/solver.h"
 
 namespace PHARE
 {

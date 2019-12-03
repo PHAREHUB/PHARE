@@ -1,5 +1,5 @@
-#include "data/particles/particles_data.h"
-#include "data/particles/particles_data_factory.h"
+#include "amr/data/particles/particles_data.h"
+#include "amr/data/particles/particles_data_factory.h"
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDescriptor.h>

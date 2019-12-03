@@ -2,9 +2,9 @@
 #define PHARE_TEST_BASIC_HIERARCHY_H
 
 
-#include "data/field/field_variable.h"
-#include "data/field/refine/field_refine_operator.h"
-#include "data/grid/gridlayout.h"
+#include "amr/data/field/field_variable.h"
+#include "amr/data/field/refine/field_refine_operator.h"
+#include "core/data/grid/gridlayout.h"
 #include "test_tag_strategy.h"
 
 

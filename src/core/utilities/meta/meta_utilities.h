@@ -4,7 +4,7 @@
 #include <iterator>
 #include <type_traits>
 
-#include "utilities/types.h"
+#include "core/utilities/types.h"
 
 namespace PHARE
 {

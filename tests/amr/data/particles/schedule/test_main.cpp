@@ -1,4 +1,4 @@
-#include "data/particles/particles_data.h"
+#include "amr/data/particles/particles_data.h"
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>

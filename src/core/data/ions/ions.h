@@ -7,12 +7,12 @@
 #include <sstream>
 #include <string>
 
-#include "data/ions/ion_population/ion_population.h"
-#include "data/vecfield/vecfield_component.h"
-#include "data_provider.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/ions/ion_population/ion_population.h"
+#include "core/data/vecfield/vecfield_component.h"
+#include "initializer/data_provider.h"
 #include "particle_initializers/particle_initializer_factory.h"
-#include "utilities/algorithm.h"
+#include "core/utilities/algorithm.h"
 
 namespace PHARE
 {

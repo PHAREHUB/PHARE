@@ -5,13 +5,13 @@
 #include <memory>
 #include <random>
 
-#include "data/grid/gridlayoutdefs.h"
-#include "data/ions/particle_initializers/particle_initializer.h"
-#include "data/particles/particle.h"
-#include "data_provider.h"
-#include "hybrid/hybrid_quantities.h"
-#include "utilities/point/point.h"
-#include "utilities/types.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/utilities/types.h"
+#include "core/data/ions/particle_initializers/particle_initializer.h"
+#include "core/data/particles/particle.h"
+#include "initializer/data_provider.h"
+#include "core/utilities/point/point.h"
 
 namespace PHARE
 {

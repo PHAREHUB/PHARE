@@ -3,9 +3,9 @@
 #define PHARE_MESSENGER_INITIALIZER_H
 
 
-#include "messengers/messenger.h"
-#include "physical_models/physical_model.h"
-#include "solvers/solver.h"
+#include "amr/messengers/messenger.h"
+#include "solver/physical_models/physical_model.h"
+#include "solver/solvers/solver.h"
 
 
 namespace PHARE

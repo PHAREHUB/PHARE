@@ -1,9 +1,9 @@
 #ifndef PHARE_PARTICLE_UTILITIES
 #define PHARE_PARTICLE_UTILITIES
 
-#include "data/grid/gridlayoutdefs.h"
-#include "data/particles/particle.h"
-#include "utilities/point/point.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/particles/particle.h"
+#include "core/utilities/point/point.h"
 
 #include <array>
 

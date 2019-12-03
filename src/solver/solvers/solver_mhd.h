@@ -2,9 +2,9 @@
 #ifndef PHARE_SOLVER_MHD_H
 #define PHARE_SOLVER_MHD_H
 
-#include "messengers/mhd_messenger_info.h"
-#include "physical_models/physical_model.h"
-#include "solvers/solver.h"
+#include "amr/messengers/mhd_messenger_info.h"
+#include "solver/physical_models/physical_model.h"
+#include "solver/solvers/solver.h"
 
 namespace PHARE
 {

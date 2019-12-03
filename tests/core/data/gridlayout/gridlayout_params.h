@@ -10,10 +10,10 @@
 #include <type_traits>
 
 
-#include "data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout.h"
 #include "gridlayout_base_params.h"
 #include "gridlayout_utilities.h"
-#include "utilities/point/point.h"
+#include "core/utilities/point/point.h"
 
 
 

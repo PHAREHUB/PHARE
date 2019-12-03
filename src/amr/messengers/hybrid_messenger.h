@@ -6,11 +6,11 @@
 
 
 
-#include "hybrid/hybrid_quantities.h"
-#include "messengers/hybrid_messenger_strategy.h"
-#include "messengers/messenger.h"
-#include "messengers/messenger_info.h"
-#include "messengers/mhd_messenger.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "amr/messengers/hybrid_messenger_strategy.h"
+#include "amr/messengers/messenger.h"
+#include "amr/messengers/messenger_info.h"
+#include "amr/messengers/mhd_messenger.h"
 
 
 

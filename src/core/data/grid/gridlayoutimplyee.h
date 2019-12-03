@@ -3,10 +3,10 @@
 
 
 
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/utilities/types.h"
 #include "gridlayoutdefs.h"
-#include "hybrid/hybrid_quantities.h"
-#include "utilities/constants.h"
-#include "utilities/types.h"
+#include "core/utilities/constants.h"
 
 #include <array>
 #include <vector>

@@ -4,9 +4,9 @@
 #include <array>
 #include <cstddef>
 
-#include "data/grid/gridlayout.h"
-#include "data/vecfield/vecfield_component.h"
-#include "utilities/point/point.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/vecfield/vecfield_component.h"
+#include "core/utilities/point/point.h"
 
 namespace PHARE
 {

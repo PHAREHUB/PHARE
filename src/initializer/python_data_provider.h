@@ -1,7 +1,7 @@
 #ifndef PHARE_PYTHON_DATA_PROVIDER_H
 #define PHARE_PYTHON_DATA_PROVIDER_H
 
-#include "data_provider.h"
+#include "initializer/data_provider.h"
 
 #include "pragma_disable.h"
 
@@ -14,7 +14,7 @@ ENABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 
 namespace py = pybind11;
 
-//#include "models/physical_state.h"
+//#include "core/models/physical_state.h"
 //#include <data/ions/ions.h>
 
 namespace PHARE

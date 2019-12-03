@@ -11,12 +11,12 @@
 #include <SAMRAI/xfer/PatchLevelInteriorFillPattern.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "data/particles/particles_data.h"
-#include "data/particles/refine/particles_data_split.h"
-#include "utilities/constants.h"
-#include "utilities/point/point.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "amr/data/particles/particles_data.h"
+#include "amr/data/particles/refine/particles_data_split.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
 
 
 #include <map>

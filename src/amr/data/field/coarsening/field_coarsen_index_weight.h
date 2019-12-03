@@ -2,11 +2,11 @@
 #define PHARE_FIELD_COARSEN_H
 
 #include "coarsen_weighter.h"
-#include "data/field/field.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "hybrid/hybrid_quantities.h"
-#include "resources_manager/amr_utils.h"
-#include "utilities/constants.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/field/field.h"
+#include "amr/resources_manager/amr_utils.h"
+#include "core/utilities/constants.h"
 
 
 

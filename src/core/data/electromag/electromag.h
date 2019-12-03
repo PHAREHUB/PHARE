@@ -6,9 +6,9 @@
 #include <string>
 #include <tuple>
 
-#include "data/vecfield/vecfield_initializer.h"
-#include "data_provider.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/vecfield/vecfield_initializer.h"
+#include "initializer/data_provider.h"
 
 
 namespace PHARE

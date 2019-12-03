@@ -3,7 +3,7 @@
 
 #include <iterator>
 
-#include "numerics/interpolator/interpolator.h"
+#include "core/numerics/interpolator/interpolator.h"
 
 
 namespace PHARE

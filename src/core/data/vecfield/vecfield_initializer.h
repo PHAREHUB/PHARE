@@ -1,9 +1,9 @@
 #ifndef VECFIELD_INITIALIZER_H
 #define VECFIELD_INITIALIZER_H
 
-#include "data/grid/gridlayoutdefs.h"
-#include "data/vecfield/vecfield_component.h"
-#include "data_provider.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/vecfield/vecfield_component.h"
+#include "initializer/data_provider.h"
 
 #include <array>
 

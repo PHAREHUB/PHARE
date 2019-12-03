@@ -57,9 +57,6 @@ target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer)
 
 target_include_directories(${PROJECT_NAME}  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/../initializer
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>
-  $<INSTALL_INTERFACE:include/phare/core>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
 
 

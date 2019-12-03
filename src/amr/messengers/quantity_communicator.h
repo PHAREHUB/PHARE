@@ -2,12 +2,12 @@
 #define PHARE_QUANTITY_REFINER_H
 
 
-#include "messengers/hybrid_messenger_info.h"
+#include "amr/messengers/hybrid_messenger_info.h"
 
-#include "data/field/coarsening/field_coarsen_operator.h"
-#include "data/field/refine/field_refine_operator.h"
-#include "data/field/time_interpolate/field_linear_time_interpolate.h"
-#include "data/particles/refine/particles_data_split.h"
+#include "amr/data/field/coarsening/field_coarsen_operator.h"
+#include "amr/data/field/refine/field_refine_operator.h"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
+#include "amr/data/particles/refine/particles_data_split.h"
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
 #include <SAMRAI/xfer/CoarsenSchedule.h>
@@ -69,7 +69,7 @@ namespace amr
         template<typename Dummy = ComType, typename = is_synchronizer<Dummy>, typename = Dummy>
         Communicator()
             : algo{std::make_unique<SAMRAI::xfer::CoarsenAlgorithm>(
-                  SAMRAI::tbox::Dimension{dimension})}
+                SAMRAI::tbox::Dimension{dimension})}
 
         {
         }

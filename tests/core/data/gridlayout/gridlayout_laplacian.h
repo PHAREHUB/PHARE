@@ -2,13 +2,13 @@
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_LAPLACIAN_H
 
 
-#include "data/field/field.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayout_impl.h"
+#include "core/data/field/field.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayout_impl.h"
 #include "gridlayout_base_params.h"
 #include "gridlayout_params.h"
 #include "gridlayout_utilities.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/hybrid/hybrid_quantities.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -32,12 +32,9 @@ protected:
 public:
     a1DLaplacian()
         : layout{{{0.1}}, {50}, Point<double, 1>{0.}}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx,
-             layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy,
-             layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz,
-             layout.allocSize(HybridQuantity::Scalar::Jz)}
+        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
+        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
+        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
     {
     }
 };
@@ -57,12 +54,9 @@ protected:
 public:
     a2DLaplacian()
         : layout{{{0.1, 0.2}}, {50, 30}, Point<double, 2>{0., 0.}}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx,
-             layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy,
-             layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz,
-             layout.allocSize(HybridQuantity::Scalar::Jz)}
+        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
+        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
+        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
     {
     }
 };
@@ -82,12 +76,9 @@ protected:
 public:
     a3DLaplacian()
         : layout{{{0.1, 0.2, 0.3}}, {50, 30, 40}, Point<double, 3>{0., 0., 0.}}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx,
-             layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy,
-             layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz,
-             layout.allocSize(HybridQuantity::Scalar::Jz)}
+        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
+        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
+        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
     {
     }
 };

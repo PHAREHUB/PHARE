@@ -12,18 +12,18 @@
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 
-#include "messenger_registration.h"
-#include "messengers/messenger.h"
-#include "physical_models/hybrid_model.h"
-#include "physical_models/mhd_model.h"
-#include "physical_models/physical_model.h"
-#include "solvers/solver.h"
+#include "solver/messenger_registration.h"
+#include "amr/messengers/messenger.h"
+#include "solver/physical_models/hybrid_model.h"
+#include "solver/physical_models/mhd_model.h"
+#include "solver/physical_models/physical_model.h"
+#include "solver/solvers/solver.h"
 #include "solvers/solver_mhd.h"
-#include "solvers/solver_ppc.h"
-#include "utilities/algorithm.h"
+#include "solver/solvers/solver_ppc.h"
+#include "core/utilities/algorithm.h"
 
 
-//#include "resources_manager/resources_manager.h"
+//#include "amr/resources_manager/resources_manager.h"
 
 
 

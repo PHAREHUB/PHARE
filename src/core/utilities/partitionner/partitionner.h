@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "utilities/meta/meta_utilities.h"
-#include "utilities/particle_selector/particle_selector.h"
+#include "core/utilities/meta/meta_utilities.h"
+#include "core/utilities/particle_selector/particle_selector.h"
 
 namespace PHARE
 {

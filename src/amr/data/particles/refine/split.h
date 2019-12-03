@@ -7,10 +7,10 @@
 #include <memory>
 #include <vector>
 
-#include "data/grid/gridlayout.h"
-#include "data/particles/particle.h"
-#include "utilities/box/box.h"
-#include "utilities/types.h"
+#include "core/utilities/types.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/particles/particle.h"
+#include "core/utilities/box/box.h"
 
 namespace PHARE
 {

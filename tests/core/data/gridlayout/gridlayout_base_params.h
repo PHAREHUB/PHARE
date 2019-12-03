@@ -4,11 +4,11 @@
 #include <memory>
 
 
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "data/ndarray/ndarray_vector.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/ndarray/ndarray_vector.h"
 #include "gridlayout_utilities.h"
-#include "utilities/point/point.h"
+#include "core/utilities/point/point.h"
 
 using namespace PHARE::core;
 

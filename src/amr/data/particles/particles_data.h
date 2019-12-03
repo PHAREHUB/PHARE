@@ -11,10 +11,10 @@
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
 
-#include "data/ions/ion_population/particle_pack.h"
-#include "data/particles/particle.h"
-#include "data/particles/particle_array.h"
-#include "resources_manager/amr_utils.h"
+#include "core/data/ions/ion_population/particle_pack.h"
+#include "core/data/particles/particle.h"
+#include "core/data/particles/particle_array.h"
+#include "amr/resources_manager/amr_utils.h"
 
 namespace PHARE
 {

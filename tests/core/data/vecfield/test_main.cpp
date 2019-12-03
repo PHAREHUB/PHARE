@@ -3,10 +3,10 @@
 
 #include <string>
 
-#include "data/field/field.h"
-#include "data/ndarray/ndarray_vector.h"
-#include "data/vecfield/vecfield.h"
-#include "hybrid/hybrid_quantities.h"
+#include "core/data/field/field.h"
+#include "core/data/ndarray/ndarray_vector.h"
+#include "core/data/vecfield/vecfield.h"
+#include "core/hybrid/hybrid_quantities.h"
 
 
 using namespace PHARE::core;
@@ -18,9 +18,9 @@ class VecFieldGeneric : public ::testing::Test
 {
 public:
     VecFieldGeneric()
-        : vf2{vf2_name,
-              {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By,
-                HybridQuantity::Scalar::Bz}}}
+        : vf2{
+            vf2_name,
+            {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By, HybridQuantity::Scalar::Bz}}}
     {
     }
 

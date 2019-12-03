@@ -1,6 +1,6 @@
-#include "data/particles/particle.h"
-#include "data/particles/particles_data.h"
-#include "data/particles/refine/split.h"
+#include "core/data/particles/particle.h"
+#include "amr/data/particles/particles_data.h"
+#include "amr/data/particles/refine/split.h"
 #include "test_basic_hierarchy.h"
 #include "test_tag_strategy.h"
 

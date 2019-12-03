@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "data/particles/particle_array.h"
-#include "utilities/box/box.h"
-#include "utilities/particle_selector/particle_selector.h"
-#include "utilities/partitionner/partitionner.h"
-#include "utilities/point/point.h"
+#include "core/data/particles/particle_array.h"
+#include "core/utilities/box/box.h"
+#include "core/utilities/particle_selector/particle_selector.h"
+#include "core/utilities/partitionner/partitionner.h"
+#include "core/utilities/point/point.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

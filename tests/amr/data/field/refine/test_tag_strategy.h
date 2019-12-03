@@ -6,11 +6,11 @@
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
-#include "data/field/field_data.h"
-#include "data/grid/gridlayout.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "utilities/constants.h"
-#include "utilities/point/point.h"
+#include "amr/data/field/field_data.h"
+#include "core/data/grid/gridlayout.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
 
 
 #include <map>

@@ -3,13 +3,13 @@
 
 
 #include "amr/types/amr_types.h"
-#include "data/field/field_data.h"
-#include "data/grid/gridlayoutdefs.h"
-#include "data/vecfield/vecfield_component.h"
-#include "messengers/hybrid_messenger.h"
-#include "physical_models/hybrid_model.h"
-#include "resources_manager/amr_utils.h"
-#include "solvers/solver_ppc.h"
+#include "amr/data/field/field_data.h"
+#include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/vecfield/vecfield_component.h"
+#include "amr/messengers/hybrid_messenger.h"
+#include "solver/physical_models/hybrid_model.h"
+#include "amr/resources_manager/amr_utils.h"
+#include "solver/solvers/solver_ppc.h"
 
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 
