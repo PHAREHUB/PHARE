@@ -2,6 +2,8 @@
 #ifndef PHARE_CORE_DATA_VECFIELD_VECFIELD_COMPONENT_H
 #define PHARE_CORE_DATA_VECFIELD_VECFIELD_COMPONENT_H
 
+#include <unordered_map>
+
 namespace PHARE
 {
 namespace core
@@ -30,6 +32,19 @@ namespace core
     {
         static const auto component = Component::Z;
     };
+
+    struct Components
+    {
+        template<typename T>
+        static Component at(T t)
+        {
+            return componentMap.at(std::forward<T>(t));
+        }
+
+        static std::unordered_map<std::string, Component> const componentMap;
+    };
+    inline std::unordered_map<std::string, Component> const Components::componentMap{
+        {"x", Component::X}, {"y", Component::Y}, {"z", Component::Z}};
 
 } // namespace core
 } // namespace PHARE

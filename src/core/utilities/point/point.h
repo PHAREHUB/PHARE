@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstddef>
+#include <sstream>
 
 #include "core/utilities/meta/meta_utilities.h"
 
@@ -53,7 +54,7 @@ namespace core
         template<typename Container, is_subscriptable<Container> = dummy::value>
         Point(Container c)
         {
-            for (auto i = 0u; i < dim; ++i)
+            for (size_t i = 0; i < dim; ++i)
             {
                 r[i] = c[i];
             }
@@ -69,7 +70,7 @@ namespace core
         bool operator==(Point const& p) const
         {
             bool areEqual = true;
-            for (auto i = 0u; i < dim; ++i)
+            for (size_t i = 0; i < dim; ++i)
             {
                 static_assert(std::is_integral_v<Type>,
                               "this function is only valid for integral type of Point");
@@ -91,6 +92,16 @@ namespace core
             return destArray;
         }
 
+        std::string str()
+        {
+            std::stringstream ss;
+            ss << r[0];
+            for (size_t i = 1; i < dim; ++i)
+            {
+                ss << "," << r[i];
+            }
+            return ss.str();
+        }
 
 
     private:
