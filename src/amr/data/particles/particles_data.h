@@ -20,6 +20,12 @@ namespace PHARE
 {
 namespace amr
 {
+    template<std::size_t interpOrder>
+    std::size_t constexpr ghostWidthForParticles()
+    {
+        return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
+    }
+
     template<std::size_t dim>
     inline bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle)
     {

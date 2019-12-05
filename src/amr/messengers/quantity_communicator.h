@@ -16,14 +16,38 @@
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
+#include "SAMRAI/xfer/BoxGeometryVariableFillPattern.h"
+
 #include <map>
 #include <memory>
 #include <optional>
+
+
 
 namespace PHARE
 {
 namespace amr
 {
+    /* When determining which DataFactory to use to create the correct geometry
+     *  Samrai compares existing items within the RefinerPool
+     *   See: SAMRAI::xfer::RefineClasses::getEquivalenceClassIndex"
+     *   If we do not specify a separate VariableFillPattern for each item sent to
+     *    Algo->registerRefine : we run the risk of all items only using the first registered
+     *    DataFactory, thus all items will receive the Geometry of that item.
+     *    We "hack" this as there is a typeid()== check on the variablefill pattern types
+     */
+    class XVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
+
+    class YVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
+
+    class ZVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
+
     struct Refiner
     {
         using schedule_type  = SAMRAI::xfer::RefineSchedule;
@@ -134,11 +158,18 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
+            = std::make_shared<XVariableFillPattern>();
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
+            = std::make_shared<YVariableFillPattern>();
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
+            = std::make_shared<ZVariableFillPattern>();
+
         Communicator<Refiner> com;
 
         auto registerRefine
             = [&rm, &com, &refineOp, &timeOp](std::string const& model_, std::string const& ghost_,
-                                              std::string const& oldModel_) {
+                                              std::string const& oldModel_, auto& fillPattern) {
                   auto src_id  = rm->getID(model_);
                   auto dest_id = rm->getID(ghost_);
                   auto old_id  = rm->getID(oldModel_);
@@ -151,14 +182,14 @@ namespace amr
                                                *old_id,  // source at past time (for time interp)
                                                *src_id,  // source at future time (for time interp)
                                                *dest_id, // scratch
-                                               refineOp, timeOp);
+                                               refineOp, timeOp, fillPattern);
                   }
               };
 
         // register refine operators for each component of the vecfield
-        registerRefine(ghost.xName, model.xName, oldModel.xName);
-        registerRefine(ghost.yName, model.yName, oldModel.yName);
-        registerRefine(ghost.zName, model.zName, oldModel.zName);
+        registerRefine(ghost.xName, model.xName, oldModel.xName, xVariableFillPattern);
+        registerRefine(ghost.yName, model.yName, oldModel.yName, yVariableFillPattern);
+        registerRefine(ghost.zName, model.zName, oldModel.zName, zVariableFillPattern);
 
         return com;
     }

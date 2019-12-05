@@ -64,7 +64,7 @@ public:
             inputBase + "input/input_" + std::to_string(dimension) + "d.txt")}
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
-        , protons_{std::make_shared<ParticlesVariable<dimension>>(
+        , protons_{std::make_shared<ParticlesVariable<dimension, interpOrder>>(
               "protons", true,
               SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
                                       ghostWidthForParticles<interpOrder>()})}
@@ -100,7 +100,7 @@ public:
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
 
-        auto particlesVariableTypeName = typeid(ParticlesVariable<dimension>).name();
+        auto particlesVariableTypeName = typeid(ParticlesVariable<dimension, interpOrder>).name();
     }
 
 
@@ -141,7 +141,7 @@ private:
 
     SAMRAI::hier::VariableDatabase* variableDatabase_;
 
-    std::shared_ptr<ParticlesVariable<dimension>> protons_;
+    std::shared_ptr<ParticlesVariable<dimension, interpOrder>> protons_;
 
 
 

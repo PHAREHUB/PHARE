@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 
-import src.initializer.pyphare as pp
+import phare.pyphare as pp
 import job
 
 

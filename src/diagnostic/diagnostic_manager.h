@@ -2,9 +2,8 @@
 #ifndef PHARE_Diagnostic_MANAGER_HPP_
 #define PHARE_Diagnostic_MANAGER_HPP_
 
-#include "core/utilities/types.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "amr/resources_manager/resources_manager.h"
+
+#include "simulator/simulator.h"
 #include "diagnostic_dao.h"
 
 #include <utility>
@@ -222,59 +221,35 @@ struct ContiguousParticles
 
 
 // generic subclass of model specialized superclass
-template<typename AMRTypes, typename Model>
+template<typename Simulator, typename Model>
 class AMRDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>
 {
 public:
     using Super      = DiagnosticModelView<Model, typename Model::type_list>;
     using ResMan     = typename Model::resources_manager_type;
     using GridLayout = typename Model::gridLayout_type;
-    using Guard      = amr::ResourcesGuard<ResMan, Model>;
-    using Hierarchy  = typename AMRTypes::hierarchy_t;
-    using Patch      = typename AMRTypes::patch_t;
     using Super::model_;
     static constexpr auto dimension = Model::dimension;
 
-    AMRDiagnosticModelView(Hierarchy& hierarchy, Model& model)
+    AMRDiagnosticModelView(Simulator& simulator, Model& model)
         : Super{model}
-        , hierarchy_{hierarchy}
+        , simulator_{simulator}
     {
     }
-
-    auto guardedGrid(Patch& patch) { return GuardedGrid{patch, Super::model_}; }
-
 
 
     template<typename Action, typename... Args>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
     {
-        amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
-                                        std::forward<Action>(action), minLevel, maxLevel, model_);
+        simulator_.visitHierarchy(std::forward<Action>(action), minLevel, maxLevel, model_);
     }
 
 
     std::string getLayoutTypeString() { return std::string{GridLayout::implT::type}; }
 
-protected:
-    struct GuardedGrid
-    {
-        using Guard = typename AMRDiagnosticModelView<AMRTypes, Model>::Guard;
-
-        GuardedGrid(Patch& patch, Model& model)
-            : guard_{model.resourcesManager->setOnPatch(patch, model)}
-            , grid_{PHARE::amr::layoutFromPatch<GridLayout>(patch)}
-        {
-        }
-
-        operator GridLayout&() { return grid_; }
-
-        Guard guard_;
-        GridLayout grid_;
-    };
-
 
 private:
-    Hierarchy& hierarchy_;
+    Simulator& simulator_;
 
     AMRDiagnosticModelView(const AMRDiagnosticModelView&)             = delete;
     AMRDiagnosticModelView(const AMRDiagnosticModelView&&)            = delete;

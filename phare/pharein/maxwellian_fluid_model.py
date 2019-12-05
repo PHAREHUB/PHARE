@@ -3,7 +3,9 @@ from . import globals
 
 class MaxwellianFluidModel(object):
 
-    def defaulter(self, value):
+    def defaulter(self, input, value):
+        if input is not None:
+            return input
         if self.dim == 1:
             return lambda x:value + x*0
         if self.dim == 2:
@@ -32,13 +34,13 @@ class MaxwellianFluidModel(object):
         self.dim = globals.sim.dims
 
 
-        ex = self.defaulter(0.)
-        ey = self.defaulter(0.)
-        ez = self.defaulter(0.)
+        ex = self.defaulter(ex, 0.)
+        ey = self.defaulter(ey, 0.)
+        ez = self.defaulter(ez, 0.)
 
-        bx = self.defaulter(1.)
-        by = self.defaulter(0.)
-        bz = self.defaulter(0.)
+        bx = self.defaulter(bx, 1.)
+        by = self.defaulter(by, 0.)
+        bz = self.defaulter(bz, 0.)
 
 
         self.model_dict = {"model": "model", "model_name": "custom"}
@@ -100,20 +102,15 @@ class MaxwellianFluidModel(object):
         anisotropy  : Pperp/Ppara of the species, float (default = 1)
         """
 
-        if density is None:
-            density = self.defaulter(1.)
-        if vbulkx is None:
-            vbulkx = self.defaulter(0.)
-        if vbulky is None:
-            vbulky = self.defaulter(0.)
-        if vbulkz is None:
-            vbulkz = self.defaulter(0.)
-        if vthx is None:
-            vthx   = self.defaulter(1.)
-        if vthy is None:
-            vthy   = self.defaulter(1.)
-        if vthz is None:
-            vthz   = self.defaulter(1.)
+        density = self.defaulter(density, 1.)
+
+        vbulkx = self.defaulter(vbulkx, 0.)
+        vbulky = self.defaulter(vbulky, 0.)
+        vbulkz = self.defaulter(vbulkz, 0.)
+
+        vthx   = self.defaulter(vthx, 1.)
+        vthy   = self.defaulter(vthy, 1.)
+        vthz   = self.defaulter(vthz, 1.)
 
         idx = str(self.nbr_populations())
 

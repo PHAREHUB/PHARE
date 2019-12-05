@@ -1,6 +1,7 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_DATA_H
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_H
 
+
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
 #include <utility>
@@ -242,9 +243,7 @@ namespace amr
                     // are in destination space, we have to use the inverseTransform
                     // to get into source space
                     transformation.inverseTransform(packBox);
-
                     packBox = packBox * sourceBox;
-
 
                     internals_.packImpl(buffer, source, packBox, sourceBox);
                 }
@@ -274,7 +273,6 @@ namespace amr
 
             auto fieldOverlap = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
             TBOX_ASSERT(fieldOverlap != nullptr);
-
 
             // We flush a portion of the stream on the buffer.
             stream.unpack(buffer.data(), expectedSize);
@@ -440,10 +438,9 @@ namespace amr
             TBOX_ASSERT(fieldOverlap != nullptr);
 
             size_t totalSize = 0;
-
             if (fieldOverlap->isOverlapEmpty())
             {
-                return 0u;
+                return totalSize;
             }
 
             // TODO: see FieldDataFactory todo of the same function
@@ -451,36 +448,7 @@ namespace amr
             SAMRAI::hier::BoxContainer const& boxContainer
                 = fieldOverlap->getDestinationBoxContainer();
 
-            for (auto const& box : boxContainer)
-            {
-                // We compute the intersection between the box contained in the overlap
-                // with the ghostBox of the fieldData (toFieldBox , withGhost=true default
-                // parameter) in case we want to apply the transformation, we do it here
-                SAMRAI::hier::Box finalBox{box};
-                if constexpr (withTransform)
-                {
-                    auto const& transformation = fieldOverlap->getTransformation();
-                    transformation.transform(finalBox);
-                }
-
-                finalBox = finalBox
-                           * FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                               getBox(), quantity_, gridLayout);
-
-                size_t size = 1;
-
-                for (uint32 iDir = 0; iDir < dimension; ++iDir)
-                {
-                    size *= finalBox.numberCells(iDir);
-                }
-
-                // At the end we will make sure that the size correspond to an aligned memory
-                // since it will be the max memory used
-                totalSize += size;
-            }
-            totalSize = totalSize * sizeof(typename FieldImpl::type);
-
-            return totalSize;
+            return boxContainer.getTotalSizeOfBoxes() * sizeof(typename FieldImpl::type);
         }
 
 
@@ -514,19 +482,17 @@ namespace amr
 
 
 
-
         void packImpl(std::vector<double>& buffer, FieldImpl const& source,
-                      SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& destination) const
+                      SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& sourceBox) const
         {
-            int xStart = overlap.lower(0) - destination.lower(0);
-            int xEnd   = overlap.upper(0) - destination.lower(0);
+            int xStart = overlap.lower(0) - sourceBox.lower(0);
+            int xEnd   = overlap.upper(0) - sourceBox.lower(0);
 
             for (int xi = xStart; xi <= xEnd; ++xi)
             {
                 buffer.push_back(source(xi));
             }
         }
-
 
 
 

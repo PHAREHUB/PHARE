@@ -48,7 +48,7 @@ TEST(APythonDataProvider, providesAValidTree)
 {
     PHAREDictHandler::INSTANCE().init();
 
-    char const* name = "init.py";
+    char const* name = "init";
     PythonDataProvider pydp{2, name};
     pydp.read();
     auto& input = PHAREDictHandler::INSTANCE().dict();

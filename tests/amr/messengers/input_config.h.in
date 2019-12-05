@@ -6,6 +6,7 @@
 
 
 const std::string inputBase = "@CMAKE_CURRENT_SOURCE_DIR@/";
+const std::string projectRoot = "@PHARE_PROJECT_DIR@/";
 
 
 #endif

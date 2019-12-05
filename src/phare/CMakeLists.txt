@@ -15,6 +15,7 @@ target_link_libraries(phare-exe PUBLIC phare_core phare_amr phare_initializer ph
 
 # this is the script that PHARE runs to prepare pythonpath in case pyphare is
 # ran in a virtualenv
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setpythonpath.py.in ${CMAKE_CURRENT_BINARY_DIR}/setpythonpath.py @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init.py ${CMAKE_CURRENT_BINARY_DIR}/init.py @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init.py ${CMAKE_BINARY_DIR}/phare/init.py @ONLY)
+
+
+

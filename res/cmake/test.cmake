@@ -15,10 +15,14 @@ if (test)
     endif()
 
     add_subdirectory(subprojects/googletest)
-    set(GTEST_INCLUDE_DIRS $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include> $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>)
+    set(GTEST_INCLUDE_DIRS
+      $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
+      $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>)
     set(GTEST_LIBS gtest gmock)
 
   endif()
+
+  set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIRS} ${PHARE_PROJECT_DIR})
 
   enable_testing()
 
@@ -32,6 +36,7 @@ if (test)
   add_subdirectory(tests/amr/data/field/time_interpolate)
   add_subdirectory(tests/amr/resources_manager)
   add_subdirectory(tests/amr/messengers)
+  add_subdirectory(tests/amr/periodicity)
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
   add_subdirectory(tests/core/data/ndarray)

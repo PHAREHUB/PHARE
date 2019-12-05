@@ -1,50 +1,92 @@
+#ifndef PHARE_TEST_DIAGNOSTIC_INCLUDE_H
+#define PHARE_TEST_DIAGNOSTIC_INCLUDE_H
 
-#ifndef PHARE_TEST_DIAGNOSTIC_INCLUDE
-#define PHARE_TEST_DIAGNOSTIC_INCLUDE
+#include "tests/simulator/per_test.h"
 
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-#include <iostream>
+#include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/types/electromag.h"
+#include "diagnostic/detail/types/particle.h"
+#include "diagnostic/detail/types/fluid.h"
 
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
-#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
-#include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/CoarsenOperator.h>
-#include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/tbox/InputManager.h>
-#include <SAMRAI/tbox/Logger.h>
-#include <SAMRAI/tbox/SAMRAIManager.h>
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
-#include <SAMRAI/xfer/CoarsenAlgorithm.h>
-#include <SAMRAI/xfer/RefineAlgorithm.h>
-#include <SAMRAI/mesh/BergerRigoutsos.h>
-#include <SAMRAI/mesh/TreeLoadBalancer.h>
+using namespace PHARE::diagnostic;
+using namespace PHARE::diagnostic::h5;
 
-#include "amr/types/amr_types.h"
-#include "core/data/electromag/electromag.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/grid/gridlayoutimplyee.h"
-#include "core/data/ions/ion_population/ion_population.h"
-#include "core/data/ions/ions.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/vecfield/vecfield.h"
-#include "initializer/data_provider.h"
-#include "core/hybrid/hybrid_quantities.h"
-#include "solver/messenger_registration.h"
-#include "amr/messengers/hybrid_messenger.h"
-#include "amr/messengers/messenger_factory.h"
-#include "amr/resources_manager/resources_manager.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
-#include "solver/solvers/solver_mhd.h"
-#include "solver/solvers/solver_ppc.h"
+constexpr unsigned NEW_HI5_FILE
+    = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
 
-#endif /*PHARE_TEST_DIAGNOSTIC_INCLUDE*/
+template<typename Simulator>
+struct Hi5Diagnostic
+{
+    using HybridModelT        = typename Simulator::HybridModel;
+    using DiagnosticModelView = AMRDiagnosticModelView<Simulator, HybridModelT>;
+    using DiagnosticWriter    = HighFiveDiagnostic<DiagnosticModelView>;
+
+    Hi5Diagnostic(Simulator& simulator, std::string fileName, unsigned flags)
+        : simulator_{simulator}
+        , file_{fileName}
+        , flags_{flags}
+    {
+    }
+    ~Hi5Diagnostic() {}
+
+    auto dict(std::string&& type, std::string& subtype)
+    {
+        PHARE::initializer::PHAREDict dict;
+        dict["name"]            = type;
+        dict["type"]            = type;
+        dict["subtype"]         = subtype;
+        dict["compute_every"]   = std::size_t{1};
+        dict["write_every"]     = std::size_t{1};
+        dict["start_iteration"] = std::size_t{0};
+        dict["end_iteration"]   = std::numeric_limits<std::size_t>::max();
+        return dict;
+    }
+    auto electromag(std::string&& subtype) { return dict("electromag", subtype); }
+    auto particles(std::string&& subtype) { return dict("particles", subtype); }
+    auto fluid(std::string&& subtype) { return dict("fluid", subtype); }
+
+    std::string filename() const { return file_ + "_hi5_test.5"; }
+
+    std::string getPatchPath(int level, PHARE::amr::SAMRAI_Types::patch_t& patch)
+    {
+        std::stringstream globalId;
+        globalId << patch.getGlobalId();
+        return writer.getPatchPath("time", level, globalId.str());
+    }
+
+    template<typename Field>
+    void checkField(Field& field, std::string path)
+    {
+        std::vector<float> fieldV;
+        writer.file().getDataSet(path).read(fieldV);
+        EXPECT_EQ(fieldV.size(), field.size());
+
+        for (size_t i = 0; i < fieldV.size(); i++)
+        {
+            if (!std::isnan(fieldV[i]))
+            {
+                EXPECT_FLOAT_EQ(fieldV[i], field.data()[i]);
+            }
+        }
+    }
+
+    template<typename VecField>
+    void checkVecField(VecField& vecField, std::string fieldPath)
+    {
+        for (auto& [id, type] : PHARE::core::Components::componentMap)
+        {
+            checkField(vecField.getComponent(type), fieldPath + "/" + id);
+        }
+    }
+
+
+    Simulator& simulator_;
+    std::string file_;
+    unsigned flags_;
+    DiagnosticModelView modelView{simulator_, *simulator_.getHybridModel()};
+    DiagnosticWriter writer{modelView, filename(), flags_};
+    DiagnosticsManager<DiagnosticWriter> dMan{writer};
+};
+
+
+#endif /*PHARE_TEST_DIAGNOSTIC_INCLUDE_H*/

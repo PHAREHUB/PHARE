@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_UTILITIES_POINT_POINT_H
 #define PHARE_CORE_UTILITIES_POINT_POINT_H
 
+#include <cassert>
 #include <array>
 #include <cstddef>
 #include <sstream>
@@ -80,6 +81,17 @@ namespace core
             return areEqual;
         }
 
+        bool operator<(Point const& p) const
+        {
+            bool isLessThan = true;
+            for (size_t i = 0; i < dim; ++i)
+            {
+                static_assert(std::is_arithmetic_v<Type>,
+                              "this function is only valid for arithmetic type of Point");
+                isLessThan &= ((*this)[i] < p[i]);
+            }
+            return isLessThan;
+        }
 
         template<typename DestType>
         auto toArray() const
@@ -102,6 +114,23 @@ namespace core
             }
             return ss.str();
         }
+
+        static Point fromString(std::string csv)
+        {
+            Point p;
+            std::istringstream split(csv);
+            std::vector<std::string> tokens;
+            for (std::string each; std::getline(split, each, ','); tokens.push_back(each)) {}
+            assert(tokens.size() == dimension);
+            for (size_t i = 0; i < tokens.size(); i++)
+            {
+                std::stringstream ss;
+                ss << tokens[i];
+                ss >> p.r[i];
+            }
+            return p;
+        }
+
 
 
     private:
