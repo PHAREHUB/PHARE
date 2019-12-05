@@ -69,7 +69,7 @@ int main(int argc, char** argv)
 
     std::cerr << "creating python data provider\n";
     auto provider = std::make_unique<PHARE::initializer::PythonDataProvider>(
-        2, "init.py"); // fromCommandLine(argc, argv);
+        2, "init"); // fromCommandLine(argc, argv);
 
     std::cerr << "reading user inputs...";
     provider->read();

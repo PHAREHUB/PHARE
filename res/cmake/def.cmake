@@ -53,6 +53,8 @@ endif()
 function(add_phare_test_ binary directory)
   target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS})
   set_tests_properties(${binary} PROPERTIES ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
+  set_tests_properties(${binary} PROPERTIES ENVIRONMENT
+      PYTHONPATH=${directory}:${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/src/phare:${PHARE_PROJECT_DIR}/subprojects)
 endfunction(add_phare_test_)
 
 if(testMPI)

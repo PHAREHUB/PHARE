@@ -6,6 +6,8 @@ print("test")
 # configure the simulation
 
 ph.Simulation(
+    smallest_patch_size=10,
+    largest_patch_size=64,
     time_step_nbr=1000,                 # number of time steps (not specified if time_step and final_time provided)
     final_time=1.,                      # simulation final time (not specified if time_step and time_step_nbr provided)
     boundary_types="periodic",          # boundary condition, string or tuple, length == len(cell) == len(dl)

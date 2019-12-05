@@ -23,6 +23,8 @@ addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+
 
 add("simulation/name", "simulation_test")
 add("simulation/dimension", simulation.dims)
+add("simulation/AMR/smallest_patch_size", simulation.smallest_patch_size)
+add("simulation/AMR/largest_patch_size", simulation.largest_patch_size)
 
 
 add("simulation/grid/layout_type", simulation.layout)
@@ -64,7 +66,7 @@ def as_paths(rb):
             box_upper_path_x = box + "/upper/x/"
             add(level_path + box_lower_path_x, int(lower[0]))
             add(level_path + box_upper_path_x, int(upper[0]))
-            if len(lower)>1:
+            if len(lower)>=2:
                 box_lower_path_y = box + "/lower/y/"
                 box_upper_path_y = box + "/upper/y/"
                 add(level_path+box_lower_path_y,format(lower[1]))

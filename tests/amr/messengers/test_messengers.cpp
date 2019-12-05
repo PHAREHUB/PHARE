@@ -1,154 +1,96 @@
-#include "amr/types/amr_types.h"
-#include "core/data/electromag/electromag.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/grid/gridlayoutimplyee.h"
-#include "core/data/ions/ion_population/ion_population.h"
-#include "core/data/ions/ions.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/vecfield/vecfield.h"
-#include "initializer/data_provider.h"
-#include "core/hybrid/hybrid_quantities.h"
-#include "messenger_registration.h"
-#include "amr/messengers/hybrid_messenger.h"
-#include "amr/messengers/messenger_factory.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
-#include "amr/resources_manager/resources_manager.h"
-#include "solvers/solver_mhd.h"
-#include "solver/solvers/solver_ppc.h"
+
+
+#include "simulator/simulator.h"
+
 #include "test_basichierarchy.h"
 #include "test_integrator_strat.h"
 #include "test_tag_strategy.h"
-
-
-
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
-#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
-#include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/CoarsenOperator.h>
-#include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/mesh/ChopAndPackLoadBalancer.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TileClustering.h>
-#include <SAMRAI/tbox/InputManager.h>
-#include <SAMRAI/tbox/Logger.h>
-#include <SAMRAI/tbox/SAMRAIManager.h>
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
-#include <SAMRAI/xfer/CoarsenAlgorithm.h>
-#include <SAMRAI/xfer/RefineAlgorithm.h>
-
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
-
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
-using namespace PHARE::amr;
+using namespace PHARE::solver;
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
-using GridYee1D                          = GridLayout<GridImplYee1D>;
-using VecField1D                         = VecField<NdArrayVector1D<>, HybridQuantity>;
-using MaxwellianParticleInitializer1D
-    = MaxwellianParticleInitializer<ParticleArray<dim>, GridYee1D>;
-using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
-using Ions1D            = Ions<IonsPop1D, GridYee1D>;
-using Electromag1D      = Electromag<VecField1D>;
-using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
-using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
-using ResourcesManagerT = ResourcesManager<GridYee1D>;
-using hybhybStratT      = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
-using mhdhybStratT
-    = MHDHybridMessengerStrategy<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>>;
-using HybridMessengerT = HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
 
+using Simulator         = PHARE::Simulator<dim, interpOrder>;
+using HybridModelT      = Simulator::HybridModel;
+using MHDModelT         = Simulator::MHDModel;
+using ResourcesManagerT = typename HybridModelT::resources_manager_type;
 
 
 double density(double x)
 {
-    return x * +2.;
+    return /*x * +*/ 2.;
 }
 
-double vx(double x)
+double vx(double /*x*/)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vy(double x)
+double vy(double /*x*/)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vz(double x)
+double vz(double /*x*/)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vthx(double x)
+double vthx(double /*x*/)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vthy(double x)
+double vthy(double /*x*/)
 {
-    (void)x;
     return 1.;
 }
 
 
-
-double vthz(double x)
+double vthz(double /*x*/)
 {
-    (void)x;
     return 1.;
 }
-
 
 
 double bx(double x)
 {
-    return x + 2.;
+    return x /* + 1.*/;
 }
 
 double by(double x)
 {
-    return x + 2.;
+    return x /* + 2.*/;
 }
 
 double bz(double x)
 {
-    return x + 4.;
+    return x /*+ 3.*/;
 }
 
 double ex(double x)
 {
-    return x + 5.;
+    return x /* + 4.*/;
 }
 
 double ey(double x)
 {
-    return x + 6.;
+    return x /* + 5.*/;
 }
 
 double ez(double x)
 {
-    return x + 7.;
+    return x /* + 6.*/;
 }
 
 
@@ -376,62 +318,56 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
 //
 // ----------------------------------------------------------------------------
 
-
-
-struct AfullHybridBasicHierarchy : public ::testing::Test
+// Having multiple PythonDataProvider per binary execution doesn't work so well
+struct __attribute__((visibility("hidden"))) StaticIntepreter
 {
-    int const firstHybLevel{0};
-    int const ratio{2};
-    short unsigned const dimension = 1;
-
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
-
-    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
-
-    std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
-        std::make_shared<ResourcesManagerT>()};
-
-    std::shared_ptr<HybridModelT> hybridModel{
-        std::make_shared<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
-
-
-    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
-        hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
-
-    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>> messenger{
-        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>>(
-            std::move(hybhybStrat))};
-
-    std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
-        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>()};
-
-    std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
-
-
-    std::shared_ptr<TestIntegratorStrat> integrator;
-
-    std::shared_ptr<BasicHierarchy> basicHierarchy;
-
-    AfullHybridBasicHierarchy()
+    std::shared_ptr<PHARE::initializer::PythonDataProvider> input;
+    PHARE::initializer::PHAREDict dict_{createIonsDict()};
+    StaticIntepreter()
+        : input{std::make_shared<PHARE::initializer::PythonDataProvider>()}
     {
-        hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
-        hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
-        solver->registerResources(*hybridModel);
+        input->read();
+        auto& dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+        // hax - migrate to pure python *eventually*
+        dict["simulation"]["ions"]       = dict_["ions"];
+        dict["simulation"]["electromag"] = dict_["electromag"];
+    }
+    void kill()
+    {
+        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
+        input.reset();
+    }
+    static StaticIntepreter& INSTANCE()
+    {
+        static StaticIntepreter i;
+        return i;
+    }
+};
 
-        tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
-        integrator = std::make_shared<TestIntegratorStrat>();
-        basicHierarchy
-            = std::make_shared<BasicHierarchy>(ratio, dimension, tagStrat.get(), integrator);
+struct TestSimulator : public Simulator, public ::testing::Test
+{
+    auto& dict()
+    {
+        StaticIntepreter::INSTANCE();
+        return PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+    }
+
+    TestSimulator()
+        : Simulator{dict()}
+    {
+        Simulator::initialize();
     }
 };
 
 
-TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
+// level 0 doesn't match due to periodicity
+TEST_F(TestSimulator, initializesFieldsOnRefinedLevels)
 {
-    auto& hierarchy = basicHierarchy->getHierarchy();
-    auto& rm        = hybridModel->resourcesManager;
+    auto& hierarchy   = *hierarchy_;
+    auto& hybridModel = hybridModel_;
+    auto& rm          = hybridModel->resourcesManager;
 
-    for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
+    for (auto iLevel = 1; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
         auto const& level = hierarchy.getPatchLevel(iLevel);
 
@@ -449,8 +385,7 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
             auto& By = hybridModel->state.electromag.B.getComponent(Component::Y);
             auto& Bz = hybridModel->state.electromag.B.getComponent(Component::Z);
 
-            auto checkMyField = [&layout](auto const& field, auto const& func) //
-            {
+            auto checkMyField = [&](auto const& field, auto const& func) {
                 auto iStart = layout.physicalStartIndex(field, Direction::X);
                 auto iEnd   = layout.physicalEndIndex(field, Direction::X);
 
@@ -459,6 +394,7 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
                     auto origin   = layout.origin();
                     auto x        = layout.fieldNodeCoordinates(field, origin, ix);
                     auto expected = func(x[0]);
+
                     EXPECT_DOUBLE_EQ(expected, field(ix));
                 }
             };
@@ -474,16 +410,15 @@ TEST_F(AfullHybridBasicHierarchy, initializesFieldsOnRefinedLevels)
 }
 
 
-TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
+TEST_F(TestSimulator, initializesParticlesOnRefinedLevels)
 {
-    auto& hierarchy = basicHierarchy->getHierarchy();
-    auto& rm        = hybridModel->resourcesManager;
+    auto& hierarchy   = *hierarchy_;
+    auto& hybridModel = hybridModel_;
+    auto& rm          = hybridModel->resourcesManager;
 
     for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
         auto const& level = hierarchy.getPatchLevel(iLevel);
-
-        std::cout << "iLevel = " << iLevel << "\n";
 
         for (auto& patch : *level)
         {
@@ -492,15 +427,9 @@ TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
 
             for (auto& pop : ions)
             {
-                auto& patchGhosts          = pop.patchGhostParticles();
-                auto& oldLevelBorderGhosts = pop.levelGhostParticlesOld();
-
-                auto geom              = patch->getPatchGeometry();
-                auto const& boundaries = geom->getPatchBoundaries();
-                EXPECT_GT(patchGhosts.size(), 0);
-
                 // domain particles
                 EXPECT_GT(pop.nbrParticles(), 0);
+                EXPECT_GT(pop.patchGhostParticles().size(), 0);
 
                 // here we expect to have level border particles only for
                 // refined levels and for a patch that has boundaries//
@@ -509,9 +438,10 @@ TEST_F(AfullHybridBasicHierarchy, initializesParticlesOnRefinedLevels)
                 // level and have 'boundaries' without having any coarse-to-fine ones but only
                 // physical and the test would fail. However here since we are periodic, there are
                 // no physical boundaries wo we're ok.
+                auto const& boundaries = patch->getPatchGeometry()->getPatchBoundaries();
                 if (iLevel > 0 && boundaries[0].size() > 0)
                 {
-                    EXPECT_GT(oldLevelBorderGhosts.size(), 0);
+                    EXPECT_GT(pop.levelGhostParticlesOld().size(), 0);
                 }
             }
         }
@@ -604,7 +534,52 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 #endif
 
 
+struct AfullHybridBasicHierarchy : public ::testing::Test
+{
+    int const firstHybLevel{0};
+    int const ratio{2};
+    short unsigned const dimension = 1;
 
+    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+
+    SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
+
+    std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
+        std::make_shared<ResourcesManagerT>()};
+
+    std::shared_ptr<HybridModelT> hybridModel{
+        std::make_shared<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
+
+
+    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
+        hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
+
+    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>> messenger{
+        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>>(
+            std::move(hybhybStrat))};
+
+    std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
+        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>()};
+
+    std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
+
+
+    std::shared_ptr<TestIntegratorStrat> integrator;
+
+    std::shared_ptr<BasicHierarchy> basicHierarchy;
+
+    AfullHybridBasicHierarchy()
+    {
+        hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
+        hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
+        solver->registerResources(*hybridModel);
+
+        tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
+        integrator = std::make_shared<TestIntegratorStrat>();
+        basicHierarchy
+            = std::make_shared<BasicHierarchy>(ratio, dimension, tagStrat.get(), integrator);
+    }
+};
 
 TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
 {
@@ -773,6 +748,8 @@ int main(int argc, char** argv)
     SAMRAI::tbox::SAMRAIManager::startup();
 
     int testResult = RUN_ALL_TESTS();
+
+    StaticIntepreter::INSTANCE().kill();
 
     // Finalize
     SAMRAI::tbox::SAMRAIManager::shutdown();
