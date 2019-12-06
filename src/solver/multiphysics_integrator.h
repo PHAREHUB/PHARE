@@ -12,18 +12,19 @@
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 
-#include "solver/messenger_registration.h"
+
 #include "amr/messengers/messenger.h"
+
 #include "solver/physical_models/hybrid_model.h"
 #include "solver/physical_models/mhd_model.h"
 #include "solver/physical_models/physical_model.h"
 #include "solver/solvers/solver.h"
+#include "solver/messenger_registration.h"
+#include "solver/level_initializer/level_initializer.h"
 #include "solvers/solver_mhd.h"
 #include "solver/solvers/solver_ppc.h"
+
 #include "core/utilities/algorithm.h"
-
-
-//#include "amr/resources_manager/resources_manager.h"
 
 
 
@@ -38,7 +39,6 @@ namespace solver
         int solverIndex           = NOT_SET;
         int resourcesManagerIndex = NOT_SET;
         std::string messengerName;
-        // std::unique_ptr<IMessenger> fromCoarser;
     };
 
 
@@ -73,7 +73,7 @@ namespace solver
      * registered IPhysicalModel and ISolver objects
      *
      */
-    template<typename MessengerFactory, typename AMR_Types>
+    template<typename MessengerFactory, typename LevelnitializerFactory, typename AMR_Types>
     class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                    public SAMRAI::algs::TimeRefinementLevelStrategy
     {
@@ -270,10 +270,10 @@ namespace solver
                             = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                             const bool allocateData = true) override
         {
-            auto& model     = getModel_(levelNumber);
-            auto& solver    = getSolver_(levelNumber);
-            auto& messenger = getMessengerWithCoarser_(levelNumber);
-            // auto &rm = getResourcesManager(levelNumber);
+            auto& model            = getModel_(levelNumber);
+            auto& solver           = getSolver_(levelNumber);
+            auto& messenger        = getMessengerWithCoarser_(levelNumber);
+            auto& levelInitializer = getLevelInitializer(model.name());
 
             const bool isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
@@ -289,41 +289,10 @@ namespace solver
                 }
             }
 
-
             messenger.registerLevel(hierarchy, levelNumber);
 
-
-            // on est en train de changer la hierarchy soit en créant un nouveau niveau (finest)
-            // soit en regriddant un niveau.
-            // du coup tous les schedules concernant ce niveau sont devenus invalides
-            // en gros on doit refaire les memes en passant le pointeur sur le newLevel
-
-            if (isRegridding)
-            {
-                // in case of a regrid we need to make a bunch of temporary regriding schedules
-                // using the init algorithms and actually perform the .fillData() for all of them
-                messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
-            }
-
-
-            else // we're creating a brand new finest level in the hierarchy
-            {
-                if (isRootLevel(levelNumber))
-                {
-                    // here we are either starting the simulation and building the root level
-                    // or building from a restart
-                    // either way it's not our business here, and we use the initializer
-                    // we where kindy given
-
-                    model.initialize(*level);
-
-                    messenger.fillRootGhosts(model, *level, initDataTime);
-                }
-                else
-                {
-                    messenger.initLevel(model, *level, initDataTime);
-                }
-            }
+            levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
+                                        initDataTime, isRegridding);
         }
 
 
@@ -469,11 +438,13 @@ namespace solver
 
     private:
         int nbrOfLevels_;
-        using IMessengerT = amr::IMessenger<IPhysicalModel<AMR_Types>>;
+        using IMessengerT       = amr::IMessenger<IPhysicalModel<AMR_Types>>;
+        using LevelInitializerT = LevelInitializer<AMR_Types>;
         std::vector<LevelDescriptor> levelDescriptors_;
         std::vector<std::unique_ptr<ISolver<AMR_Types>>> solvers_;
         std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
+        std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -510,6 +481,7 @@ namespace solver
         {
             if (core::notIn(model, models_))
             {
+                levelInitializers_[model->name()] = LevelnitializerFactory::create(model->name());
                 models_.push_back(std::move(model));
                 int modelIndex = models_.size() - 1;
 
@@ -686,6 +658,13 @@ namespace solver
             return *models_[descriptor.modelIndex];
         }
 
+
+
+        LevelInitializerT& getLevelInitializer(std::string modelName)
+        {
+            assert(levelInitializers_.count(modelName));
+            return *levelInitializers_[modelName];
+        }
 
 
 

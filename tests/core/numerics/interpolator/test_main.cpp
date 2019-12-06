@@ -560,7 +560,7 @@ public:
         {
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0;
+            part.weight   = 1.0 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -568,7 +568,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.4;
+            part.weight   = 0.4 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -576,7 +576,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.6;
+            part.weight   = 0.6 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -587,7 +587,7 @@ public:
         {
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 1.0;
+            part.weight   = 1.0 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -595,7 +595,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 0.2;
+            part.weight   = 0.2 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -603,7 +603,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 0.8;
+            part.weight   = 0.8 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -611,7 +611,7 @@ public:
 
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 1.0;
+            part.weight   = 1.0 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -622,7 +622,7 @@ public:
         {
             part.iCell[0] = 18; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0;
+            part.weight   = 1.0 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -630,7 +630,7 @@ public:
 
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0;
+            part.weight   = 1.0 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -638,7 +638,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0;
+            part.weight   = 1.0 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -646,7 +646,7 @@ public:
 
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.1;
+            part.weight   = 0.1 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -654,7 +654,7 @@ public:
 
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.9;
+            part.weight   = 0.9 * layout.meshSize()[0];
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;

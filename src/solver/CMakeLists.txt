@@ -10,6 +10,9 @@ set( SOURCES_INC
      physical_models/mhd_model.h
      multiphysics_integrator.h
      messenger_registration.h
+     level_initializer/level_initializer.h
+     level_initializer/hybrid_level_initializer.h
+     level_initializer/level_initializer_factory.h
    )
 set( SOURCES_CPP
      solvers/solver.cpp

@@ -4,6 +4,7 @@
 #include "initializer/python_data_provider.h"
 // intended blank HAVE_SYS_TIMES_His defined by samrai
 #include "amr/types/amr_types.h"
+
 #include "core/models/physical_state.h"
 #include "core/data/electromag/electromag.h"
 #include "core/data/grid/gridlayout.h"
@@ -14,8 +15,16 @@
 #include "core/data/ndarray/ndarray_vector.h"
 #include "core/data/particles/particle_array.h"
 #include "core/data/vecfield/vecfield.h"
+#include "core/models/physical_state.h"
+#include "core/utilities/meta/meta_utilities.h"
+#include "core/utilities/algorithm.h"
+
 #include "initializer/data_provider.h"
+
 #include "amr/messengers/messenger_factory.h"
+
+#include "solver/level_initializer/level_initializer.h"
+#include "solver/level_initializer/level_initializer_factory.h"
 #include "solver/multiphysics_integrator.h"
 #include "solver/physical_models/hybrid_model.h"
 #include "solver/physical_models/mhd_model.h"
@@ -23,8 +32,7 @@
 #include "solver/solvers/solver.h"
 #include "solver/solvers/solver_mhd.h"
 #include "solver/solvers/solver_ppc.h"
-#include "core/utilities/algorithm.h"
-#include "core/utilities/meta/meta_utilities.h"
+
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -328,6 +336,7 @@ struct PHARE_Types
     using MHDModel_t  = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;
+    using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
 };
 
 
@@ -361,10 +370,13 @@ private:
     using SolverMHD = typename PHARETypes::SolverMHD_t;
     using SolverPPC = typename PHARETypes::SolverPPC_t;
 
+    using LevelIntializerFactory = typename PHARETypes::LevelInitializerFactory_t;
+
     using MessengerFactory = PHARE::amr::MessengerFactory<MHDModel, HybridModel, IPhysicalModel>;
 
     using MultiPhysicsIntegrator
-        = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, SAMRAITypes>;
+        = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, LevelIntializerFactory,
+                                                SAMRAITypes>;
 
 public:
     Simulator(PHARE::initializer::PHAREDict dict)
