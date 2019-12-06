@@ -1,0 +1,3 @@
+
+objects  = {}
+sim = None
