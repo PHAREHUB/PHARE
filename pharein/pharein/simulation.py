@@ -216,31 +216,30 @@ def checker(func):
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
         if len(wrong_kwds) > 0:
             raise ValueError("Error: invalid arguments - " + " ".join(wrong_kwds))
-        try:
-            dl, cells = check_domain(**kwargs)
-            time_step_nbr, time_step = check_time(**kwargs)
-            interp_order = check_interp_order(**kwargs)
-            pusher = check_pusher(**kwargs)
-            layout = check_layout(**kwargs)
-            path = check_path(**kwargs)
-            dims = compute_dimension(cells)
-            boundary_types = check_boundaries(dims, **kwargs)
-            origin = check_origin(dims, **kwargs)
-            refinement_boxes = check_refinement_boxes(**kwargs)
 
-            refined_particle_nbr = kwargs.get('refined_particle_nbr', 2)  # TODO change that default value
-            diag_export_format = kwargs.get('diag_export_format', 'ascii') #TODO add checker with valid formats
-            max_nbr_levels = kwargs.get('max_nbr_levels', 1)
+        dl, cells = check_domain(**kwargs)
+        time_step_nbr, time_step = check_time(**kwargs)
+        interp_order = check_interp_order(**kwargs)
+        pusher = check_pusher(**kwargs)
+        layout = check_layout(**kwargs)
+        path = check_path(**kwargs)
+        dims = compute_dimension(cells)
+        boundary_types = check_boundaries(dims, **kwargs)
+        origin = check_origin(dims, **kwargs)
+        refinement_boxes = check_refinement_boxes(**kwargs)
+
+        refined_particle_nbr = kwargs.get('refined_particle_nbr', 2)  # TODO change that default value
+        diag_export_format = kwargs.get('diag_export_format', 'phareh5') #TODO add checker with valid formats
+        max_nbr_levels = kwargs.get('max_nbr_levels', 1)
 
 
-            return func(simulation_object, cells=cells, dl=dl, interp_order=interp_order,
-                        time_step=time_step, time_step_nbr=time_step_nbr,
-                        particle_pusher=pusher, layout=layout, origin=origin,
-                        boundary_types=boundary_types, path=path, refined_particle_nbr=refined_particle_nbr,
-                        diag_export_format=diag_export_format, max_nbr_levels=max_nbr_levels, refinement_boxes=refinement_boxes)
+        return func(simulation_object, cells=cells, dl=dl, interp_order=interp_order,
+                    time_step=time_step, time_step_nbr=time_step_nbr,
+                    particle_pusher=pusher, layout=layout, origin=origin,
+                    boundary_types=boundary_types, path=path, refined_particle_nbr=refined_particle_nbr,
+                    diag_export_format=diag_export_format, max_nbr_levels=max_nbr_levels, refinement_boxes=refinement_boxes)
 
-        except ValueError as msg:
-            print(msg)
+
 
     return wrapper
 
@@ -269,7 +268,7 @@ class Simulation(object):
     particle_pusher      : algo to push particles (default = "modifiedBoris")
     path                 : path for outputs (default : './')
     boundary_types       : type of boundary conditions (default is "periodic" for each direction)
-    diag_export_format   : format of the output diagnostics (default= "ascii")
+    diag_export_format   : format of the output diagnostics (default= "phareh5")
     max_nbr_levels       : [default=1] max number of levels in the hierarchy
     refinement_boxes     : [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
 
