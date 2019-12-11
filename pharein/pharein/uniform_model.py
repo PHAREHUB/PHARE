@@ -7,7 +7,7 @@ class UniformModel(object):
 
     def __init__(self, b=(1., 0., 0.), e=(0., 0., 0.), **kwargs):
 
-        self.model = {"model": "model", "model_name": "uniform"}
+        self.model_dict = {"model": "model", "model_name": "uniform"}
 
         if globals.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
@@ -24,12 +24,12 @@ class UniformModel(object):
             raise ValueError("invalid E")
 
 
-        self.model.update({"bx": lambda x : b[0],
-                           "by": lambda x :  b[1],
-                           "bz": lambda x : b[2],
-                           "ex": lambda x : e[0],
-                           "ey": lambda x : e[1],
-                           "ez": lambda x : e[2]})
+        self.model_dict.update({"bx": lambda x : b[0],
+                                "by": lambda x :  b[1],
+                                "bz": lambda x : b[2],
+                                "ex": lambda x : e[0],
+                                "ey": lambda x : e[1],
+                                "ez": lambda x : e[2]})
 
 
         self.populations = kwargs.keys()
@@ -89,13 +89,13 @@ class UniformModel(object):
                           "anisotropy": lambda x : anisotropy,
                           "nbrParticlesPerCell": nbr_part_per_cell}}
 
-        keys = self.model.keys()
+        keys = self.model_dict.keys()
         if name in keys:
             raise ValueError("population already registered")
 
-        self.model.update(new_population)
+        self.model_dict.update(new_population)
 #------------------------------------------------------------------------------
 
     def to_dict(self):
-        self.model['nbr_ion_populations'] = self.nbr_populations()
-        return self.model
+        self.model_dict['nbr_ion_populations'] = self.nbr_populations()
+        return self.model_dict

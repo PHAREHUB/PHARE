@@ -134,7 +134,7 @@ class ElectromagDiagnostics(Diagnostics):
 # ------------------------------------------------------------------------------
 
 def species_in_model(species):
-    return species  in globals.sim.model.species
+    return species in globals.sim.model.species
 
 
 
