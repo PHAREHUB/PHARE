@@ -1,7 +1,7 @@
 
 from . import globals
 
-class InitialModel(object):
+class MaxwellianFluidModel(object):
 
     def defaulter(self, value):
         if self.dim == 1:
@@ -19,7 +19,6 @@ class InitialModel(object):
                        by = None,
                        bz = None,
                        **kwargs):
-
 
         if globals.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
@@ -107,6 +106,8 @@ class InitialModel(object):
             vbulkx = self.defaulter(0.)
         if vbulky is None:
             vbulky = self.defaulter(0.)
+        if vbulkz is None:
+            vbulkz = self.defaulter(0.)
         if vthx is None:
             vthx   = self.defaulter(1.)
         if vthy is None:

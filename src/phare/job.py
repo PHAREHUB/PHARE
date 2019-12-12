@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
-import pharein as ph
+import pharein
+from pharein import Simulation
+from pharein import MaxwellianFluidModel
+from pharein import ElectromagDiagnostics
 
 # configure the simulation
 
-ph.Simulation(
+Simulation(
     time_step_nbr=1000,        # number of time steps (not specified if time_step and final_time provided)
     final_time=1.,             # simulation final time (not specified if time_step and time_step_nbr provided)
     boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
@@ -28,19 +31,35 @@ ph.Simulation(
 )
 
 
-# configure the model for the initial condition
-ph.UniformModel(proton1={},
-                proton2={"density":2,
-                         "vbulk":(1., 0., 0.)}
 
-                # demo_species = {density: 2,           # default = 1
-                #                 vbulk: (10,0,0),      # default = (0., 0., 0.)
-                #                 charge: 1,            # default = 1
-                #                 mass: 16,             # default = 1
-                #                 beta: 0.05,           # default = 1
-                #                 anisotropy=1          # default = 1 (Tperp/Tpara)
-                #                 }
+import numpy as np
+
+def n(x):
+    x0 = 5.
+    return 1./np.cosh(x-x0)**2
+
+def bx(x):
+    x0=5.
+    return np.tanh(x-x0)
+
+
+MaxwellianFluidModel(bx=bx,
+                     protons={"density":n},
+                     background={})
+
+
+
+
+ElectromagDiagnostics(
+    name="ElectromagDiagnostics1",
+    diag_type="E",                  # available : ("E", "B")
+    write_every=10,
+    compute_every=5,
+    start_teration=0,
+    last_iteration=990,
+    path = 'ElectromagDiagnostics1'   # where output files will be written, [default: name]
 )
+
 
 
 

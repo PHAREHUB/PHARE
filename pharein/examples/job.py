@@ -1,38 +1,53 @@
 #!/usr/bin/env python
 
-import pharein as ph
+from pharein import Simulation
+from pharein import MaxwellianFluidModel
+from pharein import ElectromagDiagnostics
 
+#------------------------------------
+#     configure the simulation
+#------------------------------------
+
+Simulation(
+    time_step_nbr=1000,                   # number of time steps (not specified if time_step and final_time provided)
+    final_time=1.,                        # simulation final time (not specified if time_step and time_step_nbr given)
+    boundary_types="periodic",            # boundary condition, string or tuple, length == len(cell) == len(dl)
+    cells=80,                             # integer or tuple length == dimension
+    dl=0.1,                               # mesh size of the root level, float or tuple
+    path='test5'                          # directory where INI file and diagnostics directories will be
+    # time_step = 0.005,                  # simulation time step (not specified if time_step_nbr and final_time given)
+    # domain_size = 8.,                   # float or tuple, not specified if dl and cells are
+    # interp_order = 1,                   # interpolation order, [default = 1] can be 1, 2, 3 or 4
+    # layout = "yee",                     # grid layout, [default="yee"]
+    # origin = 0.,                        # position of the origin of the domain, float or tuple (length = dimension)
+    # particle_pusher = "modified_boris", # particle pusher method, [default = "modified_boris"]
+    # refined_particle_nbr = 2,           # number of refined particle a particle is split into [default : ]
+    # diag_export_format = 'ascii',       # export format of the diagnostics [default = 'ascii']
+    # refinement = {"level":[0,1],        # AMR parameters
+    #                "extent_ratio":[0.4, 0.6],
+    #                "refinement_iterations":[0, 3]},
+
+) # end Simulation
+
+
+
+#--------------------------------------------
+#     configure the initial condition
 #
-# configure the simulation
-
-ph.Simulation(
-    time_step_nbr=1000,                 # number of time steps (not specified if time_step and final_time provided)
-    final_time=1.,                      # simulation final time (not specified if time_step and time_step_nbr provided)
-    boundary_types="periodic",          # boundary condition, string or tuple, length == len(cell) == len(dl)
-    cells=80,                           # integer or tuple length == dimension
-    dl=0.1,                             # mesh size of the root level, float or tuple
-    path='test5'                        # directory where INI file and diagnostics directories will be
-
-  # time_step = 0.005,                  # simulation time step (not specified if time_step_nbr and final_time provided)
-  # domain_size = 8.,                   # float or tuple, not specified if dl and cells are
-  # interp_order = 1,                   # interpolation order, [default = 1] can be 1, 2, 3 or 4
-  # layout = "yee"                      # grid layout, [default="yee"]
-  # origin = 0.,                        # position of the origin of the domain, float or tuple (length = dimension)
-  # particle_pusher = "modified_boris", # particle pusher method, [default = "modified_boris"]
-  # refined_particle_nbr = 2,           # number of refined particle a particle is split into [default : ]
-  # diag_export_format = 'ascii',       # export format of the diagnostics [default = 'ascii']
-  #, refinement = {"level":[0,1],       # AMR parameters
-  #                "extent_ratio":[0.4, 0.6],
-  #                "refinement_iterations":[0, 3]},
-
-)
+# available models:
+# - UniformModel         : electromagnetic fields and plasma are uniform
+# - MaxwellianFluidModel : user custom functions for electromagnetic field
+#                          and plasma moments (assumes maxwellian distrib).
+#--------------------------------------------
 
 
-# configure the model for the initial condition
-#ph.UniformModel(proton1={},
+# The following block defines a uniform initial condition
+#
+# as many ion populations are allowed
+#
+# UniformModel(proton1={},
 #                proton2={"density":2,
 #                         "vbulk":(1., 0., 0.)}
-
                 # demo_species = {density: 2,           # default = 1
                 #                 vbulk: (10,0,0),      # default = (0., 0., 0.)
                 #                 charge: 1,            # default = 1
@@ -40,10 +55,10 @@ ph.Simulation(
                 #                 beta: 0.05,           # default = 1
                 #                 anisotropy=1          # default = 1 (Tperp/Tpara)
                 #                 }
-)
+#)
 
 
-
+# in the following we usethe MaxwellianFluidModel
 
 import numpy as np
 
@@ -56,9 +71,22 @@ def bx(x):
     return np.tanh(x-x0)
 
 
-ph.InitialModel(bx=bx,
-                protons={"density":n},
-                background={})
+MaxwellianFluidModel(bx=bx,
+                     protons={"density":n},
+                     background={})
+
+
+
+
+ElectromagDiagnostics(
+    name="ElectromagDiagnostics1",
+    diag_type="E",                  # available : ("E", "B")
+    write_every=10,
+    compute_every=5,
+    start_teration=0,
+    last_iteration=990,
+    path = 'ElectromagDiagnostics1'   # where output files will be written, [default: name]
+)
 
 
 
@@ -85,15 +113,9 @@ ph.InitialModel(bx=bx,
 #)
 #
 #
-#ph.ElectromagDiagnostics(
-#    name="ElectromagDiagnostics1",
-#    diag_type="E",                  # available : ("E", "B")
-#    write_every=10,
-#    compute_every=5,
-#    start_teration=0,
-#    last_iteration=990
-##,path = 'ElectromagDiagnostics1'   # where output files will be written, [default: name]
-#)
+
+
+
 #
 #
 #ph.ElectromagDiagnostics(

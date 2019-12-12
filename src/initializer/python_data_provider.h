@@ -41,12 +41,7 @@ namespace initializer
          * @brief read overrides the abstract DataProvider::read method. This method basically
          * executes the user python script that fills the dictionnary.
          */
-        virtual void read() override
-        {
-            std::cout << "MERDE debut\n";
-            py::eval_file(initModuleName_, scope_);
-            std::cout << "MERDE fin\n";
-        }
+        virtual void read() override { py::eval_file(initModuleName_, scope_); }
 
 
 

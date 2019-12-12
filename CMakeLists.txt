@@ -68,10 +68,6 @@ add_subdirectory(src/simulator)
 #* Documentation option
 include("${PHARE_PROJECT_DIR}/res/cmake/doc.cmake")
 
-#*******************************************************************************
-#* Install PHAREIN
-#*******************************************************************************
-set(PHAREIN_DIR "${PROJECT_SOURCE_DIR}/external/pharein")
 
 message("PHARE CMAKE OPTION LIST ")
 message("Build test with google test                 : " ${test})

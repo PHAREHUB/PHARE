@@ -15,7 +15,7 @@ def vthz(x):
     return 7*x
 
 
-simulation = job.ph.globals.sim
+simulation = job.pharein.globals.sim
 
 add = pp.add
 addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+'D')
@@ -84,7 +84,7 @@ if refinement_boxes is not None:
 add("simulation/algo/pusher/name", simulation.particle_pusher)
 
 init_model = simulation.model
-modelDict  = init_model.model
+modelDict  = init_model.model_dict
 
 add("simulation/ions/name", "ions")
 add("simulation/ions/nbrPopulations", init_model.nbr_populations())
