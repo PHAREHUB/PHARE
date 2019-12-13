@@ -126,3 +126,7 @@ addScalarFunction(maginit_path+"z_component", modelDict["bz"])
 
 
 
+
+
+
+

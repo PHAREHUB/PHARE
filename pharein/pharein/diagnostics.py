@@ -77,7 +77,7 @@ def diagnostics_checker(func):
 # ------------------------------------------------------------------------------
 
 
-class Diagnostics:
+class Diagnostics(object):
 
     @diagnostics_checker
     def __init__(self, **kwargs):
@@ -107,7 +107,7 @@ class Diagnostics:
 class ElectromagDiagnostics(Diagnostics):
 
     em_diag_types = ['E', 'B']
-    category = "ElectromagDiagnostics"
+    category = "electromag"
 
     def __init__(self, **kwargs):
         super(ElectromagDiagnostics, self).__init__(**kwargs)
@@ -119,7 +119,7 @@ class ElectromagDiagnostics(Diagnostics):
                 error_msg = "Error: '{}' not a valid electromag diagnostics : " + ', '.join(ElectromagDiagnostics.em_diag_types)
                 raise ValueError(error_msg.format(kwargs['diag_type']))
             else:
-                self.diag_type = kwargs['diag_type']
+                self.diag_type = "EM_" + kwargs['diag_type']
 
     def to_dict(self):
         return {"name": self.name,
