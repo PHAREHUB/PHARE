@@ -140,7 +140,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write([
         if (particles.size() == 0)
             return;
         Packer packer(particles);
-        ContiguousParticles<dimension> copy{particles.size()};
+        core::Particle<dimension, true> copy{particles.size()};
 
         auto copyTo = [](auto& a, auto& idx, auto size, auto& v) {
             std::copy(a.begin(), a.begin() + size, v.begin() + (idx * size));

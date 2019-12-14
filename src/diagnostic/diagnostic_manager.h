@@ -200,27 +200,6 @@ private:
 
 
 
-template<std::size_t dim>
-struct ContiguousParticles
-{
-    std::vector<int> iCell;
-    std::vector<float> delta;
-    std::vector<double> weight, charge, v;
-    size_t size_;
-    auto size() const { return size_; }
-    ContiguousParticles(size_t s)
-        : iCell(s * dim)
-        , delta(s * dim)
-        , weight(s)
-        , charge(s)
-        , v(s * 3)
-        , size_(s)
-    {
-    }
-};
-
-
-
 // generic subclass of model specialized superclass
 template<typename AMRTypes, typename Model>
 class AMRDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>

@@ -13,7 +13,7 @@ namespace PHARE
 {
 namespace core
 {
-    template<std::size_t dim>
+    template<std::size_t dim, bool contiguous = false>
     struct Particle
     {
     };
@@ -21,7 +21,7 @@ namespace core
 
 
     template<>
-    struct Particle<1>
+    struct Particle<1, false>
     {
         double weight;
         double charge;
@@ -40,7 +40,7 @@ namespace core
 
 
     template<>
-    struct Particle<2>
+    struct Particle<2, false>
     {
         double weight;
         double charge;
@@ -58,7 +58,7 @@ namespace core
 
 
     template<>
-    struct Particle<3>
+    struct Particle<3, false>
     {
         double weight;
         double charge;
@@ -74,6 +74,27 @@ namespace core
     };
 
 
+    template<std::size_t dim>
+    struct Particle<dim, true>
+    {
+        std::vector<int> iCell;
+        std::vector<float> delta;
+        std::vector<double> weight, charge, v;
+        size_t size_, idx_ = 0;
+        auto size() const { return size_; }
+        Particle(size_t s)
+            : iCell(s * dim)
+            , delta(s * dim)
+            , weight(s)
+            , charge(s)
+            , v(s * 3)
+            , size_(s)
+        {
+        }
+        static const std::size_t dimension = dim;
+
+        auto vectorTuple() { std::forward_as_tuple(iCell, delta, weight, charge, v); }
+    };
 
 
     template<typename Particle>
