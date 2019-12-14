@@ -134,7 +134,7 @@ class ElectromagDiagnostics(Diagnostics):
 # ------------------------------------------------------------------------------
 
 def population_in_model(population):
-    return population in [p for p in globals.sim.model.populations] + ["all",]
+    return population in [p for p in globals.sim.model.populations] + ["all","ions"]
 
 
 
@@ -158,7 +158,7 @@ class FluidDiagnostics (Diagnostics):
             if kwargs['diag_type'] not in FluidDiagnostics.fluid_diag_types:
                 error_msg = "Error: '{}' not a valid fluid diagnostics : " + ', '.join(FluidDiagnostics.fluid_diag_types)
                 raise ValueError(error_msg.format(kwargs['diag_type']))
-            elif kwargs['diag_type'] == 'flux' and kwargs['population_name'] == "all":
+            elif kwargs['diag_type'] == 'flux' and kwargs['population_name'] == "ions":
                 raise ValueError("'flux' is only available for specific populations, try 'bulk_velocity")
             else:
                 self.diag_type = kwargs['diag_type']
