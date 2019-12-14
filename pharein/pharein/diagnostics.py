@@ -133,24 +133,24 @@ class ElectromagDiagnostics(Diagnostics):
 
 # ------------------------------------------------------------------------------
 
-def species_in_model(species):
-    return species in globals.sim.model.species
+def population_in_model(population):
+    return population in [p for p in globals.sim.model.populations] + ["all",]
 
 
 
 
 class FluidDiagnostics (Diagnostics):
 
-    fluid_diag_types = ['rho_s', 'flux_s']
+    fluid_diag_types = ['density', 'flux', 'bulk_velocity']
     category = "FluidDiagnostics"
 
     def __init__(self, **kwargs):
         super(FluidDiagnostics, self).__init__(**kwargs)
 
-        if 'species_name' not in kwargs:
-            raise ValueError("Error: missing species_name")
+        if 'population_name' not in kwargs:
+            raise ValueError("Error: missing population_name")
         else:
-            self.species_name = kwargs['species_name']
+            self.population_name = kwargs['population_name']
 
         if 'diag_type' not in kwargs:
             raise ValueError("Error: missing diag_type parameter")
@@ -158,11 +158,13 @@ class FluidDiagnostics (Diagnostics):
             if kwargs['diag_type'] not in FluidDiagnostics.fluid_diag_types:
                 error_msg = "Error: '{}' not a valid fluid diagnostics : " + ', '.join(FluidDiagnostics.fluid_diag_types)
                 raise ValueError(error_msg.format(kwargs['diag_type']))
+            elif kwargs['diag_type'] == 'flux' and kwargs['population_name'] == "all":
+                raise ValueError("'flux' is only available for specific populations, try 'bulk_velocity")
             else:
                 self.diag_type = kwargs['diag_type']
 
-        if not species_in_model(self.species_name):
-            raise ValueError("Error: species '{}' not in simulation initial model".format(self.species_name))
+        if not population_in_model(self.population_name):
+            raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
 
     def to_dict(self):
         return {"name": self.name,
@@ -173,7 +175,7 @@ class FluidDiagnostics (Diagnostics):
                 "start_iteration": self.start_iteration,
                 "last_iteration": self.last_iteration,
                 "path": self.path,
-                "species_name": self.species_name}
+                "population_name": self.population_name}
 
 
 
@@ -199,13 +201,13 @@ class ParticleDiagnostics(Diagnostics):
 
         self.space_box(**kwargs)
 
-        if 'species_name' not in kwargs:
-            raise ValueError("Error: missing species_name")
+        if 'population_name' not in kwargs:
+            raise ValueError("Error: missing population_name")
         else:
-            self.species_name = kwargs['species_name']
+            self.population_name = kwargs['population_name']
             
-        if not species_in_model(self.species_name):
-            raise ValueError("Error: species '{}' not in simulation initial model".format(self.species_name))
+        if not population_in_model(self.population_name):
+            raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
 
     def space_box(self, **kwargs):
 
@@ -224,4 +226,4 @@ class ParticleDiagnostics(Diagnostics):
                 "last_iteration": self.last_iteration,
                 "path": self.path,
                 "extent": ", ".join([str(x) for x in self.extent]),
-                "species_name":self.species_name}
+                "population_name":self.population_name}

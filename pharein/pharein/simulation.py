@@ -324,7 +324,7 @@ class Simulation(object):
 # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
-        if diag.name in self.diagnostics:
+        if diag.name in [diag.name for diag in self.diagnostics]:
             raise ValueError("Error: diagnostics {} already registered".format(diag.name))
 
         # check if the duration of the diagnostics is valid, given the duration of the simulation

@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 
+
 from pharein import Simulation
 from pharein import MaxwellianFluidModel
 from pharein import ElectromagDiagnostics
+from pharein import FluidDiagnostics
+from pharein import ParticleDiagnostics
+
+
 
 #------------------------------------
 #     configure the simulation
@@ -31,31 +36,8 @@ Simulation(
 
 
 
-#--------------------------------------------
-#     configure the initial condition
-#
-# available models:
-# - UniformModel         : electromagnetic fields and plasma are uniform
-# - MaxwellianFluidModel : user custom functions for electromagnetic field
-#                          and plasma moments (assumes maxwellian distrib).
-#--------------------------------------------
 
 
-# The following block defines a uniform initial condition
-#
-# as many ion populations are allowed
-#
-# UniformModel(proton1={},
-#                proton2={"density":2,
-#                         "vbulk":(1., 0., 0.)}
-                # demo_species = {density: 2,           # default = 1
-                #                 vbulk: (10,0,0),      # default = (0., 0., 0.)
-                #                 charge: 1,            # default = 1
-                #                 mass: 16,             # default = 1
-                #                 beta: 0.05,           # default = 1
-                #                 anisotropy=1          # default = 1 (Tperp/Tpara)
-                #                 }
-#)
 
 
 # in the following we usethe MaxwellianFluidModel
@@ -77,7 +59,6 @@ MaxwellianFluidModel(bx=bx,
 
 
 
-
 ElectromagDiagnostics(
     name="ElectromagDiagnostics1",
     diag_type="E",                  # available : ("E", "B")
@@ -89,57 +70,67 @@ ElectromagDiagnostics(
 )
 
 
-
-#ph.FluidDiagnostics(
-#    name="FluidDiagnostics1",       # name of the diagnostics
-#    diag_type="rho_s",              # choose in (rho_s, flux_s)
-#    write_every=10,                 # write on disk every x iterations
-#    compute_every=5,                # compute diagnostics every x iterations ( x <= write_every)
-#    start_iteration=0,              # iteration at which diag is enabled
-#    last_iteration=990,             # iteration at which diag is turned off
-#    species_name="proton1"          # name of the species for which the diagnostics is made
-#  #,path = 'FluidDiagnostics1'      # where output files will be written, [default: name]
-#)
-#
-#
-#ph.FluidDiagnostics(
-#    name="FluidDiagnostics2",
-#    diag_type="flux_s",
-#    write_every=10,
-#    compute_every=5,
-#    start_iteration=0,
-#    last_iteration=990,
-#    species_name="proton1"
-#)
-#
-#
+FluidDiagnostics(
+    name="FluidDiagnostics1",       # name of the diagnostics
+    diag_type="density",            # choose in (rho_s, flux_s)
+    write_every=10,                 # write on disk every x iterations
+    compute_every=5,                # compute diagnostics every x iterations ( x <= write_every)
+    start_iteration=0,              # iteration at which diag is enabled
+    last_iteration=990,             # iteration at which diag is turned off
+    population_name="protons"       # name of the population for which the diagnostics is made
+  #,path = 'FluidDiagnostics1'      # where output files will be written, [default: name]
+)
 
 
+FluidDiagnostics(
+    name="FluidDiagnostics3",
+    diag_type="bulk_velocity",
+    write_every=10,
+    compute_every=5,
+    start_iteration=0,
+    last_iteration=990,
+    population_name="background"
+)
 
-#
-#
-#ph.ElectromagDiagnostics(
-#    name="ElectromagDiagnostics2",
-#    diag_type="B",
-#    write_every=10,
-#    compute_every=5,
-#    start_teration=0,
-#    last_iteration=990
-#)
-#
-#
-#ph.ParticleDiagnostics(
-#        name = "ParticleDiagnostics1",
-#        compute_every=10,
-#        write_every=10,
-#        start_iteration=0,
-#        last_iteration=90,
-#        diag_type="space_box",          # choose particles within a spatial box
-#        extent=(2., 4.),                # extent of the box
-#        species_name="proton1"
-#        )
-#
-#
-#ph.prepare_job()
+FluidDiagnostics(
+    name="FluidDiagnostics2",
+    diag_type="density",
+    write_every=10,
+    compute_every=5,
+    start_iteration=0,
+    last_iteration=990,
+    population_name="all"
+)
 
-#phare.MiniPHARE().run(simu)
+FluidDiagnostics(
+    name="FluidDiagnostics4",
+    diag_type="flux",
+    write_every=10,
+    compute_every=5,
+    start_iteration=0,
+    last_iteration=990,
+    population_name="background"
+)
+
+ElectromagDiagnostics(
+    name="ElectromagDiagnostics2",
+    diag_type="B",
+    write_every=10,
+    compute_every=5,
+    start_teration=0,
+    last_iteration=990
+)
+
+
+
+ParticleDiagnostics(
+        name = "ParticleDiagnostics1",
+        compute_every=10,
+        write_every=10,
+        start_iteration=0,
+        last_iteration=90,
+        diag_type="space_box",          # choose particles within a spatial box
+        extent=(2., 4.),                # extent of the box
+        population_name="protons"
+        )
+

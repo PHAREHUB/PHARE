@@ -62,6 +62,28 @@ ElectromagDiagnostics(
 
 
 
+FluidDiagnostics(
+    name="FluidDiagnostics1",       # name of the diagnostics
+    diag_type="rho_s",              # choose in (rho_s, flux_s)
+    write_every=10,                 # write on disk every x iterations
+    compute_every=5,                # compute diagnostics every x iterations ( x <= write_every)
+    start_iteration=0,              # iteration at which diag is enabled
+    last_iteration=990,             # iteration at which diag is turned off
+    population_name="protons"       # name of the population for which the diagnostics is made
+  #,path = 'FluidDiagnostics1'      # where output files will be written, [default: name]
+)
+
+
+
+FluidDiagnostics(
+    name="FluidDiagnostics2",
+    diag_type="flux_s",
+    write_every=10,
+    compute_every=5,
+    start_iteration=0,
+    last_iteration=990,
+    population_name="background"
+)
 
 
 
