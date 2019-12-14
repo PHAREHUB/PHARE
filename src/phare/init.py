@@ -124,17 +124,17 @@ addScalarFunction(maginit_path+"z_component", modelDict["bz"])
 
 
 
-
-for diag simulation.diagnostics:
-    add("simulation/diagnostics/name/", diag.name)
-    add("simulation/diagnostics/type/", diag.category)
-    add("simulation/diagnostics/subtype/", diag.diag_type)
-    add("simulation/diagnostics/compute_every/", int(diag.compute_every))
-    add("simulation/diagnostics/write_every/", int(diag.write_every))
-    add("simulation/diagnostics/start_iteration/", int(diag.start_iteration))
-    add("simulation/diagnostics/last_iteration/", int(diag.last_iteration))
+for diag in simulation.diagnostics:
+    diag_path = "simulation/diagnostics/"
+    categ_path = diag_path + diag.category + '/'
+    name_path = categ_path + diag.name
+    add(name_path + "/" + 'subtype/' , diag.diag_type)
+    add(name_path + "/" + 'compute_every/' , int(diag.compute_every))
+    add(name_path + "/" + 'write_every/' , int(diag.write_every))
+    add(name_path + "/" + 'start_iteration/' , int(diag.start_iteration))
+    add(name_path + "/" + 'last_iteration/' , int(diag.last_iteration))
     if (diag.category in ["FluidDiagnostics", "ParticleDiagnostics"]):
-        print("simulation/diagnostics/population/" + str(diag.population_name))
+        print(name_path + "/" + 'population/' , diag.population_name)
 
 
 

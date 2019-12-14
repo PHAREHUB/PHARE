@@ -60,7 +60,6 @@ MaxwellianFluidModel(bx=bx,
 
 
 ElectromagDiagnostics(
-    name="ElectromagDiagnostics1",
     diag_type="E",                  # available : ("E", "B")
     write_every=10,
     compute_every=5,
@@ -71,7 +70,6 @@ ElectromagDiagnostics(
 
 
 FluidDiagnostics(
-    name="FluidDiagnostics1",       # name of the diagnostics
     diag_type="density",            # choose in (rho_s, flux_s)
     write_every=10,                 # write on disk every x iterations
     compute_every=5,                # compute diagnostics every x iterations ( x <= write_every)
@@ -83,7 +81,6 @@ FluidDiagnostics(
 
 
 FluidDiagnostics(
-    name="FluidDiagnostics3",
     diag_type="bulk_velocity",
     write_every=10,
     compute_every=5,
@@ -93,7 +90,6 @@ FluidDiagnostics(
 )
 
 FluidDiagnostics(
-    name="FluidDiagnostics2",
     diag_type="density",
     write_every=10,
     compute_every=5,
@@ -103,7 +99,6 @@ FluidDiagnostics(
 )
 
 FluidDiagnostics(
-    name="FluidDiagnostics4",
     diag_type="flux",
     write_every=10,
     compute_every=5,
@@ -113,7 +108,6 @@ FluidDiagnostics(
 )
 
 ElectromagDiagnostics(
-    name="ElectromagDiagnostics2",
     diag_type="B",
     write_every=10,
     compute_every=5,
@@ -124,7 +118,6 @@ ElectromagDiagnostics(
 
 
 ParticleDiagnostics(
-        name = "ParticleDiagnostics1",
         compute_every=10,
         write_every=10,
         start_iteration=0,
