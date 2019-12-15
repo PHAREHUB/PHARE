@@ -136,6 +136,14 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write([
 {
     auto& hi5 = this->hi5_;
 
+    auto writeContigousParticles = [&](auto path, auto& keys, auto& particles) {
+        hi5.writeDataSet(path + keys[0], particles.weight.data());
+        hi5.writeDataSet(path + keys[1], particles.charge.data());
+        hi5.writeDataSet(path + keys[2], particles.iCell.data());
+        hi5.writeDataSet(path + keys[3], particles.delta.data());
+        hi5.writeDataSet(path + keys[4], particles.v.data());
+    };
+
     auto writeParticles = [&](auto path, auto& particles) {
         if (particles.size() == 0)
             return;
@@ -157,17 +165,24 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write([
             idx++;
         }
 
-        hi5.writeDataSet(path + packer.keys()[0], copy.weight.data());
-        hi5.writeDataSet(path + packer.keys()[1], copy.charge.data());
-        hi5.writeDataSet(path + packer.keys()[2], copy.iCell.data());
-        hi5.writeDataSet(path + packer.keys()[3], copy.delta.data());
-        hi5.writeDataSet(path + packer.keys()[4], copy.v.data());
+        writeContigousParticles(path, packer.keys(), copy);
     };
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
+        using ParticleArray = std::decay_t<decltype(ps)>;
         std::string active{tree + pType};
+
         if (diagnostic.subtype == active)
-            writeParticles(hi5.patchPath() + active + "/", ps);
+        {
+            if constexpr (ParticleArray::is_contiguous)
+            {
+                writeContigousParticles(hi5.patchPath() + active + "/", ps);
+            }
+            else
+            {
+                writeParticles(hi5.patchPath() + active + "/", ps);
+            }
+        }
     };
 
     for (auto& pop : hi5.modelView().getIons())

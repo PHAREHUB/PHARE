@@ -17,100 +17,110 @@
 using namespace PHARE::core;
 using namespace PHARE::initializer;
 
+static constexpr size_t PARTICLES_PER_CELL = 1000;
 
-double density([[maybe_unused]] double x)
+double density(double)
 {
     return 1.;
 }
 
 
-double vx(double x)
+double vx(double)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vy(double x)
+double vy(double)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vz(double x)
+double vz(double)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vthx(double x)
+double vthx(double)
 {
-    (void)x;
     return 1.;
 }
 
 
-double vthy(double x)
+double vthy(double)
 {
-    (void)x;
     return 1.;
 }
 
 
 
-double vthz(double x)
+double vthz(double)
 {
-    (void)x;
     return 1.;
 }
 
 
-
-
-class AMaxwellianParticleInitializer1D : public ::testing::Test
+template<typename ParticleArray, bool prealloc>
+struct AMaxwellianParticleInitializer1D
 {
-private:
-    using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
-    using ParticleArrayT = ParticleArray<1>;
+    using GridLayoutT    = GridLayout<GridLayoutImplYee<ParticleArray::dim, 1>>;
     using VectorFunction = std::array<ScalarFunction<1>, 3>;
+    using ParticleInit   = MaxwellianParticleInitializer<ParticleArray, GridLayoutT, prealloc>;
 
-public:
-    AMaxwellianParticleInitializer1D()
+    AMaxwellianParticleInitializer1D(size_t alloc = 0)
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
-        , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
-              density, VectorFunction{vx, vy, vz}, VectorFunction{vthx, vthy, vthz}, 1.,
-              nbrParticlesPerCell)}
+        , particles{layout.nbrCells()[0] * alloc}
+        , initializer{std::make_unique<ParticleInit>(density, VectorFunction{vx, vy, vz},
+                                                     VectorFunction{vthx, vthy, vthz}, 1.,
+                                                     nbrParticlesPerCell)}
     {
-        //
+        if constexpr (!prealloc) // hack sorry
+            particles.clear();
     }
 
-
     GridLayoutT layout;
-    ParticleArrayT particles;
-    uint32 nbrParticlesPerCell{1000};
-    std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
+    ParticleArray particles;
+    uint32 nbrParticlesPerCell{PARTICLES_PER_CELL};
+    std::unique_ptr<ParticleInit> initializer;
 };
 
+// ParticleArray<1, false> = not contiguous
+// AMaxwellianParticleInitializer1D<ParticleArray, false> = not preallocated
+using ParticleInitializers
+    = testing::Types<AMaxwellianParticleInitializer1D<ParticleArray<1, false>, false>,
+                     AMaxwellianParticleInitializer1D<ParticleArray<1, false>, true>,
+                     AMaxwellianParticleInitializer1D<ParticleArray<1, true>, false>,
+                     AMaxwellianParticleInitializer1D<ParticleArray<1, true>, true>>;
 
-
-
-TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
+template<typename MaxwellianParticleInitializer>
+struct AMaxwellianParticleInitializerTest : public ::testing::Test
 {
-    auto nbrCells             = layout.nbrCells();
-    auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
+};
+
+TYPED_TEST_SUITE(AMaxwellianParticleInitializerTest, ParticleInitializers);
+
+TYPED_TEST(AMaxwellianParticleInitializerTest, loadsTheCorrectNbrOfParticles_)
+{
+    TypeParam init{PARTICLES_PER_CELL};
+    auto& layout      = init.layout;
+    auto& initializer = init.initializer;
+    auto& particles   = init.particles;
+
+    auto expectedNbrParticles = init.nbrParticlesPerCell * layout.nbrCells()[0];
     initializer->loadParticles(particles, layout);
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
 
-
-
-
-TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
+TYPED_TEST(AMaxwellianParticleInitializerTest, loadsParticlesInTheDomain_)
 {
+    TypeParam init{PARTICLES_PER_CELL};
+    auto& layout      = init.layout;
+    auto& initializer = init.initializer;
+    auto& particles   = init.particles;
+
     initializer->loadParticles(particles, layout);
-    auto i = 0u;
     for (auto const& particle : particles)
     {
         EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
@@ -118,59 +128,8 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
         auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
         EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
-        i++;
     }
 }
-
-class ContiguousMaxwellianParticleInitializer1D : public ::testing::Test
-{
-private:
-    using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
-    using ParticleArrayT = ParticleArray<1, true>;
-    using VectorFunction = std::array<ScalarFunction<1>, 3>;
-
-public:
-    ContiguousMaxwellianParticleInitializer1D()
-        : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
-        , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
-              density, VectorFunction{vx, vy, vz}, VectorFunction{vthx, vthy, vthz}, 1.,
-              nbrParticlesPerCell)}
-    {
-        //
-    }
-
-
-    GridLayoutT layout;
-    ParticleArrayT particles;
-    uint32 nbrParticlesPerCell{1000};
-    std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
-};
-
-
-TEST_F(ContiguousMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
-{
-    auto nbrCells             = layout.nbrCells();
-    auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
-    initializer->loadParticles(particles, layout);
-    EXPECT_EQ(expectedNbrParticles, particles.size());
-}
-
-
-TEST_F(ContiguousMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
-{
-    initializer->loadParticles(particles, layout);
-    auto i = 0u;
-    for (auto const& particle : particles)
-    {
-        EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
-        auto pos       = positionAsPoint(particle, layout);
-        auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
-
-        EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
-        i++;
-    }
-}
-
 
 int main(int argc, char** argv)
 {

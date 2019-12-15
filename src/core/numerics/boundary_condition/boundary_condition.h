@@ -15,7 +15,10 @@ namespace core
     class BoundaryCondition
     {
     public:
-        void setBoundaryBoxes(std::vector<Box<int, dim>> const& boxes) { boundaryBoxes_ = boxes; }
+        void setBoundaryBoxes(std::vector<Box<int, dim>> boxes)
+        {
+            boundaryBoxes_ = std::move(boxes);
+        }
 
         template<typename ParticleIterator>
         ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator end)

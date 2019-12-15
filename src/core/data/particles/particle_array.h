@@ -11,12 +11,14 @@ namespace PHARE::core
 template<std::size_t dim, bool contiguous = false>
 struct ParticleArray;
 
-template<std::size_t dim>
-struct ParticleArray<dim, false>
+template<std::size_t _dim>
+struct ParticleArray<_dim, false>
 {
-    using value_type                   = Particle<dim, false>;
-    using iterator                     = typename std::vector<value_type>::iterator;
-    static constexpr bool is_contigous = false;
+    static constexpr bool is_contiguous = false;
+    static constexpr size_t dim         = _dim;
+
+    using value_type = Particle<dim, is_contiguous>;
+    using iterator   = typename std::vector<value_type>::iterator;
 
     ParticleArray() {}
 
@@ -97,15 +99,6 @@ struct ParticleArrayWrapper
     type& operator[](size_t idx) const { return pointer[idx]; }
     type& operator[](size_t idx) { return pointer[idx]; }
 
-    /*
-        operator type*() { return pointer; }
-        operator std::array<type, dim>() const
-        {
-            std::array<type, dim> array;
-            std::copy(pointer, pointer + dim, array);
-            return array;
-        }*/
-
     type* pointer;
 };
 
@@ -118,9 +111,12 @@ struct ParticleArrayIndex
     ParticleArrayWrapper<double, 3> v;
 };
 
-template<std::size_t dim>
-struct ParticleArray<dim, true> : public Particle<dim, true>
+template<std::size_t _dim>
+struct ParticleArray<_dim, true> : public Particle<_dim, true>
 {
+    static constexpr bool is_contiguous = true;
+    static constexpr size_t dim         = _dim;
+
     using Particle<dim, true>::idx_;
     using Particle<dim, true>::size_;
     using Particle<dim, true>::weight;
@@ -128,7 +124,7 @@ struct ParticleArray<dim, true> : public Particle<dim, true>
     using Particle<dim, true>::iCell;
     using Particle<dim, true>::delta;
     using Particle<dim, true>::v;
-    static constexpr bool is_contigous = true;
+    using value_type = ParticleArrayIndex<dim>;
 
     ParticleArray() {}
 
@@ -164,6 +160,8 @@ struct ParticleArray<dim, true> : public Particle<dim, true>
         return std::move(std::make_shared<aggregate_adapter<ParticleArrayIndex<dim>>>(
             weight[idx], charge[idx], &iCell[idx * dim], &delta[idx_ * dim], &v[idx * 3]));
     }
+
+    auto& operator[](size_t idx) { return *(idx_ptr = get_array_index(idx_++)).get(); }
 
     class iterator
     {

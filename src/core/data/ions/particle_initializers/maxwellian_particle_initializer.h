@@ -32,7 +32,7 @@ namespace core
     /** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
      * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
      */
-    template<typename ParticleArray, typename GridLayout>
+    template<typename ParticleArray, typename GridLayout, bool preallocated = false>
     class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
     {
     private:
@@ -82,8 +82,39 @@ namespace core
         virtual ~MaxwellianParticleInitializer() = default;
 
 
-
     private:
+        void addParticle(ParticleArray& particles, double& cellWeight,
+                         std::array<int, dimension>&& _iCell, std::array<float, dimension>& delta,
+                         std::array<double, 3>& velocity, size_t& particle_idx) const
+        {
+            if constexpr (ParticleArray::is_contiguous && preallocated)
+            {
+                auto copyIn = [&](auto& to, auto& from, size_t size) {
+                    std::copy(from.data(), from.data() + size, &to[particle_idx]);
+                };
+                particles.weight[particle_idx] = cellWeight;
+                particles.charge[particle_idx] = particleCharge_;
+                copyIn(particles.iCell, _iCell, dimension);
+                copyIn(particles.delta, delta, dimension);
+                copyIn(particles.v, velocity, 3);
+            }
+            else
+            {
+                typename ParticleArray::value_type* ptr = nullptr;
+                if constexpr (preallocated)
+                    ptr = &particles[particle_idx];
+                else
+                    ptr = &particles.emplace_back();
+                auto& particle  = *ptr;
+                particle.weight = cellWeight;
+                particle.charge = particleCharge_;
+                particle.iCell  = _iCell;
+                particle.delta  = delta;
+                particle.v      = velocity;
+            }
+            particle_idx++;
+        }
+
         void loadParticles1D_(ParticleArray& particles, GridLayout const& layout) const
         {
             auto const meshSize = layout.meshSize();
@@ -111,7 +142,7 @@ namespace core
             // auto& density         = *density_;
             // auto& bulkVelocity    = *bulkVelocity_;
             // auto& thermalVelocity = *thermalVelocity_;
-
+            size_t particle_idx = 0;
             for (uint32 ix = ix0; ix < ix1; ++ix)
             {
                 double n; // cell centered density
@@ -160,12 +191,9 @@ namespace core
 
                     // particle iCell is in AMR index
                     auto AMRCellIndex = layout.localToAMR(Point{ix});
-                    auto& particle    = particles.emplace_back();
-                    particle.weight   = cellWeight;
-                    particle.charge   = particleCharge_;
-                    particle.iCell    = AMRCellIndex.template toArray<int>();
-                    particle.delta    = delta;
-                    particle.v        = particleVelocity;
+
+                    addParticle(particles, cellWeight, AMRCellIndex.template toArray<int>(), delta,
+                                particleVelocity, particle_idx);
                 }
             }
         }
@@ -202,7 +230,7 @@ namespace core
             // auto& bulkVelocity    = *bulkVelocity_;
             // auto& thermalVelocity = *thermalVelocity_;
 
-
+            size_t particle_idx = 0;
             for (uint32 ix = ix0; ix < ix1; ++ix)
             {
                 for (uint32 iy = iy0; iy < iy1; ++iy)
@@ -255,12 +283,8 @@ namespace core
 
                         // particle iCell is in AMR index
                         auto AMRCellIndex = layout.localToAMR(Point{ix, iy});
-                        auto& particle    = particles.emplace_back();
-                        particle.weight   = cellWeight;
-                        particle.charge   = particleCharge_;
-                        particle.iCell    = AMRCellIndex.template toArray<int>();
-                        particle.delta    = delta;
-                        particle.v        = particleVelocity;
+                        addParticle(particles, cellWeight, AMRCellIndex.template toArray<int>(),
+                                    delta, particleVelocity, particle_idx);
                     }
                 }
             }
@@ -301,7 +325,7 @@ namespace core
             // auto& bulkVelocity    = *bulkVelocity_;
             // auto& thermalVelocity = *thermalVelocity_;
 
-
+            size_t particle_idx = 0;
             for (uint32 ix = ix0; ix < ix1; ++ix)
             {
                 for (uint32 iy = iy0; iy < iy1; ++iy)
@@ -358,12 +382,8 @@ namespace core
 
                             // particle iCell is in AMR index
                             auto AMRCellIndex = layout.localToAMR(Point{ix, iy, iz});
-                            auto& particle    = particles.emplace_back();
-                            particle.weight   = cellWeight;
-                            particle.charge   = particleCharge_;
-                            particle.iCell    = AMRCellIndex.template toArray<int>();
-                            particle.delta    = delta;
-                            particle.v        = particleVelocity;
+                            addParticle(particles, cellWeight, AMRCellIndex.template toArray<int>(),
+                                        delta, particleVelocity, particle_idx);
                         } // end particle looop
                     }     // end z
                 }         // end y

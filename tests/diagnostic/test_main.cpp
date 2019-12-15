@@ -161,7 +161,7 @@ TEST_F(Hi5Diagnostic, particles)
         std::vector<float> deltaV;
         writer.file().getDataSet(path + "delta").read(deltaV);
 
-        ParticlePacker packer{particles};
+        ParticlePacker<dim_> packer{particles};
 
         auto first       = packer.empty();
         size_t iCellSize = std::get<2>(first).size();
