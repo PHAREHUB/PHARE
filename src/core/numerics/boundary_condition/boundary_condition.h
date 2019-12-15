@@ -15,10 +15,7 @@ namespace core
     class BoundaryCondition
     {
     public:
-        void setBoundaryBoxes(std::vector<Box<int, dim>> boxes)
-        {
-            boundaryBoxes_ = std::move(boxes);
-        }
+        void setBoundaryBoxes(std::vector<Box<int, dim>> const& boxes) { boundaryBoxes_ = boxes; }
 
         template<typename ParticleIterator>
         ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator end)
@@ -29,7 +26,7 @@ namespace core
             // applyBC for each box.
             // end while loop
 
-            // particles to delete are between te last iterator
+            // particles to delete are between the last iterator
             // of 'partitions' and the end.
             return partitions[boundaryBoxes_.size()];
         }

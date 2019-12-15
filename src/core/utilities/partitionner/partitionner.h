@@ -32,7 +32,7 @@ namespace core
      */
     template<typename ParticleIterator, typename BoxContainer,
              is_iterable<BoxContainer> = dummy::value>
-    auto partitionner(ParticleIterator begin, ParticleIterator end, BoxContainer boxes)
+    auto partitionner(ParticleIterator begin, ParticleIterator end, BoxContainer const& boxes)
     {
         std::vector<ParticleIterator> iterators;
         iterators.push_back(begin);
@@ -41,7 +41,7 @@ namespace core
         for (auto const& box : boxes)
         {
             pivot = std::partition(pivot, end, makeSelector(box));
-            iterators.push_back(pivot);
+            iterators.emplace_back(pivot);
         }
 
         return iterators;

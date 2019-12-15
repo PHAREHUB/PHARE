@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "core/utilities/meta/meta_utilities.h"
+#include "core/data/particles/particle_array.h"
 
 namespace PHARE
 {
@@ -49,6 +50,14 @@ namespace core
         constexpr Point(std::array<Type, dim> coords)
             : r{std::move(coords)}
         {
+        }
+
+        Point(ParticleArrayWrapper<Type, dim> const& pawt)
+        {
+            for (size_t i = 0; i < dim; ++i)
+            {
+                r[i] = pawt[i];
+            }
         }
 
         template<typename Container, is_subscriptable<Container> = dummy::value>
@@ -112,6 +121,11 @@ namespace core
     Point(Indexes... indexes)
         ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
+    template<typename Particle>
+    auto cellAsPoint(Particle const& particle)
+    {
+        return Point<int, Particle::dimension>{particle.iCell};
+    }
 
 } // namespace core
 } // namespace PHARE

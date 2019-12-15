@@ -37,12 +37,12 @@ protected:
 
 
 
-
 TEST_F(ABoundaryConditionWhereAllParticlesLeave, removesOutgoingParticles)
 {
-    auto toDelete
-        = bc.applyOutgoingParticleBC(std::begin(leavingParticles_), std::end(leavingParticles_));
-    leavingParticles_.erase(toDelete, std::end(leavingParticles_));
+    auto toDelete = bc.applyOutgoingParticleBC(leavingParticles_.begin(), leavingParticles_.end());
+
+    if (toDelete == leavingParticles_.begin())
+        leavingParticles_.clear();
 
     EXPECT_EQ(0, leavingParticles_.size());
 }

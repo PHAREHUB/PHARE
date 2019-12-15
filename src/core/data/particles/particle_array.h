@@ -1,7 +1,6 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_H
 
-
 #include <cstddef>
 #include <vector>
 
@@ -10,7 +9,7 @@
 namespace PHARE::core
 {
 template<std::size_t dim, bool contiguous = false>
-class ParticleArray;
+struct ParticleArray;
 
 template<std::size_t dim>
 struct ParticleArray<dim, false>
@@ -36,7 +35,7 @@ struct ParticleArray<dim, false>
     }
 
     template<typename... Ts>
-    auto emplace_back(Ts&&... args)
+    auto& emplace_back(Ts&&... args)
     {
         return particles.emplace_back(std::forward<Ts>(args)...);
     }
@@ -68,6 +67,7 @@ struct ParticleArray<dim, false>
 
     auto size() const { return particles.size(); }
 
+
     std::vector<value_type> particles;
 
     ParticleArray(const ParticleArray&)             = delete;
@@ -76,32 +76,143 @@ struct ParticleArray<dim, false>
     ParticleArray& operator&(const ParticleArray&&) = delete;
 };
 
-template<std::size_t dim> // unfinished
-struct ParticleArray<dim, true>
+template<typename type, size_t dim>
+struct ParticleArrayWrapper
 {
+    ParticleArrayWrapper(type* wrapping)
+        : pointer{wrapping}
+    {
+    }
+
+    ParticleArrayWrapper& operator=(std::array<type, dim> const&& input)
+    {
+        return operator=(input);
+    }
+    ParticleArrayWrapper& operator=(std::array<type, dim> const& input)
+    {
+        std::copy(&input[0], &input[0] + dim, pointer);
+        return *this;
+    }
+
+    type& operator[](size_t idx) const { return pointer[idx]; }
+    type& operator[](size_t idx) { return pointer[idx]; }
+
+    /*
+        operator type*() { return pointer; }
+        operator std::array<type, dim>() const
+        {
+            std::array<type, dim> array;
+            std::copy(pointer, pointer + dim, array);
+            return array;
+        }*/
+
+    type* pointer;
+};
+
+template<std::size_t dim>
+struct ParticleArrayIndex
+{
+    double &weight, &charge;
+    ParticleArrayWrapper<int, dim> iCell;
+    ParticleArrayWrapper<float, dim> delta;
+    ParticleArrayWrapper<double, 3> v;
+};
+
+template<std::size_t dim>
+struct ParticleArray<dim, true> : public Particle<dim, true>
+{
+    using Particle<dim, true>::idx_;
+    using Particle<dim, true>::size_;
+    using Particle<dim, true>::weight;
+    using Particle<dim, true>::charge;
+    using Particle<dim, true>::iCell;
+    using Particle<dim, true>::delta;
+    using Particle<dim, true>::v;
     static constexpr bool is_contigous = true;
 
-    template<typename T>
-    void emplace_back(T t)
-    {
-    }
-    template<typename T>
-    void push_back(T t)
+    ParticleArray() {}
+
+    ParticleArray(size_t size)
+        : Particle<dim, true>{size}
     {
     }
 
-    auto begin() const { return 0; }
-    auto begin() { return 0; }
-    auto end() const { return 0; }
-    auto end() { return 0; }
+    auto vectorTuple() { return std::forward_as_tuple(iCell, delta, weight, charge, v); }
+
+    auto& emplace_back()
+    {
+        if (idx_ == size_)
+        {
+            for (size_t i = 0; i < dim; i++)
+            {
+                iCell.emplace_back();
+                delta.emplace_back();
+            }
+            for (size_t i = 0; i < 3; i++)
+                v.emplace_back();
+
+            charge.emplace_back();
+            weight.emplace_back();
+            size_++;
+        }
+        idx_ptr = get_array_index(idx_++);
+        return *idx_ptr.get();
+    }
+
+    auto get_array_index(size_t idx)
+    {
+        return std::move(std::make_shared<aggregate_adapter<ParticleArrayIndex<dim>>>(
+            weight[idx], charge[idx], &iCell[idx * dim], &delta[idx_ * dim], &v[idx * 3]));
+    }
+
+    class iterator
+    {
+    public:
+        iterator(ParticleArray<dim, true>& outer, size_t _position)
+            : idx_(_position)
+            , outer_(outer)
+        {
+            set();
+        }
+        void set() { ptr = outer_.get_array_index(idx_); }
+        auto& operator*() { return *ptr.get(); }
+        auto& operator*() const { return *ptr.get(); }
+        iterator& operator++()
+        {
+            ++idx_;
+            set();
+            return *this;
+        }
+        bool operator!=(const iterator& it) const { return idx_ != it.idx_; }
+
+    private:
+        size_t idx_;
+        ParticleArray<dim, true>& outer_;
+        std::shared_ptr<ParticleArrayIndex<dim>> ptr;
+    };
+
+    auto begin() const { return iterator(*this, 0); }
+    auto begin() { return iterator(*this, 0); }
+    auto end() const { return iterator(*this, size_); }
+    auto end() { return iterator(*this, size_); }
 
     void clear()
     {
-        std::apply(particles.vectorTuple(), [](auto& arg) { arg.clear(); });
-        particles.size_ = particles.idx_ = 0;
+        core::apply(vectorTuple(), [](auto& arg) { arg.clear(); });
+        size_ = idx_ = 0;
     }
 
-    Particle<dim, true> particles;
+    static void swap(ParticleArray& left, ParticleArray& right)
+    {
+        size_t idx     = 0;
+        auto thisTuple = left.vectorTuple();
+        core::apply(right.vectorTuple(), [&](auto& arg) {
+            std::swap(std::get<idx>(thisTuple), arg);
+            idx++;
+        });
+    }
+
+    std::shared_ptr<ParticleArrayIndex<dim>> idx_ptr;
 
     ParticleArray(const ParticleArray&)             = delete;
     ParticleArray(const ParticleArray&&)            = delete;
@@ -115,14 +226,15 @@ void empty(ParticleArray<dim, contiguous>& array)
     array.clear();
 }
 
-template<std::size_t dim, bool contiguous = false>
+template<size_t dim, bool contiguous>
 void swap(ParticleArray<dim, contiguous>& array1, ParticleArray<dim, contiguous>& array2)
 {
-    if constexpr (!contiguous)
+    if constexpr (contiguous)
+        ParticleArray<dim, contiguous>::swap(array1, array2);
+    else
         std::swap(array1.particles, array2.particles);
 }
 
 } // namespace PHARE::core
-
 
 #endif

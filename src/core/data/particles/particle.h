@@ -1,12 +1,12 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 
-#include "core/utilities/point/point.h"
+#include "core/utilities/types.h"
 
 #include <array>
+#include <tuple>
+#include <utility>
 #include <type_traits>
-
-
 
 
 namespace PHARE
@@ -80,8 +80,9 @@ namespace core
         std::vector<int> iCell;
         std::vector<float> delta;
         std::vector<double> weight, charge, v;
-        size_t size_, idx_ = 0;
+        size_t size_ = 0, idx_ = 0;
         auto size() const { return size_; }
+        Particle() {}
         Particle(size_t s)
             : iCell(s * dim)
             , delta(s * dim)
@@ -97,11 +98,6 @@ namespace core
     };
 
 
-    template<typename Particle>
-    auto cellAsPoint(Particle const& particle)
-    {
-        return Point<int, Particle::dimension>{particle.iCell};
-    }
 
 
 } // namespace core
