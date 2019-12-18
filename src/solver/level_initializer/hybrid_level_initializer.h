@@ -9,8 +9,8 @@
 #include "core/numerics/interpolator/interpolator.h"
 #include "core/numerics/moments/moments.h"
 #include "level_initializer.h"
-#include "physical_models/hybrid_model.h"
-#include "physical_models/physical_model.h"
+#include "solver/physical_models/hybrid_model.h"
+#include "solver/physical_models/physical_model.h"
 
 namespace PHARE
 {

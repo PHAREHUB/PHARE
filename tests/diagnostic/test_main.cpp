@@ -17,6 +17,9 @@ using namespace PHARE_test::_1d;
 #include "hierarchy.h"
 
 #include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/types/electromag.h"
+#include "diagnostic/detail/types/particle.h"
+#include "diagnostic/detail/types/fluid.h"
 
 using namespace PHARE::diagnostic::h5;
 using namespace PHARE::diagnostic;
@@ -25,7 +28,8 @@ using namespace PHARE::diagnostic;
 struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
 {
     ~Hi5Diagnostic() {}
-    Hi5Diagnostic() {}
+    Hi5Diagnostic(std::string fileName,
+      unsigned flags = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate) : file_{fileName}, flags_{flags}{}
 
     auto dict(std::string&& type, std::string& subtype)
     {
@@ -43,7 +47,7 @@ struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
     auto particles(std::string&& subtype) { return dict("particles", subtype); }
     auto fluid(std::string&& subtype) { return dict("fluid", subtype); }
 
-    std::string filename() const { return "hi5_test.5"; }
+    std::string filename() const { return file_ + "_hi5_test.5"; }
 
     std::string getPatchPath(int level, PHARE::amr::SAMRAI_Types::patch_t& patch)
     {
@@ -80,12 +84,17 @@ struct Hi5Diagnostic : public ::testing::Test, public AfullHybridBasicHierarchy
     using DiagnosticModelView = AMRDiagnosticModelView<PHARE::amr::SAMRAI_Types, HybridModelT>;
     using DiagnosticWriter    = HighFiveDiagnostic<DiagnosticModelView>;
 
+    std::string file_;
+    unsigned flags_;
     DiagnosticModelView modelView{basicHierarchy->getHierarchy(), *hybridModel};
-    DiagnosticWriter writer{modelView, filename()};
+    DiagnosticWriter writer{modelView, filename(), flags_};
     DiagnosticsManager<DiagnosticWriter> dMan{writer};
 };
 
-TEST_F(Hi5Diagnostic, fluid)
+struct FluidHi5Diagnostic : public Hi5Diagnostic{
+    FluidHi5Diagnostic() : Hi5Diagnostic{"fluid"}{}
+};
+TEST_F(FluidHi5Diagnostic, fluidWrite)
 {
     dMan.addDiagDict(this->fluid("/ions/density"))
         .addDiagDict(this->fluid("/ions/bulkVelocity"))
@@ -94,7 +103,13 @@ TEST_F(Hi5Diagnostic, fluid)
         .addDiagDict(this->fluid("/ions/pop/ions_protons/density"))
         .addDiagDict(this->fluid("/ions/pop/ions_protons/flux"))
         .dump();
+}
 
+struct ReadOnlyFluidHi5Diagnostic : public Hi5Diagnostic{
+    ReadOnlyFluidHi5Diagnostic() : Hi5Diagnostic{"fluid", HighFive::File::ReadOnly}{}
+};
+TEST_F(ReadOnlyFluidHi5Diagnostic, fluidRead)
+{
     auto checkIons = [&](auto& ions, auto patchPath) {
         std::string path(patchPath + "/ions/");
 
@@ -120,10 +135,19 @@ TEST_F(Hi5Diagnostic, fluid)
     }
 }
 
-TEST_F(Hi5Diagnostic, electromag)
+struct ElectromagHi5Diagnostic : public Hi5Diagnostic{
+    ElectromagHi5Diagnostic() : Hi5Diagnostic{"electromag"}{}
+};
+TEST_F(ElectromagHi5Diagnostic, electromagWrite)
 {
     dMan.addDiagDict(this->electromag("/EM_B")).addDiagDict(this->electromag("/EM_E")).dump();
+}
 
+struct ReadOnlyElectromagHi5Diagnostic : public Hi5Diagnostic{
+    ReadOnlyElectromagHi5Diagnostic() : Hi5Diagnostic{"electromag", HighFive::File::ReadOnly}{}
+};
+TEST_F(ReadOnlyElectromagHi5Diagnostic, electromagRead)
+{
     auto& hierarchy = basicHierarchy->getHierarchy();
     for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); iLevel++)
     {
@@ -139,7 +163,10 @@ TEST_F(Hi5Diagnostic, electromag)
     }
 }
 
-TEST_F(Hi5Diagnostic, particles)
+struct ParticlesHi5Diagnostic : public Hi5Diagnostic{
+    ParticlesHi5Diagnostic() : Hi5Diagnostic{"particles"}{}
+};
+TEST_F(ParticlesHi5Diagnostic, particlesWrite)
 {
     dMan.addDiagDict(this->particles("/ions/pop/ions_alpha/domain"))
         .addDiagDict(this->particles("/ions/pop/ions_alpha/levelGhost"))
@@ -148,7 +175,13 @@ TEST_F(Hi5Diagnostic, particles)
         .addDiagDict(this->particles("/ions/pop/ions_protons/levelGhost"))
         .addDiagDict(this->particles("/ions/pop/ions_protons/patchGhost"))
         .dump();
+}
 
+struct ReadOnlyParticlesHi5Diagnostic : public Hi5Diagnostic{
+    ReadOnlyParticlesHi5Diagnostic() : Hi5Diagnostic{"particles", HighFive::File::ReadOnly}{}
+};
+TEST_F(ReadOnlyParticlesHi5Diagnostic, particlesRead)
+{
     auto checkParticles = [&](auto& particles, auto path) {
         if (!particles.size())
             return;
@@ -198,6 +231,23 @@ TEST_F(Hi5Diagnostic, particles)
                 checkParticles(pop.levelGhostParticles(), particlePath + "levelGhost/");
                 checkParticles(pop.patchGhostParticles(), particlePath + "patchGhost/");
             }
+        }
+    }
+}
+
+TEST_F(ReadOnlyParticlesHi5Diagnostic, attributesRead)
+{
+
+    auto& hierarchy = basicHierarchy->getHierarchy();
+    for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); iLevel++)
+    {
+        for (auto patch : *hierarchy.getPatchLevel(iLevel))
+        {
+            auto guardedGrid = modelView.guardedGrid(*patch);
+            std::string patchPath(getPatchPath(iLevel, *patch) + "/"), origin;
+            writer.file().getGroup(patchPath).getAttribute("origin").read(origin);
+
+            EXPECT_EQ(guardedGrid.grid_.origin().str(), origin);
         }
     }
 }
