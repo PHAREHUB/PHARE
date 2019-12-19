@@ -31,7 +31,7 @@ protected:
     void initDataSets_(std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                        Attributes& patchAttributes, std::size_t levelNbr, InitPatch&& initPatch)
     {
-        for (size_t lvl = 0; lvl <= levelNbr; lvl++)
+        for (size_t lvl = hi5_.minLevel; lvl <= levelNbr; lvl++)
         {
             auto& lvlPatches  = patchIDs.at(lvl);
             size_t patchNbr   = lvlPatches.size();

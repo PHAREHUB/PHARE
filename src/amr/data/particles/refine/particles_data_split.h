@@ -122,8 +122,8 @@ namespace amr
                      ParticlesData<dim> const& srcParticlesData,
                      SAMRAI::pdat::CellOverlap const& destFieldOverlap,
                      SAMRAI::hier::IntVector const& ratio,
-                     SAMRAI::geom::CartesianPatchGeometry const& patchGeomDest,
-                     SAMRAI::geom::CartesianPatchGeometry const& patchGeomSrc) const
+                     SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomDest*/,
+                     SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomSrc*/) const
         {
             // the source PatchData is a possible restriction of a "real" patchdata
             // so that it is the closest from the destination boxes

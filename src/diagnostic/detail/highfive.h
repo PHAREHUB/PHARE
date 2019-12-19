@@ -1,5 +1,6 @@
-#ifndef PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H
-#define PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H
+
+#ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H
+#define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H
 
 #include "highfive/H5DataSet.hpp"
 #include "highfive/H5DataSpace.hpp"
@@ -9,22 +10,31 @@
 #include "diagnostic/diagnostic_manager.h"
 #include "diagnostic/diagnostic_dao.h"
 #include "highfive_diag_writer.h"
-#include "types/electromag.h"
-#include "types/particle.h"
-#include "types/fluid.h"
+
+/*TODO
+  add advancement/time iteration separation for dumping
+    - see "getPatchPath" - replace "/t#" with real time/id
+*/
 
 namespace PHARE::diagnostic::h5
 {
+template<typename HighFiveDiagnostic>
+class ElectromagDiagnosticWriter;
+template<typename HighFiveDiagnostic>
+class FluidDiagnosticWriter;
+template<typename HighFiveDiagnostic>
+class ParticlesDiagnosticWriter;
+
 struct HighFiveFile
 {
     HighFive::File file_;
     PHARE::diagnostic::Mode mode_ = PHARE::diagnostic::Mode::LIGHT;
 
-    static auto createHighFiveFile(std::string const path)
+    static auto createHighFiveFile(std::string const path, unsigned flags)
     {
         return HighFive::File
         {
-            path, HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate
+            path, flags
 #if defined(H5_HAVE_PARALLEL)
                 ,
                 HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
@@ -32,9 +42,9 @@ struct HighFiveFile
         };
     }
 
-    HighFiveFile(std::string const path,
+    HighFiveFile(std::string const path, unsigned flags,
                  PHARE::diagnostic::Mode mode = PHARE::diagnostic::Mode::LIGHT)
-        : file_{createHighFiveFile(path)}
+        : file_{createHighFiveFile(path, flags)}
         , mode_{mode}
     {
     }
@@ -61,8 +71,9 @@ public:
     static constexpr auto dimension   = ModelView::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
 
-    HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath)
-        : hi5_{hifivePath}
+    HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath, unsigned flags =
+                 HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate)
+        : hi5_{hifivePath, flags}
         , modelView_{modelView}
     {
     }
@@ -103,32 +114,34 @@ public:
     void writeDataSet(String path, Array const* const array)
     {
         hi5_.file_.getDataSet(path).write(array);
+        hi5_.file_.flush();
     }
 
-    template<typename String, typename Data>
-    void writeAttribute(String path, std::string const& key, Data const& value)
+    // global function when all path+key are the same
+    template<typename Data>
+    void writeAttribute(std::string path, std::string const& key, Data const& value)
     {
         hi5_.file_.getGroup(path)
             .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
             .write(value);
+        hi5_.file_.flush();
     }
 
-    template<typename Array>
-    void writeDataSetPart(std::string path, size_t start, size_t size, Array const& array)
-    {
-        hi5_.file_.getDataSet(path).select({start}, {size}).write(array);
-    }
+    // per MPI function where path differs per process
+    template<typename Data>
+    void writeAttributesPerMPI(std::string path, std::string const& key, Data const& value);
 
     template<typename VecField>
     void writeVecFieldAsDataset(std::string path, VecField& vecField)
     {
         for (auto& [id, type] : core::Components::componentMap)
             hi5_.file_.getDataSet(path + "/" + id).write(vecField.getComponent(type).data());
+        hi5_.file_.flush();
     }
 
     size_t getMaxOfPerMPI(size_t localSize);
 
-    size_t maxLevel = 10; // TODO hard-coded to be parametrized somehow
+    size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
 
 private:
     HighFiveFile hi5_;
@@ -153,7 +166,6 @@ private:
     void initializeDatasets_(std::vector<DiagnosticDAO*> const& diagnotics);
     void writeDatasets_(std::vector<DiagnosticDAO*> const& diagnotics);
 
-
     template<typename Dict>
     void writeDict(Dict, std::string);
 
@@ -175,40 +187,6 @@ void HighFiveDiagnostic<ModelView>::dump(std::vector<DiagnosticDAO*> const& diag
 
     initializeDatasets_(diagnostics);
     writeDatasets_(diagnostics);
-}
-
-
-
-/*
- * turns a dict of std::map<std::string, T> to hdf5 attributes
- */
-template<typename ModelView>
-template<typename Dict>
-void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string path)
-{
-    using dict_map_t = typename Dict::map_t;
-    auto visitor     = [&](auto&& map) {
-        using Map_t = std::decay_t<decltype(map)>;
-        if constexpr (std::is_same_v<Map_t, dict_map_t>)
-            for (auto& pair : map)
-                std::visit(
-                    [&](auto&& val) {
-                        using Val = std::decay_t<decltype(val)>;
-                        if constexpr (core::is_dict_leaf<Val, Dict>::value)
-                            writeAttribute(path, pair.first, val);
-                        else
-                            throw std::runtime_error(std::string("Expecting Writable value got ")
-                                                     + typeid(Map_t).name());
-                    },
-                    pair.second.get()->data);
-        else
-            /* static_assert fails without if ! constexpr all possible types
-             * regardless of what it actually is.
-             */
-            throw std::runtime_error(std::string("Expecting map<string, T> got ")
-                                     + typeid(Map_t).name());
-    };
-    std::visit(visitor, dict.data);
 }
 
 
@@ -267,15 +245,68 @@ void HighFiveDiagnostic<ModelView>::createDatasetsPerMPI(std::string path, size_
 
 
 
+/*
+ * Communicate all attribute paths and values to all MPI process to allow each to create all
+ * attributes independently. This is a requirement of HDF5.
+ * in the case of a disparate number of attributes per MPI process, path may be an empty string
+ * such that the current process creates attributes for all other processes with non-zero
+ * sizes. Recommended to use similar sized paths, if possible. key is always assumed to the be the same
+ */
+template<typename ModelView>
+template<typename Data>
+void HighFiveDiagnostic<ModelView>::writeAttributesPerMPI(std::string path, std::string const& key,
+                                                          Data const& data)
+{
+    int mpi_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    std::vector<Data> values(mpi_size);
+    if constexpr (std::is_same_v<std::string, Data>)
+    {
+        size_t maxMPISize = getMaxOfPerMPI(data.size());
+        std::vector<char> chars(maxMPISize * mpi_size);
+        MPI_Allgather(data.c_str(), data.size(), MPI_CHAR, chars.data(), maxMPISize, MPI_CHAR,
+                      MPI_COMM_WORLD);
+        for (int i = 0; i < mpi_size; i++)
+            values[i] = std::string{&chars[maxMPISize * i], maxMPISize};
+    }
+    else if constexpr (std::is_same_v<double, Data>)
+        MPI_Allgather(&data, 1, MPI_DOUBLE, values.data(), 1, MPI_DOUBLE, MPI_COMM_WORLD);
+    else
+        MPI_Allgather(&data, 1, MPI_UINT64_T, values.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
+
+    std::unordered_map<std::string, Data> pathValues;
+    {
+        uint64_t pathSize = path.size();
+        auto maxPathSize  = getMaxOfPerMPI(pathSize);
+        std::vector<char> chars(maxPathSize * mpi_size);
+        MPI_Allgather(path.c_str(), pathSize, MPI_CHAR, chars.data(), maxPathSize, MPI_CHAR,
+                      MPI_COMM_WORLD);
+
+        for (int i = 0; i < mpi_size; i++)
+        {
+            auto attributePath = std::string{&chars[pathSize * i], pathSize};
+            if (!pathValues.count(attributePath))
+                pathValues.emplace(attributePath, values[i]);
+        }
+    }
+
+    for (const auto& [keyPath, value] : pathValues)
+    {
+        if (!keyPath.empty())
+            hi5_.file_.getGroup(keyPath)
+                .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
+                .write(value);
+    }
+}
+
+
+
 template<typename ModelView>
 void HighFiveDiagnostic<ModelView>::initializeDatasets_(
     std::vector<DiagnosticDAO*> const& diagnostics)
 {
-    /*TODO
-      add time/iterations
-    */
     size_t maxLocalLevel = 0;
-    const auto minLevel  = 0;
     std::unordered_map<size_t, std::vector<std::string>> patchIDs; // level to local patches
     Attributes patchAttributes; // stores dataset info/size for synced MPI creation
     auto collectPatchAttributes
@@ -308,30 +339,75 @@ void HighFiveDiagnostic<ModelView>::initializeDatasets_(
 }
 
 
-
-
 template<typename ModelView>
 void HighFiveDiagnostic<ModelView>::writeDatasets_(std::vector<DiagnosticDAO*> const& diagnostics)
 {
-    /*TODO
-      add time/iterations
-    */
-    const auto minLevel = 0;
-    auto writePatch     = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
+    std::vector<std::pair<std::string, Attributes>> patchAttributes;
+    auto writePatch = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
         patchPath_ = getPatchPath("time", iLevel, patchID);
 
         for (auto* diagnostic : diagnostics)
         {
             writers.at(diagnostic->type)->write(*diagnostic);
         }
-        writeDict(modelView().getPatchAttributes(gridLayout), patchPath_);
+        patchAttributes.emplace_back(patchPath_, modelView().getPatchAttributes(gridLayout));
     };
 
     modelView().visitHierarchy(writePatch, minLevel, maxLevel);
+
+    size_t maxAttrSizeLevel = getMaxOfPerMPI(patchAttributes.size());
+    assert(patchAttributes.size()); // must have one - see following comment
+    /*
+     * in case of unequal patches across MPI processes, we default to
+     *  let the current process create attributes for other process with patches.
+     *  We need a real attributes dict to expand such that the current process
+     *  when having less than max patches across MPI can call the create/write
+     *  attribute functions for all other processes - see how "writeDict" uses the
+     *  Attribute dict
+     */
+    for (size_t i = patchAttributes.size(); i < maxAttrSizeLevel; i++)
+        patchAttributes.emplace_back("", patchAttributes[0].second);
+
+    for (size_t i = 0; i < maxAttrSizeLevel; i++)
+        writeDict(patchAttributes[i].second, patchAttributes[i].first);
+}
+
+
+
+/*
+ * turns a dict of std::map<std::string, T> to hdf5 attributes
+ */
+template<typename ModelView>
+template<typename Dict>
+void HighFiveDiagnostic<ModelView>::writeDict(Dict dict, std::string path)
+{
+    using dict_map_t = typename Dict::map_t;
+    auto visitor     = [&](auto&& map) {
+        using Map_t = std::decay_t<decltype(map)>;
+        if constexpr (std::is_same_v<Map_t, dict_map_t>)
+            for (auto& pair : map)
+                std::visit(
+                    [&](auto&& val) {
+                        using Val = std::decay_t<decltype(val)>;
+                        if constexpr (core::is_dict_leaf<Val, Dict>::value)
+                            writeAttributesPerMPI(path, pair.first, val);
+                        else
+                            throw std::runtime_error(std::string("Expecting Writable value got ")
+                                                     + typeid(Map_t).name());
+                    },
+                    pair.second.get()->data);
+        else
+            /* static_assert fails without if ! constexpr all possible types
+             * regardless of what it actually is.
+             */
+            throw std::runtime_error(std::string("Expecting map<string, T> got ")
+                                     + typeid(Map_t).name());
+    };
+    std::visit(visitor, dict.data);
 }
 
 
 
 } /* namespace PHARE::diagnostic::h5 */
 
-#endif /* PHARE_AMR_DIAGNOSTIC_SAMRAI_HIGHFIVE_H */
+#endif /* PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H */
