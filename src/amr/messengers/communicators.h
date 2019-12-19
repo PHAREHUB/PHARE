@@ -275,7 +275,7 @@ namespace amr
                  std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp, std::string key,
                  std::shared_ptr<ResourcesManager> const& rm)
         {
-            auto const [it, success] = synchronizers_.insert(
+            synchronizers_.insert(
                 {key, makeSynchronizer<ResourcesManager, dimension>(descriptor, rm, coarsenOp)});
         }
 

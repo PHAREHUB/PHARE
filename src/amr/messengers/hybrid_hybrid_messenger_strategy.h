@@ -446,7 +446,7 @@ namespace amr
 
 
 
-        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+        virtual void fillRootGhosts(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& level,
                                     double const initDataTime) final
         {
             auto levelNumber = level.getLevelNumber();
