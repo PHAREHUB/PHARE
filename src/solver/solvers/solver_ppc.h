@@ -8,6 +8,7 @@
 
 #include "amr/messengers/hybrid_messenger.h"
 #include "amr/messengers/hybrid_messenger_info.h"
+#include "amr/resources_manager/amr_utils.h"
 #include "solver/solvers/solver.h"
 
 namespace PHARE
@@ -180,6 +181,9 @@ namespace solver
         // loop on patches
         // |
         // -> faraday E , B, Bpred
+        // auto faraday = []() {};
+        // amr::visitLevel(*level, *hybridModel.resourcesManager, faraday, hybridModel);
+
         VecFieldT& Bpred = electromagPred_.B;
         fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
 
