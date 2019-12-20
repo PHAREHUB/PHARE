@@ -11,7 +11,7 @@
 
 using PHARE::core::Box;
 using PHARE::core::Particle;
-using PHARE::core::ParticleSelector;
+using PHARE::core::ParticleSelectorT;
 using PHARE::core::Point;
 
 

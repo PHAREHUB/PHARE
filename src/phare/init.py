@@ -5,4 +5,3 @@ import sys, job
 from phare import populateDict
 
 populateDict() # in __init__.py
-

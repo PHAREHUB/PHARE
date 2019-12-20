@@ -13,9 +13,9 @@ namespace PHARE
 namespace core
 {
     template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition>
+             typename ParticleSelector, typename BoundaryCondition, typename GridLayout>
     class BorisPusher : public Pusher<dim, ParticleIterator, Electromag, Interpolator,
-                                      ParticleSelector, BoundaryCondition>
+                                      ParticleSelector, BoundaryCondition, GridLayout>
     {
     public:
         using ParticleRange = Range<ParticleIterator>;
@@ -25,7 +25,7 @@ namespace core
                                       Electromag const& emFields, double mass,
                                       Interpolator& interpolator,
                                       ParticleSelector const& particleIsNotLeaving,
-                                      BoundaryCondition& bc) override
+                                      BoundaryCondition& bc, GridLayout& layout) override
         {
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
@@ -43,7 +43,7 @@ namespace core
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
-            interpolator(rangeOut.begin(), rangeOut.end(), emFields);
+            interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
             // get the particle velocity from t=n to t=n+1
             accelerate_(rangeOut, rangeOut, mass);
@@ -65,8 +65,8 @@ namespace core
         /** see Pusher::move() domentation*/
         virtual decltype(std::declval<ParticleRange>().end())
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
-             double mass, Interpolator& interpolator,
-             ParticleSelector const& particleIsNotLeaving) override
+             double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
+             GridLayout& layout) override
         {
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
@@ -77,7 +77,7 @@ namespace core
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
-            interpolator(rangeOut.begin(), rangeOut.end(), emFields);
+            interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
             // get the particle velocity from t=n to t=n+1
             accelerate_(rangeOut, rangeOut, mass);
