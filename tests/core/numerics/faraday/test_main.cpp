@@ -128,7 +128,7 @@ TEST(Faraday, shouldBeGivenAGridLayoutPointerToBeOperational)
 
     Faraday<GridLayoutMock1D> faraday1d;
     auto layout1d = std::make_unique<GridLayoutMock1D>();
-    EXPECT_ANY_THROW(faraday1d(B, E, Bnew));
+    EXPECT_ANY_THROW(faraday1d(B, E, Bnew, 1.));
     faraday1d.setLayout(layout1d.get());
 
     Faraday<GridLayoutMock2D> faraday2d;
@@ -341,7 +341,7 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
     }
 
     faraday.setLayout(&layout);
-    faraday(B, E, Bnew);
+    faraday(B, E, Bnew, 1.);
 
     auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
     auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
@@ -436,7 +436,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     }
 
     faraday.setLayout(&layout);
-    faraday(B, E, Bnew);
+    faraday(B, E, Bnew, 1.);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -596,7 +596,7 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
     }
 
     faraday.setLayout(&layout);
-    faraday(B, E, Bnew);
+    faraday(B, E, Bnew, 1.);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
