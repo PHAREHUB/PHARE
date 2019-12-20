@@ -12,7 +12,7 @@ namespace PHARE
 namespace core
 {
     template<std::size_t dim, std::size_t interpOrder>
-    class BoundaryCondition
+    class BoundaryConditionT
     {
     public:
         void setBoundaryBoxes(std::vector<Box<int, dim>> boxes)
