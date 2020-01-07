@@ -111,6 +111,15 @@ namespace solver
         auto nbrOfLevels() const { return nbrOfLevels_; }
 
 
+        void
+        processLevelBeforeRemoval(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+                                  const int level_number,
+                                  const std::shared_ptr<SAMRAI::hier::PatchLevel>& old_level
+                                  = std::shared_ptr<SAMRAI::hier::PatchLevel>()) override
+        {
+            // unregister level schedulers
+            getMessengerWithCoarser_(level_number).unregisterLevel(hierarchy, level_number);
+        }
 
 
         /**

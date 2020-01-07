@@ -169,6 +169,31 @@ namespace amr
         }
 
 
+        void unregisterLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                             int const levelNumber) override
+        {
+            magneticGhosts_.remove(levelNumber);
+            electricGhosts_.remove(levelNumber);
+            patchGhostParticles_.remove(levelNumber);
+
+            // root level is not initialized with a schedule using coarser level data
+            // so we don't create these schedules if root level
+            if (levelNumber != rootLevelNumber)
+            {
+                // those are for refinement
+                magneticInit_.remove(levelNumber);
+                electricInit_.remove(levelNumber);
+                interiorParticles_.remove(levelNumber);
+                levelGhostParticlesOld_.remove(levelNumber);
+                levelGhostParticlesNew_.remove(levelNumber);
+
+                // and these for coarsening
+                magnetoSynchronizers_.remove(levelNumber);
+                electroSynchronizers_.remove(levelNumber);
+                densitySynchronizers_.remove(levelNumber);
+                ionBulkVelSynchronizers_.remove(levelNumber);
+            }
+        }
 
         /**
          * @brief regrid performs the regriding communications for Hybrid to Hybrid messengers

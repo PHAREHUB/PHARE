@@ -116,6 +116,11 @@ namespace amr
         }
 
 
+        void unregisterLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                             int const levelNumber) override
+        {
+        }
+
 
         /**
          * @brief see IMessenger::registerLevel

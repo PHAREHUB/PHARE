@@ -102,6 +102,8 @@ namespace amr
         {
             schedules_[levelNumber] = std::move(schedule);
         }
+
+        void remove(int levelNumber) { schedules_.erase(levelNumber); }
     };
 
 

@@ -119,6 +119,9 @@ namespace amr
                                    int const levelNumber)
             = 0;
 
+        virtual void unregisterLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                     int const levelNumber)
+            = 0;
 
 
         /**

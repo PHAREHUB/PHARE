@@ -242,6 +242,11 @@ namespace amr
             }
         }
 
+        void remove(int const levelNumber)
+        {
+            for (auto& [key, refiner] : refiners_)
+                refiner.remove(levelNumber);
+        }
 
 
     private:
@@ -262,7 +267,6 @@ namespace amr
 
         std::map<std::string, Communicator<Refiner>> refiners_;
     };
-
 
 
 
@@ -330,6 +334,12 @@ namespace amr
                     throw std::runtime_error("Error - schedule cannot be found for this level");
                 }
             }
+        }
+
+        void remove(int const levelNumber)
+        {
+            for (auto& [key, synchronizer] : synchronizers_)
+                synchronizer.remove(levelNumber);
         }
 
     private:
