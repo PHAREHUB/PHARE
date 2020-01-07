@@ -99,6 +99,7 @@ public:
             if (levelNumber == 0)
             {
                 model_->initialize(*level);
+                messenger_->fillRootGhosts(*model_, *level, initDataTime);
             }
 
             else

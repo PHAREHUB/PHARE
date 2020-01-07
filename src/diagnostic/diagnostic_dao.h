@@ -11,11 +11,11 @@ namespace PHARE::diagnostic
 struct DiagnosticDAO // DAO = DataAccessObject
 {
     std::size_t compute_every = 1, write_every = 1;
-    std::size_t start_iteration = 0, end_iteration = 100; /* likely to be time rather than index*/
-                                                          /* do we allow ranges?*/
+    std::size_t start_iteration = 0, last_iteration = 100; /* likely to be time rather than index*/
+                                                           /* do we allow ranges?*/
     size_t iterator;
     std::vector<size_t> activeTimesteps;
-    std::string name, type, subtype;
+    std::string type, subtype;
 };
 
 } // namespace PHARE::diagnostic

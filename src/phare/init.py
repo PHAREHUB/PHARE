@@ -1,28 +1,21 @@
 #! /usr/bin/env python3
 
+import phare.pyphare as pp
+import sys, job
 
-import src.initializer.pyphare as pp
-import job
-
-
-def vthx(x):
-    return 5*x
-
-def vthy(x):
-    return 6*x
-
-def vthz(x):
-    return 7*x
-
-
-simulation = job.pharein.globals.sim
+from phare.pharein.globals import sim as simulation
 
 add = pp.add
 addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+'D')
 
-
 add("simulation/name", "simulation_test")
 add("simulation/dimension", simulation.dims)
+add("simulation/boundary_types", simulation.boundary_types[0])
+
+if simulation.smallest_patch_size is not None:
+    add("simulation/AMR/smallest_patch_size", simulation.smallest_patch_size)
+if simulation.largest_patch_size is not None:
+    add("simulation/AMR/largest_patch_size", simulation.largest_patch_size)
 
 
 add("simulation/grid/layout_type", simulation.layout)
@@ -64,7 +57,7 @@ def as_paths(rb):
             box_upper_path_x = box + "/upper/x/"
             add(level_path + box_lower_path_x, int(lower[0]))
             add(level_path + box_upper_path_x, int(upper[0]))
-            if len(lower)>1:
+            if len(lower)>=2:
                 box_lower_path_y = box + "/lower/y/"
                 box_upper_path_y = box + "/upper/y/"
                 add(level_path+box_lower_path_y,format(lower[1]))
@@ -102,9 +95,9 @@ for pop_index, pop in enumerate(init_model.populations):
     addScalarFunction(partinit_path+"bulk_velocity_x", d["vx"])
     addScalarFunction(partinit_path+"bulk_velocity_y", d["vy"])
     addScalarFunction(partinit_path+"bulk_velocity_z", d["vz"])
-    addScalarFunction(partinit_path+"thermal_velocity_x",vthx)
-    addScalarFunction(partinit_path+"thermal_velocity_y",vthy)
-    addScalarFunction(partinit_path+"thermal_velocity_z",vthz)
+    addScalarFunction(partinit_path+"thermal_velocity_x",d["vthx"])
+    addScalarFunction(partinit_path+"thermal_velocity_y",d["vthy"])
+    addScalarFunction(partinit_path+"thermal_velocity_z",d["vthz"])
     add(partinit_path+"nbr_part_per_cell", int(d["nbrParticlesPerCell"]))
     add(partinit_path+"charge", float(d["charge"]))
     add(partinit_path+"basis", "cartesian")
@@ -123,6 +116,14 @@ addScalarFunction(maginit_path+"y_component", modelDict["by"])
 addScalarFunction(maginit_path+"z_component", modelDict["bz"])
 
 
-
-
+diag_path = "simulation/diagnostics/"
+for diag in simulation.diagnostics:
+    categ_path = diag_path + diag.category + '/'
+    name_path = categ_path + diag.name
+    add(name_path + "/" + 'subtype/' , diag.diag_type)
+    pp.add_size_t(name_path + "/" + 'compute_every/' , diag.compute_every)
+    pp.add_size_t(name_path + "/" + 'write_every/' , diag.write_every)
+    pp.add_size_t(name_path + "/" + 'start_iteration/' , diag.start_iteration)
+    pp.add_size_t(name_path + "/" + 'last_iteration/' , diag.last_iteration)
+add(diag_path + "filePath", "lol.5") # needs finishing
 

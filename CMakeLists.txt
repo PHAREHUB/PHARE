@@ -57,6 +57,10 @@ include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 #* Build the different libs and executables
 #*******************************************************************************
 
+if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+  file(COPY ${PHARE_PROJECT_DIR}/phare DESTINATION ${CMAKE_BINARY_DIR})
+endif()
+
 add_subdirectory(src/core)
 add_subdirectory(src/solver)
 add_subdirectory(src/diagnostic)
@@ -68,7 +72,6 @@ add_subdirectory(src/simulator)
 #* Documentation option
 include("${PHARE_PROJECT_DIR}/res/cmake/doc.cmake")
 
-
 message("PHARE CMAKE OPTION LIST ")
 message("Build test with google test                 : " ${test})
 message("Run test with MPI                           : " ${testMPI})
@@ -79,3 +82,4 @@ message("build with ubsan support                    : " ${ubsan})
 message("build with msan support                     : " ${msan})
 message("Add doxygen target to generate documentation: " ${documentation})
 message("Build with highfive usage                   : " ${HighFive})
+

@@ -27,9 +27,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_amr
   phare_solver
+  phare_initializer
   ${GTEST_LIBS})
 
 
 add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
-
-
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py.in ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)

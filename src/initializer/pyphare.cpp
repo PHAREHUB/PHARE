@@ -19,10 +19,19 @@ void add(std::string path, T&& value)
 }
 
 
-
+/* This function exists as the above "add" has issues differentiating between int and size_t for
+    input
+*/
+void add_size_t(std::string path, size_t&& value)
+{
+    cppdict::add(path, std::forward<size_t>(value),
+                 PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
+}
 
 PYBIND11_MODULE(pyphare, m)
 {
+    m.def("add_size_t", add_size_t, "add_size_t");
+
     m.def("add", add<int, void>, "add");
     m.def("add", add<double, void>, "add");
     m.def("add", add<std::string, void>, "add");

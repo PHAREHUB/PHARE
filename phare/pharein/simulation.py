@@ -177,69 +177,91 @@ def check_origin(dims, **kwargs):
     origin = kwargs.get("origin", [0.] * dims)
     return origin
 
-# ------------------------------------------------------------------------------
-
-
-def add_dict_to_config(the_dict,conf, section_key="section"):
-    """
-    adds the dictionnary 'the_dict' to a config 'conf' under the section 'section_key'
-    if the section does not exist, it is created
-    """
-    sections = conf.sections()
-    this_section = the_dict[section_key]
-    if this_section not in sections:
-        conf.add_section(this_section)
-    for key in the_dict.keys():
-        if key != section_key:
-            conf.set(the_dict[section_key], key, str(the_dict[key]))
 
 # ------------------------------------------------------------------------------
 
 
 def check_refinement_boxes(**kwargs):
     refinement_boxes = kwargs.get("refinement_boxes", None)
-    print("Need to test boxes are OK (no overlap, in level range, etc.)")
+    if refinement_boxes is None:
+        return refinement_boxes
+    for level,boxes in refinement_boxes.items():
+        if (kwargs["max_nbr_levels"]) <= int(level[1:]) + 1:  # + 1 L0 index from 0 vs nbr_levels
+            raise ValueError("Error - refinement_boxes, refined level larger than 'max_nbr_levels'")
     return refinement_boxes
-
-
 
 # ------------------------------------------------------------------------------
 
+def check_patch_size(**kwargs):
+
+    largest_patch_size = kwargs.get("largest_patch_size", None)
+    smallest_patch_size = kwargs.get("smallest_patch_size", None)
+
+    dl,cells = check_domain(**kwargs)
+
+    if largest_patch_size is not None:
+
+        if not all(size >= largest_patch_size for size in cells):
+            raise ValueError("Error - largest_patch_size should be less than nbr of cells in all directions")
+
+        if largest_patch_size <= 0:
+            raise ValueError("Error - largest_patch_size cannot be <= 0")
+
+    if smallest_patch_size is not None:
+
+        if not all(size >= smallest_patch_size for size in cells):
+            raise ValueError("Error - smallest_patch_size should be less than nbr of cells in all directions")
+
+        if smallest_patch_size <= 0:
+            raise ValueError("Error - smallest_patch_size cannot be <= 0")
+
+    return largest_patch_size, smallest_patch_size
+
+
+# ------------------------------------------------------------------------------
 
 def checker(func):
     def wrapper(simulation_object, **kwargs):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path',
-                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes']
+                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes',
+                             'smallest_patch_size', 'largest_patch_size' ]
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
         if len(wrong_kwds) > 0:
             raise ValueError("Error: invalid arguments - " + " ".join(wrong_kwds))
 
         dl, cells = check_domain(**kwargs)
+        kwargs["dl"] = dl
+        kwargs["cells"] =  cells
+
         time_step_nbr, time_step = check_time(**kwargs)
-        interp_order = check_interp_order(**kwargs)
-        pusher = check_pusher(**kwargs)
-        layout = check_layout(**kwargs)
-        path = check_path(**kwargs)
+        kwargs["time_step_nbr"] = time_step_nbr
+        kwargs["time_step"] = time_step
+
+        kwargs["interp_order"] = check_interp_order(**kwargs)
+
+        kwargs["particle_pusher"] = check_pusher(**kwargs)
+        kwargs["layout"] = check_layout(**kwargs)
+        kwargs["path"] = check_path(**kwargs)
+
         dims = compute_dimension(cells)
-        boundary_types = check_boundaries(dims, **kwargs)
-        origin = check_origin(dims, **kwargs)
-        refinement_boxes = check_refinement_boxes(**kwargs)
 
-        refined_particle_nbr = kwargs.get('refined_particle_nbr', 2)  # TODO change that default value
-        diag_export_format = kwargs.get('diag_export_format', 'phareh5') #TODO add checker with valid formats
-        max_nbr_levels = kwargs.get('max_nbr_levels', 1)
+        kwargs["boundary_types"] = check_boundaries(dims, **kwargs)
+        kwargs["origin"] = check_origin(dims, **kwargs)
+        kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
+        kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
 
 
-        return func(simulation_object, cells=cells, dl=dl, interp_order=interp_order,
-                    time_step=time_step, time_step_nbr=time_step_nbr,
-                    particle_pusher=pusher, layout=layout, origin=origin,
-                    boundary_types=boundary_types, path=path, refined_particle_nbr=refined_particle_nbr,
-                    diag_export_format=diag_export_format, max_nbr_levels=max_nbr_levels, refinement_boxes=refinement_boxes)
+        kwargs["refined_particle_nbr"] = kwargs.get('refined_particle_nbr', 2)  # TODO change that default value
+        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'ascii') #TODO add checker with valid formats
 
+        largest, smallest = check_patch_size(**kwargs)
+        kwargs["smallest_patch_size"] = smallest
+        kwargs["largest_patch_size"] = largest
 
+        return func(simulation_object, **kwargs)
 
     return wrapper
 
@@ -271,6 +293,8 @@ class Simulation(object):
     diag_export_format   : format of the output diagnostics (default= "phareh5")
     max_nbr_levels       : [default=1] max number of levels in the hierarchy
     refinement_boxes     : [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
+    smallest_patch_size  :
+    largest_patch_size   :
 
     """
 
@@ -282,21 +306,10 @@ class Simulation(object):
         else:
             globals.sim = self
 
-        self.cells = kwargs['cells']
+        for k, v in kwargs.items():
+            object.__setattr__(self, k, v)
+
         self.dims = compute_dimension(self.cells)
-        self.origin = kwargs['origin']
-        self.path = kwargs['path']
-        self.layout = kwargs['layout']
-        self.particle_pusher = kwargs['particle_pusher']
-        self.dl = kwargs['dl']
-        self.time_step = kwargs['time_step']
-        self.time_step_nbr = kwargs['time_step_nbr']
-        self.interp_order = kwargs['interp_order']
-        self.boundary_types = kwargs['boundary_types']
-        self.refined_particle_nbr = kwargs['refined_particle_nbr']
-        self.diag_export_format = kwargs['diag_export_format']
-        self.max_nbr_levels = kwargs['max_nbr_levels']
-        self.refinement_boxes = kwargs['refinement_boxes']
 
         self.diagnostics = []
         self.model = None
@@ -324,7 +337,7 @@ class Simulation(object):
 # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
-        if diag.name in self.diagnostics:
+        if diag.name in [diag.name for diag in self.diagnostics]:
             raise ValueError("Error: diagnostics {} already registered".format(diag.name))
 
         # check if the duration of the diagnostics is valid, given the duration of the simulation
@@ -340,6 +353,11 @@ class Simulation(object):
 
 # ------------------------------------------------------------------------------
 
+    def count_diagnostics(self, category_name):
+        return len([diag for diag in self.diagnostics if diag.category == category_name])
+
+
+# ------------------------------------------------------------------------------
 
     def set_model(self, model):
         self.model = model

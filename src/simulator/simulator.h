@@ -1,61 +1,14 @@
-#ifndef PHARE_SIMULATOR_H
-#define PHARE_SIMULATOR_H
 
-#include "initializer/python_data_provider.h"
-// intended blank HAVE_SYS_TIMES_His defined by samrai
-#include "amr/types/amr_types.h"
+#ifndef PHARE_SIMULATOR_SIMULATOR_H
+#define PHARE_SIMULATOR_SIMULATOR_H
 
-#include "core/models/physical_state.h"
-#include "core/data/electromag/electromag.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayoutimplyee.h"
-#include "core/data/ions/ion_population/ion_population.h"
-#include "core/data/ions/ions.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/vecfield/vecfield.h"
-#include "core/models/physical_state.h"
-#include "core/utilities/meta/meta_utilities.h"
-#include "core/utilities/algorithm.h"
-
-#include "initializer/data_provider.h"
-
-#include "amr/messengers/messenger_factory.h"
-
-#include "solver/level_initializer/level_initializer.h"
-#include "solver/level_initializer/level_initializer_factory.h"
-#include "solver/multiphysics_integrator.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
-#include "solver/physical_models/physical_model.h"
-#include "solver/solvers/solver.h"
-#include "solver/solvers/solver_mhd.h"
-#include "solver/solvers/solver_ppc.h"
-
-
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
-#include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/BoxContainer.h>
-#include <SAMRAI/hier/IntVector.h>
-#include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/mesh/BergerRigoutsos.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TreeLoadBalancer.h>
-#include <SAMRAI/tbox/Database.h>
-#include <SAMRAI/tbox/DatabaseBox.h>
-#include <SAMRAI/tbox/InputManager.h>
-#include <SAMRAI/tbox/MemoryDatabase.h>
-
-
-#include <algorithm>
-#include <iterator>
-#include <memory>
-#include <sstream>
-
-
+#include "include.h"
+#include "phare_types.h"
+#include "diagnostic/diagnostic_manager.h"
+#include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/types/electromag.h"
+#include "diagnostic/detail/types/particle.h"
+#include "diagnostic/detail/types/fluid.h"
 
 
 template<std::size_t dimension>
@@ -64,83 +17,65 @@ void getDomainCoords(PHARE::initializer::PHAREDict& grid, float lower[dimension]
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
 
-    if constexpr (dimension >= 1)
+    auto nx  = grid["nbr_cells"]["x"].template to<int>();
+    auto dx  = grid["meshsize"]["x"].template to<double>();
+    lower[0] = static_cast<float>(grid["origin"]["x"].template to<double>());
+    upper[0] = static_cast<float>(lower[0] + nx * dx);
+
+    if constexpr (dimension >= 2)
     {
-        auto nx  = grid["nbr_cells"]["x"].template to<int>();
-        auto dx  = grid["meshsize"]["x"].template to<double>();
-        lower[0] = static_cast<float>(grid["origin"]["x"].template to<double>());
-        upper[0] = static_cast<float>(lower[0] + nx * dx);
+        auto ny  = grid["nbr_cells"]["y"].template to<int>();
+        auto dy  = grid["meshsize"]["y"].template to<double>();
+        lower[1] = static_cast<float>(grid["origin"]["y"].template to<double>());
+        upper[1] = static_cast<float>(lower[1] + ny * dy);
+    }
 
-        if constexpr (dimension >= 2)
-        {
-            auto ny  = grid["nbr_cells"]["y"].template to<int>();
-            auto dy  = grid["meshsize"]["y"].template to<double>();
-            lower[1] = static_cast<float>(grid["origin"]["y"].template to<double>());
-            upper[1] = static_cast<float>(lower[1] + ny * dy);
-
-            if constexpr (dimension == 3)
-            {
-                auto nz  = grid["nbr_cells"]["z"].template to<int>();
-                auto dz  = grid["meshsize"]["z"].template to<double>();
-                lower[2] = static_cast<float>(grid["origin"]["z"].template to<double>());
-                upper[2] = static_cast<float>(lower[2] + nz * dz);
-            }
-        }
+    if constexpr (dimension == 3)
+    {
+        auto nz  = grid["nbr_cells"]["z"].template to<int>();
+        auto dz  = grid["meshsize"]["z"].template to<double>();
+        lower[2] = static_cast<float>(grid["origin"]["z"].template to<double>());
+        upper[2] = static_cast<float>(lower[2] + nz * dz);
     }
 }
-
 
 
 template<std::size_t dimension>
 auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid)
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
+
     auto samraiDim = SAMRAI::tbox::Dimension{dimension};
     auto db        = std::make_shared<SAMRAI::tbox::MemoryDatabase>("griddingAlgoDB");
 
-    int lowerCell[dimension];
-    int upperCell[dimension];
-    float lowerCoord[dimension];
-    float upperCoord[dimension];
+    {
+        int lowerCell[dimension];
+        std::fill_n(lowerCell, dimension, 0);
+        int upperCell[dimension];
+
+        upperCell[0] = grid["nbr_cells"]["x"].template to<int>() - 1;
+
+        if constexpr (dimension >= 2)
+            upperCell[1] = grid["nbr_cells"]["y"].template to<int>();
+
+        if constexpr (dimension == 3)
+            upperCell[2] = grid["nbr_cells"]["z"].template to<int>();
+
+        std::vector<SAMRAI::tbox::DatabaseBox> dbBoxes;
+        dbBoxes.push_back(SAMRAI::tbox::DatabaseBox(samraiDim, lowerCell, upperCell));
+        db->putDatabaseBoxVector("domain_boxes", dbBoxes);
+    }
+
+    {
+        float lowerCoord[dimension];
+        float upperCoord[dimension];
+        getDomainCoords<dimension>(grid, lowerCoord, upperCoord);
+        db->putFloatArray("x_lo", lowerCoord, dimension);
+        db->putFloatArray("x_up", upperCoord, dimension);
+    }
+
     int periodicity[dimension];
-    std::vector<SAMRAI::tbox::DatabaseBox> dbBoxes;
-
-    if constexpr (dimension == 1)
-    {
-        lowerCell[0]   = 0;
-        upperCell[0]   = grid["nbr_cells"]["x"].template to<int>() - 1;
-        periodicity[0] = 1; // 1==periodic, hardedcoded for all dims for now.
-    }
-
-
-    if constexpr (dimension == 2)
-    {
-        lowerCell[0]   = 0;
-        upperCell[0]   = grid["nbr_cells"]["x"].template to<int>();
-        lowerCell[1]   = 0;
-        upperCell[1]   = grid["nbr_cells"]["y"].template to<int>();
-        periodicity[0] = 1;
-        periodicity[1] = 1;
-    }
-    if constexpr (dimension == 3)
-    {
-        lowerCell[0]   = 0;
-        upperCell[0]   = grid["nbr_cells"]["x"].template to<int>();
-        lowerCell[1]   = 0;
-        upperCell[1]   = grid["nbr_cells"]["y"].template to<int>();
-        lowerCell[2]   = 0;
-        upperCell[2]   = grid["nbr_cells"]["z"].template to<int>();
-        periodicity[0] = 1;
-        periodicity[1] = 1;
-        periodicity[2] = 1;
-    }
-
-
-    dbBoxes.push_back(SAMRAI::tbox::DatabaseBox(samraiDim, lowerCell, upperCell));
-    db->putDatabaseBoxVector("domain_boxes", dbBoxes);
-    getDomainCoords<dimension>(grid, lowerCoord, upperCoord);
-    db->putFloatArray("x_lo", lowerCoord, dimension);
-    db->putFloatArray("x_up", upperCoord, dimension);
+    std::fill_n(periodicity, dimension, 1); // 1==periodic, hardedcoded for all dims for now.
     db->putIntegerArray("periodic_dimension", periodicity, dimension);
     return db;
 }
@@ -173,57 +108,50 @@ proper_nesting_buffer = 1
 template<std::size_t dimension>
 auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
 {
-    auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
+    constexpr int ratio = 2; // Nothing else supported
 
     auto hierDB = std::make_shared<SAMRAI::tbox::MemoryDatabase>("HierarchyDB");
 
+    auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
     hierDB->putInteger("max_levels", maxLevelNumber);
 
-    auto smallestPatchSizeDB = hierDB->putDatabase("smallest_patch_size");
-    auto ratioToCoarserDB    = hierDB->putDatabase("ratio_to_coarser");
+    auto ratioToCoarserDB = hierDB->putDatabase("ratio_to_coarser");
 
-    constexpr int smallestPatchSizeValue = 10;
-    constexpr int ratio                  = 2;
+    int smallestPatchSize = 0, largestPatchSize = 0;
+    std::shared_ptr<SAMRAI::tbox::Database> smallestPatchSizeDB, largestPatchSizeDB;
+
+    if (amr.contains("smallest_patch_size"))
+    {
+        smallestPatchSizeDB = hierDB->putDatabase("smallest_patch_size");
+        smallestPatchSize   = amr["smallest_patch_size"].template to<int>();
+    }
+
+    if (amr.contains("largest_patch_size"))
+    {
+        largestPatchSizeDB = hierDB->putDatabase("largest_patch_size");
+        largestPatchSize   = amr["largest_patch_size"].template to<int>();
+    }
+
+    auto addIntDimArray = [](auto& db, auto& value, auto& level) {
+        int arr[dimension];
+        std::fill_n(arr, dimension, value);
+        db->putIntegerArray(level, arr, dimension);
+    };
 
     for (auto iLevel = 0; iLevel < maxLevelNumber; ++iLevel)
     {
-        if constexpr (dimension == 1)
-        {
-            if (iLevel > 0)
-            {
-                int ratioToCoarser[dimension] = {ratio};
-                ratioToCoarserDB->putIntegerArray("level_" + std::to_string(iLevel), ratioToCoarser,
-                                                  dimension);
-            }
-            int smallestPatchSize[dimension] = {smallestPatchSizeValue};
-            smallestPatchSizeDB->putIntegerArray("level_" + std::to_string(iLevel),
-                                                 smallestPatchSize, dimension);
-        }
-        else if constexpr (dimension == 2)
-        {
-            if (iLevel > 0)
-            {
-                int ratioToCoarser[dimension] = {ratio, ratio};
-                ratioToCoarserDB->putIntegerArray("level_" + std::to_string(iLevel), ratioToCoarser,
-                                                  dimension);
-            }
-            int smallestPatchSize[dimension] = {smallestPatchSizeValue, smallestPatchSizeValue};
-            smallestPatchSizeDB->putIntegerArray("smallest_patch_size", smallestPatchSize,
-                                                 dimension);
-        }
-        if constexpr (dimension == 3)
-        {
-            if (iLevel > 0)
-            {
-                int ratioToCoarser[dimension] = {2, 2, 2};
-                ratioToCoarserDB->putIntegerArray("level_" + std::to_string(iLevel), ratioToCoarser,
-                                                  dimension);
-            }
-            int smallestPatchSize[dimension] = {10, 10, 10};
-            smallestPatchSizeDB->putIntegerArray("smallest_patch_size", smallestPatchSize,
-                                                 dimension);
-        }
+        std::string level{"level_" + std::to_string(iLevel)};
+
+        if (iLevel > 0)
+            addIntDimArray(ratioToCoarserDB, ratio, level);
+
+        if (smallestPatchSizeDB)
+            addIntDimArray(smallestPatchSizeDB, smallestPatchSize, level);
+
+        if (largestPatchSizeDB)
+            addIntDimArray(largestPatchSizeDB, largestPatchSize, level);
     }
+
     return hierDB;
 }
 
@@ -233,17 +161,11 @@ template<std::size_t dimension>
 std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
 getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
 {
-    try
-    {
-        [[maybe_unused]] auto& refDict = amr["refinement_boxes"];
-    }
-    catch (...)
-    {
+    if (!amr.contains("refinement_boxes"))
         return nullptr;
-    }
-    auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
-    auto& refDict       = amr["refinement_boxes"];
 
+    auto& refDict       = amr["refinement_boxes"];
+    auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
 
     std::shared_ptr<SAMRAI::tbox::MemoryDatabase> refinementBoxesDatabase
         = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
@@ -259,9 +181,10 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
     {
         // not all levels are necessarily specified for refinement
         // cppdict will throw when trying to access key L{i} with i = levelNumber
-        try
+        std::string levelString{"L" + std::to_string(levelNumber)};
+        if (refDict.contains(levelString))
         {
-            auto& levelDict = refDict["L" + std::to_string(levelNumber)];
+            auto& levelDict = refDict[levelString];
             auto samraiDim  = SAMRAI::tbox::Dimension{dimension};
             auto nbrBoxes   = levelDict["nbr_boxes"].template to<int>();
             auto levelDB    = tag0db->putDatabase("level_" + std::to_string(levelNumber));
@@ -273,39 +196,24 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
                 int upper[dimension];
                 auto& boxDict = levelDict["B" + std::to_string(iBox)];
 
-                if constexpr (dimension == 1)
-                {
-                    lower[0] = boxDict["lower"]["x"].template to<int>();
-                    upper[0] = boxDict["upper"]["x"].template to<int>();
-                }
+                lower[0] = boxDict["lower"]["x"].template to<int>();
+                upper[0] = boxDict["upper"]["x"].template to<int>();
 
-                if constexpr (dimension == 2)
+                if constexpr (dimension >= 2)
                 {
-                    lower[0] = boxDict["lower"]["x"].template to<int>();
                     lower[1] = boxDict["lower"]["y"].template to<int>();
-
-                    upper[0] = boxDict["upper"]["x"].template to<int>();
                     upper[1] = boxDict["upper"]["y"].template to<int>();
                 }
 
                 if constexpr (dimension == 3)
                 {
-                    lower[0] = boxDict["lower"]["x"].template to<int>();
-                    lower[1] = boxDict["lower"]["y"].template to<int>();
                     lower[2] = boxDict["lower"]["z"].template to<int>();
-
-                    upper[0] = boxDict["upper"]["x"].template to<int>();
-                    upper[1] = boxDict["upper"]["y"].template to<int>();
                     upper[2] = boxDict["upper"]["z"].template to<int>();
                 }
-
 
                 dbBoxes.push_back(SAMRAI::tbox::DatabaseBox(samraiDim, lower, upper));
             }
             levelDB->putDatabaseBoxVector("boxes", dbBoxes);
-        }
-        catch (...)
-        {
         }
     } // end loop on levels
     return refinementBoxesDatabase;
@@ -316,31 +224,6 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
 
 namespace PHARE
 {
-template<std::size_t dimension, std::size_t interp_order>
-struct PHARE_Types
-{
-    using Array_t
-        = decltype(PHARE::core::makeNdArray<dimension>(std::array<std::uint32_t, dimension>{}));
-    using VecField_t      = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
-    using Field_t         = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
-    using Electromag_t    = PHARE::core::Electromag<VecField_t>;
-    using YeeLayout_t     = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
-    using GridLayout_t    = PHARE::core::GridLayout<YeeLayout_t>;
-    using ParticleArray_t = PHARE::core::ParticleArray<dimension>;
-    using MaxwellianParticleInitializer_t
-        = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
-    using IonPopulation_t = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, GridLayout_t>;
-    using Ions_t          = PHARE::core::Ions<IonPopulation_t, GridLayout_t>;
-    using HybridModel_t
-        = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t, PHARE::amr::SAMRAI_Types>;
-    using MHDModel_t  = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
-    using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
-    using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;
-    using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
-};
-
-
-
 class ISimulator
 {
 public:
@@ -356,16 +239,22 @@ public:
 
 
 
-template<std::size_t dimension, std::size_t interp_order>
+template<std::size_t _dimension, std::size_t _interp_order>
 class Simulator : public ISimulator
 {
-private:
+public:
+    static constexpr size_t dimension    = _dimension;
+    static constexpr size_t interp_order = _interp_order;
+
     using SAMRAITypes = PHARE::amr::SAMRAI_Types;
     using PHARETypes  = PHARE_Types<dimension, interp_order>;
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<SAMRAITypes>;
     using HybridModel    = typename PHARETypes::HybridModel_t;
     using MHDModel       = typename PHARETypes::MHDModel_t;
+
+    using DiagnosticModelView = PHARE::diagnostic::AMRDiagnosticModelView<Simulator, HybridModel>;
+    using DiagnosticWriter    = PHARE::diagnostic::h5::HighFiveDiagnostic<DiagnosticModelView>;
 
     using SolverMHD = typename PHARETypes::SolverMHD_t;
     using SolverPPC = typename PHARETypes::SolverPPC_t;
@@ -378,7 +267,6 @@ private:
         = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, LevelIntializerFactory,
                                                 SAMRAITypes>;
 
-public:
     Simulator(PHARE::initializer::PHAREDict dict)
         : modelNames_{"HybridModel"}
         , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
@@ -475,14 +363,24 @@ public:
     virtual void advance() override {}
 
 
+    auto& getHybridModel() { return hybridModel_; }
+    auto& getMHDModel() { return mhdModel_; }
+
+    // the use of this function is to be minimised, and restricted to tests
+    auto& getPrivateHierarchy() { return hierarchy_; }
+
+    auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+
+
+    auto getNumberOfLevels() const { return hierarchy_->getNumberOfLevels(); }
+
+
 private:
     auto find_model(std::string name)
     {
         return std::find(std::begin(modelNames_), std::end(modelNames_), name)
                != std::end(modelNames_);
     }
-
-
 
 
     std::vector<std::string> modelNames_;
@@ -497,11 +395,9 @@ private:
     int timeStepNbr_;
     double finalTime_;
 
-
     // physical models that can be used
     std::shared_ptr<HybridModel> hybridModel_;
     std::shared_ptr<MHDModel> mhdModel_;
-
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_;
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator_;
@@ -540,7 +436,6 @@ std::unique_ptr<PHARE::ISimulator> getSimulator()
     auto interpOrder = theDict["simulation"]["interp_order"].template to<int>();
     return core::makeAtRuntime<makeSimulator>(dim, interpOrder, makeSimulator{});
 }
-
 
 
 

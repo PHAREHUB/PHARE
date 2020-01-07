@@ -71,11 +71,19 @@ public:
     static constexpr auto dimension   = ModelView::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
 
-    HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath, unsigned flags =
-                 HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate)
+    HighFiveDiagnostic(ModelView& modelView, std::string const hifivePath,
+                       unsigned flags = HighFive::File::ReadWrite | HighFive::File::Create
+                                        | HighFive::File::Truncate)
         : hi5_{hifivePath, flags}
         , modelView_{modelView}
     {
+    }
+
+    static std::unique_ptr<HighFiveDiagnostic> from(ModelView& modelView,
+                                                    initializer::PHAREDict& dict)
+    {
+        std::string filePath = dict["filePath"].template to<std::string>();
+        return std::move(std::make_unique<HighFiveDiagnostic>(modelView, filePath));
     }
 
     ~HighFiveDiagnostic() {}
@@ -250,7 +258,8 @@ void HighFiveDiagnostic<ModelView>::createDatasetsPerMPI(std::string path, size_
  * attributes independently. This is a requirement of HDF5.
  * in the case of a disparate number of attributes per MPI process, path may be an empty string
  * such that the current process creates attributes for all other processes with non-zero
- * sizes. Recommended to use similar sized paths, if possible. key is always assumed to the be the same
+ * sizes. Recommended to use similar sized paths, if possible. key is always assumed to the be the
+ * same
  */
 template<typename ModelView>
 template<typename Data>

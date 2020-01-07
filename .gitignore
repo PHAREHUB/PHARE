@@ -1,3 +1,4 @@
 subprojects
 __pycache__
 *.pyc
+*checkpoint.ipynb*

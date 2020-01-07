@@ -1,52 +1,24 @@
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
-#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
-#include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/CoarsenOperator.h>
-#include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/mesh/ChopAndPackLoadBalancer.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TileClustering.h>
-#include <SAMRAI/tbox/InputManager.h>
-#include <SAMRAI/tbox/SAMRAIManager.h>
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
-#include <SAMRAI/xfer/CoarsenAlgorithm.h>
-#include <SAMRAI/xfer/RefineAlgorithm.h>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include <mpi.h>
 
-#include <map>
-#include <memory>
-
-
-#include "core/data/electromag/electromag.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ions/ions.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/vecfield/vecfield.h"
-
-#include "amr/types/amr_types.h"
-#include "amr/data/field/coarsening/field_coarsen_operator.h"
-#include "amr/data/field/refine/field_refine_operator.h"
-#include "amr/messengers/messenger_factory.h"
-#include "amr/resources_manager/resources_manager.h"
-
-#include "initializer/data_provider.h"
-
-#include "solver/multiphysics_integrator.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
-#include "solver/level_initializer/level_initializer_factory.h"
-
-#include "input_config.h"
+#include "tests/simulator/per_test.h"
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::solver;
+
+static constexpr int hybridStartLevel = 0; // levels : hybrid hybrid
+static constexpr int maxLevelNbr      = 4;
+
+bool isInHybridRange(int iLevel)
+{
+    return iLevel >= hybridStartLevel && iLevel < maxLevelNbr;
+}
+bool isInMHDdRange(int iLevel)
+{
+    return iLevel >= 0 && iLevel < hybridStartLevel;
+}
+
 
 class ParticleSplit : public SAMRAI::hier::RefineOperator
 {
@@ -138,346 +110,44 @@ private:
 #endif
 
 
-
-
-using VecField1D   = VecField<NdArrayVector1D<>, HybridQuantity>;
-using Field1D      = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
-using Electromag1D = Electromag<VecField1D>;
-
-static constexpr std::size_t dim         = 1;
-static constexpr std::size_t interpOrder = 1;
-
-using GridImplYee1D = GridLayoutImplYee<dim, interpOrder>;
-using GridYee1D     = GridLayout<GridImplYee1D>;
-using MaxwellianParticleInitializer1D
-    = MaxwellianParticleInitializer<ParticleArray<dim>, GridYee1D>;
-using IonsPop1D = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
-using Ions1D    = Ions<IonsPop1D, GridYee1D>;
-
-
-
-
-double density(double x)
-{
-    return x * x + 2.;
-}
-
-double vx(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vy(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vz(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vthx(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vthy(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-
-double vthz(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-
-double bx(double x)
-{
-    return x * x + 2.;
-}
-
-double by(double x)
-{
-    return x * x + 2.;
-}
-
-double bz(double x)
-{
-    return x * x + 2.;
-}
-
-double ex(double x)
-{
-    return x * x + 2.;
-}
-
-double ey(double x)
-{
-    return x * x + 2.;
-}
-
-double ez(double x)
-{
-    return x * x + 2.;
-}
-
-
-
 // -----------------------------------------------------------------------------
 //                          MULTIPHYSICS INTEGRATOR
 // -----------------------------------------------------------------------------
 
 
-
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
-
-PHARE::initializer::PHAREDict createIonsDict()
+TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
 {
-    PHARE::initializer::PHAREDict dict;
-    dict["ions"]["name"]           = std::string{"ions"};
-    dict["ions"]["nbrPopulations"] = int{2};
-    dict["ions"]["pop0"]["name"]   = std::string{"protons"};
-    dict["ions"]["pop0"]["mass"]   = 1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["name"]
-        = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
+    TypeParam sim;
+    auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
-
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
-
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
-
-
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
-
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
-
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
-
-
-    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
-    dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
-
-    dict["ions"]["pop1"]["name"] = std::string{"alpha"};
-    dict["ions"]["pop1"]["mass"] = 1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["name"]
-        = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<ScalarFunctionT>(density);
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
-
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
-
-
-    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
-    dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
-
-    dict["electromag"]["name"]             = std::string{"EM"};
-    dict["electromag"]["electric"]["name"] = std::string{"E"};
-    dict["electromag"]["magnetic"]["name"] = std::string{"B"};
-
-    dict["electromag"]["electric"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(ex);
-    dict["electromag"]["electric"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(ey);
-    dict["electromag"]["electric"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(ez);
-
-    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
-    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
-    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
-
-    return dict;
-}
-
-
-
-
-class aMultiPhysicsIntegrator : public ::testing::Test
-{
-private:
-public:
-    int levelNumber   = 0;
-    bool initialTime  = true;
-    bool canBeRefined = true;
-
-    // IonsInit1D ionsInit;
-
-    using HybridModelT             = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
-    using MHDModelT                = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
-    using SolverMHDT               = SolverMHD<MHDModelT, SAMRAI_Types>;
-    using SolverPPCT               = SolverPPC<HybridModelT, SAMRAI_Types>;
-    using LevelInitializerFactoryT = LevelInitializerFactory<HybridModelT>;
-    using MessengerFactoryT
-        = MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>>;
-
-
-    // physical models that can be used
-    std::shared_ptr<HybridModelT> hybridModel;
-    std::shared_ptr<MHDModelT> mhdModel;
-
-
-
-    // (starts at 3rd level)
-    int hybridStartLevel = 2; // levels : mhd mhd hybrid hybrid
-    int maxLevelNbr      = 4;
-
-    bool isInHybridRange(int iLevel) { return iLevel >= hybridStartLevel && iLevel < maxLevelNbr; }
-    bool isInMHDdRange(int iLevel) { return iLevel >= 0 && iLevel < hybridStartLevel; }
-
-    std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy;
-    std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator;
-
-    using MultiPhysicsIntegratorT
-        = MultiPhysicsIntegrator<MessengerFactoryT, LevelInitializerFactoryT, SAMRAI_Types>;
-
-    std::shared_ptr<MultiPhysicsIntegratorT> multiphysInteg;
-
-
-
-    aMultiPhysicsIntegrator()
-        : hybridModel{std::make_shared<HybridModelT>(
-            createIonsDict(), std::make_shared<typename HybridModelT::resources_manager_type>())}
-        , mhdModel{std::make_shared<MHDModelT>(
-              std::make_shared<typename MHDModelT::resources_manager_type>())}
-        , multiphysInteg{std::make_shared<MultiPhysicsIntegratorT>(maxLevelNbr)}
-    {
-        hybridModel->resourcesManager->registerResources(hybridModel->state);
-        mhdModel->resourcesManager->registerResources(mhdModel->state);
-
-        auto dimension = SAMRAI::tbox::Dimension{1};
-
-        std::vector<MessengerDescriptor> descriptors;
-        descriptors.push_back({"MHDModel", "MHDModel"});
-        descriptors.push_back({"MHDModel", "HybridModel"});
-        descriptors.push_back({"HybridModel", "HybridModel"});
-
-        MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
-            descriptors};
-
-        // hierarchy
-        auto inputDatabase = SAMRAI::tbox::InputManager::getManager()->parseInputFile(
-            inputBase + "input/input_1d_ratio_2.txt");
-        auto patchHierarchyDatabase = inputDatabase->getDatabase("PatchHierarchy");
-
-        auto gridGeometry = std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
-            dimension, "cartesian", inputDatabase->getDatabase("CartesianGridGeometry"));
-
-        hierarchy = std::make_shared<SAMRAI::hier::PatchHierarchy>("PatchHierarchy", gridGeometry,
-                                                                   patchHierarchyDatabase);
-
-
-        auto loadBalancer = std::make_shared<SAMRAI::mesh::ChopAndPackLoadBalancer>(
-            dimension, "ChopAndPackLoadBalancer",
-            inputDatabase->getDatabase("ChopAndPackLoadBalancer"));
-
-
-
-
-        multiphysInteg->registerModel(0, hybridStartLevel - 1, mhdModel);
-        multiphysInteg->registerModel(hybridStartLevel, maxLevelNbr - 1, hybridModel);
-
-
-        std::unique_ptr<SolverMHDT> mhdSolver{std::make_unique<SolverMHDT>()};
-        std::unique_ptr<SolverPPCT> hybridSolver{std::make_unique<SolverPPCT>()};
-
-        multiphysInteg->registerAndInitSolver(0, hybridStartLevel - 1, std::move(mhdSolver));
-        multiphysInteg->registerAndInitSolver(hybridStartLevel, maxLevelNbr - 1,
-                                              std::move(hybridSolver));
-
-
-        // models and solvers must be registered to SAMRAI system before
-        multiphysInteg->registerAndSetupMessengers(messengerFactory);
-
-
-        auto standardTag = std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
-            "StandardTagAndInitialize", multiphysInteg.get(),
-            inputDatabase->getDatabase("StandardTagAndInitialize"));
-
-        auto clustering = std::make_shared<SAMRAI::mesh::TileClustering>(
-            dimension, inputDatabase->getDatabase("TileClustering"));
-
-        auto gridding = std::make_shared<SAMRAI::mesh::GriddingAlgorithm>(
-            hierarchy, "GriddingAlgorithm", inputDatabase->getDatabase("GriddingAlgorithm"),
-            standardTag, clustering, loadBalancer);
-
-
-        timeRefIntegrator = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(
-            "TimeRefinementIntegrator", inputDatabase->getDatabase("TimeRefinementIntegrator"),
-            hierarchy, multiphysInteg, gridding);
-
-
-        // timeRefIntegrator->initializeHierarchy();
-    }
-};
-
-
-
-
-TEST_F(aMultiPhysicsIntegrator, knowsWhichSolverisOnAGivenLevel)
-{
-    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+    for (int iLevel = 0; iLevel < sim.getNumberOfLevels(); ++iLevel)
     {
         if (isInHybridRange(iLevel))
         {
-            EXPECT_EQ(std::string{"PPC"}, multiphysInteg->solverName(iLevel));
+            EXPECT_EQ(std::string{"PPC"}, multiphysInteg.solverName(iLevel));
         }
         else if (isInMHDdRange(iLevel))
         {
-            EXPECT_EQ(std::string{"MHDSolver"}, multiphysInteg->solverName(iLevel));
+            EXPECT_EQ(std::string{"MHDSolver"}, multiphysInteg.solverName(iLevel));
         }
     }
 }
 
 
 
-#ifdef DISABLE_TEST
-// this test is disabled because one cannot for now initialize a
-// multiphysics hierarchy.
-TEST_F(aMultiPhysicsIntegrator, allocatesModelDataOnAppropriateLevels)
+TYPED_TEST(SimulatorTest, allocatesModelDataOnAppropriateLevels)
 {
-    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+    TypeParam sim;
+    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hybridModel = *sim.getHybridModel();
+    auto& mhdModel    = *sim.getMHDModel();
+
+    for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
         if (isInMHDdRange(iLevel))
         {
-            auto Bid = mhdModel->resourcesManager->getIDs(mhdModel->state.B);
-            auto Vid = mhdModel->resourcesManager->getIDs(mhdModel->state.V);
+            auto Bid = mhdModel.resourcesManager->getIDs(mhdModel.state.B);
+            auto Vid = mhdModel.resourcesManager->getIDs(mhdModel.state.V);
 
             std::array<std::vector<int> const*, 2> allIDs{{&Bid, &Vid}};
 
@@ -485,7 +155,7 @@ TEST_F(aMultiPhysicsIntegrator, allocatesModelDataOnAppropriateLevels)
             {
                 for (auto& id : *idVec)
                 {
-                    auto level = hierarchy->getPatchLevel(iLevel);
+                    auto level = hierarchy.getPatchLevel(iLevel);
                     auto patch = level->begin();
                     EXPECT_TRUE(patch->checkAllocated(id));
                 }
@@ -493,9 +163,9 @@ TEST_F(aMultiPhysicsIntegrator, allocatesModelDataOnAppropriateLevels)
         }
         else if (isInHybridRange(iLevel))
         {
-            auto Bid   = hybridModel->resourcesManager->getIDs(hybridModel->state.electromag.B);
-            auto Eid   = hybridModel->resourcesManager->getIDs(hybridModel->state.electromag.E);
-            auto IonId = hybridModel->resourcesManager->getIDs(hybridModel->state.ions);
+            auto Bid   = hybridModel.resourcesManager->getIDs(hybridModel.state.electromag.B);
+            auto Eid   = hybridModel.resourcesManager->getIDs(hybridModel.state.electromag.E);
+            auto IonId = hybridModel.resourcesManager->getIDs(hybridModel.state.ions);
 
             std::array<std::vector<int> const*, 3> allIDs{{&Bid, &Eid, &IonId}};
 
@@ -503,7 +173,7 @@ TEST_F(aMultiPhysicsIntegrator, allocatesModelDataOnAppropriateLevels)
             {
                 for (auto& id : *idVec)
                 {
-                    auto level = hierarchy->getPatchLevel(iLevel);
+                    auto level = hierarchy.getPatchLevel(iLevel);
                     auto patch = level->begin();
                     EXPECT_TRUE(patch->checkAllocated(id));
                 }
@@ -511,21 +181,23 @@ TEST_F(aMultiPhysicsIntegrator, allocatesModelDataOnAppropriateLevels)
         }
     }
 }
-#endif
 
 
-TEST_F(aMultiPhysicsIntegrator, knowsWhichModelIsSolvedAtAGivenLevel)
+TYPED_TEST(SimulatorTest, knowsWhichModelIsSolvedAtAGivenLevel)
 {
-    auto nbrOfLevels = hierarchy->getNumberOfLevels();
+    TypeParam sim;
+    auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
+
+    auto nbrOfLevels = sim.getNumberOfLevels();
     for (int iLevel = 0; iLevel < nbrOfLevels; ++iLevel)
     {
         if (isInMHDdRange(iLevel))
         {
-            EXPECT_EQ(std::string{"MHDModel"}, multiphysInteg->modelName(iLevel));
+            EXPECT_EQ(std::string{"MHDModel"}, multiphysInteg.modelName(iLevel));
         }
         else if (isInHybridRange(iLevel))
         {
-            EXPECT_EQ(std::string{"HybridModel"}, multiphysInteg->modelName(iLevel));
+            EXPECT_EQ(std::string{"HybridModel"}, multiphysInteg.modelName(iLevel));
         }
     }
 }
@@ -533,12 +205,17 @@ TEST_F(aMultiPhysicsIntegrator, knowsWhichModelIsSolvedAtAGivenLevel)
 
 
 
-TEST_F(aMultiPhysicsIntegrator, returnsCorrecMessengerForEachLevel)
+TYPED_TEST(SimulatorTest, returnsCorrecMessengerForEachLevel)
 {
-    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg->messengerName(0));
-    EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg->messengerName(1));
-    EXPECT_EQ(std::string{"MHDModel-HybridModel"}, multiphysInteg->messengerName(2));
-    EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg->messengerName(3));
+    TypeParam sim;
+    auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
+
+    // EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg.messengerName(0));
+    // EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg.messengerName(1));
+    // EXPECT_EQ(std::string{"MHDModel-HybridModel"}, multiphysInteg.messengerName(2));
+    // EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg.messengerName(3));
+    for (int i = 0; i < sim.getNumberOfLevels(); i++)
+        EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg.messengerName(i));
 }
 
 
@@ -650,7 +327,7 @@ TEST(aMessenger, isCreated)
     // we refine for tag 0
     // For that we try to refine until we get no more refine boxes or that
     // we have reach the maximum level
-    for (int iLevel = 0, hierarchyMaxLevelAllowed = hierarchy->getMaxNumberOfLevels();
+    for (int iLevel = 0, hierarchyMaxLevelAllowed = hierarchy.getMaxNumberOfLevels();
          iLevel < hierarchyMaxLevelAllowed - 1; ++iLevel)
     {
         int const cycle   = 0;
@@ -670,7 +347,7 @@ TEST(aMessenger, isCreated)
     }
 
 
-    auto level0 = hierarchy->getPatchLevel(0);
+    auto level0 = sim.getPatchLevel(0);
     hybridMessenger.setStatus(&hierarchy, &level0, nullptr);
 
     // then for each level, we give an hybridMessenger that know which level is the current one
@@ -682,23 +359,9 @@ TEST(aMessenger, isCreated)
 #endif
 
 
-
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-
-    SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
-    SAMRAI::tbox::SAMRAIManager::initialize();
-    SAMRAI::tbox::SAMRAIManager::startup();
-
-
-    int testResult = RUN_ALL_TESTS();
-
-    // Finalize
-    SAMRAI::tbox::SAMRAIManager::shutdown();
-    SAMRAI::tbox::SAMRAIManager::finalize();
-    SAMRAI::tbox::SAMRAI_MPI::finalize();
-
-
-    return testResult;
+    PHARE_test::SamraiLifeCycle samsam(argc, argv);
+    return RUN_ALL_TESTS();
 }

@@ -446,20 +446,20 @@ namespace amr
 
 
 
-        virtual void fillRootGhosts(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& level,
+        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                     double const initDataTime) final
         {
             auto levelNumber = level.getLevelNumber();
             assert(levelNumber == 0);
 
-            magneticGhosts_.fill(levelNumber, initDataTime);
-            electricGhosts_.fill(levelNumber, initDataTime);
+            auto& hybridModel = static_cast<HybridModel&>(model);
+
+            magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
+            electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
             patchGhostParticles_.fill(levelNumber, initDataTime);
 
             // at some point in the future levelGhostParticles could be filled with injected
             // particles depending on the domain boundary condition.
-
-            // computeIonMoments_(level, model);
         }
 
 

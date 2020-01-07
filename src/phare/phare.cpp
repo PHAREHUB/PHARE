@@ -8,6 +8,10 @@
 #include "core/utilities/algorithm.h"
 #include <iostream>
 
+#include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/types/electromag.h"
+#include "diagnostic/detail/types/particle.h"
+#include "diagnostic/detail/types/fluid.h"
 
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
@@ -50,8 +54,6 @@ public:
 };
 
 
-
-
 int main(int argc, char** argv)
 {
     std::string const welcome = R"~(
@@ -69,7 +71,7 @@ int main(int argc, char** argv)
 
     std::cerr << "creating python data provider\n";
     auto provider = std::make_unique<PHARE::initializer::PythonDataProvider>(
-        2, "init.py"); // fromCommandLine(argc, argv);
+        2, "init"); // fromCommandLine(argc, argv);
 
     std::cerr << "reading user inputs...";
     provider->read();
@@ -79,8 +81,8 @@ int main(int argc, char** argv)
 
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
-
     simulator->initialize();
+
     //
     // auto time = simulator.startTime();
     //

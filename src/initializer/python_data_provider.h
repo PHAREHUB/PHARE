@@ -14,42 +14,33 @@ ENABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 
 namespace py = pybind11;
 
-//#include "core/models/physical_state.h"
-//#include <data/ions/ions.h>
-
 namespace PHARE
 {
 namespace initializer
 {
-    extern py::scoped_interpreter guard;
-
-
-
     class __attribute__((visibility("hidden"))) PythonDataProvider : public DataProvider
     {
     public:
+        PythonDataProvider() {}
         PythonDataProvider(int argc, char const* argv)
         {
             if (argc == 2)
             {
                 initModuleName_ = std::string{argv};
             }
-            preparePythonPath_();
         }
 
         /**
          * @brief read overrides the abstract DataProvider::read method. This method basically
          * executes the user python script that fills the dictionnary.
          */
-        virtual void read() override { py::eval_file(initModuleName_, scope_); }
+        virtual void read() override { py::module::import(initModuleName_.c_str()); }
 
 
 
     private:
-        void preparePythonPath_() { py::eval_file("setpythonpath.py", scope_); }
-
-        std::string initModuleName_{"job.py"};
-        py::scoped_interpreter guard_{};
+        std::string initModuleName_{"phare.init"};
+        py::scoped_interpreter guard_;
         py::object scope_{py::module::import("__main__").attr("__dict__")};
     };
 

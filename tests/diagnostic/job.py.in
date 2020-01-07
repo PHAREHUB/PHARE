@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import os, sys
+import phare.pharein as ph
+
+print("start test_diagnostics: input_1d_ratio_2.py")
+print("sys.path ", sys.path)
+
+ph.Simulation(
+    smallest_patch_size=10,
+    largest_patch_size=64,
+    time_step_nbr=1000,        # number of time steps (not specified if time_step and final_time provided)
+    final_time=1.,             # simulation final time (not specified if time_step and time_step_nbr provided)
+    boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
+    cells=65,                  # integer or tuple length == dimension
+    dl=1./65,                  # mesh size of the root level, float or tuple
+    max_nbr_levels=2,          # (default=1) max nbr of levels in the AMR hierarchy
+    refinement_boxes = {"L0":{"B0":[(10,),(50,)]}}
+)
+
+density = lambda x: 2.
+
+bx, by, bz = (lambda x: x  for i in range(3))
+ex, ey, ez = (lambda x: x  for i in range(3))
+vx, vy, vz = (lambda x: 1. for i in range(3))
+
+vthx, vthy, vthz = (lambda x: 1. for i in range(3))
+
+vvv = {
+    "vbulkx":vx, "vbulky":vy, "vbulkz":vz,
+    "vthx":vthx, "vthy":vthy, "vthz":vthz
+}
+
+ph.MaxwellianFluidModel(
+    bx=bx, by=bx, bz=bx,
+    ex=bx, ey=bx, ez=bx,
+
+    protons={"charge":-1, "density":density, **vvv},
+    alpha={"charge":-1, "density":density, **vvv}
+)
+
+ph.FluidDiagnostics(
+    diag_type="density",            # choose in (rho_s, flux_s)
+    write_every=10,                 # write on disk every x iterations
+    compute_every=5,                # compute diagnostics every x iterations ( x <= write_every)
+    start_iteration=0,              # iteration at which diag is enabled
+    last_iteration=990,             # iteration at which diag is turned off
+    population_name="protons"       # name of the population for which the diagnostics is made
+  #,path = 'FluidDiagnostics1'      # where output files will be written, [default: name]
+)
+
+ph.ElectromagDiagnostics(
+    diag_type="B",
+    write_every=10,
+    compute_every=5,
+    start_teration=0,
+    last_iteration=990
+)
+
+ph.ParticleDiagnostics(
+    diag_type="space_box",          # choose particles within a spatial box
+    compute_every=10,
+    write_every=10,
+    start_iteration=0,
+    last_iteration=90,
+    extent=(2., 4.),                # extent of the box
+    population_name="protons"
+)
+
+print("end test_messengers: input_1d_ratio_2.py")

@@ -20,12 +20,6 @@ namespace amr
     using core::int32;
     using core::uint32;
 
-    template<std::size_t interpOrder>
-    std::size_t constexpr ghostWidthForParticles()
-    {
-        return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
-    }
-
     enum class ParticlesDataSplitType {
         coarseBoundary,
         interior,
