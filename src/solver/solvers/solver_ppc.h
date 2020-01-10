@@ -90,9 +90,11 @@ namespace solver
         enum class PredictorStep { predictor1, predictor2 };
 
         std::unique_ptr<Pusher> pusher_;
+        InterpolatorT interpolator_;
 
 
-        void moveIons_(VecFieldT const& B, VecFieldT const& E, Ions& ions,
+
+        void moveIons_(Electromag const& em, Ions& ions, GridLayout const& layout,
                        PredictorStep predictorStep);
 
         /*
@@ -108,17 +110,48 @@ namespace solver
 
 
     template<typename HybridModel, typename AMR_Types>
-    void SolverPPC<HybridModel, AMR_Types>::moveIons_(VecFieldT const& B, VecFieldT const& E,
-                                                      Ions& ions, PredictorStep step)
+    void SolverPPC<HybridModel, AMR_Types>::moveIons_(Electromag const& em, Ions& ions,
+                                                      GridLayout const& layout, PredictorStep step)
     {
+        auto inDomainSelector = ParticleSelector{layout.AMRBox()};
+
         for (auto& pop : ions)
         {
             if (PredictorStep::predictor1 == step)
             {
-                PHARE::core::ParticleArray<dimension> tmpPartArr;
+                PHARE::core::ParticleArray<dimension> tmpDomain;
+                PHARE::core::ParticleArray<dimension> tmpPatchGhost;
+                PHARE::core::ParticleArray<dimension> tmpLevelGhostOld;
+                PHARE::core::ParticleArray<dimension> tmpLevelGhostNew;
+
+                auto const& domainParticles = pop.domainParticles();
+                tmpDomain.resize(domainParticles.size());
+                auto domain = makeRange(std::begin(domainParticles), std::end(domainParticles));
+                auto tmp    = makeRange(std::begin(tmpDomain), std::end(tmpDomain));
 
                 // move domain particles to tmp array
+                auto endInDomain = pusher_->move(domain, tmp, em, pop.mass(), interpolator_,
+                                                 inDomainSelector, layout);
+
+                interpolator_(std::begin(tmpDomain), endInDomain, pop.density(), pop.flux(),
+                              layout);
+
                 // move patch ghost particles to tmp array
+                auto const& patchGhostPart = pop.patchGhostParticles();
+                tmpPatchGhost.resize(patchGhostPart.size());
+
+                auto patchGhostRange
+                    = makeRange(std::begin(patchGhostPart), std::end(patchGhostPart));
+                auto tmpPatchGhostRange
+                    = makeRange(std::begin(tmpPatchGhost), std::end(tmpPatchGhost));
+
+                endInDomain = pusher_->move(patchGhostPart, tmpPatchGhostRange, em, pop.mass(),
+                                            interpolator_, inDomainSelector, layout);
+
+
+                interpolator_(std::begin(tmpPatchGhost), endInDomain, pop.density(), pop.flux(),
+                              layout);
+
                 // move levelGhostParticles to tmp array
 
                 // accumulate all of (domain, patchGhost, levelGhost) that entered in domain

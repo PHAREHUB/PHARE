@@ -149,6 +149,9 @@ namespace core
         std::array<uint32, dimension> nbrCells() const { return nbrPhysicalCells_; }
 
 
+        auto const& AMRBox() const { return AMRBox_; }
+
+
 
         /**
          * @brief physicalStartIndex returns the index of the first node of a given
