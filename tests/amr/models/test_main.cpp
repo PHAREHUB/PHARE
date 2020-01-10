@@ -127,7 +127,7 @@ double ez(double x)
 
 using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 
-PHARE::initializer::PHAREDict createIonsDict()
+PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
     dict["ions"]["name"]           = std::string{"ions"};
@@ -216,7 +216,7 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
         std::make_shared<ResourcesManagerT>()};
 
     std::unique_ptr<HybridModelT> hybridModel{
-        std::make_unique<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
+        std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid)};
 
 
 

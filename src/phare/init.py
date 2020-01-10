@@ -74,7 +74,7 @@ if refinement_boxes is not None:
     as_paths(refinement_boxes)
 
 
-add("simulation/algo/pusher/name", simulation.particle_pusher)
+add("simulation/solverPPC/pusher/name", simulation.particle_pusher)
 
 init_model = simulation.model
 modelDict  = init_model.model_dict

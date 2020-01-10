@@ -115,6 +115,7 @@ private:
 // -----------------------------------------------------------------------------
 
 
+
 TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
 {
     TypeParam sim;

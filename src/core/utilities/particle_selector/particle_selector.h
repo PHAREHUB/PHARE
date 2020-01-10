@@ -11,10 +11,10 @@ namespace PHARE
 namespace core
 {
     template<typename BoxCollection>
-    class ParticleSelector
+    class ParticleSelectorT
     {
     public:
-        explicit ParticleSelector(BoxCollection boxes)
+        explicit ParticleSelectorT(BoxCollection boxes)
             : boxes_{boxes}
         {
         }
@@ -35,7 +35,7 @@ namespace core
     template<typename BoxContainer>
     auto makeSelector(BoxContainer&& boxes)
     {
-        return ParticleSelector<BoxContainer>{std::forward<BoxContainer>(boxes)};
+        return ParticleSelectorT<BoxContainer>{std::forward<BoxContainer>(boxes)};
     }
 
 } // namespace core

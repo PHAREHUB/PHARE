@@ -95,9 +95,12 @@ double ez(double x)
 
 using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 
-PHARE::initializer::PHAREDict createIonsDict()
+PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
+
+    dict["simulation"]["solverPPC"]["pusher"]["name"] = std::string{"modified_boris"};
+
     dict["ions"]["name"]                                    = std::string{"ions"};
     dict["ions"]["nbrPopulations"]                          = int{2};
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
@@ -222,7 +225,7 @@ public:
         auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
         auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();
 
-        auto hybridModel = std::make_unique<HybridModelT>(createIonsDict(), resourcesManagerHybrid);
+        auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid);
         auto mhdModel    = std::make_unique<MHDModelT>(resourcesManagerMHD);
 
         hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
@@ -252,7 +255,8 @@ public:
 
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
+        createDict()["simulation"]["solverPPC"]);
 
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
@@ -270,7 +274,8 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 
 TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
+        createDict()["simulation"]["solverPPC"]);
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
@@ -279,7 +284,8 @@ TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
+        createDict()["simulation"]["solverPPC"]);
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -291,7 +297,8 @@ TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleCoarseModel)
 {
-    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>();
+    auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
+        createDict()["simulation"]["solverPPC"]);
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -316,7 +323,12 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
 //
 // ----------------------------------------------------------------------------
 
+
 // level 0 doesn't match due to periodicity
+
+
+
+
 TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
 {
     TypeParam sim;
@@ -501,7 +513,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
         std::make_shared<ResourcesManagerT>()};
 
     std::shared_ptr<HybridModelT> hybridModel{
-        std::make_shared<HybridModelT>(createIonsDict(), resourcesManagerHybrid)};
+        std::make_shared<HybridModelT>(createDict(), resourcesManagerHybrid)};
 
 
     std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
@@ -512,7 +524,8 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
             std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
-        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>()};
+        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(
+            createDict()["simulation"]["solverPPC"])};
 
     std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 

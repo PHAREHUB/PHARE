@@ -5,11 +5,18 @@
 
 #include <SAMRAI/hier/Patch.h>
 
-
+#include "core/data/particles/particle_array.h"
+#include "initializer/data_provider.h"
 #include "amr/messengers/hybrid_messenger.h"
 #include "amr/messengers/hybrid_messenger_info.h"
 #include "amr/resources_manager/amr_utils.h"
 #include "solver/solvers/solver.h"
+#include "core/numerics/pusher/pusher.h"
+#include "core/numerics/pusher/pusher_factory.h"
+#include "core/numerics/interpolator/interpolator.h"
+#include "core/utilities/particle_selector/particle_selector.h"
+#include "core/numerics/boundary_condition/boundary_condition.h"
+
 
 namespace PHARE
 {
@@ -19,9 +26,27 @@ namespace solver
     class SolverPPC : public ISolver<AMR_Types>
     {
     private:
-        using Electromag = decltype(std::declval<HybridModel>().state.electromag);
-        using IonsT      = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT  = decltype(std::declval<HybridModel>().state.electromag.E);
+        static constexpr auto dimension    = HybridModel::dimension;
+        static constexpr auto interp_order = HybridModel::gridLayout_type::interp_order;
+
+        using Box               = PHARE::core::Box<int, dimension>;
+        using InterpolatorT     = PHARE::core::Interpolator<dimension, interp_order>;
+        using Electromag        = decltype(std::declval<HybridModel>().state.electromag);
+        using Ions              = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT         = decltype(std::declval<HybridModel>().state.electromag.E);
+        using ParticleArrayT    = typename PHARE::core::ParticleArray<dimension>;
+        using ParticleSelector  = typename PHARE::core::ParticleSelectorT<Box>;
+        using PartIterator      = typename ParticleArrayT::iterator;
+        using GridLayout        = typename HybridModel::gridLayout_type;
+        using BoundaryCondition = PHARE::core::BoundaryConditionT<dimension, interp_order>;
+        using Pusher = PHARE::core::Pusher<dimension, PartIterator, Electromag, InterpolatorT,
+                                           ParticleSelector, BoundaryCondition, GridLayout>;
+
+        constexpr static auto makePusher
+            = PHARE::core::PusherFactory::makePusher<dimension, PartIterator, Electromag,
+                                                     InterpolatorT, ParticleSelector,
+                                                     BoundaryCondition, GridLayout>;
+
 
         Electromag electromagPred_{"EMPred"};
         Electromag electromagAvg_{"EMAvg"};
@@ -31,8 +56,9 @@ namespace solver
         using patch_t = typename AMR_Types::patch_t;
         using level_t = typename AMR_Types::level_t;
 
-        explicit SolverPPC()
+        explicit SolverPPC(PHARE::initializer::PHAREDict dict)
             : ISolver<AMR_Types>{"PPC"}
+            , pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
         {
         }
 
@@ -63,8 +89,10 @@ namespace solver
     private:
         enum class PredictorStep { predictor1, predictor2 };
 
+        std::unique_ptr<Pusher> pusher_;
 
-        void moveIons_(VecFieldT const& B, VecFieldT const& E, IonsT& ions,
+
+        void moveIons_(VecFieldT const& B, VecFieldT const& E, Ions& ions,
                        PredictorStep predictorStep);
 
         /*
@@ -74,44 +102,51 @@ namespace solver
             toCoarser.syncMagnetic(model_.electromag.B);
             toCoarser.syncElectric(model_.electromag.E);
         }*/
-    };
+
+
+    }; // end solverPPC
 
 
     template<typename HybridModel, typename AMR_Types>
     void SolverPPC<HybridModel, AMR_Types>::moveIons_(VecFieldT const& B, VecFieldT const& E,
-                                                      IonsT& ions, PredictorStep step)
+                                                      Ions& ions, PredictorStep step)
     {
-        if (PredictorStep::predictor1 == step)
+        for (auto& pop : ions)
         {
-            // move domain particles to tmp array
-            // move patch ghost particles to tmp array
-            // move levelGhostParticles to tmp array
+            if (PredictorStep::predictor1 == step)
+            {
+                PHARE::core::ParticleArray<dimension> tmpPartArr;
 
-            // accumulate all of (domain, patchGhost, levelGhost) that entered in domain
+                // move domain particles to tmp array
+                // move patch ghost particles to tmp array
+                // move levelGhostParticles to tmp array
 
-            // fill patchGhost particles from neighbor patches on same level
+                // accumulate all of (domain, patchGhost, levelGhost) that entered in domain
 
-            // accumulate all patchGhost
-            // accumulate alpha*levelGhostNew + (1-alpha)*levelGhostOld
-        }
-        else if (PredictorStep::predictor2 == step)
-        {
-            // move domain particles
-            // erase those leaving the domain
+                // fill patchGhost particles from neighbor patches on same level
 
-            // move patch ghost particles
-            // copy into domain those entering the domain
+                // accumulate all patchGhost
+                // accumulate alpha*levelGhostNew + (1-alpha)*levelGhostOld
+            }
+            else if (PredictorStep::predictor2 == step)
+            {
+                // move domain particles
+                // erase those leaving the domain
 
-            // move levelGhostParticles
-            // copy into domain those entering the domain
-            // erase levelGhostParticles that are not in levelGhost region
+                // move patch ghost particles
+                // copy into domain those entering the domain
 
-            // accumulate all domain particles
-            // accumulate alpha*levelGhostNew + (1-alpha)*levelGhostOld
+                // move levelGhostParticles
+                // copy into domain those entering the domain
+                // erase levelGhostParticles that are not in levelGhost region
 
-            // fill patchGhostParticles from neighbor domain
+                // accumulate all domain particles
+                // accumulate alpha*levelGhostNew + (1-alpha)*levelGhostOld
 
-            // accumulate all patchGhostParticles
+                // fill patchGhostParticles from neighbor domain
+
+                // accumulate all patchGhostParticles
+            }
         }
     }
 
