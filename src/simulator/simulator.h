@@ -4,11 +4,6 @@
 
 #include "include.h"
 #include "phare_types.h"
-#include "diagnostic/diagnostic_manager.h"
-#include "diagnostic/detail/highfive.h"
-#include "diagnostic/detail/types/electromag.h"
-#include "diagnostic/detail/types/particle.h"
-#include "diagnostic/detail/types/fluid.h"
 
 
 template<std::size_t dimension>
@@ -253,9 +248,6 @@ public:
     using HybridModel    = typename PHARETypes::HybridModel_t;
     using MHDModel       = typename PHARETypes::MHDModel_t;
 
-    using DiagnosticModelView = PHARE::diagnostic::AMRDiagnosticModelView<Simulator, HybridModel>;
-    using DiagnosticWriter    = PHARE::diagnostic::h5::HighFiveDiagnostic<DiagnosticModelView>;
-
     using SolverMHD = typename PHARETypes::SolverMHD_t;
     using SolverPPC = typename PHARETypes::SolverPPC_t;
 
@@ -373,7 +365,6 @@ public:
 
 
     auto getNumberOfLevels() const { return hierarchy_->getNumberOfLevels(); }
-
 
 private:
     auto find_model(std::string name)

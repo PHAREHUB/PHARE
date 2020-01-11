@@ -1,7 +1,7 @@
 
 from .uniform_model import UniformModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
-from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics
+from .diagnostics import DiagnosticInfo, FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics
 from .simulation import Simulation
 from . import globals
 

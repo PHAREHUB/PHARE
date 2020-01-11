@@ -34,37 +34,51 @@ vvv = {
 ph.MaxwellianFluidModel(
     bx=bx, by=bx, bz=bx,
     ex=bx, ey=bx, ez=bx,
-
     protons={"charge":-1, "density":density, **vvv},
     alpha={"charge":-1, "density":density, **vvv}
 )
 
-ph.FluidDiagnostics(
-    diag_type="density",            # choose in (rho_s, flux_s)
-    write_every=10,                 # write on disk every x iterations
-    compute_every=5,                # compute diagnostics every x iterations ( x <= write_every)
-    start_iteration=0,              # iteration at which diag is enabled
-    last_iteration=990,             # iteration at which diag is turned off
-    population_name="protons"       # name of the population for which the diagnostics is made
-  #,path = 'FluidDiagnostics1'      # where output files will be written, [default: name]
+ph.DiagnosticInfo(
+    file_name="lol.5",
 )
 
-ph.ElectromagDiagnostics(
-    diag_type="B",
-    write_every=10,
-    compute_every=5,
-    start_teration=0,
-    last_iteration=990
-)
+for type in ["density", "bulkVelocity"]:
+    ph.FluidDiagnostics(
+        diag_type=type,
+        write_every=1,
+        compute_every=1,
+        start_iteration=0,
+        last_iteration=990,
+    )
 
-ph.ParticleDiagnostics(
-    diag_type="space_box",          # choose particles within a spatial box
-    compute_every=10,
-    write_every=10,
-    start_iteration=0,
-    last_iteration=90,
-    extent=(2., 4.),                # extent of the box
-    population_name="protons"
-)
+for pop in ["protons", "alpha"]:
+    for type in ["density", "flux"]:
+      ph.FluidDiagnostics(
+          diag_type=type,
+          write_every=1,
+          compute_every=1,
+          start_iteration=0,
+          last_iteration=990,
+          population_name=pop
+      )
+
+    for type in ['domain', 'levelGhost', 'patchGhost']:
+        ph.ParticleDiagnostics(
+            diag_type=type,
+            compute_every=1,
+            write_every=1,
+            start_iteration=0,
+            last_iteration=90,
+            population_name=pop
+        )
+
+for type in ["E", "B"]:
+    ph.ElectromagDiagnostics(
+        diag_type=type,
+        write_every=1,
+        compute_every=1,
+        start_teration=0,
+        last_iteration=990
+    )
 
 print("end test_messengers: input_1d_ratio_2.py")

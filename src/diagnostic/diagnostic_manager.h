@@ -56,8 +56,15 @@ void handleInputDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& di
     }
 }
 
+class IDiagnosticsManager
+{
+public:
+    virtual void dump() = 0;
+    virtual ~IDiagnosticsManager() {}
+};
+
 template<typename Writer>
-class DiagnosticsManager
+class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
     DiagnosticsManager(Writer& writer)
@@ -65,7 +72,9 @@ public:
     {
     }
 
-    static std::unique_ptr<DiagnosticsManager> from(Writer& writer, initializer::PHAREDict& dict)
+
+    template<typename Return = DiagnosticsManager>
+    static std::unique_ptr<Return> from(Writer& writer, initializer::PHAREDict& dict)
     {
         auto dMan = std::make_unique<DiagnosticsManager>(writer);
         handleInputDiagnostics(*dMan, dict);
@@ -73,7 +82,7 @@ public:
     }
 
 
-    void dump();
+    void dump() override;
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict& dict);
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict&& dict)
     {
@@ -104,6 +113,7 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
     dao.start_iteration = dict["start_iteration"].template to<std::size_t>();
     dao.last_iteration  = dict["last_iteration"].template to<std::size_t>();
     dao.subtype         = dict["subtype"].template to<std::string>();
+
     return *this;
 }
 
@@ -135,16 +145,23 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 
 
 // Generic Template declaration, to override per Concrete model type
-template<typename Model, typename ModelParams>
-class DiagnosticModelView
+
+class IDiagnosticModelView
 {
+public:
+    virtual ~IDiagnosticModelView() {}
 };
 
+template<typename Model, typename ModelParams>
+class DiagnosticModelView : public IDiagnosticModelView
+{
+};
 
 
 // HybridModel<Args...> specialization
 template<typename ModelParams>
 class DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>
+    : public IDiagnosticModelView
 {
 public:
     using Model      = solver::type_list_to_hybrid_model_t<ModelParams>;
@@ -284,6 +301,7 @@ private:
     AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&)  = delete;
     AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&&) = delete;
 };
+
 
 } // namespace PHARE::diagnostic
 

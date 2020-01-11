@@ -11,13 +11,13 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/electromag_(B, E)/(x,y,z)
  */
 template<typename HighFiveDiagnostic>
-class ElectromagDiagnosticWriter : public Hi5DiagnosticWriter<HighFiveDiagnostic>
+class ElectromagDiagnosticWriter : public Hi5DiagnosticTypeWriter<HighFiveDiagnostic>
 {
 public:
-    using Hi5DiagnosticWriter<HighFiveDiagnostic>::hi5_;
-    using Attributes = typename Hi5DiagnosticWriter<HighFiveDiagnostic>::Attributes;
+    using Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::hi5_;
+    using Attributes = typename Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::Attributes;
     ElectromagDiagnosticWriter(HighFiveDiagnostic& hi5)
-        : Hi5DiagnosticWriter<HighFiveDiagnostic>(hi5)
+        : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
     void write(DiagnosticDAO&) override;
@@ -72,8 +72,8 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
         }
     };
 
-    Hi5DiagnosticWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
-                                                           initPatch);
+    Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
+                                                               initPatch);
 }
 
 

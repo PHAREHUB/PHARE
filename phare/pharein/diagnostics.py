@@ -72,6 +72,17 @@ def diagnostics_checker(func):
 
     return wrapper
 
+# ------------------------------------------------------------------------------
+
+
+class DiagnosticInfo(object):
+
+    def __init__(self, file_name: str):
+
+        if globals.sim is None:
+            raise RuntimeError("A simulation must be created before adding diagnostics")
+
+        globals.diag_info["file_name"] = file_name
 
 # ------------------------------------------------------------------------------
 
@@ -121,7 +132,7 @@ class ElectromagDiagnostics(Diagnostics):
                 error_msg = "Error: '{}' not a valid electromag diagnostics : " + ', '.join(ElectromagDiagnostics.em_diag_types)
                 raise ValueError(error_msg.format(kwargs['diag_type']))
             else:
-                self.diag_type = "EM_" + kwargs['diag_type']
+                self.diag_type = "/EM_" + kwargs['diag_type']
 
     def to_dict(self):
         return {"name": self.name,
@@ -143,32 +154,37 @@ def population_in_model(population):
 
 class FluidDiagnostics (Diagnostics):
 
-    fluid_diag_types = ['density', 'flux', 'bulk_velocity']
+    fluid_diag_types = ['density', 'flux', 'bulkVelocity']
     category = "fluid"
 
     def __init__(self, **kwargs):
         super(FluidDiagnostics, self).__init__(FluidDiagnostics.category \
                                                + str(globals.sim.count_diagnostics(FluidDiagnostics.category)),
                                                **kwargs)
-
-        if 'population_name' not in kwargs:
-            raise ValueError("Error: missing population_name")
-        else:
-            self.population_name = kwargs['population_name']
-
         if 'diag_type' not in kwargs:
             raise ValueError("Error: missing diag_type parameter")
-        else:
-            if kwargs['diag_type'] not in FluidDiagnostics.fluid_diag_types:
-                error_msg = "Error: '{}' not a valid fluid diagnostics : " + ', '.join(FluidDiagnostics.fluid_diag_types)
-                raise ValueError(error_msg.format(kwargs['diag_type']))
-            elif kwargs['diag_type'] == 'flux' and kwargs['population_name'] == "ions":
-                raise ValueError("'flux' is only available for specific populations, try 'bulk_velocity")
-            else:
-                self.diag_type = kwargs['diag_type']
 
-        if not population_in_model(self.population_name):
-            raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
+        self.population_name = None
+        if 'population_name' not in kwargs and kwargs['diag_type'] == "flux":
+            raise ValueError("Error: missing population_name")
+        elif 'population_name' in kwargs:
+            self.population_name = kwargs['population_name']
+
+        if kwargs['diag_type'] not in FluidDiagnostics.fluid_diag_types:
+            error_msg = "Error: '{}' not a valid fluid diagnostics : " + ', '.join(FluidDiagnostics.fluid_diag_types)
+            raise ValueError(error_msg.format(kwargs['diag_type']))
+        elif kwargs['diag_type'] == 'flux' and kwargs['population_name'] == "ions":
+            raise ValueError("'flux' is only available for specific populations, try 'bulkVelocity")
+        else:
+            self.diag_type = kwargs['diag_type']
+
+        if self.population_name is None:
+            self.diag_type = "/ions/" + self.diag_type
+        else:
+            if not population_in_model(self.population_name):
+                raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
+            self.diag_type = "/ions/pop/ions_" + self.population_name + "/" + self.diag_type
+
 
     def to_dict(self):
         return {"name": self.name,
@@ -188,7 +204,7 @@ class FluidDiagnostics (Diagnostics):
 
 class ParticleDiagnostics(Diagnostics):
 
-    particle_diag_types = ['space_box',]
+    particle_diag_types = ['space_box', 'domain', 'levelGhost', 'patchGhost']
     category = "particle"
 
     def __init__(self, **kwargs):
@@ -198,12 +214,12 @@ class ParticleDiagnostics(Diagnostics):
 
         if 'diag_type' not in kwargs:
             raise ValueError("Error: missing diag_type parameter")
-        else:
-            if kwargs['diag_type'] not in ParticleDiagnostics.particle_diag_types:
-                error_msg = "Error: '{}' not a valid particle diagnostics : " + ', '.join(ParticleDiagnostics.particle_diag_types)
-                raise ValueError(error_msg.format(kwargs['diag_type']))
-            else:
-                self.diag_type = kwargs['diag_type']
+
+        if kwargs['diag_type'] not in ParticleDiagnostics.particle_diag_types:
+            error_msg = "Error: '{}' not a valid particle diagnostics : " + ', '.join(ParticleDiagnostics.particle_diag_types)
+            raise ValueError(error_msg.format(kwargs['diag_type']))
+
+        self.diag_type = kwargs['diag_type']
 
         self.space_box(**kwargs)
 
@@ -211,15 +227,17 @@ class ParticleDiagnostics(Diagnostics):
             raise ValueError("Error: missing population_name")
         else:
             self.population_name = kwargs['population_name']
-            
+
         if not population_in_model(self.population_name):
             raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
 
+        self.diag_type = "/ions/pop/ions_" + self.population_name + "/" + self.diag_type
+
     def space_box(self, **kwargs):
 
-        if 'extent' not in kwargs:
+        if 'extent' not in kwargs and self.diag_type == 'space_box':
             raise ValueError("Error: missing 'extent' parameter required by 'space_box' the ParticleDiagnostics type")
-        else:
+        elif 'extent' in kwargs:
             self.extent = kwargs['extent']
 
     def to_dict(self):

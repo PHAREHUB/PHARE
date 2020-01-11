@@ -16,16 +16,16 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/ions/pop_(1,2,...)/patchGhost/(weight, charge, iCell, delta, v)
  */
 template<typename HighFiveDiagnostic>
-class ParticlesDiagnosticWriter : public Hi5DiagnosticWriter<HighFiveDiagnostic>
+class ParticlesDiagnosticWriter : public Hi5DiagnosticTypeWriter<HighFiveDiagnostic>
 {
 public:
-    using Hi5DiagnosticWriter<HighFiveDiagnostic>::hi5_;
-    using Attributes                = typename Hi5DiagnosticWriter<HighFiveDiagnostic>::Attributes;
+    using Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::hi5_;
+    using Attributes = typename Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::Attributes;
     static constexpr auto dimension = HighFiveDiagnostic::dimension;
     using Packer                    = ParticlePacker<dimension>;
 
     ParticlesDiagnosticWriter(HighFiveDiagnostic& hi5)
-        : Hi5DiagnosticWriter<HighFiveDiagnostic>(hi5)
+        : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
     void write(DiagnosticDAO&) override;
@@ -125,8 +125,8 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
         }
     };
 
-    Hi5DiagnosticWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
-                                                           initPatch);
+    Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
+                                                               initPatch);
 }
 
 

@@ -35,24 +35,24 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
 
 
 
-
-template<size_t dim, size_t interp>
-struct TestSimulator : public PHARE::Simulator<dim, interp>
+template<size_t _dim, size_t _interp>
+struct TestSimulator : public PHARE::Simulator<_dim, _interp>
 {
-    using Simulator                 = PHARE::Simulator<dim, interp>;
-    static constexpr size_t dim_    = dim;
-    static constexpr size_t interp_ = interp;
-    using PHARETypes                = PHARE::PHARE_Types<dim, interp>;
-    using Hierarchy                 = typename PHARE::amr::SAMRAI_Types::hierarchy_t;
+    static constexpr size_t dim    = _dim;
+    static constexpr size_t interp = _interp;
+
+    using Simulator  = PHARE::Simulator<dim, interp>;
+    using PHARETypes = PHARE::PHARE_Types<dim, interp>;
+    using Hierarchy  = typename PHARE::amr::SAMRAI_Types::hierarchy_t;
 
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;
 
     using DiagnosticModelView = PHARE::diagnostic::AMRDiagnosticModelView<Hierarchy, HybridModel>;
-    using DiagnosticWriter    = PHARE::diagnostic::h5::HighFiveDiagnostic<DiagnosticModelView>;
+    using DiagnosticWriter = PHARE::diagnostic::h5::HighFiveDiagnosticWriter<DiagnosticModelView>;
 
-    std::unique_ptr<DiagnosticModelView> modelView; //{*this, *hybridModel_};
-    std::unique_ptr<DiagnosticWriter> writer;       //{modelView, "lol.5"};
+    std::unique_ptr<DiagnosticModelView> modelView;
+    std::unique_ptr<DiagnosticWriter> writer;
     std::unique_ptr<PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>> dMan;
 
     auto& dict()
@@ -82,7 +82,7 @@ struct SimulatorTest : public ::testing::Test
 {
 };
 
-using Simulators = testing::Types<TestSimulator<1, 1>/*, TestSimulator<1, 2>, TestSimulator<1, 3>*//*,   // dim 1
+using Simulators = testing::Types<TestSimulator<1, 1>, TestSimulator<1, 2>, TestSimulator<1, 3>/*,   // dim 1
                                   TestSimulator<2, 1>, TestSimulator<2, 2>, TestSimulator<2, 3>,     // dim 2
                                   TestSimulator<3, 1>, TestSimulator<3, 2>, TestSimulator<3, 3>*/>;  // dim 3
 TYPED_TEST_SUITE(SimulatorTest, Simulators);

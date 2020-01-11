@@ -4,6 +4,7 @@ import phare.pyphare as pp
 import sys, job
 
 from phare.pharein.globals import sim as simulation
+from phare.pharein.globals import diag_info
 
 add = pp.add
 addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+'D')
@@ -125,5 +126,9 @@ for diag in simulation.diagnostics:
     pp.add_size_t(name_path + "/" + 'write_every/' , diag.write_every)
     pp.add_size_t(name_path + "/" + 'start_iteration/' , diag.start_iteration)
     pp.add_size_t(name_path + "/" + 'last_iteration/' , diag.last_iteration)
-add(diag_path + "filePath", "lol.5") # needs finishing
 
+if len(simulation.diagnostics) > 0:
+    if "file_name" in diag_info:
+        add(diag_path + "filePath", diag_info["file_name"])
+    else:
+        add(diag_path + "filePath", "phare.hdf5")
