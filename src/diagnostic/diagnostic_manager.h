@@ -1,10 +1,10 @@
 
-#ifndef PHARE_Diagnostic_MANAGER_HPP_
-#define PHARE_Diagnostic_MANAGER_HPP_
+#ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
+#define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
-#include "core/utilities/types.h"
+#include "core/data/particles/particle_array.h"
+#include "initializer/data_provider.h"
 #include "solver/physical_models/hybrid_model.h"
-#include "amr/resources_manager/resources_manager.h"
 #include "diagnostic_dao.h"
 
 #include <utility>
@@ -19,7 +19,7 @@ enum class Mode { LIGHT, FULL };
 template<typename Diag>
 bool isActive(Diag const& diag, std::size_t current, std::size_t every)
 {
-    return (current >= diag.start_iteration && current <= diag.end_iteration)
+    return (current >= diag.start_iteration && current <= diag.last_iteration)
            && current % every == 0;
 }
 
@@ -37,6 +37,25 @@ bool needsWrite(Diag const& diag, std::size_t current)
 
 
 
+template<typename DiagManager>
+void handleInputDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& diags)
+{
+    std::vector<std::string> const keys = {"fluid", "electromag", "particle"};
+
+    for (auto& key : keys)
+    {
+        size_t it = 0;
+        while (diags.contains(key) && diags[key].contains(key + std::to_string(it)))
+        {
+            std::string path = key + std::to_string(it);
+            auto copy        = diags[key][path];
+            copy["type"]     = key;
+            dMan.addDiagDict(copy);
+            it++;
+        }
+    }
+}
+
 template<typename Writer>
 class DiagnosticsManager
 {
@@ -45,6 +64,14 @@ public:
         : writer_{writer}
     {
     }
+
+    static std::unique_ptr<DiagnosticsManager> from(Writer& writer, initializer::PHAREDict& dict)
+    {
+        auto dMan = std::make_unique<DiagnosticsManager>(writer);
+        handleInputDiagnostics(*dMan, dict);
+        return std::move(dMan);
+    }
+
 
     void dump();
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict& dict);
@@ -71,14 +98,12 @@ DiagnosticsManager<Writer>&
 DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
 {
     auto& dao           = diagnostics_.emplace_back(DiagnosticDAO{});
-    dao.compute_every   = dict["compute_every"].template to<std::size_t>(),
-    dao.write_every     = dict["write_every"].template to<std::size_t>(),
-    dao.start_iteration = dict["start_iteration"].template to<std::size_t>(),
-    dao.end_iteration   = dict["end_iteration"].template to<std::size_t>();
-    dao.name            = dict["name"].template to<std::string>(),
     dao.type            = dict["type"].template to<std::string>();
+    dao.compute_every   = dict["compute_every"].template to<std::size_t>();
+    dao.write_every     = dict["write_every"].template to<std::size_t>();
+    dao.start_iteration = dict["start_iteration"].template to<std::size_t>();
+    dao.last_iteration  = dict["last_iteration"].template to<std::size_t>();
     dao.subtype         = dict["subtype"].template to<std::string>();
-
     return *this;
 }
 
@@ -222,16 +247,13 @@ struct ContiguousParticles
 
 
 // generic subclass of model specialized superclass
-template<typename AMRTypes, typename Model>
+template<typename Hierarchy, typename Model>
 class AMRDiagnosticModelView : public DiagnosticModelView<Model, typename Model::type_list>
 {
 public:
     using Super      = DiagnosticModelView<Model, typename Model::type_list>;
     using ResMan     = typename Model::resources_manager_type;
     using GridLayout = typename Model::gridLayout_type;
-    using Guard      = amr::ResourcesGuard<ResMan, Model>;
-    using Hierarchy  = typename AMRTypes::hierarchy_t;
-    using Patch      = typename AMRTypes::patch_t;
     using Super::model_;
     static constexpr auto dimension = Model::dimension;
 
@@ -241,36 +263,17 @@ public:
     {
     }
 
-    auto guardedGrid(Patch& patch) { return GuardedGrid{patch, Super::model_}; }
-
-
 
     template<typename Action, typename... Args>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
     {
-        amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
-                                        std::forward<Action>(action), minLevel, maxLevel, model_);
+        auto& resMan = *model_.resourcesManager;
+        PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, resMan, std::forward<Action>(action),
+                                               minLevel, maxLevel, model_);
     }
 
 
     std::string getLayoutTypeString() { return std::string{GridLayout::implT::type}; }
-
-protected:
-    struct GuardedGrid
-    {
-        using Guard = typename AMRDiagnosticModelView<AMRTypes, Model>::Guard;
-
-        GuardedGrid(Patch& patch, Model& model)
-            : guard_{model.resourcesManager->setOnPatch(patch, model)}
-            , grid_{PHARE::amr::layoutFromPatch<GridLayout>(patch)}
-        {
-        }
-
-        operator GridLayout&() { return grid_; }
-
-        Guard guard_;
-        GridLayout grid_;
-    };
 
 
 private:
@@ -284,4 +287,4 @@ private:
 
 } // namespace PHARE::diagnostic
 
-#endif //  PHARE_Diagnostic_MANAGER_HPP_
+#endif /* PHARE_DIAGNOSTIC_MANAGER_HPP_ */

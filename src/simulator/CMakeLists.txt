@@ -3,6 +3,7 @@ project(phare_simulator)
 
 set( SOURCES_INC
     simulator.h
+    phare_types.h
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} simulator.cpp)

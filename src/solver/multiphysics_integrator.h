@@ -449,7 +449,7 @@ namespace solver
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
         {
-            if (coarsestLevel < 0 || finestLevel >= nbrOfLevels_ || finestLevel <= coarsestLevel)
+            if (coarsestLevel < 0 || finestLevel >= nbrOfLevels_ || finestLevel < coarsestLevel)
             {
                 return false;
             }

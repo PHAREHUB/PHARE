@@ -28,9 +28,9 @@ namespace amr
 
 
 
-    template<typename ResourcesUser, typename ResourcesType>
+    template<typename ResourcesUser, typename ResourcesType, size_t interp>
     using isUserParticleType = std::is_same<typename std::remove_reference<ResourcesType>::type,
-                                            UserParticleType<ResourcesUser>>;
+                                            UserParticleType<ResourcesUser, interp>>;
 
 
 
@@ -98,6 +98,8 @@ namespace amr
     class ResourcesManager
     {
     public:
+        static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+
         ResourcesManager()
             : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
             , context_{variableDatabase_->getContext(contextName_)}
@@ -135,7 +137,8 @@ namespace amr
 
             if constexpr (has_particles<ResourcesUser>::value)
             {
-                registerResources_<ResourcesUser, UserParticleType<ResourcesUser>>(obj);
+                registerResources_<ResourcesUser, UserParticleType<ResourcesUser, interp_order>>(
+                    obj);
             }
 
 
@@ -416,7 +419,7 @@ namespace amr
 
             if constexpr (has_particles<ResourcesUser>::value)
             {
-                setResourcesInternal_(obj, UserParticleType<ResourcesUser>{},
+                setResourcesInternal_(obj, UserParticleType<ResourcesUser, interp_order>{},
                                       obj.getParticleArrayNames(), patch, nullOrResourcePtr);
             }
 
@@ -483,7 +486,7 @@ namespace amr
                 }
             }
 
-            if constexpr (isUserParticleType<ResourcesUser, ResourcesType>::value)
+            if constexpr (isUserParticleType<ResourcesUser, ResourcesType, interp_order>::value)
             {
                 auto const& resourcesProperties = user.getParticleArrayNames();
                 for (auto const& properties : resourcesProperties)

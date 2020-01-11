@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import pharein
-from pharein import Simulation
-from pharein import MaxwellianFluidModel
-from pharein import ElectromagDiagnostics
+import phare.pharein
+from phare.pharein import Simulation
+from phare.pharein import MaxwellianFluidModel
+from phare.pharein import ElectromagDiagnostics
 
 # configure the simulation
 
@@ -46,23 +46,5 @@ def bx(x):
 MaxwellianFluidModel(bx=bx,
                      protons={"density":n},
                      background={})
-
-
-
-
-ElectromagDiagnostics(
-    name="ElectromagDiagnostics1",
-    diag_type="E",                  # available : ("E", "B")
-    write_every=10,
-    compute_every=5,
-    start_teration=0,
-    last_iteration=990,
-    path = 'ElectromagDiagnostics1'   # where output files will be written, [default: name]
-)
-
-
-
-
-
 
 

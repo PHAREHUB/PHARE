@@ -27,3 +27,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC pybind11::embed)
 # this is the python module that wraps the add() method
 pybind11_add_module(pyphare pyphare.cpp)
 target_link_libraries(pyphare PUBLIC phare_initializer)
+set_target_properties(pyphare
+    PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/phare"
+)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py.in ${CMAKE_BINARY_DIR}/phare/__init__.py @ONLY)

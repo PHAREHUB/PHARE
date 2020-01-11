@@ -77,7 +77,7 @@ public:
 
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
-        , specie1_{std::make_shared<ParticlesVariable<dimension>>(
+        , specie1_{std::make_shared<ParticlesVariable<dimension, interpOrder>>(
               "proton1", true,
               SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
                                       ghostWidthForParticles<interpOrder>()})}
@@ -139,7 +139,7 @@ public:
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
 
-        auto particlesVariableTypeName = typeid(ParticlesVariable<dimension>).name();
+        auto particlesVariableTypeName = typeid(ParticlesVariable<dimension, interpOrder>).name();
 
         gridGeometry_->addRefineOperator(particlesVariableTypeName, refineOperator_);
     }
@@ -184,7 +184,7 @@ private:
 
     SAMRAI::hier::VariableDatabase* variableDatabase_;
 
-    std::shared_ptr<ParticlesVariable<dimension>> specie1_;
+    std::shared_ptr<ParticlesVariable<dimension, interpOrder>> specie1_;
 
 
 

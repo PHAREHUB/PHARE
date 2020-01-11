@@ -9,16 +9,17 @@ namespace PHARE
 {
 namespace amr
 {
-    template<std::size_t dim>
     /**
      * @brief The ParticlesVariable class
      */
+    template<std::size_t dim, std::size_t interp>
     class ParticlesVariable : public SAMRAI::hier::Variable
     {
     public:
         ParticlesVariable(std::string const& name, bool fineBoundaryRepresentsVariable = false,
                           SAMRAI::hier::IntVector ghost
-                          = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim}, 1})
+                          = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
+                                                    ghostWidthForParticles<interp>()})
             : SAMRAI::hier::Variable{name, std::make_shared<ParticlesDataFactory<dim>>(
                                                ghost, fineBoundaryRepresentsVariable)}
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
