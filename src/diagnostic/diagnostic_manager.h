@@ -49,7 +49,7 @@ void handleInputDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& di
         {
             std::string path = key + std::to_string(it);
             auto copy        = diags[key][path];
-            copy["type"]     = key;
+            copy["category"] = key;
             dMan.addDiagDict(copy);
             it++;
         }
@@ -73,8 +73,7 @@ public:
     }
 
 
-    template<typename Return = DiagnosticsManager>
-    static std::unique_ptr<Return> from(Writer& writer, initializer::PHAREDict& dict)
+    static std::unique_ptr<DiagnosticsManager> from(Writer& writer, initializer::PHAREDict& dict)
     {
         auto dMan = std::make_unique<DiagnosticsManager>(writer);
         handleInputDiagnostics(*dMan, dict);
@@ -107,12 +106,12 @@ DiagnosticsManager<Writer>&
 DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
 {
     auto& dao           = diagnostics_.emplace_back(DiagnosticDAO{});
-    dao.type            = dict["type"].template to<std::string>();
+    dao.category        = dict["category"].template to<std::string>();
     dao.compute_every   = dict["compute_every"].template to<std::size_t>();
     dao.write_every     = dict["write_every"].template to<std::size_t>();
     dao.start_iteration = dict["start_iteration"].template to<std::size_t>();
     dao.last_iteration  = dict["last_iteration"].template to<std::size_t>();
-    dao.subtype         = dict["subtype"].template to<std::string>();
+    dao.type            = dict["type"].template to<std::string>();
 
     return *this;
 }
@@ -132,7 +131,7 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
     {
         if (needsCompute(diag, iter))
         {
-            writer_.getDiagnosticWriterForType(diag.type)->compute(diag);
+            writer_.getDiagnosticWriterForType(diag.category)->compute(diag);
         }
         if (needsWrite(diag, iter))
         {

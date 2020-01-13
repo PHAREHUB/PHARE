@@ -121,7 +121,7 @@ diag_path = "simulation/diagnostics/"
 for diag in simulation.diagnostics:
     categ_path = diag_path + diag.category + '/'
     name_path = categ_path + diag.name
-    add(name_path + "/" + 'subtype/' , diag.diag_type)
+    add(name_path + "/" + 'type/' , diag.diag_type)
     pp.add_size_t(name_path + "/" + 'compute_every/' , diag.compute_every)
     pp.add_size_t(name_path + "/" + 'write_every/' , diag.write_every)
     pp.add_size_t(name_path + "/" + 'start_iteration/' , diag.start_iteration)

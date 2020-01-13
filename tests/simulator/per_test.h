@@ -149,6 +149,56 @@ public:
 private:
     std::vector<std::function<void()>> funcs_;
 };
+
 } // namespace PHARE_test
+
+namespace PHARE
+{
+class FieldNullFilter
+{
+public:
+    template<typename Field, typename GridLayout>
+    size_t start(GridLayout& layout, core::Direction direction)
+    {
+        return layout.ghostStartIndex(typename Field::physical_quantity_type{}, direction);
+    }
+    template<typename Field, typename GridLayout>
+    size_t end(GridLayout& layout, core::Direction direction)
+    {
+        return layout.ghostEndIndex(typename Field::physical_quantity_type{}, direction);
+    }
+};
+
+class FieldDomainFilter
+{
+public:
+    template<typename Field, typename GridLayout>
+    size_t start(GridLayout& layout, core::Direction direction)
+    {
+        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction);
+    }
+    template<typename Field, typename GridLayout>
+    size_t end(GridLayout& layout, core::Direction direction)
+    {
+        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction);
+    }
+};
+
+class FieldDomainPlus1Filter
+{
+public:
+    template<typename Field, typename GridLayout>
+    size_t start(GridLayout& layout, core::Direction direction)
+    {
+        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) - 1;
+    }
+    template<typename Field, typename GridLayout>
+    size_t end(GridLayout& layout, core::Direction direction)
+    {
+        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) + 1;
+    }
+};
+
+} // namespace PHARE
 
 #endif /* PHARE_TEST_SIMULATOR_PER_TEST_H */

@@ -79,8 +79,8 @@ public:
     {
     }
 
-    template<typename Return = HighFiveDiagnosticWriter>
-    static std::unique_ptr<Return> from(ModelView& modelView, initializer::PHAREDict& dict)
+    static std::unique_ptr<HighFiveDiagnosticWriter> from(ModelView& modelView,
+                                                          initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
         return std::move(std::make_unique<HighFiveDiagnosticWriter>(modelView, filePath));
@@ -322,19 +322,19 @@ void HighFiveDiagnosticWriter<ModelView>::initializeDatasets_(
     size_t maxLocalLevel = 0;
     std::unordered_map<size_t, std::vector<std::string>> patchIDs; // level to local patches
     Attributes patchAttributes; // stores dataset info/size for synced MPI creation
-    auto collectPatchAttributes
-        = [&]([[maybe_unused]] GridLayout& gridLayout, std::string patchID, size_t iLevel) {
-              if (!patchIDs.count(iLevel))
-                  patchIDs.emplace(iLevel, std::vector<std::string>());
+    auto collectPatchAttributes = [&]([[maybe_unused]] GridLayout& gridLayout, std::string patchID,
+                                      size_t iLevel) {
+        if (!patchIDs.count(iLevel))
+            patchIDs.emplace(iLevel, std::vector<std::string>());
 
-              patchIDs.at(iLevel).emplace_back(patchID);
+        patchIDs.at(iLevel).emplace_back(patchID);
 
-              for (auto* diag : diagnostics)
-              {
-                  writers.at(diag->type)->getDataSetInfo(*diag, iLevel, patchID, patchAttributes);
-              }
-              maxLocalLevel = iLevel;
-          };
+        for (auto* diag : diagnostics)
+        {
+            writers.at(diag->category)->getDataSetInfo(*diag, iLevel, patchID, patchAttributes);
+        }
+        maxLocalLevel = iLevel;
+    };
 
     modelView().visitHierarchy(collectPatchAttributes, minLevel, maxLevel);
 
@@ -346,7 +346,7 @@ void HighFiveDiagnosticWriter<ModelView>::initializeDatasets_(
 
     for (auto* diagnostic : diagnostics)
     {
-        writers.at(diagnostic->type)
+        writers.at(diagnostic->category)
             ->initDataSets(*diagnostic, patchIDs, patchAttributes, maxMPILevel);
     }
 }
@@ -362,7 +362,7 @@ void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
 
         for (auto* diagnostic : diagnostics)
         {
-            writers.at(diagnostic->type)->write(*diagnostic);
+            writers.at(diagnostic->category)->write(*diagnostic);
         }
         patchAttributes.emplace_back(patchPath_, modelView().getPatchAttributes(gridLayout));
     };

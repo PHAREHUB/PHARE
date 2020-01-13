@@ -226,7 +226,7 @@ def checker(func):
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path',
                              'diag_export_format', 'max_nbr_levels', 'refinement_boxes',
-                             'smallest_patch_size', 'largest_patch_size' ]
+                             'smallest_patch_size', 'largest_patch_size', "diag_options" ]
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
         if len(wrong_kwds) > 0:

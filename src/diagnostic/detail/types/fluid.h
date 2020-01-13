@@ -47,7 +47,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO& di
     std::string lvlPatchID{std::to_string(iLevel) + "_" + patchID};
 
     auto checkActive
-        = [&diagnostic](auto& tree, auto var) { return diagnostic.subtype == tree + var; };
+        = [&diagnostic](auto& tree, auto var) { return diagnostic.type == tree + var; };
 
     for (auto& pop : ions)
     {
@@ -80,7 +80,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     auto& hi5  = this->hi5_;
     auto& ions = hi5.modelView().getIons();
 
-    auto checkActive = [&](auto& tree, auto var) { return diagnostic.subtype == tree + var; };
+    auto checkActive = [&](auto& tree, auto var) { return diagnostic.type == tree + var; };
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         bool null = patchID.empty();
@@ -126,7 +126,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
     auto& ions = hi5.modelView().getIons();
     std::string path{hi5.patchPath() + "/"};
 
-    auto checkActive = [&](auto& tree, auto var) { return diagnostic.subtype == tree + var; };
+    auto checkActive = [&](auto& tree, auto var) { return diagnostic.type == tree + var; };
 
     for (auto& pop : hi5.modelView().getIons())
     {

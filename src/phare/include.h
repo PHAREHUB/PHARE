@@ -65,16 +65,13 @@ struct RuntimeDiagnosticInterface
                     rdi.modelView = std::make_unique<DiagnosticModelView>(
                         *simulator->getPrivateHierarchy(), *simulator->getHybridModel());
 
-                    rdi.writer
-                        = DiagnosticWriter::template from<PHARE::diagnostic::IDiagnosticWriter>(
-                            *static_cast<DiagnosticModelView*>(rdi.modelView.get()),
-                            dict["simulation"]["diagnostics"]);
+                    rdi.writer = DiagnosticWriter::from(
+                        *static_cast<DiagnosticModelView*>(rdi.modelView.get()),
+                        dict["simulation"]["diagnostics"]);
 
-                    rdi.dMan
-                        = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::template from<
-                            PHARE::diagnostic::IDiagnosticsManager>(
-                            *static_cast<DiagnosticWriter*>(rdi.writer.get()),
-                            dict["simulation"]["diagnostics"]);
+                    rdi.dMan = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::from(
+                        *static_cast<DiagnosticWriter*>(rdi.writer.get()),
+                        dict["simulation"]["diagnostics"]);
 
                     return 1;
                 }

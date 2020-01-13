@@ -68,7 +68,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO
 
     auto checkInfo = [&](auto& tree, auto pType, auto& attr, auto& ps) {
         std::string active{tree + pType};
-        if (diagnostic.subtype == active)
+        if (diagnostic.type == active)
             particleInfo(attr[pType], ps);
     };
 
@@ -111,7 +111,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     };
 
     auto initIfActive = [&](auto& lvl, auto& tree, auto& attr, auto& pop, auto& patch, auto var) {
-        if (diagnostic.subtype == tree + var)
+        if (diagnostic.type == tree + var)
             initDataSet(lvl, patch, tree + var, patch.empty() ? attr : attr[pop][var]);
     };
 
@@ -166,7 +166,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write([
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
         std::string active{tree + pType};
-        if (diagnostic.subtype == active)
+        if (diagnostic.type == active)
             writeParticles(hi5.patchPath() + active + "/", ps);
     };
 

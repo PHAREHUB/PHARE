@@ -43,7 +43,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDA
     for (auto* vecField : vecFields)
     {
         auto& name = vecField->name();
-        if (diagnostic.subtype == "/" + name)
+        if (diagnostic.type == "/" + name)
             for (auto& [id, type] : core::Components::componentMap)
                 patchAttributes[lvlPatchID][name][id] = vecField->getComponent(type).size();
     }
@@ -64,7 +64,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
         for (auto* vecField : vecFields)
         {
             auto& name = vecField->name();
-            if (diagnostic.subtype == "/" + name)
+            if (diagnostic.type == "/" + name)
                 for (auto& [id, type] : core::Components::componentMap)
                     hi5.template createDataSet<float>(
                         path + "/" + name + "/" + id,
@@ -87,7 +87,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write([
     for (auto* vecField : hi5.modelView().getElectromagFields())
     {
         auto& name = vecField->name();
-        if (diagnostic.subtype == "/" + name)
+        if (diagnostic.type == "/" + name)
             hi5.writeVecFieldAsDataset(hi5.patchPath() + "/" + name, *vecField);
     }
 }
