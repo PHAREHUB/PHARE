@@ -28,7 +28,7 @@ public:
         : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
-    void write(DiagnosticDAO&) override;
+    void write(DiagnosticDAO&, Attributes&, Attributes&) override;
     void compute(DiagnosticDAO&) override {}
     void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
@@ -137,7 +137,9 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
 
 template<typename HighFiveDiagnostic>
-void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic,
+                                                          Attributes& fileAttributes,
+                                                          Attributes& patchAttributes)
 {
     auto& hi5 = this->hi5_;
 
@@ -168,6 +170,9 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnos
         hi5.writeDataSet(hfile, path + packer.keys()[2], copy.iCell.data());
         hi5.writeDataSet(hfile, path + packer.keys()[3], copy.delta.data());
         hi5.writeDataSet(hfile, path + packer.keys()[4], copy.v.data());
+
+        hi5.writeAttributeDict(hfile, fileAttributes, "/");
+        hi5.writeAttributeDict(hfile, patchAttributes, hi5.patchPath());
     };
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {

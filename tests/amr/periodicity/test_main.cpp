@@ -59,9 +59,8 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
     }
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
 
-    auto attribites = hi5.writer.makeFile("phare.h5");
-    auto hiEfile    = hi5.writer.makeFile("EM_E.h5");
-    auto hiBfile    = hi5.writer.makeFile("EM_B.h5");
+    auto hiEfile = hi5.writer.makeFile("EM_E.h5");
+    auto hiBfile = hi5.writer.makeFile("EM_B.h5");
 
     std::unordered_map<std::string, PatchInfo> patches;
 
@@ -73,8 +72,7 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
         patches[ebxyz].values.emplace_back();
         hifile.getDataSet(dataset).read(patches[ebxyz].values.back());
         patches[ebxyz].origins.emplace_back();
-        attribites->file().getGroup(path).getAttribute("origin").read(
-            patches[ebxyz].origins.back());
+        hiEfile->file().getGroup(path).getAttribute("origin").read(patches[ebxyz].origins.back());
     };
 
     for (auto const& time : hiEfile->file().getGroup("/").listObjectNames())

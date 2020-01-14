@@ -20,7 +20,7 @@ public:
         : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
-    void write(DiagnosticDAO&) override;
+    void write(DiagnosticDAO&, Attributes&, Attributes&) override;
     void compute(DiagnosticDAO&) override {}
     void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
@@ -86,7 +86,9 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
 
 template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
+void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic,
+                                                           Attributes& fileAttributes,
+                                                           Attributes& patchAttributes)
 {
     auto& hi5 = this->hi5_;
 
@@ -94,8 +96,13 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagno
     {
         auto& name = vecField->name();
         if (diagnostic.type == "/" + name)
-            hi5.writeVecFieldAsDataset(fileData.at(diagnostic.type)->file(),
-                                       hi5.patchPath() + "/" + name, *vecField);
+        {
+            auto& file = fileData.at(diagnostic.type)->file();
+            hi5.writeVecFieldAsDataset(file, hi5.patchPath() + "/" + name, *vecField);
+
+            hi5.writeAttributeDict(file, fileAttributes, "/");
+            hi5.writeAttributeDict(file, patchAttributes, hi5.patchPath());
+        }
     }
 }
 } // namespace PHARE::diagnostic::h5

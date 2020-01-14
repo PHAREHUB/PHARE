@@ -210,8 +210,7 @@ void validateAttributes(Simulator& sim, Writer& hi5)
     using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
-
-    auto hifile = hi5.makeFile("phare.h5");
+    auto hifile       = hi5.makeFile(hi5.fileString("/EM_B")); // all files have attributes
 
     auto visit = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
         std::string patchPath = hi5.getPatchPath("time", iLevel, patchID), origin;
@@ -234,7 +233,7 @@ TYPED_TEST(SimulatorTest, allFromPython)
     sim.dMan->dump();
     sim.dMan.reset();
     sim.modelView.reset();
-    sim.writer.reset();
+    sim.writer.reset(); // keeps a handle and breaks the following readonly opening
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.getPrivateHierarchy();

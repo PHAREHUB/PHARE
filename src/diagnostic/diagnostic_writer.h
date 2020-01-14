@@ -8,8 +8,9 @@ namespace PHARE::diagnostic
 class DiagnosticTypeWriter
 {
 public:
-    virtual void write(DiagnosticDAO&)   = 0;
-    virtual void compute(DiagnosticDAO&) = 0;
+    using Attributes = cppdict::Dict<float, double, size_t, std::string>;
+    virtual void write(DiagnosticDAO&, Attributes&, Attributes&) = 0;
+    virtual void compute(DiagnosticDAO&)                         = 0;
     virtual ~DiagnosticTypeWriter() {}
 };
 
