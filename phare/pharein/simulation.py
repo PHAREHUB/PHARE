@@ -220,6 +220,19 @@ def check_patch_size(**kwargs):
 
 # ------------------------------------------------------------------------------
 
+# diag_options = {"format":"phareh5", "options": {"dir": "phare_ouputs/"}}
+def check_diag_options(**kwargs):
+    diag_options = kwargs.get("diag_options", None)
+    formats = ["phareh5"]
+    if diag_options is not None:
+        if diag_options["format"] not in formats:
+            raise ValueError("Error - diag_options format is invalid")
+    return diag_options
+
+
+
+# ------------------------------------------------------------------------------
+
 def checker(func):
     def wrapper(simulation_object, **kwargs):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
@@ -247,6 +260,7 @@ def checker(func):
         kwargs["path"] = check_path(**kwargs)
 
         dims = compute_dimension(cells)
+        kwargs["diag_options"] = check_diag_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(dims, **kwargs)
         kwargs["origin"] = check_origin(dims, **kwargs)

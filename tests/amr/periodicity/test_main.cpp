@@ -1,6 +1,7 @@
 
 
 
+#include "kul/os.hpp"
 #include "tests/diagnostic/include.h"
 
 using namespace PHARE::core;
@@ -52,18 +53,19 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
     EXPECT_EQ(simdb["boundary_types"].template to<std::string>(), "periodic");
 
     auto& rm = *hybridModel.resourcesManager;
-    {
-        Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, "electromag",
-                                                  NEW_HI5_FILE};
+    { // scoped for destruction
+        Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
         hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E")).dump();
     }
-    Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, "electromag",
-                                              HighFive::File::ReadOnly};
-    auto& hifile = hi5.writer.file();
+    Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
+
+    auto attribites = hi5.writer.makeFile("phare.h5");
+    auto hiEfile    = hi5.writer.makeFile("EM_E.h5");
+    auto hiBfile    = hi5.writer.makeFile("EM_B.h5");
 
     std::unordered_map<std::string, PatchInfo> patches;
 
-    auto loadEB = [&](auto& path, std::string eb, std::string xyz) {
+    auto loadEB = [&](auto& hifile, auto& path, std::string eb, std::string xyz) {
         std::string ebxyz   = eb + "/" + xyz;
         std::string dataset = path + ebxyz;
         if (!patches.count(ebxyz))
@@ -71,18 +73,19 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
         patches[ebxyz].values.emplace_back();
         hifile.getDataSet(dataset).read(patches[ebxyz].values.back());
         patches[ebxyz].origins.emplace_back();
-        hifile.getGroup(path).getAttribute("origin").read(patches[ebxyz].origins.back());
+        attribites->file().getGroup(path).getAttribute("origin").read(
+            patches[ebxyz].origins.back());
     };
 
-    for (auto const& time : hifile.getGroup("/").listObjectNames())
+    for (auto const& time : hiEfile->file().getGroup("/").listObjectNames())
     {
-        for (auto const& leaf : hifile.getGroup("/" + time + "/pl0").listObjectNames())
+        for (auto const& leaf : hiEfile->file().getGroup("/" + time + "/pl0").listObjectNames())
         {
             std::string path = "/" + time + "/pl0/" + leaf + "/";
             for (auto const& xyz : {"x", "y", "z"})
             {
-                loadEB(path, "EM_E", xyz);
-                loadEB(path, "EM_B", xyz);
+                loadEB(hiEfile->file(), path, "EM_E", xyz);
+                loadEB(hiBfile->file(), path, "EM_B", xyz);
             }
         }
     }
@@ -131,6 +134,7 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
 
 int main(int argc, char** argv)
 {
+    kul::Dir{"phare_outputs"}.mk();
     ::testing::InitGoogleTest(&argc, argv);
     PHARE_test::SamraiLifeCycle samsam(argc, argv);
     return RUN_ALL_TESTS();

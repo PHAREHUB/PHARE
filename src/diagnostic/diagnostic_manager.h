@@ -60,8 +60,9 @@ class IDiagnosticsManager
 {
 public:
     virtual void dump() = 0;
-    virtual ~IDiagnosticsManager() {}
+    virtual ~IDiagnosticsManager();
 };
+IDiagnosticsManager::~IDiagnosticsManager() {}
 
 template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
@@ -88,6 +89,8 @@ public:
         return addDiagDict(dict);
     }
     void addDiagnostic(DiagnosticDAO& diagnostic) { diagnostics_.emplace_back(diagnostic); }
+
+    auto& diagnostics() const { return diagnostics_; }
 
 protected:
     std::vector<DiagnosticDAO> diagnostics_;
@@ -144,12 +147,12 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 
 
 // Generic Template declaration, to override per Concrete model type
-
 class IDiagnosticModelView
 {
 public:
-    virtual ~IDiagnosticModelView() {}
+    virtual ~IDiagnosticModelView();
 };
+IDiagnosticModelView::~IDiagnosticModelView() {}
 
 template<typename Model, typename ModelParams>
 class DiagnosticModelView : public IDiagnosticModelView

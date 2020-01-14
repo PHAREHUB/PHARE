@@ -184,19 +184,26 @@ public:
     }
 };
 
-class FieldDomainPlus1Filter
+class FieldDomainPlusNFilter
 {
 public:
+    FieldDomainPlusNFilter(size_t n)
+        : n_{n}
+    {
+    }
     template<typename Field, typename GridLayout>
     size_t start(GridLayout& layout, core::Direction direction)
     {
-        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) - 1;
+        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) - n_;
     }
     template<typename Field, typename GridLayout>
     size_t end(GridLayout& layout, core::Direction direction)
     {
-        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) + 1;
+        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) + n_;
     }
+
+private:
+    size_t n_;
 };
 
 } // namespace PHARE

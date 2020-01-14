@@ -72,17 +72,6 @@ def diagnostics_checker(func):
 
     return wrapper
 
-# ------------------------------------------------------------------------------
-
-
-class DiagnosticInfo(object):
-
-    def __init__(self, file_name: str):
-
-        if globals.sim is None:
-            raise RuntimeError("A simulation must be created before adding diagnostics")
-
-        globals.diag_info["file_name"] = file_name
 
 # ------------------------------------------------------------------------------
 

@@ -2,7 +2,6 @@
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_H
 
 #include "diagnostic/detail/highfive.h"
-#include "diagnostic/detail/highfive_diag_writer.h"
 
 namespace PHARE::diagnostic::h5
 {
@@ -33,6 +32,9 @@ public:
     void initDataSets(DiagnosticDAO& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, int maxLevel) override;
+
+private:
+    std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
 
@@ -46,8 +48,13 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO& di
     auto& ions = hi5.modelView().getIons();
     std::string lvlPatchID{std::to_string(iLevel) + "_" + patchID};
 
-    auto checkActive
-        = [&diagnostic](auto& tree, auto var) { return diagnostic.type == tree + var; };
+    auto checkActive = [&](auto& tree, auto var) {
+        auto active = tree + var;
+        bool b      = diagnostic.type == active;
+        if (b && !fileData.count(diagnostic.type))
+            fileData.emplace(diagnostic.type, hi5.makeFile(diagnostic));
+        return b;
+    };
 
     for (auto& pop : ions)
     {
@@ -93,24 +100,26 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
             std::string popPath(path + "pop/" + pop.name() + "/");
             if (checkActive(tree, "density"))
                 hi5.template createDataSet<float>(
-                    popPath + "density", null ? 0 : attr[popId]["density"].template to<size_t>());
+                    fileData.at(diagnostic.type)->file(), popPath + "density",
+                    null ? 0 : attr[popId]["density"].template to<size_t>());
 
             if (checkActive(tree, "flux"))
                 for (auto& [id, type] : core::Components::componentMap)
                     hi5.template createDataSet<float>(
-                        popPath + "flux" + "/" + id,
+                        fileData.at(diagnostic.type)->file(), popPath + "flux" + "/" + id,
                         null ? 0 : attr[popId]["flux"][id].template to<size_t>());
         }
 
         std::string tree{"/ions/"};
         if (checkActive(tree, "density"))
             hi5.template createDataSet<float>(
-                path + "density", null ? 0 : attr["ion"]["density"].template to<size_t>());
+                fileData.at(diagnostic.type)->file(), path + "density",
+                null ? 0 : attr["ion"]["density"].template to<size_t>());
 
         if (checkActive(tree, "bulkVelocity"))
             for (auto& [id, type] : core::Components::componentMap)
                 hi5.template createDataSet<float>(
-                    path + "bulkVelocity" + "/" + id,
+                    fileData.at(diagnostic.type)->file(), path + "bulkVelocity" + "/" + id,
                     null ? 0 : attr["ion"]["bulkVelocity"][id].template to<size_t>());
     };
 
@@ -128,22 +137,26 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.type == tree + var; };
 
-    for (auto& pop : hi5.modelView().getIons())
+    for (auto& pop : ions)
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         std::string popPath{path + tree};
         if (checkActive(tree, "density"))
-            hi5.writeDataSet(popPath + "density", pop.density().data());
+            hi5.writeDataSet(fileData.at(diagnostic.type)->file(), popPath + "density",
+                             pop.density().data());
         if (checkActive(tree, "flux"))
-            hi5.writeVecFieldAsDataset(popPath + "flux", pop.flux());
+            hi5.writeVecFieldAsDataset(fileData.at(diagnostic.type)->file(), popPath + "flux",
+                                       pop.flux());
     }
 
     std::string tree{"/ions/"};
     auto& density = ions.density();
     if (checkActive(tree, "density"))
-        hi5.writeDataSet(path + tree + "density", density.data());
+        hi5.writeDataSet(fileData.at(diagnostic.type)->file(), path + tree + "density",
+                         density.data());
     if (checkActive(tree, "bulkVelocity"))
-        hi5.writeVecFieldAsDataset(path + tree + "bulkVelocity", ions.velocity());
+        hi5.writeVecFieldAsDataset(fileData.at(diagnostic.type)->file(),
+                                   path + tree + "bulkVelocity", ions.velocity());
 }
 
 } // namespace PHARE::diagnostic::h5

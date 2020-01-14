@@ -2,6 +2,7 @@
 #define HIGHFIVEDIAGNOSTICWRITER_H
 
 #include <string>
+#include <algorithm>
 #include <unordered_map>
 
 #include "diagnostic/diagnostic_writer.h"
@@ -45,8 +46,6 @@ protected:
                 initPatch(lvl, patchAttributes);
         }
     }
-
-
 
     HighFiveDiagnostic& hi5_;
 };

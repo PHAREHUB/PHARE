@@ -38,6 +38,7 @@ public:
 
 private:
     size_t levels_ = 0;
+    std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
 
@@ -69,7 +70,11 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO
     auto checkInfo = [&](auto& tree, auto pType, auto& attr, auto& ps) {
         std::string active{tree + pType};
         if (diagnostic.type == active)
+        {
             particleInfo(attr[pType], ps);
+            if (!fileData.count(diagnostic.type))
+                fileData.emplace(diagnostic.type, hi5.makeFile(diagnostic));
+        }
     };
 
     for (auto& pop : hi5.modelView().getIons())
@@ -91,12 +96,13 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 {
     auto& hi5 = this->hi5_;
 
-    auto createDataSet = [&hi5](auto&& path, auto size, auto const& value) {
+    auto createDataSet = [&](auto&& path, auto size, auto const& value) {
         using ValueType = std::decay_t<decltype(value)>;
+        auto& hfile     = fileData.at(diagnostic.type)->file();
         if constexpr (is_array_dataset<ValueType, dimension>)
-            return hi5.template createDataSet<typename ValueType::value_type>(path, size);
+            return hi5.template createDataSet<typename ValueType::value_type>(hfile, path, size);
         else
-            return hi5.template createDataSet<ValueType>(path, size);
+            return hi5.template createDataSet<ValueType>(hfile, path, size);
     };
 
     auto initDataSet = [&](auto& lvl, auto& patchID, auto tree, auto& attr) {
@@ -131,14 +137,14 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
 
 template<typename HighFiveDiagnostic>
-void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write([
-    [maybe_unused]] DiagnosticDAO& diagnostic)
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
 {
     auto& hi5 = this->hi5_;
 
     auto writeParticles = [&](auto path, auto& particles) {
         if (particles.size() == 0)
             return;
+        auto& hfile = fileData.at(diagnostic.type)->file();
         Packer packer(particles);
         ContiguousParticles<dimension> copy{particles.size()};
 
@@ -157,11 +163,11 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write([
             idx++;
         }
 
-        hi5.writeDataSet(path + packer.keys()[0], copy.weight.data());
-        hi5.writeDataSet(path + packer.keys()[1], copy.charge.data());
-        hi5.writeDataSet(path + packer.keys()[2], copy.iCell.data());
-        hi5.writeDataSet(path + packer.keys()[3], copy.delta.data());
-        hi5.writeDataSet(path + packer.keys()[4], copy.v.data());
+        hi5.writeDataSet(hfile, path + packer.keys()[0], copy.weight.data());
+        hi5.writeDataSet(hfile, path + packer.keys()[1], copy.charge.data());
+        hi5.writeDataSet(hfile, path + packer.keys()[2], copy.iCell.data());
+        hi5.writeDataSet(hfile, path + packer.keys()[3], copy.delta.data());
+        hi5.writeDataSet(hfile, path + packer.keys()[4], copy.v.data());
     };
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {

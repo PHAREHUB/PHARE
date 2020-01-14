@@ -50,11 +50,9 @@ struct Hi5Diagnostic
     using DiagnosticModelView = AMRDiagnosticModelView<Hierarchy, HybridModel>;
     using DiagnosticWriter    = HighFiveDiagnosticWriter<DiagnosticModelView>;
 
-    Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, std::string fileName,
-                  unsigned flags)
+    Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, unsigned flags)
         : hierarchy_{hierarchy}
         , model_{hybridModel}
-        , file_{fileName}
         , flags_{flags}
     {
     }
@@ -76,8 +74,6 @@ struct Hi5Diagnostic
     auto particles(std::string&& type) { return dict("particle", type); }
     auto fluid(std::string&& type) { return dict("fluid", type); }
 
-    std::string filename() const { return file_ + "_hi5_test.5"; }
-
     std::string getPatchPath(int level, PHARE::amr::SAMRAI_Types::patch_t& patch)
     {
         std::stringstream globalId;
@@ -85,12 +81,13 @@ struct Hi5Diagnostic
         return writer.getPatchPath("time", level, globalId.str());
     }
 
+
+
     Hierarchy& hierarchy_;
     HybridModel& model_;
-    std::string file_;
     unsigned flags_;
     DiagnosticModelView modelView{hierarchy_, model_};
-    DiagnosticWriter writer{modelView, filename(), flags_};
+    DiagnosticWriter writer{modelView, "phare_outputs", flags_};
     DiagnosticsManager<DiagnosticWriter> dMan{writer};
 };
 
