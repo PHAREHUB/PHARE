@@ -1,7 +1,6 @@
 
 
 
-#include "kul/os.hpp"
 #include "tests/diagnostic/include.h"
 
 using namespace PHARE::core;
@@ -132,7 +131,6 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
 
 int main(int argc, char** argv)
 {
-    kul::Dir{"phare_outputs"}.mk();
     ::testing::InitGoogleTest(&argc, argv);
     PHARE_test::SamraiLifeCycle samsam(argc, argv);
     return RUN_ALL_TESTS();

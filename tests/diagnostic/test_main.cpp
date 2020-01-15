@@ -3,9 +3,6 @@
 
 #include <mpi.h>
 
-#include "kul/os.hpp"
-#include "kul/log.hpp"
-
 #include "include.h"
 
 using namespace PHARE;
@@ -248,7 +245,6 @@ TYPED_TEST(SimulatorTest, allFromPython)
 
 int main(int argc, char** argv)
 {
-    kul::Dir{"phare_outputs"}.mk();
     ::testing::InitGoogleTest(&argc, argv);
     PHARE_test::SamraiLifeCycle samsam(argc, argv);
     auto ret = RUN_ALL_TESTS();

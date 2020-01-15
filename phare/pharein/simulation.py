@@ -227,6 +227,15 @@ def check_diag_options(**kwargs):
     if diag_options is not None:
         if diag_options["format"] not in formats:
             raise ValueError("Error - diag_options format is invalid")
+        if "options" in diag_options and "dir" in diag_options["options"]:
+            diag_dir = diag_options["options"]["dir"]
+            if os.path.isfile(diag_dir):
+                raise ValueError ("Error: Simulation diag_options dir exists as a file.")
+            try:
+                if not os.path.exists(diag_dir):
+                    os.mkdir(diag_dir)
+            except OSError:
+                raise ValueError ("Creation of the directory %s failed" % diag_dir)
     return diag_options
 
 
