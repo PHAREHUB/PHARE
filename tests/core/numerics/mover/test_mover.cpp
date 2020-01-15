@@ -7,6 +7,7 @@
 #include "core/data/grid/gridlayout_impl.h"
 #include "core/data/grid/gridlayoutimplyee.h"
 #include "core/data/ions/ion_population/particle_pack.h"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.h"
 
 #include "simulator/phare_types.h"
 
@@ -49,73 +50,79 @@ using namespace PHARE::core;
 
 double density(double x)
 {
-    return /*x * +*/ 2.;
+    return 1.;
 }
 
 double vx(double /*x*/)
 {
-    return 1.;
+    return 0.;
 }
 
 
 double vy(double /*x*/)
 {
-    return 1.;
+    return 0.;
 }
 
 
 double vz(double /*x*/)
 {
-    return 1.;
+    return 0.;
 }
 
 
 double vthx(double /*x*/)
 {
-    return 1.;
+    return 0.1;
 }
 
 
 double vthy(double /*x*/)
 {
-    return 1.;
+    return 0.1;
 }
 
 
 double vthz(double /*x*/)
 {
-    return 1.;
+    return 0.1;
 }
 
 
 double bx(double x)
 {
-    return x /* + 1.*/;
+    (void)x;
+    return 0.;
 }
 
 double by(double x)
 {
-    return x /* + 2.*/;
+    (void)x;
+    return 0.;
 }
 
 double bz(double x)
 {
-    return x /*+ 3.*/;
+    (void)x;
+    return 1.;
 }
 
 double ex(double x)
 {
-    return x /* + 4.*/;
+    (void)x;
+    return 0.;
 }
 
 double ey(double x)
 {
-    return x /* + 5.*/;
+    (void)x;
+    return 1.;
 }
 
 double ez(double x)
 {
-    return x /* + 6.*/;
+    (void)x;
+    return 0.;
 }
 
 
@@ -224,6 +231,7 @@ struct IonMoverTest : public ::testing::Test
     using Ions                         = typename PHARETypes::Ions_t;
     using Electromag                   = typename PHARETypes::Electromag_t;
     using ParticleArray                = typename PHARETypes::ParticleArray_t;
+    using ParticleInitializerFactory   = typename PHARETypes::ParticleInitializerFactory;
 
 
     // grid configuration
@@ -278,6 +286,18 @@ struct IonMoverTest : public ::testing::Test
     Field Vz{"ions_bulkVel_z", HybridQuantity::Scalar::Vz,
              layout.allocSize(HybridQuantity::Scalar::Vz)};
 
+    ParticleArray protonDomain;
+    ParticleArray protonPatchGhost;
+    ParticleArray protonLevelGhost;
+    ParticleArray protonLevelGhostOld;
+    ParticleArray protonLevelGhostNew;
+
+    ParticleArray alphaDomain;
+    ParticleArray alphaPatchGhost;
+    ParticleArray alphaLevelGhost;
+    ParticleArray alphaLevelGhostOld;
+    ParticleArray alphaLevelGhostNew;
+
     ParticlesPack<ParticleArray> protonPack;
     ParticlesPack<ParticleArray> alphaPack;
 
@@ -306,15 +326,35 @@ struct IonMoverTest : public ::testing::Test
         populations[0].flux().setBuffer("ions_protons_flux_x", &protonFx);
         populations[0].flux().setBuffer("ions_protons_flux_y", &protonFy);
         populations[0].flux().setBuffer("ions_protons_flux_z", &protonFz);
+
+        protonPack.domainParticles        = &protonDomain;
+        protonPack.patchGhostParticles    = &protonPatchGhost;
+        protonPack.levelGhostParticles    = &protonLevelGhost;
+        protonPack.levelGhostParticlesOld = &protonLevelGhostOld;
+        protonPack.levelGhostParticlesNew = &protonLevelGhostNew;
+
         populations[0].setBuffer("ions_protons", &protonPack);
 
         populations[1].setBuffer("ions_alpha_rho", &alphaDensity);
         populations[1].flux().setBuffer("ions_alpha_flux_x", &alphaFx);
         populations[1].flux().setBuffer("ions_alpha_flux_y", &alphaFy);
         populations[1].flux().setBuffer("ions_alpha_flux_z", &alphaFz);
+
+        alphaPack.domainParticles        = &alphaDomain;
+        alphaPack.patchGhostParticles    = &alphaPatchGhost;
+        alphaPack.levelGhostParticles    = &alphaLevelGhost;
+        alphaPack.levelGhostParticlesOld = &alphaLevelGhostOld;
+        alphaPack.levelGhostParticlesNew = &alphaLevelGhostNew;
+
         populations[1].setBuffer("ions_alpha", &alphaPack);
 
         EM.initialize(layout);
+        for (auto& pop : ions)
+        {
+            auto info                = pop.particleInitializerInfo();
+            auto particleInitializer = ParticleInitializerFactory::create(info);
+            particleInitializer->loadParticles(pop.domainParticles(), layout);
+        }
     }
 };
 
@@ -332,7 +372,7 @@ TYPED_TEST(IonMoverTest, bablabla)
 }
 
 
-TEST(IonMoverTT, balbalbalbalablabla) {}
+
 
 int main(int argc, char** argv)
 {
