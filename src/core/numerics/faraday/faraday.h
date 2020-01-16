@@ -37,7 +37,6 @@ namespace core
     {
     protected:
         GridLayout* layout_{nullptr};
-        const double dt_ = 1.0; // TODO is it where time step should be ?
 
     public:
         /**
@@ -74,7 +73,7 @@ namespace core
 
     public:
         template<typename VecField>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew)
+        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             // dBxdt =  0
             // dBydt =  dxEz
@@ -96,8 +95,7 @@ namespace core
             for (auto ix = start; ix <= end; ++ix)
             {
                 Bynew(ix)
-                    = By(ix)
-                      + this->dt_ * this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
+                    = By(ix) + dt * this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
             }
 
             start = this->layout_->physicalStartIndex(Bznew, Direction::X);
@@ -106,8 +104,7 @@ namespace core
             for (auto ix = start; ix <= end; ++ix)
             {
                 Bznew(ix)
-                    = Bz(ix)
-                      - this->dt_ * this->layout_->deriv(Ey, {ix}, DirectionTag<Direction::X>{});
+                    = Bz(ix) - dt * this->layout_->deriv(Ey, {ix}, DirectionTag<Direction::X>{});
             }
         }
     };
@@ -122,7 +119,7 @@ namespace core
 
     public:
         template<typename VecField>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew)
+        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             // dBxdt =  -dyEz
             // dBydt =  dxEz
@@ -151,8 +148,7 @@ namespace core
                 {
                     Bxnew(ix, iy)
                         = Bx(ix, iy)
-                          - this->dt_
-                                * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::Y>{});
+                          - dt * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::Y>{});
                 }
             }
 
@@ -167,8 +163,7 @@ namespace core
                 {
                     Bynew(ix, iy)
                         = By(ix, iy)
-                          + this->dt_
-                                * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::X>{});
+                          + dt * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::X>{});
                 }
             }
 
@@ -183,10 +178,8 @@ namespace core
                 {
                     Bznew(ix, iy)
                         = Bz(ix, iy)
-                          - this->dt_
-                                * this->layout_->deriv(Ey, {ix, iy}, DirectionTag<Direction::X>{})
-                          + this->dt_
-                                * this->layout_->deriv(Ex, {ix, iy}, DirectionTag<Direction::Y>{});
+                          - dt * this->layout_->deriv(Ey, {ix, iy}, DirectionTag<Direction::X>{})
+                          + dt * this->layout_->deriv(Ex, {ix, iy}, DirectionTag<Direction::Y>{});
                 }
             }
         }
@@ -202,7 +195,7 @@ namespace core
 
     public:
         template<typename VecField>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew)
+        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             // dBxdt = -dyEz + dzEy
             // dBydt = -dzEx + dxEz
@@ -235,10 +228,10 @@ namespace core
                     {
                         Bxnew(ix, iy, iz)
                             = Bx(ix, iy, iz)
-                              - this->dt_
+                              - dt
                                     * this->layout_->deriv(Ez, {ix, iy, iz},
                                                            DirectionTag<Direction::Y>{})
-                              + this->dt_
+                              + dt
                                     * this->layout_->deriv(Ey, {ix, iy, iz},
                                                            DirectionTag<Direction::Z>{});
                     }
@@ -260,10 +253,10 @@ namespace core
                     {
                         Bynew(ix, iy, iz)
                             = By(ix, iy, iz)
-                              - this->dt_
+                              - dt
                                     * this->layout_->deriv(Ex, {ix, iy, iz},
                                                            DirectionTag<Direction::Z>{})
-                              + this->dt_
+                              + dt
                                     * this->layout_->deriv(Ez, {ix, iy, iz},
                                                            DirectionTag<Direction::X>{});
                     }
@@ -285,10 +278,10 @@ namespace core
                     {
                         Bznew(ix, iy, iz)
                             = Bz(ix, iy, iz)
-                              - this->dt_
+                              - dt
                                     * this->layout_->deriv(Ey, {ix, iy, iz},
                                                            DirectionTag<Direction::X>{})
-                              + this->dt_
+                              + dt
                                     * this->layout_->deriv(Ex, {ix, iy, iz},
                                                            DirectionTag<Direction::Y>{});
                     }
@@ -308,7 +301,7 @@ namespace core
 
     public:
         template<typename VecField>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew)
+        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             if (!impl_.hasLayoutSet())
             {
@@ -316,7 +309,7 @@ namespace core
                     "Error - Faraday - GridLayout not set, cannot proceed to calculate faraday()");
             }
 
-            impl_(B, E, Bnew);
+            impl_(B, E, Bnew, dt);
         }
 
 
