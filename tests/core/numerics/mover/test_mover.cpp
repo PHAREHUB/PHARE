@@ -531,55 +531,115 @@ struct IonUpdaterTest : public ::testing::Test
         {
             if constexpr (dim == 1)
             {
-                // the number of ghost cells depends on the interpolator order
-                if constexpr (interp_order == 1)
-                {
-                    int firstPhysCell = layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-                    int lastPhysCell  = layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-                    auto firstAMRCell = layout.localToAMR(Point{firstPhysCell});
-                    auto lastAMRCell  = layout.localToAMR(Point{lastPhysCell});
+                int firstPhysCell = layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+                int lastPhysCell  = layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+                auto firstAMRCell = layout.localToAMR(Point{firstPhysCell});
+                auto lastAMRCell  = layout.localToAMR(Point{lastPhysCell});
 
-                    // we need to put levelGhost particles in the cell just to the
-                    // left of the first cell. In reality these particles should
-                    // come from splitting particles of the next coarser level
-                    // in this test we just copy those of the first cell
-                    // we also assume levelGhostOld and New are the same particles
-                    // for simplicity
+                // we need to put levelGhost particles in the cell just to the
+                // left of the first cell. In reality these particles should
+                // come from splitting particles of the next coarser level
+                // in this test we just copy those of the first cell
+                // we also assume levelGhostOld and New are the same particles
+                // for simplicity
 
-                    auto& domainPart        = pop.domainParticles();
-                    auto& levelGhostPartOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostPartNew = pop.levelGhostParticlesNew();
-                    auto& levelGhostPart    = pop.levelGhostParticles();
-                    auto& patchGhostPart    = pop.patchGhostParticles();
+                auto& domainPart        = pop.domainParticles();
+                auto& levelGhostPartOld = pop.levelGhostParticlesOld();
+                auto& levelGhostPartNew = pop.levelGhostParticlesNew();
+                auto& levelGhostPart    = pop.levelGhostParticles();
+                auto& patchGhostPart    = pop.patchGhostParticles();
 
 
-                    std::copy_if(std::begin(domainPart), std::end(domainPart),
-                                 std::back_inserter(levelGhostPartOld),
-                                 [&firstAMRCell](auto const& particle) {
+                std::copy_if(std::begin(domainPart), std::end(domainPart),
+                             std::back_inserter(levelGhostPartOld),
+                             [&firstAMRCell](auto const& particle) {
+                                 if constexpr (interp_order == 1)
+                                 {
                                      return particle.iCell[0] == firstAMRCell[0];
-                                 });
+                                 }
+                                 else if constexpr (interp_order == 2 or interp_order == 3)
+                                 {
+                                     return (particle.iCell[0] == firstAMRCell[0])
+                                            || (particle.iCell[0] == firstAMRCell[0] + 1);
+                                 }
+                             });
 
-                    std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
-                              std::back_inserter(levelGhostPartNew));
+                // copies need to be put in the ghost cell
+                // we have copied particles be now their iCell needs to be udpated
+                // our choice is :
+                //
+                // first order:
+                //
+                //   ghost| domain...
+                // [-----]|[-----][-----][-----][-----][-----]
+                //     ^      v
+                //     |      |
+                //     -------|
+                //
+                // second and third order:
+
+                //   ghost        | domain...
+                // [-----]|[-----][-----][-----][-----][-----][-----]
+                //     ^      ^       v     v
+                //     |      |       |     |
+                //     -------|-------|     |
+                //            ---------------
+                std::transform(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
+                               std::begin(levelGhostPartOld), [](auto& part) {
+                                   if constexpr (interp_order == 2 or interp_order == 3)
+                                   {
+                                       part.iCell[0] = part.iCell[0] - 2;
+                                   }
+                                   else if constexpr (interp_order == 1)
+                                   {
+                                       part.iCell[0] = part.iCell[0] - 1;
+                                   }
+                                   return part;
+                               });
 
 
-                    std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
-                              std::back_inserter(levelGhostPart));
+                std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
+                          std::back_inserter(levelGhostPartNew));
 
 
-                    // now let's create patchGhostParticles on the right of the domain
-                    // by copying those on the last cell
+                std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
+                          std::back_inserter(levelGhostPart));
 
-                    std::copy_if(std::begin(domainPart), std::end(domainPart),
-                                 std::back_inserter(patchGhostPart),
-                                 [&lastAMRCell](auto const& particle) {
+
+                // now let's create patchGhostParticles on the right of the domain
+                // by copying those on the last cell
+
+                std::copy_if(std::begin(domainPart), std::end(domainPart),
+                             std::back_inserter(patchGhostPart),
+                             [&lastAMRCell](auto const& particle) {
+                                 if constexpr (interp_order == 1)
+                                 {
                                      return particle.iCell[0] == lastAMRCell[0];
-                                 });
+                                 }
+                                 else if constexpr (interp_order == 2 or interp_order == 3)
+                                 {
+                                     return (particle.iCell[0] == lastAMRCell[0])
+                                            || (particle.iCell[0] == lastAMRCell[0] - 1);
+                                 }
+                             });
 
 
-                } // end first order
-            }     // end 1D
-        }         // end pop loop
+                std::transform(std::begin(patchGhostPart), std::end(patchGhostPart),
+                               std::begin(patchGhostPart), [](auto& part) {
+                                   if constexpr (interp_order == 2 or interp_order == 3)
+                                   {
+                                       part.iCell[0] = part.iCell[0] + 2;
+                                   }
+                                   else if constexpr (interp_order == 1)
+                                   {
+                                       part.iCell[0] = part.iCell[0] + 1;
+                                   }
+                                   return part;
+                               });
+
+
+            } // end 1D
+        }     // end pop loop
     }
 };
 
@@ -605,6 +665,10 @@ TYPED_TEST(IonUpdaterTest, momentsAreUpdatedButParticlesUnTouchedInMomentOnlyMod
         for (auto& pop : this->ions)
         {
             ASSERT_EQ(this->layout.nbrCells()[0] * 100, pop.domainParticles().size());
+            ASSERT_EQ(100, pop.patchGhostParticles().size());
+            ASSERT_EQ(100, pop.levelGhostParticlesOld().size());
+            ASSERT_EQ(100, pop.levelGhostParticlesNew().size());
+            ASSERT_EQ(100, pop.levelGhostParticles().size());
         }
     }
 }
