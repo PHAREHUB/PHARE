@@ -1,7 +1,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <array>
+#include <iterator>
 
 #include "core/data/grid/gridlayout.h"
 #include "core/data/grid/gridlayout_impl.h"
@@ -40,6 +42,10 @@ using namespace PHARE::core;
   - initialize electromag object
   - for each ion pop create a particle initializer and load the particles.
 
+  - loading particles only loads domain particles
+        - as is, some of the domain nodes will be incomplete and first ghost node too
+        -  the deposit of levelGhostParticles and patchGhostParticle needs to be checked
+        - so we assume levelGhost sides and patchGhost
   - check the moments are equal to prescribed values
   - save moments and particles
   - apply tests
@@ -306,6 +312,11 @@ struct IonMoverTest : public ::testing::Test
         : ncells{100}
         , layout{{0.1}, {100u}, {{0.}}}
     {
+        // First we need to set all buffer pointers of Electromag and Ions
+        // Resources. Normally the ResourcesManger does that but here we don't
+        // have a hierarchy etc. so we do that manually.
+
+
         EM.B.setBuffer("EM_B_x", &Bx);
         EM.B.setBuffer("EM_B_y", &By);
         EM.B.setBuffer("EM_B_z", &Bz);
@@ -348,6 +359,12 @@ struct IonMoverTest : public ::testing::Test
 
         populations[1].setBuffer("ions_alpha", &alphaPack);
 
+
+        // ok all resources pointers are set to buffers
+        // now let's initialize Electromag fields to user input functions
+        // and ion population particles to user supplied moments
+
+
         EM.initialize(layout);
         for (auto& pop : ions)
         {
@@ -355,6 +372,72 @@ struct IonMoverTest : public ::testing::Test
             auto particleInitializer = ParticleInitializerFactory::create(info);
             particleInitializer->loadParticles(pop.domainParticles(), layout);
         }
+
+
+        // now all domain particles are loaded we need to manually insert
+        // ghost particles (this is in reality SAMRAI's job)
+        // these are needed if we want all used nodes to be complete
+
+
+        // in 1D we assume left border is touching the level border
+        // and right is touching another patch
+        // so on the left no patchGhost but levelGhost(and old and new)
+        // on the right no levelGhost but patchGhosts
+
+
+        for (auto& pop : ions)
+        {
+            if constexpr (dim == 1)
+            {
+                // the number of ghost cells depends on the interpolator order
+                if constexpr (interp_order == 1)
+                {
+                    int firstPhysCell = layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+                    int lastPhysCell  = layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+                    auto firstAMRCell = layout.localToAMR(Point{firstPhysCell});
+                    auto lastAMRCell  = layout.localToAMR(Point{lastPhysCell});
+
+                    // we need to put levelGhost particles in the cell just to the
+                    // left of the first cell. In reality these particles should
+                    // come from splitting particles of the next coarser level
+                    // in this test we just copy those of the first cell
+                    // we also assume levelGhostOld and New are the same particles
+                    // for simplicity
+
+                    auto& domainPart        = pop.domainParticles();
+                    auto& levelGhostPartOld = pop.levelGhostParticlesOld();
+                    auto& levelGhostPartNew = pop.levelGhostParticlesNew();
+                    auto& levelGhostPart    = pop.levelGhostParticles();
+                    auto& patchGhostPart    = pop.patchGhostParticles();
+
+
+                    std::copy_if(std::begin(domainPart), std::end(domainPart),
+                                 std::back_inserter(levelGhostPartOld),
+                                 [&firstAMRCell](auto const& particle) {
+                                     return particle.iCell[0] == firstAMRCell[0];
+                                 });
+
+                    std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
+                              std::back_inserter(levelGhostPartNew));
+
+
+                    std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
+                              std::back_inserter(levelGhostPart));
+
+
+                    // now let's create patchGhostParticles on the right of the domain
+                    // by copying those on the last cell
+
+                    std::copy_if(std::begin(domainPart), std::end(domainPart),
+                                 std::back_inserter(patchGhostPart),
+                                 [&lastAMRCell](auto const& particle) {
+                                     return particle.iCell[0] == lastAMRCell[0];
+                                 });
+
+
+                } // end first order
+            }     // end 1D
+        }         // end pop loop
     }
 };
 
