@@ -747,13 +747,53 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 
 
-TYPED_TEST(IonUpdaterTest, momentsAreUpdatedButParticlesUnTouchedInMomentOnlyMode)
+TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
     IonUpdater ionUpdater{};
 
-    ElectromagBuffers emBufferCpy{this->emBuffers, this->layout};
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+
     ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
+
+    auto& populations = this->ions.getRunTimeResourcesUserList();
+
+    auto& protonDomainPart = populations[0].domainParticles();
+    for (std::size_t iPart = 0; iPart < protonDomainPart.size(); ++iPart)
+    {
+        EXPECT_EQ(ionsBufferCpy.protonDomain[iPart].iCell[0], protonDomainPart[iPart].iCell[0]);
+        EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].delta[0],
+                         protonDomainPart[iPart].delta[0]);
+
+        for (std::size_t iDir = 0; iDir < 3; ++iDir)
+        {
+            EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].v[iDir],
+                             protonDomainPart[iPart].v[iDir]);
+        }
+    }
+}
+
+
+
+
+TYPED_TEST(IonUpdaterTest, momentsAreChanged)
+{
+    IonUpdater ionUpdater{};
+    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+
+    ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
+
+    auto& populations = this->ions.getRunTimeResourcesUserList();
+
+    auto& protonDensity = populations[0].density();
+    auto ix0            = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto ix1            = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+
+    for (auto ix = ix0 - 1; ix <= ix1 + 1; ++ix)
+    {
+        EXPECT_TRUE(std::abs(protonDensity(ix) - ionsBufferCpy.protonDensity(ix)) > 0.01);
+        std::cout << "after update : " << protonDensity(ix)
+                  << "  after update : " << ionsBufferCpy.protonDensity(ix) << "\n";
+    }
 }
 
 
