@@ -651,26 +651,109 @@ using DimInterps = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<
 TYPED_TEST_SUITE(IonUpdaterTest, DimInterps);
 
 
-TYPED_TEST(IonUpdaterTest, momentsAreUpdatedButParticlesUnTouchedInMomentOnlyMode)
+
+TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
 {
     if constexpr (TypeParam::dimension == 1)
     {
-        IonUpdater ionUpdater{};
-
-        ElectromagBuffers emBufferCpy{this->emBuffers, this->layout};
-        IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
-
-        ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
-
         for (auto& pop : this->ions)
         {
-            ASSERT_EQ(this->layout.nbrCells()[0] * 100, pop.domainParticles().size());
-            ASSERT_EQ(100, pop.patchGhostParticles().size());
-            ASSERT_EQ(100, pop.levelGhostParticlesOld().size());
-            ASSERT_EQ(100, pop.levelGhostParticlesNew().size());
-            ASSERT_EQ(100, pop.levelGhostParticles().size());
+            if constexpr (TypeParam::interp_order == 1)
+            {
+                EXPECT_EQ(this->layout.nbrCells()[0] * 100, pop.domainParticles().size());
+                EXPECT_EQ(100, pop.patchGhostParticles().size());
+                EXPECT_EQ(100, pop.levelGhostParticlesOld().size());
+                EXPECT_EQ(100, pop.levelGhostParticlesNew().size());
+                EXPECT_EQ(100, pop.levelGhostParticles().size());
+            }
+            else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
+            {
+                EXPECT_EQ(this->layout.nbrCells()[0] * 100, pop.domainParticles().size());
+                EXPECT_EQ(200, pop.patchGhostParticles().size());
+                EXPECT_EQ(200, pop.levelGhostParticlesOld().size());
+                EXPECT_EQ(200, pop.levelGhostParticlesNew().size());
+                EXPECT_EQ(200, pop.levelGhostParticles().size());
+            }
         }
     }
+}
+
+
+
+
+TYPED_TEST(IonUpdaterTest, loadsPatchGhostParticlesOnRightGhostArea)
+{
+    int lastPhysCell = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
+    auto lastAMRCell = this->layout.localToAMR(Point{lastPhysCell});
+
+    if constexpr (TypeParam::dimension == 1)
+    {
+        for (auto& pop : this->ions)
+        {
+            if constexpr (TypeParam::interp_order == 1)
+            {
+                for (auto const& part : pop.patchGhostParticles())
+                {
+                    EXPECT_EQ(lastAMRCell[0] + 1, part.iCell[0]);
+                }
+            }
+            else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
+            {
+                typename IonUpdaterTest<TypeParam>::ParticleArray copy{pop.patchGhostParticles()};
+                auto firstInOuterMostCell = std::partition(
+                    std::begin(copy), std::end(copy), [&lastAMRCell](auto const& particle) {
+                        return particle.iCell[0] == lastAMRCell[0] + 1;
+                    });
+                EXPECT_EQ(100, std::distance(std::begin(copy), firstInOuterMostCell));
+                EXPECT_EQ(100, std::distance(firstInOuterMostCell, std::end(copy)));
+            }
+        }
+    }
+}
+
+
+
+
+TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
+{
+    int firstPhysCell = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
+    auto firstAMRCell = this->layout.localToAMR(Point{firstPhysCell});
+
+    if constexpr (TypeParam::dimension == 1)
+    {
+        for (auto& pop : this->ions)
+        {
+            if constexpr (TypeParam::interp_order == 1)
+            {
+                for (auto const& part : pop.levelGhostParticles())
+                {
+                    EXPECT_EQ(firstAMRCell[0] - 1, part.iCell[0]);
+                }
+            }
+            else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
+            {
+                typename IonUpdaterTest<TypeParam>::ParticleArray copy{pop.levelGhostParticles()};
+                auto firstInOuterMostCell = std::partition(
+                    std::begin(copy), std::end(copy), [&firstAMRCell](auto const& particle) {
+                        return particle.iCell[0] == firstAMRCell[0] - 1;
+                    });
+                EXPECT_EQ(100, std::distance(std::begin(copy), firstInOuterMostCell));
+                EXPECT_EQ(100, std::distance(firstInOuterMostCell, std::end(copy)));
+            }
+        }
+    }
+}
+
+
+
+
+TYPED_TEST(IonUpdaterTest, momentsAreUpdatedButParticlesUnTouchedInMomentOnlyMode)
+{
+    IonUpdater ionUpdater{};
+
+    ElectromagBuffers emBufferCpy{this->emBuffers, this->layout};
+    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+    ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
 }
 
 
