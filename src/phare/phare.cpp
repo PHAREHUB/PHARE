@@ -1,18 +1,6 @@
 
 
-
-#include "initializer/data_provider.h"
-#include "initializer/data_provider.h"
-#include "initializer/python_data_provider.h"
-#include "simulator/simulator.h"
-#include "core/utilities/algorithm.h"
-#include <iostream>
-
-#include "diagnostic/detail/highfive.h"
-#include "diagnostic/detail/types/electromag.h"
-#include "diagnostic/detail/types/particle.h"
-#include "diagnostic/detail/types/fluid.h"
-
+#include "include.h"
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
@@ -34,26 +22,6 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     return nullptr;
 }
 
-
-class SamraiLifeCycle
-{
-public:
-    SamraiLifeCycle(int argc, char** argv)
-    {
-        SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
-        SAMRAI::tbox::SAMRAIManager::initialize();
-        SAMRAI::tbox::SAMRAIManager::startup();
-    }
-    ~SamraiLifeCycle()
-    {
-        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
-        SAMRAI::tbox::SAMRAIManager::shutdown();
-        SAMRAI::tbox::SAMRAIManager::finalize();
-        SAMRAI::tbox::SAMRAI_MPI::finalize();
-    }
-};
-
-
 int main(int argc, char** argv)
 {
     std::string const welcome = R"~(
@@ -70,8 +38,7 @@ int main(int argc, char** argv)
     SamraiLifeCycle slc{argc, argv};
 
     std::cerr << "creating python data provider\n";
-    auto provider = std::make_unique<PHARE::initializer::PythonDataProvider>(
-        2, "init"); // fromCommandLine(argc, argv);
+    auto provider = std::make_unique<PHARE::initializer::PythonDataProvider>(2, "phare.init");
 
     std::cerr << "reading user inputs...";
     provider->read();
@@ -82,6 +49,7 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
+    RuntimeDiagnosticInterface{*simulator}.dump();
 
     //
     // auto time = simulator.startTime();

@@ -2,6 +2,7 @@
 #define HIGHFIVEDIAGNOSTICWRITER_H
 
 #include <string>
+#include <algorithm>
 #include <unordered_map>
 
 #include "diagnostic/diagnostic_writer.h"
@@ -9,11 +10,11 @@
 namespace PHARE::diagnostic::h5
 {
 template<typename HighFiveDiagnostic>
-class Hi5DiagnosticWriter : public DiagnosticWriter
+class Hi5DiagnosticTypeWriter : public PHARE::diagnostic::DiagnosticTypeWriter
 {
 public:
     using Attributes = typename HighFiveDiagnostic::Attributes;
-    Hi5DiagnosticWriter(HighFiveDiagnostic& hi5)
+    Hi5DiagnosticTypeWriter(HighFiveDiagnostic& hi5)
         : hi5_(hi5)
     {
     }
@@ -45,8 +46,6 @@ protected:
                 initPatch(lvl, patchAttributes);
         }
     }
-
-
 
     HighFiveDiagnostic& hi5_;
 };

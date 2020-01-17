@@ -220,13 +220,35 @@ def check_patch_size(**kwargs):
 
 # ------------------------------------------------------------------------------
 
+# diag_options = {"format":"phareh5", "options": {"dir": "phare_ouputs/"}}
+def check_diag_options(**kwargs):
+    diag_options = kwargs.get("diag_options", None)
+    formats = ["phareh5"]
+    if diag_options is not None:
+        if diag_options["format"] not in formats:
+            raise ValueError("Error - diag_options format is invalid")
+        if "options" in diag_options and "dir" in diag_options["options"]:
+            diag_dir = diag_options["options"]["dir"]
+            if os.path.isfile(diag_dir):
+                raise ValueError ("Error: Simulation diag_options dir exists as a file.")
+            try:
+                if not os.path.exists(diag_dir):
+                    os.mkdir(diag_dir)
+            except OSError:
+                raise ValueError ("Creation of the directory %s failed" % diag_dir)
+    return diag_options
+
+
+
+# ------------------------------------------------------------------------------
+
 def checker(func):
     def wrapper(simulation_object, **kwargs):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path',
                              'diag_export_format', 'max_nbr_levels', 'refinement_boxes',
-                             'smallest_patch_size', 'largest_patch_size' ]
+                             'smallest_patch_size', 'largest_patch_size', "diag_options" ]
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
         if len(wrong_kwds) > 0:
@@ -247,6 +269,7 @@ def checker(func):
         kwargs["path"] = check_path(**kwargs)
 
         dims = compute_dimension(cells)
+        kwargs["diag_options"] = check_diag_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(dims, **kwargs)
         kwargs["origin"] = check_origin(dims, **kwargs)

@@ -11,22 +11,25 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/electromag_(B, E)/(x,y,z)
  */
 template<typename HighFiveDiagnostic>
-class ElectromagDiagnosticWriter : public Hi5DiagnosticWriter<HighFiveDiagnostic>
+class ElectromagDiagnosticWriter : public Hi5DiagnosticTypeWriter<HighFiveDiagnostic>
 {
 public:
-    using Hi5DiagnosticWriter<HighFiveDiagnostic>::hi5_;
-    using Attributes = typename Hi5DiagnosticWriter<HighFiveDiagnostic>::Attributes;
+    using Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::hi5_;
+    using Attributes = typename Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::Attributes;
     ElectromagDiagnosticWriter(HighFiveDiagnostic& hi5)
-        : Hi5DiagnosticWriter<HighFiveDiagnostic>(hi5)
+        : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
-    void write(DiagnosticDAO&) override;
+    void write(DiagnosticDAO&, Attributes&, Attributes&) override;
     void compute(DiagnosticDAO&) override {}
     void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
     void initDataSets(DiagnosticDAO& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, int maxLevel) override;
+
+private:
+    std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
 
@@ -43,9 +46,13 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDA
     for (auto* vecField : vecFields)
     {
         auto& name = vecField->name();
-        if (diagnostic.subtype == "/" + name)
+        if (diagnostic.type == "/" + name)
+        {
             for (auto& [id, type] : core::Components::componentMap)
                 patchAttributes[lvlPatchID][name][id] = vecField->getComponent(type).size();
+            if (!fileData.count(diagnostic.type))
+                fileData.emplace(diagnostic.type, hi5.makeFile(diagnostic));
+        }
     }
 }
 
@@ -64,31 +71,38 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
         for (auto* vecField : vecFields)
         {
             auto& name = vecField->name();
-            if (diagnostic.subtype == "/" + name)
+            if (diagnostic.type == "/" + name)
                 for (auto& [id, type] : core::Components::componentMap)
                     hi5.template createDataSet<float>(
-                        path + "/" + name + "/" + id,
+                        fileData.at(diagnostic.type)->file(), path + "/" + name + "/" + id,
                         null ? 0 : attributes[name][id].template to<size_t>());
         }
     };
 
-    Hi5DiagnosticWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
-                                                           initPatch);
+    Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
+                                                               initPatch);
 }
 
 
 
 template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write([
-    [maybe_unused]] DiagnosticDAO& diagnostic)
+void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic,
+                                                           Attributes& fileAttributes,
+                                                           Attributes& patchAttributes)
 {
     auto& hi5 = this->hi5_;
 
     for (auto* vecField : hi5.modelView().getElectromagFields())
     {
         auto& name = vecField->name();
-        if (diagnostic.subtype == "/" + name)
-            hi5.writeVecFieldAsDataset(hi5.patchPath() + "/" + name, *vecField);
+        if (diagnostic.type == "/" + name)
+        {
+            auto& file = fileData.at(diagnostic.type)->file();
+            hi5.writeVecFieldAsDataset(file, hi5.patchPath() + "/" + name, *vecField);
+
+            hi5.writeAttributeDict(file, fileAttributes, "/");
+            hi5.writeAttributeDict(file, patchAttributes, hi5.patchPath());
+        }
     }
 }
 } // namespace PHARE::diagnostic::h5

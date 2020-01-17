@@ -15,7 +15,7 @@ struct DiagnosticDAO // DAO = DataAccessObject
                                                            /* do we allow ranges?*/
     size_t iterator;
     std::vector<size_t> activeTimesteps;
-    std::string type, subtype;
+    std::string category, type;
 };
 
 } // namespace PHARE::diagnostic

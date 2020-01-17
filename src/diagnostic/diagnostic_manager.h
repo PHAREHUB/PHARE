@@ -49,21 +49,30 @@ void handleInputDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& di
         {
             std::string path = key + std::to_string(it);
             auto copy        = diags[key][path];
-            copy["type"]     = key;
+            copy["category"] = key;
             dMan.addDiagDict(copy);
             it++;
         }
     }
 }
 
+class IDiagnosticsManager
+{
+public:
+    virtual void dump() = 0;
+    virtual ~IDiagnosticsManager();
+};
+IDiagnosticsManager::~IDiagnosticsManager() {}
+
 template<typename Writer>
-class DiagnosticsManager
+class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
     DiagnosticsManager(Writer& writer)
         : writer_{writer}
     {
     }
+
 
     static std::unique_ptr<DiagnosticsManager> from(Writer& writer, initializer::PHAREDict& dict)
     {
@@ -73,13 +82,15 @@ public:
     }
 
 
-    void dump();
+    void dump() override;
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict& dict);
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict&& dict)
     {
         return addDiagDict(dict);
     }
     void addDiagnostic(DiagnosticDAO& diagnostic) { diagnostics_.emplace_back(diagnostic); }
+
+    auto& diagnostics() const { return diagnostics_; }
 
 protected:
     std::vector<DiagnosticDAO> diagnostics_;
@@ -98,12 +109,13 @@ DiagnosticsManager<Writer>&
 DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
 {
     auto& dao           = diagnostics_.emplace_back(DiagnosticDAO{});
-    dao.type            = dict["type"].template to<std::string>();
+    dao.category        = dict["category"].template to<std::string>();
     dao.compute_every   = dict["compute_every"].template to<std::size_t>();
     dao.write_every     = dict["write_every"].template to<std::size_t>();
     dao.start_iteration = dict["start_iteration"].template to<std::size_t>();
     dao.last_iteration  = dict["last_iteration"].template to<std::size_t>();
-    dao.subtype         = dict["subtype"].template to<std::string>();
+    dao.type            = dict["type"].template to<std::string>();
+
     return *this;
 }
 
@@ -122,7 +134,7 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
     {
         if (needsCompute(diag, iter))
         {
-            writer_.getDiagnosticWriterForType(diag.type)->compute(diag);
+            writer_.getDiagnosticWriterForType(diag.category)->compute(diag);
         }
         if (needsWrite(diag, iter))
         {
@@ -135,16 +147,23 @@ void DiagnosticsManager<Writer>::dump(/*time iteration*/)
 
 
 // Generic Template declaration, to override per Concrete model type
+class IDiagnosticModelView
+{
+public:
+    virtual ~IDiagnosticModelView();
+};
+IDiagnosticModelView::~IDiagnosticModelView() {}
+
 template<typename Model, typename ModelParams>
-class DiagnosticModelView
+class DiagnosticModelView : public IDiagnosticModelView
 {
 };
-
 
 
 // HybridModel<Args...> specialization
 template<typename ModelParams>
 class DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, ModelParams>
+    : public IDiagnosticModelView
 {
 public:
     using Model      = solver::type_list_to_hybrid_model_t<ModelParams>;
@@ -284,6 +303,7 @@ private:
     AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&)  = delete;
     AMRDiagnosticModelView& operator&(const AMRDiagnosticModelView&&) = delete;
 };
+
 
 } // namespace PHARE::diagnostic
 

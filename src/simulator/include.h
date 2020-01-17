@@ -34,6 +34,12 @@
 #include "solver/solvers/solver_mhd.h"
 #include "solver/solvers/solver_ppc.h"
 
+#include "diagnostic/diagnostic_manager.h"
+#include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/types/electromag.h"
+#include "diagnostic/detail/types/particle.h"
+#include "diagnostic/detail/types/fluid.h"
+
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
 #include <SAMRAI/hier/Box.h>
