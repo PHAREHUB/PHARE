@@ -1,9 +1,7 @@
 #ifndef PHARE_TEST_SIMULATOR_PER_TEST_H
 #define PHARE_TEST_SIMULATOR_PER_TEST_H
 
-#include "simulator/phare_types.h"
 #include "simulator/simulator.h"
-#include "amr/types/amr_types.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -12,18 +10,12 @@
 
 struct __attribute__((visibility("hidden"))) StaticIntepreter
 {
-    std::shared_ptr<PHARE::initializer::PythonDataProvider> input;
+    static std::shared_ptr<PHARE::initializer::PythonDataProvider> input;
 
     StaticIntepreter()
-        : input{std::make_shared<PHARE::initializer::PythonDataProvider>()}
     {
+        input = std::make_shared<PHARE::initializer::PythonDataProvider>();
         input->read();
-    }
-
-    void kill()
-    {
-        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
-        input.reset();
     }
 
     static StaticIntepreter& INSTANCE()
@@ -32,7 +24,7 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
         return i;
     }
 };
-
+std::shared_ptr<PHARE::initializer::PythonDataProvider> StaticIntepreter::input = 0;
 
 
 template<size_t _dim, size_t _interp>
@@ -134,7 +126,8 @@ public:
     {
         for (auto& func : funcs_)
             func();
-        StaticIntepreter::INSTANCE().kill();
+        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
+        StaticIntepreter::input.reset();
         SAMRAI::tbox::SAMRAIManager::shutdown();
         SAMRAI::tbox::SAMRAIManager::finalize();
         SAMRAI::tbox::SAMRAI_MPI::finalize();
