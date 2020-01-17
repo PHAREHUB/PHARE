@@ -20,7 +20,6 @@ namespace core
     void IonUpdater::update(Ions& ions, Electromag const& em, GridLayout const& layout,
                             UpdaterMode mode)
     {
-        //
     }
 
 
