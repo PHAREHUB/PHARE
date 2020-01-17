@@ -215,6 +215,10 @@ def check_patch_size(**kwargs):
         if smallest_patch_size <= 0:
             raise ValueError("Error - smallest_patch_size cannot be <= 0")
 
+    if largest_patch_size is not None and smallest_patch_size is not None:
+        if largest_patch_size < smallest_patch_size or smallest_patch_size > largest_patch_size:
+            raise ValueError("Error - largest_patch_size and smallest_patch_size are incompatible")
+
     return largest_patch_size, smallest_patch_size
 
 
@@ -229,11 +233,13 @@ def check_diag_options(**kwargs):
             raise ValueError("Error - diag_options format is invalid")
         if "options" in diag_options and "dir" in diag_options["options"]:
             diag_dir = diag_options["options"]["dir"]
-            if os.path.isfile(diag_dir):
+            if os.path.exists(diag_dir) and os.path.isfile(diag_dir):
                 raise ValueError ("Error: Simulation diag_options dir exists as a file.")
             try:
                 if not os.path.exists(diag_dir):
-                    os.mkdir(diag_dir)
+                    os.makedirs(diag_dir, exist_ok=True)
+                if not os.path.exists(diag_dir):
+                    raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
             except OSError:
                 raise ValueError ("Creation of the directory %s failed" % diag_dir)
     return diag_options
@@ -328,6 +334,7 @@ class Simulation(object):
             raise RuntimeError("simulation is already created")
         else:
             globals.sim = self
+            # raise RuntimeError("simulation is already lol")
 
         for k, v in kwargs.items():
             object.__setattr__(self, k, v)

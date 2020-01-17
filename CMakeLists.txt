@@ -3,6 +3,8 @@ cmake_minimum_required (VERSION 3.3)
 project(PHARE VERSION 0.1)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON) # (-fPIC) typically required for shared libraries with dependencies. e.g. pybind modules
+
 if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
   cmake_policy(SET CMP0074 NEW)
 endif()

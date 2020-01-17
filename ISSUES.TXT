@@ -1,0 +1,8 @@
+
+
+1. OMPI symbol resolution with python3.
+    Affects: OMPI versions < 3
+    Source: https://github.com/open-mpi/ompi/issues/3705
+    Solution:
+      import ctypes
+      ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
