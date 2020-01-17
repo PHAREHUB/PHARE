@@ -35,10 +35,10 @@ namespace solver
         using Ions              = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT         = decltype(std::declval<HybridModel>().state.electromag.E);
         using ParticleArrayT    = typename PHARE::core::ParticleArray<dimension>;
-        using ParticleSelector  = typename PHARE::core::ParticleSelectorT<Box>;
+        using ParticleSelector  = typename PHARE::core::ParticleSelector<Box>;
         using PartIterator      = typename ParticleArrayT::iterator;
         using GridLayout        = typename HybridModel::gridLayout_type;
-        using BoundaryCondition = PHARE::core::BoundaryConditionT<dimension, interp_order>;
+        using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
         using Pusher = PHARE::core::Pusher<dimension, PartIterator, Electromag, InterpolatorT,
                                            ParticleSelector, BoundaryCondition, GridLayout>;
 
