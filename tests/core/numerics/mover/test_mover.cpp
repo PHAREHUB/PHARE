@@ -12,6 +12,7 @@
 #include "core/data/ions/particle_initializers/particle_initializer_factory.h"
 
 #include "core/numerics/ion_updater/ion_updater.h"
+#include "core/numerics/moments/moments.h"
 
 #include "simulator/phare_types.h"
 
@@ -81,19 +82,19 @@ double vz(double /*x*/)
 
 double vthx(double /*x*/)
 {
-    return 0.1;
+    return 1.;
 }
 
 
 double vthy(double /*x*/)
 {
-    return 0.1;
+    return 1.;
 }
 
 
 double vthz(double /*x*/)
 {
-    return 0.1;
+    return 1.;
 }
 
 
@@ -170,7 +171,7 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
+    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{1000};
     dict["ions"]["pop0"]["particle_initializer"]["charge"]            = -1.;
     dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
@@ -199,7 +200,7 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
+    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{1000};
     dict["ions"]["pop1"]["particle_initializer"]["charge"]            = -1.;
     dict["ions"]["pop1"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
@@ -478,6 +479,8 @@ struct IonUpdaterTest : public ::testing::Test
     using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
 
+    double dt{0.01};
+
     // grid configuration
     std::array<int, dim> ncells;
     GridLayout layout;
@@ -643,7 +646,15 @@ struct IonUpdaterTest : public ::testing::Test
 
             } // end 1D
         }     // end pop loop
-    }
+        PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
+                                      PHARE::core::DomainDeposit{});
+
+        PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
+                                      PHARE::core::PatchGhostDeposit{});
+
+        PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
+                                      PHARE::core::LevelGhostDeposit{});
+    } // end Ctor
 };
 
 
@@ -658,8 +669,7 @@ TYPED_TEST_SUITE(IonUpdaterTest, DimInterps);
 
 TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
 {
-    using IonUpdater = typename IonUpdaterTest<TypeParam>::IonUpdater;
-    IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 }
 
 
@@ -673,19 +683,19 @@ TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
         {
             if constexpr (TypeParam::interp_order == 1)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * 100, pop.domainParticles().size());
-                EXPECT_EQ(100, pop.patchGhostParticles().size());
-                EXPECT_EQ(100, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(100, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(100, pop.levelGhostParticles().size());
+                EXPECT_EQ(this->layout.nbrCells()[0] * 1000, pop.domainParticles().size());
+                EXPECT_EQ(1000, pop.patchGhostParticles().size());
+                EXPECT_EQ(1000, pop.levelGhostParticlesOld().size());
+                EXPECT_EQ(1000, pop.levelGhostParticlesNew().size());
+                EXPECT_EQ(1000, pop.levelGhostParticles().size());
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * 100, pop.domainParticles().size());
-                EXPECT_EQ(200, pop.patchGhostParticles().size());
-                EXPECT_EQ(200, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(200, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(200, pop.levelGhostParticles().size());
+                EXPECT_EQ(this->layout.nbrCells()[0] * 1000, pop.domainParticles().size());
+                EXPECT_EQ(2000, pop.patchGhostParticles().size());
+                EXPECT_EQ(2000, pop.levelGhostParticlesOld().size());
+                EXPECT_EQ(2000, pop.levelGhostParticlesNew().size());
+                EXPECT_EQ(2000, pop.levelGhostParticles().size());
             }
         }
     }
@@ -717,8 +727,8 @@ TYPED_TEST(IonUpdaterTest, loadsPatchGhostParticlesOnRightGhostArea)
                     std::begin(copy), std::end(copy), [&lastAMRCell](auto const& particle) {
                         return particle.iCell[0] == lastAMRCell[0] + 1;
                     });
-                EXPECT_EQ(100, std::distance(std::begin(copy), firstInOuterMostCell));
-                EXPECT_EQ(100, std::distance(firstInOuterMostCell, std::end(copy)));
+                EXPECT_EQ(1000, std::distance(std::begin(copy), firstInOuterMostCell));
+                EXPECT_EQ(1000, std::distance(firstInOuterMostCell, std::end(copy)));
             }
         }
     }
@@ -750,8 +760,8 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
                     std::begin(copy), std::end(copy), [&firstAMRCell](auto const& particle) {
                         return particle.iCell[0] == firstAMRCell[0] - 1;
                     });
-                EXPECT_EQ(100, std::distance(std::begin(copy), firstInOuterMostCell));
-                EXPECT_EQ(100, std::distance(firstInOuterMostCell, std::end(copy)));
+                EXPECT_EQ(1000, std::distance(std::begin(copy), firstInOuterMostCell));
+                EXPECT_EQ(1000, std::distance(firstInOuterMostCell, std::end(copy)));
             }
         }
     }
@@ -762,12 +772,12 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
-    using IonUpdater = typename IonUpdaterTest<TypeParam>::IonUpdater;
-    IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
+    ionUpdater.update(
+        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -791,12 +801,12 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChanged)
 {
-    using IonUpdater = typename IonUpdaterTest<TypeParam>::IonUpdater;
-    IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
+    ionUpdater.update(
+        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -804,11 +814,15 @@ TYPED_TEST(IonUpdaterTest, momentsAreChanged)
     auto ix0            = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto ix1            = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-    for (auto ix = ix0 - 1; ix <= ix1 + 1; ++ix)
+    for (auto ix = ix0; ix <= ix1; ++ix) // todo check the bounds
     {
-        EXPECT_TRUE(std::abs(protonDensity(ix) - ionsBufferCpy.protonDensity(ix)) > 0.01);
-        std::cout << "after update : " << protonDensity(ix)
-                  << "  after update : " << ionsBufferCpy.protonDensity(ix) << "\n";
+        auto evolution = std::abs(protonDensity(ix) - ionsBufferCpy.protonDensity(ix));
+        EXPECT_TRUE(evolution
+                    > 0.0); //  should check that moments are still compatible with user inputs also
+        if (evolution <= 0.0)
+            std::cout << "after update : " << protonDensity(ix)
+                      << "  before update : " << ionsBufferCpy.protonDensity(ix)
+                      << " evolution : " << evolution << " ix : " << ix << "\n";
     }
 }
 

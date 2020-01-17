@@ -25,7 +25,7 @@ namespace core
                                       Electromag const& emFields, double mass,
                                       Interpolator& interpolator,
                                       ParticleSelector const& particleIsNotLeaving,
-                                      BoundaryCondition& bc, GridLayout& layout) override
+                                      BoundaryCondition& bc, GridLayout const& layout) override
         {
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
@@ -66,7 +66,7 @@ namespace core
         virtual decltype(std::declval<ParticleRange>().end())
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-             GridLayout& layout) override
+             GridLayout const& layout) override
         {
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
