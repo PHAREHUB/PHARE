@@ -45,7 +45,7 @@ namespace core
         virtual ParticleIterator
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-             BoundaryCondition& bc, GridLayout& layout)
+             BoundaryCondition& bc, GridLayout const& layout)
             = 0;
 
 
@@ -59,7 +59,7 @@ namespace core
         virtual ParticleIterator // decltype(std::declval<ParticleRange>().end())
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-             GridLayout& layout)
+             GridLayout const& layout)
             = 0;
 
 
