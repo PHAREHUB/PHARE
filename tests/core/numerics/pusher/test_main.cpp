@@ -125,7 +125,7 @@ public:
         , particlesOut(1)
         , pusher{std::make_unique<
               BorisPusher<3, ParticleArray<3>::iterator, Electromag, Interpolator, DummySelector,
-                          BoundaryConditionT<3, 1>, DummyLayout>>()}
+                          BoundaryCondition<3, 1>, DummyLayout>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -148,7 +148,7 @@ protected:
     ParticleArray<3> particlesIn;
     ParticleArray<3> particlesOut;
     std::unique_ptr<BorisPusher<3, ParticleArray<3>::iterator, Electromag, Interpolator,
-                                DummySelector, BoundaryConditionT<3, 1>, DummyLayout>>
+                                DummySelector, BoundaryCondition<3, 1>, DummyLayout>>
         pusher;
     double mass;
     double dt;
@@ -178,7 +178,7 @@ public:
         , particlesOut(1)
         , pusher{std::make_unique<
               BorisPusher<2, ParticleArray<2>::iterator, Electromag, Interpolator, DummySelector,
-                          BoundaryConditionT<2, 1>, DummyLayout>>()}
+                          BoundaryCondition<2, 1>, DummyLayout>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -200,7 +200,7 @@ protected:
     ParticleArray<2> particlesIn;
     ParticleArray<2> particlesOut;
     std::unique_ptr<BorisPusher<2, ParticleArray<2>::iterator, Electromag, Interpolator,
-                                DummySelector, BoundaryConditionT<2, 1>, DummyLayout>>
+                                DummySelector, BoundaryCondition<2, 1>, DummyLayout>>
         pusher;
     double mass;
     double dt;
@@ -228,7 +228,7 @@ public:
         , particlesOut(1)
         , pusher{std::make_unique<
               BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator, DummySelector,
-                          BoundaryConditionT<1, 1>, DummyLayout>>()}
+                          BoundaryCondition<1, 1>, DummyLayout>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -249,7 +249,7 @@ protected:
     ParticleArray<1> particlesIn;
     ParticleArray<1> particlesOut;
     std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                                DummySelector, BoundaryConditionT<1, 1>, DummyLayout>>
+                                DummySelector, BoundaryCondition<1, 1>, DummyLayout>>
         pusher;
     double mass;
     double dt;
@@ -349,7 +349,7 @@ public:
         , particlesOut2(1000)
         , pusher{std::make_unique<
               BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                          ParticleSelectorT<Box<int, 1>>, BoundaryConditionT<1, 1>, DummyLayout>>()}
+                          ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>, DummyLayout>>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -380,7 +380,7 @@ protected:
     ParticleArray<1> particlesOut2;
     std::unique_ptr<
         BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                    ParticleSelectorT<Box<int, 1>>, BoundaryConditionT<1, 1>, DummyLayout>>
+                    ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>, DummyLayout>>
         pusher;
     double mass;
     double dt;
@@ -390,8 +390,8 @@ protected:
     Electromag em;
     Interpolator interpolator;
     Box<int, 1> domain;
-    ParticleSelectorT<Box<int, 1>> selector;
-    BoundaryConditionT<1, 1> bc;
+    ParticleSelector<Box<int, 1>> selector;
+    BoundaryCondition<1, 1> bc;
     double dx = 0.05;
 };
 
@@ -511,7 +511,7 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsReturnEqualStayi
 TEST(APusherFactory, canReturnABorisPusher)
 {
     auto pusher = PusherFactory::makePusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                                            DummySelector, BoundaryConditionT<1, 1>, DummyLayout>(
+                                            DummySelector, BoundaryCondition<1, 1>, DummyLayout>(
         "modified_boris");
 
     EXPECT_NE(nullptr, pusher);

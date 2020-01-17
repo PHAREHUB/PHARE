@@ -141,7 +141,7 @@ PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
 
-    dict["simulation"]["solverPPC"]["pusher"]["name"] = std::string{"modified_boris"};
+    dict["simulation"]["pusher"]["name"] = std::string{"modified_boris"};
 
     dict["ions"]["name"]                                    = std::string{"ions"};
     dict["ions"]["nbrPopulations"]                          = int{2};
@@ -471,13 +471,16 @@ struct IonUpdaterTest : public ::testing::Test
     using PHARETypes                   = PHARE::PHARE_Types<dim, interp_order>;
     using Ions                         = typename PHARETypes::Ions_t;
     using Electromag                   = typename PHARETypes::Electromag_t;
-    using ParticleArray                = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory   = typename PHARETypes::ParticleInitializerFactory;
+    using GridLayout    = typename PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
+    using ParticleArray = typename PHARETypes::ParticleArray_t;
+    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
+
+    using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
 
     // grid configuration
     std::array<int, dim> ncells;
-    GridLayout<GridLayoutImplYee<dim, interp_order>> layout;
+    GridLayout layout;
 
 
     // data for electromagnetic fields
@@ -652,6 +655,16 @@ TYPED_TEST_SUITE(IonUpdaterTest, DimInterps);
 
 
 
+
+TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
+{
+    using IonUpdater = typename IonUpdaterTest<TypeParam>::IonUpdater;
+    IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+}
+
+
+
+
 TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
 {
     if constexpr (TypeParam::dimension == 1)
@@ -749,7 +762,8 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
-    IonUpdater ionUpdater{};
+    using IonUpdater = typename IonUpdaterTest<TypeParam>::IonUpdater;
+    IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
@@ -777,7 +791,9 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChanged)
 {
-    IonUpdater ionUpdater{};
+    using IonUpdater = typename IonUpdaterTest<TypeParam>::IonUpdater;
+    IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(this->ions, this->EM, this->layout, UpdaterMode::moments_only);
