@@ -655,6 +655,59 @@ struct IonUpdaterTest : public ::testing::Test
         PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                                       PHARE::core::LevelGhostDeposit{});
     } // end Ctor
+
+
+
+    void checkMomentsHaveEvolved(IonsBuffers<dim, interp_order> const& ionsBufferCpy)
+    {
+        auto& populations = this->ions.getRunTimeResourcesUserList();
+
+        auto& protonDensity = populations[0].density();
+        auto& protonFx      = populations[0].flux().getComponent(Component::X);
+        auto& protonFy      = populations[0].flux().getComponent(Component::Y);
+        auto& protonFz      = populations[0].flux().getComponent(Component::Z);
+
+        auto& alphaDensity = populations[1].density();
+        auto& alphaFx      = populations[1].flux().getComponent(Component::X);
+        auto& alphaFy      = populations[1].flux().getComponent(Component::Y);
+        auto& alphaFz      = populations[1].flux().getComponent(Component::Z);
+
+        auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+        auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+
+        auto nonZero = [](auto const& array) {
+            auto sum = 0.;
+            for (auto const& val : array)
+                sum += std::abs(val);
+            EXPECT_GT(sum, 0.);
+        };
+
+        auto check = [&](auto const& originalField, auto const& newField) {
+            nonZero(newField);
+            nonZero(originalField);
+            for (auto ix = ix0; ix <= ix1; ++ix) // todo check the bounds
+            {                                    // ionsBufferCpy.protonDensity(ix))
+                auto evolution = std::abs(newField(ix) - originalField(ix));
+                EXPECT_TRUE(
+                    evolution
+                    > 0.0); //  should check that moments are still compatible with user inputs also
+                if (evolution <= 0.0)
+                    std::cout << "after update : " << newField(ix)
+                              << " before update : " << originalField(ix)
+                              << " evolution : " << evolution << " ix : " << ix << "\n";
+            }
+        };
+
+        check(protonDensity, ionsBufferCpy.protonDensity);
+        check(protonFx, ionsBufferCpy.protonFy);
+        check(protonFy, ionsBufferCpy.protonFy);
+        check(protonFz, ionsBufferCpy.protonFz);
+
+        check(alphaDensity, ionsBufferCpy.alphaDensity);
+        check(alphaFx, ionsBufferCpy.alphaFy);
+        check(alphaFy, ionsBufferCpy.alphaFy);
+        check(alphaFz, ionsBufferCpy.alphaFz);
+    }
 };
 
 
@@ -798,8 +851,8 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 
 
-
-TYPED_TEST(IonUpdaterTest, momentsAreChanged)
+/*
+TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
 {
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
@@ -810,20 +863,49 @@ TYPED_TEST(IonUpdaterTest, momentsAreChanged)
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
-    auto& protonDensity = populations[0].density();
-    auto ix0            = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto ix1            = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-
-    for (auto ix = ix0; ix <= ix1; ++ix) // todo check the bounds
+    auto& protonDomainPart = populations[0].domainParticles();
+    for (std::size_t iPart = 0; iPart < protonDomainPart.size(); ++iPart)
     {
-        auto evolution = std::abs(protonDensity(ix) - ionsBufferCpy.protonDensity(ix));
-        EXPECT_TRUE(evolution
-                    > 0.0); //  should check that moments are still compatible with user inputs also
-        if (evolution <= 0.0)
-            std::cout << "after update : " << protonDensity(ix)
-                      << "  before update : " << ionsBufferCpy.protonDensity(ix)
-                      << " evolution : " << evolution << " ix : " << ix << "\n";
+        EXPECT_EQ(ionsBufferCpy.protonDomain[iPart].iCell[0], protonDomainPart[iPart].iCell[0]);
+        EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].delta[0],
+                         protonDomainPart[iPart].delta[0]);
+
+        for (std::size_t iDir = 0; iDir < 3; ++iDir)
+        {
+            EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].v[iDir],
+                             protonDomainPart[iPart].v[iDir]);
+        }
     }
+}
+*/
+
+
+
+TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
+{
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+
+    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+
+    ionUpdater.update(
+        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
+
+    this->checkMomentsHaveEvolved(ionsBufferCpy);
+}
+
+
+
+
+TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
+{
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+
+    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+
+    ionUpdater.update(
+        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+
+    this->checkMomentsHaveEvolved(ionsBufferCpy);
 }
 
 
