@@ -16,6 +16,8 @@
 
 #include <memory>
 
+// TODO alpha coef for interpolating new and old levelGhost should be given somehow...
+
 
 namespace PHARE
 {
@@ -67,6 +69,48 @@ namespace core
         template<typename GhostFiller>
         void updateAll_(Ions& ions, Electromag const& em, GridLayout const& layout,
                         GhostFiller&& fillGhosts);
+
+
+        void setNaNsOnGhosts_(Ions& ions, GridLayout const& layout)
+        {
+            auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+            auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+            auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+
+
+            for (auto& pop : ions)
+            {
+                for (auto ix = 0u; ix < ix0; ++ix) // leftGhostNodes
+                {
+                    auto& density = pop.density();
+                    auto& flux    = pop.flux();
+
+                    auto& fx = flux.getComponent(Component::X);
+                    auto& fy = flux.getComponent(Component::Y);
+                    auto& fz = flux.getComponent(Component::Z);
+
+                    density(ix) = NAN;
+                    fx(ix)      = NAN;
+                    fy(ix)      = NAN;
+                    fz(ix)      = NAN;
+                }
+
+                for (auto ix = ix1 + 1; ix <= ix2; ++ix)
+                {
+                    auto& density = pop.density();
+                    auto& flux    = pop.flux();
+
+                    auto& fx = flux.getComponent(Component::X);
+                    auto& fy = flux.getComponent(Component::Y);
+                    auto& fz = flux.getComponent(Component::Z);
+
+                    density(ix) = NAN;
+                    fx(ix)      = NAN;
+                    fy(ix)      = NAN;
+                    fz(ix)      = NAN;
+                }
+            }
+        }
     };
 
 
@@ -95,18 +139,66 @@ namespace core
 
     template<typename Ions, typename Electromag, typename GridLayout>
     template<typename GhostFiller>
+    /**
+     * @brief IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_
+       evolves moments from time n to n+1 without updating particles, which stay at time n
+     */
     void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions,
                                                                       Electromag const& em,
                                                                       GridLayout const& layout,
                                                                       GhostFiller&& fillGhosts)
     {
-        //
-    }
+        auto inDomainSelector = ParticleSelector{layout.AMRBox()};
 
+        for (auto& pop : ions)
+        {
+            ParticleArray tmpDomain;
+            ParticleArray tmpPatchGhost;
+            ParticleArray tmpLevelGhost;
+
+            auto pushAndAccumulate = [&](auto& inputArray, auto& outputArray) {
+                outputArray.resize(inputArray.size());
+
+                auto inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
+                auto outRange = makeRange(std::begin(outputArray), std::end(outputArray));
+
+                auto newEnd = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
+                                            inDomainSelector, layout);
+
+                interpolator_(std::begin(outputArray), newEnd, pop.density(), pop.flux(), layout);
+            };
+
+            pushAndAccumulate(pop.domainParticles(), tmpDomain);
+            pushAndAccumulate(pop.patchGhostParticles(), tmpPatchGhost);
+            pushAndAccumulate(pop.levelGhostParticles(), tmpLevelGhost);
+
+            fillGhosts();
+            interpolator_(std::begin(pop.patchGhostParticles()),
+                          std::end(pop.patchGhostParticles()), pop.density(), pop.flux(), layout);
+
+            double alpha = 0.5;
+            interpolator_(std::begin(pop.levelGhostParticlesNew()),
+                          std::end(pop.levelGhostParticlesNew()), pop.density(), pop.flux(), layout,
+                          /*coef = */ alpha);
+
+
+            interpolator_(std::begin(pop.levelGhostParticlesOld()),
+                          std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
+                          /*coef = */ (1. - alpha));
+        }
+
+        setNaNsOnGhosts_(ions, layout);
+        ions.computeDensity();
+        ions.computeBulkVelocity();
+    }
 
 
     template<typename Ions, typename Electromag, typename GridLayout>
     template<typename GhostFiller>
+    /**
+     * @brief IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_
+       evolves moments and particles from time n to n+1
+     */
     void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag const& em,
                                                               GridLayout const& layout,
                                                               GhostFiller&& fillGhosts)
@@ -155,6 +247,9 @@ namespace core
                           std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
                           /*coef = */ (1. - alpha));
         }
+        setNaNsOnGhosts_(ions, layout);
+        ions.computeDensity();
+        ions.computeBulkVelocity();
     }
 
 

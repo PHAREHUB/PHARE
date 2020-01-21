@@ -29,23 +29,11 @@ namespace solver
         static constexpr auto dimension    = HybridModel::dimension;
         static constexpr auto interp_order = HybridModel::gridLayout_type::interp_order;
 
-        using Box               = PHARE::core::Box<int, dimension>;
-        using InterpolatorT     = PHARE::core::Interpolator<dimension, interp_order>;
-        using Electromag        = decltype(std::declval<HybridModel>().state.electromag);
-        using Ions              = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT         = decltype(std::declval<HybridModel>().state.electromag.E);
-        using ParticleArrayT    = typename PHARE::core::ParticleArray<dimension>;
-        using ParticleSelector  = typename PHARE::core::ParticleSelector<Box>;
-        using PartIterator      = typename ParticleArrayT::iterator;
-        using GridLayout        = typename HybridModel::gridLayout_type;
-        using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
-        using Pusher = PHARE::core::Pusher<dimension, PartIterator, Electromag, InterpolatorT,
-                                           ParticleSelector, BoundaryCondition, GridLayout>;
+        using Electromag = decltype(std::declval<HybridModel>().state.electromag);
+        using Ions       = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT  = decltype(std::declval<HybridModel>().state.electromag.E);
+        using GridLayout = typename HybridModel::gridLayout_type;
 
-        constexpr static auto makePusher
-            = PHARE::core::PusherFactory::makePusher<dimension, PartIterator, Electromag,
-                                                     InterpolatorT, ParticleSelector,
-                                                     BoundaryCondition, GridLayout>;
 
 
         Electromag electromagPred_{"EMPred"};
@@ -58,7 +46,6 @@ namespace solver
 
         explicit SolverPPC(PHARE::initializer::PHAREDict dict)
             : ISolver<AMR_Types>{"PPC"}
-            , pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
         {
         }
 
@@ -89,13 +76,6 @@ namespace solver
     private:
         enum class PredictorStep { predictor1, predictor2 };
 
-        std::unique_ptr<Pusher> pusher_;
-        InterpolatorT interpolator_;
-
-
-
-        void moveIons_(Electromag const& em, Ions& ions, GridLayout const& layout,
-                       PredictorStep predictorStep);
 
         /*
         template<typename HybridMessenger>
@@ -107,81 +87,6 @@ namespace solver
 
 
     }; // end solverPPC
-
-
-    template<typename HybridModel, typename AMR_Types>
-    void SolverPPC<HybridModel, AMR_Types>::moveIons_(Electromag const& em, Ions& ions,
-                                                      GridLayout const& layout, PredictorStep step)
-    {
-        auto inDomainSelector = ParticleSelector{layout.AMRBox()};
-
-        for (auto& pop : ions)
-        {
-            if (PredictorStep::predictor1 == step)
-            {
-                PHARE::core::ParticleArray<dimension> tmpDomain;
-                PHARE::core::ParticleArray<dimension> tmpPatchGhost;
-                PHARE::core::ParticleArray<dimension> tmpLevelGhostOld;
-                PHARE::core::ParticleArray<dimension> tmpLevelGhostNew;
-
-                auto const& domainParticles = pop.domainParticles();
-                tmpDomain.resize(domainParticles.size());
-                auto domain = makeRange(std::begin(domainParticles), std::end(domainParticles));
-                auto tmp    = makeRange(std::begin(tmpDomain), std::end(tmpDomain));
-
-                // move domain particles to tmp array
-                auto endInDomain = pusher_->move(domain, tmp, em, pop.mass(), interpolator_,
-                                                 inDomainSelector, layout);
-
-                interpolator_(std::begin(tmpDomain), endInDomain, pop.density(), pop.flux(),
-                              layout);
-
-                // move patch ghost particles to tmp array
-                auto const& patchGhostPart = pop.patchGhostParticles();
-                tmpPatchGhost.resize(patchGhostPart.size());
-
-                auto patchGhostRange
-                    = makeRange(std::begin(patchGhostPart), std::end(patchGhostPart));
-                auto tmpPatchGhostRange
-                    = makeRange(std::begin(tmpPatchGhost), std::end(tmpPatchGhost));
-
-                endInDomain = pusher_->move(patchGhostPart, tmpPatchGhostRange, em, pop.mass(),
-                                            interpolator_, inDomainSelector, layout);
-
-
-                interpolator_(std::begin(tmpPatchGhost), endInDomain, pop.density(), pop.flux(),
-                              layout);
-
-                // move levelGhostParticles to tmp array
-
-                // accumulate all of (domain, patchGhost, levelGhost) that entered in domain
-
-                // fill patchGhost particles from neighbor patches on same level
-
-                // accumulate all patchGhost
-                // accumulate alpha*levelGhostNew + (1-alpha)*levelGhostOld
-            }
-            else if (PredictorStep::predictor2 == step)
-            {
-                // move domain particles
-                // erase those leaving the domain
-
-                // move patch ghost particles
-                // copy into domain those entering the domain
-
-                // move levelGhostParticles
-                // copy into domain those entering the domain
-                // erase levelGhostParticles that are not in levelGhost region
-
-                // accumulate all domain particles
-                // accumulate alpha*levelGhostNew + (1-alpha)*levelGhostOld
-
-                // fill patchGhostParticles from neighbor domain
-
-                // accumulate all patchGhostParticles
-            }
-        }
-    }
 
 
 
