@@ -351,24 +351,25 @@ public:
               BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
                           ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>, DummyLayout>>()}
         , mass{1}
-        , dt{0.0001}
+        , dt{0.001}
         , tstart{0}
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
-        , domain{Point<int, 1>{0}, Point<int, 1>{1}}
-        , selector{domain}
+        , domain{Point<double, 1>{0.}, Point<double, 1>{1.}}
+        , cells{Point{0}, Point{9}}
+        , selector{cells}
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(0, 1);
+        std::uniform_int_distribution<> dis(0, 9);
         std::uniform_real_distribution<float> delta(0, 1);
 
         for (auto& part : particlesIn)
         {
             part.charge = 1;
-            part.v      = {{0, 10., 0.}};
-            part.delta  = {{delta(gen)}};
+            part.v      = {{5., 0., 0.}};
             part.iCell  = {{dis(gen)}};
+            part.delta  = {{delta(gen)}};
         }
         pusher->setMeshAndTimeStep({{dx}}, dt);
     }
@@ -389,10 +390,11 @@ protected:
     std::size_t nt;
     Electromag em;
     Interpolator interpolator;
-    Box<int, 1> domain;
+    double dx = 0.1;
+    Box<double, 1> domain;
+    Box<int, 1> cells;
     ParticleSelector<Box<int, 1>> selector;
     BoundaryCondition<1, 1> bc;
-    double dx = 0.05;
 };
 
 
@@ -459,7 +461,7 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
 
 
 
-TEST_F(APusherWithLeavingParticles, pusherWithOrWithingBCReturnsReturnEqualStayingParticles)
+TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsReturnEqualStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
     auto rangeOut1 = makeRange(std::begin(particlesOut1), std::end(particlesOut1));

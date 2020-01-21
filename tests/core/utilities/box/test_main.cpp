@@ -49,7 +49,7 @@ TEST(PointInBox, returnFalseIfPointOnUpper)
 {
     Point<int, 3> point{1, 0, 4};
     Box<int, 3> box{Point<int, 3>{0, 0, 0}, Point<int, 3>{4, 4, 4}};
-    EXPECT_FALSE(isIn(point, box));
+    EXPECT_TRUE(isIn(point, box));
 }
 
 

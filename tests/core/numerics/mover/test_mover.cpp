@@ -20,40 +20,6 @@
 
 using namespace PHARE::core;
 
-/**
-
-  - we need to create an ion object
-        - with a dictionnay having every ion arguments to load particles
-        - then use ion.setBuffer() to set the density ptr to a field ptr of the same type
-        - then get a ref to the bulk velocity and use .setBuffer() on that to set vx,y,z
-        - then for each ion population:
-            - use setBuffer(name, field) to set the density
-            - use setBuffer(name, pack) to set the particlePack
-            - get the Flux VecField and use setBuffer() on that to set fx,y,z
-
-  all fields (rhos) and vecfield components (v/f x,y,z) and particle packs
-  need to be manually allocated.
-
-
-  - create an electromag object
-        - with a dictionnary with initialization functions
-        - get E and B VecField ans use setBuffer() with manually allocated fields
-
-  - create a layout consistent with allocated sizes
-
-
-  - initialize electromag object
-  - for each ion pop create a particle initializer and load the particles.
-
-  - loading particles only loads domain particles
-        - as is, some of the domain nodes will be incomplete and first ghost node too
-        -  the deposit of levelGhostParticles and patchGhostParticle needs to be checked
-        - so we assume levelGhost sides and patchGhost
-  - check the moments are equal to prescribed values
-  - save moments and particles
-  - apply tests
-
- */
 
 
 
@@ -82,19 +48,19 @@ double vz(double /*x*/)
 
 double vthx(double /*x*/)
 {
-    return 1.;
+    return 0.1;
 }
 
 
 double vthy(double /*x*/)
 {
-    return 1.;
+    return 0.1;
 }
 
 
 double vthz(double /*x*/)
 {
-    return 1.;
+    return 0.1;
 }
 
 
@@ -135,6 +101,7 @@ double ez(double x)
 }
 
 
+int nbrPartPerCell = 1000;
 
 using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 
@@ -171,8 +138,8 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{1000};
-    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = -1.;
+    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
+    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = 1.;
     dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
     dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
@@ -200,8 +167,8 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<ScalarFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{1000};
-    dict["ions"]["pop1"]["particle_initializer"]["charge"]            = -1.;
+    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
+    dict["ions"]["pop1"]["particle_initializer"]["charge"]            = 1.;
     dict["ions"]["pop1"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
     dict["electromag"]["name"]             = std::string{"EM"};
@@ -654,6 +621,10 @@ struct IonUpdaterTest : public ::testing::Test
 
         PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                                       PHARE::core::LevelGhostDeposit{});
+
+
+        ions.computeDensity();
+        ions.computeBulkVelocity();
     } // end Ctor
 
 
@@ -675,18 +646,20 @@ struct IonUpdaterTest : public ::testing::Test
         auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
         auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-        auto nonZero = [](auto const& array) {
+        auto nonZero = [&](auto const& field) {
             auto sum = 0.;
-            for (auto const& val : array)
-                sum += std::abs(val);
+            for (auto ix = ix0; ix <= ix1; ++ix)
+            {
+                sum += std::abs(field(ix));
+            }
             EXPECT_GT(sum, 0.);
         };
 
-        auto check = [&](auto const& originalField, auto const& newField) {
+        auto check = [&](auto const& newField, auto const& originalField) {
             nonZero(newField);
             nonZero(originalField);
-            for (auto ix = ix0; ix <= ix1; ++ix) // todo check the bounds
-            {                                    // ionsBufferCpy.protonDensity(ix))
+            for (auto ix = ix0; ix <= ix1; ++ix)
+            {
                 auto evolution = std::abs(newField(ix) - originalField(ix));
                 EXPECT_TRUE(
                     evolution
@@ -707,6 +680,44 @@ struct IonUpdaterTest : public ::testing::Test
         check(alphaFx, ionsBufferCpy.alphaFy);
         check(alphaFy, ionsBufferCpy.alphaFy);
         check(alphaFz, ionsBufferCpy.alphaFz);
+
+        check(ions.density(), ionsBufferCpy.ionDensity);
+        check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vx);
+        check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vy);
+        check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vz);
+    }
+
+
+
+
+    void checkDensityIsAsPrescribed()
+    {
+        auto& populations = this->ions.getRunTimeResourcesUserList();
+
+        auto& protonDensity = populations[0].density();
+        auto& alphaDensity  = populations[1].density();
+
+        auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+        auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+
+
+        auto check = [&](auto const& density, auto const& function) {
+            for (auto ix = ix0; ix < ix1; ++ix)
+            {
+                auto coord = layout.cellCenteredCoordinates(ix);
+                auto x     = coord[0];
+
+                auto diff = std::abs(density(ix) - function(x));
+
+                EXPECT_GE(0.05, diff);
+                if (diff >= 0.05)
+                    std::cout << "actual : " << density(ix) << " prescribed : " << function(x)
+                              << " diff : " << diff << " ix : " << ix << "\n";
+            }
+        };
+
+        check(protonDensity, density);
+        check(alphaDensity, density);
     }
 };
 
@@ -726,6 +737,7 @@ TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstructio
 }
 
 
+// the following 3 tests are testing the fixture is well configured.
 
 
 TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
@@ -736,19 +748,21 @@ TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
         {
             if constexpr (TypeParam::interp_order == 1)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * 1000, pop.domainParticles().size());
-                EXPECT_EQ(1000, pop.patchGhostParticles().size());
-                EXPECT_EQ(1000, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(1000, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(1000, pop.levelGhostParticles().size());
+                EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell,
+                          pop.domainParticles().size());
+                EXPECT_EQ(nbrPartPerCell, pop.patchGhostParticles().size());
+                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticlesOld().size());
+                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticlesNew().size());
+                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticles().size());
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * 1000, pop.domainParticles().size());
-                EXPECT_EQ(2000, pop.patchGhostParticles().size());
-                EXPECT_EQ(2000, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(2000, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(2000, pop.levelGhostParticles().size());
+                EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell,
+                          pop.domainParticles().size());
+                EXPECT_EQ(2 * nbrPartPerCell, pop.patchGhostParticles().size());
+                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticlesOld().size());
+                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticlesNew().size());
+                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticles().size());
             }
         }
     }
@@ -780,8 +794,8 @@ TYPED_TEST(IonUpdaterTest, loadsPatchGhostParticlesOnRightGhostArea)
                     std::begin(copy), std::end(copy), [&lastAMRCell](auto const& particle) {
                         return particle.iCell[0] == lastAMRCell[0] + 1;
                     });
-                EXPECT_EQ(1000, std::distance(std::begin(copy), firstInOuterMostCell));
-                EXPECT_EQ(1000, std::distance(firstInOuterMostCell, std::end(copy)));
+                EXPECT_EQ(nbrPartPerCell, std::distance(std::begin(copy), firstInOuterMostCell));
+                EXPECT_EQ(nbrPartPerCell, std::distance(firstInOuterMostCell, std::end(copy)));
             }
         }
     }
@@ -813,13 +827,17 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
                     std::begin(copy), std::end(copy), [&firstAMRCell](auto const& particle) {
                         return particle.iCell[0] == firstAMRCell[0] - 1;
                     });
-                EXPECT_EQ(1000, std::distance(std::begin(copy), firstInOuterMostCell));
-                EXPECT_EQ(1000, std::distance(firstInOuterMostCell, std::end(copy)));
+                EXPECT_EQ(nbrPartPerCell, std::distance(std::begin(copy), firstInOuterMostCell));
+                EXPECT_EQ(nbrPartPerCell, std::distance(firstInOuterMostCell, std::end(copy)));
             }
         }
     }
 }
 
+
+
+
+// start of PHARE TESTS
 
 
 
@@ -835,23 +853,38 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
     auto& protonDomainPart = populations[0].domainParticles();
-    for (std::size_t iPart = 0; iPart < protonDomainPart.size(); ++iPart)
-    {
-        EXPECT_EQ(ionsBufferCpy.protonDomain[iPart].iCell[0], protonDomainPart[iPart].iCell[0]);
-        EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].delta[0],
-                         protonDomainPart[iPart].delta[0]);
 
-        for (std::size_t iDir = 0; iDir < 3; ++iDir)
+    auto checkIsUnTouched = [](auto const& original, auto const& cpy) {
+        // no particles should have moved, so none should have left the domain
+        EXPECT_EQ(cpy.size(), original.size());
+        for (std::size_t iPart = 0; iPart < original.size(); ++iPart)
         {
-            EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].v[iDir],
-                             protonDomainPart[iPart].v[iDir]);
+            EXPECT_EQ(cpy[iPart].iCell[0], original[iPart].iCell[0]);
+            EXPECT_DOUBLE_EQ(cpy[iPart].delta[0], original[iPart].delta[0]);
+
+            for (std::size_t iDir = 0; iDir < 3; ++iDir)
+            {
+                EXPECT_DOUBLE_EQ(cpy[iPart].v[iDir], original[iPart].v[iDir]);
+            }
         }
-    }
+    };
+
+    checkIsUnTouched(populations[0].domainParticles(), ionsBufferCpy.protonDomain);
+    checkIsUnTouched(populations[0].patchGhostParticles(), ionsBufferCpy.protonPatchGhost);
+    checkIsUnTouched(populations[0].levelGhostParticles(), ionsBufferCpy.protonLevelGhost);
+    checkIsUnTouched(populations[0].levelGhostParticlesOld(), ionsBufferCpy.protonLevelGhostOld);
+    checkIsUnTouched(populations[0].levelGhostParticlesNew(), ionsBufferCpy.protonLevelGhostNew);
+
+    checkIsUnTouched(populations[1].domainParticles(), ionsBufferCpy.alphaDomain);
+    checkIsUnTouched(populations[1].patchGhostParticles(), ionsBufferCpy.alphaPatchGhost);
+    checkIsUnTouched(populations[1].levelGhostParticles(), ionsBufferCpy.alphaLevelGhost);
+    checkIsUnTouched(populations[1].levelGhostParticlesOld(), ionsBufferCpy.alphaLevelGhost);
+    checkIsUnTouched(populations[1].levelGhostParticlesNew(), ionsBufferCpy.alphaLevelGhost);
 }
 
 
 
-/*
+
 TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
 {
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
@@ -863,21 +896,12 @@ TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
-    auto& protonDomainPart = populations[0].domainParticles();
-    for (std::size_t iPart = 0; iPart < protonDomainPart.size(); ++iPart)
-    {
-        EXPECT_EQ(ionsBufferCpy.protonDomain[iPart].iCell[0], protonDomainPart[iPart].iCell[0]);
-        EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].delta[0],
-                         protonDomainPart[iPart].delta[0]);
+    EXPECT_NE(ionsBufferCpy.protonDomain.size(), populations[0].domainParticles().size());
+    EXPECT_NE(ionsBufferCpy.alphaDomain.size(), populations[1].domainParticles().size());
 
-        for (std::size_t iDir = 0; iDir < 3; ++iDir)
-        {
-            EXPECT_DOUBLE_EQ(ionsBufferCpy.protonDomain[iPart].v[iDir],
-                             protonDomainPart[iPart].v[iDir]);
-        }
-    }
+    // cannot think of anything else to check than checking that the number of particles
+    // in the domain have changed after them having been pushed.
 }
-*/
 
 
 
@@ -891,6 +915,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
         this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
+    this->checkDensityIsAsPrescribed();
 }
 
 
@@ -906,8 +931,87 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
         this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
+    this->checkDensityIsAsPrescribed();
 }
 
+
+
+TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
+{
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+
+    ionUpdater.update(
+        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+
+    auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+
+    for (auto& pop : this->ions)
+    {
+        for (auto ix = ix0; ix <= ix1; ++ix)
+        {
+            auto& density = pop.density();
+            auto& flux    = pop.flux();
+
+            auto& fx = flux.getComponent(Component::X);
+            auto& fy = flux.getComponent(Component::Y);
+            auto& fz = flux.getComponent(Component::Z);
+
+            EXPECT_FALSE(std::isnan(density(ix)));
+            EXPECT_FALSE(std::isnan(fx(ix)));
+            EXPECT_FALSE(std::isnan(fy(ix)));
+            EXPECT_FALSE(std::isnan(fz(ix)));
+        }
+    }
+}
+
+
+
+TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
+{
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+
+    ionUpdater.update(
+        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+
+
+    auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+    auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+    auto ix2 = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+
+    for (auto& pop : this->ions)
+    {
+        for (auto ix = 0u; ix < ix0; ++ix) // leftGhostNodes
+        {
+            auto& density = pop.density();
+            auto& flux    = pop.flux();
+
+            auto& fx = flux.getComponent(Component::X);
+            auto& fy = flux.getComponent(Component::Y);
+            auto& fz = flux.getComponent(Component::Z);
+
+            EXPECT_TRUE(std::isnan(density(ix)));
+            EXPECT_TRUE(std::isnan(fx(ix)));
+            EXPECT_TRUE(std::isnan(fy(ix)));
+            EXPECT_TRUE(std::isnan(fz(ix)));
+        }
+
+        for (auto ix = ix1 + 1; ix <= ix2; ++ix)
+        {
+            auto& density = pop.density();
+            auto& flux    = pop.flux();
+
+            auto& fx = flux.getComponent(Component::X);
+            auto& fy = flux.getComponent(Component::Y);
+            auto& fz = flux.getComponent(Component::Z);
+
+            EXPECT_TRUE(std::isnan(density(ix)));
+            EXPECT_TRUE(std::isnan(fx(ix)));
+            EXPECT_TRUE(std::isnan(fy(ix)));
+            EXPECT_TRUE(std::isnan(fz(ix)));
+        }
+    }
+}
 
 
 

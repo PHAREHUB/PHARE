@@ -76,7 +76,7 @@ namespace core
 
 
         auto isIn1D = [](typename Point::type pos, typename Point::type lower,
-                         typename Point::type upper) { return pos >= lower && pos < upper; };
+                         typename Point::type upper) { return pos >= lower && pos <= upper; };
 
         for (auto const& box : boxes)
         {
@@ -100,7 +100,7 @@ namespace core
     bool isIn(Point const& point, Box<typename Point::type, Point::dimension> const& box)
     {
         auto isIn1D = [](typename Point::type pos, typename Point::type lower,
-                         typename Point::type upper) { return pos >= lower && pos < upper; };
+                         typename Point::type upper) { return pos >= lower && pos <= upper; };
 
         bool pointInBox = true;
 
