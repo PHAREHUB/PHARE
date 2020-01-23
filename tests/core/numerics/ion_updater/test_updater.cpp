@@ -629,6 +629,30 @@ struct IonUpdaterTest : public ::testing::Test
 
 
 
+    void fillIonsMomentsGhosts()
+    {
+        using Interpolator = typename IonUpdater::Interpolator;
+        Interpolator interpolate;
+
+        for (auto& pop : this->ions)
+        {
+            interpolate(std::begin(pop.patchGhostParticles()), std::end(pop.patchGhostParticles()),
+                        pop.density(), pop.flux(), layout);
+
+            double alpha = 0.5;
+            interpolate(std::begin(pop.levelGhostParticlesNew()),
+                        std::end(pop.levelGhostParticlesNew()), pop.density(), pop.flux(), layout,
+                        /*coef = */ alpha);
+
+
+            interpolate(std::begin(pop.levelGhostParticlesOld()),
+                        std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
+                        /*coef = */ (1. - alpha));
+        }
+    }
+
+
+
     void checkMomentsHaveEvolved(IonsBuffers<dim, interp_order> const& ionsBufferCpy)
     {
         auto& populations = this->ions.getRunTimeResourcesUserList();
@@ -848,7 +872,8 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::moments_only);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -892,7 +917,8 @@ TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::particles_and_moments);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -912,7 +938,8 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::particles_and_moments);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -928,7 +955,8 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::moments_only);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -972,7 +1000,8 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::moments_only);
 
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);

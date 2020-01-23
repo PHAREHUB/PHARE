@@ -28,7 +28,7 @@ namespace core
     template<typename Ions, typename Electromag, typename GridLayout>
     class IonUpdater
     {
-    private:
+    public:
         static constexpr auto dimension    = GridLayout::dimension;
         static constexpr auto interp_order = GridLayout::interp_order;
 
@@ -42,6 +42,7 @@ namespace core
         using Pusher = PHARE::core::Pusher<dimension, PartIterator, Electromag, Interpolator,
                                            ParticleSelector, BoundaryCondition, GridLayout>;
 
+    private:
         constexpr static auto makePusher
             = PHARE::core::PusherFactory::makePusher<dimension, PartIterator, Electromag,
                                                      Interpolator, ParticleSelector,
@@ -171,22 +172,9 @@ namespace core
             pushAndAccumulate(pop.domainParticles(), tmpDomain);
             pushAndAccumulate(pop.patchGhostParticles(), tmpPatchGhost);
             pushAndAccumulate(pop.levelGhostParticles(), tmpLevelGhost);
-
-            fillGhosts();
-            interpolator_(std::begin(pop.patchGhostParticles()),
-                          std::end(pop.patchGhostParticles()), pop.density(), pop.flux(), layout);
-
-            double alpha = 0.5;
-            interpolator_(std::begin(pop.levelGhostParticlesNew()),
-                          std::end(pop.levelGhostParticlesNew()), pop.density(), pop.flux(), layout,
-                          /*coef = */ alpha);
-
-
-            interpolator_(std::begin(pop.levelGhostParticlesOld()),
-                          std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
-                          /*coef = */ (1. - alpha));
         }
 
+        fillGhosts();
         setNaNsOnGhosts_(ions, layout);
         ions.computeDensity();
         ions.computeBulkVelocity();
@@ -230,23 +218,9 @@ namespace core
 
             interpolator_(std::begin(domainParticles), std::end(domainParticles), pop.density(),
                           pop.flux(), layout);
-
-            fillGhosts();
-
-            interpolator_(std::begin(pop.patchGhostParticles()),
-                          std::end(pop.patchGhostParticles()), pop.density(), pop.flux(), layout);
-
-
-            double alpha = 0.5;
-            interpolator_(std::begin(pop.levelGhostParticlesNew()),
-                          std::end(pop.levelGhostParticlesNew()), pop.density(), pop.flux(), layout,
-                          /*coef = */ alpha);
-
-
-            interpolator_(std::begin(pop.levelGhostParticlesOld()),
-                          std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
-                          /*coef = */ (1. - alpha));
         }
+
+        fillGhosts();
         setNaNsOnGhosts_(ions, layout);
         ions.computeDensity();
         ions.computeBulkVelocity();
