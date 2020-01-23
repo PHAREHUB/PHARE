@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.3)
 
-project(test-mover)
+project(test-updater)
 
-set(SOURCES test_mover.cpp)
+set(SOURCES test_updater.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

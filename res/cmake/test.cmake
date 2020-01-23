@@ -62,6 +62,6 @@ if (test)
   add_subdirectory(tests/core/numerics/faraday)
   add_subdirectory(tests/core/numerics/ohm)
   add_subdirectory(tests/simulator)
-  add_subdirectory(tests/core/numerics/mover)
+  add_subdirectory(tests/core/numerics/ion_updater)
 
 endif()
