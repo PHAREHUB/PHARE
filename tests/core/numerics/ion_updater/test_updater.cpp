@@ -629,6 +629,30 @@ struct IonUpdaterTest : public ::testing::Test
 
 
 
+    void fillIonsMomentsGhosts()
+    {
+        using Interpolator = typename IonUpdater::Interpolator;
+        Interpolator interpolate;
+
+        for (auto& pop : this->ions)
+        {
+            interpolate(std::begin(pop.patchGhostParticles()), std::end(pop.patchGhostParticles()),
+                        pop.density(), pop.flux(), layout);
+
+            double alpha = 0.5;
+            interpolate(std::begin(pop.levelGhostParticlesNew()),
+                        std::end(pop.levelGhostParticlesNew()), pop.density(), pop.flux(), layout,
+                        /*coef = */ alpha);
+
+
+            interpolate(std::begin(pop.levelGhostParticlesOld()),
+                        std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
+                        /*coef = */ (1. - alpha));
+        }
+    }
+
+
+
     void checkMomentsHaveEvolved(IonsBuffers<dim, interp_order> const& ionsBufferCpy)
     {
         auto& populations = this->ions.getRunTimeResourcesUserList();
@@ -742,27 +766,26 @@ TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstructio
 
 TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
 {
+    auto check = [this](std::size_t nbrGhostCells, auto& pop) {
+        EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell, pop.domainParticles().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.patchGhostParticles().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticlesOld().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticlesNew().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticles().size());
+    };
+
+
     if constexpr (TypeParam::dimension == 1)
     {
         for (auto& pop : this->ions)
         {
             if constexpr (TypeParam::interp_order == 1)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell,
-                          pop.domainParticles().size());
-                EXPECT_EQ(nbrPartPerCell, pop.patchGhostParticles().size());
-                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticles().size());
+                check(1, pop);
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell,
-                          pop.domainParticles().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.patchGhostParticles().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticles().size());
+                check(2, pop);
             }
         }
     }
@@ -848,7 +871,8 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::moments_only);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -892,7 +916,8 @@ TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::particles_and_moments);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -912,7 +937,8 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::particles_and_moments);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::particles_and_moments);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -928,7 +954,8 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::moments_only);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -972,7 +999,8 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
     ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
+        UpdaterMode::moments_only);
 
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
