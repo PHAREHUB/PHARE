@@ -1,3 +1,7 @@
+
+// this file includes python which has conflicting #defines with SAMRAI
+//  so include it last
+
 #ifndef PHARE_PYTHON_DATA_PROVIDER_H
 #define PHARE_PYTHON_DATA_PROVIDER_H
 
@@ -7,6 +11,10 @@
 
 // clang-format off
 DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
+
+#undef HAVE_SYS_TIMES_H // included in python again, possibly with different value
+#undef HAVE_UNISTD_H
+
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/functional.h>
 ENABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)

@@ -2,8 +2,21 @@
 #ifndef PHARE_SIMULATOR_INCLUDE_H
 #define PHARE_SIMULATOR_INCLUDE_H
 
-#include "initializer/python_data_provider.h"
-// intended blank HAVE_SYS_TIMES_His defined by samrai
+#include <SAMRAI/algs/TimeRefinementIntegrator.h>
+#include <SAMRAI/geom/CartesianGridGeometry.h>
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxContainer.h>
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/mesh/BergerRigoutsos.h>
+#include <SAMRAI/mesh/GriddingAlgorithm.h>
+#include <SAMRAI/mesh/StandardTagAndInitialize.h>
+#include <SAMRAI/mesh/TreeLoadBalancer.h>
+#include <SAMRAI/tbox/Database.h>
+#include <SAMRAI/tbox/DatabaseBox.h>
+#include <SAMRAI/tbox/InputManager.h>
+#include <SAMRAI/tbox/MemoryDatabase.h>
+
 #include "amr/types/amr_types.h"
 
 #include "core/models/physical_state.h"
@@ -40,20 +53,7 @@
 #include "diagnostic/detail/types/particle.h"
 #include "diagnostic/detail/types/fluid.h"
 
-#include <SAMRAI/algs/TimeRefinementIntegrator.h>
-#include <SAMRAI/geom/CartesianGridGeometry.h>
-#include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/BoxContainer.h>
-#include <SAMRAI/hier/IntVector.h>
-#include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/mesh/BergerRigoutsos.h>
-#include <SAMRAI/mesh/GriddingAlgorithm.h>
-#include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TreeLoadBalancer.h>
-#include <SAMRAI/tbox/Database.h>
-#include <SAMRAI/tbox/DatabaseBox.h>
-#include <SAMRAI/tbox/InputManager.h>
-#include <SAMRAI/tbox/MemoryDatabase.h>
+#include "initializer/python_data_provider.h"
 
 #include <algorithm>
 #include <iterator>
