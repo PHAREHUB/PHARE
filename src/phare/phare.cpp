@@ -1,6 +1,7 @@
 
 
 #include "include.h"
+#include "amr/wrappers/hierarchy.h"
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
@@ -44,12 +45,15 @@ int main(int argc, char** argv)
     provider->read();
     std::cerr << "done!\n";
 
-    auto simulator = PHARE::getSimulator();
+    auto hierarchy = std::make_shared<PHARE::amr::Hierarchy>(
+        PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
+
+    auto simulator = PHARE::getSimulator(hierarchy);
 
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
-    RuntimeDiagnosticInterface{*simulator}.dump();
+    RuntimeDiagnosticInterface{*simulator, *hierarchy}.dump();
 
     //
     // auto time = simulator.startTime();

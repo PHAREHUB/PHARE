@@ -45,7 +45,7 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
     using Hierarchy   = typename TypeParam::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hierarchy   = *sim.hierarchy;
 
     auto& db    = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     auto& simdb = db["simulation"];

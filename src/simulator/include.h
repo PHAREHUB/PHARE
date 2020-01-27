@@ -18,6 +18,7 @@
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
 #include "amr/types/amr_types.h"
+#include "amr/wrappers/hierarchy.h"
 
 #include "core/models/physical_state.h"
 #include "core/data/electromag/electromag.h"

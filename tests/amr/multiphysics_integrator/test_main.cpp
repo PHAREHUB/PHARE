@@ -120,7 +120,7 @@ TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
     TypeParam sim;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
 
-    for (int iLevel = 0; iLevel < sim.getNumberOfLevels(); ++iLevel)
+    for (int iLevel = 0; iLevel < sim.hierarchy->getNumberOfLevels(); ++iLevel)
     {
         if (isInHybridRange(iLevel))
         {
@@ -138,7 +138,7 @@ TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
 TYPED_TEST(SimulatorTest, allocatesModelDataOnAppropriateLevels)
 {
     TypeParam sim;
-    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hierarchy   = *sim.hierarchy;
     auto& hybridModel = *sim.getHybridModel();
     auto& mhdModel    = *sim.getMHDModel();
 
@@ -188,7 +188,7 @@ TYPED_TEST(SimulatorTest, knowsWhichModelIsSolvedAtAGivenLevel)
     TypeParam sim;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
 
-    auto nbrOfLevels = sim.getNumberOfLevels();
+    auto nbrOfLevels = sim.hierarchy->getNumberOfLevels();
     for (int iLevel = 0; iLevel < nbrOfLevels; ++iLevel)
     {
         if (isInMHDdRange(iLevel))
@@ -214,7 +214,7 @@ TYPED_TEST(SimulatorTest, returnsCorrecMessengerForEachLevel)
     // EXPECT_EQ(std::string{"MHDModel-MHDModel"}, multiphysInteg.messengerName(1));
     // EXPECT_EQ(std::string{"MHDModel-HybridModel"}, multiphysInteg.messengerName(2));
     // EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg.messengerName(3));
-    for (int i = 0; i < sim.getNumberOfLevels(); i++)
+    for (int i = 0; i < sim.hierarchy->getNumberOfLevels(); i++)
         EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg.messengerName(i));
 }
 

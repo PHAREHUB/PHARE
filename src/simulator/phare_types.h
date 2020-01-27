@@ -5,9 +5,12 @@
 
 namespace PHARE
 {
-template<std::size_t dimension, std::size_t interp_order>
+template<std::size_t dimension_, std::size_t interp_order_>
 struct PHARE_Types
 {
+    static auto constexpr dimension    = dimension_;
+    static auto constexpr interp_order = interp_order_;
+
     using Array_t
         = decltype(PHARE::core::makeNdArray<dimension>(std::array<std::uint32_t, dimension>{}));
     using VecField_t      = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
@@ -20,6 +23,7 @@ struct PHARE_Types
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
     using IonPopulation_t = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, GridLayout_t>;
     using Ions_t          = PHARE::core::Ions<IonPopulation_t, GridLayout_t>;
+    using IPhysicalModel  = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
     using HybridModel_t
         = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t, PHARE::amr::SAMRAI_Types>;
     using MHDModel_t  = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
@@ -32,6 +36,16 @@ struct PHARE_Types
     using DiagnosticModelView
         = PHARE::diagnostic::AMRDiagnosticModelView<hierarchy_t, HybridModel_t>;
     using DiagnosticWriter = PHARE::diagnostic::h5::HighFiveDiagnosticWriter<DiagnosticModelView>;
+
+    using ParticleInitializerFactory
+        = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+
+    using MessengerFactory
+        = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, IPhysicalModel>;
+
+    using MultiPhysicsIntegrator
+        = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, LevelInitializerFactory_t,
+                                                PHARE::amr::SAMRAI_Types>;
 };
 
 } // namespace PHARE
