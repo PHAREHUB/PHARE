@@ -13,6 +13,7 @@ if(coverage AND NOT MSVC)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3")
 endif()
 
+if(devMode)
 if(MSVC)
   set (PHARE_WERROR_FLAGS /W4 /WX)
 else()
@@ -26,6 +27,7 @@ else() # !Clang
       -Wno-class-memaccess -Wno-unused-but-set-variable -Wno-unused-but-set-parameter)
 endif() # clang
 endif() # msvc
+endif() # devMode
 
 function(phare_sanitize_ san cflags )
   set(CMAKE_REQUIRED_FLAGS ${san})

@@ -22,6 +22,7 @@ option(cppcheck "Enable cppcheck xml report" OFF)
 option(asan "build with asan support" OFF)
 option(ubsan "build with ubsan support" OFF)
 option(msan "build with msan support" OFF)
+option(devMode "Build with Werror/etc" OFF)
 
 find_program(Git git)
 
@@ -83,4 +84,4 @@ message("build with ubsan support                    : " ${ubsan})
 message("build with msan support                     : " ${msan})
 message("Add doxygen target to generate documentation: " ${documentation})
 message("Build with highfive usage                   : " ${HighFive})
-
+message("Build with Werror/etc                       : " ${devMode})
