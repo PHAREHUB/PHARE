@@ -78,7 +78,7 @@ public:
     {
         auto dMan = std::make_unique<DiagnosticsManager>(writer);
         handleInputDiagnostics(*dMan, dict);
-        return std::move(dMan);
+        return dMan;
     }
 
 

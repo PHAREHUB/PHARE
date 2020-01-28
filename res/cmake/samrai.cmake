@@ -16,12 +16,8 @@ if (NOT SAMRAI_FOUND)
     option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
 
     add_subdirectory(${SAMRAI_SRCDIR})
+    unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY CACHE) # undoes what samrai does, so ctest can continue to work
+    include_directories(${CMAKE_BINARY_DIR}/include) # this is needed to find build-dir/include/SAMRAI/SAMRAI_config.h
   endif()
 
-endif()
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/include/SAMRAI")
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/build/include
-)
 endif()
