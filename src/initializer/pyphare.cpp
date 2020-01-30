@@ -4,7 +4,7 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
-
+#include <pybind11/stl.h>
 
 using PHARE::initializer::ScalarFunction;
 
@@ -28,9 +28,16 @@ void add_size_t(std::string path, size_t&& value)
                  PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
 }
 
+void add_optional_size_t(std::string path, std::optional<size_t>&& value)
+{
+    cppdict::add(path, std::forward<std::optional<size_t>>(value),
+                 PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
+}
+
 PYBIND11_MODULE(pyphare, m)
 {
     m.def("add_size_t", add_size_t, "add_size_t");
+    m.def("add_optional_size_t", add_optional_size_t, "add_optional_size_t");
 
     m.def("add", add<int, void>, "add");
     m.def("add", add<double, void>, "add");

@@ -4,6 +4,7 @@
 #include "core/utilities/point/point.h"
 
 #include <array>
+#include <random>
 #include <type_traits>
 
 
@@ -13,6 +14,17 @@ namespace PHARE
 {
 namespace core
 {
+    template<typename T = float>
+    struct ParticleDeltaDistribution
+    {
+        template<typename Generator>
+        float operator()(Generator& generator)
+        {
+            return dist(generator);
+        }
+        std::uniform_real_distribution<T> dist{0, 1. - std::numeric_limits<T>::epsilon()};
+    };
+
     template<std::size_t dim>
     struct Particle
     {

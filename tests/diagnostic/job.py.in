@@ -3,8 +3,12 @@
 import os, sys
 import phare.pharein as ph
 
-print("start test_diagnostics: input_1d_ratio_2.py")
-print("sys.path ", sys.path)
+import mpi4py # gives access to mpi_rank/etc
+mpi4py.rc.initialize = False  # disable automatic MPI_Init() at import
+from mpi4py import MPI  # the module is imported, but MPI_Init() is not called
+
+comm = MPI.COMM_WORLD
+mpi_size, mpi_rank = (comm.Get_size(), comm.Get_rank())
 
 ph.Simulation(
     smallest_patch_size=10,
@@ -35,12 +39,11 @@ vvv = {
 ph.MaxwellianFluidModel(
     bx=bx, by=bx, bz=bx,
     ex=bx, ey=bx, ez=bx,
-    protons={"charge":-1, "density":density, **vvv},
-    alpha={"charge":-1, "density":density, **vvv}
+    protons={"charge":-1, "density":density, **vvv, "init":{"seed":1337}},
+    alpha={"charge":-1, "density":density, **vvv, "init":{"seed":mpi_rank}},
 )
 
 from tests.diagnostic import dump_all_diags
 
 dump_all_diags(["protons", "alpha"])
 
-print("end test_messengers: input_1d_ratio_2.py")

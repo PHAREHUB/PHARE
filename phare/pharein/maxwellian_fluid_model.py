@@ -1,4 +1,5 @@
 
+from . import phare_utilities
 from . import globals
 
 class MaxwellianFluidModel(object):
@@ -82,7 +83,8 @@ class MaxwellianFluidModel(object):
                         vbulkz = None,
                         vthx   = None,
                         vthy   = None,
-                        vthz   = None):
+                        vthz   = None,
+                        init   = {}):
         """
         add a particle population to the current model
 
@@ -101,6 +103,12 @@ class MaxwellianFluidModel(object):
         beta        : beta of the species, float (default = 1)
         anisotropy  : Pperp/Ppara of the species, float (default = 1)
         """
+
+        init_keys = ['seed']
+        wrong_keys = phare_utilities.not_in_keywords_list(init_keys, **init)
+        if len(wrong_keys) > 0:
+            raise ValueError("Model Error: invalid init arguments - " + " ".join(wrong_keys))
+        init["seed"] = init["seed"] if "seed" in init else None
 
         density = self.defaulter(density, 1.)
 
@@ -124,7 +132,8 @@ class MaxwellianFluidModel(object):
                           "vthx": vthx,
                           "vthy": vthy,
                           "vthz": vthz,
-                          "nbrParticlesPerCell": nbr_part_per_cell}}
+                          "nbrParticlesPerCell": nbr_part_per_cell,
+                          "init": init}}
 
         keys = self.model_dict.keys()
         if name in keys:

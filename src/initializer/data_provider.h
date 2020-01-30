@@ -41,8 +41,9 @@ namespace initializer
 
 
     // template<std::size_t dim>
-    using PHAREDict = cppdict::Dict<int, double, std::size_t, std::string, ScalarFunction<1>,
-                                    ScalarFunction<2>, ScalarFunction<3>>;
+    using PHAREDict
+        = cppdict::Dict<int, double, std::size_t, std::optional<std::size_t>, std::string,
+                        ScalarFunction<1>, ScalarFunction<2>, ScalarFunction<3>>;
 
 
 
