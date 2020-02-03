@@ -41,9 +41,8 @@ void validateFluidDump(Simulator& sim, Writer& hi5)
                       PHARE::FieldDomainPlusNFilter{1});
     };
 
-    PHARE::amr::visitHierarchy<GridLayout>(*sim.getPrivateHierarchy(),
-                                           *hybridModel.resourcesManager, visit, 0,
-                                           sim.getNumberOfLevels(), hybridModel);
+    PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
+                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
 }
 
 
@@ -54,7 +53,7 @@ TYPED_TEST(SimulatorTest, fluid)
     using Hierarchy   = typename TypeParam::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hierarchy   = *sim.hierarchy;
 
     { // Scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
@@ -91,9 +90,8 @@ void validateElectromagDump(Simulator& sim, Writer& hi5)
         checkVF(layout, path, "/EM_E", hybridModel.state.electromag.E);
     };
 
-    PHARE::amr::visitHierarchy<GridLayout>(*sim.getPrivateHierarchy(),
-                                           *hybridModel.resourcesManager, visit, 0,
-                                           sim.getNumberOfLevels(), hybridModel);
+    PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
+                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
 }
 
 TYPED_TEST(SimulatorTest, electromag)
@@ -103,7 +101,7 @@ TYPED_TEST(SimulatorTest, electromag)
     using Hierarchy   = typename TypeParam::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hierarchy   = *sim.hierarchy;
     { // scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
         hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E")).dump();
@@ -171,9 +169,8 @@ void validateParticleDump(Simulator& sim, Writer& hi5)
         }
     };
 
-    PHARE::amr::visitHierarchy<GridLayout>(*sim.getPrivateHierarchy(),
-                                           *hybridModel.resourcesManager, visit, 0,
-                                           sim.getNumberOfLevels(), hybridModel);
+    PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
+                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
 }
 
 
@@ -184,7 +181,7 @@ TYPED_TEST(SimulatorTest, particles)
     using Hierarchy   = typename TypeParam::Hierarchy;
 
     auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hierarchy   = *sim.hierarchy;
 
     { // scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
@@ -215,9 +212,8 @@ void validateAttributes(Simulator& sim, Writer& hi5)
         EXPECT_EQ(gridLayout.origin().str(), origin);
     };
 
-    PHARE::amr::visitHierarchy<GridLayout>(*sim.getPrivateHierarchy(),
-                                           *hybridModel.resourcesManager, visit, 0,
-                                           sim.getNumberOfLevels(), hybridModel);
+    PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
+                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
 }
 
 
@@ -233,7 +229,7 @@ TYPED_TEST(SimulatorTest, allFromPython)
     sim.writer.reset(); // keeps a handle and breaks the following readonly opening
 
     auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.getPrivateHierarchy();
+    auto& hierarchy   = *sim.hierarchy;
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
 

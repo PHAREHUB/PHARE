@@ -35,8 +35,20 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
 
 
 
+struct HierarchyMaker
+{
+    HierarchyMaker(PHARE::initializer::PHAREDict dict)
+        : hierarchy{std::make_shared<PHARE::amr::Hierarchy>(dict)}
+    {
+    }
+    std::shared_ptr<PHARE::amr::Hierarchy> hierarchy;
+};
+
+
+
+
 template<size_t _dim, size_t _interp>
-struct TestSimulator : public PHARE::Simulator<_dim, _interp>
+struct TestSimulator : public HierarchyMaker, public PHARE::Simulator<_dim, _interp>
 {
     static constexpr size_t dim    = _dim;
     static constexpr size_t interp = _interp;
@@ -55,23 +67,26 @@ struct TestSimulator : public PHARE::Simulator<_dim, _interp>
     std::unique_ptr<DiagnosticWriter> writer;
     std::unique_ptr<PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>> dMan;
 
+
     auto& dict()
     {
         StaticIntepreter::INSTANCE();
+        auto st = SAMRAI::hier::VariableDatabase::getDatabase();
         return PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     }
 
     TestSimulator()
-        : Simulator{dict()}
+        : HierarchyMaker{dict()}
+        , Simulator{dict(), this->hierarchy}
     {
         Simulator::initialize();
 
         if (dict()["simulation"].contains("diagnostics"))
         {
-            modelView = std::make_unique<DiagnosticModelView>(*this->getPrivateHierarchy(),
-                                                              *this->getHybridModel());
-            writer    = DiagnosticWriter::from(*modelView, dict()["simulation"]["diagnostics"]);
-            dMan      = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::from(
+            modelView
+                = std::make_unique<DiagnosticModelView>(*this->hierarchy, *this->getHybridModel());
+            writer = DiagnosticWriter::from(*modelView, dict()["simulation"]["diagnostics"]);
+            dMan   = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::from(
                 *writer, dict()["simulation"]["diagnostics"]);
         }
     }

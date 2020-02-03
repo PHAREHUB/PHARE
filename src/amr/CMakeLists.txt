@@ -40,6 +40,8 @@ set( SOURCES_INC
      messengers/hybrid_messenger_info.h
      messengers/mhd_messenger_info.h
      types/amr_types.h
+     wrappers/hierarchy.h
+     wrappers/integrator.h
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

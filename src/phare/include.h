@@ -27,8 +27,9 @@ public:
 
 struct RuntimeDiagnosticInterface
 {
-    RuntimeDiagnosticInterface(PHARE::ISimulator& _simulator)
-        : simulator{_simulator}
+    RuntimeDiagnosticInterface(PHARE::ISimulator& _simulator, PHARE::amr::Hierarchy& _hierarchy)
+        : hierarchy{_hierarchy}
+        , simulator{_simulator}
     {
         auto dict        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
         auto dim         = dict["simulation"]["dimension"].template to<int>();
@@ -61,9 +62,10 @@ struct RuntimeDiagnosticInterface
                     using DiagnosticWriter    = typename PHARE_Types::DiagnosticWriter;
 
                     auto* simulator = dynamic_cast<PHARE::Simulator<d, io>*>(&rdi.simulator);
+                    auto& hierarchy = rdi.hierarchy;
 
                     rdi.modelView = std::make_unique<DiagnosticModelView>(
-                        *simulator->getPrivateHierarchy(), *simulator->getHybridModel());
+                        hierarchy, *simulator->getHybridModel());
 
                     rdi.writer = DiagnosticWriter::from(
                         *static_cast<DiagnosticModelView*>(rdi.modelView.get()),
@@ -84,6 +86,7 @@ struct RuntimeDiagnosticInterface
 
     void dump() { dMan->dump(); }
 
+    PHARE::amr::Hierarchy& hierarchy;
     PHARE::ISimulator& simulator;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticModelView> modelView;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticWriter> writer;
