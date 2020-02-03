@@ -125,17 +125,14 @@ public:
 
 
 
-
     auto& getHybridModel() { return hybridModel_; }
+
+
     auto& getMHDModel() { return mhdModel_; }
 
-    // the use of this function is to be minimised, and restricted to tests
-    // auto& getPrivateHierarchy() { return hierarchy_; }
 
     auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
 
-
-    // auto getNumberOfLevels() const { return hierarchy_->getNumberOfLevels(); }
 
 private:
     auto find_model(std::string name)
