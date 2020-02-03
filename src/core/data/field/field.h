@@ -71,6 +71,21 @@ namespace core
         std::string name_{"No Name"};
         PhysicalQuantity qty_;
     };
+
+
+
+
+    template<typename Field>
+    void average(Field const& f1, Field const& f2, Field& avg)
+    {
+        std::transform(std::begin(f1), std::end(f2), std::begin(f2), std::begin(avg),
+                       std::plus<double>());
+
+        std::transform(std::begin(avg), std::end(avg), std::begin(avg),
+                       [](double x) { return x * 0.5; });
+    }
+
+
 } // namespace core
 } // namespace PHARE
 #endif
