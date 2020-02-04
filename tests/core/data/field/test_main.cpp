@@ -168,6 +168,8 @@ TYPED_TEST(GenericField3D, physiscalQuantity)
 }
 
 
+
+
 TEST(Field1D, canBeAssigned)
 {
     auto nx = 10u;
@@ -235,6 +237,102 @@ TEST(Field3D, canBeAssigned)
     for (auto const& v : f)
     {
         EXPECT_DOUBLE_EQ(12., v);
+    }
+}
+
+
+
+
+TEST(Field1D, canBeAveraged)
+{
+    auto nx = 15u;
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector1D<>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx};
+
+    //
+    for (auto& v : f1)
+    {
+        v = 10.;
+    }
+
+
+    for (auto& v : f2)
+    {
+        v = 20.;
+    }
+
+    PHARE::core::average(f1, f2, avg);
+
+    for (auto const& v : avg)
+    {
+        EXPECT_DOUBLE_EQ(15., v);
+    }
+}
+
+
+
+
+TEST(Field2D, canBeAveraged)
+{
+    auto nx = 15u;
+    auto ny = 25u;
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector2D<>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx, ny};
+
+    //
+    for (auto& v : f1)
+    {
+        v = 10.;
+    }
+
+
+    for (auto& v : f2)
+    {
+        v = 20.;
+    }
+
+    PHARE::core::average(f1, f2, avg);
+
+    for (auto const& v : avg)
+    {
+        EXPECT_DOUBLE_EQ(15., v);
+    }
+}
+
+
+
+
+TEST(Field3D, canBeAveraged)
+{
+    auto nx = 15u;
+    auto ny = 25u;
+    auto nz = 35u;
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx, ny,
+                                                        nz};
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx, ny,
+                                                        nz};
+    Field<NdArrayVector3D<>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx, ny,
+                                                         nz};
+
+    //
+    for (auto& v : f1)
+    {
+        v = 10.;
+    }
+
+
+    for (auto& v : f2)
+    {
+        v = 20.;
+    }
+
+    PHARE::core::average(f1, f2, avg);
+
+    for (auto const& v : avg)
+    {
+        EXPECT_DOUBLE_EQ(15., v);
     }
 }
 
