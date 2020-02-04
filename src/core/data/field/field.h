@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "core/data/ndarray/ndarray_vector.h"
 
