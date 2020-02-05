@@ -36,18 +36,19 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
         ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
         makeBasicModel()
         populateDict()
-        sim = tst.make_simulator()
+        hier = tst.make_hierarchy()
+        sim = tst.make_simulator(hier)
         sim.initialize()
-        return [sim, tst.make_diagnostic_manager(sim)]
+        return [hier, sim, tst.make_diagnostic_manager(sim, hier)]
 
 
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
             try:
-                sim, dman = self._create_simulator(dim, interp, **input)
+                hier, sim, dman = self._create_simulator(dim, interp, **input)
                 self.assertTrue(valid)
                 dman.dump()
-                [tst.unmake(x) for x in [sim, dman]]
+                [tst.unmake(x) for x in [hier, sim, dman]]
                 tst.reset()
             except ValueError as e:
                 self.assertTrue(not valid)
