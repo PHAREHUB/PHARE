@@ -59,11 +59,15 @@ namespace core
                 std::array<PHARE::initializer::ScalarFunction<dimension>, 3> vth
                     = {vthx, vthy, vthz};
 
+                std::optional<size_t> seed;
+                if (dict.contains("init") && dict["init"].contains("seed"))
+                    seed = dict["init"]["seed"].template to<std::optional<size_t>>();
+
                 if (basisName == "cartesian")
                 {
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell);
+                        density, v, vth, charge, nbrPartPerCell, seed);
                 }
                 else if (basisName == "magnetic")
                 {
@@ -78,9 +82,10 @@ namespace core
                         = dict["magnetic_x"]
                               .template to<PHARE::initializer::ScalarFunction<dimension>>();
 
+
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell);
+                        density, v, vth, charge, nbrPartPerCell, seed);
                 }
             }
             // TODO throw?

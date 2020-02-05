@@ -28,22 +28,21 @@ namespace core
 
 
 
-
     /** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
      * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
      */
     template<typename ParticleArray, typename GridLayout>
     class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
     {
-    private:
+    public:
         static constexpr auto dimension = GridLayout::dimension;
 
-    public:
         MaxwellianParticleInitializer(
             PHARE::initializer::ScalarFunction<dimension> density,
             std::array<PHARE::initializer::ScalarFunction<dimension>, 3> bulkVelocity,
             std::array<PHARE::initializer::ScalarFunction<dimension>, 3> thermalVelocity,
-            double particleCharge, uint32 nbrParticlesPerCell, Basis basis = Basis::Cartesian,
+            double particleCharge, uint32 nbrParticlesPerCell, std::optional<size_t> seed = {},
+            Basis basis = Basis::Cartesian,
             std::array<PHARE::initializer::ScalarFunction<dimension>, 3> magneticField
             = {nullptr, nullptr, nullptr})
             : density_{density}
@@ -53,9 +52,9 @@ namespace core
             , particleCharge_{particleCharge}
             , nbrParticlePerCell_{nbrParticlesPerCell}
             , basis_{basis}
+            , rngSeed_{seed}
         {
         }
-
 
 
         /**
@@ -84,6 +83,21 @@ namespace core
 
 
     private:
+        // can be relocated if needed
+        static std::mt19937_64 getRNG(std::optional<size_t> const& seed)
+        {
+            if (!seed.has_value())
+            {
+                std::random_device randSeed;
+                std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
+                                       randSeed(), randSeed(), randSeed(), randSeed()};
+                return std::mt19937_64(seed_seq);
+            }
+            return std::mt19937_64(*seed);
+        }
+
+
+
         void loadParticles1D_(ParticleArray& particles, GridLayout const& layout) const
         {
             auto const meshSize = layout.meshSize();
@@ -94,14 +108,11 @@ namespace core
             uint32 ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
             uint32 ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-            double cellVolume             = dx;
-            [[maybe_unused]] Point origin = layout.origin();
+            double cellVolume = dx;
 
             // random seed and generator needed to load maxwellian velocity
             // and random position with the cell
-            std::random_device randSeed;
-            // std::mt19937_64 generator(randSeed());
-            std::mt19937_64 generator(1); // TODO constant seed should be usable for Debug mode.
+            auto generator = getRNG(rngSeed_);
 
             // beware: we're looping over the cell but use primal indices because of
             // GridLayout::cellCenteredCoordinates
@@ -135,7 +146,7 @@ namespace core
                 // weight for all particles in this cell
                 auto cellWeight = n * cellVolume / nbrParticlePerCell_;
 
-                std::uniform_real_distribution<float> randPosX(0., 1.);
+                ParticleDeltaDistribution randPosX;
 
                 if (basis_ == Basis::Magnetic)
                 {
@@ -191,12 +202,10 @@ namespace core
             auto iy1 = layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
 
             auto cellVolume = dx * dy;
-            auto origin     = layout.origin();
 
             // random seed and generator needed to load maxwellian velocity
             // and random position with the cell
-            std::random_device randSeed;
-            std::mt19937_64 generator(randSeed());
+            auto generator = getRNG(rngSeed_);
 
             // beware: we're looping over the cell but use primal indices because of
             // GridLayout::cellCenteredCoordinates
@@ -231,8 +240,9 @@ namespace core
 
                     // weight for all particles in this cell
                     auto cellWeight = n * cellVolume / nbrParticlePerCell_;
-                    std::uniform_real_distribution<float> randPosX(0., 1.);
-                    std::uniform_real_distribution<float> randPosY(0., 1.);
+
+                    ParticleDeltaDistribution randPosX;
+                    ParticleDeltaDistribution randPosY;
 
                     if (basis_ == Basis::Magnetic)
                     {
@@ -298,8 +308,7 @@ namespace core
 
             // random seed and generator needed to load maxwellian velocity
             // and random position with the cell
-            std::random_device randSeed;
-            std::mt19937_64 generator(randSeed());
+            auto generator = getRNG(rngSeed_);
 
             // beware: we're looping over the cell but use primal indices because of
             // GridLayout::cellCenteredCoordinates
@@ -339,9 +348,9 @@ namespace core
                         // weight for all particles in this cell
                         auto cellWeight = n * cellVolume / nbrParticlePerCell_;
 
-                        std::uniform_real_distribution<float> randPosX(0., 1.);
-                        std::uniform_real_distribution<float> randPosY(0., 1.);
-                        std::uniform_real_distribution<float> randPosZ(0., 1.);
+                        ParticleDeltaDistribution randPosX;
+                        ParticleDeltaDistribution randPosY;
+                        ParticleDeltaDistribution randPosZ;
 
                         if (basis_ == Basis::Magnetic)
                         {
@@ -394,6 +403,7 @@ namespace core
         double particleCharge_;
         uint32 nbrParticlePerCell_;
         Basis basis_;
+        std::optional<size_t> rngSeed_;
     };
 } // namespace core
 } // namespace PHARE
