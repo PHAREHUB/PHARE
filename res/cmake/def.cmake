@@ -1,7 +1,13 @@
 
 
-if (NOT DEFINED PHARE_MPI_PROCS)
-  set(PHARE_MPI_PROCS 2) # default MPI processes
+if(testMPI)
+  if (NOT DEFINED PHARE_MPI_PROCS)
+    set(PHARE_MPI_PROCS 2)
+  endif()
+else()
+  if (NOT DEFINED PHARE_MPI_PROCS)
+    set(PHARE_MPI_PROCS 1)
+  endif()
 endif()
 
 # Pybind errors with clang, it is default in GCC
@@ -52,21 +58,44 @@ endif()
 
 # msan is not supported - it's not practical to configure - use valgrind
 
+function(set_exe_paths_ binary)
+  set_property(TEST ${binary}        PROPERTY ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR})
+  set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${LD_LIBRARY_PATH})
+endfunction(set_exe_paths_)
+
 function(add_phare_test_ binary directory)
   target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS})
-  set_tests_properties(${binary} PROPERTIES ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
-  set_tests_properties(${binary} PROPERTIES ENVIRONMENT
-      PYTHONPATH=${CMAKE_BINARY_DIR})
+  set_exe_paths_(${binary})
+  set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
+  set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_MPI_PROCS=${PHARE_MPI_PROCS})
 endfunction(add_phare_test_)
+
+function(add_no_mpi_phare_test binary directory)
+  add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
+  add_phare_test_(${binary} ${directory})
+endfunction(add_no_mpi_phare_test)
+
+function(add_no_mpi_python3_test name file directory)
+  add_test(NAME py3_${name} COMMAND python3 ${file} WORKING_DIRECTORY ${directory})
+  set_exe_paths_(py3_${name})
+endfunction(add_no_mpi_python3_test)
 
 if(testMPI)
   function(add_phare_test binary directory)
     add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ./${binary} WORKING_DIRECTORY ${directory})
     add_phare_test_(${binary} ${directory})
   endfunction(add_phare_test)
+
+  function(add_python3_test name file directory)
+    add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 ${file} WORKING_DIRECTORY ${directory})
+    set_exe_paths_(py3_${name})
+  endfunction(add_python3_test)
 else()
   function(add_phare_test binary directory)
-    add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
-    add_phare_test_(${binary} ${directory})
+    add_no_mpi_phare_test(${binary} ${directory})
   endfunction(add_phare_test)
+
+  function(add_python3_test name file directory)
+    add_no_mpi_python3_test(${name} ${file} ${directory})
+  endfunction(add_python3_test)
 endif(testMPI)
