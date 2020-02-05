@@ -766,27 +766,26 @@ TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstructio
 
 TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
 {
+    auto check = [this](std::size_t nbrGhostCells, auto& pop) {
+        EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell, pop.domainParticles().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.patchGhostParticles().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticlesOld().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticlesNew().size());
+        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticles().size());
+    };
+
+
     if constexpr (TypeParam::dimension == 1)
     {
         for (auto& pop : this->ions)
         {
             if constexpr (TypeParam::interp_order == 1)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell,
-                          pop.domainParticles().size());
-                EXPECT_EQ(nbrPartPerCell, pop.patchGhostParticles().size());
-                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(nbrPartPerCell, pop.levelGhostParticles().size());
+                check(1, pop);
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
-                EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell,
-                          pop.domainParticles().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.patchGhostParticles().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticlesOld().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticlesNew().size());
-                EXPECT_EQ(2 * nbrPartPerCell, pop.levelGhostParticles().size());
+                check(2, pop);
             }
         }
     }
