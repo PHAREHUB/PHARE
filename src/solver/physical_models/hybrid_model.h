@@ -126,19 +126,13 @@ namespace solver
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return state.electromag.isUsable() && state.ions.isUsable(); }
+        bool isUsable() const { return state.isUsable(); }
 
-        bool isSettable() const { return state.electromag.isSettable() && state.ions.isSettable(); }
+        bool isSettable() const { return state.isSettable(); }
 
-        auto getCompileTimeResourcesUserList() const
-        {
-            return std::forward_as_tuple(state.electromag, state.ions);
-        }
+        auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(state); }
 
-        auto getCompileTimeResourcesUserList()
-        {
-            return std::forward_as_tuple(state.electromag, state.ions);
-        }
+        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
 
         //-------------------------------------------------------------------------
         //                  ends the ResourcesUser interface
