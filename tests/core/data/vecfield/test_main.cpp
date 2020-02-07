@@ -265,6 +265,15 @@ TEST_F(VecFieldTest, ComponentNames)
 
 
 
+
+TEST_F(VecFieldTest, VecFieldsHaveBeginAndEnd)
+{
+    for (auto const& component : B1D_) {}
+}
+
+
+
+
 TEST_F(VecFieldTest, PhysicalQuantities)
 {
     auto pairs1D = B1D_.getFieldNamesAndQuantities();

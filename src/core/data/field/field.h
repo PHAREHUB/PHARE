@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "core/data/ndarray/ndarray_vector.h"
 
@@ -71,6 +72,23 @@ namespace core
         std::string name_{"No Name"};
         PhysicalQuantity qty_;
     };
+
+
+
+
+    template<typename NdArrayImpl, typename PhysicalQuantity>
+    void average(Field<NdArrayImpl, PhysicalQuantity> const& f1,
+                 Field<NdArrayImpl, PhysicalQuantity> const& f2,
+                 Field<NdArrayImpl, PhysicalQuantity>& avg)
+    {
+        std::transform(std::begin(f1), std::end(f1), std::begin(f2), std::begin(avg),
+                       std::plus<double>());
+
+        std::transform(std::begin(avg), std::end(avg), std::begin(avg),
+                       [](double x) { return x * 0.5; });
+    }
+
+
 } // namespace core
 } // namespace PHARE
 #endif

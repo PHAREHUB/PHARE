@@ -3,9 +3,12 @@
 
 #include <array>
 #include <utility>
+#include <algorithm>
+#include <unordered_map>
 
 #include "core/data/field/field.h"
 #include "vecfield_component.h"
+#include "core/utilities/meta/meta_utilities.h"
 
 namespace PHARE
 {
@@ -42,7 +45,6 @@ namespace core
         VecField(std::string const& name, typename PhysicalQuantity::Vector physQty)
             : name_{name}
             , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
-            , componentNames_{{name + "_x", name + "_y", name + "_z"}}
         {
         }
 
@@ -71,29 +73,27 @@ namespace core
 
         void setBuffer(std::string const& bufferName, field_type* field)
         {
-            if (bufferName == componentNames_[0])
-            {
-                xComponent_ = field;
-            }
-            else if (bufferName == componentNames_[1])
-            {
-                yComponent_ = field;
-            }
-            else if (bufferName == componentNames_[2])
-            {
-                zComponent_ = field;
-            }
+            if (auto it = nameToIndex_.find(bufferName); it != std::end(nameToIndex_))
+                components_[it->second] = field;
+            else
+                throw std::runtime_error(
+                    "VecField Error - invalid component name, cannot set buffer");
         }
+
+
+
 
         //! return true if the VecField can be used to access component data
         bool isUsable() const
         {
-            return xComponent_ != nullptr && yComponent_ != nullptr && zComponent_ != nullptr;
+            return std::all_of(std::begin(components_), std::end(components_),
+                               [](auto const& c) { return c != nullptr; });
         }
 
         bool isSettable() const
         {
-            return xComponent_ == nullptr && yComponent_ == nullptr && zComponent_ == nullptr;
+            return std::all_of(std::begin(components_), std::end(components_),
+                               [](auto const& c) { return c == nullptr; });
         }
 
 
@@ -102,9 +102,8 @@ namespace core
         {
             if (isUsable())
             {
-                xComponent_->zero();
-                yComponent_->zero();
-                zComponent_->zero();
+                for (auto& component : components_)
+                    component->zero();
             }
             else
             {
@@ -128,9 +127,9 @@ namespace core
             {
                 switch (component)
                 {
-                    case Component::X: return *xComponent_;
-                    case Component::Y: return *yComponent_;
-                    case Component::Z: return *zComponent_;
+                    case Component::X: return *components_[0];
+                    case Component::Y: return *components_[1];
+                    case Component::Z: return *components_[2];
                 }
             }
             throw std::runtime_error("Error - VecField not usable");
@@ -146,9 +145,9 @@ namespace core
             {
                 switch (component)
                 {
-                    case Component::X: return *xComponent_;
-                    case Component::Y: return *yComponent_;
-                    case Component::Z: return *zComponent_;
+                    case Component::X: return *components_[0];
+                    case Component::Y: return *components_[1];
+                    case Component::Z: return *components_[2];
                 }
             }
             throw std::runtime_error("Error - VecField not usable");
@@ -173,9 +172,10 @@ namespace core
         {
             if (isUsable() && source.isUsable())
             {
-                xComponent_->copyData(*source.xComponent_);
-                yComponent_->copyData(*source.yComponent_);
-                zComponent_->copyData(*source.zComponent_);
+                for (std::size_t i = 0; i < 3; ++i)
+                {
+                    components_[i]->copyData(*source.components_[i]);
+                }
             }
             else
             {
@@ -184,14 +184,43 @@ namespace core
         }
 
 
+        auto begin() { return std::begin(components_); }
+
+        auto cbegin() const { return std::cbegin(components_); }
+
+        auto end() { return std::end(components_); }
+
+        auto cend() const { return std::cend(components_); }
+
+
+
     private:
         std::string name_ = "No Name";
         std::array<typename PhysicalQuantity::Scalar, 3> physQties_;
-        std::array<std::string, 3> componentNames_;
-        field_type* xComponent_ = nullptr;
-        field_type* yComponent_ = nullptr;
-        field_type* zComponent_ = nullptr;
+
+        const std::array<std::string, 3> componentNames_{name_ + "_x", name_ + "_y", name_ + "_z"};
+        std::array<field_type*, 3> components_{nullptr, nullptr, nullptr};
+
+        const std::unordered_map<std::string, std::size_t> nameToIndex_{
+            {componentNames_[0], 0u}, {componentNames_[1], 1u}, {componentNames_[2], 2u}};
     };
+
+
+    template<typename VecField, typename = tryToInstanciate<typename VecField::field_type>>
+    void average(VecField const& vf1, VecField const& vf2, VecField& Vavg)
+    {
+        average(vf1.getComponent(Component::X), vf2.getComponent(Component::X),
+                Vavg.getComponent(Component::X));
+
+        average(vf1.getComponent(Component::Y), vf2.getComponent(Component::Y),
+                Vavg.getComponent(Component::Y));
+
+        average(vf1.getComponent(Component::Z), vf2.getComponent(Component::Z),
+                Vavg.getComponent(Component::Z));
+    }
+
+
+
 } // namespace core
 } // namespace PHARE
 
