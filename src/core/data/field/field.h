@@ -76,8 +76,10 @@ namespace core
 
 
 
-    template<typename Field>
-    void average(Field const& f1, Field const& f2, Field& avg)
+    template<typename NdArrayImpl, typename PhysicalQuantity>
+    void average(Field<NdArrayImpl, PhysicalQuantity> const& f1,
+                 Field<NdArrayImpl, PhysicalQuantity> const& f2,
+                 Field<NdArrayImpl, PhysicalQuantity>& avg)
     {
         std::transform(std::begin(f1), std::end(f1), std::begin(f2), std::begin(avg),
                        std::plus<double>());
