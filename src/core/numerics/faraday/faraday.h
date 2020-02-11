@@ -17,8 +17,8 @@ namespace core
     class Faraday : public LayoutHolder<GridLayout>
     {
     private:
-        template<typename VecField, std::size_t dim, std::enable_if_t<dim == 1, int> = 0>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 1, int> = 0>
+        void compute_(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             // dBxdt =  0
             // dBydt =  dxEz
@@ -55,8 +55,8 @@ namespace core
 
 
 
-        template<typename VecField, std::size_t dim, std::enable_if_t<dim == 2, int> = 0>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 2, int> = 0>
+        void compute_(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             // dBxdt =  -dyEz
             // dBydt =  dxEz
@@ -123,8 +123,8 @@ namespace core
 
 
 
-        template<typename VecField, std::size_t dim, std::enable_if_t<dim == 3, int> = 0>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 3, int> = 0>
+        void compute_(VecField const& B, VecField const& E, VecField& Bnew, double dt)
         {
             // dBxdt = -dyEz + dzEy
             // dBydt = -dzEx + dxEz
@@ -229,7 +229,7 @@ namespace core
                     "Error - Faraday - GridLayout not set, cannot proceed to calculate faraday()");
             }
 
-            this->operator()<VecField, GridLayout::dimension>(B, E, Bnew, dt);
+            compute_(B, E, Bnew, dt);
         }
     };
 } // namespace core

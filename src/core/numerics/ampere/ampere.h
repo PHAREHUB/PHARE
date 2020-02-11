@@ -17,8 +17,8 @@ namespace core
     class Ampere : public LayoutHolder<GridLayout>
     {
     private:
-        template<typename VecField, std::size_t dim, std::enable_if_t<dim == 1, int> = 0>
-        void operator()(VecField const& B, VecField& J)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 1, int> = 0>
+        void compute_(VecField const& B, VecField& J)
         {
             // auto &Jx = J.getComponent(Component::X); // =  0
             auto& Jy = J.getComponent(Component::Y); // = -dxBz
@@ -50,8 +50,8 @@ namespace core
 
 
 
-        template<typename VecField, std::size_t dim, std::enable_if_t<dim == 2, int> = 0>
-        void operator()(VecField const& B, VecField& J)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 2, int> = 0>
+        void compute_(VecField const& B, VecField& J)
         {
             auto& Jx = J.getComponent(Component::X); // =  dyBz
             auto& Jy = J.getComponent(Component::Y); // = -dxBz
@@ -105,8 +105,8 @@ namespace core
 
 
 
-        template<typename VecField, std::size_t dim, std::enable_if_t<dim == 3, int> = 0>
-        void operator()(VecField const& B, VecField& J)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 3, int> = 0>
+        void compute_(VecField const& B, VecField& J)
         {
             auto& Jx = J.getComponent(Component::X); // =  dyBz - dzBx
             auto& Jy = J.getComponent(Component::Y); // =  dzBx - dxBz
@@ -194,7 +194,7 @@ namespace core
             }
             std::cout << "I'm solving ampere " << GridLayout::dimension << "\n";
 
-            this->operator()<VecField, GridLayout::dimension>(B, J);
+            compute_(B, J);
         }
     };
 } // namespace core
