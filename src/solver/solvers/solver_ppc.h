@@ -29,9 +29,9 @@ namespace solver
         static constexpr auto dimension    = HybridModel::dimension;
         static constexpr auto interp_order = HybridModel::gridLayout_type::interp_order;
 
-        using Electromag = decltype(std::declval<HybridModel>().state.electromag);
-        using Ions       = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT  = decltype(std::declval<HybridModel>().state.electromag.E);
+        using Electromag = typename HybridModel::electromag_type;
+        using Ions       = typename HybridModel::ions_type;
+        using VecFieldT  = typename HybridModel::vecfield_type;
         using GridLayout = typename HybridModel::gridLayout_type;
 
 

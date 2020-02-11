@@ -14,6 +14,7 @@
 #include "initializer/data_provider.h"
 
 
+
 #include <memory>
 
 // TODO alpha coef for interpolating new and old levelGhost should be given somehow...
@@ -75,38 +76,19 @@ private:
         auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
         auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
 
+        auto set = [](auto& pop, auto start, auto stop) {
+            for (auto i = start; i < stop; ++i)
+            {
+                pop.density()(i) = NAN;
+                for (auto& [id, type] : Components::componentMap)
+                    pop.flux().getComponent(type)(i) = NAN;
+            }
+        };
 
         for (auto& pop : ions)
         {
-            for (auto ix = 0u; ix < ix0; ++ix) // leftGhostNodes
-            {
-                auto& density = pop.density();
-                auto& flux    = pop.flux();
-
-                auto& fx = flux.getComponent(Component::X);
-                auto& fy = flux.getComponent(Component::Y);
-                auto& fz = flux.getComponent(Component::Z);
-
-                density(ix) = NAN;
-                fx(ix)      = NAN;
-                fy(ix)      = NAN;
-                fz(ix)      = NAN;
-            }
-
-            for (auto ix = ix1 + 1; ix <= ix2; ++ix)
-            {
-                auto& density = pop.density();
-                auto& flux    = pop.flux();
-
-                auto& fx = flux.getComponent(Component::X);
-                auto& fy = flux.getComponent(Component::Y);
-                auto& fz = flux.getComponent(Component::Z);
-
-                density(ix) = NAN;
-                fx(ix)      = NAN;
-                fy(ix)      = NAN;
-                fz(ix)      = NAN;
-            }
+            set(pop, 0u, ix0); // leftGhostNodes
+            set(pop, ix1 + 1, ix2 + 1);
         }
     }
 };
