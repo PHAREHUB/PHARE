@@ -8,6 +8,7 @@ set( SOURCES_INC
      data/grid/gridlayout.h
      data/grid/gridlayout_impl.h
      data/grid/gridlayoutimplyee.h
+     data/grid/gridlayout_utils.h
      data/ndarray/ndarray_vector.h
      data/particles/particle.h
      data/particles/particle_utilities.h

@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "core/data/grid/gridlayoutdefs.h"
+#include "core/data/grid/gridlayout_utils.h"
 #include "core/data/vecfield/vecfield_component.h"
 #include "core/utilities/index/index.h"
 
@@ -12,68 +13,12 @@ namespace PHARE
 {
 namespace core
 {
-    /** @brief Actual implementation of the Ampere equation
-     *
-     * This implementation is used by the Ampere object to calculate the current density J.
-     * It is templated by the layout and the dimension so specialized template actually do the job
-     *
-     */
-    template<typename GridLayout, std::size_t dim>
-    class AmpereImpl
-    {
-    };
-
-
-    /** @brief Base class for AmpereImpl specialized classes
-     * to factorize the code that deals with the GridLayout.
-     *
-     * The purpose of this class is to store the GridLayout
-     * pointer of Ampere, and propose the interface to check
-     * whether it's been set or not.
-     *
-     */
     template<typename GridLayout>
-    class AmpereImplInternals
+    class Ampere : public LayoutHolder<GridLayout>
     {
-    protected:
-        GridLayout* layout_{nullptr};
-
-    public:
-        /**
-         * @brief hasLayoutSet returns true if the Layout has been set
-         */
-        bool hasLayoutSet() const { return (layout_ == nullptr) ? false : true; }
-
-
-        /**
-         * @brief setLayout is used to give Ampere a pointer to a gridlayout
-         */
-        void setLayout(GridLayout* layout)
-        {
-            if (layout_ != nullptr)
-            {
-                throw std::runtime_error(
-                    "Error - ampere - cannot set layout_ because it is already set");
-            }
-            else
-            {
-                layout_ = layout;
-            }
-        }
-    };
-
-
-    /** @brief 1D specialization of the ampere equation solver implementation
-     */
-    template<typename GridLayout>
-    class AmpereImpl<GridLayout, 1> : public AmpereImplInternals<GridLayout>
-    {
-        static_assert(GridLayout::dimension == 1,
-                      "Error: Passed non-1D GridLayout to 1D AmpereImpl");
-
-    public:
-        template<typename VecField>
-        void operator()(VecField const& B, VecField& J)
+    private:
+        template<typename VecField, std::enable_if_t<VecField::dimension == 1, int> = 0>
+        void compute_(VecField const& B, VecField& J)
         {
             // auto &Jx = J.getComponent(Component::X); // =  0
             auto& Jy = J.getComponent(Component::Y); // = -dxBz
@@ -101,19 +46,12 @@ namespace core
                 Jz(ix) = this->layout_->deriv(By, {ix}, DirectionTag<Direction::X>{});
             }
         }
-    };
 
 
 
-    template<typename GridLayout>
-    class AmpereImpl<GridLayout, 2> : public AmpereImplInternals<GridLayout>
-    {
-        static_assert(GridLayout::dimension == 2,
-                      "Error: Passed non-2D GridLayout to 2D AmpereImpl");
 
-    public:
-        template<typename VecField>
-        void operator()(VecField const& B, VecField& J)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 2, int> = 0>
+        void compute_(VecField const& B, VecField& J)
         {
             auto& Jx = J.getComponent(Component::X); // =  dyBz
             auto& Jy = J.getComponent(Component::Y); // = -dxBz
@@ -163,19 +101,12 @@ namespace core
                 }
             }
         }
-    };
 
 
 
-    template<typename GridLayout>
-    class AmpereImpl<GridLayout, 3> : public AmpereImplInternals<GridLayout>
-    {
-        static_assert(GridLayout::dimension == 3,
-                      "Error: Passed non-3D GridLayout to 3D AmpereImpl");
 
-    public:
-        template<typename VecField>
-        void operator()(VecField const& B, VecField& J)
+        template<typename VecField, std::enable_if_t<VecField::dimension == 3, int> = 0>
+        void compute_(VecField const& B, VecField& J)
         {
             auto& Jx = J.getComponent(Component::X); // =  dyBz - dzBx
             auto& Jy = J.getComponent(Component::Y); // =  dzBx - dxBz
@@ -248,33 +179,23 @@ namespace core
                 }
             }
         }
-    };
 
 
 
-
-    template<typename GridLayout>
-    class Ampere
-    {
-    private:
-        AmpereImpl<GridLayout, GridLayout::dimension> impl_;
 
     public:
         template<typename VecField>
         void operator()(VecField const& B, VecField& J)
         {
-            if (!impl_.hasLayoutSet())
+            if (!this->hasLayout())
             {
                 throw std::runtime_error(
                     "Error - Ampere - GridLayout not set, cannot proceed to calculate ampere()");
             }
             std::cout << "I'm solving ampere " << GridLayout::dimension << "\n";
 
-            impl_(B, J);
+            compute_(B, J);
         }
-
-
-        void setLayout(GridLayout* layout) { impl_.setLayout(layout); }
     };
 } // namespace core
 } // namespace PHARE

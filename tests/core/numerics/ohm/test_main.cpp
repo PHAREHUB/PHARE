@@ -15,82 +15,98 @@
 
 using namespace PHARE::core;
 
+template<std::size_t dim>
 struct FieldMock
 {
+    static auto constexpr dimension = dim;
     double data;
     double& operator()([[maybe_unused]] uint32 i) { return data; }
     double const& operator()([[maybe_unused]] uint32 i) const { return data; }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
 };
 
+template<typename Field>
 struct VecFieldMock
 {
-    FieldMock fm;
-    FieldMock& getComponent([[maybe_unused]] Component comp) { return fm; }
-    FieldMock const& getComponent([[maybe_unused]] Component comp) const { return fm; }
+    using field_type                = Field;
+    static auto constexpr dimension = Field::dimension;
+    Field fm;
+    Field& getComponent([[maybe_unused]] Component comp) { return fm; }
+    Field const& getComponent([[maybe_unused]] Component comp) const { return fm; }
 };
 
 
 struct GridLayoutMock1D
 {
-    static const int dimension = 1;
-    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<1> mi,
+    static const auto dimension = 1u;
+    double deriv([[maybe_unused]] FieldMock<1> const& f, [[maybe_unused]] MeshIndex<1u> mi,
                  [[maybe_unused]] DirectionTag<Direction::X>)
     {
         return 0;
     }
-    int physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
     {
         return 0;
     }
-    int physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir) { return 0; }
-    // unused function with no return (Werror)
-    // std::array<WeightPoint<dimension>, 2> momentsToEx() { };
+    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
 };
 
 struct GridLayoutMock2D
 {
-    static const int dimension = 2;
-    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2> mi,
+    static const auto dimension = 2u;
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi,
                  [[maybe_unused]] DirectionTag<Direction::X>)
     {
         return 0;
     }
-    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<2> mi,
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi,
                  [[maybe_unused]] DirectionTag<Direction::Y>)
     {
         return 0;
     }
-    int physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
+                                   [[maybe_unused]] Direction dir)
     {
         return 0;
     }
-    int physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir) { return 0; }
+    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
+                                 [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
 };
 
 struct GridLayoutMock3D
 {
-    static const int dimension = 3;
-    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3> mi,
+    static const auto dimension = 3u;
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi,
                  [[maybe_unused]] DirectionTag<Direction::X>)
     {
         return 0;
     }
-    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3> mi,
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi,
                  [[maybe_unused]] DirectionTag<Direction::Y>)
     {
         return 0;
     }
-    double deriv([[maybe_unused]] FieldMock const& f, [[maybe_unused]] MeshIndex<3> mi,
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi,
                  [[maybe_unused]] DirectionTag<Direction::Z>)
     {
         return 0;
     }
-    int physicalStartIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir)
+    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
+                                   [[maybe_unused]] Direction dir)
     {
         return 0;
     }
-    int physicalEndIndex([[maybe_unused]] FieldMock&, [[maybe_unused]] Direction dir) { return 0; }
+    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
+                                 [[maybe_unused]] Direction dir)
+    {
+        return 0;
+    }
 };
 
 
@@ -117,8 +133,8 @@ TEST(Ohm, canBe3D)
 
 TEST(Ohm, shouldBeGivenAGridLayoutPointerToBeOperational)
 {
-    [[maybe_unused]] FieldMock n, Pe;
-    [[maybe_unused]] VecFieldMock Ve, B, J, Enew;
+    [[maybe_unused]] FieldMock<1> n, Pe;
+    [[maybe_unused]] VecFieldMock<FieldMock<1>> Ve, B, J, Enew;
 
     Ohm<GridLayoutMock1D> ohm1d;
     auto layout1d = std::make_unique<GridLayoutMock1D>();
