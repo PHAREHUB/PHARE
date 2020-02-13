@@ -17,7 +17,6 @@ using PHARE::core::Box;
 using PHARE::core::makeSelector;
 using PHARE::core::Particle;
 using PHARE::core::ParticleArray;
-using PHARE::core::ParticleSelector;
 using PHARE::core::Point;
 
 
@@ -42,9 +41,9 @@ public:
 
     void setupBoxes()
     {
-        auto right  = Box<int, 2>{Point<int, 2>{20, 0}, Point<int, 2>{21, 10}};
-        auto corner = Box<int, 2>{Point<int, 2>{20, 10}, Point<int, 2>{21, 11}};
-        auto up     = Box<int, 2>{Point<int, 2>{0, 10}, Point<int, 2>{20, 11}};
+        auto right  = Box<int, 2>{Point<int, 2>{21, 0}, Point<int, 2>{22, 10}};
+        auto corner = Box<int, 2>{Point<int, 2>{21, 11}, Point<int, 2>{22, 12}};
+        auto up     = Box<int, 2>{Point<int, 2>{0, 11}, Point<int, 2>{20, 11}};
 
         boundaryBoxes.push_back(std::move(right));
         boundaryBoxes.push_back(std::move(up));
@@ -55,10 +54,10 @@ public:
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> disInX(0, 19);
-        std::uniform_int_distribution<> disInY(0, 9);
-        std::uniform_int_distribution<> disInBox0Y(0, 9);
-        std::uniform_int_distribution<> disInBox1X(0, 19);
+        std::uniform_int_distribution<> disInX(0, 20);
+        std::uniform_int_distribution<> disInY(0, 10);
+        std::uniform_int_distribution<> disInBox0Y(0, 10);
+        std::uniform_int_distribution<> disInBox1X(0, 20);
 
         for (int i = 0; i < 850; ++i)
         {
@@ -68,20 +67,20 @@ public:
 
         for (int i = 850; i < 900; ++i)
         {
-            particles[i].iCell[0] = 20;
+            particles[i].iCell[0] = 21;
             particles[i].iCell[1] = disInBox0Y(gen);
         }
 
         for (int i = 900; i < 950; ++i)
         {
             particles[i].iCell[0] = disInBox1X(gen);
-            particles[i].iCell[1] = 10;
+            particles[i].iCell[1] = 11;
         }
 
         for (int i = 950; i < 1000; ++i)
         {
-            particles[i].iCell[0] = 20;
-            particles[i].iCell[1] = 10;
+            particles[i].iCell[0] = 21;
+            particles[i].iCell[1] = 11;
         }
 
         for (int i = 1000; i < 1025; ++i)
@@ -89,7 +88,7 @@ public:
             particles[i].iCell[0] = -1;
             particles[i].iCell[1] = disInBox0Y(gen);
         }
-        for (int i = 1000; i < 1025; ++i)
+        for (int i = 1025; i < 1050; ++i)
         {
             particles[i].iCell[0] = disInBox1X(gen);
             particles[i].iCell[1] = -1;

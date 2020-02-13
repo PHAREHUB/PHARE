@@ -32,6 +32,7 @@ set( SOURCES_INC
      numerics/faraday/faraday.h
      numerics/ohm/ohm.h
      numerics/moments/moments.h
+     numerics/ion_updater/ion_updater.h
      models/physical_state.h
      models/hybrid_state.h
      models/mhd_state.h

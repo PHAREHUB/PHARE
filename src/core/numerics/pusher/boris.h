@@ -13,9 +13,9 @@ namespace PHARE
 namespace core
 {
     template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition>
+             typename ParticleSelector, typename BoundaryCondition, typename GridLayout>
     class BorisPusher : public Pusher<dim, ParticleIterator, Electromag, Interpolator,
-                                      ParticleSelector, BoundaryCondition>
+                                      ParticleSelector, BoundaryCondition, GridLayout>
     {
     public:
         using ParticleRange = Range<ParticleIterator>;
@@ -25,12 +25,13 @@ namespace core
                                       Electromag const& emFields, double mass,
                                       Interpolator& interpolator,
                                       ParticleSelector const& particleIsNotLeaving,
-                                      BoundaryCondition& bc) override
+                                      BoundaryCondition& bc, GridLayout const& layout) override
         {
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
             // get a pointer on the first particle of rangeOut that leaves the patch
-            auto firstLeaving = pushStep_(rangeIn, rangeOut, particleIsNotLeaving);
+            auto firstLeaving
+                = pushStep_(rangeIn, rangeOut, particleIsNotLeaving, PushStep::PrePush);
 
             // apply boundary condition on the particles in [firstLeaving, rangeOut.end[
             // that actually leave through a physical boundary condition
@@ -43,14 +44,14 @@ namespace core
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
-            interpolator(rangeOut.begin(), rangeOut.end(), emFields);
+            interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
             // get the particle velocity from t=n to t=n+1
             accelerate_(rangeOut, rangeOut, mass);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
-            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving);
+            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving, PushStep::PostPush);
 
             // apply BC on the leaving particles that leave through physical BC
             // and get pointer on new End, discarding particles leaving elsewhere
@@ -65,26 +66,27 @@ namespace core
         /** see Pusher::move() domentation*/
         virtual decltype(std::declval<ParticleRange>().end())
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
-             double mass, Interpolator& interpolator,
-             ParticleSelector const& particleIsNotLeaving) override
+             double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
+             GridLayout const& layout) override
         {
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
             // get a pointer on the first particle of rangeOut that leaves the patch
-            auto firstLeaving = pushStep_(rangeIn, rangeOut, particleIsNotLeaving);
+            auto firstLeaving
+                = pushStep_(rangeIn, rangeOut, particleIsNotLeaving, PushStep::PrePush);
 
             rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
-            interpolator(rangeOut.begin(), rangeOut.end(), emFields);
+            interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
             // get the particle velocity from t=n to t=n+1
             accelerate_(rangeOut, rangeOut, mass);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
-            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving);
+            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving, PushStep::PostPush);
 
             rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
 
@@ -103,6 +105,8 @@ namespace core
 
 
     private:
+        enum class PushStep { PrePush, PostPush };
+
         /** move the particle partIn of half a time step and store it in partOut
          */
         template<typename ParticleIter>
@@ -129,7 +133,7 @@ namespace core
          */
         template<typename ParticleRangeIn, typename ParticleRangeOut>
         auto pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut,
-                       ParticleSelector const& particleIsNotLeaving)
+                       ParticleSelector const& particleIsNotLeaving, PushStep step)
         {
             auto swapee = rangeOut.end();
             --swapee;
@@ -137,8 +141,15 @@ namespace core
 
             auto currentOut = rangeOut.begin();
 
-            for (auto currentIn : rangeIn)
+            for (auto& currentIn : rangeIn)
             {
+                if (step == PushStep::PrePush)
+                {
+                    currentOut->charge = currentIn.charge;
+                    currentOut->weight = currentIn.weight;
+                    for (std::size_t i = 0; i < 3; ++i)
+                        currentOut->v[i] = currentIn.v[i];
+                }
                 // push the particle
                 advancePosition_(currentIn, *currentOut);
 

@@ -73,8 +73,9 @@ public:
             // since for now it is the only model available
             // same for the solver
             multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
-            multiphysInteg_->registerAndInitSolver(0, maxLevelNumber_ - 1,
-                                                   std::make_unique<SolverPPC>());
+            multiphysInteg_->registerAndInitSolver(
+                0, maxLevelNumber_ - 1,
+                std::make_unique<SolverPPC>(dict["simulation"]["solverPPC"]));
             multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
 
 

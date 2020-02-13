@@ -10,7 +10,7 @@ namespace PHARE
 namespace core
 {
     template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition>
+             typename ParticleSelector, typename BoundaryCondition, typename GridLayout>
     class Pusher
     {
     protected:
@@ -45,7 +45,7 @@ namespace core
         virtual ParticleIterator
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-             BoundaryCondition& bc)
+             BoundaryCondition& bc, GridLayout const& layout)
             = 0;
 
 
@@ -58,7 +58,8 @@ namespace core
          */
         virtual ParticleIterator // decltype(std::declval<ParticleRange>().end())
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
-             double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving)
+             double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
+             GridLayout const& layout)
             = 0;
 
 

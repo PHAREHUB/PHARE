@@ -16,13 +16,15 @@ namespace core
     {
     public:
         template<std::size_t dim, typename ParticleIterator, typename Electromag,
-                 typename Interpolator, typename ParticleSelector, typename BoundaryCondition>
+                 typename Interpolator, typename ParticleSelector, typename BoundaryCondition,
+                 typename GridLayout>
         static auto makePusher(std::string pusherName)
         {
-            if (pusherName == "boris")
+            if (pusherName == "modified_boris")
             {
-                return std::make_unique<BorisPusher<dim, ParticleIterator, Electromag, Interpolator,
-                                                    ParticleSelector, BoundaryCondition>>();
+                return std::make_unique<
+                    BorisPusher<dim, ParticleIterator, Electromag, Interpolator, ParticleSelector,
+                                BoundaryCondition, GridLayout>>();
             }
 
             throw std::runtime_error("Error : Invalid Pusher name");
