@@ -513,11 +513,97 @@ namespace core
         }
 
 
+        auto static constexpr JxToMoments()
+        {
+            // Jx is dual primal primal
+            // moments are primal primal primal
+            // operation is thus Dpp to Ppp
+            // shift only in the X direction
+
+            auto constexpr iShift = dualToPrimal();
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+            if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+        }
+
+
+        auto static constexpr JyToMoments()
+        {
+            // Jy is primal dual primal
+            // moments are primal primal primal
+            // operation is thus pDp to pPp
+            // shift only in the Y direction
+
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+        }
+
+
+
+        auto static constexpr JzToMoments()
+        {
+            // Jy is primal primal dual
+            // moments are primal primal primal
+            // operation is thus ppD to ppP
+            // shift only in the Z direction
+
+            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
+                return std::array<WeightPoint<dimension>, 1>{P1};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, 0, iShift}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+        }
+
 
 
         auto static constexpr ByToEx()
-        {
-            // By is dual primal dual
+        { // By is dual primal dual
             // Ex is dual primal primal
             // operation is thus dpD to dpP
             // shift only in the Z direction
@@ -774,7 +860,7 @@ namespace core
                 return std::array<WeightPoint<dimension>, 1>{P1};
             }
         }
-    };
+    }; // namespace core
 
 
     /*

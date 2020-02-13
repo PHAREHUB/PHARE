@@ -353,6 +353,7 @@ class Simulation(object):
 
         self.diagnostics = []
         self.model = None
+        self.electrons = None
 
     def final_time(self):
         return self.time_step * self.time_step_nbr
@@ -398,4 +399,7 @@ class Simulation(object):
     def set_model(self, model):
         self.model = model
 
+
+    def set_electrons(self, electrons):
+        self.electrons = electrons
 # ------------------------------------------------------------------------------

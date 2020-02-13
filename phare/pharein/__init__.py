@@ -1,9 +1,14 @@
 
 from .uniform_model import UniformModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
+from .electron_model import ElectronModel
 from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics
 from .simulation import Simulation
 
+
+def getSimulation():
+    from phare.pharein.globals import sim
+    return sim
 
 
 def populateDict():
@@ -136,4 +141,13 @@ def populateDict():
         add(diag_path + "filePath", simulation.diag_options["options"]["dir"])
     else:
         add(diag_path + "filePath", "phare_output")
+
+
+
+    #### adding electrons
+    if simulation.electrons is None:
+        raise RuntimeError("Error - no electrons registered to this Simulation")
+    else:
+        for item in simulation.electrons.dict_path():
+            add("simulation/"+item[0], item[1])
 

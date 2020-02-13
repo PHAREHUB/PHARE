@@ -891,6 +891,26 @@ namespace core
         auto static constexpr EzToMoments() { return GridLayoutImpl::EzToMoments(); }
 
 
+        /**
+         * @brief JxToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Jx onto moments.
+         */
+        auto static constexpr JxToMoments() { return GridLayoutImpl::JxToMoments(); }
+
+
+        /**
+         * @brief JyToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Jy onto moments.
+         */
+        auto static constexpr JyToMoments() { return GridLayoutImpl::JyToMoments(); }
+
+
+        /**
+         * @brief JzToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Jz onto moments.
+         */
+        auto static constexpr JzToMoments() { return GridLayoutImpl::JzToMoments(); }
+
 
         /**
          * @brief ByToEx return the indexes and associated coef to compute the linear
@@ -899,13 +919,11 @@ namespace core
         auto static constexpr ByToEx() { return GridLayoutImpl::ByToEx(); }
 
 
-
         /**
          * @brief BzToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto Ex.
          */
         auto static constexpr BzToEx() { return GridLayoutImpl::BzToEx(); }
-
 
 
         /**

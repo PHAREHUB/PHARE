@@ -5,6 +5,7 @@
 #include "core/data/grid/gridlayout_impl.h"
 #include "core/data/ions/ion_population/ion_population.h"
 #include "core/data/ions/ions.h"
+#include "core/data/electrons/electrons.h"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "core/data/vecfield/vecfield.h"
 #include "initializer/data_provider.h"
@@ -36,7 +37,8 @@ using MaxwellianParticleInitializer1D
 using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D            = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D      = Electromag<VecField1D>;
-using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, SAMRAI_Types>;
+using Electrons1D       = Electrons<Ions1D, Electromag1D>;
+using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types>;
 using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
 using ResourcesManagerT = ResourcesManager<GridYee1D>;
 
@@ -203,6 +205,9 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
     dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
     dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
+
+    dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
+    dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
 
     return dict;
 }

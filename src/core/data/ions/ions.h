@@ -27,7 +27,7 @@ namespace core
         using particle_array_type = typename IonPopulation::particle_array_type;
         using ParticleInitializerFactoryT
             = ParticleInitializerFactory<particle_array_type, GridLayout>;
-
+        using gridlayout_type           = GridLayout;
         static constexpr auto dimension = GridLayout::dimension;
 
 

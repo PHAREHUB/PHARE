@@ -1,9 +1,11 @@
 
+
 from phare import cpp
 import phare.pharein as ph, numpy as np
+from phare.pharein import ElectronModel
 
+def basicSimulatorArgs(dim:int, interp:int, **kwargs):
 
-def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     cells = [65 for i in range(dim)]
     if "cells" in kwargs:
         cells = kwargs["cells"]
@@ -73,6 +75,7 @@ def makeBasicModel(extra_pops={}):
     )
 
 
+
 def create_simulator(dim, interp, **input):
 
     cpp.reset()
@@ -87,8 +90,14 @@ def create_simulator(dim, interp, **input):
     model = makeBasicModel(extra_pops)
     if "diags_fn" in input:
         input["diags_fn"](model)
+
+    ElectronModel(closure="isothermal",Te = 0.12)
+
     ph.populateDict()
     hier = cpp.make_hierarchy()
     sim = cpp.make_simulator(hier)
     sim.initialize()
     return [cpp.make_diagnostic_manager(sim, hier), sim, hier]
+
+
+

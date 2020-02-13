@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 
-from pharein import Simulation
-from pharein import MaxwellianFluidModel
-from pharein import ElectromagDiagnostics
-from pharein import FluidDiagnostics
-from pharein import ParticleDiagnostics
+from phare.pharein import Simulation
+from phare.pharein import MaxwellianFluidModel
+from phare.pharein import ElectronModel
+from phare.pharein import ElectromagDiagnostics
+from phare.pharein import FluidDiagnostics
+from phare.pharein import getSimulation
+from phare.pharein import ParticleDiagnostics
 
 
 
@@ -44,18 +46,24 @@ Simulation(
 
 import numpy as np
 
+Te = 0.12
+
 def n(x):
-    x0 = 5.
-    return 1./np.cosh(x-x0)**2
+    return 1.
 
 def bx(x):
-    x0=5.
-    return np.tanh(x-x0)
+    xmax = getSimulation().simulation_domain()[0]
+    return np.cos(2*np.pi/xmax * x)
+
+
 
 
 MaxwellianFluidModel(bx=bx,
                      protons={"density":n},
                      background={})
+
+
+ElectronModel(closure="isothermal",Te = Te)
 
 
 
@@ -81,7 +89,7 @@ FluidDiagnostics(
 
 
 FluidDiagnostics(
-    diag_type="bulk_velocity",
+    diag_type="bulkVelocity",
     write_every=10,
     compute_every=5,
     start_iteration=0,
@@ -115,15 +123,6 @@ ElectromagDiagnostics(
     last_iteration=990
 )
 
-
-
-ParticleDiagnostics(
-        compute_every=10,
-        write_every=10,
-        start_iteration=0,
-        last_iteration=90,
-        diag_type="space_box",          # choose particles within a spatial box
-        extent=(2., 4.),                # extent of the box
-        population_name="protons"
-        )
+for item in getSimulation().electrons.dict_path():
+    print(item[0], item[1])
 

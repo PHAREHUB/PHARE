@@ -478,11 +478,6 @@ namespace amr
 
                         nameToResourceInfo_.emplace(resourcesName, info);
                     }
-                    else
-                    {
-                        throw std::runtime_error(
-                            "registerResources<isUserFieldType> failed: key already in map");
-                    }
                 }
             }
 
@@ -504,11 +499,6 @@ namespace amr
                             info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
                         nameToResourceInfo_.emplace(name, info);
-                    }
-                    else
-                    {
-                        throw std::runtime_error(
-                            "registerResources<isUserParticleType> failed: key already in map");
                     }
                 }
             }
@@ -558,7 +548,8 @@ namespace amr
                 auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
                 if (resourceVariablesInfo != nameToResourceInfo_.end())
                 {
-                    patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
+                    if (!patch.checkAllocated(resourceVariablesInfo->second.id))
+                        patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
                 }
                 else
                 {

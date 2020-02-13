@@ -173,6 +173,8 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
     dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
 
+    dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
+    dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
     return dict;
 }
 
@@ -536,8 +538,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
 
     AfullHybridBasicHierarchy()
     {
-        hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
-        hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
+        hybridModel->resourcesManager->registerResources(hybridModel->state);
         solver->registerResources(*hybridModel);
 
         tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
