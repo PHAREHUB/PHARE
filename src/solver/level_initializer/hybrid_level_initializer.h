@@ -11,6 +11,7 @@
 #include "level_initializer.h"
 #include "solver/physical_models/hybrid_model.h"
 #include "solver/physical_models/physical_model.h"
+#include "core/data/ions/ions.h"
 
 namespace PHARE
 {
@@ -80,6 +81,7 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
+                core::setNansOnGhosts<decltype(ions), GridLayoutT>(ions, layout);
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }

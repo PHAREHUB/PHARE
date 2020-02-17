@@ -236,7 +236,8 @@ namespace core
 
 
 
-    template<typename Ions, typename GridLayout>
+    template<typename Ions, typename GridLayout,
+             std::enable_if_t<std::decay_t<Ions>::dimension == 1, int> = 0>
     void setNansOnGhosts(Ions& ions, GridLayout const& layout)
     {
         auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
@@ -257,6 +258,22 @@ namespace core
             set(pop, 0u, ix0); // leftGhostNodes
             set(pop, ix1 + 1, ix2 + 1);
         }
+    }
+
+
+
+
+    template<typename Ions, typename GridLayout,
+             std::enable_if_t<std::decay_t<Ions>::dimension == 2, int> = 0>
+    void setNansOnGhosts(Ions& ions, GridLayout const& layout)
+    {
+    }
+
+
+    template<typename Ions, typename GridLayout,
+             std::enable_if_t<std::decay_t<Ions>::dimension == 3, int> = 0>
+    void setNansOnGhosts(Ions& ions, GridLayout const& layout)
+    {
     }
 
 
