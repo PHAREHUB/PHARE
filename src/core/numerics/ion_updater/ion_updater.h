@@ -11,6 +11,8 @@
 #include "core/numerics/boundary_condition/boundary_condition.h"
 #include "core/numerics/moments/moments.h"
 
+#include "core/data/ions/ions.h"
+
 #include "initializer/data_provider.h"
 
 
@@ -55,76 +57,59 @@ public:
     {
     }
 
-    template<typename GhostFiller>
-    void update(Ions& ions, Electromag const& em, GridLayout const& layout, double dt,
-                GhostFiller&& fillGhosts, UpdaterMode = UpdaterMode::particles_and_moments);
+    void updatePopulations(Ions& ions, Electromag const& em, GridLayout const& layout, double dt,
+                           UpdaterMode = UpdaterMode::particles_and_moments);
+
+
+    void updateIons(Ions& ions, GridLayout const& layout);
 
 
 private:
-    template<typename GhostFiller>
-    void updateMomentsOnly_(Ions& ions, Electromag const& em, GridLayout const& layout,
-                            GhostFiller&& fillGhosts);
+    void updateMomentsOnly_(Ions& ions, Electromag const& em, GridLayout const& layout);
 
-    template<typename GhostFiller>
-    void updateAll_(Ions& ions, Electromag const& em, GridLayout const& layout,
-                    GhostFiller&& fillGhosts);
-
-
-    void setNaNsOnGhosts_(Ions& ions, GridLayout const& layout)
-    {
-        auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-        auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-        auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-
-        auto set = [](auto& pop, auto start, auto stop) {
-            for (auto i = start; i < stop; ++i)
-            {
-                pop.density()(i) = NAN;
-                for (auto& [id, type] : Components::componentMap)
-                    pop.flux().getComponent(type)(i) = NAN;
-            }
-        };
-
-        for (auto& pop : ions)
-        {
-            set(pop, 0u, ix0); // leftGhostNodes
-            set(pop, ix1 + 1, ix2 + 1);
-        }
-    }
+    void updateAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
 };
 
 
 
 
 template<typename Ions, typename Electromag, typename GridLayout>
-template<typename GhostFiller>
-void IonUpdater<Ions, Electromag, GridLayout>::update(Ions& ions, Electromag const& em,
-                                                      GridLayout const& layout, double dt,
-                                                      GhostFiller&& fillGhosts, UpdaterMode mode)
+void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Electromag const& em,
+                                                                 GridLayout const& layout,
+                                                                 double dt, UpdaterMode mode)
 {
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(layout.meshSize(), dt);
 
     if (mode == UpdaterMode::moments_only)
     {
-        updateMomentsOnly_(ions, em, layout, std::forward<GhostFiller>(fillGhosts));
+        updateMomentsOnly_(ions, em, layout);
     }
     else
     {
-        updateAll_(ions, em, layout, std::forward<GhostFiller>(fillGhosts));
+        updateAll_(ions, em, layout);
     }
 }
 
 
+
 template<typename Ions, typename Electromag, typename GridLayout>
-template<typename GhostFiller>
+void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions, GridLayout const& layout)
+{
+    setNansOnGhosts<Ions, GridLayout>(ions, layout);
+    ions.computeDensity();
+    ions.computeBulkVelocity();
+}
+
+
+
+template<typename Ions, typename Electromag, typename GridLayout>
 /**
  * @brief IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_
    evolves moments from time n to n+1 without updating particles, which stay at time n
  */
 void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, Electromag const& em,
-                                                                  GridLayout const& layout,
-                                                                  GhostFiller&& fillGhosts)
+                                                                  GridLayout const& layout)
 {
     auto inDomainSelector = ParticleSelector{layout.AMRBox()};
 
@@ -150,23 +135,16 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
         pushAndAccumulate(pop.patchGhostParticles(), tmpPatchGhost);
         pushAndAccumulate(pop.levelGhostParticles(), tmpLevelGhost);
     }
-
-    fillGhosts();
-    setNaNsOnGhosts_(ions, layout);
-    ions.computeDensity();
-    ions.computeBulkVelocity();
 }
 
 
 template<typename Ions, typename Electromag, typename GridLayout>
-template<typename GhostFiller>
 /**
  * @brief IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_
    evolves moments and particles from time n to n+1
  */
 void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag const& em,
-                                                          GridLayout const& layout,
-                                                          GhostFiller&& fillGhosts)
+                                                          GridLayout const& layout)
 {
     auto inDomainSelector = ParticleSelector{layout.AMRBox()};
 
@@ -195,11 +173,6 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag
         interpolator_(std::begin(domainParticles), std::end(domainParticles), pop.density(),
                       pop.flux(), layout);
     }
-
-    fillGhosts();
-    setNaNsOnGhosts_(ions, layout);
-    ions.computeDensity();
-    ions.computeBulkVelocity();
 }
 
 
