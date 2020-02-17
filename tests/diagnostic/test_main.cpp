@@ -18,11 +18,11 @@ void validateFluidDump(Simulator& sim, Writer& hi5)
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto& val) {
         auto hifile = hi5.makeFile(hi5.fileString(tree));
-        checkField(hifile->file(), layout, val, path + tree);
+        checkField(hifile->file(), layout, val, path + tree, FieldDomainFilter{});
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
         auto hifile = hi5.makeFile(hi5.fileString(tree));
-        checkVecField(hifile->file(), layout, val, path + tree);
+        checkVecField(hifile->file(), layout, val, path + tree, FieldDomainFilter{});
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
@@ -37,8 +37,7 @@ void validateFluidDump(Simulator& sim, Writer& hi5)
 
         std::string tree{"/ions/bulkVelocity"};
         auto hifile = hi5.makeFile(hi5.fileString(tree));
-        checkVecField(hifile->file(), layout, ions.velocity(), path + tree,
-                      PHARE::FieldDomainPlusNFilter{1});
+        checkVecField(hifile->file(), layout, ions.velocity(), path + tree, FieldDomainFilter{});
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
