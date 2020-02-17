@@ -24,27 +24,58 @@ public:
         = 0;
     virtual void initDataSets(DiagnosticDAO& diagnostic,
                               std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-                              Attributes& patchAttributes, int maxLevel)
+                              Attributes& patchAttributes, size_t maxLevel)
+        = 0;
+
+    virtual void
+    writeAttributes(DiagnosticDAO&, Attributes&,
+                    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
+                    size_t maxLevel)
         = 0;
 
 protected:
     template<typename InitPatch>
     void initDataSets_(std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-                       Attributes& patchAttributes, std::size_t levelNbr, InitPatch&& initPatch)
+                       Attributes& patchAttributes, size_t maxLevel, InitPatch&& initPatch)
     {
-        for (size_t lvl = hi5_.minLevel; lvl <= levelNbr; lvl++)
+        for (size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
         {
             auto& lvlPatches  = patchIDs.at(lvl);
             size_t patchNbr   = lvlPatches.size();
-            size_t maxPatches = hi5_.getMaxOfPerMPI(patchNbr);
+            size_t maxPatches = hi5_.mpiGetMaxOf(patchNbr);
             for (size_t i = 0; i < patchNbr; i++)
-            {
-                std::string lvlPatchID = std::to_string(lvl) + "_" + lvlPatches[i];
-                initPatch(lvl, patchAttributes[lvlPatchID], lvlPatches[i]);
-            }
+                initPatch(lvl, patchAttributes[std::to_string(lvl) + "_" + lvlPatches[i]],
+                          lvlPatches[i]);
             for (size_t i = patchNbr; i < maxPatches; i++)
                 initPatch(lvl, patchAttributes);
         }
+    }
+
+    void
+    writeAttributes_(HighFive::File& file, DiagnosticDAO& diagnostic, Attributes& fileAttributes,
+                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&
+                         patchAttributes,
+                     std::size_t maxLevel)
+    {
+        for (size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
+        {
+            auto& lvlPatches  = patchAttributes.at(lvl);
+            size_t patchNbr   = lvlPatches.size();
+            size_t maxPatches = hi5_.mpiGetMaxOf(patchNbr);
+            for (auto const& [patch, attr] : lvlPatches)
+                hi5_.writeAttributeDict(file, attr, hi5_.getPatchPath("time", lvl, patch));
+            for (size_t i = patchNbr; i < maxPatches; i++)
+                hi5_.writeAttributeDict(file, hi5_.modelView().getEmptyPatchAttributes(), "");
+        }
+
+        hi5_.writeAttributeDict(file, fileAttributes, "/");
+    }
+
+    void writeGhostsAttr_(HighFive::File& file, std::string path, size_t ghosts, bool null)
+    {
+        Attributes dsAttr;
+        dsAttr["ghosts"] = ghosts;
+        hi5_.writeAttributeDict(file, dsAttr, null ? "" : path);
     }
 
     HighFiveDiagnostic& hi5_;

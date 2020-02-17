@@ -19,22 +19,31 @@ template<typename HighFiveDiagnostic>
 class ParticlesDiagnosticWriter : public Hi5DiagnosticTypeWriter<HighFiveDiagnostic>
 {
 public:
-    using Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::hi5_;
-    using Attributes = typename Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::Attributes;
-    static constexpr auto dimension = HighFiveDiagnostic::dimension;
-    using Packer                    = ParticlePacker<dimension>;
+    using Super = Hi5DiagnosticTypeWriter<HighFiveDiagnostic>;
+    using Super::hi5_;
+    using Super::initDataSets_;
+    using Super::writeAttributes_;
+    using Super::writeGhostsAttr_;
+    static constexpr auto dimension   = HighFiveDiagnostic::dimension;
+    static constexpr auto interpOrder = HighFiveDiagnostic::interpOrder;
+    using Attributes                  = typename Super::Attributes;
+    using Packer                      = ParticlePacker<dimension>;
 
     ParticlesDiagnosticWriter(HighFiveDiagnostic& hi5)
         : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
-    void write(DiagnosticDAO&, Attributes&, Attributes&) override;
+    void write(DiagnosticDAO&) override;
     void compute(DiagnosticDAO&) override {}
     void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
     void initDataSets(DiagnosticDAO& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-                      Attributes& patchAttributes, int maxLevel) override;
+                      Attributes& patchAttributes, size_t maxLevel) override;
+    void
+    writeAttributes(DiagnosticDAO&, Attributes&,
+                    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
+                    size_t maxLevel) override;
 
 private:
     size_t levels_ = 0;
@@ -92,28 +101,29 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     DiagnosticDAO& diagnostic, std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-    Attributes& patchAttributes, int maxLevel)
+    Attributes& patchAttributes, size_t maxLevel)
 {
-    auto& hi5 = this->hi5_;
+    auto& hi5  = this->hi5_;
+    auto& file = fileData.at(diagnostic.type)->file();
 
     auto createDataSet = [&](auto&& path, auto size, auto const& value) {
         using ValueType = std::decay_t<decltype(value)>;
-        auto& hfile     = fileData.at(diagnostic.type)->file();
         if constexpr (is_array_dataset<ValueType, dimension>)
-            return hi5.template createDataSet<typename ValueType::value_type>(hfile, path, size);
+            return hi5.template createDataSet<typename ValueType::value_type>(file, path, size);
         else
-            return hi5.template createDataSet<ValueType>(hfile, path, size);
+            return hi5.template createDataSet<ValueType>(file, path, size);
     };
 
     auto initDataSet = [&](auto& lvl, auto& patchID, auto tree, auto& attr) {
+        bool null = patchID.empty();
         std::string path{hi5_.getPatchPath("time", lvl, patchID) + tree + "/"};
         size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
-            createDataSet(
-                path + Packer::keys()[part_idx],
-                patchID.empty() ? 0 : attr[Packer::keys()[part_idx]].template to<size_t>(), arg);
+            createDataSet(path + Packer::keys()[part_idx],
+                          null ? 0 : attr[Packer::keys()[part_idx]].template to<size_t>(), arg);
             part_idx++;
         });
+        this->writeGhostsAttr_(file, path, amr::ghostWidthForParticles<interpOrder>(), null);
     };
 
     auto initIfActive = [&](auto& lvl, auto& tree, auto& attr, auto& pop, auto& patch, auto var) {
@@ -131,15 +141,12 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
         }
     };
 
-    Hi5DiagnosticTypeWriter<HighFiveDiagnostic>::initDataSets_(patchIDs, patchAttributes, maxLevel,
-                                                               initPatch);
+    initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
 }
 
 
 template<typename HighFiveDiagnostic>
-void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic,
-                                                          Attributes& fileAttributes,
-                                                          Attributes& patchAttributes)
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
 {
     auto& hi5 = this->hi5_;
 
@@ -170,9 +177,6 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnos
         hi5.writeDataSet(hfile, path + packer.keys()[2], copy.iCell.data());
         hi5.writeDataSet(hfile, path + packer.keys()[3], copy.delta.data());
         hi5.writeDataSet(hfile, path + packer.keys()[4], copy.v.data());
-
-        hi5.writeAttributeDict(hfile, fileAttributes, "/");
-        hi5.writeAttributeDict(hfile, patchAttributes, hi5.patchPath());
     };
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
@@ -188,6 +192,17 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnos
         checkWrite(tree, "levelGhost", pop.levelGhostParticles());
         checkWrite(tree, "patchGhost", pop.patchGhostParticles());
     }
+}
+
+
+template<typename HighFiveDiagnostic>
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
+    DiagnosticDAO& diagnostic, Attributes& fileAttributes,
+    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
+    size_t maxLevel)
+{
+    writeAttributes_(fileData.at(diagnostic.type)->file(), diagnostic, fileAttributes,
+                     patchAttributes, maxLevel);
 }
 
 } // namespace PHARE::diagnostic::h5
