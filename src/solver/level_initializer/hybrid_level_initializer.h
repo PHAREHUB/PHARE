@@ -81,7 +81,7 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
-                core::setNansOnGhosts<std::decay_t<decltype(ions)>, GridLayoutT>(ions, layout);
+                core::setNansOnGhosts(ions, layout);
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }

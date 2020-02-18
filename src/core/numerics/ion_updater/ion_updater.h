@@ -96,7 +96,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions, GridLayout const& layout)
 {
-    setNansOnGhosts<Ions, GridLayout>(ions, layout);
+    setNansOnGhosts(ions, layout);
     ions.computeDensity();
     ions.computeBulkVelocity();
 }
