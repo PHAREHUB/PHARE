@@ -14,7 +14,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_core
   ${GTEST_LIBS})
 
-add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 add_custom_command(TARGET test-ampere
                    POST_BUILD
                    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_ampere.py ${CMAKE_CURRENT_BINARY_DIR})

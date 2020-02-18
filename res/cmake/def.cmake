@@ -71,8 +71,10 @@ function(add_phare_test_ binary directory)
 endfunction(add_phare_test_)
 
 function(add_no_mpi_phare_test binary directory)
-  add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
-  add_phare_test_(${binary} ${directory})
+  if(NOT testMPI OR (testMPI AND forceSerialTests))
+    add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
+    add_phare_test_(${binary} ${directory})
+  endif()
 endfunction(add_no_mpi_phare_test)
 
 function(add_no_mpi_python3_test name file directory)

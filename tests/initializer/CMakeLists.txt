@@ -18,6 +18,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init.py ${CMAKE_CURRENT_BINARY_DIR}/init.py @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)
 
-add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 
