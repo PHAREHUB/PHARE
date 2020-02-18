@@ -53,7 +53,7 @@ private:
 
 public:
     IonUpdater(PHARE::initializer::PHAREDict& dict)
-        : pusher_{makePusher(dict["name"].template to<std::string>())}
+        : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
     {
     }
 

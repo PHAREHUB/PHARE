@@ -4,7 +4,10 @@
 
 #include "core/models/physical_state.h"
 #include "initializer/data_provider.h"
+
 #include "core/utilities/algorithm.h"
+#include "core/hybrid/hybrid_quantities.h"
+
 
 #include <cstddef>
 #include <sstream>
@@ -28,11 +31,15 @@ namespace core
         HybridState(PHARE::initializer::PHAREDict dict)
             : electromag{dict["electromag"]}
             , ions{dict["ions"]}
+            , J{"J", HybridQuantity::Vector::J}
         {
         }
 
+        using VecField = typename Electromag::vecfield_type;
+
         Electromag electromag;
         Ions ions;
+        VecField J;
 
         std::string to_str()
         {
@@ -48,19 +55,25 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return electromag.isUsable() and ions.isUsable(); }
+        bool isUsable() const { return electromag.isUsable() and ions.isUsable() && J.isUsable(); }
 
 
 
-        bool isSettable() const { return electromag.isSettable() and ions.isSettable(); }
+        bool isSettable() const
+        {
+            return electromag.isSettable() and ions.isSettable() && J.isSettable();
+        }
 
 
         auto getCompileTimeResourcesUserList() const
         {
-            return std::forward_as_tuple(electromag, ions);
+            return std::forward_as_tuple(electromag, ions, J);
         }
 
-        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(electromag, ions); }
+        auto getCompileTimeResourcesUserList()
+        {
+            return std::forward_as_tuple(electromag, ions, J);
+        }
 
 
         //-------------------------------------------------------------------------

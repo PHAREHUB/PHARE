@@ -14,12 +14,12 @@ namespace PHARE
 class ISimulator
 {
 public:
-    virtual void initialize()    = 0;
-    virtual double startTime()   = 0;
-    virtual double endTime()     = 0;
-    virtual double timeStep()    = 0;
-    virtual void advance()       = 0;
-    virtual std::string to_str() = 0;
+    virtual void initialize()       = 0;
+    virtual double startTime()      = 0;
+    virtual double endTime()        = 0;
+    virtual double timeStep()       = 0;
+    virtual void advance(double dt) = 0;
+    virtual std::string to_str()    = 0;
     virtual ~ISimulator() {}
 };
 
@@ -74,8 +74,7 @@ public:
             // same for the solver
             multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
             multiphysInteg_->registerAndInitSolver(
-                0, maxLevelNumber_ - 1,
-                std::make_unique<SolverPPC>(dict["simulation"]["solverPPC"]));
+                0, maxLevelNumber_ - 1, std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
             multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
 
 
@@ -122,7 +121,9 @@ public:
     double startTime() override { return 0.; }
     double endTime() override { return 100.; }
     double timeStep() override { return 0.01; }
-    void advance() override {}
+
+    void advance(double dt) override { integrator_->advance(dt); }
+
 
     auto& getHybridModel() { return hybridModel_; }
 

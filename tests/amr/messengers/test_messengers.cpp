@@ -99,7 +99,7 @@ PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
 
-    dict["simulation"]["solverPPC"]["pusher"]["name"] = std::string{"modified_boris"};
+    dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
 
     dict["ions"]["name"]                                    = std::string{"ions"};
     dict["ions"]["nbrPopulations"]                          = int{2};
@@ -256,7 +256,7 @@ public:
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
 
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
@@ -275,7 +275,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
@@ -285,7 +285,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -298,7 +298,7 @@ TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleCoarseModel)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -525,7 +525,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
         std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(
-            createDict()["simulation"]["solverPPC"])};
+            createDict()["simulation"]["algo"])};
 
     std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 
@@ -538,6 +538,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
     {
         hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
         hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
+        hybridModel->resourcesManager->registerResources(hybridModel->state.J);
         solver->registerResources(*hybridModel);
 
         tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
@@ -610,7 +611,7 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
         EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
         EXPECT_DOUBLE_EQ(0.5, patch->getPatchData(*exId)->getTime());
 
-        auto layout = layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
+        auto layout = layoutFromPatch<typename HybridModelT::gridlayout_type>(*patch);
 
         auto& Ex = hybridModel->state.electromag.E.getComponent(Component::X);
         auto& Ey = hybridModel->state.electromag.E.getComponent(Component::Y);

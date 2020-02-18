@@ -80,7 +80,7 @@ def populateDict():
         as_paths(refinement_boxes)
 
 
-    add("simulation/algo/pusher/name", simulation.particle_pusher)
+    add("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
 
     init_model = simulation.model
     modelDict  = init_model.model_dict

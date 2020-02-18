@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_OHM_OHM_H
-#define PHARE_CORE_NUMERICS_OHM_OHM_H
+#ifndef PHARE_OHM_H
+#define PHARE_OHM_H
 
 #include <cstddef>
 #include <iostream>

@@ -103,6 +103,13 @@ namespace amr
                                         double const fillTime) override
         {
         }
+
+        virtual void fillCurrentGhosts(VecFieldT& J, int const levelNumber,
+                                       double const fillTime) override
+        {
+        }
+
+
         virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                            double const fillTime) override
         {

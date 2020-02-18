@@ -56,12 +56,12 @@ int main(int argc, char** argv)
     simulator->initialize();
     RuntimeDiagnosticInterface{*simulator, *hierarchy}.dump();
 
-    //
-    // auto time = simulator.startTime();
 
-    // while (time < simulator.endTime())
-    //{
-    //    simulator.advance();
-    //    time += simulator.timeStep();
-    //}
+    auto time = simulator->startTime();
+
+    while (time < simulator->endTime())
+    {
+        simulator->advance(0.0001);
+        //    time += simulator.timeStep();
+    }
 }

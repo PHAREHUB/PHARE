@@ -26,7 +26,7 @@ namespace solver
         using patch_t                      = typename amr_types::patch_t;
         using IPhysicalModelT              = IPhysicalModel<amr_types>;
         using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
-        using GridLayoutT                  = typename HybridModel::gridLayout_type;
+        using GridLayoutT                  = typename HybridModel::gridlayout_type;
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::interp_order;
 

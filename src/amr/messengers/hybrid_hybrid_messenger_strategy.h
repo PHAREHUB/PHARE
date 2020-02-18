@@ -10,10 +10,13 @@
 #include "amr/data/particles/refine/split.h"
 #include "amr/messengers/hybrid_messenger_info.h"
 #include "amr/messengers/hybrid_messenger_strategy.h"
-#include "core/numerics/interpolator/interpolator.h"
-#include "core/numerics/moments/moments.h"
 #include "amr/resources_manager/amr_utils.h"
 #include "amr/resources_manager/resources_manager_utilities.h"
+
+#include "core/numerics/interpolator/interpolator.h"
+#include "core/numerics/moments/moments.h"
+#include "core/hybrid/hybrid_quantities.h"
+
 
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
@@ -39,7 +42,7 @@ namespace amr
         using IonsT                                = typename HybridModel::ions_type;
         using ElectromagT                          = typename HybridModel::electromag_type;
         using VecFieldT                            = typename HybridModel::vecfield_type;
-        using GridLayoutT                          = typename HybridModel::gridLayout_type;
+        using GridLayoutT                          = typename HybridModel::gridlayout_type;
         using FieldT                               = typename VecFieldT::field_type;
         using ResourcesManagerT                    = typename HybridModel::resources_manager_type;
         static constexpr std::size_t dimension     = GridLayoutT::dimension;
@@ -73,6 +76,7 @@ namespace amr
             , firstLevel_{firstLevel}
         {
             resourcesManager_->registerResources(EM_old_);
+            resourcesManager_->registerResources(Jold_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -90,6 +94,7 @@ namespace amr
         virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
             resourcesManager_->allocate(EM_old_, patch, allocateTime);
+            resourcesManager_->allocate(Jold_, patch, allocateTime);
         }
 
 
@@ -147,6 +152,7 @@ namespace amr
 
             magneticGhosts_.registerLevel(hierarchy, level);
             electricGhosts_.registerLevel(hierarchy, level);
+            currentGhosts_.registerLevel(hierarchy, level);
             patchGhostParticles_.registerLevel(hierarchy, level);
 
             // root level is not initialized with a schedule using coarser level data
@@ -282,6 +288,15 @@ namespace amr
                                         double const fillTime) override
         {
             electricGhosts_.fill(E, levelNumber, fillTime);
+        }
+
+
+
+
+        virtual void fillCurrentGhosts(VecFieldT& J, int const levelNumber,
+                                       double const fillTime) override
+        {
+            currentGhosts_.fill(J, levelNumber, fillTime);
         }
 
 
@@ -437,11 +452,13 @@ namespace amr
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
             {
-                auto dataOnPatch
-                    = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag, EM_old_);
+                auto dataOnPatch = resourcesManager_->setOnPatch(
+                    *patch, hybridModel.state.electromag, hybridModel.state.J, EM_old_, Jold_);
 
                 auto& EM = hybridModel.state.electromag;
+                auto& J  = hybridModel.state.J;
                 EM_old_.copyData(EM);
+                Jold_.copyData(J);
             }
         }
 
@@ -458,6 +475,7 @@ namespace amr
 
             magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
+            // currentGhosts_.fill(hybridModel.state.J, levelNumber, initDataTime); //TODO?
             patchGhostParticles_.fill(levelNumber, initDataTime);
 
             // at some point in the future levelGhostParticles could be filled with injected
@@ -491,6 +509,9 @@ namespace amr
 
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                           magneticGhosts_);
+
+            fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
+                          currentGhosts_);
         }
 
 
@@ -627,6 +648,8 @@ namespace amr
         ElectromagT EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
                                                     // updated to t=n before advanceLevel()
 
+        VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
+
 
         //! ResourceManager shared with other objects (like the HybridModel)
         std::shared_ptr<ResourcesManagerT> resourcesManager_;
@@ -650,6 +673,10 @@ namespace amr
 
         //! store communicators for electric fields that need to be initializes
         RefinerPool<RefinerType::InitField> electricInit_;
+
+
+        RefinerPool<RefinerType::GhostField> currentGhosts_;
+
 
         // algo and schedule used to initialize domain particles
         // from coarser level using particleRefineOp<domain>

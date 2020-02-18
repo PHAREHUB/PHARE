@@ -68,11 +68,21 @@ namespace amr
         // used during solver advance
         virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime)
             = 0;
+
+
         virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime)
             = 0;
+
+
+        virtual void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime)
+            = 0;
+
+
         virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                            double const fillTime)
             = 0;
+
+
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                          double beforePushTime, double const afterPushTime)
             = 0;

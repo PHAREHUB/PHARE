@@ -168,7 +168,7 @@ class DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>, Mode
 public:
     using Model      = solver::type_list_to_hybrid_model_t<ModelParams>;
     using VecField   = typename Model::vecfield_type;
-    using GridLayout = typename Model::gridLayout_type;
+    using GridLayout = typename Model::gridlayout_type;
     using Attributes = cppdict::Dict<float, double, size_t, std::string>;
 
     static constexpr auto dimension = Model::dimension;
@@ -283,7 +283,7 @@ class AMRDiagnosticModelView : public DiagnosticModelView<Model, typename Model:
 public:
     using Super      = DiagnosticModelView<Model, typename Model::type_list>;
     using ResMan     = typename Model::resources_manager_type;
-    using GridLayout = typename Model::gridLayout_type;
+    using GridLayout = typename Model::gridlayout_type;
     using Super::model_;
     static constexpr auto dimension = Model::dimension;
 
