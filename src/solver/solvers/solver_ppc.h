@@ -48,6 +48,9 @@ namespace solver
         using VecFieldT        = typename HybridModel::vecfield_type;
         using GridLayout       = typename HybridModel::gridlayout_type;
         using ResourcesManager = typename HybridModel::resources_manager_type;
+        using IPhysicalModel   = IPhysicalModel<AMR_Types>;
+        using IMessenger       = amr::IMessenger<IPhysicalModel>;
+        using HybridMessenger  = amr::HybridMessenger<HybridModel, IPhysicalModel>;
 
 
         Electromag electromagPred_{"EMPred"};
@@ -83,23 +86,23 @@ namespace solver
         fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
 
-        virtual void registerResources(IPhysicalModel<AMR_Types>& model) override;
+        virtual void registerResources(IPhysicalModel& model) override;
 
 
-        virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
+        virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
                               double const allocateTime) const override;
 
 
 
         virtual void advanceLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
-                                  int const levelNumber, IPhysicalModel<AMR_Types>& model,
-                                  amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarserMessenger,
-                                  const double currentTime, const double newTime) override;
+                                  int const levelNumber, IPhysicalModel& model,
+                                  IMessenger& fromCoarserMessenger, const double currentTime,
+                                  const double newTime) override;
 
 
 
     private:
-        using Messenger = amr::HybridMessenger<HybridModel, IPhysicalModel<AMR_Types>>;
+        using Messenger = amr::HybridMessenger<HybridModel, IPhysicalModel>;
 
 
         void predictor1_(level_t& level, HybridModel& model, Messenger& fromCoarser,
@@ -139,7 +142,7 @@ namespace solver
     // -----------------------------------------------------------------------------
 
     template<typename HybridModel, typename AMR_Types>
-    void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel<AMR_Types>& model)
+    void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel& model)
     {
         auto& hmodel = dynamic_cast<HybridModel&>(model);
         hmodel.resourcesManager->registerResources(electromagPred_);
@@ -150,7 +153,7 @@ namespace solver
 
 
     template<typename HybridModel, typename AMR_Types>
-    void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel<AMR_Types>& model,
+    void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel& model,
                                                      SAMRAI::hier::Patch& patch,
                                                      double const allocateTime) const
     {
@@ -180,18 +183,14 @@ namespace solver
 
     template<typename HybridModel, typename AMR_Types>
     void SolverPPC<HybridModel, AMR_Types>::advanceLevel(
-        std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber,
-        IPhysicalModel<AMR_Types>& model,
-        amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarserMessenger, const double currentTime,
-        const double newTime)
+        std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber, IPhysicalModel& model,
+        IMessenger& fromCoarserMessenger, const double currentTime, const double newTime)
     {
         // bool constexpr withTemporal{true};
 
-        auto& hybridModel = dynamic_cast<HybridModel&>(model);
-        auto& hybridState = hybridModel.state;
-        auto& fromCoarser
-            = dynamic_cast<amr::HybridMessenger<HybridModel, IPhysicalModel<AMR_Types>>&>(
-                fromCoarserMessenger);
+        auto& hybridModel      = dynamic_cast<HybridModel&>(model);
+        auto& hybridState      = hybridModel.state;
+        auto& fromCoarser      = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
         auto& resourcesManager = *hybridModel.resourcesManager;
         auto level             = hierarchy->getPatchLevel(levelNumber);
         auto dt                = newTime - currentTime;
