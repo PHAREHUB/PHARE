@@ -78,8 +78,10 @@ function(add_no_mpi_phare_test binary directory)
 endfunction(add_no_mpi_phare_test)
 
 function(add_no_mpi_python3_test name file directory)
-  add_test(NAME py3_${name} COMMAND python3 ${file} WORKING_DIRECTORY ${directory})
-  set_exe_paths_(py3_${name})
+  if(NOT testMPI OR (testMPI AND forceSerialTests))
+    add_test(NAME py3_${name} COMMAND python3 ${file} WORKING_DIRECTORY ${directory})
+    set_exe_paths_(py3_${name})
+  endif()
 endfunction(add_no_mpi_python3_test)
 
 if(testMPI)
