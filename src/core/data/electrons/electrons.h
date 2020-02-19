@@ -48,15 +48,33 @@ public:
     }
     virtual ~StandardHybridElectronFluxComputer() override = default;
 
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
+
     virtual bool isUsable() const override
     {
-        return ions_.isUsable() && J_.isUsable() && Ne_ != nullptr && Ve_.isUsable();
+        return ions_.isUsable() && J_.isUsable() && Ve_.isUsable();
     }
+
+    bool isSettable() const { return Ve_.isSettable(); }
+
+    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(Ve_); }
+
+    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(Ve_); }
+
+
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
+
     virtual Field& density() override
     {
         if (isUsable())
         {
-            return *Ne_;
+            return ions_.density();
         }
         else
         {
@@ -69,7 +87,7 @@ public:
     {
         if (isUsable())
         {
-            return *Ne_;
+            return ions_.density();
         }
         else
         {
@@ -105,11 +123,7 @@ public:
         }
     }
 
-    virtual void computeDensity() override
-    {
-        auto& Ni = ions_.density();
-        Ne_      = &Ni;
-    }
+    virtual void computeDensity() override {}
 
 
     virtual void computeBulkVelocity(GridLayout& layout) override
@@ -149,7 +163,6 @@ public:
 private:
     Ions& ions_;
     VecField& J_;
-    Field* Ne_;
     VecField Ve_;
 
 }; // namespace PHARE::core
@@ -171,11 +184,43 @@ public:
     {
     }
 
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
     bool isUsable() const { return fluxComput_->isUsable() && electromag_.isUsable(); }
 
-    // Field& density() { return *Ne_; }
 
-    // VecField& velocity() { return Ve_; }
+    bool isSettable() const { return fluxComput_->isSettable(); }
+
+
+    auto getCompileTimeResourcesUserList() const
+    {
+        if (fluxComput_ != nullptr)
+            return std::forward_as_tuple(*fluxComput_);
+        else
+            throw std::runtime_error("Error - fluxComput_ is not allocated");
+    }
+
+
+
+    auto getCompileTimeResourcesUserList()
+    {
+        if (fluxComput_ != nullptr)
+            return std::forward_as_tuple(*fluxComput_);
+        else
+            throw std::runtime_error("Error - fluxComput_ is not allocated");
+    }
+
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
+    Field& density() { return fluxComput_->density(); }
+    Field const& density() const { return fluxComput_->density(); }
+
+    VecField& velocity() { return fluxComput_->velocity(); }
+    VecField const& velocity() const { return fluxComput_->velocity(); }
 
     Field& pressure() { return *Pe_; }
 
@@ -205,9 +250,29 @@ public:
         {
             // momentModel_.fluxComputer->computeDensity(layout_);
         }
+        else
+            throw std::runtime_error("Errror - Electron  is not usable");
     }
 
+
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
     bool isUsable() const { return momentModel_.isUsable(); }
+
+    bool isSettable() const { return momentModel_.isSettable(); }
+
+    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(momentModel_); }
+
+    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(momentModel_); }
+
+
+
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
 
     Field& density() { return momentModel_.density(); }
     Field& velocity() { return momentModel_.velocity(); }
