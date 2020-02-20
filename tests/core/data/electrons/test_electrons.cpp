@@ -164,7 +164,7 @@ using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
 using IonsT           = Ions<IonPopulation1D, GridYee1D>;
 using PartPack1D      = ParticlesPack<typename IonPopulation1D::particle_array_type>;
-
+using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
 
 
 TEST(ElectronsTests, ThatElectronsHasCtor)
@@ -242,6 +242,10 @@ TEST(ElectronsTests, thatElectronsAreUsable)
     Field1D Jy{"J_y", HybridQuantity::Scalar::Jy, nx};
     Field1D Jz{"J_z", HybridQuantity::Scalar::Jz, nx};
 
+    Field1D Vex{"Ve_x", HybridQuantity::Scalar::Vx, nx};
+    Field1D Vey{"Ve_y", HybridQuantity::Scalar::Vy, nx};
+    Field1D Vez{"Ve_z", HybridQuantity::Scalar::Vz, nx};
+
     electromag.B.setBuffer(Bx.name(), &Bx);
     electromag.B.setBuffer(By.name(), &By);
     electromag.B.setBuffer(Bz.name(), &Bz);
@@ -279,7 +283,15 @@ TEST(ElectronsTests, thatElectronsAreUsable)
     pops[0].flux().setBuffer(Fzi.name(), &Fzi);
     pops[0].setBuffer("ions_protons", &pack);
 
+
+
     Electrons electrons{createDict(), ions, electromag, J};
+
+    auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
+    auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
+    auto&& Ve  = std::get<0>(
+        static_cast<StandardHybridElectronFluxComputerT>(fc).getCompileTimeResourcesUserList());
+
 
     EXPECT_TRUE(electrons.isUsable());
 }

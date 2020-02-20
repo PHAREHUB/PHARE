@@ -18,7 +18,6 @@ class FluxComputer
     using Field = typename VecField::field_type;
 
 public:
-    virtual bool isUsable() const                        = 0;
     virtual ~FluxComputer()                              = default;
     virtual Field& density()                             = 0;
     virtual Field const& density() const                 = 0;
@@ -27,7 +26,25 @@ public:
     virtual void computeDensity()                        = 0;
     virtual void computeBulkVelocity(GridLayout& layout) = 0;
 
-private:
+
+
+    //-------------------------------------------------------------------------
+    //                  start the ResourcesUser interface
+    //-------------------------------------------------------------------------
+
+
+    virtual bool isUsable() const = 0;
+
+    bool isSettable() const = 0;
+
+    virtual auto getCompileTimeResourcesUserList() const = 0;
+
+    virtual auto getCompileTimeResourcesUserList() = 0;
+
+
+    //-------------------------------------------------------------------------
+    //                  ends the ResourcesUser interface
+    //-------------------------------------------------------------------------
 };
 
 
@@ -58,11 +75,11 @@ public:
         return ions_.isUsable() && J_.isUsable() && Ve_.isUsable();
     }
 
-    bool isSettable() const { return Ve_.isSettable(); }
+    bool isSettable() const override { return Ve_.isSettable(); }
 
-    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(Ve_); }
+    auto getCompileTimeResourcesUserList() const override { return std::forward_as_tuple(Ve_); }
 
-    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(Ve_); }
+    auto getCompileTimeResourcesUserList() override { return std::forward_as_tuple(Ve_); }
 
 
     //-------------------------------------------------------------------------
