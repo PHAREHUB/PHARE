@@ -12,45 +12,8 @@
 
 namespace PHARE::core
 {
-template<typename VecField, typename GridLayout>
-class FluxComputer
-{
-    using Field = typename VecField::field_type;
-
-public:
-    virtual ~FluxComputer()                              = default;
-    virtual Field& density()                             = 0;
-    virtual Field const& density() const                 = 0;
-    virtual VecField& velocity()                         = 0;
-    virtual VecField const& velocity() const             = 0;
-    virtual void computeDensity()                        = 0;
-    virtual void computeBulkVelocity(GridLayout& layout) = 0;
-
-
-
-    //-------------------------------------------------------------------------
-    //                  start the ResourcesUser interface
-    //-------------------------------------------------------------------------
-
-
-    virtual bool isUsable() const = 0;
-
-    bool isSettable() const = 0;
-
-    virtual auto getCompileTimeResourcesUserList() const = 0;
-
-    virtual auto getCompileTimeResourcesUserList() = 0;
-
-
-    //-------------------------------------------------------------------------
-    //                  ends the ResourcesUser interface
-    //-------------------------------------------------------------------------
-};
-
-
 template<typename Ions>
 class StandardHybridElectronFluxComputer
-    : public FluxComputer<typename Ions::vecfield_type, typename Ions::gridlayout_type>
 {
     using VecField   = typename Ions::vecfield_type;
     using Field      = typename Ions::field_type;
@@ -63,23 +26,19 @@ public:
         , Ve_{"StandardHybridElectronFluxComputer_Ve", HybridQuantity::Vector::V}
     {
     }
-    virtual ~StandardHybridElectronFluxComputer() override = default;
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
 
-    virtual bool isUsable() const override
-    {
-        return ions_.isUsable() && J_.isUsable() && Ve_.isUsable();
-    }
+    bool isUsable() const { return ions_.isUsable() && J_.isUsable() && Ve_.isUsable(); }
 
-    bool isSettable() const override { return Ve_.isSettable(); }
+    bool isSettable() const { return Ve_.isSettable() && ions_.isSettable() && J_.isSettable(); }
 
-    auto getCompileTimeResourcesUserList() const override { return std::forward_as_tuple(Ve_); }
+    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(Ve_, ions_, J_); }
 
-    auto getCompileTimeResourcesUserList() override { return std::forward_as_tuple(Ve_); }
+    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(Ve_, ions_, J_); }
 
 
     //-------------------------------------------------------------------------
@@ -87,7 +46,7 @@ public:
     //-------------------------------------------------------------------------
 
 
-    virtual Field& density() override
+    Field& density()
     {
         if (isUsable())
         {
@@ -100,7 +59,7 @@ public:
         }
     }
 
-    virtual Field const& density() const override
+    Field const& density() const
     {
         if (isUsable())
         {
@@ -113,7 +72,7 @@ public:
         }
     }
 
-    virtual VecField const& velocity() const override
+    VecField const& velocity() const
     {
         if (isUsable())
         {
@@ -127,7 +86,7 @@ public:
     }
 
 
-    virtual VecField& velocity() override
+    VecField& velocity()
     {
         if (isUsable())
         {
@@ -140,10 +99,9 @@ public:
         }
     }
 
-    virtual void computeDensity() override {}
+    void computeDensity() {}
 
-
-    virtual void computeBulkVelocity(GridLayout& layout) override
+    void computeBulkVelocity(GridLayout& layout)
     {
         auto const& Ni = ions_.density();
         auto const& Vi = ions_.velocity();
@@ -197,7 +155,7 @@ class ElectronMomentModel
 public:
     ElectronMomentModel(Ions& ions, Electromag& electromag, VecField& J)
         : electromag_{electromag}
-        , fluxComput_{std::make_unique<StandardHybridElectronFluxComputer<Ions>>(ions, J)}
+        , fluxComput_{ions, J}
     {
     }
 
@@ -205,46 +163,33 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    bool isUsable() const { return fluxComput_->isUsable() && electromag_.isUsable(); }
+    bool isUsable() const { return fluxComput_.isUsable() && electromag_.isUsable(); }
+
+    bool isSettable() const { return fluxComput_.isSettable(); }
 
 
-    bool isSettable() const { return fluxComput_->isSettable(); }
+    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(fluxComput_); }
 
-
-    auto getCompileTimeResourcesUserList() const
-    {
-        if (fluxComput_ != nullptr)
-            return std::forward_as_tuple(*fluxComput_);
-        else
-            throw std::runtime_error("Error - fluxComput_ is not allocated");
-    }
-
-
-
-    auto getCompileTimeResourcesUserList()
-    {
-        if (fluxComput_ != nullptr)
-            return std::forward_as_tuple(*fluxComput_);
-        else
-            throw std::runtime_error("Error - fluxComput_ is not allocated");
-    }
+    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(fluxComput_); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    Field& density() { return fluxComput_->density(); }
-    Field const& density() const { return fluxComput_->density(); }
+    Field& density() { return fluxComput_.density(); }
+    Field const& density() const { return fluxComput_.density(); }
 
     VecField& velocity() { return fluxComput_->velocity(); }
-    VecField const& velocity() const { return fluxComput_->velocity(); }
+    VecField const& velocity() const { return fluxComput_.velocity(); }
+
+    void computeDensity() { fluxComput_.computeDensity(); }
 
     Field& pressure() { return *Pe_; }
 
 private:
     Field* Pe_;
     Electromag& electromag_;
-    std::unique_ptr<FluxComputer<VecField, GridLayout>> fluxComput_;
+    StandardHybridElectronFluxComputer<Ions> fluxComput_;
 };
 
 
@@ -265,7 +210,7 @@ public:
     {
         if (isUsable())
         {
-            // momentModel_.fluxComputer->computeDensity(layout_);
+            momentModel_.computeDensity();
         }
         else
             throw std::runtime_error("Errror - Electron  is not usable");
