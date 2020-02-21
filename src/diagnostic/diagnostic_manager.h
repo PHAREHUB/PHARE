@@ -186,6 +186,7 @@ public:
     auto& getIons() const { return model_.state.ions; }
 
     auto getPatchAttributes(GridLayout& grid);
+    static auto getEmptyPatchAttributes();
 
 
 protected:
@@ -199,11 +200,21 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
                          ModelParams>::getPatchAttributes(GridLayout& grid)
 {
     Attributes dict;
-    // dict["id"]     = std::string("id");
-    // dict["float"]  = 0.0f;
-    // dict["double"] = 0.0;
-    // dict["size_t"] = size_t{0};
-    dict["origin"] = grid.origin().str();
+    dict["origin"]   = grid.origin().str();
+    dict["nbrCells"] = core::Point<uint32_t, dimension>{grid.nbrCells()}.str();
+    return dict;
+}
+
+// this function is a for std visit and MPI sychronization
+// so we can write attributes for disparate numbers of patches across MPI nodes#
+// This function should match getPatchAttributes in structure
+template<typename ModelParams>
+auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
+                         ModelParams>::getEmptyPatchAttributes()
+{
+    Attributes dict;
+    dict["origin"]   = std::string{""};
+    dict["nbrCells"] = std::string{""};
     return dict;
 }
 

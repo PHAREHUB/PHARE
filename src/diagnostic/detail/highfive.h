@@ -165,10 +165,16 @@ public:
         h5.flush();
     }
 
-    size_t getMaxOfPerMPI(size_t localSize);
 
     size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
     unsigned flags;
+
+    template<typename Data>
+    std::vector<Data> mpiCollectData(Data const&, int mpi_size = 0);
+    // MPI does not like sending empty strings so give optional default replacement
+    std::vector<std::string> mpiCollectStrings(std::string, int mpi_size = 0,
+                                               std::string null_str = "null");
+    size_t mpiGetMaxOf(size_t, int mpi_size = 0);
 
 private:
     std::string filePath_;
@@ -215,23 +221,6 @@ void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const
 
 
 
-template<typename ModelView>
-size_t HighFiveDiagnosticWriter<ModelView>::getMaxOfPerMPI(size_t localSize)
-{
-    int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    std::vector<uint64_t> perMPI(mpi_size);
-    MPI_Allgather(&localSize, 1, MPI_UINT64_T, perMPI.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
-
-    for (const auto size : perMPI)
-        if (size > localSize)
-            localSize = size;
-
-    return localSize;
-}
-
-
-
 /*
  * Communicate all dataset paths and sizes to all MPI process to allow each to create all
  * datasets independently. This is a requirement of HDF5.
@@ -246,25 +235,14 @@ void HighFiveDiagnosticWriter<ModelView>::createDatasetsPerMPI(HiFile& h5, std::
 {
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-
-    uint64_t pathSize    = path.size();
-    uint64_t maxPathSize = getMaxOfPerMPI(pathSize);
-
-    std::vector<uint64_t> datasetSizes(mpi_size);
-    MPI_Allgather(&dataSetSize, 1, MPI_UINT64_T, datasetSizes.data(), 1, MPI_UINT64_T,
-                  MPI_COMM_WORLD);
-
-    std::vector<char> chars(maxPathSize * mpi_size);
-    MPI_Allgather(path.c_str(), path.size(), MPI_CHAR, chars.data(), maxPathSize, MPI_CHAR,
-                  MPI_COMM_WORLD);
-
+    auto sizes = mpiCollectData(dataSetSize, mpi_size);
+    auto paths = mpiCollectStrings(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
-        if (!datasetSizes[i])
+        if (sizes[i] == 0)
             continue;
-        std::string datasetPath{&chars[pathSize * i], pathSize};
-        H5Easy::detail::createGroupsToDataSet(h5, datasetPath);
-        h5.createDataSet<Type>(datasetPath, HighFive::DataSpace(datasetSizes[i]));
+        H5Easy::detail::createGroupsToDataSet(h5, paths[i]);
+        h5.createDataSet<Type>(paths[i], HighFive::DataSpace(sizes[i]));
     }
 }
 
@@ -283,51 +261,33 @@ template<typename Data>
 void HighFiveDiagnosticWriter<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path,
                                                                 std::string key, Data const& data)
 {
+    auto doAttribute = [&](auto node, auto& key, auto& value) {
+        node.template createAttribute<Data>(key, HighFive::DataSpace::From(value)).write(value);
+    };
+
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    auto values = mpiCollectData(data, mpi_size);
+    auto paths  = mpiCollectStrings(path, mpi_size);
 
-    std::vector<Data> values(mpi_size);
-    if constexpr (std::is_same_v<std::string, Data>)
+    for (int i = 0; i < mpi_size; i++)
     {
-        size_t maxMPISize = getMaxOfPerMPI(data.size());
-        std::vector<char> chars(maxMPISize * mpi_size);
-        MPI_Allgather(data.c_str(), data.size(), MPI_CHAR, chars.data(), maxMPISize, MPI_CHAR,
-                      MPI_COMM_WORLD);
-        for (int i = 0; i < mpi_size; i++)
-            values[i] = std::string{&chars[maxMPISize * i], maxMPISize};
-    }
-    else if constexpr (std::is_same_v<double, Data>)
-        MPI_Allgather(&data, 1, MPI_DOUBLE, values.data(), 1, MPI_DOUBLE, MPI_COMM_WORLD);
-    else
-        MPI_Allgather(&data, 1, MPI_UINT64_T, values.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
-
-    std::unordered_map<std::string, Data> pathValues;
-    {
-        uint64_t pathSize = path.size();
-        auto maxPathSize  = getMaxOfPerMPI(pathSize);
-        std::vector<char> chars(maxPathSize * mpi_size);
-        MPI_Allgather(path.c_str(), pathSize, MPI_CHAR, chars.data(), maxPathSize, MPI_CHAR,
-                      MPI_COMM_WORLD);
-
-        for (int i = 0; i < mpi_size; i++)
+        std::string keyPath = paths[i] == "null" ? "" : paths[i];
+        if (keyPath.empty())
+            continue;
+        if (h5.exist(keyPath) && h5.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
         {
-            auto attributePath = std::string{&chars[pathSize * i], pathSize};
-            if (!pathValues.count(attributePath))
-                pathValues.emplace(attributePath, values[i]);
+            if (!h5.getDataSet(keyPath).hasAttribute(key))
+                doAttribute(h5.getDataSet(keyPath), key, values[i]);
         }
-    }
-
-    for (const auto& [keyPath, value] : pathValues)
-    {
-        if (!keyPath.empty())
+        else // group
         {
             H5Easy::detail::createGroupsToDataSet(h5, keyPath + "/dataset");
             if (!h5.getGroup(keyPath).hasAttribute(key))
-                h5.getGroup(keyPath)
-                    .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
-                    .write(value);
+                doAttribute(h5.getGroup(keyPath), key, values[i]);
         }
     }
+    h5.flush();
 }
 
 
@@ -355,8 +315,8 @@ void HighFiveDiagnosticWriter<ModelView>::initializeDatasets_(
     modelView().visitHierarchy(collectPatchAttributes, minLevel, maxLevel);
 
     // sets empty vectors in case current process lacks patch on a level
-    size_t maxMPILevel = getMaxOfPerMPI(maxLocalLevel);
-    for (size_t lvl = maxLocalLevel; lvl < maxMPILevel; lvl++)
+    size_t maxMPILevel = mpiGetMaxOf(maxLocalLevel);
+    for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
         if (!patchIDs.count(lvl))
             patchIDs.emplace(lvl, std::vector<std::string>());
 
@@ -368,18 +328,34 @@ void HighFiveDiagnosticWriter<ModelView>::initializeDatasets_(
 }
 
 
+
 template<typename ModelView>
 void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
     std::vector<DiagnosticDAO*> const& diagnostics)
 {
-    auto writePatch = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
-        patchPath_           = getPatchPath("time", iLevel, patchID);
-        auto patchAttributes = modelView().getPatchAttributes(gridLayout);
+    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>> patchAttributes;
+
+    size_t maxLocalLevel = 0;
+    auto writePatch      = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
+        if (!patchAttributes.count(iLevel))
+            patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
+        patchPath_ = getPatchPath("time", iLevel, patchID);
+        patchAttributes[iLevel].emplace_back(patchID, modelView().getPatchAttributes(gridLayout));
         for (auto* diagnostic : diagnostics)
-            writers.at(diagnostic->category)->write(*diagnostic, fileAttributes_, patchAttributes);
+            writers.at(diagnostic->category)->write(*diagnostic);
+        maxLocalLevel = iLevel;
     };
 
     modelView().visitHierarchy(writePatch, minLevel, maxLevel);
+
+    size_t maxMPILevel = mpiGetMaxOf(maxLocalLevel);
+    for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
+        if (!patchAttributes.count(lvl))
+            patchAttributes.emplace(lvl, std::vector<std::pair<std::string, Attributes>>{});
+
+    for (auto* diagnostic : diagnostics)
+        writers.at(diagnostic->category)
+            ->writeAttributes(*diagnostic, fileAttributes_, patchAttributes, maxMPILevel);
 }
 
 
@@ -417,7 +393,58 @@ void HighFiveDiagnosticWriter<ModelView>::writeAttributeDict(HiFile& h5, Dict di
     std::visit(visitor, dict.data);
 }
 
+template<typename ModelView>
+template<typename Data>
+std::vector<Data> HighFiveDiagnosticWriter<ModelView>::mpiCollectData(Data const& data,
+                                                                      int mpi_size)
+{
+    if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    std::vector<Data> values(mpi_size);
 
+    if constexpr (std::is_same_v<std::string, Data>)
+        values = mpiCollectStrings(data, mpi_size);
+    else if constexpr (std::is_same_v<double, Data>)
+        MPI_Allgather(&data, 1, MPI_DOUBLE, values.data(), 1, MPI_DOUBLE, MPI_COMM_WORLD);
+    else if constexpr (std::is_same_v<float, Data>)
+        MPI_Allgather(&data, 1, MPI_FLOAT, values.data(), 1, MPI_FLOAT, MPI_COMM_WORLD);
+    else if constexpr (std::is_same_v<size_t, Data>)
+        MPI_Allgather(&data, 1, MPI_UINT64_T, values.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
+    else
+        static_assert("NO");
+
+    return values;
+}
+
+template<typename ModelView>
+std::vector<std::string> // MPI does not like sending empty strings.
+HighFiveDiagnosticWriter<ModelView>::mpiCollectStrings(std::string str, int mpi_size,
+                                                       std::string null_str)
+{
+    std::vector<std::string> values;
+    if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    str             = str.empty() ? null_str : str;
+    auto maxMPISize = mpiGetMaxOf(str.size(), mpi_size);
+    std::vector<char> chars(maxMPISize * mpi_size);
+    MPI_Allgather(str.c_str(), str.size(), MPI_CHAR, chars.data(), maxMPISize, MPI_CHAR,
+                  MPI_COMM_WORLD);
+    for (int i = 0; i < mpi_size; i++)
+        values.emplace_back(&chars[maxMPISize * i], maxMPISize);
+    return values;
+}
+
+template<typename ModelView>
+size_t HighFiveDiagnosticWriter<ModelView>::mpiGetMaxOf(size_t localSize, int mpi_size)
+{
+    if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    auto perMPI = mpiCollectData(localSize, mpi_size);
+    for (const auto size : perMPI)
+        if (size > localSize)
+            localSize = size;
+    return localSize;
+}
 
 } /* namespace PHARE::diagnostic::h5 */
 
