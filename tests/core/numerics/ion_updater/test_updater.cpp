@@ -733,8 +733,8 @@ struct IonUpdaterTest : public ::testing::Test
 
                 auto diff = std::abs(density(ix) - function(x));
 
-                EXPECT_GE(0.05, diff);
-                if (diff >= 0.05)
+                EXPECT_GE(0.07, diff);
+                if (diff >= 0.07)
                     std::cout << "actual : " << density(ix) << " prescribed : " << function(x)
                               << " diff : " << diff << " ix : " << ix << "\n";
             }
