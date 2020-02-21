@@ -48,9 +48,9 @@ namespace solver
         using VecFieldT        = typename HybridModel::vecfield_type;
         using GridLayout       = typename HybridModel::gridlayout_type;
         using ResourcesManager = typename HybridModel::resources_manager_type;
-        using IPhysicalModel   = IPhysicalModel<AMR_Types>;
-        using IMessenger       = amr::IMessenger<IPhysicalModel>;
-        using HybridMessenger  = amr::HybridMessenger<HybridModel, IPhysicalModel>;
+        using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
+        using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
+        using HybridMessenger  = amr::HybridMessenger<HybridModel, IPhysicalModel_t>;
 
 
         Electromag electromagPred_{"EMPred"};
@@ -86,23 +86,23 @@ namespace solver
         fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
 
-        virtual void registerResources(IPhysicalModel& model) override;
+        virtual void registerResources(IPhysicalModel_t& model) override;
 
 
-        virtual void allocate(IPhysicalModel& model, SAMRAI::hier::Patch& patch,
+        virtual void allocate(IPhysicalModel_t& model, SAMRAI::hier::Patch& patch,
                               double const allocateTime) const override;
 
 
 
         virtual void advanceLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
-                                  int const levelNumber, IPhysicalModel& model,
+                                  int const levelNumber, IPhysicalModel_t& model,
                                   IMessenger& fromCoarserMessenger, const double currentTime,
                                   const double newTime) override;
 
 
 
     private:
-        using Messenger = amr::HybridMessenger<HybridModel, IPhysicalModel>;
+        using Messenger = amr::HybridMessenger<HybridModel, IPhysicalModel_t>;
 
 
         void predictor1_(level_t& level, HybridModel& model, Messenger& fromCoarser,
@@ -142,7 +142,7 @@ namespace solver
     // -----------------------------------------------------------------------------
 
     template<typename HybridModel, typename AMR_Types>
-    void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel& model)
+    void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel_t& model)
     {
         auto& hmodel = dynamic_cast<HybridModel&>(model);
         hmodel.resourcesManager->registerResources(electromagPred_);
@@ -153,7 +153,7 @@ namespace solver
 
 
     template<typename HybridModel, typename AMR_Types>
-    void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel& model,
+    void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel_t& model,
                                                      SAMRAI::hier::Patch& patch,
                                                      double const allocateTime) const
     {
@@ -183,7 +183,7 @@ namespace solver
 
     template<typename HybridModel, typename AMR_Types>
     void SolverPPC<HybridModel, AMR_Types>::advanceLevel(
-        std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber, IPhysicalModel& model,
+        std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
         IMessenger& fromCoarserMessenger, const double currentTime, const double newTime)
     {
         // bool constexpr withTemporal{true};
