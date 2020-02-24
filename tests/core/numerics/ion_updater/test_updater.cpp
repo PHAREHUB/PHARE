@@ -733,8 +733,8 @@ struct IonUpdaterTest : public ::testing::Test
 
                 auto diff = std::abs(density(ix) - function(x));
 
-                EXPECT_GE(0.05, diff);
-                if (diff >= 0.05)
+                EXPECT_GE(0.07, diff);
+                if (diff >= 0.07)
                     std::cout << "actual : " << density(ix) << " prescribed : " << function(x)
                               << " diff : " << diff << " ix : " << ix << "\n";
             }
@@ -870,9 +870,13 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
-        UpdaterMode::moments_only);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+                                 UpdaterMode::moments_only);
+
+    this->fillIonsMomentsGhosts();
+
+    ionUpdater.updateIons(this->ions, this->layout);
+
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -915,9 +919,12 @@ TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
-        UpdaterMode::particles_and_moments);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+                                 UpdaterMode::particles_and_moments);
+
+    this->fillIonsMomentsGhosts();
+
+    ionUpdater.updateIons(this->ions, this->layout);
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
 
@@ -936,9 +943,12 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
-        UpdaterMode::particles_and_moments);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+                                 UpdaterMode::particles_and_moments);
+
+    this->fillIonsMomentsGhosts();
+
+    ionUpdater.updateIons(this->ions, this->layout);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -953,9 +963,12 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
-        UpdaterMode::moments_only);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+                                 UpdaterMode::moments_only);
+
+    this->fillIonsMomentsGhosts();
+
+    ionUpdater.updateIons(this->ions, this->layout);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -967,8 +980,12 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 {
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
-    ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, []() {}, UpdaterMode::moments_only);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+                                 UpdaterMode::moments_only);
+
+    this->fillIonsMomentsGhosts();
+
+    ionUpdater.updateIons(this->ions, this->layout);
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -998,9 +1015,12 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
 {
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
 
-    ionUpdater.update(
-        this->ions, this->EM, this->layout, this->dt, [this]() { this->fillIonsMomentsGhosts(); },
-        UpdaterMode::moments_only);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+                                 UpdaterMode::moments_only);
+
+    this->fillIonsMomentsGhosts();
+
+    ionUpdater.updateIons(this->ions, this->layout);
 
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);

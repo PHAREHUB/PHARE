@@ -167,6 +167,8 @@ namespace core
             return settable;
         }
 
+
+
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
@@ -231,6 +233,42 @@ namespace core
         std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
                                                  // although only 1 Ions should exist.
     };
+
+
+
+    template<typename Ions, typename GridLayout>
+    void setNansOnGhosts(Ions& ions, GridLayout const& layout)
+    {
+        if constexpr (Ions::dimension == 1)
+        {
+            auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+            auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+            auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+
+            auto set = [](auto& pop, auto start, auto stop) {
+                for (auto i = start; i < stop; ++i)
+                {
+                    pop.density()(i) = NAN;
+                    for (auto& [id, type] : Components::componentMap)
+                        pop.flux().getComponent(type)(i) = NAN;
+                }
+            };
+
+            for (auto& pop : ions)
+            {
+                set(pop, 0u, ix0); // leftGhostNodes
+                set(pop, ix1 + 1, ix2 + 1);
+            }
+        }
+        else if constexpr (Ions::dimension == 2)
+        {
+            std::cout << "test2\n";
+        }
+        else if constexpr (Ions::dimension == 3)
+        {
+            std::cout << "test 3\n";
+        }
+    }
 
 
 
