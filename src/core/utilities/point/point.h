@@ -145,4 +145,18 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
+namespace std
+{
+template<typename Type, std::size_t dim>
+PHARE::core::Point<Type, dim> abs(PHARE::core::Point<Type, dim> const& point)
+{
+    std::array<Type, dim> postive;
+    for (size_t i = 0; i < dim; ++i)
+        postive[i] = std::abs(point[i]);
+    return postive;
+}
+
+} // namespace std
+
+
 #endif

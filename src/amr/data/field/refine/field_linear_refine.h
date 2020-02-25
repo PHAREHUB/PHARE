@@ -64,22 +64,22 @@ namespace amr
             core::Point<int, dimension> coarseIndex{fineIndex};
 
             // here we perform the floating point division, and then we truncate to integer
-            coarseIndex[dirX] = static_cast<int>(
-                static_cast<double>(fineIndex[dirX] + shifts_[dirX]) / ratio_(dirX)
-                - shifts_[dirX]);
+            coarseIndex[dirX]
+                = std::floor(static_cast<double>(fineIndex[dirX] + shifts_[dirX]) / ratio_(dirX)
+                             - shifts_[dirX]);
 
             if constexpr (dimension > 1)
             {
-                coarseIndex[dirY] = static_cast<int>(
-                    static_cast<double>(fineIndex[dirY] + shifts_[dirY]) / ratio_(dirY)
-                    - shifts_[dirY]);
+                coarseIndex[dirY]
+                    = std::floor(static_cast<double>(fineIndex[dirY] + shifts_[dirY]) / ratio_(dirY)
+                                 - shifts_[dirY]);
             }
 
             if constexpr (dimension > 2)
             {
-                coarseIndex[dirZ] = static_cast<int>(
-                    static_cast<double>(fineIndex[dirZ] + shifts_[dirZ]) / ratio_(dirZ)
-                    - shifts_[dirZ]);
+                coarseIndex[dirZ]
+                    = std::floor(static_cast<double>(fineIndex[dirZ] + shifts_[dirZ]) / ratio_(dirZ)
+                                 - shifts_[dirZ]);
             }
 
             return coarseIndex;
@@ -100,7 +100,7 @@ namespace amr
          */
         core::Point<int, dimension> computeWeightIndex(core::Point<int, dimension> fineIndex) const
         {
-            core::Point<int, dimension> indexesWeights{fineIndex};
+            core::Point<int, dimension> indexesWeights{std::abs(fineIndex)};
 
             indexesWeights[dirX] %= ratio_[dirX];
 
