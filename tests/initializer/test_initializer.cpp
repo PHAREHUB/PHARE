@@ -63,7 +63,8 @@ TEST(APythonDataProvider, providesAValidTree)
     auto dx     = input["simulation"]["grid"]["meshsize"]["x"].to<double>();
     auto origin = input["simulation"]["grid"]["origin"]["x"].to<double>();
 
-    auto pusherName = input["simulation"]["algo"]["pusher"]["name"].to<std::string>();
+    auto pusherName
+        = input["simulation"]["algo"]["ion_updater"]["pusher"]["name"].to<std::string>();
 
 
     auto nbrPopulations              = input["simulation"]["ions"]["nbrPopulations"].to<int>();
