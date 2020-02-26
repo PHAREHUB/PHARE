@@ -18,6 +18,11 @@ target_link_libraries(phare-exe PUBLIC phare_core phare_amr phare_initializer ph
 # ran in a virtualenv
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init.py ${CMAKE_BINARY_DIR}/phare/init.py @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_BINARY_DIR}/phare/__init__.py @ONLY)
+<<<<<<< HEAD
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/phare_init.py ${CMAKE_CURRENT_BINARY_DIR}/phare_init.py @ONLY)
+=======
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toto.py ${CMAKE_CURRENT_BINARY_DIR}/toto.py @ONLY)
+
+>>>>>>> user defined python input script name
 
 
