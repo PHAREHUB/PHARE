@@ -5,6 +5,7 @@
 #include "core/data/vecfield/vecfield_component.h"
 #include "core/data/grid/gridlayout_utils.h"
 #include "core/data/grid/gridlayoutdefs.h"
+#include "core/utilities/index/index.h"
 
 #include "initializer/data_provider.h"
 #include <memory>
@@ -39,7 +40,6 @@ public:
     auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(Ve_, ions_, J_); }
 
     auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(Ve_, ions_, J_); }
-
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -101,7 +101,7 @@ public:
 
     void computeDensity() {}
 
-    void computeBulkVelocity(GridLayout& layout)
+    void computeBulkVelocity(GridLayout& layout, MeshIndex<1> index)
     {
         auto const& Ni = ions_.density();
         auto const& Vi = ions_.velocity();
@@ -114,6 +114,10 @@ public:
         auto& Viy = Vi.getComponent(Component::Y);
         auto& Viz = Vi.getComponent(Component::Z);
 
+        auto& Jx = J_.getComponent(Component::X);
+        auto& Jy = J_.getComponent(Component::Y);
+        auto& Jz = J_.getComponent(Component::Z);
+
         if constexpr (GridLayout::dimension == 1)
         {
             auto ix0 = layout.physicalStartIndex(Vex, Direction::X);
@@ -121,10 +125,13 @@ public:
 
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
-                //                     auto const JxOnVx = GridLayout::project(Jx, index,
-                //                     GridLayout::JxToMoment());
+                auto const JxOnVx = GridLayout::project(Jx, index, GridLayout::JxToMoment());
+                auto const JyOnVy = GridLayout::project(Jy, index, GridLayout::JyToMoment());
+                auto const JzOnVz = GridLayout::project(Jz, index, GridLayout::JzToMoment());
 
-                Vex(ix) = Vix(ix) /* - JxOnVx/Ni(ix) */;
+                Vex(ix) = Vix(ix) - JxOnVx / Ni(ix);
+                Vey(ix) = Viy(ix) - JyOnVy / Ni(ix);
+                Vez(ix) = Viz(ix) - JzOnVz / Ni(ix);
             }
         }
         else

@@ -156,16 +156,6 @@ using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<I
 
 
 
-TEST(Electrons1DTests, ThatElectronsHasCtor)
-{
-    IonsT ions{createDict()["ions"]};
-    Electromag<VecField1D> electromag{createDict()["electromag"]};
-    VecField1D J{"J", HybridQuantity::Vector::J};
-
-    Electrons electrons{createDict(), ions, electromag, J};
-}
-
-
 
 class Electrons1DTest : public ::testing::Test
 {
@@ -176,9 +166,9 @@ protected:
     std::uint32_t nx = 50;
     Field1D Nibuffer;
     Field1D NiProtons;
-    Field1D Vxi;
-    Field1D Vyi;
-    Field1D Vzi;
+    Field1D Vix;
+    Field1D Viy;
+    Field1D Viz;
     Field1D Fxi;
     Field1D Fyi;
     Field1D Fzi;
@@ -204,9 +194,9 @@ public:
         , J{"J", HybridQuantity::Vector::J}
         , Nibuffer{ions.densityName(), HybridQuantity::Scalar::rho, nx}
         , NiProtons{"ions_protons_rho", HybridQuantity::Scalar::rho, nx}
-        , Vxi{"ions_bulkVel_x", HybridQuantity::Scalar::Vx, nx}
-        , Vyi{"ions_bulkVel_y", HybridQuantity::Scalar::Vy, nx}
-        , Vzi{"ions_bulkVel_z", HybridQuantity::Scalar::Vz, nx}
+        , Vix{"ions_bulkVel_x", HybridQuantity::Scalar::Vx, nx}
+        , Viy{"ions_bulkVel_y", HybridQuantity::Scalar::Vy, nx}
+        , Viz{"ions_bulkVel_z", HybridQuantity::Scalar::Vz, nx}
         , Fxi{"ions_protons_flux_x", HybridQuantity::Scalar::Vx, nx}
         , Fyi{"ions_protons_flux_y", HybridQuantity::Scalar::Vy, nx}
         , Fzi{"ions_protons_flux_z", HybridQuantity::Scalar::Vz, nx}
@@ -237,9 +227,9 @@ public:
         J.setBuffer(Jz.name(), &Jz);
 
         ions.setBuffer(ions.densityName(), &Nibuffer);
-        ions.velocity().setBuffer(Vxi.name(), &Vxi);
-        ions.velocity().setBuffer(Vyi.name(), &Vyi);
-        ions.velocity().setBuffer(Vzi.name(), &Vzi);
+        ions.velocity().setBuffer(Vix.name(), &Vix);
+        ions.velocity().setBuffer(Viy.name(), &Viy);
+        ions.velocity().setBuffer(Viz.name(), &Viz);
 
         auto& pops = ions.getRunTimeResourcesUserList();
 
@@ -258,6 +248,10 @@ public:
         Ve.setBuffer(Vez.name(), &Vez);
     }
 };
+
+
+
+TEST_F(Electrons1DTest, ThatElectronsHasCtor) {}
 
 
 
@@ -283,6 +277,17 @@ TEST_F(Electrons1DTest, ThatElectronsDensityEqualIonDensity)
 }
 
 
+TEST_F(Electrons1DTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
+{
+    electrons.update();
+
+    auto& Ne = electrons.density();
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+    {
+        // EXPECT_DOUBLE_EQ(Vex(i), Vix(i) - Jx(i) / Ne(i));
+    }
+}
 
 
 int main(int argc, char** argv)
