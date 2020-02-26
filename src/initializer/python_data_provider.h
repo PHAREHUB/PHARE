@@ -30,26 +30,27 @@ namespace initializer
     {
     public:
         PythonDataProvider() {}
-        PythonDataProvider(int argc, char const* argv)
+        PythonDataProvider(std::string moduleName)
+            : moduleName_{moduleName}
         {
-            if (argc == 2)
-            {
-                initModuleName_ = std::string{argv};
-            }
         }
 
         /**
          * @brief read overrides the abstract DataProvider::read method. This method basically
          * executes the user python script that fills the dictionnary.
          */
-        virtual void read() override { py::module::import(initModuleName_.c_str()); }
+        virtual void read() override
+        {
+            auto module = py::module::import(initModuleName_.c_str());
+            module.attr("get_user_inputs")(moduleName_);
+        }
 
 
 
     private:
+        std::string moduleName_{"job"};
         std::string initModuleName_{"phare.init"};
         py::scoped_interpreter guard_;
-        py::object scope_{py::module::import("__main__").attr("__dict__")};
     };
 
 } // namespace initializer

@@ -31,8 +31,8 @@ using ParticleArrayT = PHARE::core::ParticleArray<1>;
 TEST(APythonDataProvider, isADataProvider)
 {
     PHAREDictHandler::INSTANCE().init();
-    char const* argv                   = "job_super.py";
-    std::unique_ptr<DataProvider> pydp = std::make_unique<PythonDataProvider>(2, argv);
+    char const* argv                   = "job";
+    std::unique_ptr<DataProvider> pydp = std::make_unique<PythonDataProvider>(argv);
     PHAREDictHandler::INSTANCE().stop();
 }
 
@@ -48,8 +48,8 @@ TEST(APythonDataProvider, providesAValidTree)
 {
     PHAREDictHandler::INSTANCE().init();
 
-    char const* name = "init";
-    PythonDataProvider pydp{2, name};
+    char const* name = "job";
+    PythonDataProvider pydp{name};
     pydp.read();
     auto& input = PHAREDictHandler::INSTANCE().dict();
 
@@ -66,7 +66,7 @@ TEST(APythonDataProvider, providesAValidTree)
     auto pusherName = input["simulation"]["algo"]["pusher"]["name"].to<std::string>();
 
 
-    auto nbrPopulations              = input["simulation"]["ions"]["nbr_populations"].to<int>();
+    auto nbrPopulations              = input["simulation"]["ions"]["nbrPopulations"].to<int>();
     auto& pop0                       = input["simulation"]["ions"]["pop0"];
     auto pop0Name                    = pop0["name"].to<std::string>();
     auto pop0Mass                    = pop0["mass"].to<double>();
@@ -88,8 +88,8 @@ TEST(APythonDataProvider, providesAValidTree)
     EXPECT_EQ(1, interp_order);
 
     EXPECT_EQ(1, dim);
-    EXPECT_EQ(80, nx);
-    EXPECT_DOUBLE_EQ(0.1, dx);
+    EXPECT_EQ(65, nx);
+    EXPECT_DOUBLE_EQ(1. / 65., dx);
     EXPECT_DOUBLE_EQ(0.001, dt);
     EXPECT_DOUBLE_EQ(0., origin);
     EXPECT_EQ("yee", layout);
@@ -100,13 +100,13 @@ TEST(APythonDataProvider, providesAValidTree)
     EXPECT_EQ("protons", pop0Name);
     EXPECT_DOUBLE_EQ(1., pop0Mass);
     EXPECT_EQ("maxwellian", pop0ParticleInitializerName);
-    EXPECT_DOUBLE_EQ(4., pop0density(2.));
-    EXPECT_DOUBLE_EQ(4., bulk0x(2.));
-    EXPECT_DOUBLE_EQ(6., bulk0y(2.));
-    EXPECT_DOUBLE_EQ(8., bulk0z(2.));
-    EXPECT_DOUBLE_EQ(10., vth0x(2.));
-    EXPECT_DOUBLE_EQ(12., vth0y(2.));
-    EXPECT_DOUBLE_EQ(14., vth0z(2.));
+    EXPECT_DOUBLE_EQ(2., pop0density(2.));
+    EXPECT_DOUBLE_EQ(1., bulk0x(2.));
+    EXPECT_DOUBLE_EQ(1., bulk0y(2.));
+    EXPECT_DOUBLE_EQ(1., bulk0z(2.));
+    EXPECT_DOUBLE_EQ(1., vth0x(2.));
+    EXPECT_DOUBLE_EQ(1., vth0y(2.));
+    EXPECT_DOUBLE_EQ(1., vth0z(2.));
     EXPECT_EQ(100, pop0NbrPartPerCell);
     EXPECT_DOUBLE_EQ(1., pop0Charge);
     EXPECT_EQ("cartesian", pop0Basis);
