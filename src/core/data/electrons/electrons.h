@@ -167,7 +167,6 @@ public:
 
     bool isSettable() const { return fluxComput_.isSettable(); }
 
-
     auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(fluxComput_); }
 
     auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(fluxComput_); }
