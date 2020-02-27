@@ -228,7 +228,15 @@ namespace core
                 throw std::runtime_error(
                     "Error - Faraday - GridLayout not set, cannot proceed to calculate faraday()");
             }
-
+            if (B.isUsable() && E.isUsable() && Bnew.isUsable())
+            {
+                compute_(B, E, Bnew, dt);
+            }
+            else
+            {
+                throw std::runtime_error(
+                    "Error - Faraday - not all VecField parameters are usable");
+            }
             compute_(B, E, Bnew, dt);
         }
     };

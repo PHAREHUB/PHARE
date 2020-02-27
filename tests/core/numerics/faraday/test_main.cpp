@@ -35,6 +35,7 @@ struct VecFieldMock
     Field fm;
     Field& getComponent([[maybe_unused]] Component comp) { return fm; }
     Field const& getComponent([[maybe_unused]] Component comp) const { return fm; }
+    bool isUsable() const { return true; }
 };
 
 
