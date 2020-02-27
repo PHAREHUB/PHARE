@@ -363,21 +363,23 @@ namespace amr
          * time. These particles are communicated only at first step of a substepping cycle. They
          * will be used with the levelGhostParticlesOld particles to get the moments on level border
          * nodes.
+         * The method is does nothing if the level is the root level because the root level
+         * cannot get levelGhost from next coarser (it has none).
          */
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                double time) override
         {
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            auto levelNumber  = level.getLevelNumber();
-            levelGhostParticlesNew_.fill(levelNumber, time);
-
-            // during firstStep() coarser level and current level are at the same time
-            // so 'time' is also the beforePushCoarseTime_
-            beforePushCoarseTime_ = time;
-
+            auto levelNumber = level.getLevelNumber();
             if (levelNumber != 0)
             {
+                auto& hybridModel = static_cast<HybridModel&>(model);
+                levelGhostParticlesNew_.fill(levelNumber, time);
+
+                // during firstStep() coarser level and current level are at the same time
+                // so 'time' is also the beforePushCoarseTime_
+                beforePushCoarseTime_ = time;
+
                 auto coarserLevel    = hierarchy->getPatchLevel(levelNumber - 1);
                 auto patch           = *std::begin(*coarserLevel);
                 auto times           = resourcesManager_->getTimes(hybridModel.state.ions, *patch);
@@ -423,12 +425,12 @@ namespace amr
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
-         * This method copies the current model electromagnetic field, defined at t=n. Since
-         * prepareStep() is called just before advancing the level, this operation actually saves
-         * the t=n electromagntic field into the messenger. When the time comes that the next finer
-         * level needs to time interpolate the electromagnetic field at its ghost nodes, this level
-         * will have its model EM field at t=n+1 and thanks to this methods, the t=n field will be
-         * in the messenger.
+         * This method copies the current model electromagnetic field and current, defined at t=n.
+         * Since prepareStep() is called just before advancing the level, this operation actually
+         * saves the t=n electromagnetic field and current into the messenger. When the time comes
+         * that the next finer level needs to time interpolate the electromagnetic field and current
+         * at its ghost nodes, this level will have its model EM field  and current at t=n+1 and
+         * thanks to this methods, the t=n field will be in the messenger.
          */
         virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
         {
