@@ -390,6 +390,25 @@ class Simulation(object):
 # ------------------------------------------------------------------------------
 
     def set_model(self, model):
+
+        def periodic_function_check(vec_field, dict):
+            for xyz in ["x", "y", "z"]:
+                fn = dict[vec_field + xyz]
+                if fn(*self.origin) != fn(*self.simulation_domain()):
+                    return False
+            return True
+
+        if self.boundary_types[0] == "periodic":
+            model_dict = model.model_dict
+            valid = True
+            for pop_index, pop in enumerate(model.populations):
+                pop_dict = model_dict[pop]
+                for v in ["vth", "v"]:
+                    valid &= periodic_function_check(v, pop_dict)
+            for em in ["e", "b"]:
+                valid &= periodic_function_check(em, model_dict)
+            if not valid:
+                print("Warning: Simulation is periodic but some functions are not")
         self.model = model
 
 # ------------------------------------------------------------------------------
