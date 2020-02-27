@@ -139,6 +139,9 @@ namespace amr
         }
 
 
+        void advance(double dt) { timeRefIntegrator_->advanceHierarchy(dt); }
+
+
     private:
         std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator_;
     };

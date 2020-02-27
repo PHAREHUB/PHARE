@@ -12,10 +12,11 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
         case 1: return nullptr;
         case 2:
             std::string arg = argv[1];
+            auto moduleName = arg.substr(0, arg.find_last_of("."));
             if (arg.substr(arg.find_last_of(".") + 1) == "py")
             {
                 std::cout << "python input detected, building with python provider...\n";
-                return std::make_unique<PHARE::initializer::PythonDataProvider>(argc, argv[1]);
+                return std::make_unique<PHARE::initializer::PythonDataProvider>(moduleName);
             }
 
             break;
@@ -39,7 +40,7 @@ int main(int argc, char** argv)
     SamraiLifeCycle slc{argc, argv};
 
     std::cerr << "creating python data provider\n";
-    auto provider = std::make_unique<PHARE::initializer::PythonDataProvider>(2, "phare.init");
+    auto provider = fromCommandLine(argc, argv);
 
     std::cerr << "reading user inputs...";
     provider->read();
@@ -57,7 +58,7 @@ int main(int argc, char** argv)
 
     //
     // auto time = simulator.startTime();
-    //
+
     // while (time < simulator.endTime())
     //{
     //    simulator.advance();

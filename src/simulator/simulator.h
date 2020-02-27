@@ -93,7 +93,7 @@ public:
 
 
 
-    virtual std::string to_str() override
+    std::string to_str() override
     {
         std::stringstream ss;
         ss << "PHARE SIMULATOR\n";
@@ -109,7 +109,7 @@ public:
 
 
 
-    virtual void initialize() override
+    void initialize() override
     {
         if (integrator_ != nullptr)
             integrator_->initialize();
@@ -119,12 +119,10 @@ public:
 
 
 
-    virtual double startTime() override { return 0.; }
-    virtual double endTime() override { return 100.; }
-    virtual double timeStep() override { return 0.01; }
-    virtual void advance() override {}
-
-
+    double startTime() override { return 0.; }
+    double endTime() override { return 100.; }
+    double timeStep() override { return 0.01; }
+    void advance() override {}
 
     auto& getHybridModel() { return hybridModel_; }
 

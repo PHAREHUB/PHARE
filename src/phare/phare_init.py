@@ -36,9 +36,6 @@ vvv = {
 MaxwellianFluidModel(
     bx=bx, by=bx, bz=bx,
     ex=bx, ey=bx, ez=bx,
-    protons={"charge":1, "density":density, **vvv, "init":{"seed":1337}},
-    alpha={"charge":1, "density":density, **vvv, "init":{"seed":2}},
+    protons={"charge":-1, "density":density, **vvv, "init":{"seed":1337}},
+    alpha={"charge":-1, "density":density, **vvv, "init":{"seed":2}},
 )
-
-
-
