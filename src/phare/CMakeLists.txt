@@ -20,6 +20,5 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/init.py ${CMAKE_BINARY_DIR}/phare/ini
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_BINARY_DIR}/phare/__init__.py @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/phare_init.py ${CMAKE_CURRENT_BINARY_DIR}/phare_init.py @ONLY)
 
->>>>>>> user defined python input script name
 
 
