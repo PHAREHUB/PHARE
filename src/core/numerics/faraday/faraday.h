@@ -237,7 +237,6 @@ namespace core
                 throw std::runtime_error(
                     "Error - Faraday - not all VecField parameters are usable");
             }
-            compute_(B, E, Bnew, dt);
         }
     };
 } // namespace core

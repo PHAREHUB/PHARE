@@ -13,13 +13,7 @@ protected:
     GridLayout* layout_{nullptr};
 
 public:
-    void setLayout(GridLayout* ptr)
-    {
-        if (!hasLayout())
-            layout_ = ptr;
-        else
-            throw std::runtime_error("Error - layout already set, cannot set layout");
-    }
+    void setLayout(GridLayout* ptr) { layout_ = ptr; }
 
     bool hasLayout() const { return layout_ != nullptr; }
 };
