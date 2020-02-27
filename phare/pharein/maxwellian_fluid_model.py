@@ -6,6 +6,8 @@ class MaxwellianFluidModel(object):
 
     def defaulter(self, input, value):
         if input is not None:
+            from inspect import signature
+            assert len(signature(input).parameters) == self.dim
             return input
         if self.dim == 1:
             return lambda x:value + x*0
@@ -29,11 +31,7 @@ class MaxwellianFluidModel(object):
         if globals.sim.model is not None:
             raise RuntimeError("A model is already created")
 
-        else:
-            globals.sim.set_model(self)
-
         self.dim = globals.sim.dims
-
 
         ex = self.defaulter(ex, 0.)
         ey = self.defaulter(ey, 0.)
@@ -55,12 +53,11 @@ class MaxwellianFluidModel(object):
                                 "ey": ey,
                                 "ez": ez})
 
-
         self.populations = kwargs.keys()
         for population in self.populations:
             self.add_population(population, **kwargs[population])
 
-
+        globals.sim.set_model(self)
 
 
 # ------------------------------------------------------------------------------
