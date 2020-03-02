@@ -122,7 +122,13 @@ public:
     double endTime() override { return 100.; }
     double timeStep() override { return 0.01; }
 
-    void advance(double dt) override { integrator_->advance(dt); }
+    void advance(double dt) override
+    {
+        if (integrator_)
+            integrator_->advance(dt);
+        else
+            throw std::runtime_error("Error - no valid integrator in the simulator");
+    }
 
 
     auto& getHybridModel() { return hybridModel_; }
