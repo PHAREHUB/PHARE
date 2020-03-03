@@ -185,17 +185,28 @@ def check_refinement_boxes(**kwargs):
     refinement_boxes = kwargs.get("refinement_boxes", None)
     if refinement_boxes is None:
         return refinement_boxes
+    smallest_patch_size = kwargs.get("smallest_patch_size")
     for level,boxes in refinement_boxes.items():
         if (kwargs["max_nbr_levels"]) <= int(level[1:]) + 1:  # + 1 L0 index from 0 vs nbr_levels
             raise ValueError("Error - refinement_boxes, refined level larger than 'max_nbr_levels'")
+        for box, points in boxes.items():
+            for i in range(len(points[0])):
+                if points[1][i] - points[0][i] + 1 < smallest_patch_size: # +1 as index from 0
+                    raise ValueError("Invalid refineboxes, incompatible with smallest_patch_size")
+
     return refinement_boxes
 
 # ------------------------------------------------------------------------------
 
 def check_patch_size(**kwargs):
+    def get_max_ghosts():
+        from phare.core.gridlayout import GridLayout
+        grid = GridLayout()
+        return max(grid.nbrGhosts(kwargs["interp_order"], x) for x in ['primal','dual'])
 
+    max_ghosts = get_max_ghosts()
     largest_patch_size = kwargs.get("largest_patch_size", None)
-    smallest_patch_size = kwargs.get("smallest_patch_size", None)
+    smallest_patch_size = kwargs.get("smallest_patch_size", max_ghosts)
 
     dl,cells = check_domain(**kwargs)
 
@@ -207,16 +218,15 @@ def check_patch_size(**kwargs):
         if largest_patch_size <= 0:
             raise ValueError("Error - largest_patch_size cannot be <= 0")
 
-    if smallest_patch_size is not None:
+    if not all(size >= smallest_patch_size for size in cells):
+        raise ValueError("Error - smallest_patch_size should be less than nbr of cells in all directions")
 
-        if not all(size >= smallest_patch_size for size in cells):
-            raise ValueError("Error - smallest_patch_size should be less than nbr of cells in all directions")
+    small_invalid_patch_size = (max_ghosts - 1)
+    if smallest_patch_size <= small_invalid_patch_size:
+        raise ValueError("Error - smallest_patch_size cannot be <= " + str(small_invalid_patch_size))
 
-        if smallest_patch_size <= 0:
-            raise ValueError("Error - smallest_patch_size cannot be <= 0")
-
-    if largest_patch_size is not None and smallest_patch_size is not None:
-        if largest_patch_size < smallest_patch_size or smallest_patch_size > largest_patch_size:
+    if largest_patch_size is not None:
+        if largest_patch_size < smallest_patch_size:
             raise ValueError("Error - largest_patch_size and smallest_patch_size are incompatible")
 
     return largest_patch_size, smallest_patch_size
@@ -279,9 +289,6 @@ def checker(func):
 
         kwargs["boundary_types"] = check_boundaries(dims, **kwargs)
         kwargs["origin"] = check_origin(dims, **kwargs)
-        kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
-        kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
-
 
         kwargs["refined_particle_nbr"] = kwargs.get('refined_particle_nbr', 2)  # TODO change that default value
         kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'ascii') #TODO add checker with valid formats
@@ -289,6 +296,9 @@ def checker(func):
         largest, smallest = check_patch_size(**kwargs)
         kwargs["smallest_patch_size"] = smallest
         kwargs["largest_patch_size"] = largest
+
+        kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
+        kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
 
         return func(simulation_object, **kwargs)
 

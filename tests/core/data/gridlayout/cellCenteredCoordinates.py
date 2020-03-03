@@ -14,7 +14,7 @@ import numpy as np
 
 import sys
 
-import gridlayout
+from phare.core import gridlayout
 import utilities
 import os
 import gridparams

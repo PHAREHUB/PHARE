@@ -8,7 +8,7 @@ def basicSimulatorArgs(dim:int, interp:int, **kwargs):
     dl = [1./v for v in cells]
     args = {
         "interp_order": interp,
-        "smallest_patch_size":10,
+        "smallest_patch_size":5,
         "largest_patch_size":64,
         "time_step_nbr":1000,
         "final_time":1.,
