@@ -101,6 +101,8 @@ def populateDict():
         add(partinit_path+"nbr_part_per_cell", int(d["nbrParticlesPerCell"]))
         add(partinit_path+"charge", float(d["charge"]))
         add(partinit_path+"basis", "cartesian")
+        if "init" in d and "seed" in d["init"]:
+            pp.add_optional_size_t(partinit_path+"init/seed", d["init"]["seed"])
 
     add("simulation/electromag/name", "EM")
     add("simulation/electromag/electric/name", "E")
