@@ -57,6 +57,8 @@ class MaxwellianFluidModel(object):
         for population in self.populations:
             self.add_population(population, **kwargs[population])
 
+        self.validate(globals.sim)
+
         globals.sim.set_model(self)
 
 
@@ -142,3 +144,26 @@ class MaxwellianFluidModel(object):
     def to_dict(self):
         self.model_dict['nbr_ion_populations'] = self.nbr_populations()
         return self.model_dict
+
+#------------------------------------------------------------------------------
+
+    def validate(self, sim):
+        import math
+
+        def periodic_function_check(vec_field, dic):
+            for xyz in ["x", "y", "z"]:
+                fn = dic[vec_field + xyz]
+                if not math.isclose(fn(*sim.origin), fn(*sim.simulation_domain()), rel_tol=1e-5):
+                    return False
+            return True
+
+        if sim.boundary_types[0] == "periodic":
+            model_dict = self.model_dict
+            valid = True
+            for pop_index, pop in enumerate(self.populations):
+                for v in ["vth", "v"]:
+                    valid &= periodic_function_check(v, model_dict[pop])
+            for em in ["e", "b"]:
+                valid &= periodic_function_check(em, model_dict)
+            if not valid:
+                print("Warning: Simulation is periodic but some functions are not")
