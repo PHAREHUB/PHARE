@@ -13,7 +13,7 @@ import sys
 import os
 
 
-import gridlayout
+from phare.core import gridlayout
 import utilities
 import gridparams
 

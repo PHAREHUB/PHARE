@@ -5,7 +5,6 @@
 import unittest, os, phare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
-from phare import populateDict
 from tests.simulator import test_simulator as tst
 from tests.simulator.py import basicSimulatorArgs, makeBasicModel
 
@@ -35,7 +34,7 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
         ph.globals.sim = None
         ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
         makeBasicModel()
-        populateDict()
+        ph.populateDict()
         hier = tst.make_hierarchy()
         sim = tst.make_simulator(hier)
         sim.initialize()

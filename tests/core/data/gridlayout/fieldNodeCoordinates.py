@@ -6,7 +6,7 @@ import numpy as np
 
 import sys
 
-import gridlayout
+from phare.core import gridlayout
 import os
 import gridparams
 import cellCenteredCoordinates
