@@ -26,8 +26,8 @@ def makeBasicModel():
     import phare.pharein as ph
     density = lambda x: 2.
 
-    bx, by, bz = (lambda x: x  for i in range(3))
-    ex, ey, ez = (lambda x: x  for i in range(3))
+    bx, by, bz = (lambda x: x if x != 0 else 1 for i in range(3))
+    ex, ey, ez = (lambda x: x if x != 0 else 1 for i in range(3))
     vx, vy, vz = (lambda x: 1. for i in range(3))
 
     vthx, vthy, vthz = (lambda x: 1. for i in range(3))
