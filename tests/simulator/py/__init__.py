@@ -1,8 +1,35 @@
+from tests.simulator import test_simulator as tst
 
 
 from phare import cpp
-import phare.pharein as ph, numpy as np
+import unittest
+import phare.pharein as ph, numpy as np, math
 from phare.pharein import ElectronModel
+
+from phare.pp.diagnostics import Diagnostics
+
+
+class InitValueValidation(unittest.TestCase):
+    diag_options = lambda diag_out_dir: {
+        "diag_options": {"format": "phareh5", "options": {"dir": diag_out_dir},}
+    }
+
+    def _simulate_diagnostics(self, dim, interp, input):
+        self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
+        self.dman.dump()
+        del self.dman, self.sim, self.hier  # force hdf5 flush
+        return Diagnostics.extract(ph.globals.sim)
+
+    def tearDown(self):
+        for k in ["dman", "sim", "hier"]:
+            if hasattr(self, k):
+                delattr(self, k)
+        tst.reset()
+
+    def truncate(self, number, digits) -> float:
+        stepper = 10.0 ** digits
+        return math.trunc(stepper * number) / stepper
+
 
 def basicSimulatorArgs(dim:int, interp:int, **kwargs):
 

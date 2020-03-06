@@ -27,6 +27,24 @@ namespace amr
         coarseBoundaryNew
     };
 
+    template<std::size_t dim>
+    struct CoarseParticlePrefiner
+    {
+        template<typename Ratio>
+        static core::Particle<dim> prefine(core::Particle<dim> const& coarse, Ratio const& ratio)
+        {
+            auto fine{coarse};
+            for (size_t iDim = 0; iDim < dim; ++iDim)
+            {
+                fine.iCell[iDim] = coarse.iCell[iDim] * ratio[iDim]
+                                   + static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
+                fine.delta[iDim] = coarse.delta[iDim] * ratio[iDim]
+                                   - static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
+            }
+            return fine;
+        }
+    };
+
     template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
              std::size_t refinedParticleNbr, typename SplitT>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
@@ -168,18 +186,8 @@ namespace amr
                     for (auto const& particle : *sourceParticlesArray)
                     {
                         std::vector<core::Particle<dim>> refinedParticles;
-                        auto particleRefinedPos{particle};
-
-                        for (auto iDim = 0u; iDim < dim; ++iDim)
-                        {
-                            particleRefinedPos.iCell[iDim]
-                                = particle.iCell[iDim] * ratio[iDim]
-                                  + static_cast<int>(particle.delta[iDim] * ratio[iDim]);
-                            particleRefinedPos.delta[iDim]
-                                = particle.delta[iDim] * ratio[iDim]
-                                  - static_cast<int>(particle.delta[iDim] * ratio[iDim]);
-                        }
-
+                        auto particleRefinedPos
+                            = CoarseParticlePrefiner<dim>::prefine(particle, ratio);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))
                         {

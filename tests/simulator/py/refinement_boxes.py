@@ -45,7 +45,6 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
                 del v  # blocks segfault on test failure, could be None
         cpp.reset()
 
-
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
             try:
@@ -60,6 +59,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
                 cpp.reset()
             except ValueError as e:
                 self.assertTrue(not valid)
+        tst.reset()
 
     @data(*valid1D)
     def test_1d_valid(self, input):
