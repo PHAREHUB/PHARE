@@ -17,9 +17,15 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
     def dup(dic):
         dic.update(diags.copy())
         return dic
-
+    """
+      The first set of boxes "B0": [(10,), (14,)]
+      Are configured to force there to be a single patch on L0
+      This creates a case with MPI that there are an unequal number of
+      Patches across MPI domains. This case must be handled and not hang due
+      to collective calls not being handled properly.
+    """
     valid1D = [
-        dup({"refinement_boxes": {"L0": {"B0": [(10,), (50,)]}}}),
+        dup({"refinement_boxes": {"L0": {"B0": [(10,), (14,)]}}}),
         dup({"refinement_boxes": {"L0": {"B0": [(5,), (55,)]}}}),
     ]
 

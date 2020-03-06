@@ -137,7 +137,6 @@ public:
     void writeDataSet(HiFile& h5, String path, Array const* const array)
     {
         h5.getDataSet(path).write(array);
-        h5.flush();
     }
 
     // global function when all path+key are the same
@@ -147,7 +146,6 @@ public:
         h5.getGroup(path)
             .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
             .write(value);
-        h5.flush();
     }
 
     template<typename Dict>
@@ -162,7 +160,6 @@ public:
     {
         for (auto& [id, type] : core::Components::componentMap)
             h5.getDataSet(path + "/" + id).write(vecField.getComponent(type).data());
-        h5.flush();
     }
 
 
@@ -287,7 +284,6 @@ void HighFiveDiagnosticWriter<ModelView>::writeAttributesPerMPI(HiFile& h5, std:
                 doAttribute(h5.getGroup(keyPath), key, values[i]);
         }
     }
-    h5.flush();
 }
 
 
