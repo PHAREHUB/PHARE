@@ -89,6 +89,10 @@ namespace core
     {
         using Ptr_t = decltype(maker(dim, interpOrder, 1, 1));
         Ptr_t p;
+        if constexpr (std::is_same_v<Ptr_t, bool>)
+            p = false;
+        else
+            p = nullptr;
 
         core::apply(possibleDimensions(), [&](auto const& dim1) {
             core::apply(possibleInterpOrders(), [&](auto const& order) {

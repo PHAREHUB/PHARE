@@ -258,8 +258,8 @@ template<typename Data>
 void HighFiveDiagnosticWriter<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path,
                                                                 std::string key, Data const& data)
 {
-    auto doAttribute = [&](auto node, auto& key, auto& value) {
-        node.template createAttribute<Data>(key, HighFive::DataSpace::From(value)).write(value);
+    auto doAttribute = [&](auto node, auto& _key, auto& value) {
+        node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value)).write(value);
     };
 
     int mpi_size;
