@@ -115,7 +115,7 @@ class FluidInitValidation(InitValueValidation):
 
 
     def _get_contig_data_4_level0_ions_type(self, fluids, Type):
-        diags = Diagnostics.get_type(fluids, Type)
+        diags = Diagnostics.get(fluids, Type)
         # can't be more than one, shouldn't be 0
         assert len(diags) == 1
         return self._aggregate_physical_patch_value(
@@ -128,7 +128,7 @@ class FluidInitValidation(InitValueValidation):
 
     def _get_contig_popdata_4_level0_ions_type(self, diags, Type):
         pop_patches = {}
-        for diag in Diagnostics.get_type(diags, Type):
+        for diag in Diagnostics.get(diags, Type):
             for patch in diag.levels[0].patches:
                 # pull "alpha" from hd5f path eg /t#/pl0/p0#0/ions/pop/ions_alpha/${fn_name}
                 pop = patch.dtype.h5.name.split("/")[-2][5:]

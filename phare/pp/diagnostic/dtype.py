@@ -34,10 +34,8 @@ class _DType:
 
 
 class _EM(_DType):
-    start_key = "EM_"
-    end_keys = ["B", "E"]
-
     def __init__(self, diag, key, h5):
+        key = key.split("_")[1] # drop EM_ from EM_B
         _DType.__init__(self, diag, key, h5)
 
     def get(self):
@@ -45,21 +43,16 @@ class _EM(_DType):
 
 
 class _Fluid(_DType):
-    start_key = "ions"
-    end_keys = ["density", "flux", "bulkVelocity"]
-
     def __init__(self, diag, key, h5):
         _DType.__init__(self, diag, key, h5)
 
     def get(self):
-        if self.key is "density":
+        if self.key == "density":
             return {"density": self.h5}
         return self._get_VF(self.h5)
 
 
 class _Particle(_DType):
-    start_key = "ions"
-    end_keys = ["domain", "levelGhost", "patchGhost"]
     datasets = ["weight", "charge", "iCell", "delta", "v"]
 
     def __init__(self, diag, val, h5):

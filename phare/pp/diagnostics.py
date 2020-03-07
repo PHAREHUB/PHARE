@@ -1,6 +1,6 @@
 # formatted with black code formatter
 
-import os, h5py, phare.pharein as ph
+import os, h5py, phare.pharein as ph, itertools
 from .diagnostic.dtype import _EM, _Fluid, _Particle, Particles
 from .diagnostic.patch import Patch, PatchLevel
 
@@ -9,17 +9,18 @@ class H5FileRegexer:
     """Used to Validates h5 input file to ignore files which are not to be read/extracted"""
 
     @staticmethod
-    def ignore_population_name_in(h5files):
+    def ignore_population_name_in(h5FilesPerType):
         import re
 
         pop = "${POP}"
-        regexing = {}
-        for file in h5files:
-            if pop not in file:
-                continue
-            bits = file.split(pop)
-            left, right = bits[0], bits[1]
-            regexing[file] = re.compile("^" + left + "(.*)" + right + "$")
+        regexing = {Type:[] for Type in h5FilesPerType.keys()}
+        for Type, files in h5FilesPerType.items():
+            for file in files:
+                if pop not in file:
+                    continue
+                bits = file.split(pop)
+                left, right = bits[0], bits[1]
+                regexing[Type].append((file, re.compile("^" + left + "(.*)" + right + "$")))
         return regexing
 
 
@@ -29,19 +30,25 @@ class Diagnostic:
     DL_PRECISION = 12
 
     """List of all possible input HDF5 Files"""
-    h5Files = [
+    h5FilesPerType = {
+      _EM:[
         "EM_B.h5",
-        "EM_E.h5",
+        "EM_E.h5"],
+      _Fluid :[
         "ions_bulkVelocity.h5",
         "ions_density.h5",
         "ions_pop_ions_${POP}_density.h5",
-        "ions_pop_ions_${POP}_flux.h5",
+        "ions_pop_ions_${POP}_flux.h5"],
+      _Particle:[
         "ions_pop_ions_${POP}_domain.h5",
         "ions_pop_ions_${POP}_patchGhost.h5",
-        "ions_pop_ions_${POP}_levelGhost.h5",
-    ]
+        "ions_pop_ions_${POP}_levelGhost.h5"]
+    }
+    h5Files = [f for files in itertools.chain(h5FilesPerType.values()) for f in files ]
+
     """Compiled Regexs to ignore population name in HDF5 input files"""
-    h5FilesRegexes = H5FileRegexer.ignore_population_name_in(h5Files)
+    h5FilesRegexesPerType = H5FileRegexer.ignore_population_name_in(h5FilesPerType)
+    h5FilesRegexes = {r[0] : r[1] for rgxs in itertools.chain(h5FilesRegexesPerType.values()) for r in rgxs }
 
     def __init__(self, sim: ph.Simulation, file):
         def truncate(number, digits) -> float:
@@ -52,11 +59,13 @@ class Diagnostic:
 
         self.sim = sim
         self.file = file
+        self.dtype = Diagnostics.get_type_from_file(file)
         self.hifile = h5py.File(file, "r")
         self.levels = {}
         self.dl = [truncate(x, Diagnostic.DL_PRECISION) for x in sim.dl]
         self.dim = len(sim.dl)
         self.initialize_patch_hierarchy_from_hdf5_file()
+
 
     def initialize_patch_hierarchy_from_hdf5_file(self):
         for timestamp in self.hifile.keys():
@@ -87,35 +96,43 @@ class Diagnostic:
 
 
 class Diagnostics:
+
+    def __init__(self, input):
+        if isinstance(input, ph.Simulation):
+            self.diags = Diagnostics.extract(input)
+        self.diags = input
+
+    def getPopDensities(self):
+        return Diagnostics.get(self.diags, "ions_pop_ions_${POP}_density")
+
+    def getDensity(self, pop = ""):
+        if len(pop):
+            return Diagnostics.get(self.diags, "ions_pop_ions_"+pop+"_density")[0]
+        return Diagnostics.get(self.diags, "ions_density")[0]
+
+
     @staticmethod
-    def _extract_type_recursive(diag, h5item, Type):  # "type" is a python3 keyword
+    def _extract_recursive(diag, h5item, pre_key = ""):
         assert isinstance(diag, Diagnostic)
 
-        for key in list(h5item.keys()):
-            for k in Type.end_keys:
-                if key.endswith(k):
-                    return Type(diag, k, h5item[key])
-            if not isinstance(h5item[key], h5py.Dataset):
-                return Diagnostics._extract_type_recursive(diag, h5item[key], Type)
+        kinder = list(h5item.keys())
+        n_keys = len(kinder)
 
-    @staticmethod
-    def _extract_type(diag, h5item, Type):
-        assert isinstance(diag, Diagnostic)
+        if n_keys == 1 and isinstance(h5item[kinder[0]], h5py.Dataset):
+            """Single dataset per patch hdf5 file, e.g. ion density"""
+            return diag.dtype(diag, kinder[0], h5item[kinder[0]])
 
-        keys = list(h5item.keys())
-        if len(keys) and keys[0].startswith(Type.start_key):
-            return Diagnostics._extract_type_recursive(diag, h5item, Type)
+        if n_keys > 1 and isinstance(h5item[kinder[0]], h5py.Dataset):
+            """Multiple dataset per patch hdf5 file, e.g. ion flux"""
+            return diag.dtype(diag, pre_key, h5item)
+
+        if n_keys:
+            return Diagnostics._extract_recursive(diag, h5item[kinder[0]], kinder[0])
 
     @staticmethod
     def _extract(diag, h5item):
         assert isinstance(diag, Diagnostic)
-
-        types = [
-            Diagnostics._extract_type(diag, h5item, Type)
-            for Type in [_EM, _Fluid, _Particle]
-        ]
-        types = [i for i in types if i]
-        return types[0] if len(types) else None
+        return Diagnostics._extract_recursive(diag, h5item)
 
     @staticmethod
     def _get_h5_files(sim: ph.Simulation):
@@ -181,8 +198,22 @@ class Diagnostics:
         ]
         return dic
 
+
     @staticmethod
-    def get_type(diags, Type):
+    def get_type_from_file(file):
+        file = os.path.basename(file)
+        for Type, files in Diagnostic.h5FilesPerType.items():
+            if file in files:
+                return Type
+        for Type, regexs in Diagnostic.h5FilesRegexesPerType.items():
+            for h5File, regex in regexs:
+                if regex.match(file):
+                    return Type
+        assert False
+
+
+    @staticmethod
+    def get(diags, Type):
         nDiags = []
 
         if not Type.endswith(".h5"):
