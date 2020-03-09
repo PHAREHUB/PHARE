@@ -97,7 +97,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto initPatch = [&](auto& level, auto& attr, std::string patchID = "") {
         bool null = patchID.empty();
-        std::string path{hi5.getPatchPath("time", level, patchID)};
+        std::string path{hi5.getPatchPath(level, patchID)};
         for (auto* vecField : vecFields)
         {
             auto& name = vecField->name();

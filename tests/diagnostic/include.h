@@ -66,8 +66,9 @@ struct Hi5Diagnostic
         dict["type"]            = type;
         dict["compute_every"]   = std::size_t{1};
         dict["write_every"]     = std::size_t{1};
-        dict["start_iteration"] = std::size_t{0};
-        dict["last_iteration"]  = std::numeric_limits<std::size_t>::max();
+        dict["time_step"]       = double{1};
+        dict["start_iteration"] = double{0};
+        dict["last_iteration"]  = double{100};
         return dict;
     }
     auto electromag(std::string&& type) { return dict("electromag", type); }
@@ -78,7 +79,7 @@ struct Hi5Diagnostic
     {
         std::stringstream globalId;
         globalId << patch.getGlobalId();
-        return writer.getPatchPath("time", level, globalId.str());
+        return writer.getPatchPath(timestamp_, level, globalId.str());
     }
 
 
@@ -89,6 +90,7 @@ struct Hi5Diagnostic
     DiagnosticModelView modelView{hierarchy_, model_};
     DiagnosticWriter writer{modelView, "phare_outputs", flags_};
     DiagnosticsManager<DiagnosticWriter> dMan{writer};
+    std::string timestamp_ = "0.000000";
 };
 
 

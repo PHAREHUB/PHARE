@@ -14,25 +14,26 @@ namespace PHARE::diagnostic
 enum class Mode { LIGHT, FULL };
 
 
-
-
-template<typename Diag>
-bool isActive(Diag const& diag, std::size_t current, std::size_t every)
+bool isActive(std::vector<double>& active, double time_stamp, double time_step, size_t& last)
 {
-    return (current >= diag.start_iteration && current <= diag.last_iteration)
-           && current % every == 0;
+    bool is_active = active[last] + time_step > time_stamp;
+
+    if (is_active)
+        last++;
+
+    return is_active;
 }
 
 template<typename Diag>
-bool needsCompute(Diag const& diag, std::size_t current)
+bool needsCompute(Diag& diag, double time_stamp, double time_step)
 {
-    return isActive(diag, current, diag.compute_every);
+    return isActive(diag.computeTimestamps, time_stamp, time_step, diag.lastCompute);
 }
 
 template<typename Diag>
-bool needsWrite(Diag const& diag, std::size_t current)
+bool needsWrite(Diag& diag, double time_stamp, double time_step)
 {
-    return isActive(diag, current, diag.write_every);
+    return isActive(diag.writeTimestamps, time_stamp, time_step, diag.lastWrite);
 }
 
 
@@ -59,7 +60,7 @@ void handleInputDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& di
 class IDiagnosticsManager
 {
 public:
-    virtual void dump() = 0;
+    virtual void dump(double time_stamp, double time_step) = 0;
     virtual ~IDiagnosticsManager();
 };
 IDiagnosticsManager::~IDiagnosticsManager() {}
@@ -82,7 +83,7 @@ public:
     }
 
 
-    void dump() override;
+    void dump(double time_stamp, double time_step) override;
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict& dict);
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict&& dict)
     {
@@ -112,9 +113,11 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
     dao.category        = dict["category"].template to<std::string>();
     dao.compute_every   = dict["compute_every"].template to<std::size_t>();
     dao.write_every     = dict["write_every"].template to<std::size_t>();
-    dao.start_iteration = dict["start_iteration"].template to<std::size_t>();
-    dao.last_iteration  = dict["last_iteration"].template to<std::size_t>();
+    dao.start_iteration = dict["start_iteration"].template to<double>();
+    dao.last_iteration  = dict["last_iteration"].template to<double>();
     dao.type            = dict["type"].template to<std::string>();
+
+    dao.compute_active_timestamps(dict["time_step"].template to<double>());
 
     return *this;
 }
@@ -125,23 +128,21 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
    iterations
 */
 template<typename Writer>
-void DiagnosticsManager<Writer>::dump(/*time iteration*/)
+void DiagnosticsManager<Writer>::dump(double time_stamp, double time_step)
 {
-    size_t iter = 1; // TODO replace with time/iteration idx
-
     std::vector<DiagnosticDAO*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        if (needsCompute(diag, iter))
+        if (needsCompute(diag, time_stamp, time_step))
         {
             writer_.getDiagnosticWriterForType(diag.category)->compute(diag);
         }
-        if (needsWrite(diag, iter))
+        if (needsWrite(diag, time_stamp, time_step))
         {
             activeDiagnostics.emplace_back(&diag);
         }
     }
-    writer_.dump(activeDiagnostics);
+    writer_.dump(activeDiagnostics, time_stamp);
 }
 
 
@@ -206,7 +207,7 @@ auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,
 }
 
 // this function is a for std visit and MPI sychronization
-// so we can write attributes for disparate numbers of patches across MPI nodes#
+// so we can write attributes for disparate numbers of patches across MPI nodes
 // This function should match getPatchAttributes in structure
 template<typename ModelParams>
 auto DiagnosticModelView<solver::type_list_to_hybrid_model_t<ModelParams>,

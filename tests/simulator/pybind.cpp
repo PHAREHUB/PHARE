@@ -68,6 +68,7 @@ PYBIND11_MODULE(test_simulator, m)
         .def("initialize", &PHARE::ISimulator::initialize)
         .def("advance", &PHARE::ISimulator::advance)
         .def("startTime", &PHARE::ISimulator::startTime)
+        .def("currentTime", &PHARE::ISimulator::currentTime)
         .def("endTime", &PHARE::ISimulator::endTime)
         .def("timeStep", &PHARE::ISimulator::timeStep)
         .def("to_str", &PHARE::ISimulator::to_str);

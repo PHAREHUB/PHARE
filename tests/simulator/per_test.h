@@ -82,6 +82,12 @@ struct TestSimulator : public HierarchyMaker<_dim>, public PHARE::Simulator<_dim
                 *writer, dict()["simulation"]["diagnostics"]);
         }
     }
+
+    template<typename DMan>
+    void dump(DMan& dman, double current_timestamp = 0, double current_timestep = 1)
+    {
+        dman.dump(current_timestamp, current_timestep);
+    }
 };
 
 template<typename Simulator>

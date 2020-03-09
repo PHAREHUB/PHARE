@@ -54,7 +54,8 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
     auto& rm = *hybridModel.resourcesManager;
     { // scoped for destruction
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
-        hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E")).dump();
+        hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E"));
+        sim.dump(hi5.dMan);
     }
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
 

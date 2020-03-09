@@ -17,6 +17,7 @@ public:
     virtual void initialize()    = 0;
     virtual double startTime()   = 0;
     virtual double endTime()     = 0;
+    virtual double currentTime() = 0;
     virtual double timeStep()    = 0;
     virtual void advance()       = 0;
     virtual std::string to_str() = 0;
@@ -120,9 +121,15 @@ public:
 
 
     double startTime() override { return 0.; }
-    double endTime() override { return 100.; }
-    double timeStep() override { return 0.01; }
-    void advance() override {}
+    double endTime() override { return finalTime_; }
+    double timeStep() override { return dt_; }
+    double currentTime() override { return currentTime_; }
+
+    void advance() override
+    {
+        currentTime_ += dt_;
+        timeStepNbr_++;
+    }
 
     auto& getHybridModel() { return hybridModel_; }
 
@@ -152,8 +159,9 @@ private:
 
     int maxLevelNumber_;
     double dt_;
-    int timeStepNbr_;
-    double finalTime_;
+    int timeStepNbr_    = 0;
+    double finalTime_   = 0;
+    double currentTime_ = 0;
 
     // physical models that can be used
     std::shared_ptr<HybridModel> hybridModel_;

@@ -11,10 +11,6 @@
 #include "diagnostic/diagnostic_dao.h"
 #include "highfive_diag_writer.h"
 
-/*TODO
-  add advancement/time iteration separation for dumping
-    - see "getPatchPath" - replace "/t#" with real time/id
-*/
 
 namespace PHARE::diagnostic::h5
 {
@@ -91,7 +87,7 @@ public:
 
     ~HighFiveDiagnosticWriter() {}
 
-    void dump(std::vector<DiagnosticDAO*> const&);
+    void dump(std::vector<DiagnosticDAO*> const&, double current_timestamp);
 
     template<typename String>
     auto getDiagnosticWriterForType(String& type)
@@ -113,12 +109,15 @@ public:
     }
     auto makeFile(DiagnosticDAO& diagnostic) { return makeFile(fileString(diagnostic.type)); }
 
-    /*
-     * TODO: update when time advancements are implemented.
-     */
-    std::string getPatchPath(std::string, int iLevel, std::string globalCoords)
+
+    std::string getPatchPath(std::string timestamp, int iLevel, std::string globalCoords)
     {
-        return "/t#/pl" + std::to_string(iLevel) + "/p" + globalCoords;
+        return "/t" + timestamp + "/pl" + std::to_string(iLevel) + "/p" + globalCoords;
+    }
+
+    std::string getPatchPath(int iLevel, std::string globalCoords)
+    {
+        return getPatchPath(std::to_string(timestamp_), iLevel, globalCoords);
     }
 
     auto& modelView() const { return modelView_; }
@@ -174,6 +173,7 @@ public:
     size_t mpiGetMaxOf(size_t, int mpi_size = 0);
 
 private:
+    double timestamp_;
     std::string filePath_;
     std::string patchPath_; // is passed around as "virtual write()" has no parameters
     ModelView& modelView_;
@@ -206,8 +206,10 @@ private:
 
 
 template<typename ModelView>
-void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics)
+void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics,
+                                               double timestamp)
 {
+    timestamp_                     = timestamp;
     fileAttributes_["dimension"]   = dimension;
     fileAttributes_["interpOrder"] = interpOrder;
     fileAttributes_["layoutType"]  = modelView().getLayoutTypeString();
@@ -335,7 +337,7 @@ void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
     auto writePatch      = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
         if (!patchAttributes.count(iLevel))
             patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
-        patchPath_ = getPatchPath("time", iLevel, patchID);
+        patchPath_ = getPatchPath(iLevel, patchID);
         patchAttributes[iLevel].emplace_back(patchID, modelView().getPatchAttributes(gridLayout));
         for (auto* diagnostic : diagnostics)
             writers.at(diagnostic->category)->write(*diagnostic);

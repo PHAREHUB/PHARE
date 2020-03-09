@@ -44,6 +44,7 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
 
 
     def _create_simulator(self, dim, interp, **input):
+        tst.reset()
         ph.globals.sim = None
         ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
         makeBasicModel()
@@ -59,7 +60,7 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
             try:
                 self.hier, self.sim, self.dman = self._create_simulator(dim, interp, **input)
                 self.assertTrue(valid)
-                self.dman.dump()
+                dman.dump(sim.currentTime(), sim.timeStep())
                 del (
                     self.dman,
                     self.sim,
@@ -68,6 +69,7 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
                 tst.reset()
             except ValueError as e:
                 self.assertTrue(not valid)
+        tst.reset()
 
     @data(*valid1D)
     def test_1d_valid(self, input):

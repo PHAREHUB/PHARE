@@ -116,7 +116,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto initDataSet = [&](auto& lvl, auto& patchID, auto tree, auto& attr) {
         bool null = patchID.empty();
-        std::string path{hi5_.getPatchPath("time", lvl, patchID) + tree + "/"};
+        std::string path{hi5_.getPatchPath(lvl, patchID) + tree + "/"};
         size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
             createDataSet(path + Packer::keys()[part_idx],

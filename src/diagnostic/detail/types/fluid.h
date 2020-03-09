@@ -129,7 +129,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         bool null = patchID.empty();
-        std::string path{hi5.getPatchPath("time", lvl, patchID) + "/ions/"};
+        std::string path{hi5.getPatchPath(lvl, patchID) + "/ions/"};
 
         for (auto& pop : ions)
         {

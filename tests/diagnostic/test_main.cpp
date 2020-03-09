@@ -26,7 +26,7 @@ void validateFluidDump(Simulator& sim, Writer& hi5)
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
-        auto path  = hi5.getPatchPath("time", iLevel, patchID);
+        auto path  = hi5.getPatchPath(iLevel, patchID);
         auto& ions = hi5.modelView().getIons();
         for (auto& pop : ions)
         {
@@ -61,8 +61,8 @@ TYPED_TEST(SimulatorTest, fluid)
             .addDiagDict(hi5.fluid("/ions/pop/ions_alpha/density"))
             .addDiagDict(hi5.fluid("/ions/pop/ions_alpha/flux"))
             .addDiagDict(hi5.fluid("/ions/pop/ions_protons/density"))
-            .addDiagDict(hi5.fluid("/ions/pop/ions_protons/flux"))
-            .dump();
+            .addDiagDict(hi5.fluid("/ions/pop/ions_protons/flux"));
+        sim.dump(hi5.dMan);
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
@@ -84,7 +84,7 @@ void validateElectromagDump(Simulator& sim, Writer& hi5)
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
-        auto path = hi5.getPatchPath("time", iLevel, patchID) + "/";
+        auto path = hi5.getPatchPath(iLevel, patchID) + "/";
         checkVF(layout, path, "/EM_B", hybridModel.state.electromag.B);
         checkVF(layout, path, "/EM_E", hybridModel.state.electromag.E);
     };
@@ -103,7 +103,8 @@ TYPED_TEST(SimulatorTest, electromag)
     auto& hierarchy   = *sim.hierarchy;
     { // scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
-        hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E")).dump();
+        hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E"));
+        sim.dump(hi5.dMan);
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
@@ -160,7 +161,7 @@ void validateParticleDump(Simulator& sim, Writer& hi5)
     };
 
     auto visit = [&](GridLayout&, std::string patchID, size_t iLevel) {
-        auto path = hi5.getPatchPath("time", iLevel, patchID);
+        auto path = hi5.getPatchPath(iLevel, patchID);
         for (auto& pop : hybridModel.state.ions)
         {
             checkFile(path, "/ions/pop/" + pop.name() + "/domain", pop.domainParticles());
@@ -189,8 +190,8 @@ TYPED_TEST(SimulatorTest, particles)
             .addDiagDict(hi5.particles("/ions/pop/ions_alpha/patchGhost"))
             .addDiagDict(hi5.particles("/ions/pop/ions_protons/domain"))
             .addDiagDict(hi5.particles("/ions/pop/ions_protons/levelGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_protons/patchGhost"))
-            .dump();
+            .addDiagDict(hi5.particles("/ions/pop/ions_protons/patchGhost"));
+        sim.dump(hi5.dMan);
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
@@ -206,7 +207,7 @@ void validateAttributes(Simulator& sim, Writer& hi5)
     auto hifile       = hi5.makeFile(hi5.fileString("/EM_B")); // all files have attributes
 
     auto visit = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
-        std::string patchPath = hi5.getPatchPath("time", iLevel, patchID), origin;
+        std::string patchPath = hi5.getPatchPath(iLevel, patchID), origin;
         hifile->file().getGroup(patchPath).getAttribute("origin").read(origin);
         EXPECT_EQ(gridLayout.origin().str(), origin);
     };
@@ -222,7 +223,7 @@ TYPED_TEST(SimulatorTest, allFromPython)
     using Hierarchy   = typename TypeParam::Hierarchy;
 
     TypeParam sim;
-    sim.dMan->dump();
+    sim.dump(*sim.dMan);
     sim.dMan.reset();
     sim.modelView.reset();
     sim.writer.reset(); // keeps a handle and breaks the following readonly opening
