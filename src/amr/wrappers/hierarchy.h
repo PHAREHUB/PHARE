@@ -19,35 +19,42 @@
 
 
 #include "initializer/data_provider.h"
-
+#include "core/utilities/point/point.h"
 
 namespace PHARE::amr
 {
+template<typename Type, size_t dimension>
+void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type* arr)
+{
+    arr[0] = grid[key]["x"].template to<Type>();
+    if constexpr (dimension > 1)
+        arr[1] = grid[key]["y"].template to<Type>();
+    if constexpr (dimension > 2)
+        arr[2] = grid[key]["z"].template to<Type>();
+}
+
+template<typename Type, size_t dimension>
+auto parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key)
+{
+    std::array<Type, dimension> arr;
+    parseDimXYZType<Type, dimension>(grid, key, arr.data());
+    return arr;
+}
+
 template<std::size_t dimension>
 void getDomainCoords(PHARE::initializer::PHAREDict& grid, float lower[dimension],
                      float upper[dimension])
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
 
-    auto nx  = grid["nbr_cells"]["x"].template to<int>();
-    auto dx  = grid["meshsize"]["x"].template to<double>();
-    lower[0] = static_cast<float>(grid["origin"]["x"].template to<double>());
-    upper[0] = static_cast<float>(lower[0] + nx * dx);
+    auto nbr_cells = parseDimXYZType<int, dimension>(grid, "nbr_cells");
+    auto mesh_size = parseDimXYZType<double, dimension>(grid, "meshsize");
+    auto origin    = parseDimXYZType<double, dimension>(grid, "origin");
 
-    if constexpr (dimension >= 2)
+    for (size_t i = 0; i < dimension; i++)
     {
-        auto ny  = grid["nbr_cells"]["y"].template to<int>();
-        auto dy  = grid["meshsize"]["y"].template to<double>();
-        lower[1] = static_cast<float>(grid["origin"]["y"].template to<double>());
-        upper[1] = static_cast<float>(lower[1] + ny * dy);
-    }
-
-    if constexpr (dimension == 3)
-    {
-        auto nz  = grid["nbr_cells"]["z"].template to<int>();
-        auto dz  = grid["meshsize"]["z"].template to<double>();
-        lower[2] = static_cast<float>(grid["origin"]["z"].template to<double>());
-        upper[2] = static_cast<float>(lower[2] + nz * dz);
+        lower[i] = static_cast<float>(origin[i]);
+        upper[i] = static_cast<float>(lower[i] + nbr_cells[i] * mesh_size[i]);
     }
 }
 
@@ -61,9 +68,9 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid)
     auto db        = std::make_shared<SAMRAI::tbox::MemoryDatabase>("griddingAlgoDB");
 
     {
-        int lowerCell[dimension];
+        int lowerCell[dimension], upperCell[dimension];
         std::fill_n(lowerCell, dimension, 0);
-        int upperCell[dimension];
+        parseDimXYZType<int, dimension>(grid, "nbr_cells", upperCell);
 
         upperCell[0] = grid["nbr_cells"]["x"].template to<int>() - 1;
 
@@ -79,8 +86,7 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid)
     }
 
     {
-        float lowerCoord[dimension];
-        float upperCoord[dimension];
+        float lowerCoord[dimension], upperCoord[dimension];
         getDomainCoords<dimension>(grid, lowerCoord, upperCoord);
         db->putFloatArray("x_lo", lowerCoord, dimension);
         db->putFloatArray("x_up", upperCoord, dimension);
@@ -169,23 +175,32 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
 
 
 
-
 class Hierarchy : public SAMRAI::hier::PatchHierarchy
 {
-private:
-    static constexpr int dimension = 1;
-
-
 public:
+    static constexpr size_t dimension = 1;
+
     Hierarchy(PHARE::initializer::PHAREDict dict)
-        : SAMRAI::hier::PatchHierarchy{
-            "PHARE_hierarchy",
-            std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
-                SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
-                griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
-            patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"])}
+        : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy",
+                                       std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
+                                           SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
+                                           griddingAlgorithmDatabase<dimension>(
+                                               dict["simulation"]["grid"])),
+                                       patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"])}
+        , meshSize_(getMeshSize(dict["simulation"]["grid"]))
     {
     }
+
+    auto const& meshSize() const { return meshSize_; }
+
+private:
+    static core::Point<double, dimension> getMeshSize(PHARE::initializer::PHAREDict& grid)
+    {
+        return parseDimXYZType<double, dimension>(grid, "meshsize");
+    }
+
+
+    core::Point<double, dimension> meshSize_;
 };
 
 
