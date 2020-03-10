@@ -358,7 +358,7 @@ class Simulation(object):
         return self.time_step * self.time_step_nbr
 
     def simulation_domain(self):
-        return [dl * n + self.origin[0] for dl, n in zip(self.dl, self.cells)]
+        return [dl * n + ori for dl, n, ori in zip(self.dl, self.cells, self.origin)]
 
     def within_simulation_duration(self, time_period):
         return time_period[0] >= 0 and time_period[1] < self.time_step_nbr
