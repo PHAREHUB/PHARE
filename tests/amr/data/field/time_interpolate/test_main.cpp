@@ -103,6 +103,14 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
             srcFieldNew(ix) = srcFunc(position[dirX], newTime);
         }
     }
+
+
+    auto zeroTransformation()
+    {
+        return SAMRAI::hier::Transformation(SAMRAI::hier::Transformation::NO_ROTATE,
+                                            SAMRAI::hier::IntVector::getZero(dimension),
+                                            SAMRAI::hier::BlockId(0), SAMRAI::hier::BlockId(0));
+    }
 };
 
 int aFieldLinearTimeInterpolate::countLocal = 0;
@@ -119,8 +127,11 @@ TEST_F(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
 
     auto& destField = destNew->field;
 
+    auto zero_transformation{zeroTransformation()};
+    SAMRAI::hier::BoxContainer ghost_cntnr;
+    FieldOverlap<dim> overlap{ghost_cntnr, zero_transformation};
 
-    timeOp.timeInterpolate(*destNew, domain, *srcOld, *srcNew);
+    timeOp.timeInterpolate(*destNew, domain, overlap, *srcOld, *srcNew);
 
 
     bool const withGhost{true};
@@ -153,7 +164,11 @@ TEST_F(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     auto& destField = destNew->field;
 
 
-    timeOp.timeInterpolate(*destNew, domain, *srcOld, *srcNew);
+    auto zero_transformation{zeroTransformation()};
+    SAMRAI::hier::BoxContainer ghost_cntnr;
+    FieldOverlap<dim> overlap{ghost_cntnr, zero_transformation};
+
+    timeOp.timeInterpolate(*destNew, domain, overlap, *srcOld, *srcNew);
 
 
     bool const withGhost{true};
@@ -185,8 +200,11 @@ TEST_F(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLinear)
 
     auto& destField = destNew->field;
 
+    auto zero_transformation{zeroTransformation()};
+    SAMRAI::hier::BoxContainer ghost_cntnr;
+    FieldOverlap<dim> overlap{ghost_cntnr, zero_transformation};
 
-    timeOp.timeInterpolate(*destNew, domain, *srcOld, *srcNew);
+    timeOp.timeInterpolate(*destNew, domain, overlap, *srcOld, *srcNew);
 
 
     bool const withGhost{true};
