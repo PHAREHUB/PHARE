@@ -113,17 +113,12 @@ class FluidInitValidation(InitValueValidation):
         self._save_std_fig(nppc, noises[fn_name], ratios[fn_name], fn_name)
         self._save_dbg_fig(datasets, model_dict, fn_name)
 
-
     def _get_contig_data_4_level0_ions_type(self, fluids, Type):
         diags = Diagnostics.get(fluids, Type)
         # can't be more than one, shouldn't be 0
         assert len(diags) == 1
         return self._aggregate_physical_patch_value(
-            sorted(
-                diags[0].levels[0].patches,
-                key=lambda x: x.min_coord("x"),
-            ),
-            True,
+            sorted(diags[0].levels[0].patches, key=lambda x: x.min_coord("x"),), True,
         )
 
     def _get_contig_popdata_4_level0_ions_type(self, diags, Type):

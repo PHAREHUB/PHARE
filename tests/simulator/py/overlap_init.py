@@ -12,9 +12,13 @@ import unittest, os, phare.pharein as ph, numpy as np
 from tests.diagnostic import dump_all_diags
 
 from phare.pp.diagnostic.data.overlap import Overlap
-from phare.pp.diagnostic.data.em_overlap import EMOverlap
-from phare.pp.diagnostic.data.fluid_overlap import FluidOverlap
-from phare.pp.diagnostic.data.particle_overlap import ParticleOverlap, ParticleOverlapComparator
+from phare.pp.diagnostic.data.em_overlap import EMOverlap, getEMOverlapsFrom
+from phare.pp.diagnostic.data.fluid_overlap import FluidOverlap, getFluidOverlapsFrom
+from phare.pp.diagnostic.data.particle_overlap import (
+    ParticleOverlap,
+    ParticleOverlapComparator,
+    getParticleOverlapsFrom,
+)
 from phare.pp.diagnostic.data.particle_level_overlap import LevelParticleOverlap
 from phare.pp.diagnostic.data.particle_patch_overlap import DomainParticleOverlap
 
@@ -27,7 +31,7 @@ diag_out_dir = "phare_outputs/initializer"
 @ddt
 class OverlapValueValidation(InitValueValidation):
     min_interp = 1
-    max_interp = 3
+    max_interp = 1
 
     def add_to_dict(dic):
         dic.update(InitValueValidation.diag_options(diag_out_dir))
@@ -61,7 +65,7 @@ class OverlapValueValidation(InitValueValidation):
                 "max_nbr_levels": 3,
             }
         ),
-        add_to_dict({"id": 2, "refinement_boxes": {"L0": {"B0": [(10,), (14,)]}},}),
+        add_to_dict({"id": 2, "refinement_boxes": {"L0": {"B0": [(5,), (54,)]}},}),
     ]
 
     @data(*valid1D)
@@ -81,31 +85,21 @@ class OverlapValueValidation(InitValueValidation):
                 + str(input["id"])
             )
             diags = self._simulate_diagnostics(dim, interp, input)
-            self._checkEM(EMOverlap.get(diags))
-            self._checkFluid(FluidOverlap.get(diags))
-            self._checkParticles(ParticleOverlap.get(diags), dim, interp)
+            self._checkEM(getEMOverlapsFrom(diags))
+            self._checkFluid(getFluidOverlapsFrom(diags))
+            self._checkParticles(getParticleOverlapsFrom(diags), dim, interp)
 
     def _checkEM(self, overlaps):
         self.assertTrue(len(overlaps))
         for overlap in overlaps:
-            key, offsets = overlap.key, overlap.offsets
-            for i in range(overlap.sizes[0]):
-                x0, x1 = (
-                    overlap.p0.dtype.get()[key][offsets[0][0] + i],
-                    overlap.p1.dtype.get()[key][offsets[0][1] + i],
-                )
-                self.assertTrue(Overlap._float_equal(x0, x1))
+            patch0_data, patch1_data = overlap.get_shared_data()
+            np.array_equiv(patch0_data, patch1_data)
 
     def _checkFluid(self, overlaps):
         self.assertTrue(len(overlaps))
         for overlap in overlaps:
-            key, offsets, nGhosts = overlap.key, overlap.offsets, overlap.nGhosts
-            if overlap.sizes[0] == nGhosts * 2:
-                x0, x1 = (
-                    overlap.p0.dtype.get()[key][offsets[0][0] + nGhosts],
-                    overlap.p1.dtype.get()[key][offsets[0][1] + nGhosts],
-                )
-                self.assertTrue(Overlap._float_equal(x0, x1))
+            patch0_data, patch1_data = overlap.get_shared_data()
+            np.array_equiv(patch0_data, patch1_data)
 
     def _checkParticles(self, overlaps, dim, interp):
         self.assertTrue(len(overlaps))
@@ -188,7 +182,7 @@ class OverlapValueValidation(InitValueValidation):
             overlap.coarseDomain, overlap.coarsePatchGhost, dim, interp
         )
 
-        icells = [overlap.offsets[0] + g for g in range(overlap.sizes[0])]
+        icells = [overlap.sizes[0] + g for g in range(overlap.nGhosts)]
 
         def where(cells):
             lst = []

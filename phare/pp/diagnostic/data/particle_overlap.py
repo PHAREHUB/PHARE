@@ -1,7 +1,28 @@
 import numpy as np, math
-from phare.pp.diagnostics import Diagnostic, Patch, _Particle, Particles
-from .periodic_overlap import PeriodicOverlap
+from phare.pp.diagnostics import Patch, _Particle, Particles
 from .overlap import Overlap
+
+
+class ParticleOverlap(Overlap):
+    def __init__(self, p0: Patch, p1: Patch, dataset_key, nGhosts, sizes):
+        Overlap.__init__(self, p0, p1, dataset_key, nGhosts, sizes)
+
+
+def getParticleOverlapsFrom(diags):
+    from .particle_level_overlap import getLevelGhostOverlaps
+    from .particle_patch_overlap import getPatchGhostOverlaps
+
+    return getLevelGhostOverlaps(diags) + getPatchGhostOverlaps(diags)
+
+
+def get_ghost_patch(particles: Particles, p0: Patch, gType):
+    from .particle_level_overlap import LevelParticleOverlap
+    from .particle_patch_overlap import DomainParticleOverlap
+
+    assert gType == DomainParticleOverlap or gType == LevelParticleOverlap
+
+    gDiag = particles.pGhost if gType is DomainParticleOverlap else particles.lGhost
+    return gDiag.levels[p0.patch_level.idx].patchDict[p0.id]
 
 
 class ParticleOverlapComparator:
@@ -54,25 +75,3 @@ class ParticleOverlapComparator:
         if isinstance(self.p0, Patch):
             return self.p0.dtype.get()[attr]
         return getattr(self.p0, attr)
-
-
-class ParticleOverlap(Overlap):
-    def __init__(self, p0: Patch, p1: Patch, dataset_key, nGhosts, offsets, sizes):
-        Overlap.__init__(self, p0, p1, dataset_key, nGhosts, offsets, sizes)
-
-    @staticmethod
-    def get(diags):
-        from .particle_level_overlap import LevelParticleOverlap
-        from .particle_patch_overlap import DomainParticleOverlap
-
-        return LevelParticleOverlap.get(diags) + DomainParticleOverlap.get(diags)
-
-    @staticmethod
-    def get_ghost_patch(particles: Particles, p0: Patch, gType):
-        from .particle_level_overlap import LevelParticleOverlap
-        from .particle_patch_overlap import DomainParticleOverlap
-
-        assert gType == DomainParticleOverlap or gType == LevelParticleOverlap
-
-        gDiag = particles.pGhost if gType is DomainParticleOverlap else particles.lGhost
-        return gDiag.levels[p0.patch_level.idx].patchDict[p0.id]

@@ -35,7 +35,7 @@ class _DType:
 
 class _EM(_DType):
     def __init__(self, diag, key, h5):
-        key = key.split("_")[1] # drop EM_ from EM_B
+        key = key.split("_")[1]  # drop EM_ from EM_B
         _DType.__init__(self, diag, key, h5)
 
     def get(self):

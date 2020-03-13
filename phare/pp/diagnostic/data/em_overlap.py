@@ -1,14 +1,21 @@
-from phare.pp.diagnostics import Diagnostic, Patch, _EM
-from .periodic_overlap import PeriodicOverlap
-from .overlap import Overlap
+from phare.pp.diagnostics import _EM
+from .overlap import Overlap, getOverlaps
 
 
 class EMOverlap(Overlap):
     dType = _EM
 
-    def __init__(self, patch0, patch1, dataset_key, nGhosts, offsets, sizes):
-        Overlap.__init__(self, patch0, patch1, dataset_key, nGhosts, offsets, sizes)
+    def __init__(self, patch0, patch1, dataset_key, nGhosts, sizes):
+        Overlap.__init__(self, patch0, patch1, dataset_key, nGhosts, sizes)
 
-    @classmethod
-    def get(clazz, diags):
-        return Overlap._get(diags, clazz)
+    def get_shared_data(self):
+        size = self.sizes[0]
+        m_size = int(size * -1)
+        return (
+            self.p0.dtype.get()[self.key][m_size:],
+            self.p1.dtype.get()[self.key][:size],
+        )
+
+
+def getEMOverlapsFrom(diags):
+    return getOverlaps(EMOverlap, diags)

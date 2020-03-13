@@ -16,7 +16,7 @@ class InitValueValidation(unittest.TestCase):
 
     def _simulate_diagnostics(self, dim, interp, input):
         self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
-        self.dman.dump()
+        self.dman.dump(0, 1)
         del self.dman, self.sim, self.hier  # force hdf5 flush
         return Diagnostics.extract(ph.globals.sim)
 
@@ -24,7 +24,7 @@ class InitValueValidation(unittest.TestCase):
         for k in ["dman", "sim", "hier"]:
             if hasattr(self, k):
                 delattr(self, k)
-        tst.reset()
+        cpp.reset()
 
     def truncate(self, number, digits) -> float:
         stepper = 10.0 ** digits
