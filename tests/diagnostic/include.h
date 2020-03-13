@@ -64,11 +64,13 @@ struct Hi5Diagnostic
         dict["name"]            = type;
         dict["category"]        = category;
         dict["type"]            = type;
-        dict["compute_every"]   = std::size_t{1};
-        dict["write_every"]     = std::size_t{1};
         dict["time_step"]       = double{1};
         dict["start_iteration"] = double{0};
         dict["last_iteration"]  = double{100};
+
+        dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
+        dict["compute_timestamps"] = std::vector<double>{0, 1, 2};
+
         return dict;
     }
     auto electromag(std::string&& type) { return dict("electromag", type); }

@@ -128,11 +128,11 @@ def populateDict():
         categ_path = diag_path + diag.category + '/'
         name_path = categ_path + diag.name
         add(name_path + "/" + 'type/' , diag.diag_type)
-        pp.add_size_t(name_path + "/" + 'compute_every/' , diag.compute_every)
-        pp.add_size_t(name_path + "/" + 'write_every/' , diag.write_every)
         add(name_path + "/" + 'start_iteration/' , float(diag.start_iteration))
         add(name_path + "/" + 'last_iteration/' , float(diag.last_iteration))
-        add(name_path + "/" + "time_step", float(simulation.time_step))
+        pp.add_vector(name_path + "/" + "write_timestamps", diag.write_timestamps)
+        pp.add_vector(name_path + "/" + "compute_timestamps", diag.compute_timestamps)
+
 
     if simulation.diag_options is not None and "options" in simulation.diag_options:
         add(diag_path + "filePath", simulation.diag_options["options"]["dir"])

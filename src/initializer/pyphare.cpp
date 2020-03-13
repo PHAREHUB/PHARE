@@ -34,6 +34,14 @@ void add_optional_size_t(std::string path, std::optional<size_t>&& value)
                  PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
 }
 
+template<typename T>
+void add_vector(std::string path, std::vector<T>&& value)
+{
+    cppdict::add(path, std::forward<std::vector<T>>(value),
+                 PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
+}
+
+
 PYBIND11_MODULE(pyphare, m)
 {
     m.def("add_size_t", add_size_t, "add_size_t");
@@ -45,4 +53,5 @@ PYBIND11_MODULE(pyphare, m)
     m.def("addScalarFunction1D", add<ScalarFunction<1>, void>, "add");
     m.def("addScalarFunction2D", add<ScalarFunction<2>, void>, "add");
     m.def("addScalarFunction3D", add<ScalarFunction<3>, void>, "add");
+    m.def("add_vector", add_vector<double>, "add_vector");
 }
