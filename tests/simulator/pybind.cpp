@@ -56,41 +56,6 @@ public:
         SAMRAI::tbox::SAMRAIManager::shutdown();
         SAMRAI::tbox::SAMRAIManager::startup();
     }
-
-    std::shared_ptr<PHARE::amr::Hierarchy> getAMRHierarchy()
-    {
-        auto hier = std::make_unique<PHARE::amr::Hierarchy>(
-            PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
-        std::shared_ptr<PHARE::amr::Hierarchy> ptr{hier.get(), [](PHARE::amr::Hierarchy*) {
-                                                       /* no delete on ptr destruct */
-                                                   }};
-        hier.release();
-        return ptr;
-    }
-
-    // we must control the order of destruction as python gives no guarantees on GC order.
-    std::shared_ptr<ISimulator> getISimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hier)
-    {
-        auto sim = PHARE::getSimulator(hier);
-        std::shared_ptr<ISimulator> ptr{sim.get(), [](ISimulator*) {
-                                            /* no delete on ptr destruct */
-                                        }};
-        sim.release();
-        return ptr;
-    }
-
-    std::shared_ptr<diagnostic::IDiagnosticsManager>
-    getIDiagnosticsManager(std::shared_ptr<ISimulator> const& sim,
-                           std::shared_ptr<PHARE::amr::Hierarchy> const& hier)
-    {
-        auto rdi = std::make_unique<RuntimeDiagnosticInterface>(*sim, *hier);
-        std::shared_ptr<diagnostic::IDiagnosticsManager> ptr{rdi->dMan.get(),
-                                                             [](diagnostic::IDiagnosticsManager*) {
-                                                                 /* no delete on ptr destruct */
-                                                             }};
-        rdi.release();
-        return ptr;
-    }
 };
 
 PYBIND11_MODULE(test_simulator, m)
@@ -107,17 +72,20 @@ PYBIND11_MODULE(test_simulator, m)
         .def("timeStep", &PHARE::ISimulator::timeStep)
         .def("to_str", &PHARE::ISimulator::to_str);
 
-    py::class_<diagnostic::IDiagnosticsManager, std::shared_ptr<diagnostic::IDiagnosticsManager>>(
+    py::class_<RuntimeDiagnosticInterface, std::shared_ptr<RuntimeDiagnosticInterface>>(
         m, "IDiagnosticsManager")
-        .def("dump", &PHARE::diagnostic::IDiagnosticsManager::dump);
+        .def("dump", &RuntimeDiagnosticInterface::dump);
 
-    m.def("make_hierarchy", []() { return SamraiLifeCycle::INSTANCE().getAMRHierarchy(); });
+    m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {
-        return SamraiLifeCycle::INSTANCE().getISimulator(hier);
+        auto sim = PHARE::getSimulator(hier);
+        auto ptr = sim.get();
+        sim.release();
+        return std::shared_ptr<ISimulator>{ptr};
     });
     m.def("make_diagnostic_manager", [](std::shared_ptr<ISimulator> const& sim,
                                         std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-        return SamraiLifeCycle::INSTANCE().getIDiagnosticsManager(sim, hier);
+        return std::make_shared<RuntimeDiagnosticInterface>(*sim, *hier);
     });
 
     m.def("unmake", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) { hier.reset(); });
