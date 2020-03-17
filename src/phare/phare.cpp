@@ -46,8 +46,8 @@ int main(int argc, char** argv)
     provider->read();
     std::cerr << "done!\n";
 
-    auto hierarchy = std::make_shared<PHARE::amr::Hierarchy>(
-        PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
+
+    auto hierarchy = PHARE::amr::Hierarchy::make();
 
     auto simulator = PHARE::getSimulator(hierarchy);
 

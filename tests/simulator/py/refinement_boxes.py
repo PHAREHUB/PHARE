@@ -35,6 +35,13 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
         dup({"smallest_patch_size": 100, "largest_patch_size": 64,}),
     ]
 
+    def tearDown(self):
+        for k in ["dman", "sim", "hier"]:
+            if hasattr(self, k):
+                v = getattr(self, k)
+                del v  # blocks segfault on test failure, could be None
+        tst.reset()
+
 
     def _create_simulator(self, dim, interp, **input):
         ph.globals.sim = None
@@ -50,10 +57,14 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
             try:
-                hier, sim, dman = self._create_simulator(dim, interp, **input)
+                self.hier, self.sim, self.dman = self._create_simulator(dim, interp, **input)
                 self.assertTrue(valid)
-                dman.dump()
-                [tst.unmake(x) for x in [hier, sim, dman]]
+                self.dman.dump()
+                del (
+                    self.dman,
+                    self.sim,
+                    self.hier,
+                )
                 tst.reset()
             except ValueError as e:
                 self.assertTrue(not valid)

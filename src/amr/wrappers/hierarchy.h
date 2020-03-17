@@ -174,34 +174,80 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
 }
 
 
-
 class Hierarchy : public SAMRAI::hier::PatchHierarchy
 {
 public:
-    static constexpr size_t dimension = 1;
-
-    Hierarchy(PHARE::initializer::PHAREDict dict)
-        : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy",
-                                       std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
-                                           SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
-                                           griddingAlgorithmDatabase<dimension>(
-                                               dict["simulation"]["grid"])),
-                                       patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"])}
-        , meshSize_(getMeshSize(dict["simulation"]["grid"]))
+    struct Maker
     {
+        Maker(PHARE::initializer::PHAREDict& dict_)
+            : dict(dict_)
+        {
+        }
+
+        template<typename Dimension, typename InterpOrder>
+        std::shared_ptr<Hierarchy> operator()(std::size_t userDim, std::size_t userInterpOrder,
+                                              Dimension dimension, InterpOrder interp_order);
+
+        PHARE::initializer::PHAREDict& dict;
+    };
+
+    static auto make()
+    {
+        PHARE::initializer::PHAREDict& theDict
+            = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+        auto dim         = theDict["simulation"]["dimension"].template to<int>();
+        auto interpOrder = theDict["simulation"]["interp_order"].template to<int>();
+        return core::makeAtRuntime<Maker>(dim, interpOrder, Maker{theDict});
     }
 
+
+protected:
+    Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
+              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db, std::string meshsize)
+        : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
+        , meshSize_{meshsize}
+    {
+    }
     auto const& meshSize() const { return meshSize_; }
+
+private:
+    std::string meshSize_;
+};
+
+template<size_t _dimension>
+class DimHierarchy : public Hierarchy
+{
+public:
+    static constexpr size_t dimension = _dimension;
+
+    DimHierarchy(PHARE::initializer::PHAREDict dict)
+        : Hierarchy(std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
+                        SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
+                        griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
+                    patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
+                    getMeshSize(dict["simulation"]["grid"]).str())
+    {
+    }
 
 private:
     static core::Point<double, dimension> getMeshSize(PHARE::initializer::PHAREDict& grid)
     {
         return parseDimXYZType<double, dimension>(grid, "meshsize");
     }
-
-
-    core::Point<double, dimension> meshSize_;
 };
+
+template<typename Dimension, typename InterpOrder>
+std::shared_ptr<Hierarchy> Hierarchy::Maker::
+operator()(std::size_t userDim, std::size_t userInterpOrder, Dimension dimension,
+           InterpOrder interp_order)
+{
+    if (userDim == dimension())
+    {
+        size_t constexpr d = dimension();
+        return std::make_shared<DimHierarchy<d>>(dict);
+    }
+    return nullptr;
+}
 
 
 } // namespace PHARE::amr

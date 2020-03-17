@@ -27,10 +27,11 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
 std::shared_ptr<PHARE::initializer::PythonDataProvider> StaticIntepreter::input = 0;
 
 
+template<size_t _dim>
 struct HierarchyMaker
 {
-    HierarchyMaker(PHARE::initializer::PHAREDict dict)
-        : hierarchy{std::make_shared<PHARE::amr::Hierarchy>(dict)}
+    HierarchyMaker(PHARE::initializer::PHAREDict& dict)
+        : hierarchy{std::make_shared<PHARE::amr::DimHierarchy<_dim>>(dict)}
     {
     }
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy;
@@ -38,9 +39,8 @@ struct HierarchyMaker
 
 
 
-
 template<size_t _dim, size_t _interp>
-struct TestSimulator : public HierarchyMaker, public PHARE::Simulator<_dim, _interp>
+struct TestSimulator : public HierarchyMaker<_dim>, public PHARE::Simulator<_dim, _interp>
 {
     static constexpr size_t dim    = _dim;
     static constexpr size_t interp = _interp;
@@ -68,7 +68,7 @@ struct TestSimulator : public HierarchyMaker, public PHARE::Simulator<_dim, _int
     }
 
     TestSimulator()
-        : HierarchyMaker{dict()}
+        : HierarchyMaker<_dim>{dict()}
         , Simulator{dict(), this->hierarchy}
     {
         Simulator::initialize();
