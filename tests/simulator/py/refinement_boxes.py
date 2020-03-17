@@ -60,7 +60,7 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
             try:
                 self.hier, self.sim, self.dman = self._create_simulator(dim, interp, **input)
                 self.assertTrue(valid)
-                dman.dump(sim.currentTime(), sim.timeStep())
+                self.dman.dump(self.sim.currentTime(), self.sim.timeStep())
                 del (
                     self.dman,
                     self.sim,

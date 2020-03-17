@@ -77,13 +77,10 @@ struct Hi5Diagnostic
     auto particles(std::string&& type) { return dict("particle", type); }
     auto fluid(std::string&& type) { return dict("fluid", type); }
 
-    std::string getPatchPath(int level, PHARE::amr::SAMRAI_Types::patch_t& patch)
+    std::string getPatchPath(int level, std::string patch, std::string timestamp = "0.000000")
     {
-        std::stringstream globalId;
-        globalId << patch.getGlobalId();
-        return writer.getPatchPath(timestamp_, level, globalId.str());
+        return DiagnosticWriter::getFullPatchPath(timestamp, level, patch);
     }
-
 
 
     Hierarchy& hierarchy_;
@@ -92,7 +89,6 @@ struct Hi5Diagnostic
     DiagnosticModelView modelView{hierarchy_, model_};
     DiagnosticWriter writer{modelView, "phare_outputs", flags_};
     DiagnosticsManager<DiagnosticWriter> dMan{writer};
-    std::string timestamp_ = "0.000000";
 };
 
 

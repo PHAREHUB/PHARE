@@ -63,7 +63,7 @@ protected:
             size_t patchNbr   = lvlPatches.size();
             size_t maxPatches = hi5_.mpiGetMaxOf(patchNbr);
             for (auto const& [patch, attr] : lvlPatches)
-                hi5_.writeAttributeDict(file, attr, hi5_.getPatchPath(lvl, patch));
+                hi5_.writeAttributeDict(file, attr, hi5_.getPatchPathAddTimestamp(lvl, patch));
             for (size_t i = patchNbr; i < maxPatches; i++)
                 hi5_.writeAttributeDict(file, hi5_.modelView().getEmptyPatchAttributes(), "");
         }
