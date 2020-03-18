@@ -75,16 +75,16 @@ struct RuntimeDiagnosticInterface
                         *static_cast<DiagnosticWriter*>(rdi.writer.get()),
                         dict["simulation"]["diagnostics"]);
 
-                    return 1;
+                    return true;
                 }
             }
-            return 0;
+            return false;
         }
 
         RuntimeDiagnosticInterface& rdi;
     };
 
-    void dump() { dMan->dump(); }
+    void dump(double timestamp, double timestep) { dMan->dump(timestamp, timestep); }
 
     PHARE::amr::Hierarchy& hierarchy;
     PHARE::ISimulator& simulator;

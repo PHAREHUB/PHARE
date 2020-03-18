@@ -5,25 +5,8 @@ from . import globals
 
 # ------------------------------------------------------------------------------
 
-
-def check_write_every(write_every):
-    if write_every < 0:
-        raise ValueError("Error: 'write_every' should be >0")
-
-
-# ------------------------------------------------------------------------------
-
-
-def check_compute_every(compute_every, write_every):
-    if compute_every > write_every:
-        raise ValueError("Error: 'compute_every' should be equal or smaller than 'write_every'")
-
-
-# ------------------------------------------------------------------------------
-
-
-def check_last_iteration(last_iteration, start_iteration):
-    if last_iteration < start_iteration:
+def check_last_iteration(**kwargs):
+    if kwargs['last_iteration'] < kwargs['start_iteration']:
         raise ValueError("Error: 'last_iteration' should be equal or larger than 'start_iteration'")
 
 # ------------------------------------------------------------------------------
@@ -32,11 +15,11 @@ def check_last_iteration(last_iteration, start_iteration):
 def diagnostics_checker(func):
     def wrapper(diagnostics_object, name, **kwargs):
 
-        accepted_keywords = ['write_every',
+        accepted_keywords = ['write_timestamps',
                              'start_iteration', 'last_iteration',
-                             'path', 'compute_every']
+                             'path', 'compute_timestamps']
 
-        mandatory_keywords = ['write_every', 'diag_type']
+        mandatory_keywords = ['write_timestamps', 'diag_type']
 
         # check that all passed keywords are in the accepted keyword list
         # wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
@@ -51,21 +34,13 @@ def diagnostics_checker(func):
         try:
             # just take mandatory arguments from the dict
             # since if we arrived here we are sure they are there
-            write_every = kwargs["write_every"]
-            check_write_every(write_every)
+            kwargs['start_iteration'] = kwargs.get("start_iteration", 0)
+            kwargs['last_iteration'] = kwargs.get("last_iteration", 0)
+            check_last_iteration(**kwargs)
 
-            compute_every = kwargs.get("compute_every", write_every)
-            check_compute_every(compute_every, write_every)
+            kwargs['path'] = kwargs.get("path", './')
 
-            start_iteration = kwargs.get("start_iteration", 0)
-            last_iteration = kwargs.get("last_iteration", 0)
-            check_last_iteration(last_iteration, start_iteration)
-
-            path = kwargs.get("path", './')
-
-            return func(diagnostics_object, name, write_every=write_every,
-                        compute_every=compute_every, start_iteration=start_iteration,
-                        last_iteration = last_iteration, path = path)
+            return func(diagnostics_object, name, **kwargs)
 
         except ValueError as msg:
             print(msg)
@@ -81,12 +56,15 @@ class Diagnostics(object):
     @diagnostics_checker
     def __init__(self,name, **kwargs):
 
-        self.compute_every = kwargs['compute_every']
-        self.write_every = kwargs['write_every']
+        self.name = name
+
         self.start_iteration = kwargs['start_iteration']
         self.last_iteration = kwargs['last_iteration']
         self.path = kwargs['path']
-        self.name = name
+
+        self.write_timestamps = kwargs['write_timestamps'] #[0, 1, 2]
+        self.compute_timestamps = kwargs['compute_timestamps']
+
         self.__extent = None
 
         if globals.sim is None:
@@ -127,8 +105,8 @@ class ElectromagDiagnostics(Diagnostics):
         return {"name": self.name,
                 "diag_category": ElectromagDiagnostics.category,
                 "diag_type": self.diag_type,
-                "write_every": self.write_every,
-                "compute_every": self.compute_every,
+                "write_timestamps": self.write_timestamps,
+                "compute_timestamps": self.compute_timestamps,
                 "start_iteration": self.start_iteration,
                 "last_iteration": self.last_iteration,
                 "path": self.path}
@@ -179,8 +157,8 @@ class FluidDiagnostics (Diagnostics):
         return {"name": self.name,
                 "diag_category": FluidDiagnostics.category,
                 "diag_type": self.diag_type,
-                "write_every": self.write_every,
-                "compute_every": self.compute_every,
+                "write_timestamps": self.write_timestamps,
+                "compute_timestamps": self.compute_timestamps,
                 "start_iteration": self.start_iteration,
                 "last_iteration": self.last_iteration,
                 "path": self.path,
@@ -233,8 +211,8 @@ class ParticleDiagnostics(Diagnostics):
         return {"name": self.name,
                 "diag_category": ParticleDiagnostics.category,
                 "diag_type": self.diag_type,
-                "write_every": self.write_every,
-                "compute_every": self.compute_every,
+                "write_timestamps": self.write_timestamps,
+                "compute_timestamps": self.compute_timestamps,
                 "start_iteration": self.start_iteration,
                 "last_iteration": self.last_iteration,
                 "path": self.path,

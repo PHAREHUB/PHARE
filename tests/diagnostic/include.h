@@ -64,23 +64,23 @@ struct Hi5Diagnostic
         dict["name"]            = type;
         dict["category"]        = category;
         dict["type"]            = type;
-        dict["compute_every"]   = std::size_t{1};
-        dict["write_every"]     = std::size_t{1};
-        dict["start_iteration"] = std::size_t{0};
-        dict["last_iteration"]  = std::numeric_limits<std::size_t>::max();
+        dict["time_step"]       = double{1};
+        dict["start_iteration"] = double{0};
+        dict["last_iteration"]  = double{100};
+
+        dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
+        dict["compute_timestamps"] = std::vector<double>{0, 1, 2};
+
         return dict;
     }
     auto electromag(std::string&& type) { return dict("electromag", type); }
     auto particles(std::string&& type) { return dict("particle", type); }
     auto fluid(std::string&& type) { return dict("fluid", type); }
 
-    std::string getPatchPath(int level, PHARE::amr::SAMRAI_Types::patch_t& patch)
+    std::string getPatchPath(int level, std::string patch, std::string timestamp = "0.000000")
     {
-        std::stringstream globalId;
-        globalId << patch.getGlobalId();
-        return writer.getPatchPath("time", level, globalId.str());
+        return DiagnosticWriter::getFullPatchPath(timestamp, level, patch);
     }
-
 
 
     Hierarchy& hierarchy_;

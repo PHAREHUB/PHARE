@@ -11,10 +11,6 @@
 #include "diagnostic/diagnostic_dao.h"
 #include "highfive_diag_writer.h"
 
-/*TODO
-  add advancement/time iteration separation for dumping
-    - see "getPatchPath" - replace "/t#" with real time/id
-*/
 
 namespace PHARE::diagnostic::h5
 {
@@ -91,7 +87,7 @@ public:
 
     ~HighFiveDiagnosticWriter() {}
 
-    void dump(std::vector<DiagnosticDAO*> const&);
+    void dump(std::vector<DiagnosticDAO*> const&, double current_timestamp);
 
     template<typename String>
     auto getDiagnosticWriterForType(String& type)
@@ -99,7 +95,7 @@ public:
         return writers.at(type);
     }
 
-    std::string fileString(std::string fileStr)
+    static std::string fileString(std::string fileStr)
     {
         if (fileStr[0] == '/')
             fileStr = fileStr.substr(1);
@@ -113,35 +109,30 @@ public:
     }
     auto makeFile(DiagnosticDAO& diagnostic) { return makeFile(fileString(diagnostic.type)); }
 
-    /*
-     * TODO: update when time advancements are implemented.
-     */
-    std::string getPatchPath(std::string, int iLevel, std::string globalCoords)
+
+    static std::string getFullPatchPath(std::string timestamp, int iLevel, std::string globalCoords)
     {
-        return "/t#/pl" + std::to_string(iLevel) + "/p" + globalCoords;
+        return "/t" + timestamp + "/pl" + std::to_string(iLevel) + "/p" + globalCoords;
     }
 
-    auto& modelView() const { return modelView_; }
-    const auto& patchPath() const { return patchPath_; }
-
     template<typename Type>
-    void createDataSet(HiFile& h5, std::string const& path, size_t size)
+    static void createDataSet(HiFile& h5, std::string const& path, size_t size)
     {
         if constexpr (std::is_same_v<Type, double>) // force doubles for floats for storage
-            this->template createDatasetsPerMPI<float>(h5, path, size);
+            This::createDatasetsPerMPI<float>(h5, path, size);
         else
-            this->template createDatasetsPerMPI<Type>(h5, path, size);
+            This::createDatasetsPerMPI<Type>(h5, path, size);
     }
 
     template<typename Array, typename String>
-    void writeDataSet(HiFile& h5, String path, Array const* const array)
+    static void writeDataSet(HiFile& h5, String path, Array const* const array)
     {
         h5.getDataSet(path).write(array);
     }
 
     // global function when all path+key are the same
     template<typename Data>
-    void writeAttribute(HiFile& h5, std::string path, std::string key, Data const& value)
+    static void writeAttribute(HiFile& h5, std::string path, std::string key, Data const& value)
     {
         h5.getGroup(path)
             .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
@@ -149,14 +140,15 @@ public:
     }
 
     template<typename Dict>
-    void writeAttributeDict(HiFile& h5, Dict, std::string);
+    static void writeAttributeDict(HiFile& h5, Dict, std::string);
 
     // per MPI function where path differs per process
     template<typename Data>
-    void writeAttributesPerMPI(HiFile& h5, std::string path, std::string key, Data const& value);
+    static void writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
+                                      Data const& value);
 
     template<typename VecField>
-    void writeVecFieldAsDataset(HiFile& h5, std::string path, VecField& vecField)
+    static void writeVecFieldAsDataset(HiFile& h5, std::string path, VecField& vecField)
     {
         for (auto& [id, type] : core::Components::componentMap)
             h5.getDataSet(path + "/" + id).write(vecField.getComponent(type).data());
@@ -167,13 +159,14 @@ public:
     unsigned flags;
 
     template<typename Data>
-    std::vector<Data> mpiCollectData(Data const&, int mpi_size = 0);
+    static std::vector<Data> mpiCollectData(Data const&, int mpi_size = 0);
     // MPI does not like sending empty strings so give optional default replacement
-    std::vector<std::string> mpiCollectStrings(std::string, int mpi_size = 0,
-                                               std::string null_str = "null");
-    size_t mpiGetMaxOf(size_t, int mpi_size = 0);
+    static std::vector<std::string> mpiCollectStrings(std::string, int mpi_size = 0,
+                                                      std::string null_str = "null");
+    static size_t mpiGetMaxOf(size_t, int mpi_size = 0);
 
 private:
+    double timestamp_ = 0;
     std::string filePath_;
     std::string patchPath_; // is passed around as "virtual write()" has no parameters
     ModelView& modelView_;
@@ -191,7 +184,7 @@ private:
     }
 
     template<typename Type>
-    void createDatasetsPerMPI(HiFile& h5, std::string path, size_t dataSetSize);
+    static void createDatasetsPerMPI(HiFile& h5, std::string path, size_t dataSetSize);
 
 
     void initializeDatasets_(std::vector<DiagnosticDAO*> const& diagnotics);
@@ -201,13 +194,34 @@ private:
     HighFiveDiagnosticWriter(const HighFiveDiagnosticWriter&&)            = delete;
     HighFiveDiagnosticWriter& operator&(const HighFiveDiagnosticWriter&)  = delete;
     HighFiveDiagnosticWriter& operator&(const HighFiveDiagnosticWriter&&) = delete;
+
+
+    //  State of this class is controlled via "dump()"
+    //  block public access to internal state
+    friend class FluidDiagnosticWriter<This>;
+    friend class ElectromagDiagnosticWriter<This>;
+    friend class ParticlesDiagnosticWriter<This>;
+    friend class Hi5DiagnosticTypeWriter<This>;
+
+    // used by friends start
+    std::string getPatchPathAddTimestamp(int iLevel, std::string globalCoords)
+    {
+        return getFullPatchPath(std::to_string(timestamp_), iLevel, globalCoords);
+    }
+
+    auto& modelView() const { return modelView_; }
+
+    const auto& patchPath() const { return patchPath_; }
+    // used by friends end
 };
 
 
 
 template<typename ModelView>
-void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics)
+void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics,
+                                               double timestamp)
 {
+    timestamp_                     = timestamp;
     fileAttributes_["dimension"]   = dimension;
     fileAttributes_["interpOrder"] = interpOrder;
     fileAttributes_["layoutType"]  = modelView().getLayoutTypeString();
@@ -335,7 +349,7 @@ void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
     auto writePatch      = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
         if (!patchAttributes.count(iLevel))
             patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
-        patchPath_ = getPatchPath("time", iLevel, patchID);
+        patchPath_ = getPatchPathAddTimestamp(iLevel, patchID);
         patchAttributes[iLevel].emplace_back(patchID, modelView().getPatchAttributes(gridLayout));
         for (auto* diagnostic : diagnostics)
             writers.at(diagnostic->category)->write(*diagnostic);

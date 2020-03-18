@@ -10,24 +10,24 @@ using namespace PHARE::diagnostic;
 using namespace PHARE::diagnostic::h5;
 
 
-template<typename Simulator, typename Writer>
-void validateFluidDump(Simulator& sim, Writer& hi5)
+template<typename Simulator, typename Hi5Diagnostic>
+void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using GridLayout  = typename Simulator::PHARETypes::GridLayout_t;
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.makeFile(hi5.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
         checkField(hifile->file(), layout, val, path + tree, FieldDomainFilter{});
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.makeFile(hi5.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
         checkVecField(hifile->file(), layout, val, path + tree, FieldDomainFilter{});
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
-        auto path  = hi5.getPatchPath("time", iLevel, patchID);
-        auto& ions = hi5.modelView().getIons();
+        auto path  = hi5.getPatchPath(iLevel, patchID);
+        auto& ions = hi5.modelView.getIons();
         for (auto& pop : ions)
         {
             checkF(layout, path, "/ions/pop/" + pop.name() + "/density", pop.density());
@@ -36,7 +36,7 @@ void validateFluidDump(Simulator& sim, Writer& hi5)
         checkF(layout, path, "/ions/density", ions.density());
 
         std::string tree{"/ions/bulkVelocity"};
-        auto hifile = hi5.makeFile(hi5.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
         checkVecField(hifile->file(), layout, ions.velocity(), path + tree, FieldDomainFilter{});
     };
 
@@ -61,30 +61,30 @@ TYPED_TEST(SimulatorTest, fluid)
             .addDiagDict(hi5.fluid("/ions/pop/ions_alpha/density"))
             .addDiagDict(hi5.fluid("/ions/pop/ions_alpha/flux"))
             .addDiagDict(hi5.fluid("/ions/pop/ions_protons/density"))
-            .addDiagDict(hi5.fluid("/ions/pop/ions_protons/flux"))
-            .dump();
+            .addDiagDict(hi5.fluid("/ions/pop/ions_protons/flux"));
+        sim.dump(hi5.dMan);
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
-    validateFluidDump(sim, hi5.writer);
+    validateFluidDump(sim, hi5);
 }
 
 
 
-template<typename Simulator, typename Writer>
-void validateElectromagDump(Simulator& sim, Writer& hi5)
+template<typename Simulator, typename Hi5Diagnostic>
+void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.makeFile(hi5.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
         checkVecField(hifile->file(), layout, val, path + tree);
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
-        auto path = hi5.getPatchPath("time", iLevel, patchID) + "/";
+        auto path = hi5.getPatchPath(iLevel, patchID) + "/";
         checkVF(layout, path, "/EM_B", hybridModel.state.electromag.B);
         checkVF(layout, path, "/EM_E", hybridModel.state.electromag.E);
     };
@@ -103,16 +103,17 @@ TYPED_TEST(SimulatorTest, electromag)
     auto& hierarchy   = *sim.hierarchy;
     { // scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
-        hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E")).dump();
+        hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E"));
+        sim.dump(hi5.dMan);
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
-    validateElectromagDump(sim, hi5.writer);
+    validateElectromagDump(sim, hi5);
 }
 
 
-template<typename Simulator, typename Writer>
-void validateParticleDump(Simulator& sim, Writer& hi5)
+template<typename Simulator, typename Hi5Diagnostic>
+void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
 
@@ -155,12 +156,12 @@ void validateParticleDump(Simulator& sim, Writer& hi5)
     };
 
     auto checkFile = [&](auto& path, auto tree, auto& val) {
-        auto hifile = hi5.makeFile(hi5.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
         checkParticles(hifile->file(), val, path + tree + "/");
     };
 
     auto visit = [&](GridLayout&, std::string patchID, size_t iLevel) {
-        auto path = hi5.getPatchPath("time", iLevel, patchID);
+        auto path = hi5.getPatchPath(iLevel, patchID);
         for (auto& pop : hybridModel.state.ions)
         {
             checkFile(path, "/ions/pop/" + pop.name() + "/domain", pop.domainParticles());
@@ -189,24 +190,24 @@ TYPED_TEST(SimulatorTest, particles)
             .addDiagDict(hi5.particles("/ions/pop/ions_alpha/patchGhost"))
             .addDiagDict(hi5.particles("/ions/pop/ions_protons/domain"))
             .addDiagDict(hi5.particles("/ions/pop/ions_protons/levelGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_protons/patchGhost"))
-            .dump();
+            .addDiagDict(hi5.particles("/ions/pop/ions_protons/patchGhost"));
+        sim.dump(hi5.dMan);
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
-    validateParticleDump(sim, hi5.writer);
+    validateParticleDump(sim, hi5);
 }
 
-template<typename Simulator, typename Writer>
-void validateAttributes(Simulator& sim, Writer& hi5)
+template<typename Simulator, typename Hi5Diagnostic>
+void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
-    auto hifile       = hi5.makeFile(hi5.fileString("/EM_B")); // all files have attributes
+    auto hifile       = hi5.writer.makeFile(hi5.writer.fileString("/EM_B"));
 
     auto visit = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
-        std::string patchPath = hi5.getPatchPath("time", iLevel, patchID), origin;
+        std::string patchPath = hi5.getPatchPath(iLevel, patchID), origin;
         hifile->file().getGroup(patchPath).getAttribute("origin").read(origin);
         EXPECT_EQ(gridLayout.origin().str(), origin);
     };
@@ -222,7 +223,7 @@ TYPED_TEST(SimulatorTest, allFromPython)
     using Hierarchy   = typename TypeParam::Hierarchy;
 
     TypeParam sim;
-    sim.dMan->dump();
+    sim.dump(*sim.dMan);
     sim.dMan.reset();
     sim.modelView.reset();
     sim.writer.reset(); // keeps a handle and breaks the following readonly opening
@@ -232,10 +233,10 @@ TYPED_TEST(SimulatorTest, allFromPython)
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
 
-    validateFluidDump(sim, hi5.writer);
-    validateElectromagDump(sim, hi5.writer);
-    validateParticleDump(sim, hi5.writer);
-    validateAttributes(sim, hi5.writer);
+    validateFluidDump(sim, hi5);
+    validateElectromagDump(sim, hi5);
+    validateParticleDump(sim, hi5);
+    validateAttributes(sim, hi5);
 }
 
 int main(int argc, char** argv)

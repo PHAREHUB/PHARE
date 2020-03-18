@@ -54,7 +54,8 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
-    RuntimeDiagnosticInterface{*simulator, *hierarchy}.dump();
+    RuntimeDiagnosticInterface{*simulator, *hierarchy}.dump(simulator->currentTime(),
+                                                            simulator->timeStep());
 
     //
     // auto time = simulator.startTime();
