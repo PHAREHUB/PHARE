@@ -131,7 +131,7 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         std::vector<float> deltaV;
         file.getDataSet(path + "delta").read(deltaV);
 
-        ParticlePacker packer{particles};
+        core::ParticlePacker packer{particles};
 
         auto first       = packer.empty();
         size_t iCellSize = std::get<2>(first).size();

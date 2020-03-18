@@ -2,20 +2,23 @@
 #
 # formatted with black
 
+from phare import cpp
+
 import unittest, os, phare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
-from tests.simulator import test_simulator as tst
-from tests.simulator.py import basicSimulatorArgs, makeBasicModel
+from tests.diagnostic import dump_all_diags
+from tests.simulator.py import create_simulator
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
 
 
 @ddt
-class SimulatorRefineBoxInputsB(unittest.TestCase):
+class SimulatorRefineBoxInputs(unittest.TestCase):
     def dup(dic):
         dic.update(diags.copy())
+        dic.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
         return dic
     """
       The first set of boxes "B0": [(10,), (14,)]
@@ -40,25 +43,13 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
             if hasattr(self, k):
                 v = getattr(self, k)
                 del v  # blocks segfault on test failure, could be None
-        tst.reset()
-
-
-    def _create_simulator(self, dim, interp, **input):
-        tst.reset()
-        ph.globals.sim = None
-        ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
-        makeBasicModel()
-        ph.populateDict()
-        hier = tst.make_hierarchy()
-        sim = tst.make_simulator(hier)
-        sim.initialize()
-        return [hier, sim, tst.make_diagnostic_manager(sim, hier)]
+        cpp.reset()
 
 
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
             try:
-                self.hier, self.sim, self.dman = self._create_simulator(dim, interp, **input)
+                self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
                 self.assertTrue(valid)
                 self.dman.dump(self.sim.currentTime(), self.sim.timeStep())
                 del (
@@ -66,10 +57,9 @@ class SimulatorRefineBoxInputsB(unittest.TestCase):
                     self.sim,
                     self.hier,
                 )
-                tst.reset()
+                cpp.reset()
             except ValueError as e:
                 self.assertTrue(not valid)
-        tst.reset()
 
     @data(*valid1D)
     def test_1d_valid(self, input):

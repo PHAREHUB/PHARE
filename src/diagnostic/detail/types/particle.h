@@ -3,6 +3,7 @@
 
 #include "diagnostic/detail/highfive.h"
 #include "diagnostic/detail/h5_utils.h"
+#include "core/data/particles/particle_packer.h"
 
 namespace PHARE::diagnostic::h5
 {
@@ -27,7 +28,7 @@ public:
     static constexpr auto dimension   = HighFiveDiagnostic::dimension;
     static constexpr auto interpOrder = HighFiveDiagnostic::interpOrder;
     using Attributes                  = typename Super::Attributes;
-    using Packer                      = ParticlePacker<dimension>;
+    using Packer                      = core::ParticlePacker<dimension>;
 
     ParticlesDiagnosticWriter(HighFiveDiagnostic& hi5)
         : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
@@ -155,22 +156,8 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnos
             return;
         auto& hfile = fileData.at(diagnostic.type)->file();
         Packer packer(particles);
-        ContiguousParticles<dimension> copy{particles.size()};
-
-        auto copyTo = [](auto& a, auto& idx, auto size, auto& v) {
-            std::copy(a.begin(), a.begin() + size, v.begin() + (idx * size));
-        };
-        size_t idx = 0;
-        while (packer.hasNext())
-        {
-            auto next        = packer.next();
-            copy.weight[idx] = std::get<0>(next);
-            copy.charge[idx] = std::get<1>(next);
-            copyTo(std::get<2>(next), idx, dimension, copy.iCell);
-            copyTo(std::get<3>(next), idx, dimension, copy.delta);
-            copyTo(std::get<4>(next), idx, 3, copy.v);
-            idx++;
-        }
+        core::ContiguousParticles<dimension> copy{particles.size()};
+        packer.pack(copy);
 
         hi5.writeDataSet(hfile, path + packer.keys()[0], copy.weight.data());
         hi5.writeDataSet(hfile, path + packer.keys()[1], copy.charge.data());

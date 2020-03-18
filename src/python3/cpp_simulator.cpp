@@ -2,11 +2,13 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/complex.h>
+#include <pybind11/stl.h>
 
 
 namespace py = pybind11;
 
-namespace PHARE
+namespace PHARE::pydata
 {
 class StreamAppender : public SAMRAI::tbox::Logger::Appender
 {
@@ -48,8 +50,6 @@ public:
         SAMRAI::tbox::SAMRAI_MPI::finalize();
     }
 
-    // the simulator must be destructed before the
-    //  variable database is reset, or segfault.
     void reset()
     {
         PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
@@ -58,7 +58,8 @@ public:
     }
 };
 
-PYBIND11_MODULE(test_simulator, m)
+
+PYBIND11_MODULE(cpp, m)
 {
     SamraiLifeCycle::INSTANCE(); // init
 
@@ -89,13 +90,20 @@ PYBIND11_MODULE(test_simulator, m)
         return std::make_shared<RuntimeDiagnosticInterface>(*sim, *hier);
     });
 
-    m.def("unmake", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) { hier.reset(); });
-    m.def("unmake", [](std::shared_ptr<ISimulator>& sim) { sim.reset(); });
-    m.def("unmake", [](std::shared_ptr<diagnostic::IDiagnosticsManager>& dman) { dman.reset(); });
-
+    m.def("mpi_size", []() {
+        int mpi_size;
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+        return mpi_size;
+    });
+    m.def("mpi_rank", []() {
+        int mpi_rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+        return mpi_rank;
+    });
     m.def("reset", []() {
         py::gil_scoped_release release;
         SamraiLifeCycle::INSTANCE().reset();
     });
 }
-} // namespace PHARE
+
+} // namespace PHARE::pydata
