@@ -380,10 +380,6 @@ class Simulation(object):
         if diag.name in [diag.name for diag in self.diagnostics]:
             raise ValueError("Error: diagnostics {} already registered".format(diag.name))
 
-        # check if the duration of the diagnostics is valid, given the duration of the simulation
-        if not self.within_simulation_duration(diag.iteration_interval()):
-            raise RuntimeError("Error: invalid diagnostics duration")
-
         # check whether the spatial extent of the diagnostics is valid, given the domain size
         if diag.extent() is not None and not self.within_simulation_extent(diag.extent()):
             raise RuntimeError("Error: invalid diagnostics spatial extent")
