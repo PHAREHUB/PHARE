@@ -3,6 +3,7 @@
 
 #include "tests/simulator/per_test.h"
 
+#include "diagnostic/diagnostic_model_view.h"
 #include "diagnostic/detail/highfive.h"
 #include "diagnostic/detail/types/electromag.h"
 #include "diagnostic/detail/types/particle.h"
@@ -47,8 +48,8 @@ void checkVecField(HighFive::File& file, GridLayout& layout, VecField& vecField,
 template<typename Hierarchy, typename HybridModel>
 struct Hi5Diagnostic
 {
-    using DiagnosticModelView = AMRDiagnosticModelView<Hierarchy, HybridModel>;
-    using DiagnosticWriter    = HighFiveDiagnosticWriter<DiagnosticModelView>;
+    using ModelView_t = ModelView<Hierarchy, HybridModel>;
+    using Writer_t    = Writer<ModelView_t>;
 
     Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, unsigned flags)
         : hierarchy_{hierarchy}
@@ -77,16 +78,16 @@ struct Hi5Diagnostic
 
     std::string getPatchPath(int level, std::string patch, std::string timestamp = "0.000000")
     {
-        return DiagnosticWriter::getFullPatchPath(timestamp, level, patch);
+        return Writer_t::getFullPatchPath(timestamp, level, patch);
     }
 
 
     Hierarchy& hierarchy_;
     HybridModel& model_;
     unsigned flags_;
-    DiagnosticModelView modelView{hierarchy_, model_};
-    DiagnosticWriter writer{modelView, "phare_outputs", flags_};
-    DiagnosticsManager<DiagnosticWriter> dMan{writer};
+    ModelView_t modelView{hierarchy_, model_};
+    Writer_t writer{modelView, "phare_outputs", flags_};
+    DiagnosticsManager<Writer_t> dMan{writer};
 };
 
 

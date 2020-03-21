@@ -16,30 +16,30 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/ions/pop_(1,2,...)/bulkVelocity/(x,y,z)
  */
 template<typename HighFiveDiagnostic>
-class FluidDiagnosticWriter : public Hi5DiagnosticTypeWriter<HighFiveDiagnostic>
+class FluidDiagnosticWriter : public H5TypeWriter<HighFiveDiagnostic>
 {
 public:
-    using Super = Hi5DiagnosticTypeWriter<HighFiveDiagnostic>;
+    using Super = H5TypeWriter<HighFiveDiagnostic>;
     using Super::hi5_;
     using Super::initDataSets_;
-    using Super::writeGhostsAttr_;
     using Super::writeAttributes_;
+    using Super::writeGhostsAttr_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename HighFiveDiagnostic::GridLayout;
 
     FluidDiagnosticWriter(HighFiveDiagnostic& hi5)
-        : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
+        : H5TypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
-    void write(DiagnosticDAO&) override;
-    void compute(DiagnosticDAO&) override {}
-    void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel, std::string const& patchID,
+    void write(DiagnosticProperties&) override;
+    void compute(DiagnosticProperties&) override {}
+    void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
-    void initDataSets(DiagnosticDAO& diagnostic,
+    void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, size_t maxLevel) override;
     void
-    writeAttributes(DiagnosticDAO&, Attributes&,
+    writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
                     size_t maxLevel) override;
 
@@ -49,7 +49,7 @@ private:
 
 
 template<typename HighFiveDiagnostic>
-void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO& diagnostic,
+void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                                size_t iLevel,
                                                                std::string const& patchID,
                                                                Attributes& patchAttributes)
@@ -60,9 +60,9 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO& di
 
     auto checkActive = [&](auto& tree, auto var) {
         auto active = tree + var;
-        bool b      = diagnostic.type == active;
-        if (b && !fileData.count(diagnostic.type))
-            fileData.emplace(diagnostic.type, hi5.makeFile(diagnostic));
+        bool b      = diagnostic.quantity == active;
+        if (b && !fileData.count(diagnostic.quantity))
+            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
         return b;
     };
 
@@ -101,14 +101,15 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO& di
 
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
-    DiagnosticDAO& diagnostic, std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
+    DiagnosticProperties& diagnostic,
+    std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
     Attributes& patchAttributes, size_t maxLevel)
 {
     auto& hi5  = this->hi5_;
     auto& ions = hi5.modelView().getIons();
-    auto& file = fileData.at(diagnostic.type)->file();
+    auto& file = fileData.at(diagnostic.quantity)->file();
 
-    auto checkActive = [&](auto& tree, auto var) { return diagnostic.type == tree + var; };
+    auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
     auto initDS = [&](auto& path, auto& attr, std::string key, auto null) {
         auto dsPath = path + key;
@@ -154,13 +155,13 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
 
 template<typename HighFiveDiagnostic>
-void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
+void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& diagnostic)
 {
     auto& hi5  = this->hi5_;
     auto& ions = hi5.modelView().getIons();
-    auto& file = fileData.at(diagnostic.type)->file();
+    auto& file = fileData.at(diagnostic.quantity)->file();
 
-    auto checkActive = [&](auto& tree, auto var) { return diagnostic.type == tree + var; };
+    auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
     auto writeDS     = [&](auto path, auto& field) { hi5.writeDataSet(file, path, field.data()); };
     auto writeVF     = [&](auto path, auto& vecF) { hi5.writeVecFieldAsDataset(file, path, vecF); };
 
@@ -186,11 +187,11 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
 
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
-    DiagnosticDAO& diagnostic, Attributes& fileAttributes,
+    DiagnosticProperties& diagnostic, Attributes& fileAttributes,
     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
     size_t maxLevel)
 {
-    writeAttributes_(fileData.at(diagnostic.type)->file(), diagnostic, fileAttributes,
+    writeAttributes_(fileData.at(diagnostic.quantity)->file(), diagnostic, fileAttributes,
                      patchAttributes, maxLevel);
 }
 

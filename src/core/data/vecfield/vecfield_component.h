@@ -3,6 +3,7 @@
 #define PHARE_CORE_DATA_VECFIELD_VECFIELD_COMPONENT_H
 
 #include <unordered_map>
+#include <string>
 
 namespace PHARE
 {

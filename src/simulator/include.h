@@ -49,6 +49,7 @@
 #include "solver/solvers/solver_ppc.h"
 
 #include "diagnostic/diagnostic_manager.h"
+#include "diagnostic/diagnostic_model_view.h"
 #include "diagnostic/detail/highfive.h"
 #include "diagnostic/detail/types/electromag.h"
 #include "diagnostic/detail/types/particle.h"

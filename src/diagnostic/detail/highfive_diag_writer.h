@@ -7,28 +7,30 @@
 
 #include "diagnostic/diagnostic_writer.h"
 
+#include "highfive/H5File.hpp"
+
 namespace PHARE::diagnostic::h5
 {
-template<typename HighFiveDiagnostic>
-class Hi5DiagnosticTypeWriter : public PHARE::diagnostic::DiagnosticTypeWriter
+template<typename Writer>
+class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
 public:
-    using Attributes = typename HighFiveDiagnostic::Attributes;
-    Hi5DiagnosticTypeWriter(HighFiveDiagnostic& hi5)
+    using Attributes = typename Writer::Attributes;
+    H5TypeWriter(Writer& hi5)
         : hi5_(hi5)
     {
     }
 
-    virtual void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel,
+    virtual void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel,
                                 std::string const& patchID, Attributes& patchAttributes)
         = 0;
-    virtual void initDataSets(DiagnosticDAO& diagnostic,
+    virtual void initDataSets(DiagnosticProperties& diagnostic,
                               std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                               Attributes& patchAttributes, size_t maxLevel)
         = 0;
 
     virtual void
-    writeAttributes(DiagnosticDAO&, Attributes&,
+    writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
                     size_t maxLevel)
         = 0;
@@ -52,7 +54,8 @@ protected:
     }
 
     void
-    writeAttributes_(HighFive::File& file, DiagnosticDAO& diagnostic, Attributes& fileAttributes,
+    writeAttributes_(HighFive::File& file, DiagnosticProperties& diagnostic,
+                     Attributes& fileAttributes,
                      std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&
                          patchAttributes,
                      std::size_t maxLevel)
@@ -65,7 +68,7 @@ protected:
             for (auto const& [patch, attr] : lvlPatches)
                 hi5_.writeAttributeDict(file, attr, hi5_.getPatchPathAddTimestamp(lvl, patch));
             for (size_t i = patchNbr; i < maxPatches; i++)
-                hi5_.writeAttributeDict(file, hi5_.modelView().getEmptyPatchAttributes(), "");
+                hi5_.writeAttributeDict(file, hi5_.modelView().getEmptyPatchProperties(), "");
         }
 
         hi5_.writeAttributeDict(file, fileAttributes, "/");
@@ -78,7 +81,7 @@ protected:
         hi5_.writeAttributeDict(file, dsAttr, null ? "" : path);
     }
 
-    HighFiveDiagnostic& hi5_;
+    Writer& hi5_;
 };
 
 } // namespace PHARE::diagnostic::h5

@@ -31,9 +31,8 @@ struct PHARE_Types
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;
     using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
     using hierarchy_t               = typename PHARE::amr::SAMRAI_Types::hierarchy_t;
-    using DiagnosticModelView
-        = PHARE::diagnostic::AMRDiagnosticModelView<hierarchy_t, HybridModel_t>;
-    using DiagnosticWriter = PHARE::diagnostic::h5::HighFiveDiagnosticWriter<DiagnosticModelView>;
+    using ModelView                 = PHARE::diagnostic::ModelView<hierarchy_t, HybridModel_t>;
+    using DiagnosticWriter          = PHARE::diagnostic::h5::Writer<ModelView>;
 
     using ParticleInitializerFactory
         = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;

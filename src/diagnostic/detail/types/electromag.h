@@ -11,30 +11,30 @@ namespace PHARE::diagnostic::h5
  * /t#/pl#/p#/electromag_(B, E)/(x,y,z)
  */
 template<typename HighFiveDiagnostic>
-class ElectromagDiagnosticWriter : public Hi5DiagnosticTypeWriter<HighFiveDiagnostic>
+class ElectromagDiagnosticWriter : public H5TypeWriter<HighFiveDiagnostic>
 {
 public:
-    using Super = Hi5DiagnosticTypeWriter<HighFiveDiagnostic>;
+    using Super = H5TypeWriter<HighFiveDiagnostic>;
     using Super::hi5_;
     using Super::initDataSets_;
-    using Super::writeGhostsAttr_;
     using Super::writeAttributes_;
+    using Super::writeGhostsAttr_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename HighFiveDiagnostic::GridLayout;
 
     ElectromagDiagnosticWriter(HighFiveDiagnostic& hi5)
-        : Hi5DiagnosticTypeWriter<HighFiveDiagnostic>(hi5)
+        : H5TypeWriter<HighFiveDiagnostic>(hi5)
     {
     }
-    void write(DiagnosticDAO&) override;
-    void compute(DiagnosticDAO&) override {}
-    void getDataSetInfo(DiagnosticDAO& diagnostic, size_t iLevel, std::string const& patchID,
+    void write(DiagnosticProperties&) override;
+    void compute(DiagnosticProperties&) override {}
+    void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
-    void initDataSets(DiagnosticDAO& diagnostic,
+    void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, size_t maxLevel) override;
     void
-    writeAttributes(DiagnosticDAO&, Attributes&,
+    writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
                     size_t maxLevel) override;
 
@@ -44,10 +44,9 @@ private:
 
 
 template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDAO& diagnostic,
-                                                                    size_t iLevel,
-                                                                    std::string const& patchID,
-                                                                    Attributes& patchAttributes)
+void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(
+    DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
+    Attributes& patchAttributes)
 {
     auto& hi5              = this->hi5_;
     auto vecFields         = hi5.modelView().getElectromagFields();
@@ -65,11 +64,11 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDA
     for (auto* vecField : vecFields)
     {
         auto& name = vecField->name();
-        if (diagnostic.type == "/" + name)
+        if (diagnostic.quantity == "/" + name)
         {
             infoVF(*vecField, name, patchAttributes[lvlPatchID]);
-            if (!fileData.count(diagnostic.type))
-                fileData.emplace(diagnostic.type, hi5.makeFile(diagnostic));
+            if (!fileData.count(diagnostic.quantity))
+                fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
         }
     }
 }
@@ -77,11 +76,12 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticDA
 
 template<typename HighFiveDiagnostic>
 void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
-    DiagnosticDAO& diagnostic, std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
+    DiagnosticProperties& diagnostic,
+    std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
     Attributes& patchAttributes, size_t maxLevel)
 {
     auto& hi5      = this->hi5_;
-    auto& file     = fileData.at(diagnostic.type)->file();
+    auto& file     = fileData.at(diagnostic.quantity)->file();
     auto vecFields = hi5.modelView().getElectromagFields();
 
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
@@ -101,7 +101,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
         for (auto* vecField : vecFields)
         {
             auto& name = vecField->name();
-            if (diagnostic.type == "/" + name)
+            if (diagnostic.quantity == "/" + name)
                 initVF(path, attr, name, null);
         }
     };
@@ -112,16 +112,16 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
 
 template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagnostic)
+void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& diagnostic)
 {
     auto& hi5 = this->hi5_;
 
     for (auto* vecField : hi5.modelView().getElectromagFields())
     {
         auto& name = vecField->name();
-        if (diagnostic.type == "/" + name)
+        if (diagnostic.quantity == "/" + name)
         {
-            auto& file = fileData.at(diagnostic.type)->file();
+            auto& file = fileData.at(diagnostic.quantity)->file();
             hi5.writeVecFieldAsDataset(file, hi5.patchPath() + "/" + name, *vecField);
         }
     }
@@ -131,11 +131,11 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticDAO& diagno
 
 template<typename HighFiveDiagnostic>
 void ElectromagDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
-    DiagnosticDAO& diagnostic, Attributes& fileAttributes,
+    DiagnosticProperties& diagnostic, Attributes& fileAttributes,
     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
     size_t maxLevel)
 {
-    writeAttributes_(fileData.at(diagnostic.type)->file(), diagnostic, fileAttributes,
+    writeAttributes_(fileData.at(diagnostic.quantity)->file(), diagnostic, fileAttributes,
                      patchAttributes, maxLevel);
 }
 

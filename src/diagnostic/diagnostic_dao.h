@@ -8,11 +8,21 @@
 
 namespace PHARE::diagnostic
 {
-struct DiagnosticDAO // DAO = DataAccessObject
+struct DiagnosticProperties
 {
     size_t lastWrite = 0, lastCompute = 0;
     std::vector<double> writeTimestamps, computeTimestamps;
-    std::string category, type;
+    std::string type, quantity;
+
+    bool needsWrite(double timeStamp, double timeStep) const
+    {
+        return writeTimestamps[lastWrite] + timeStep > timeStamp;
+    }
+
+    bool needsCompute(double timeStamp, double timeStep) const
+    {
+        return computeTimestamps[lastCompute] + timeStep > timeStamp;
+    }
 };
 
 } // namespace PHARE::diagnostic

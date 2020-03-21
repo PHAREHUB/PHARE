@@ -95,19 +95,19 @@ struct RuntimeDiagnosticInterface
                     std::size_t constexpr d  = dimension();
                     std::size_t constexpr io = interp_order();
 
-                    using PHARE_Types         = PHARE::PHARE_Types<d, io>;
-                    using DiagnosticModelView = typename PHARE_Types::DiagnosticModelView;
-                    using DiagnosticWriter    = typename PHARE_Types::DiagnosticWriter;
+                    using PHARE_Types      = PHARE::PHARE_Types<d, io>;
+                    using ModelView        = typename PHARE_Types::ModelView;
+                    using DiagnosticWriter = typename PHARE_Types::DiagnosticWriter;
 
                     auto* simulator = dynamic_cast<PHARE::Simulator<d, io>*>(&rdi.simulator);
                     auto& hierarchy = rdi.hierarchy;
 
-                    rdi.modelView = std::make_unique<DiagnosticModelView>(
-                        hierarchy, *simulator->getHybridModel());
+                    rdi.modelView
+                        = std::make_unique<ModelView>(hierarchy, *simulator->getHybridModel());
 
-                    rdi.writer = DiagnosticWriter::from(
-                        *static_cast<DiagnosticModelView*>(rdi.modelView.get()),
-                        dict["simulation"]["diagnostics"]);
+                    rdi.writer
+                        = DiagnosticWriter::from(*static_cast<ModelView*>(rdi.modelView.get()),
+                                                 dict["simulation"]["diagnostics"]);
 
                     rdi.dMan = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::from(
                         *static_cast<DiagnosticWriter*>(rdi.writer.get()),
@@ -126,8 +126,8 @@ struct RuntimeDiagnosticInterface
 
     PHARE::amr::Hierarchy& hierarchy;
     PHARE::ISimulator& simulator;
-    std::unique_ptr<PHARE::diagnostic::IDiagnosticModelView> modelView;
-    std::unique_ptr<PHARE::diagnostic::IDiagnosticWriter> writer;
+    std::unique_ptr<PHARE::diagnostic::IModelView> modelView;
+    std::unique_ptr<PHARE::diagnostic::IWriter> writer;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
 };
 

@@ -3,21 +3,22 @@
 
 #include "diagnostic_dao.h"
 
+#include "cppdict/include/dict.hpp"
+
 namespace PHARE::diagnostic
 {
-class DiagnosticTypeWriter
+class TypeWriter
 {
 public:
-    using Attributes                     = cppdict::Dict<float, double, size_t, std::string>;
-    virtual void write(DiagnosticDAO&)   = 0;
-    virtual void compute(DiagnosticDAO&) = 0;
-    virtual ~DiagnosticTypeWriter() {}
+    virtual void write(DiagnosticProperties&)   = 0;
+    virtual void compute(DiagnosticProperties&) = 0;
+    virtual ~TypeWriter() {}
 };
 
-class IDiagnosticWriter
+class IWriter
 {
 public:
-    virtual ~IDiagnosticWriter() {}
+    virtual ~IWriter() {}
 };
 
 } // namespace PHARE::diagnostic

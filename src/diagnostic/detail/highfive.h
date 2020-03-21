@@ -4,18 +4,19 @@
 
 #include "highfive/H5DataSet.hpp"
 #include "highfive/H5DataSpace.hpp"
-#include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
+
+#include "highfive_diag_writer.h"
+#include "h5file.h"
 
 #include "diagnostic/diagnostic_manager.h"
 #include "diagnostic/diagnostic_dao.h"
-#include "highfive_diag_writer.h"
+
+#include "core/data/vecfield/vecfield_component.h"
 
 
 namespace PHARE::diagnostic::h5
 {
-using HiFile = HighFive::File;
-
 template<typename HighFiveDiagnostic>
 class ElectromagDiagnosticWriter;
 template<typename HighFiveDiagnostic>
@@ -23,71 +24,37 @@ class FluidDiagnosticWriter;
 template<typename HighFiveDiagnostic>
 class ParticlesDiagnosticWriter;
 
-struct HighFiveFile
-{
-    HiFile file_;
-    PHARE::diagnostic::Mode mode_ = PHARE::diagnostic::Mode::LIGHT;
-
-    static auto createHighFiveFile(std::string const path, unsigned flags)
-    {
-        return HiFile
-        {
-            path, flags
-#if defined(H5_HAVE_PARALLEL)
-                ,
-                HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
-#endif
-        };
-    }
-
-    HighFiveFile(std::string const path, unsigned flags,
-                 PHARE::diagnostic::Mode mode = PHARE::diagnostic::Mode::LIGHT)
-        : file_{createHighFiveFile(path, flags)}
-        , mode_{mode}
-    {
-    }
-    ~HighFiveFile() {}
-
-    HiFile& file() { return file_; }
-
-    HighFiveFile(const HighFiveFile&)             = delete;
-    HighFiveFile(const HighFiveFile&&)            = delete;
-    HighFiveFile& operator&(const HighFiveFile&)  = delete;
-    HighFiveFile& operator&(const HighFiveFile&&) = delete;
-};
-
 
 
 template<typename ModelView>
-class HighFiveDiagnosticWriter : public PHARE::diagnostic::IDiagnosticWriter
+class Writer : public PHARE::diagnostic::IWriter
 {
 public:
-    using This       = HighFiveDiagnosticWriter<ModelView>;
+    using This       = Writer<ModelView>;
     using GridLayout = typename ModelView::GridLayout;
-    using Attributes = typename ModelView::Attributes;
+    using Attributes = typename ModelView::PatchProperties;
 
-    static constexpr auto dimension   = ModelView::dimension;
+    static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
 
-    HighFiveDiagnosticWriter(ModelView& modelView, std::string const hifivePath,
-                             unsigned _flags
-                             = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate)
+    Writer(ModelView& modelView, std::string const hifivePath,
+           unsigned _flags = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate)
         : flags{_flags}
         , filePath_{hifivePath}
         , modelView_{modelView}
     {
     }
 
-    static std::unique_ptr<HighFiveDiagnosticWriter> from(ModelView& modelView,
-                                                          initializer::PHAREDict& dict)
+    ~Writer() {}
+
+    static std::unique_ptr<Writer> from(ModelView& modelView, initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
-        return std::move(std::make_unique<HighFiveDiagnosticWriter>(modelView, filePath));
+        return std::move(std::make_unique<Writer>(modelView, filePath));
     }
 
-    ~HighFiveDiagnosticWriter() {}
 
-    void dump(std::vector<DiagnosticDAO*> const&, double current_timestamp);
+    void dump(std::vector<DiagnosticProperties*> const&, double current_timestamp);
 
     template<typename String>
     auto getDiagnosticWriterForType(String& type)
@@ -107,7 +74,10 @@ public:
     {
         return std::make_unique<HighFiveFile>(filePath_ + "/" + filename, flags);
     }
-    auto makeFile(DiagnosticDAO& diagnostic) { return makeFile(fileString(diagnostic.type)); }
+    auto makeFile(DiagnosticProperties& diagnostic)
+    {
+        return makeFile(fileString(diagnostic.quantity));
+    }
 
 
     static std::string getFullPatchPath(std::string timestamp, int iLevel, std::string globalCoords)
@@ -177,13 +147,13 @@ private:
     ModelView& modelView_;
     Attributes fileAttributes_;
 
-    std::unordered_map<std::string, std::shared_ptr<Hi5DiagnosticTypeWriter<This>>> writers{
+    std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> writers{
         {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
         {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
         {"particle", make_writer<ParticlesDiagnosticWriter<This>>()}};
 
     template<typename Writer>
-    std::shared_ptr<Hi5DiagnosticTypeWriter<This>> make_writer()
+    std::shared_ptr<H5TypeWriter<This>> make_writer()
     {
         return std::make_shared<Writer>(*this);
     }
@@ -192,13 +162,13 @@ private:
     static void createDatasetsPerMPI(HiFile& h5, std::string path, size_t dataSetSize);
 
 
-    void initializeDatasets_(std::vector<DiagnosticDAO*> const& diagnotics);
-    void writeDatasets_(std::vector<DiagnosticDAO*> const& diagnotics);
+    void initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
+    void writeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
 
-    HighFiveDiagnosticWriter(const HighFiveDiagnosticWriter&)             = delete;
-    HighFiveDiagnosticWriter(const HighFiveDiagnosticWriter&&)            = delete;
-    HighFiveDiagnosticWriter& operator&(const HighFiveDiagnosticWriter&)  = delete;
-    HighFiveDiagnosticWriter& operator&(const HighFiveDiagnosticWriter&&) = delete;
+    Writer(const Writer&)             = delete;
+    Writer(const Writer&&)            = delete;
+    Writer& operator&(const Writer&)  = delete;
+    Writer& operator&(const Writer&&) = delete;
 
 
     //  State of this class is controlled via "dump()"
@@ -206,7 +176,7 @@ private:
     friend class FluidDiagnosticWriter<This>;
     friend class ElectromagDiagnosticWriter<This>;
     friend class ParticlesDiagnosticWriter<This>;
-    friend class Hi5DiagnosticTypeWriter<This>;
+    friend class H5TypeWriter<This>;
 
     // used by friends start
     std::string getPatchPathAddTimestamp(int iLevel, std::string globalCoords)
@@ -223,13 +193,13 @@ private:
 
 
 template<typename ModelView>
-void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const& diagnostics,
-                                               double timestamp)
+void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
+                             double timestamp)
 {
     timestamp_                     = timestamp;
     fileAttributes_["dimension"]   = dimension;
     fileAttributes_["interpOrder"] = interpOrder;
-    fileAttributes_["layoutType"]  = modelView().getLayoutTypeString();
+    fileAttributes_["layoutType"]  = modelView_.getLayoutTypeString();
 
     initializeDatasets_(diagnostics);
     writeDatasets_(diagnostics);
@@ -246,8 +216,7 @@ void HighFiveDiagnosticWriter<ModelView>::dump(std::vector<DiagnosticDAO*> const
  */
 template<typename ModelView>
 template<typename Type>
-void HighFiveDiagnosticWriter<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path,
-                                                               size_t dataSetSize)
+void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, size_t dataSetSize)
 {
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -274,8 +243,8 @@ void HighFiveDiagnosticWriter<ModelView>::createDatasetsPerMPI(HiFile& h5, std::
  */
 template<typename ModelView>
 template<typename Data>
-void HighFiveDiagnosticWriter<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path,
-                                                                std::string key, Data const& data)
+void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
+                                              Data const& data)
 {
     auto doAttribute = [&](auto node, auto& _key, auto& value) {
         node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value)).write(value);
@@ -308,45 +277,45 @@ void HighFiveDiagnosticWriter<ModelView>::writeAttributesPerMPI(HiFile& h5, std:
 
 
 template<typename ModelView>
-void HighFiveDiagnosticWriter<ModelView>::initializeDatasets_(
-    std::vector<DiagnosticDAO*> const& diagnostics)
+void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnostics)
 {
     size_t maxLocalLevel = 0;
-    std::unordered_map<size_t, std::vector<std::string>> patchIDs; // level to local patches
+    std::unordered_map<size_t, std::vector<std::string>> lvlPatchIDs;
     Attributes patchAttributes; // stores dataset info/size for synced MPI creation
-    auto collectPatchAttributes = [&](GridLayout&, std::string patchID, size_t iLevel) {
-        if (!patchIDs.count(iLevel))
-            patchIDs.emplace(iLevel, std::vector<std::string>());
 
-        patchIDs.at(iLevel).emplace_back(patchID);
+
+    auto collectPatchAttributes = [&](GridLayout&, std::string patchID, size_t iLevel) {
+        if (!lvlPatchIDs.count(iLevel))
+            lvlPatchIDs.emplace(iLevel, std::vector<std::string>());
+
+        lvlPatchIDs.at(iLevel).emplace_back(patchID);
 
         for (auto* diag : diagnostics)
         {
-            writers.at(diag->category)->getDataSetInfo(*diag, iLevel, patchID, patchAttributes);
+            writers.at(diag->type)->getDataSetInfo(*diag, iLevel, patchID, patchAttributes);
         }
         maxLocalLevel = iLevel;
     };
 
-    modelView().visitHierarchy(collectPatchAttributes, minLevel, maxLevel);
+    modelView_.visitHierarchy(collectPatchAttributes, minLevel, maxLevel);
 
     // sets empty vectors in case current process lacks patch on a level
     size_t maxMPILevel = mpiGetMaxOf(maxLocalLevel);
     for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
-        if (!patchIDs.count(lvl))
-            patchIDs.emplace(lvl, std::vector<std::string>());
+        if (!lvlPatchIDs.count(lvl))
+            lvlPatchIDs.emplace(lvl, std::vector<std::string>());
 
     for (auto* diagnostic : diagnostics)
     {
-        writers.at(diagnostic->category)
-            ->initDataSets(*diagnostic, patchIDs, patchAttributes, maxMPILevel);
+        writers.at(diagnostic->type)
+            ->initDataSets(*diagnostic, lvlPatchIDs, patchAttributes, maxMPILevel);
     }
 }
 
 
 
 template<typename ModelView>
-void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
-    std::vector<DiagnosticDAO*> const& diagnostics)
+void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const& diagnostics)
 {
     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>> patchAttributes;
 
@@ -355,13 +324,13 @@ void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
         if (!patchAttributes.count(iLevel))
             patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
         patchPath_ = getPatchPathAddTimestamp(iLevel, patchID);
-        patchAttributes[iLevel].emplace_back(patchID, modelView().getPatchAttributes(gridLayout));
+        patchAttributes[iLevel].emplace_back(patchID, modelView_.getPatchProperties(gridLayout));
         for (auto* diagnostic : diagnostics)
-            writers.at(diagnostic->category)->write(*diagnostic);
+            writers.at(diagnostic->type)->write(*diagnostic);
         maxLocalLevel = iLevel;
     };
 
-    modelView().visitHierarchy(writePatch, minLevel, maxLevel);
+    modelView_.visitHierarchy(writePatch, minLevel, maxLevel);
 
     size_t maxMPILevel = mpiGetMaxOf(maxLocalLevel);
     for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
@@ -369,16 +338,16 @@ void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
             patchAttributes.emplace(lvl, std::vector<std::pair<std::string, Attributes>>{});
 
     for (auto* diagnostic : diagnostics)
-        writers.at(diagnostic->category)
+        writers.at(diagnostic->type)
             ->writeAttributes(*diagnostic, fileAttributes_, patchAttributes, maxMPILevel);
 }
 
 
 
+
 template<typename ModelView>
 template<typename Data>
-std::vector<Data> HighFiveDiagnosticWriter<ModelView>::mpiCollectData(Data const& data,
-                                                                      int mpi_size)
+std::vector<Data> Writer<ModelView>::mpiCollectData(Data const& data, int mpi_size)
 {
     if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -400,8 +369,7 @@ std::vector<Data> HighFiveDiagnosticWriter<ModelView>::mpiCollectData(Data const
 
 template<typename ModelView>
 std::vector<std::string> // MPI does not like sending empty strings.
-HighFiveDiagnosticWriter<ModelView>::mpiCollectStrings(std::string str, int mpi_size,
-                                                       std::string null_str)
+Writer<ModelView>::mpiCollectStrings(std::string str, int mpi_size, std::string null_str)
 {
     std::vector<std::string> values;
     if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
@@ -417,7 +385,7 @@ HighFiveDiagnosticWriter<ModelView>::mpiCollectStrings(std::string str, int mpi_
 }
 
 template<typename ModelView>
-size_t HighFiveDiagnosticWriter<ModelView>::mpiGetMaxOf(size_t localSize, int mpi_size)
+size_t Writer<ModelView>::mpiGetMaxOf(size_t localSize, int mpi_size)
 {
     if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
