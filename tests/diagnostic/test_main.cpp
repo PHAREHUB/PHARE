@@ -242,7 +242,7 @@ TYPED_TEST(SimulatorTest, allFromPython)
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-    PHARE_test::SamraiLifeCycle samsam(argc, argv);
+    PHARE::SamraiLifeCycle samsam(argc, argv);
     auto ret = RUN_ALL_TESTS();
     return ret;
 }

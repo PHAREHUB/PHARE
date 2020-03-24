@@ -693,6 +693,6 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelGhostsAfterRegrid)
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-    PHARE_test::SamraiLifeCycle samsam(argc, argv);
+    PHARE::SamraiLifeCycle samsam(argc, argv);
     return RUN_ALL_TESTS();
 }

@@ -10,58 +10,9 @@ namespace py = pybind11;
 
 namespace PHARE::pydata
 {
-class StreamAppender : public SAMRAI::tbox::Logger::Appender
-{
-public:
-    StreamAppender(std::ostream* stream) { d_stream = stream; }
-    void logMessage(const std::string& message, const std::string& filename, const int line)
-    {
-        (*d_stream) << "At :" << filename << " line :" << line << " message: " << message
-                    << std::endl;
-    }
-
-private:
-    std::ostream* d_stream;
-};
-
-class SamraiLifeCycle
-{
-public:
-    static SamraiLifeCycle& INSTANCE()
-    {
-        static SamraiLifeCycle i;
-        return i;
-    }
-
-    SamraiLifeCycle()
-    {
-        SAMRAI::tbox::SAMRAI_MPI::init(0, nullptr);
-        SAMRAI::tbox::SAMRAIManager::initialize();
-        SAMRAI::tbox::SAMRAIManager::startup();
-
-        std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
-            = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
-        SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
-    }
-    ~SamraiLifeCycle()
-    {
-        SAMRAI::tbox::SAMRAIManager::shutdown();
-        SAMRAI::tbox::SAMRAIManager::finalize();
-        SAMRAI::tbox::SAMRAI_MPI::finalize();
-    }
-
-    void reset()
-    {
-        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
-        SAMRAI::tbox::SAMRAIManager::shutdown();
-        SAMRAI::tbox::SAMRAIManager::startup();
-    }
-};
-
-
 PYBIND11_MODULE(cpp, m)
 {
-    SamraiLifeCycle::INSTANCE(); // init
+    StaticSamraiLifeCycle::INSTANCE(); // init
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
 
@@ -102,7 +53,7 @@ PYBIND11_MODULE(cpp, m)
     });
     m.def("reset", []() {
         py::gil_scoped_release release;
-        SamraiLifeCycle::INSTANCE().reset();
+        StaticSamraiLifeCycle::reset();
     });
 }
 

@@ -37,7 +37,7 @@ int main(int argc, char** argv)
     std::cout << "\n";
     std::cout << "\n";
 
-    SamraiLifeCycle slc{argc, argv};
+    PHARE::SamraiLifeCycle slc{argc, argv};
 
     std::cerr << "creating python data provider\n";
     auto provider = fromCommandLine(argc, argv);

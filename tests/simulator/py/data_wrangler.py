@@ -8,8 +8,7 @@ from phare.data.wrangler import DataWrangler
 
 import unittest
 
-# This test may segfault if SAMRAI libs are static
-#  See: https://github.com/LLNL/SAMRAI/pull/112
+# TODO - validate data from somewhere!
 
 class DataWranglerTest(unittest.TestCase):
 

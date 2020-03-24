@@ -1,7 +1,7 @@
 #ifndef PHARE_TEST_SIMULATOR_PER_TEST_H
 #define PHARE_TEST_SIMULATOR_PER_TEST_H
 
-#include "simulator/simulator.h"
+#include "phare/include.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -111,60 +111,6 @@ int main(int argc, char** argv)
 }
 */
 
-namespace PHARE_test
-{
-class StreamAppender : public SAMRAI::tbox::Logger::Appender
-{
-public:
-    StreamAppender(std::ostream* stream) { d_stream = stream; }
-    void logMessage(const std::string& message, const std::string& filename, const int line)
-    {
-        (*d_stream) << "At :" << filename << " line :" << line << " message: " << message
-                    << std::endl;
-    }
-
-private:
-    std::ostream* d_stream;
-};
-
-class SamraiLifeCycle
-{
-public:
-    SamraiLifeCycle(int argc, char** argv,
-                    std::vector<std::function<void()>> funcs = std::vector<std::function<void()>>{})
-    {
-        SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
-        SAMRAI::tbox::SAMRAIManager::initialize();
-        SAMRAI::tbox::SAMRAIManager::startup();
-
-        std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
-            = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
-        SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
-        for (auto& func : funcs)
-            func();
-    }
-    ~SamraiLifeCycle()
-    {
-        for (auto& func : funcs_)
-            func();
-        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
-        StaticIntepreter::input.reset();
-        SAMRAI::tbox::SAMRAIManager::shutdown();
-        SAMRAI::tbox::SAMRAIManager::finalize();
-        SAMRAI::tbox::SAMRAI_MPI::finalize();
-    }
-
-    SamraiLifeCycle& doOnDestruct(std::vector<std::function<void()>> funcs)
-    {
-        funcs_ = funcs;
-        return *this;
-    }
-
-private:
-    std::vector<std::function<void()>> funcs_;
-};
-
-} // namespace PHARE_test
 
 namespace PHARE
 {
