@@ -63,12 +63,25 @@ namespace core
     {
     };
 
+    template<typename T>
+    struct is_std_vector : std::false_type
+    {
+    };
+
+    template<typename T>
+    struct is_std_vector<std::vector<T>> : std::true_type
+    {
+    };
+
+    template<typename T>
+    inline constexpr auto is_std_vector_v = is_std_vector<T>::value;
+
     template<typename T, size_t size>
     struct is_std_array : std::false_type
     {
     };
-    template<typename T, size_t size>
 
+    template<typename T, size_t size>
     struct is_std_array<std::array<T, size>, size> : std::true_type
     {
     };

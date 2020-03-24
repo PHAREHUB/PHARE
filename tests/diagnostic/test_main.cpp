@@ -131,7 +131,7 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         std::vector<float> deltaV;
         file.getDataSet(path + "delta").read(deltaV);
 
-        ParticlePacker packer{particles};
+        core::ParticlePacker packer{particles};
 
         auto first       = packer.empty();
         size_t iCellSize = std::get<2>(first).size();
@@ -242,7 +242,7 @@ TYPED_TEST(SimulatorTest, allFromPython)
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-    PHARE_test::SamraiLifeCycle samsam(argc, argv);
+    PHARE::SamraiLifeCycle samsam(argc, argv);
     auto ret = RUN_ALL_TESTS();
     return ret;
 }

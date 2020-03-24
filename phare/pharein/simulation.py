@@ -238,7 +238,7 @@ def check_patch_size(**kwargs):
 def check_diag_options(**kwargs):
     diag_options = kwargs.get("diag_options", None)
     formats = ["phareh5"]
-    if diag_options is not None:
+    if diag_options is not None and "format" in diag_options:
         if diag_options["format"] not in formats:
             raise ValueError("Error - diag_options format is invalid")
         if "options" in diag_options and "dir" in diag_options["options"]:

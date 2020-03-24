@@ -73,6 +73,7 @@ add_subdirectory(src/initializer)
 add_subdirectory(src/phare)
 add_subdirectory(src/amr)
 add_subdirectory(src/simulator)
+add_subdirectory(src/python3)
 
 #* Documentation option
 include("${PHARE_PROJECT_DIR}/res/cmake/doc.cmake")
