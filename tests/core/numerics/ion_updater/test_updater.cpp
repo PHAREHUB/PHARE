@@ -913,27 +913,28 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 
 
-TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
-{
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
-
-    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
-
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::particles_and_moments);
-
-    this->fillIonsMomentsGhosts();
-
-    ionUpdater.updateIons(this->ions, this->layout);
-
-    auto& populations = this->ions.getRunTimeResourcesUserList();
-
-    EXPECT_NE(ionsBufferCpy.protonDomain.size(), populations[0].domainParticles().size());
-    EXPECT_NE(ionsBufferCpy.alphaDomain.size(), populations[1].domainParticles().size());
-
-    // cannot think of anything else to check than checking that the number of particles
-    // in the domain have changed after them having been pushed.
-}
+// TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
+//{
+//    typename IonUpdaterTest<TypeParam>::IonUpdater
+//    ionUpdater{createDict()["simulation"]["pusher"]};
+//
+//    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+//
+//    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+//                                 UpdaterMode::particles_and_moments);
+//
+//    this->fillIonsMomentsGhosts();
+//
+//    ionUpdater.updateIons(this->ions, this->layout);
+//
+//    auto& populations = this->ions.getRunTimeResourcesUserList();
+//
+//    EXPECT_NE(ionsBufferCpy.protonDomain.size(), populations[0].domainParticles().size());
+//    EXPECT_NE(ionsBufferCpy.alphaDomain.size(), populations[1].domainParticles().size());
+//
+//    // cannot think of anything else to check than checking that the number of particles
+//    // in the domain have changed after them having been pushed.
+//}
 
 
 
