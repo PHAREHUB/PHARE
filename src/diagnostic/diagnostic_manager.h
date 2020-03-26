@@ -109,11 +109,9 @@ template<typename Writer>
 DiagnosticsManager<Writer>&
 DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& dict)
 {
-    auto& dao           = diagnostics_.emplace_back(DiagnosticDAO{});
-    dao.category        = dict["category"].template to<std::string>();
-    dao.start_iteration = dict["start_iteration"].template to<double>();
-    dao.last_iteration  = dict["last_iteration"].template to<double>();
-    dao.type            = dict["type"].template to<std::string>();
+    auto& dao    = diagnostics_.emplace_back(DiagnosticDAO{});
+    dao.category = dict["category"].template to<std::string>();
+    dao.type     = dict["type"].template to<std::string>();
 
     dao.writeTimestamps   = dict["write_timestamps"].template to<std::vector<double>>();
     dao.computeTimestamps = dict["compute_timestamps"].template to<std::vector<double>>();

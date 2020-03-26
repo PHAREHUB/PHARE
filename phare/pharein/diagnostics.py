@@ -5,18 +5,12 @@ from . import globals
 
 # ------------------------------------------------------------------------------
 
-def check_last_iteration(**kwargs):
-    if kwargs['last_iteration'] < kwargs['start_iteration']:
-        raise ValueError("Error: 'last_iteration' should be equal or larger than 'start_iteration'")
-
-# ------------------------------------------------------------------------------
 
 
 def diagnostics_checker(func):
     def wrapper(diagnostics_object, name, **kwargs):
 
         accepted_keywords = ['write_timestamps',
-                             'start_iteration', 'last_iteration',
                              'path', 'compute_timestamps']
 
         mandatory_keywords = ['write_timestamps', 'diag_type']
@@ -34,9 +28,6 @@ def diagnostics_checker(func):
         try:
             # just take mandatory arguments from the dict
             # since if we arrived here we are sure they are there
-            kwargs['start_iteration'] = kwargs.get("start_iteration", 0)
-            kwargs['last_iteration'] = kwargs.get("last_iteration", 0)
-            check_last_iteration(**kwargs)
 
             kwargs['path'] = kwargs.get("path", './')
 
@@ -58,8 +49,6 @@ class Diagnostics(object):
 
         self.name = name
 
-        self.start_iteration = kwargs['start_iteration']
-        self.last_iteration = kwargs['last_iteration']
         self.path = kwargs['path']
 
         self.write_timestamps = kwargs['write_timestamps'] #[0, 1, 2]
@@ -72,8 +61,6 @@ class Diagnostics(object):
 
         globals.sim.add_diagnostics(self)
 
-    def iteration_interval(self):
-        return self.start_iteration, self.last_iteration
 
     def extent(self):
         return self.__extent
@@ -107,8 +94,6 @@ class ElectromagDiagnostics(Diagnostics):
                 "diag_type": self.diag_type,
                 "write_timestamps": self.write_timestamps,
                 "compute_timestamps": self.compute_timestamps,
-                "start_iteration": self.start_iteration,
-                "last_iteration": self.last_iteration,
                 "path": self.path}
 
 # ------------------------------------------------------------------------------
@@ -159,8 +144,6 @@ class FluidDiagnostics (Diagnostics):
                 "diag_type": self.diag_type,
                 "write_timestamps": self.write_timestamps,
                 "compute_timestamps": self.compute_timestamps,
-                "start_iteration": self.start_iteration,
-                "last_iteration": self.last_iteration,
                 "path": self.path,
                 "population_name": self.population_name}
 
@@ -213,8 +196,6 @@ class ParticleDiagnostics(Diagnostics):
                 "diag_type": self.diag_type,
                 "write_timestamps": self.write_timestamps,
                 "compute_timestamps": self.compute_timestamps,
-                "start_iteration": self.start_iteration,
-                "last_iteration": self.last_iteration,
                 "path": self.path,
                 "extent": ", ".join([str(x) for x in self.extent]),
                 "population_name":self.population_name}

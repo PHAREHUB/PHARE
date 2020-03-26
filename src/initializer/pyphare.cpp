@@ -4,10 +4,14 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
+#include "pybind11/numpy.h"
 #include <pybind11/stl.h>
 
 using PHARE::initializer::ScalarFunction;
 
+namespace py = pybind11;
+template<typename T>
+using py_array = py::array_t<T, py::array::c_style | py::array::forcecast>;
 
 template<typename T,
          typename = std::enable_if_t<cppdict::is_in<T, int, double, std::string, ScalarFunction<1>,
@@ -35,9 +39,16 @@ void add_optional_size_t(std::string path, std::optional<size_t>&& value)
 }
 
 template<typename T>
-void add_vector(std::string path, std::vector<T>&& value)
+void add_array_as_vector(std::string path, py_array<T>& array)
 {
-    cppdict::add(path, std::forward<std::vector<T>>(value),
+    auto buf = array.request();
+
+    if (buf.ndim != 1)
+        throw std::runtime_error("Number of dimensions must be one");
+
+    T* ptr = static_cast<T*>(buf.ptr);
+
+    cppdict::add(path, std::vector<T>(ptr, ptr + buf.size),
                  PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
 }
 
@@ -53,5 +64,5 @@ PYBIND11_MODULE(pyphare, m)
     m.def("addScalarFunction1D", add<ScalarFunction<1>, void>, "add");
     m.def("addScalarFunction2D", add<ScalarFunction<2>, void>, "add");
     m.def("addScalarFunction3D", add<ScalarFunction<3>, void>, "add");
-    m.def("add_vector", add_vector<double>, "add_vector");
+    m.def("add_array_as_vector", add_array_as_vector<double>, "add_array_as_vector");
 }

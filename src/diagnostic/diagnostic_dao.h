@@ -10,8 +10,6 @@ namespace PHARE::diagnostic
 {
 struct DiagnosticDAO // DAO = DataAccessObject
 {
-    double start_iteration = 0, last_iteration = 100;
-
     size_t lastWrite = 0, lastCompute = 0;
     std::vector<double> writeTimestamps, computeTimestamps;
     std::string category, type;
