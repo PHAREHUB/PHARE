@@ -140,7 +140,12 @@ public:
     }
 
     template<typename Dict>
-    static void writeAttributeDict(HiFile& h5, Dict, std::string);
+    static void writeAttributeDict(HiFile& h5, Dict dict, std::string path)
+    {
+        dict.visit([&](const std::string& key, const auto& val) {
+            writeAttributesPerMPI(h5, path, key, val);
+        });
+    }
 
     // per MPI function where path differs per process
     template<typename Data>
@@ -369,39 +374,6 @@ void HighFiveDiagnosticWriter<ModelView>::writeDatasets_(
 }
 
 
-
-/*
- * turns a dict of std::map<std::string, T> to hdf5 attributes
- */
-template<typename ModelView>
-template<typename Dict>
-void HighFiveDiagnosticWriter<ModelView>::writeAttributeDict(HiFile& h5, Dict dict,
-                                                             std::string path)
-{
-    using dict_map_t = typename Dict::map_t;
-    auto visitor     = [&](auto&& map) {
-        using Map_t = std::decay_t<decltype(map)>;
-        if constexpr (std::is_same_v<Map_t, dict_map_t>)
-            for (auto& pair : map)
-                std::visit(
-                    [&](auto&& val) {
-                        using Val = std::decay_t<decltype(val)>;
-                        if constexpr (core::is_dict_leaf<Val, Dict>::value)
-                            writeAttributesPerMPI(h5, path, pair.first, val);
-                        else
-                            throw std::runtime_error(std::string("Expecting Writable value got ")
-                                                     + typeid(Map_t).name());
-                    },
-                    pair.second.get()->data);
-        else
-            /* static_assert fails without if ! constexpr all possible types
-             * regardless of what it actually is.
-             */
-            throw std::runtime_error(std::string("Expecting map<string, T> got ")
-                                     + typeid(Map_t).name());
-    };
-    std::visit(visitor, dict.data);
-}
 
 template<typename ModelView>
 template<typename Data>

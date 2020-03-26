@@ -1,6 +1,6 @@
 [submodule "subprojects/cppdict"]
 	path = subprojects/cppdict
-	url = https://github.com/nicolasaunai/cppdict
+	url = https://github.com/LaboratoryOfPlasmaPhysics/cppdict
 [submodule "subprojects/pharedo"]
 	path = subprojects/pharedo
 	url = https://github.com/PHAREHUB/pharedo.git
