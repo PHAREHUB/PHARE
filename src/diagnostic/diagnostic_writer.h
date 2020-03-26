@@ -1,7 +1,7 @@
 #ifndef DIAGNOSTIC_WRITER_H
 #define DIAGNOSTIC_WRITER_H
 
-#include "diagnostic_dao.h"
+#include "diagnostic_props.h"
 
 #include "cppdict/include/dict.hpp"
 

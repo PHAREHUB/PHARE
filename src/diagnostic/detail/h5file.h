@@ -4,8 +4,8 @@
 #include "highfive/H5File.hpp"
 #include "diagnostic/diagnostic_manager.h"
 
-namespace PHARE::diagnostic::h5 {
-
+namespace PHARE::diagnostic::h5
+{
 using HiFile = HighFive::File;
 
 struct HighFiveFile
@@ -35,16 +35,16 @@ struct HighFiveFile
 
     HiFile& file() { return file_; }
 
-    HighFiveFile(const HighFiveFile&)             = delete;
-    HighFiveFile(const HighFiveFile&&)            = delete;
-    HighFiveFile& operator&(const HighFiveFile&)  = delete;
-    HighFiveFile& operator&(const HighFiveFile&&) = delete;
+    HighFiveFile(const HighFiveFile&)  = delete;
+    HighFiveFile(const HighFiveFile&&) = delete;
+    HighFiveFile& operator=(const HighFiveFile&) = delete;
+    HighFiveFile& operator=(const HighFiveFile&&) = delete;
 };
 
 
 
 
-}
+} // namespace PHARE::diagnostic::h5
 
 
 #endif // H5FILE_H

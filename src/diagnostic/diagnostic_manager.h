@@ -4,7 +4,7 @@
 
 #include "core/data/particles/particle_array.h"
 #include "initializer/data_provider.h"
-#include "diagnostic_dao.h"
+#include "diagnostic_props.h"
 
 #include <utility>
 
@@ -58,6 +58,12 @@ public:
     }
 
 
+    DiagnosticsManager(const DiagnosticsManager&)  = delete;
+    DiagnosticsManager(const DiagnosticsManager&&) = delete;
+    DiagnosticsManager& operator=(const DiagnosticsManager&) = delete;
+    DiagnosticsManager& operator=(const DiagnosticsManager&&) = delete;
+
+
     static std::unique_ptr<DiagnosticsManager> from(Writer& writer, initializer::PHAREDict& dict)
     {
         auto dMan = std::make_unique<DiagnosticsManager>(writer);
@@ -77,9 +83,28 @@ public:
     }
 
 
-    void addDiagnostic(DiagnosticProperties& diagnostic) { diagnostics_.emplace_back(diagnostic); }
+    void addDiagnostic(DiagnosticProperties& diagnostic)
+    {
+        diagnostics_.emplace_back(diagnostic);
+        lastWrite_[diagnostic.type + diagnostic.quantity]   = 0;
+        lastCompute_[diagnostic.type + diagnostic.quantity] = 0;
+    }
 
     auto& diagnostics() const { return diagnostics_; }
+
+
+    bool needsWrite(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    {
+        auto lastWrite = lastWrite_[diag.type + diag.quantity];
+        return diag.writeTimestamps[lastWrite] + timeStep > timeStamp;
+    }
+
+    bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    {
+        auto lastCompute = lastCompute_[diag.type + diag.quantity];
+        return diag.computeTimestamps[lastCompute] + timeStep > timeStamp;
+    }
+
 
 
 protected:
@@ -88,10 +113,9 @@ protected:
 private:
     Writer& writer_;
 
-    DiagnosticsManager(const DiagnosticsManager&)             = delete;
-    DiagnosticsManager(const DiagnosticsManager&&)            = delete;
-    DiagnosticsManager& operator&(const DiagnosticsManager&)  = delete;
-    DiagnosticsManager& operator&(const DiagnosticsManager&&) = delete;
+
+    std::map<std::string, std::size_t> lastCompute_;
+    std::map<std::string, std::size_t> lastWrite_;
 };
 
 
@@ -103,8 +127,6 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& diagInput
 {
     auto& diagProps           = diagnostics_.emplace_back(DiagnosticProperties{});
     diagProps.type            = diagInputs["category"].template to<std::string>();
-    diagProps.start_iteration = diagInputs["start_iteration"].template to<double>();
-    diagProps.last_iteration  = diagInputs["last_iteration"].template to<double>();
     diagProps.quantity        = diagInputs["type"].template to<std::string>();
     diagProps.writeTimestamps = diagInputs["write_timestamps"].template to<std::vector<double>>();
     diagProps.computeTimestamps
@@ -122,17 +144,24 @@ void DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        if (diag.needsCompute(timeStamp, timeStep))
+        auto diagID = diag.type + diag.quantity;
+
+        if (needsCompute(diag, timeStamp, timeStep))
         {
             writer_.getDiagnosticWriterForType(diag.type)->compute(diag);
-            diag.lastCompute++;
+            lastCompute_[diagID]++;
         }
-        if (diag.needsWrite(timeStamp, timeStep))
+        if (needsWrite(diag, timeStamp, timeStep))
         {
             activeDiagnostics.emplace_back(&diag);
         }
     }
     writer_.dump(activeDiagnostics, timeStamp);
+
+    for (auto const* diag : activeDiagnostics)
+    {
+        lastWrite_[diag->type + diag->quantity]++;
+    }
 }
 
 

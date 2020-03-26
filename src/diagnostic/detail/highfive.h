@@ -10,7 +10,7 @@
 #include "h5file.h"
 
 #include "diagnostic/diagnostic_manager.h"
-#include "diagnostic/diagnostic_dao.h"
+#include "diagnostic/diagnostic_props.h"
 
 #include "core/data/vecfield/vecfield_component.h"
 
