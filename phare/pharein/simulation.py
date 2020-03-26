@@ -389,8 +389,8 @@ class Simulation(object):
 
 # ------------------------------------------------------------------------------
 
-    def count_diagnostics(self, category_name):
-        return len([diag for diag in self.diagnostics if diag.category == category_name])
+    def count_diagnostics(self, type_name):
+        return len([diag for diag in self.diagnostics if diag.type == type_name])
 
 
 # ------------------------------------------------------------------------------

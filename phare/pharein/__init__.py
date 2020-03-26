@@ -125,9 +125,10 @@ def populateDict():
 
     diag_path = "simulation/diagnostics/"
     for diag in simulation.diagnostics:
-        categ_path = diag_path + diag.category + '/'
-        name_path = categ_path + diag.name
-        add(name_path + "/" + 'type/' , diag.diag_type)
+        type_path = diag_path + diag.type + '/'
+        name_path = type_path + diag.name
+        add(name_path + "/" + 'type/' , diag.type)
+        add(name_path + "/" + 'quantity/' , diag.quantity)
         pp.add_array_as_vector(name_path + "/" + "write_timestamps", diag.write_timestamps)
         pp.add_array_as_vector(name_path + "/" + "compute_timestamps", diag.compute_timestamps)
 

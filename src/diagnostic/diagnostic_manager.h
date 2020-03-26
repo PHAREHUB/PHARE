@@ -25,10 +25,8 @@ void registerDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& diags
         while (diagsParams.contains(diagType)
                && diagsParams[diagType].contains(diagType + std::to_string(diagBlockID)))
         {
-            std::string diagName = diagType + std::to_string(diagBlockID);
-            auto copy            = diagsParams[diagType][diagName];
-            copy["category"]     = diagType;
-            dMan.addDiagDict(copy);
+            const std::string diagName = diagType + std::to_string(diagBlockID);
+            dMan.addDiagDict(diagsParams[diagType][diagName]);
             diagBlockID++;
         }
     }
@@ -126,8 +124,8 @@ DiagnosticsManager<Writer>&
 DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& diagInputs)
 {
     auto& diagProps           = diagnostics_.emplace_back(DiagnosticProperties{});
-    diagProps.type            = diagInputs["category"].template to<std::string>();
-    diagProps.quantity        = diagInputs["type"].template to<std::string>();
+    diagProps.type            = diagInputs["type"].template to<std::string>();
+    diagProps.quantity        = diagInputs["quantity"].template to<std::string>();
     diagProps.writeTimestamps = diagInputs["write_timestamps"].template to<std::vector<double>>();
     diagProps.computeTimestamps
         = diagInputs["compute_timestamps"].template to<std::vector<double>>();

@@ -8,33 +8,33 @@ def dump_all_diags(pops=[]):
     timestamps = np.arange(0, sim.time_step+3)*sim.time_step
 
 
-    for type in ["density", "bulkVelocity"]:
+    for quantity in ["density", "bulkVelocity"]:
         ph.FluidDiagnostics(
-            diag_type=type,
+            quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
 
     for pop in pops:
-        for type in ["density", "flux"]:
+        for quantity in ["density", "flux"]:
           ph.FluidDiagnostics(
-              diag_type=type,
+              quantity=quantity,
               write_timestamps=timestamps,
               compute_timestamps=timestamps,
               population_name=pop
           )
 
-        for type in ['domain', 'levelGhost', 'patchGhost']:
+        for quantity in ['domain', 'levelGhost', 'patchGhost']:
             ph.ParticleDiagnostics(
-                diag_type=type,
+                quantity=quantity,
                 compute_timestamps=timestamps,
                 write_timestamps=timestamps,
                 population_name=pop
             )
 
-    for type in ["E", "B"]:
+    for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(
-            diag_type=type,
+            quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )

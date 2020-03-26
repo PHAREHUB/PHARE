@@ -59,12 +59,12 @@ struct Hi5Diagnostic
     }
     ~Hi5Diagnostic() {}
 
-    auto dict(std::string&& category, std::string& type)
+    auto dict(std::string&& type, std::string& quantity)
     {
         PHARE::initializer::PHAREDict dict;
-        dict["name"]      = type;
-        dict["category"]  = category;
+        dict["name"]      = quantity;
         dict["type"]      = type;
+        dict["quantity"]  = quantity;
         dict["time_step"] = double{1};
 
         dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
