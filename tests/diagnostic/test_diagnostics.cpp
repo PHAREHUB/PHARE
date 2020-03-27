@@ -3,7 +3,7 @@
 
 #include <mpi.h>
 
-#include "include.h"
+#include "test_diagnostics.h"
 
 using namespace PHARE;
 using namespace PHARE::diagnostic;

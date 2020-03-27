@@ -7,6 +7,8 @@
 
 #include "diagnostic/diagnostic_writer.h"
 
+#include "core/utilities/mpi_utils.h"
+
 #include "highfive/H5File.hpp"
 
 namespace PHARE::diagnostic::h5
@@ -44,7 +46,7 @@ protected:
         {
             auto& lvlPatches  = patchIDs.at(lvl);
             size_t patchNbr   = lvlPatches.size();
-            size_t maxPatches = hi5_.mpiGetMaxOf(patchNbr);
+            size_t maxPatches = core::mpi::max(patchNbr);
             for (size_t i = 0; i < patchNbr; i++)
                 initPatch(lvl, patchAttributes[std::to_string(lvl) + "_" + lvlPatches[i]],
                           lvlPatches[i]);
@@ -64,7 +66,7 @@ protected:
         {
             auto& lvlPatches  = patchAttributes.at(lvl);
             size_t patchNbr   = lvlPatches.size();
-            size_t maxPatches = hi5_.mpiGetMaxOf(patchNbr);
+            size_t maxPatches = core::mpi::max(patchNbr);
             for (auto const& [patch, attr] : lvlPatches)
                 hi5_.writeAttributeDict(file, attr, hi5_.getPatchPathAddTimestamp(lvl, patch));
             for (size_t i = patchNbr; i < maxPatches; i++)

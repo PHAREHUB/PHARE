@@ -46,6 +46,7 @@ set( SOURCES_INC
      utilities/point/point.h
      utilities/range/range.h
      utilities/types.h
+     utilities/mpi_utils.h
    )
 
 set( SOURCES_CPP

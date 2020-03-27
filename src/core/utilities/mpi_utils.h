@@ -2,7 +2,15 @@
 #ifndef PHARE_CORE_UTILITIES_MPI_H
 #define PHARE_CORE_UTILITIES_MPI_H
 
-namespace PHARE::mpi
+#include <vector>
+#include <string>
+
+#include "mpi.h"
+
+#include "core/utilities/types.h"
+
+
+namespace PHARE::core::mpi
 {
 template<typename Data>
 std::vector<Data> collect(Data const& data, int mpi_size = 0);
@@ -90,7 +98,7 @@ std::vector<Data> collect(Data const& data, int mpi_size)
 }
 
 
-} // namespace PHARE::mpi
+} // namespace PHARE::core::mpi
 
 
 #endif /* PHARE_CORE_UTILITIES_MPI_H */

@@ -13,6 +13,7 @@
 #include "diagnostic/diagnostic_props.h"
 
 #include "core/data/vecfield/vecfield_component.h"
+#include "core/utilities/mpi_utils.h"
 
 
 namespace PHARE::diagnostic::h5
@@ -133,12 +134,6 @@ public:
     size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
     unsigned flags;
 
-    template<typename Data>
-    static std::vector<Data> mpiCollectData(Data const&, int mpi_size = 0);
-    // MPI does not like sending empty strings so give optional default replacement
-    static std::vector<std::string> mpiCollectStrings(std::string, int mpi_size = 0,
-                                                      std::string null_str = "null");
-    static size_t mpiGetMaxOf(size_t, int mpi_size = 0);
 
 private:
     double timestamp_ = 0;
@@ -220,8 +215,8 @@ void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, size_
 {
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto sizes = mpiCollectData(dataSetSize, mpi_size);
-    auto paths = mpiCollectStrings(path, mpi_size);
+    auto sizes = core::mpi::collect(dataSetSize, mpi_size);
+    auto paths = core::mpi::collectStrings(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
         if (sizes[i] == 0)
@@ -252,8 +247,8 @@ void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std:
 
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto values = mpiCollectData(data, mpi_size);
-    auto paths  = mpiCollectStrings(path, mpi_size);
+    auto values = core::mpi::collect(data, mpi_size);
+    auto paths  = core::mpi::collectStrings(path, mpi_size);
 
     for (int i = 0; i < mpi_size; i++)
     {
@@ -300,7 +295,7 @@ void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> c
     modelView_.visitHierarchy(collectPatchAttributes, minLevel, maxLevel);
 
     // sets empty vectors in case current process lacks patch on a level
-    size_t maxMPILevel = mpiGetMaxOf(maxLocalLevel);
+    size_t maxMPILevel = core::mpi::max(maxLocalLevel);
     for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
         if (!lvlPatchIDs.count(lvl))
             lvlPatchIDs.emplace(lvl, std::vector<std::string>());
@@ -332,7 +327,7 @@ void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const&
 
     modelView_.visitHierarchy(writePatch, minLevel, maxLevel);
 
-    size_t maxMPILevel = mpiGetMaxOf(maxLocalLevel);
+    size_t maxMPILevel = core::mpi::max(maxLocalLevel);
     for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
         if (!patchAttributes.count(lvl))
             patchAttributes.emplace(lvl, std::vector<std::pair<std::string, Attributes>>{});
@@ -343,58 +338,6 @@ void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const&
 }
 
 
-
-
-template<typename ModelView>
-template<typename Data>
-std::vector<Data> Writer<ModelView>::mpiCollectData(Data const& data, int mpi_size)
-{
-    if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
-        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    std::vector<Data> values(mpi_size);
-
-    if constexpr (std::is_same_v<std::string, Data>)
-        values = mpiCollectStrings(data, mpi_size);
-    else if constexpr (std::is_same_v<double, Data>)
-        MPI_Allgather(&data, 1, MPI_DOUBLE, values.data(), 1, MPI_DOUBLE, MPI_COMM_WORLD);
-    else if constexpr (std::is_same_v<float, Data>)
-        MPI_Allgather(&data, 1, MPI_FLOAT, values.data(), 1, MPI_FLOAT, MPI_COMM_WORLD);
-    else if constexpr (std::is_same_v<size_t, Data>)
-        MPI_Allgather(&data, 1, MPI_UINT64_T, values.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
-    else
-        static_assert("NO");
-
-    return values;
-}
-
-template<typename ModelView>
-std::vector<std::string> // MPI does not like sending empty strings.
-Writer<ModelView>::mpiCollectStrings(std::string str, int mpi_size, std::string null_str)
-{
-    std::vector<std::string> values;
-    if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
-        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    str             = str.empty() ? null_str : str;
-    auto maxMPISize = mpiGetMaxOf(str.size(), mpi_size);
-    std::vector<char> chars(maxMPISize * mpi_size);
-    MPI_Allgather(str.c_str(), str.size(), MPI_CHAR, chars.data(), maxMPISize, MPI_CHAR,
-                  MPI_COMM_WORLD);
-    for (int i = 0; i < mpi_size; i++)
-        values.emplace_back(&chars[maxMPISize * i], maxMPISize);
-    return values;
-}
-
-template<typename ModelView>
-size_t Writer<ModelView>::mpiGetMaxOf(size_t localSize, int mpi_size)
-{
-    if (mpi_size == 0) // 0 is impossible, so ok default to minimize MPI calls
-        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto perMPI = mpiCollectData(localSize, mpi_size);
-    for (const auto size : perMPI)
-        if (size > localSize)
-            localSize = size;
-    return localSize;
-}
 
 } /* namespace PHARE::diagnostic::h5 */
 
