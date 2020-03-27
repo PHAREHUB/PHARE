@@ -1,12 +1,17 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
 
-#include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/h5typewriter.h"
 #include "diagnostic/detail/h5_utils.h"
+#include "diagnostic/detail/h5file.h"
 
 #include "core/data/particles/particle_packer.h"
 
 #include "amr/data/particles/particles_data.h"
+
+#include <unordered_map>
+#include <string>
+#include <memory>
 
 namespace PHARE::diagnostic::h5
 {

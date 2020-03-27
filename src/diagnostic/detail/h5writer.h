@@ -6,7 +6,7 @@
 #include "highfive/H5DataSpace.hpp"
 #include "highfive/H5Easy.hpp"
 
-#include "highfive_diag_writer.h"
+#include "h5typewriter.h"
 #include "h5file.h"
 
 #include "diagnostic/diagnostic_manager.h"

@@ -1,7 +1,7 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_ELECTROMAG_H
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_ELECTROMAG_H
 
-#include "diagnostic/detail/highfive.h"
+#include "diagnostic/detail/h5typewriter.h"
 
 namespace PHARE::diagnostic::h5
 {
