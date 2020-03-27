@@ -1,7 +1,7 @@
 import h5py
 
 
-class _DType:
+class PatchData:
     def __init__(self, diag, key, h5):
         self.diag = diag
         self.key = key
@@ -33,18 +33,18 @@ class _DType:
         return {v: group[v] for v in list(group.keys())}
 
 
-class _EM(_DType):
+class _EM(PatchData):
     def __init__(self, diag, key, h5):
         key = key.split("_")[1]  # drop EM_ from EM_B
-        _DType.__init__(self, diag, key, h5)
+        PatchData.__init__(self, diag, key, h5)
 
     def get(self):
         return self._get_VF(self.h5)
 
 
-class _Fluid(_DType):
+class _Fluid(PatchData):
     def __init__(self, diag, key, h5):
-        _DType.__init__(self, diag, key, h5)
+        PatchData.__init__(self, diag, key, h5)
 
     def get(self):
         if self.key == "density":
@@ -52,11 +52,11 @@ class _Fluid(_DType):
         return self._get_VF(self.h5)
 
 
-class _Particle(_DType):
+class _Particle(PatchData):
     datasets = ["weight", "charge", "iCell", "delta", "v"]
 
     def __init__(self, diag, val, h5):
-        _DType.__init__(self, diag, val, h5)
+        PatchData.__init__(self, diag, val, h5)
         self.pop = self.h5.name.split("/")[-2]
 
     def get(self):

@@ -27,9 +27,9 @@ class EMInitValidation(InitValueValidation):
             patch_level0 = diag.levels[0]
             for patch in patch_level0.patches:
                 for xyz in ["x", "y", "z"]:
-                    hdf5_data = patch.dtype.get()[xyz]
-                    nGhosts = patch.dtype.nGhosts(xyz)
-                    fn_name = patch.dtype.key.lower() + xyz
+                    hdf5_data = patch.patch_data.get()[xyz]
+                    nGhosts = patch.patch_data.nGhosts(xyz)
+                    fn_name = patch.patch_data.key.lower() + xyz
                     fn = diag.sim.model.model_dict[fn_name]
                     xorigin = patch.origin[0]
                     cell_width = patch.patch_level.cell_width("x")

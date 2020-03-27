@@ -112,7 +112,9 @@ class OverlapValueValidation(InitValueValidation):
         assert isinstance(overlap, Overlap)
 
         domain, ghost, coords = overlap.domain, overlap.ghost, overlap.origin
-        domain_iCell, ghost_iCell = [i.dtype.get()["iCell"] for i in [domain, ghost]]
+        domain_iCell, ghost_iCell = [
+            i.patch_data.get()["iCell"] for i in [domain, ghost]
+        ]
 
         uniq_gic = np.unique(ghost_iCell).tolist()
         max_idx = domain.patch_level.cells
@@ -154,7 +156,7 @@ class OverlapValueValidation(InitValueValidation):
         arrays = {dataset: [] for dataset in _Particle.datasets}
         for patch in [coarseDomain, coarsePatchGhost]:
             [
-                arrays[dataset].extend(patch.dtype.get()[dataset][:])
+                arrays[dataset].extend(patch.patch_data.get()[dataset][:])
                 for dataset in _Particle.datasets
             ]
         contiguous_t = getattr(  # C++ type = ContiguousParticles<dim, interp>
@@ -170,7 +172,7 @@ class OverlapValueValidation(InitValueValidation):
     def _checkLevelGhost(self, overlap, dim, interp):
         assert isinstance(overlap, Overlap)
 
-        if "iCell" not in overlap.fineLevelGhost.dtype.keys():
+        if "iCell" not in overlap.fineLevelGhost.patch_data.keys():
             """level ghost non existent - probably patchghost overlap on fine level
                 can happen with three+ contiguous fine patches, the inner will lack any
                 level ghost values
@@ -190,7 +192,7 @@ class OverlapValueValidation(InitValueValidation):
                 lst.extend(np.where(np.array(cells) == i)[0])
             return lst
 
-        gcells = where(fineLevelGhost.dtype.get()["iCell"])
+        gcells = where(fineLevelGhost.patch_data.get()["iCell"])
         if len(gcells) == 0:
             return  # level ghost non existent - probably patchghost overlap on fine level
 

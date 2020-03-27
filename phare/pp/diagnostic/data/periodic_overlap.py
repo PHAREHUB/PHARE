@@ -9,8 +9,8 @@ def intralevel(clazz, diag, patches):
             "Periodic Overlap dimension unsupported, dimension: " + diag.dim
         )
     return {
-        dataset: fn(diag, patches, patches[0].dtype.nGhosts(dataset))
-        for dataset in patches[0].dtype.keys()
+        dataset: fn(diag, patches, patches[0].patch_data.nGhosts(dataset))
+        for dataset in patches[0].patch_data.keys()
     }
 
 

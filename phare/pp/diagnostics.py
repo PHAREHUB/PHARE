@@ -1,7 +1,7 @@
 # formatted with black code formatter
 
 import os, h5py, phare.pharein as ph, itertools
-from .diagnostic.dtype import _EM, _Fluid, _Particle, Particles
+from .diagnostic.patch_data import _EM, _Fluid, _Particle, Particles
 from .diagnostic.patch import Patch, PatchLevel
 
 
@@ -65,7 +65,7 @@ class Diagnostic:
 
         self.sim = sim
         self.file = file
-        self.dtype = Diagnostics.get_type_from_file(file)
+        self.patch_data_type = Diagnostics.get_type_from_file(file)
         self.hifile = h5py.File(file, "r")
         self.levels = {}
         self.dl = [truncate(x, Diagnostic.DL_PRECISION) for x in sim.dl]
@@ -123,11 +123,11 @@ class Diagnostics:
 
         if n_keys == 1 and isinstance(h5item[kinder[0]], h5py.Dataset):
             """Single dataset per patch hdf5 file, e.g. ion density"""
-            return diag.dtype(diag, kinder[0], h5item[kinder[0]])
+            return diag.patch_data_type(diag, kinder[0], h5item[kinder[0]])
 
         if n_keys > 1 and isinstance(h5item[kinder[0]], h5py.Dataset):
             """Multiple dataset per patch hdf5 file, e.g. ion flux"""
-            return diag.dtype(diag, pre_key, h5item)
+            return diag.patch_data_type(diag, pre_key, h5item)
 
         if n_keys:
             return Diagnostics._extract_recursive(diag, h5item[kinder[0]], kinder[0])

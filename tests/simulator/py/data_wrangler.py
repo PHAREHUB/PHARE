@@ -10,8 +10,8 @@ import unittest
 
 # TODO - validate data from somewhere!
 
-class DataWranglerTest(unittest.TestCase):
 
+class DataWranglerTest(unittest.TestCase):
     def tearDown(self):
         cpp.reset()
 

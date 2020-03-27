@@ -126,7 +126,7 @@ class FluidInitValidation(InitValueValidation):
         for diag in Diagnostics.get(diags, Type):
             for patch in diag.levels[0].patches:
                 # pull "alpha" from hd5f path eg /t#/pl0/p0#0/ions/pop/ions_alpha/${fn_name}
-                pop = patch.dtype.h5.name.split("/")[-2][5:]
+                pop = patch.patch_data.h5.name.split("/")[-2][5:]
                 if pop not in pop_patches:
                     pop_patches[pop] = []
                 pop_patches[pop].append(patch)
@@ -144,11 +144,11 @@ class FluidInitValidation(InitValueValidation):
             if shared_patch_border:
                 # first value of second patch dataset is last of first
                 plus = 0 if p == patches[-1] else 1
-            for dataset in p.dtype.keys():
-                nGhosts = p.dtype.nGhosts(dataset)
+            for dataset in p.patch_data.keys():
+                nGhosts = p.patch_data.nGhosts(dataset)
                 if dataset not in physical_datasets:
                     physical_datasets[dataset] = np.asarray([])
-                hdf5_data = p.dtype.get()[dataset]
+                hdf5_data = p.patch_data.get()[dataset]
                 physical_datasets[dataset] = np.concatenate(
                     (
                         physical_datasets[dataset],
@@ -163,7 +163,7 @@ class FluidInitValidation(InitValueValidation):
             std_devs[pop] = {}
             cell_width = patches[0].patch_level.cell_width("x")
             datasets[pop] = self._aggregate_physical_patch_value(patches, True)
-            for key in patches[0].dtype.keys():
+            for key in patches[0].patch_data.keys():
                 x = np.arange(sim.cells[0] + 1) * cell_width + sim.origin[0]
                 std_devs[pop][key] = np.std(lmbda(pop, key, x) - datasets[pop][key])
 

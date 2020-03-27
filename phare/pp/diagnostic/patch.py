@@ -24,11 +24,11 @@ class PatchLevel:
 
 
 class Patch:
-    def __init__(self, patch_level, h5patch, dtype):
+    def __init__(self, patch_level, h5patch, patch_data):
         self.patch_level = patch_level
         self.h5patch = h5patch
         self.id = h5patch.name.split("/")[-1][1:]  # samrai patch id e.g. 0x0
-        self.dtype = dtype
+        self.patch_data = patch_data
         self.origin = [float(v) for v in h5patch.attrs["origin"].split(",")]
         self.cells = [int(v) for v in h5patch.attrs["nbrCells"].split(",")]
         self._reset_points()
@@ -45,7 +45,7 @@ class Patch:
 
     # we copy to transform patch origins for periodic overlap calculations
     def copy(self, transform=[0, 0, 0]):
-        p = Patch(self.patch_level, self.h5patch, self.dtype)
+        p = Patch(self.patch_level, self.h5patch, self.patch_data)
         p.origin = [f + transform[i] for i, f in enumerate(self.origin)]
         return p._reset_points()
 

@@ -73,5 +73,5 @@ class ParticleOverlapComparator:
 
     def _get(self, attr):
         if isinstance(self.p0, Patch):
-            return self.p0.dtype.get()[attr]
+            return self.p0.patch_data.get()[attr]
         return getattr(self.p0, attr)

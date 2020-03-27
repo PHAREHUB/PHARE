@@ -3,7 +3,7 @@ from .overlap import Overlap, getOverlaps
 
 
 class FluidOverlap(Overlap):
-    dType = _Fluid
+    patch_data_type = _Fluid
 
     def __init__(self, patch0, patch1, dataset_key, nGhosts, sizes):
         Overlap.__init__(self, patch0, patch1, dataset_key, nGhosts, sizes)
@@ -15,8 +15,8 @@ class FluidOverlap(Overlap):
             key, nGhosts = self.key, self.nGhosts
             m_nGhosts = int(nGhosts * -1)
             return (
-                [self.p0.dtype.get()[key][m_nGhosts - 1]],
-                [self.p1.dtype.get()[key][nGhosts]],
+                [self.p0.patch_data.get()[key][m_nGhosts - 1]],
+                [self.p1.patch_data.get()[key][nGhosts]],
             )
         return ([], [])
 

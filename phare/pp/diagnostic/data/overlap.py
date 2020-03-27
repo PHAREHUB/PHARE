@@ -1,6 +1,5 @@
 import math
 from phare.pp.diagnostics import Diagnostic, Patch, PatchLevel
-from phare.pp.diagnostic.dtype import _DType
 from .periodic_overlap import intralevel as periodic_intralevel
 from typing import Type
 
@@ -16,8 +15,8 @@ class Overlap:
 def getOverlaps(clazz, diags):
     assert issubclass(clazz, Overlap)
 
-    if isinstance(diags, dict) and clazz.dType.__name__ in diags:
-        diags = diags[clazz.dType.__name__]
+    if isinstance(diags, dict) and clazz.patch_data_type.__name__ in diags:
+        diags = diags[clazz.patch_data_type.__name__]
 
     return _intralevel(clazz, diags) + _periodic(clazz, diags)
 
@@ -27,7 +26,7 @@ def _calculate_1d(clazz, patch0, patch1, dataset_key):
     assert issubclass(clazz, Overlap)
 
     lower, upper = sorted([patch0, patch1], key=lambda x: x.min_coord("x"))
-    nGhosts = patch0.dtype.nGhosts(dataset_key)
+    nGhosts = patch0.patch_data.nGhosts(dataset_key)
     level_cell_width = patch0.patch_level.cell_width("x")
     x_gap = upper.min_coord("x") - lower.max_coord("x")
 
@@ -46,7 +45,7 @@ def _intralevel(clazz, diags):
             patches = patch_level.patches
             for i, patch0 in enumerate(patches):
                 for j in range(i + 1, len(patches)):
-                    for dataset_key in patch0.dtype.keys():
+                    for dataset_key in patch0.patch_data.keys():
                         overlaps += _calculate_1d(
                             clazz, patch0, patches[j], dataset_key
                         )

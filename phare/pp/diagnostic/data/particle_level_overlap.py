@@ -71,7 +71,7 @@ def _calculate_coarser_1d(
         fineLevelGhost.min_coord(direction),
         fineLevelGhost.max_coord(direction),
     )
-    nGhosts = coarseDomain.dtype.nGhosts(dataset_key)
+    nGhosts = coarseDomain.patch_data.nGhosts(dataset_key)
 
     def coarse_refine_overlap(refine_start_idx):
         return clazz(
