@@ -3,10 +3,11 @@ cmake_minimum_required (VERSION 3.3)
 project(test-diagnostics)
 
 set(SOURCES_INC
+    ${PROJECT_SOURCE_DIR}/test_diagnostics.h
 )
 
 set(SOURCES_CPP
-  ${PROJECT_SOURCE_DIR}/test_main.cpp
+  ${PROJECT_SOURCE_DIR}/test_diagnostics.cpp
 )
 
 if(HighFive)

@@ -5,10 +5,10 @@
 #include <pybind11/functional.h>
 
 #include "phare/include.h"
-#include "core/utilities/mpi.h"
+#include "core/utilities/mpi_utils.h"
 #include "core/data/particles/particle_packer.h"
 
-#include "kul/log.hpp"
+
 
 namespace py = pybind11;
 
@@ -304,11 +304,11 @@ public:
         std::vector<PatchData<std::vector<double>>> collected;
 
         auto collect = [&](auto& patch_data) {
-            auto patchIDs = PHARE::mpi::collect(patch_data.patchID, mpi_size);
-            auto origins  = PHARE::mpi::collect(patch_data.origin, mpi_size);
-            auto pCells   = PHARE::mpi::collect(patch_data.cells, mpi_size);
-            auto ghosts   = PHARE::mpi::collect(patch_data.nGhosts, mpi_size);
-            auto datas    = PHARE::mpi::collect(patch_data.data, mpi_size);
+            auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
+            auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
+            auto pCells   = core::mpi::collect(patch_data.cells, mpi_size);
+            auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
+            auto datas    = core::mpi::collect(patch_data.data, mpi_size);
 
             for (size_t i = 0; i < mpi_size; i++)
             {
@@ -319,7 +319,7 @@ public:
             }
         };
 
-        auto max = PHARE::mpi::max(input.size(), mpi_size);
+        auto max = core::mpi::max(input.size(), mpi_size);
 
         PatchData<std::vector<double>> empty;
 

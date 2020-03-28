@@ -1,7 +1,7 @@
 
 
 
-#include "tests/diagnostic/include.h"
+#include "tests/diagnostic/test_diagnostics.h"
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
