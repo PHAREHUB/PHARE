@@ -46,6 +46,7 @@ def populateDict():
 
 
     add("simulation/interp_order", int(simulation.interp_order))
+    add("simulation/refined_particle_nbr", int(simulation.refined_particle_nbr))
     add("simulation/time_step", float(simulation.time_step))
     add("simulation/time_step_nbr",int(simulation.time_step_nbr))
 

@@ -95,7 +95,7 @@ public:
 
         , refineOperator_{std::make_shared<
               ParticlesRefineOperator<dimension, interpOrder, splitType, refinedParticlesNbr,
-                                      Split<dimension, interpOrder>>>()}
+                                      Split<dimension, interpOrder, refinedParticlesNbr>>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,

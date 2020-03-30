@@ -27,15 +27,16 @@ public:
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order>
+template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart = 2>
 class Simulator : public ISimulator
 {
 public:
-    static constexpr size_t dimension    = _dimension;
-    static constexpr size_t interp_order = _interp_order;
+    static constexpr size_t dimension     = _dimension;
+    static constexpr size_t interp_order  = _interp_order;
+    static constexpr size_t nbRefinedPart = _nbRefinedPart;
 
     using SAMRAITypes = PHARE::amr::SAMRAI_Types;
-    using PHARETypes  = PHARE_Types<dimension, interp_order>;
+    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<SAMRAITypes>;
     using HybridModel    = typename PHARETypes::HybridModel_t;
@@ -198,6 +199,29 @@ struct SimulatorMaker
             return nullptr;
         }
     }
+
+
+    template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+    std::unique_ptr<ISimulator> operator()(std::size_t userDim, std::size_t userInterpOrder,
+                                           size_t userNbRefinedPart, Dimension dimension,
+                                           InterpOrder interp_order, NbRefinedPart nbRefinedPart)
+    {
+        if (userDim == dimension() and userInterpOrder == interp_order()
+            and userNbRefinedPart == nbRefinedPart())
+        {
+            std::size_t constexpr d  = dimension();
+            std::size_t constexpr io = interp_order();
+            std::size_t constexpr nb = nbRefinedPart();
+
+            PHARE::initializer::PHAREDict& theDict
+                = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+            return std::make_unique<Simulator<d, io, nb>>(theDict, hierarchy_);
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
 };
 
 
@@ -205,9 +229,12 @@ std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hier
 {
     PHARE::initializer::PHAREDict& theDict
         = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-    auto dim         = theDict["simulation"]["dimension"].template to<int>();
-    auto interpOrder = theDict["simulation"]["interp_order"].template to<int>();
-    return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, SimulatorMaker{hierarchy});
+    auto dim           = theDict["simulation"]["dimension"].template to<int>();
+    auto interpOrder   = theDict["simulation"]["interp_order"].template to<int>();
+    auto nbRefinedPart = theDict["simulation"]["refined_particle_nbr"].template to<int>();
+
+    return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, nbRefinedPart,
+                                               SimulatorMaker{hierarchy});
 }
 
 

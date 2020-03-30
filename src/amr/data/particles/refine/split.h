@@ -24,11 +24,15 @@ namespace amr
 
 #define ISNOTTABULATED(dim, RF) (dim != 1 || RF != 2)
 
-    template<std::size_t dimension, std::size_t interpOrder>
+    template<std::size_t _dimension, std::size_t _interpOrder, std::size_t _nbRefinedPart>
     class Split
     {
+    public:
+        static constexpr size_t dimension     = _dimension;
+        static constexpr size_t interpOrder   = _interpOrder;
+        static constexpr size_t nbRefinedPart = _nbRefinedPart;
+
     private:
-        uint32 refinedParticlesNbr_;
         std::vector<float> weights_;
         std::vector<uint32> iCellsX_;
         std::vector<float> deltasX_;
@@ -65,12 +69,11 @@ namespace amr
 
 
     public:
-        Split(core::Point<int32, dimension> refineFactor, uint32 refinedParticlesNbr)
-            : refinedParticlesNbr_{std::move(refinedParticlesNbr)}
-            , refinementFactor_{refineFactor}
+        Split(core::Point<int32, dimension> refineFactor)
+            : refinementFactor_{refineFactor}
         {
-            deltasX_.assign(refinedParticlesNbr, 0);
-            weights_.assign(refinedParticlesNbr, 0);
+            deltasX_.assign(nbRefinedPart, 0);
+            weights_.assign(nbRefinedPart, 0);
 
             std::vector<int> const& validRefinedParticleNbr = tabNbrOfBabies_[interpOrder - 1];
 
@@ -84,7 +87,7 @@ namespace amr
                 else
                 {
                     if (std::find(std::begin(validRefinedParticleNbr),
-                                  std::end(validRefinedParticleNbr), refinedParticlesNbr)
+                                  std::end(validRefinedParticleNbr), nbRefinedPart)
                         == std::end(validRefinedParticleNbr))
                     {
                         throw std::runtime_error("Invalid refined particle number");
@@ -93,7 +96,7 @@ namespace amr
                     else
                     {
                         // weights & deltas are coming from the tabulated values
-                        switch (refinedParticlesNbr)
+                        switch (nbRefinedPart)
                         {
                             case 2:
                                 weights_[0] = tabD1RF2N02Weight_[interpOrder - 1];
@@ -160,7 +163,7 @@ namespace amr
         inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
                                std::vector<core::Particle<dimension>>& refinedParticles) const
         {
-            for (uint32 refinedParticleIndex = 0; refinedParticleIndex < refinedParticlesNbr_;
+            for (uint32 refinedParticleIndex = 0; refinedParticleIndex < nbRefinedPart;
                  ++refinedParticleIndex)
             {
                 if constexpr (dimension == 1)

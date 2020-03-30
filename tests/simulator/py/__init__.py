@@ -23,6 +23,7 @@ def basicSimulatorArgs(dim:int, interp:int, **kwargs):
         "dl": dl,
         "max_nbr_levels": 2,
         "refinement_boxes": {"L0": {"B0": [(10,), (50,)]}},
+        "refined_particle_nbr": dim * 2,
         "diag_options": {},
     }
     for k, v in kwargs.items():

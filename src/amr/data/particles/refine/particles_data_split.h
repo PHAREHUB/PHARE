@@ -13,6 +13,7 @@
 
 #include <functional>
 
+
 namespace PHARE
 {
 namespace amr
@@ -26,6 +27,7 @@ namespace amr
         coarseBoundaryOld,
         coarseBoundaryNew
     };
+
 
     template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
              std::size_t refinedParticleNbr, typename SplitT>
@@ -144,10 +146,7 @@ namespace amr
             // index relative to the interior
 
 
-            // TODO refineParticleNbr should not be runtime and SplitT should be created only once.
-            // SplitT split{computeRatio(), refinedParticleNbr};
-
-            SplitT split{core::Point<int32, dim>{ratio}, refinedParticleNbr};
+            SplitT split{core::Point<int32, dim>{ratio}};
 
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
@@ -263,5 +262,30 @@ namespace amr
 } // namespace amr
 
 } // namespace PHARE
+
+
+namespace PHARE::amr
+{
+template<typename Splitter>
+struct RefinementParams
+{
+    static constexpr size_t dimension     = Splitter::dimension;
+    static constexpr size_t interpOrder   = Splitter::interpOrder;
+    static constexpr size_t nbRefinedPart = Splitter::nbRefinedPart;
+
+    using InteriorParticleRefineOp
+        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::interior,
+                                  nbRefinedPart, Splitter>;
+    using CoarseToFineRefineOpOld
+        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::coarseBoundaryOld,
+                                  nbRefinedPart, Splitter>;
+
+    using CoarseToFineRefineOpNew
+        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::coarseBoundaryNew,
+                                  nbRefinedPart, Splitter>;
+};
+
+} // namespace PHARE::amr
+
 
 #endif

@@ -18,7 +18,7 @@ using Simulator         = PHARE::Simulator<dim, interpOrder>;
 using HybridModelT      = Simulator::HybridModel;
 using MHDModelT         = Simulator::MHDModel;
 using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-
+using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder>;
 
 double density(double x)
 {
@@ -214,8 +214,7 @@ class HybridMessengers : public ::testing::Test
 {
     std::vector<MessengerDescriptor> descriptors{
         {"MHDModel", "MHDModel"}, {"MHDModel", "HybridModel"}, {"HybridModel", "HybridModel"}};
-    MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
-        descriptors};
+    Phare_Types::MessengerFactory messengerFactory{descriptors};
 
 
 public:
@@ -507,7 +506,8 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
     int const ratio{2};
     short unsigned const dimension = 1;
 
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>,
+                                                        Phare_Types::RefinementParams>;
 
     SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
 

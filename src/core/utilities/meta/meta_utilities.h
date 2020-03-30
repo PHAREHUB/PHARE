@@ -75,14 +75,23 @@ namespace core
 
 
 
-    auto constexpr possibleDimensions() { return std::tuple<OneD, TwoD, ThreeD>{}; }
+    static auto constexpr possibleDimensions() { return std::tuple<OneD, TwoD, ThreeD>{}; }
 
 
-    auto constexpr possibleInterpOrders()
+    static auto constexpr possibleInterpOrders()
     {
         return std::tuple<FirstOrder, SecondOrder, ThirdOrder>{};
     }
 
+    template<size_t dim, size_t interpOrder>
+    static auto constexpr possibleNmbSplitPartiles()
+    {
+        if constexpr (dim == 1)
+        {
+            return std::tuple<OneD, TwoD, ThreeD>{};
+        }
+        return std::tuple<OneD, TwoD, ThreeD>{};
+    }
 
     template<typename Maker>
     auto makeAtRuntime(std::size_t dim, std::size_t interpOrder, Maker&& maker)
@@ -98,6 +107,42 @@ namespace core
             core::apply(possibleInterpOrders(), [&](auto const& order) {
                 if (!p)
                     p = maker(dim, interpOrder, dim1, order);
+            });
+        });
+
+        return p;
+    }
+
+    template<typename Maker, typename Pointer, typename Dimension, typename InterpOrder>
+    auto _makeAtRuntime(Maker& maker, Pointer& p, std::size_t userDim, std::size_t userInterpOrder,
+                        size_t userNbRefinedPart, Dimension dimension, InterpOrder interp_order)
+    {
+        constexpr size_t dim    = dimension();
+        constexpr size_t interp = interp_order();
+
+        constexpr auto nmbSplitPartiles = possibleNmbSplitPartiles<dim, interp>();
+        core::apply(nmbSplitPartiles, [&](auto const& nbRefinedPart) {
+            if (!p)
+                p = maker(userDim, userInterpOrder, userNbRefinedPart, dimension, interp_order,
+                          nbRefinedPart);
+        });
+    }
+
+
+    template<typename Maker>
+    auto makeAtRuntime(std::size_t dim, std::size_t interpOrder, size_t nbRefinedPart,
+                       Maker&& maker)
+    {
+        using Ptr_t = decltype(maker(dim, interpOrder, nbRefinedPart, 1, 1, 1));
+        Ptr_t p;
+        if constexpr (std::is_same_v<Ptr_t, bool>)
+            p = false;
+        else
+            p = nullptr;
+
+        core::apply(possibleDimensions(), [&](auto const& dim1) {
+            core::apply(possibleInterpOrders(), [&](auto const& order) {
+                _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, dim1, order);
             });
         });
 

@@ -43,9 +43,13 @@ namespace amr
     }
 
 
-    template<typename MHDModel, typename HybridModel, typename IPhysicalModel>
+    template<typename MHDModel, typename HybridModel, typename IPhysicalModel,
+             typename RefinementParams>
     class MessengerFactory
     {
+        using HybridHybridMessengerStrategy_t
+            = HybridHybridMessengerStrategy<HybridModel, IPhysicalModel, RefinementParams>;
+
     public:
         static constexpr auto dimension = HybridModel::dimension;
         static_assert(dimension == MHDModel::dimension,
@@ -87,15 +91,13 @@ namespace amr
                                                            IPhysicalModel const& fineModel,
                                                            int const firstLevel) const
         {
-            if (messengerName
-                == HybridHybridMessengerStrategy<HybridModel, IPhysicalModel>::stratName)
+            if (messengerName == HybridHybridMessengerStrategy_t::stratName)
             {
                 auto resourcesManager
                     = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
 
-                auto messengerStrategy
-                    = std::make_unique<HybridHybridMessengerStrategy<HybridModel, IPhysicalModel>>(
-                        std::move(resourcesManager), firstLevel);
+                auto messengerStrategy = std::make_unique<HybridHybridMessengerStrategy_t>(
+                    std::move(resourcesManager), firstLevel);
 
                 return std::make_unique<HybridMessenger<HybridModel, IPhysicalModel>>(
                     std::move(messengerStrategy));
