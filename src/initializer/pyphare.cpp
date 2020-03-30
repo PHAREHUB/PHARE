@@ -13,9 +13,16 @@ namespace py = pybind11;
 template<typename T>
 using py_array = py::array_t<T, py::array::c_style | py::array::forcecast>;
 
+
+template<typename T1, typename... T2>
+constexpr bool is_in()
+{
+    return std::disjunction_v<std::is_same<T1, T2>...>;
+}
+
 template<typename T,
-         typename = std::enable_if_t<cppdict::is_in<T, int, double, std::string, ScalarFunction<1>,
-                                                    ScalarFunction<2>, ScalarFunction<3>>>>
+         typename = std::enable_if_t<is_in<T, int, double, std::string, ScalarFunction<1>,
+                                           ScalarFunction<2>, ScalarFunction<3>>>>
 void add(std::string path, T&& value)
 {
     cppdict::add(path, std::forward<T>(value),
