@@ -21,12 +21,8 @@ using namespace PHARE::core;
 
 struct Trajectory
 {
-    std::vector<float> x;
-    std::vector<float> y;
-    std::vector<float> z;
-    std::vector<float> vx;
-    std::vector<float> vy;
-    std::vector<float> vz;
+    std::vector<float> x, y, z;
+    std::vector<float> vx, vy, vz;
 
     Trajectory(std::size_t size)
         : x(size)
@@ -114,157 +110,58 @@ struct DummyLayout
 {
 };
 
-
-
-class APusher3D : public ::testing::Test
+template<size_t dim>
+class APusher : public ::testing::Test
 {
 public:
-    APusher3D()
+    using Pusher_
+        = BorisPusher<dim, typename ParticleArray<dim>::iterator, Electromag, Interpolator,
+                      DummySelector, BoundaryCondition<dim, 1>, DummyLayout>;
+
+    APusher()
         : expectedTrajectory{readExpectedTrajectory()}
         , particlesIn(1)
         , particlesOut(1)
-        , pusher{std::make_unique<
-              BorisPusher<3, ParticleArray<3>::iterator, Electromag, Interpolator, DummySelector,
-                          BoundaryCondition<3, 1>, DummyLayout>>()}
+        , pusher{std::make_unique<Pusher_>()}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
-        , xActual(nt)
-        , yActual(nt)
-        , zActual(nt)
     {
         particlesIn[0].charge = 1;
-        particlesIn[0].iCell  = {{5, 5, 5}}; // arbitrary we don't care
         particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].delta  = {{0.0, 0.0, 0.0}};
-        pusher->setMeshAndTimeStep({{dx, dy, dz}}, dt);
+        particlesIn[0].iCell.fill(5);
+        particlesIn[0].delta.fill(0.0);
+        dxyz.fill(0.05);
+        for (size_t i = 0; i < dim; i++)
+            actual[i].resize(nt, 0.05);
+        pusher->setMeshAndTimeStep(dxyz, dt);
     }
-
 
 protected:
     Trajectory expectedTrajectory;
-    ParticleArray<3> particlesIn;
-    ParticleArray<3> particlesOut;
-    std::unique_ptr<BorisPusher<3, ParticleArray<3>::iterator, Electromag, Interpolator,
-                                DummySelector, BoundaryCondition<3, 1>, DummyLayout>>
-        pusher;
+    ParticleArray<dim> particlesIn;
+    ParticleArray<dim> particlesOut;
+    std::unique_ptr<Pusher_> pusher;
     double mass;
     double dt;
-    double tstart;
-    double tend;
+    double tstart, tend;
     std::size_t nt;
     Electromag em;
     Interpolator interpolator;
     DummySelector selector;
+    DummyLayout layout;
     // BoundaryCondition bc;
-    std::vector<float> xActual;
-    std::vector<float> yActual;
-    std::vector<float> zActual;
-    double dx = 0.05;
-    double dy = 0.05;
-    double dz = 0.05;
+
+    std::array<std::vector<float>, dim> actual;
+    std::array<double, dim> dxyz;
 };
 
 
-
-class APusher2D : public ::testing::Test
-{
-public:
-    APusher2D()
-        : expectedTrajectory{readExpectedTrajectory()}
-        , particlesIn(1)
-        , particlesOut(1)
-        , pusher{std::make_unique<
-              BorisPusher<2, ParticleArray<2>::iterator, Electromag, Interpolator, DummySelector,
-                          BoundaryCondition<2, 1>, DummyLayout>>()}
-        , mass{1}
-        , dt{0.0001}
-        , tstart{0}
-        , tend{10}
-        , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
-        , xActual(nt)
-        , yActual(nt)
-    {
-        particlesIn[0].charge = 1;
-        particlesIn[0].iCell  = {{5, 5}}; // arbitrary we don't care
-        particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].delta  = {{0.0, 0.0}};
-        pusher->setMeshAndTimeStep({{dx, dy}}, dt);
-    }
-
-
-protected:
-    Trajectory expectedTrajectory;
-    ParticleArray<2> particlesIn;
-    ParticleArray<2> particlesOut;
-    std::unique_ptr<BorisPusher<2, ParticleArray<2>::iterator, Electromag, Interpolator,
-                                DummySelector, BoundaryCondition<2, 1>, DummyLayout>>
-        pusher;
-    double mass;
-    double dt;
-    double tstart;
-    double tend;
-    std::size_t nt;
-    Electromag em;
-    Interpolator interpolator;
-    DummySelector selector;
-    std::vector<float> xActual;
-    std::vector<float> yActual;
-    double dx = 0.05;
-    double dy = 0.05;
-};
-
-
-
-
-class APusher1D : public ::testing::Test
-{
-public:
-    APusher1D()
-        : expectedTrajectory{readExpectedTrajectory()}
-        , particlesIn(1)
-        , particlesOut(1)
-        , pusher{std::make_unique<
-              BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator, DummySelector,
-                          BoundaryCondition<1, 1>, DummyLayout>>()}
-        , mass{1}
-        , dt{0.0001}
-        , tstart{0}
-        , tend{10}
-        , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
-        , xActual(nt)
-    {
-        particlesIn[0].charge = 1;
-        particlesIn[0].iCell  = {{5}}; // arbitrary we don't care
-        particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].delta  = {{0.0}};
-        pusher->setMeshAndTimeStep({{dx}}, dt);
-    }
-
-
-protected:
-    Trajectory expectedTrajectory;
-    ParticleArray<1> particlesIn;
-    ParticleArray<1> particlesOut;
-    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                                DummySelector, BoundaryCondition<1, 1>, DummyLayout>>
-        pusher;
-    double mass;
-    double dt;
-    double tstart;
-    double tend;
-    std::size_t nt;
-    Electromag em;
-    Interpolator interpolator;
-    DummySelector selector;
-    std::vector<float> xActual;
-    double dx = 0.05;
-};
-
-
-
+using APusher1D = APusher<1>;
+using APusher2D = APusher<2>;
+using APusher3D = APusher<3>;
 
 TEST_F(APusher3D, trajectoryIsOk)
 {
@@ -274,19 +171,21 @@ TEST_F(APusher3D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
-        yActual[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
-        zActual[i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dz);
+        actual[0][i]
+            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
+        actual[1][i]
+            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
+        actual[2][i]
+            = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dxyz[2]);
 
-        auto layout = DummyLayout{};
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
-    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
-    EXPECT_THAT(yActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
-    EXPECT_THAT(zActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.z));
+    EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
+    EXPECT_THAT(actual[1], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
+    EXPECT_THAT(actual[2], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.z));
 }
 
 
@@ -300,17 +199,18 @@ TEST_F(APusher2D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
-        yActual[i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dy);
+        actual[0][i]
+            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
+        actual[1][i]
+            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
 
-        auto layout = DummyLayout{};
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
-    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
-    EXPECT_THAT(yActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
+    EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
+    EXPECT_THAT(actual[1], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.y));
 }
 
 
@@ -323,15 +223,15 @@ TEST_F(APusher1D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        xActual[i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dx);
+        actual[0][i]
+            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
 
-        auto layout = DummyLayout{};
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
-    EXPECT_THAT(xActual, ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
+    EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
 }
 
 
