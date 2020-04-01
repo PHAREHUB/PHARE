@@ -46,18 +46,7 @@ public:
     //-------------------------------------------------------------------------
 
 
-    Field& density()
-    {
-        if (isUsable())
-        {
-            return ions_.density();
-        }
-        else
-        {
-            throw std::runtime_error("Error, cannot return density because "
-                                     "StandardHybridElectronFluxComputer is not usable");
-        }
-    }
+
 
     Field const& density() const
     {
@@ -85,19 +74,6 @@ public:
         }
     }
 
-
-    VecField& velocity()
-    {
-        if (isUsable())
-        {
-            return Ve_;
-        }
-        else
-        {
-            throw std::runtime_error("Error, cannot return velocity because "
-                                     "StandardHybridElectronFluxComputer is not usable");
-        }
-    }
 
     void computeDensity() {}
 
@@ -278,13 +254,13 @@ public:
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    Field& density() { return fluxComput_.density(); }
+
     Field const& density() const { return fluxComput_.density(); }
 
-    VecField& velocity() { return fluxComput_->velocity(); }
+
     VecField const& velocity() const { return fluxComput_.velocity(); }
 
-    Field& pressure() { return pressureClosure_.pressure(); }
+
     Field const& pressure() const { return pressureClosure_.pressure(); }
 
     void computeDensity() { fluxComput_.computeDensity(); }
@@ -344,9 +320,7 @@ public:
     //-------------------------------------------------------------------------
 
 
-    Field& density() { return momentModel_.density(); }
-    Field& velocity() { return momentModel_.velocity(); }
-    Field& pressure() { return momentModel_.pressure(); }
+
 
     Field const& density() const { return momentModel_.density(); }
     Field const& velocity() const { return momentModel_.velocity(); }
