@@ -26,6 +26,7 @@
 #include "core/data/grid/gridlayoutimplyee.h"
 #include "core/data/ions/ion_population/ion_population.h"
 #include "core/data/ions/ions.h"
+#include "core/data/electrons/electrons.h"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "core/data/ndarray/ndarray_vector.h"
 #include "core/data/particles/particle_array.h"

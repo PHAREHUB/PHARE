@@ -21,11 +21,13 @@ namespace solver
      * @brief The HybridModel class is a concrete implementation of a IPhysicalModel. The class
      * holds a HybridState and a ResourcesManager.
      */
-    template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>
+    template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+             typename AMR_Types>
     class HybridModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, AMR_Types>;
+        using type_list
+            = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
         using amr_types = AMR_Types;
         using patch_t   = typename AMR_Types::patch_t;
         using level_t   = typename AMR_Types::level_t;
@@ -42,7 +44,7 @@ namespace solver
             = core::ParticleInitializerFactory<particle_array_type, gridLayout_type>;
 
         //! Physical quantities associated with hybrid equations
-        core::HybridState<Electromag, Ions> state;
+        core::HybridState<Electromag, Ions, Electrons> state;
 
         //! ResourcesManager used for interacting with SAMRAI databases, patchdata etc.
         std::shared_ptr<resources_manager_type> resourcesManager;
@@ -139,8 +141,9 @@ namespace solver
         //-------------------------------------------------------------------------
     };
 
-    template<typename GridLayoutT, typename Electromag, typename Ions, typename AMR_Types>
-    const std::string HybridModel<GridLayoutT, Electromag, Ions, AMR_Types>::model_name
+    template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+             typename AMR_Types>
+    const std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::model_name
         = "HybridModel";
 
     template<typename... Args>

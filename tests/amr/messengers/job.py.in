@@ -2,6 +2,7 @@
 
 import os, sys
 import phare.pharein as ph
+from phare.pharein import ElectronModel
 
 print("start test_messengers: input_1d_ratio_2.py")
 print("sys.path ", sys.path)
@@ -38,5 +39,7 @@ ph.MaxwellianFluidModel(
     protons={"charge":-1, "density":density, **vvv},
     alpha={"charge":-1, "density":density, **vvv}
 )
+
+ElectronModel(closure="isothermal",Te = 0.12)
 
 print("end test_messengers: input_1d_ratio_2.py")

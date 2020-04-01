@@ -23,9 +23,10 @@ struct PHARE_Types
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
     using IonPopulation_t = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, GridLayout_t>;
     using Ions_t          = PHARE::core::Ions<IonPopulation_t, GridLayout_t>;
+    using Electrons_t     = PHARE::core::Electrons<Ions_t, Electromag_t>;
     using IPhysicalModel  = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
-    using HybridModel_t
-        = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t, PHARE::amr::SAMRAI_Types>;
+    using HybridModel_t   = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t,
+                                                     Electrons_t, PHARE::amr::SAMRAI_Types>;
     using MHDModel_t  = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;

@@ -4,6 +4,7 @@ import phare.pharein
 from phare.pharein import Simulation
 from phare.pharein import MaxwellianFluidModel
 from phare.pharein import ElectromagDiagnostics
+from phare.pharein import ElectronModel
 
 # configure the simulation
 
@@ -40,5 +41,6 @@ MaxwellianFluidModel(
     alpha={"charge":1, "density":density, **vvv, "init":{"seed":2}},
 )
 
+ElectronModel(closure="isothermal",Te = 0.12)
 
 

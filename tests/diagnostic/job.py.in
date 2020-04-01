@@ -2,6 +2,8 @@
 
 import os, sys
 import phare.pharein as ph
+from phare.pharein import ElectronModel
+
 
 import mpi4py # gives access to mpi_rank/etc
 mpi4py.rc.initialize = False  # disable automatic MPI_Init() at import
@@ -42,6 +44,9 @@ ph.MaxwellianFluidModel(
     protons={"charge":-1, "density":density, **vvv, "init":{"seed":1337}},
     alpha={"charge":-1, "density":density, **vvv, "init":{"seed":mpi_rank}},
 )
+
+ElectronModel(closure="isothermal",Te = 0.12)
+
 
 from tests.diagnostic import dump_all_diags
 

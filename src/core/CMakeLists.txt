@@ -16,6 +16,7 @@ set( SOURCES_INC
      data/ions/ion_population/particle_pack.h
      data/ions/ion_population/ion_population.h
      data/ions/ions.h
+     data/electrons/electrons.h
      data/ions/particle_initializers/particle_initializer.h
      data/ions/particle_initializers/maxwellian_particle_initializer.h
      data/ions/particle_initializers/particle_initializer_factory.h

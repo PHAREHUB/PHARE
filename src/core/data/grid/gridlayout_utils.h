@@ -4,7 +4,8 @@
 #include <tuple>
 #include <stdexcept>
 
-
+namespace PHARE::core
+{
 template<typename GridLayout>
 class LayoutHolder
 {
@@ -33,8 +34,7 @@ public:
     SetLayout(GridLayout* ptr, GridLayoutSettable&... settables)
         : settables_{settables...}
     {
-        std::apply([this, ptr](auto&... settable) { (settable.setLayout(nullptr), ...); },
-                   settables_);
+        std::apply([this, ptr](auto&... settable) { (settable.setLayout(ptr), ...); }, settables_);
     }
 
     ~SetLayout()
@@ -46,7 +46,7 @@ public:
 private:
     std::tuple<GridLayoutSettable&...> settables_;
 };
-
+} // namespace PHARE::core
 
 
 

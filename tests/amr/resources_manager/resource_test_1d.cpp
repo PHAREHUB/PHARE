@@ -1,6 +1,7 @@
 
 #include "resource_test_1d.h"
 #include "core/data/electromag/electromag.h"
+#include "core/data/electrons/electrons.h"
 #include "core/data/grid/gridlayout.h"
 #include "core/data/grid/gridlayout_impl.h"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
@@ -17,8 +18,9 @@ using VecField1D                      = VecField<NdArrayVector1D<>, HybridQuanti
 using IonPopulation1D                 = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
 using Ions1D                          = Ions<IonPopulation1D, GridYee1D>;
 using Electromag1D                    = Electromag<VecField1D>;
+using Electrons1D                     = Electrons<Ions1D, Electromag1D>;
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
-using HybridState1D                   = HybridState<Electromag1D, Ions1D>;
+using HybridState1D                   = HybridState<Electromag1D, Ions1D, Electrons1D>;
 
 
 
@@ -182,6 +184,10 @@ PHARE::initializer::PHAREDict createInitDict()
     dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
     dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
     dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
+
+    dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
+    dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
+
 
     return dict;
 }
