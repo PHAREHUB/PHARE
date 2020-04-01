@@ -7,8 +7,7 @@ from .simulation import Simulation
 
 
 def getSimulation():
-    from phare.pharein.globals import sim
-    return sim
+    return phare.pharein.globals.sim
 
 
 def populateDict():
