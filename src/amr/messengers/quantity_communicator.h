@@ -77,6 +77,7 @@ namespace amr
         using Algorithm = typename ComType::algorithm_type;
         std::map<int, std::shared_ptr<Schedule>> schedules_;
 
+
     public:
         std::unique_ptr<Algorithm> algo;
 
@@ -164,7 +165,6 @@ namespace amr
             = std::make_shared<YVariableFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
             = std::make_shared<ZVariableFillPattern>();
-
         Communicator<Refiner> com;
 
         auto registerRefine
@@ -206,19 +206,24 @@ namespace amr
                                       std::shared_ptr<ResourcesManager> const& rm,
                                       std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
     {
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
+            = std::make_shared<XVariableFillPattern>();
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
+            = std::make_shared<YVariableFillPattern>();
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
+            = std::make_shared<ZVariableFillPattern>();
         Communicator<Refiner> com;
 
-        auto registerRefine = [&com, &rm, &refineOp](std::string name) //
-        {
+        auto registerRefine = [&com, &rm, &refineOp](std::string name, auto& fillPattern) {
             auto id = rm->getID(name);
             if (id)
             {
-                com.algo->registerRefine(*id, *id, *id, refineOp);
+                com.algo->registerRefine(*id, *id, *id, refineOp, fillPattern);
             }
         };
-        registerRefine(descriptor.xName);
-        registerRefine(descriptor.yName);
-        registerRefine(descriptor.zName);
+        registerRefine(descriptor.xName, xVariableFillPattern);
+        registerRefine(descriptor.yName, yVariableFillPattern);
+        registerRefine(descriptor.zName, zVariableFillPattern);
 
         return com;
     }
