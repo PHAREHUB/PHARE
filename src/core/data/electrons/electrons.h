@@ -215,7 +215,7 @@ private:
 
 
 
-template<typename Ions, typename Electromag>
+template<typename Ions>
 class ElectronMomentModel
 {
     using VecField     = typename Ions::vecfield_type;
@@ -224,10 +224,8 @@ class ElectronMomentModel
     using FluxComputer = StandardHybridElectronFluxComputer<Ions>;
 
 public:
-    ElectronMomentModel(PHARE::initializer::PHAREDict& dict, Ions& ions, Electromag& electromag,
-                        VecField& J)
-        : electromag_{electromag}
-        , fluxComput_{ions, J}
+    ElectronMomentModel(PHARE::initializer::PHAREDict& dict, Ions& ions, VecField& J)
+        : fluxComput_{ions, J}
         , pressureClosure_{dict["pressure_closure"], fluxComput_}
     {
     }
@@ -236,7 +234,7 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    bool isUsable() const { return fluxComput_.isUsable() && electromag_.isUsable(); }
+    bool isUsable() const { return fluxComput_.isUsable(); }
 
     bool isSettable() const { return fluxComput_.isSettable(); }
 
@@ -268,14 +266,13 @@ public:
     void computePressure(GridLayout const& layout) { pressureClosure_.computePressure(layout); }
 
 private:
-    Electromag& electromag_;
     FluxComputer fluxComput_;
     IsothermalElectronPressureClosure<FluxComputer> pressureClosure_;
 };
 
 
 
-template<typename Ions, typename Electromag>
+template<typename Ions>
 class Electrons : public LayoutHolder<typename Ions::gridlayout_type>
 {
     using VecField   = typename Ions::vecfield_type;
@@ -283,8 +280,8 @@ class Electrons : public LayoutHolder<typename Ions::gridlayout_type>
     using GridLayout = typename Ions::gridlayout_type;
 
 public:
-    Electrons(PHARE::initializer::PHAREDict& dict, Ions& ions, Electromag& electromag, VecField& J)
-        : momentModel_{dict, ions, electromag, J}
+    Electrons(PHARE::initializer::PHAREDict& dict, Ions& ions, VecField& J)
+        : momentModel_{dict, ions, J}
     {
     }
 
@@ -327,7 +324,7 @@ public:
     Field const& pressure() const { return momentModel_.pressure(); }
 
 private:
-    ElectronMomentModel<Ions, Electromag> momentModel_;
+    ElectronMomentModel<Ions> momentModel_;
 };
 
 } // namespace PHARE::core

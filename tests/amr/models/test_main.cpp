@@ -37,7 +37,7 @@ using MaxwellianParticleInitializer1D
 using IonsPop1D         = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
 using Ions1D            = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D      = Electromag<VecField1D>;
-using Electrons1D       = Electrons<Ions1D, Electromag1D>;
+using Electrons1D       = Electrons<Ions1D>;
 using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types>;
 using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
 using ResourcesManagerT = ResourcesManager<GridYee1D>;
