@@ -10,19 +10,19 @@ from phare.pp.diagnostic.patch import REFINEMENT_RATIO
 class LevelParticleOverlap(ParticleOverlap):
     def __init__(
         self,
-        coarseDomain,
-        fineLevelGhost,
+        coarseDomainPatch,
+        fineLevelGhostPatch,
         data_name,
         nGhosts,
         sizes,
-        coarsePatchGhost,
+        coarsePatchGhostPatch,
     ):
         ParticleOverlap.__init__(
-            self, coarseDomain, fineLevelGhost, data_name, nGhosts, sizes
+            self, coarseDomainPatch, fineLevelGhostPatch, data_name, nGhosts, sizes
         )
-        self.coarseDomain = coarseDomain
-        self.coarsePatchGhost = coarsePatchGhost
-        self.fineLevelGhost = fineLevelGhost
+        self.coarseDomainPatch = coarseDomainPatch
+        self.coarsePatchGhostPatch = coarsePatchGhostPatch
+        self.fineLevelGhostPatch = fineLevelGhostPatch
 
 
 def getLevelGhostOverlaps(diags):
@@ -104,7 +104,7 @@ def _calculate_coarser_1d(
             data_name,
             nGhosts,
             [refine_start_idx],
-            coarsePatchGhost=coarsePatchGhost,
+            coarsePatchGhostPatch=coarsePatchGhost,
         )
 
     def check_lower():

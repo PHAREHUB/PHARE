@@ -13,19 +13,19 @@ class DomainParticleOverlap(ParticleOverlap):
         ParticleOverlap.__init__(
             self, domainPatch, ghostPatch, data_name, nGhosts, sizes
         )
-        self.domain = domainPatch
-        self.ghost = ghostPatch
+        self.domainPatch = domainPatch
+        self.ghostPatch = ghostPatch
         self.particles = particles
         self.periodic = periodic
 
         import copy  # copy and swap domain/ghost patches
 
         self.mirror = copy.copy(self)
-        self.mirror.domain = particles.domainDiag.levels[
+        self.mirror.domainPatch = particles.domainDiag.levels[
             domainPatch.patch_level.lvlNbr
         ].patches[ghostPatch.id]
-        self.mirror.ghost = get_ghost_patch(
-            particles, self.domain, DomainParticleOverlap
+        self.mirror.ghostPatch = get_ghost_patch(
+            particles, self.domainPatch, DomainParticleOverlap
         )
         self.mirror.mirror = self
 

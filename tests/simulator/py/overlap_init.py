@@ -121,7 +121,7 @@ class OverlapValueValidation(InitValueValidation):
         assert isinstance(overlap, Overlap)
         from phare.pp.diagnostic.patch import max_amr_index_for
 
-        domain, ghost = overlap.domain, overlap.ghost
+        domain, ghost = overlap.domainPatch, overlap.ghostPatch
 
         domain_iCell, ghost_iCell = [
             i.patch_data.data("iCell") for i in [domain, ghost]
@@ -182,9 +182,9 @@ class OverlapValueValidation(InitValueValidation):
     def _checkLevelGhost(self, overlap, dim, interp):
         assert isinstance(overlap, Overlap)
 
-        fineLevelGhost = overlap.fineLevelGhost
+        fineLevelGhost = overlap.fineLevelGhostPatch
         coarseSplitParticles = self._split_coarse(
-            overlap.coarseDomain, overlap.coarsePatchGhost, dim, interp
+            overlap.coarseDomainPatch, overlap.coarsePatchGhostPatch, dim, interp
         )
 
         icells = [overlap.sizes[0] + g for g in range(overlap.nGhosts)]
