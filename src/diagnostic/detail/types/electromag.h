@@ -2,6 +2,9 @@
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_ELECTROMAG_H
 
 #include "diagnostic/detail/h5typewriter.h"
+#include "diagnostic/detail/h5file.h"
+#include "core/data/vecfield/vecfield_component.h"
+
 
 namespace PHARE::diagnostic::h5
 {

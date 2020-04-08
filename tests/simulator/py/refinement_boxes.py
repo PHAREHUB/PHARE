@@ -42,7 +42,7 @@ class SimulatorRefineBoxInputs(InitValueValidation):
     def _do_dim(self, dim, dic, valid: bool = False):
         for interp in range(1, 4):
             try:
-                self._simulate_diagnostics(dim=dim, interp=1, input=dic)
+                self.runAndDump(dim=dim, interp=1, input=dic)
                 cpp.reset()
             except ValueError as e:
                 self.assertTrue(not valid)

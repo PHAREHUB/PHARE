@@ -58,6 +58,12 @@ public:
 
     std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
 
+    std::string getMeshSize() const { return hierarchy_.meshSize(); }
+
+    std::string getCells() const { return hierarchy_.cells(); }
+
+    std::string getOrigin() const { return hierarchy_.origin(); }
+
     static auto getPatchProperties(GridLayout const& grid)
     {
         PatchProperties dict;

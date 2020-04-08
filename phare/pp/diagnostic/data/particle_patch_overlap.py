@@ -1,72 +1,91 @@
-from phare.pp.diagnostics import Patch, _Particle, Particles
+from phare.pp.diagnostics import Diagnostic, Patch, _ParticlePatchData, Particles
 from .overlap import Overlap, _calculate_1d as overlap_calculate_1d
 from .particle_overlap import ParticleOverlap, get_ghost_patch
 from .periodic_overlap import intralevel as periodic_intralevel
 
+from phare.pp.diagnostic.patch_data import particlesForDiags
+
 
 class DomainParticleOverlap(ParticleOverlap):
-    def __init__(self, patch0, patch1, dataset_key, nGhosts, sizes):
-        ParticleOverlap.__init__(self, patch0, patch1, dataset_key, nGhosts, sizes)
+    def __init__(
+        self, domainPatch, ghostPatch, data_name, nGhosts, sizes, particles, periodic
+    ):
+        ParticleOverlap.__init__(
+            self, domainPatch, ghostPatch, data_name, nGhosts, sizes
+        )
+        self.domain = domainPatch
+        self.ghost = ghostPatch
+        self.particles = particles
+        self.periodic = periodic
+
+        import copy  # copy and swap domain/ghost patches
+
+        self.mirror = copy.copy(self)
+        self.mirror.domain = particles.domainDiag.levels[
+            domainPatch.patch_level.lvlNbr
+        ].patches[ghostPatch.id]
+        self.mirror.ghost = get_ghost_patch(
+            particles, self.domain, DomainParticleOverlap
+        )
+        self.mirror.mirror = self
 
 
 def getPatchGhostOverlaps(diags):
-    if isinstance(diags, dict):
-        if _Particle.__name__ in diags:
-            diags = diags[_Particle.__name__]
+    if isinstance(diags, dict) and _ParticlePatchData.__name__ in diags:
+        diags = diags[_ParticlePatchData.__name__]
+
+    # Merge diagnotics of same population into single Particles object
+    if all([isinstance(diag, Diagnostic) for diag in diags]):
+        diags = particlesForDiags(diags)
+
+    assert all([isinstance(diag, Particles) for diag in diags])
 
     return _intralevel(DomainParticleOverlap, diags) + _periodic(
         DomainParticleOverlap, diags
     )
 
 
-def _calculate_1d(clazz, particles, patch0, patch1, coords=[]):
+def _calculate_1d(OverlapType, particles, patch0, patch1, periodic=False):
     assert isinstance(particles, Particles)
     assert all([isinstance(x, Patch) for x in [patch0, patch1]])
 
-    direction = "x"
-    overlaps = []
-    for p in [(patch0, patch1), (patch1, patch0)]:
-        overlaps += overlap_calculate_1d(
-            clazz, p[0], get_ghost_patch(particles, p[1], clazz), "particles"
-        )
-
-    if len(coords) is 0:  # periodicity overlap icell matching
-        _, upper = sorted([patch0, patch1], key=lambda x: x.min_coord(direction))
-        coords = [
-            upper.patch_level.position_to_index(idx, direction) for idx in upper.origin
-        ]
-
-    for o in overlaps:
-        o.origin = coords
-        if patch0 == o.p0:
-            o.domain = o.p0
-            o.__dict__["ghost"] = o.__dict__.pop("p1")
-        else:
-            o.ghost = o.p0
-            o.__dict__["domain"] = o.__dict__.pop("p1")
-    return overlaps
+    return overlap_calculate_1d(
+        OverlapType,
+        patch0,
+        get_ghost_patch(particles, patch1, OverlapType),
+        "particles",
+        particles=particles,
+        periodic=periodic,
+    )
 
 
-def _periodic(clazz, diags):
+def _periodic(OverlapType, diags):
     overlaps = []
     for particles in diags:
-        diag = particles.domain
+        diag = particles.domainDiag
         for patch_level_ids, patch_level in diag.levels.items():
+            periodic_overlaps = periodic_intralevel(particles, patch_level)
+
             # we only need one out of the five, v is arbitrary (and short ;))
-            minX, maxX = periodic_intralevel(clazz, particles, patch_level.patches)["v"]
-            if len(minX) and len(maxX):
-                overlaps += _calculate_1d(
-                    clazz, particles, minX[0], maxX[0], diag.sim.origin
-                )
+            if "v" in periodic_overlaps:
+                minX, maxX = periodic_overlaps["v"]
+                if len(minX) and len(maxX):
+                    overlaps += _calculate_1d(
+                        OverlapType, particles, minX[0], maxX[0], periodic=True
+                    )
+
     return overlaps
 
 
-def _intralevel(clazz, diags):
+def _intralevel(OverlapType, diags):
     overlaps = []
     for particles in diags:
-        for patch_level_ids, patch_level in particles.domain.levels.items():
-            patches = patch_level.patches
+        for patch_level_ids, patch_level in particles.domainDiag.levels.items():
+            patches = list(patch_level.patches.values())
             for i, patch0 in enumerate(patches):
                 for j in range(i + 1, len(patches)):
-                    overlaps += _calculate_1d(clazz, particles, patch0, patches[j])
+                    overlaps += _calculate_1d(
+                        OverlapType, particles, patch0, patches[j]
+                    )
+
     return overlaps

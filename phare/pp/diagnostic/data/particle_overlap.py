@@ -1,11 +1,11 @@
 import numpy as np, math
-from phare.pp.diagnostics import Patch, _Particle, Particles
+from phare.pp.diagnostics import Patch, _ParticlePatchData, Particles
 from .overlap import Overlap
 
 
 class ParticleOverlap(Overlap):
-    def __init__(self, p0: Patch, p1: Patch, dataset_key, nGhosts, sizes):
-        Overlap.__init__(self, p0, p1, dataset_key, nGhosts, sizes)
+    def __init__(self, patch0, patch1, data_name, nGhosts, sizes):
+        Overlap.__init__(self, patch0, patch1, data_name, nGhosts, sizes)
 
 
 def getParticleOverlapsFrom(diags):
@@ -15,63 +15,81 @@ def getParticleOverlapsFrom(diags):
     return getLevelGhostOverlaps(diags) + getPatchGhostOverlaps(diags)
 
 
-def get_ghost_patch(particles: Particles, p0: Patch, gType):
+def get_ghost_patch(particles, patch, ghostType):
     from .particle_level_overlap import LevelParticleOverlap
     from .particle_patch_overlap import DomainParticleOverlap
 
-    assert gType == DomainParticleOverlap or gType == LevelParticleOverlap
+    assert ghostType == DomainParticleOverlap or ghostType == LevelParticleOverlap
 
-    gDiag = particles.pGhost if gType is DomainParticleOverlap else particles.lGhost
-    return gDiag.levels[p0.patch_level.idx].patchDict[p0.id]
+    gDiag = particles.pGhostDiag if ghostType is DomainParticleOverlap else particles.lGhostDiag
+
+    return gDiag.levels[patch.patch_level.lvlNbr].patches[patch.id]
 
 
 class ParticleOverlapComparator:
-    def __init__(self, p0, indices):
-        assert isinstance(p0, Patch) or type(p0).__name__.startswith(
+    def __init__(self, patch, indices):
+        assert isinstance(patch, Patch) or type(patch).__name__.startswith(
             "ContiguousParticles"
         )
-        if isinstance(p0, Patch):
-            self.dim = len(p0.origin)
+        if isinstance(patch, Patch):
+            self.dim = len(patch.origin)
         else:  # or SoA ContigousParticles
-            self.dim = math.floor(len(p0.iCell) / len(p0.weight))
-        self.p0 = p0
+            self.dim = math.floor(len(patch.iCell) / len(patch.weight))
+        self.patch = patch
         self.indices = indices
 
     def sort(self):  # ONLY WORKS FOR 1D!
-        icells = self._get("iCell")
+        """returns list[tuple()] sorted on tuple[0])
+            tuple[0] = particle["icell"] + particle["delta"]
+            tuple[1] = position of icell/delta in contigous arrays/particle index
+        """
+
+        icells = self._dataset("iCell")
         delta = [
-            (v + icells[self.indices[i]], self.indices[i])
-            for i, v in enumerate(  # select deltas from indices
-                list(map(self._get("delta").__getitem__, self.indices))
+            (particleDelta + icells[self.indices[i]], self.indices[i])
+            for i, particleDelta in enumerate(
+                # select deltas from indices
+                list(map(self._dataset("delta").__getitem__, self.indices))
             )
         ]
         return sorted(delta, key=lambda x: x[0])
 
-    def cmp(self, that, s, d0, d1, dim):
-        a0, a1 = [x._get(s) for x in [self, that]]
+    def cmp(self, that, data_name, sortedDeltaTuple0, sortedDeltaTuple1, dim):
+        dataset0, dataset1 = [x._dataset(data_name) for x in [self, that]]
+
         return all(
             [
                 np.array_equiv(
-                    a0[d0[i][1] * dim : d0[i][1] * dim + dim],
-                    a1[d1[i][1] * dim : d1[i][1] * dim + dim],
+                    dataset0[
+                        sortedDeltaTuple0[i][1] * dim : sortedDeltaTuple0[i][1] * dim
+                        + dim
+                    ],
+                    dataset1[
+                        sortedDeltaTuple1[i][1] * dim : sortedDeltaTuple1[i][1] * dim
+                        + dim
+                    ],
                 )
-                for i in range(len(d0))
+                for i in range(len(sortedDeltaTuple0))
             ]
         )
 
     def __eq__(self, that):
         assert type(self) is type(that)
 
-        d0, d1 = self.sort(), that.sort()
-        return len(d0) == len(d1) and all(
+        sortedDeltaTuple0, sortedDeltaTuple1 = self.sort(), that.sort()
+        return len(sortedDeltaTuple0) == len(sortedDeltaTuple1) and all(
             [
-                self.cmp(that, "v", d0, d1, 3),
-                self.cmp(that, "delta", d0, d1, self.dim),
-                [self.cmp(that, s, d0, d1, 1) for s in ["weight", "charge"]],
+                self.cmp(that, "v", sortedDeltaTuple0, sortedDeltaTuple1, 3),
+                self.cmp(that, "delta", sortedDeltaTuple0, sortedDeltaTuple1, self.dim),
+                [
+                    self.cmp(that, data_name, sortedDeltaTuple0, sortedDeltaTuple1, 1)
+                    for data_name in ["weight", "charge"]
+                ],
             ]
         )
 
-    def _get(self, attr):
-        if isinstance(self.p0, Patch):
-            return self.p0.patch_data.get()[attr]
-        return getattr(self.p0, attr)
+    def _dataset(self, data_name):
+        if isinstance(self.patch, Patch):
+            return self.patch.patch_data.data(data_name)
+        # else ContigousParticles
+        return getattr(self.patch, data_name)

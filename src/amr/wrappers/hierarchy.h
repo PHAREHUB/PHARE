@@ -200,18 +200,25 @@ public:
         return core::makeAtRuntime<Maker>(dim, interpOrder, Maker{theDict});
     }
 
+    auto const& meshSize() const { return meshSize_; }
+    auto const& cells() const { return cells_; }
+    auto const& origin() const { return origin_; }
 
 protected:
     Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
-              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db, std::string meshsize)
+              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db, std::string origin,
+              std::string meshsize, std::string cells)
         : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
+        , origin_{origin}
         , meshSize_{meshsize}
+        , cells_{cells}
     {
     }
-    auto const& meshSize() const { return meshSize_; }
 
 private:
+    std::string origin_;
     std::string meshSize_;
+    std::string cells_;
 };
 
 template<size_t _dimension>
@@ -225,14 +232,18 @@ public:
                         SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
                         griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
                     patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
-                    getMeshSize(dict["simulation"]["grid"]).str())
+                    get_as_point<double>(dict["simulation"]["grid"], "origin").str(),
+                    get_as_point<double>(dict["simulation"]["grid"], "meshsize").str(),
+                    get_as_point<int>(dict["simulation"]["grid"], "nbr_cells").str())
     {
     }
 
 private:
-    static core::Point<double, dimension> getMeshSize(PHARE::initializer::PHAREDict& grid)
+    template<typename Type>
+    static core::Point<Type, dimension> get_as_point(PHARE::initializer::PHAREDict& grid,
+                                                     std::string key)
     {
-        return parseDimXYZType<double, dimension>(grid, "meshsize");
+        return parseDimXYZType<Type, dimension>(grid, key);
     }
 };
 

@@ -6,7 +6,7 @@ import unittest
 import phare.pharein as ph, numpy as np, math
 from phare.pharein import ElectronModel
 
-from phare.pp.diagnostics import Diagnostics
+from phare.pp.diagnostics import extract_diagnostics
 
 
 class InitValueValidation(unittest.TestCase):
@@ -14,11 +14,16 @@ class InitValueValidation(unittest.TestCase):
         "diag_options": {"format": "phareh5", "options": {"dir": diag_out_dir},}
     }
 
-    def _simulate_diagnostics(self, dim, interp, input):
+    def getSimulation(self):
+        return ph.globals.sim
+
+    def runAndDump(self, dim, interp, input):
         self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
-        self.dman.dump(0, 1)
+        timestamp = 0
+        timestep = 1
+        self.dman.dump(timestamp, timestep)
         del self.dman, self.sim, self.hier  # force hdf5 flush
-        return Diagnostics.extract(ph.globals.sim)
+        return extract_diagnostics(ph.globals.sim.diag_options["options"]["dir"])
 
     def tearDown(self):
         for k in ["dman", "sim", "hier"]:
@@ -26,18 +31,19 @@ class InitValueValidation(unittest.TestCase):
                 delattr(self, k)
         cpp.reset()
 
-    def truncate(self, number, digits) -> float:
-        stepper = 10.0 ** digits
-        return math.trunc(stepper * number) / stepper
 
+def basicSimulatorArgs(dim: int, interp: int, **kwargs):
+    def _checkSetList(name, val):
+        if name in kwargs:
+            val = kwargs[name]
+        if not isinstance(val, list):
+            val = [val]
+        kwargs[name] = val
+        return val
 
-def basicSimulatorArgs(dim:int, interp:int, **kwargs):
+    cells = _checkSetList("cells", [65 for i in range(dim)])
+    origin = _checkSetList("origin", [0 for i in range(dim)])
 
-    cells = [65 for i in range(dim)]
-    if "cells" in kwargs:
-        cells = kwargs["cells"]
-    if not isinstance(cells, list):
-        cells = [cells]
     dl = [1.0 / v for v in cells]
     args = {
         "interp_order": interp,
@@ -47,6 +53,7 @@ def basicSimulatorArgs(dim:int, interp:int, **kwargs):
         "final_time": 1.0,
         "boundary_types": "periodic",
         "cells": cells,
+        "origin": origin,
         "dl": dl,
         "max_nbr_levels": 2,
         "refinement_boxes": {"L0": {"B0": [(10,), (50,)]}},
@@ -55,6 +62,7 @@ def basicSimulatorArgs(dim:int, interp:int, **kwargs):
     for k, v in kwargs.items():
         if k in args:
             args[k] = v
+
     return args
 
 
@@ -102,7 +110,6 @@ def makeBasicModel(extra_pops={}):
     )
 
 
-
 def create_simulator(dim, interp, **input):
 
     cpp.reset()
@@ -118,13 +125,10 @@ def create_simulator(dim, interp, **input):
     if "diags_fn" in input:
         input["diags_fn"](model)
 
-    ElectronModel(closure="isothermal",Te = 0.12)
+    ElectronModel(closure="isothermal", Te=0.12)
 
     ph.populateDict()
     hier = cpp.make_hierarchy()
     sim = cpp.make_simulator(hier)
     sim.initialize()
     return [cpp.make_diagnostic_manager(sim, hier), sim, hier]
-
-
-

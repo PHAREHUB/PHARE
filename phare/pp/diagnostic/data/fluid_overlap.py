@@ -1,22 +1,23 @@
-from phare.pp.diagnostics import _Fluid
+from phare.pp.diagnostics import _FluidPatchData
 from .overlap import Overlap, getOverlaps
 
 
 class FluidOverlap(Overlap):
-    patch_data_type = _Fluid
+    patch_data_type = _FluidPatchData
 
-    def __init__(self, patch0, patch1, dataset_key, nGhosts, sizes):
-        Overlap.__init__(self, patch0, patch1, dataset_key, nGhosts, sizes)
+    def __init__(self, patch0, patch1, data_name, nGhosts, sizes):
+        Overlap.__init__(self, patch0, patch1, data_name, nGhosts, sizes)
 
-    def get_shared_data(self):
+    def shared_data(self):
         """ in the case of fluid patch overlaps, only the border value will be equal.
              and for this to occur the patches need to be touching"""
+
         if self.sizes[0] == self.nGhosts:
-            key, nGhosts = self.key, self.nGhosts
-            m_nGhosts = int(nGhosts * -1)
+            data_name = self.data_name
+            nGhosts = self.nGhosts
             return (
-                [self.p0.patch_data.get()[key][m_nGhosts - 1]],
-                [self.p1.patch_data.get()[key][nGhosts]],
+                [self.patch0.patch_data.data(data_name)[-nGhosts - 1]],
+                [self.patch1.patch_data.data(data_name)[nGhosts]],
             )
         return ([], [])
 

@@ -47,7 +47,7 @@ struct TestSimulator : public HierarchyMaker<_dim>, public PHARE::Simulator<_dim
 
     using Simulator  = PHARE::Simulator<dim, interp>;
     using PHARETypes = PHARE::PHARE_Types<dim, interp>;
-    using Hierarchy  = typename PHARE::amr::SAMRAI_Types::hierarchy_t;
+    using Hierarchy  = PHARE::amr::Hierarchy;
 
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;
@@ -94,7 +94,7 @@ struct SimulatorTest : public ::testing::Test
 {
 };
 
-using Simulators = testing::Types<TestSimulator<1, 1>, TestSimulator<1, 2>, TestSimulator<1, 3>/*,   // dim 1
+using Simulators = testing::Types<TestSimulator<1, 1>/*, TestSimulator<1, 2>, TestSimulator<1, 3>,   // dim 1
                                   TestSimulator<2, 1>, TestSimulator<2, 2>, TestSimulator<2, 3>,     // dim 2
                                   TestSimulator<3, 1>, TestSimulator<3, 2>, TestSimulator<3, 3>*/>;  // dim 3
 TYPED_TEST_SUITE(SimulatorTest, Simulators);

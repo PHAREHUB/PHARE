@@ -195,6 +195,9 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
     fileAttributes_["dimension"]   = dimension;
     fileAttributes_["interpOrder"] = interpOrder;
     fileAttributes_["layoutType"]  = modelView_.getLayoutTypeString();
+    fileAttributes_["meshSize"]    = modelView_.getMeshSize();
+    fileAttributes_["cells"]       = modelView_.getCells();
+    fileAttributes_["origin"]      = modelView_.getOrigin();
 
     initializeDatasets_(diagnostics);
     writeDatasets_(diagnostics);

@@ -27,7 +27,7 @@ PYBIND11_MODULE(cpp, m)
 
     py::class_<RuntimeDiagnosticInterface, std::shared_ptr<RuntimeDiagnosticInterface>>(
         m, "IDiagnosticsManager")
-        .def("dump", &RuntimeDiagnosticInterface::dump);
+        .def("dump", &RuntimeDiagnosticInterface::dump, py::arg("timestamp"), py::arg("timestep"));
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {

@@ -1,19 +1,24 @@
-from phare.pp.diagnostics import _EM
+from phare.pp.diagnostics import _EMPatchData
 from .overlap import Overlap, getOverlaps
+
+from phare.data.wrangler import DataWrangler, is_primal_dataset
 
 
 class EMOverlap(Overlap):
-    patch_data_type = _EM
+    patch_data_type = _EMPatchData
 
-    def __init__(self, patch0, patch1, dataset_key, nGhosts, sizes):
-        Overlap.__init__(self, patch0, patch1, dataset_key, nGhosts, sizes)
+    def __init__(self, patch0, patch1, data_name, nGhosts, sizes):
+        Overlap.__init__(self, patch0, patch1, data_name, nGhosts, sizes)
 
-    def get_shared_data(self):
+    def shared_data(self):
+        data_name = self.data_name
         size = self.sizes[0]
-        m_size = int(size * -1)
+        is_primal = int(
+            is_primal_dataset(self.patch0.patch_data.name + "_" + data_name)
+        )
         return (
-            self.p0.patch_data.get()[self.key][m_size:],
-            self.p1.patch_data.get()[self.key][:size],
+            self.patch0.patch_data.data(data_name)[-size * 2 - is_primal :],
+            self.patch1.patch_data.data(data_name)[: size * 2 + is_primal],
         )
 
 

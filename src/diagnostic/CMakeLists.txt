@@ -17,6 +17,7 @@ if (HighFive)
    ${SOURCES_INC}
    ${PROJECT_SOURCE_DIR}/detail/h5writer.h
    ${PROJECT_SOURCE_DIR}/detail/h5_utils.h
+   ${PROJECT_SOURCE_DIR}/detail/h5file.h
    ${PROJECT_SOURCE_DIR}/detail/h5typewriter.h
    ${PROJECT_SOURCE_DIR}/detail/types/particle.h
    ${PROJECT_SOURCE_DIR}/detail/types/electromag.h
