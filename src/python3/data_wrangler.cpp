@@ -450,3 +450,22 @@ PYBIND11_MODULE(data_wrangler, m)
 }
 
 } // namespace PHARE::pydata
+
+#if defined(PHARE_DEV_MODE) && PHARE_DEV_MODE
+#include "kul/io.hpp"
+static void on_library_load() __attribute__((constructor));
+void on_library_load()
+{
+    kul::Dir build{
+#include "build.dir"
+    };
+    kul::File file{"src/python3/data_wrangler.timestamp", build};
+    std::string ts{kul::io::Reader{file}.readLine()};
+
+    uint64_t timestamp = {
+#include "data_wrangler.timestamp"
+    };
+    if (std::to_string(timestamp) != ts)
+        std::cerr << __FILE__ << " BUILD POSSIBLY STALE" << std::endl;
+}
+#endif /*PHARE_DEV_MODE*/
