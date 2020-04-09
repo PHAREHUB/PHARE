@@ -33,7 +33,7 @@ namespace core
             : electromag{dict["electromag"]}
             , ions{dict["ions"]}
             , J{"J", HybridQuantity::Vector::J}
-            , electrons{dict["electrons"], ions, electromag, J}
+            , electrons{dict["electrons"], ions, J}
         {
         }
 

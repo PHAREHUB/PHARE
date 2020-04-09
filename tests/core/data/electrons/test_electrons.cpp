@@ -185,13 +185,7 @@ protected:
     Field1D Jx;
     Field1D Jy;
     Field1D Jz;
-    Field1D Bx;
-    Field1D By;
-    Field1D Bz;
-    Field1D Ex;
-    Field1D Ey;
-    Field1D Ez;
-    Electrons<IonsT, Electromag<VecField1D>> electrons;
+    Electrons<IonsT> electrons;
     Field1D Pe;
 
 public:
@@ -225,23 +219,9 @@ public:
         , Jx{"J_x", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
         , Jy{"J_y", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
         , Jz{"J_z", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , Bx{"EM_B_x", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"EM_B_y", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"EM_B_z", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"EM_E_x", HybridQuantity::Scalar::Ex, layout.allocSize(HybridQuantity::Scalar::Ex)}
-        , Ey{"EM_E_y", HybridQuantity::Scalar::Ey, layout.allocSize(HybridQuantity::Scalar::Ey)}
-        , Ez{"EM_E_z", HybridQuantity::Scalar::Ez, layout.allocSize(HybridQuantity::Scalar::Ez)}
-        , electrons{createDict()["electrons"], ions, electromag, J}
+        , electrons{createDict()["electrons"], ions, J}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
     {
-        electromag.B.setBuffer(Bx.name(), &Bx);
-        electromag.B.setBuffer(By.name(), &By);
-        electromag.B.setBuffer(Bz.name(), &Bz);
-
-        electromag.E.setBuffer(Ex.name(), &Ex);
-        electromag.E.setBuffer(Ey.name(), &Ey);
-        electromag.E.setBuffer(Ez.name(), &Ez);
-
         J.setBuffer(Jx.name(), &Jx);
         J.setBuffer(Jy.name(), &Jy);
         J.setBuffer(Jz.name(), &Jz);
@@ -296,14 +276,6 @@ public:
 
     void TearDown() override
     {
-        electromag.B.setBuffer(Bx.name(), nullptr);
-        electromag.B.setBuffer(By.name(), nullptr);
-        electromag.B.setBuffer(Bz.name(), nullptr);
-
-        electromag.E.setBuffer(Ex.name(), nullptr);
-        electromag.E.setBuffer(Ey.name(), nullptr);
-        electromag.E.setBuffer(Ez.name(), nullptr);
-
         J.setBuffer(Jx.name(), nullptr);
         J.setBuffer(Jy.name(), nullptr);
         J.setBuffer(Jz.name(), nullptr);
