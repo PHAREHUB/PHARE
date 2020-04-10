@@ -2,3 +2,4 @@ subprojects
 __pycache__
 *.pyc
 *checkpoint.ipynb*
+tests/simulator/py/overlaps

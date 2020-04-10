@@ -25,8 +25,7 @@ from datetime import datetime, timezone
 from ddt import ddt, data
 
 
-ROOT_DIR = "@PHARE_PROJECT_DIR@/";
-diag_out_dir = os.path.join(ROOT_DIR, "tests/simulator/py/overlaps/data/")
+diag_out_dir = "py/overlaps/"
 
 
 class SimulatorOverlaps(InitValueValidation):

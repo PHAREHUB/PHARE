@@ -20,13 +20,25 @@ if(HighFive)
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   )
 
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/py/overlaps.py.in ${CMAKE_CURRENT_BINARY_DIR}/py/overlaps.py @ONLY)
-
   add_python3_test(sim-refineboxes  py/refinement_boxes.py ${CMAKE_CURRENT_BINARY_DIR})
-  add_python3_test(sim-overlaps     py/overlaps.py         ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(sim-overlap-init py/overlap_init.py     ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(sim-fluid-init   py/fluid_init.py       ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(sim-em-init      py/em_init.py          ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(data-wrangler    py/data_wrangler.py    ${CMAKE_CURRENT_BINARY_DIR})
 
-endif()
+  if(devMode)
+    add_python3_test(sim-overlaps     py/overlaps.py         ${CMAKE_CURRENT_BINARY_DIR})
+    if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/py/overlaps)
+      add_custom_command(TARGET test_simulator
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/py
+                         POST_BUILD
+                         COMMAND git clone https://github.com/PHARCHIVE/hdf5_patch_overlap --depth 1 overlaps)
+      add_custom_command(TARGET test_simulator
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/py/overlaps
+                         POST_BUILD
+                         COMMAND find . -not -path '*/\\.*' -type f -name "*.xz" | xargs unxz)
+    endif() # clone/uncompress
+
+  endif() # devMode
+
+endif() # HighFive
