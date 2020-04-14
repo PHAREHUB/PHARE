@@ -2,31 +2,48 @@
 
 import math
 
+yee_centering = {
+    'x': {
+        'Bx':'primal', 'By':'dual', 'Bz':'dual',
+        'Ex':'dual', 'Ey':'primal', 'Ez':'primal',
+        'Jx':'dual', 'Jy':'primal', 'Jz':'primal',
+        'rho':'primal', 'Vx':'primal','Vy':'primal',
+        'Vz':'primal','P':'primal'
+    },
+    'y' : {
+        'Bx':'dual', 'By':'primal', 'Bz':'dual',
+        'Ex':'primal', 'Ey':'dual', 'Ez':'primal',
+        'Jx':'primal', 'Jy':'dual', 'Jz':'primal',
+        'rho':'primal', 'Vx':'primal','Vy':'primal',
+        'Vz':'primal','P':'primal'
+    },
+    'z' : {
+        'Bx':'dual', 'By':'dual', 'Bz':'primal',
+        'Ex':'primal', 'Ey':'primal', 'Ez':'dual',
+        'Jx':'primal', 'Jy':'primal', 'Jz':'dual',
+        'rho':'primal', 'Vx':'primal','Vy':'primal',
+        'Vz':'primal', 'P':'primal'
+    }
+}
+yee_centering_lower = {
+  direction : {
+    key.lower() : prumal
+    for key, prumal in key_dict.items()
+  }
+  for direction, key_dict in yee_centering.items()
+}
+
+def yee_element_is_primal(key, direction = 'x'):
+    if key in yee_centering_lower[direction]:
+        return yee_centering_lower[direction][key] is 'primal'
+    return yee_centering[direction][key] is 'primal'
+
+
 class YeeCentering(object):
     def __init__(self):
-        self.centerX = {'Bx':'primal', 'By':'dual', 'Bz':'dual',
-                        'Ex':'dual', 'Ey':'primal', 'Ez':'primal',
-                        'Jx':'dual', 'Jy':'primal', 'Jz':'primal',
-                        'rho':'primal', 'Vx':'primal','Vy':'primal',
-                        'Vz':'primal','P':'primal'
-                       }
-
-
-        self.centerY = {'Bx':'dual', 'By':'primal', 'Bz':'dual',
-                        'Ex':'primal', 'Ey':'dual', 'Ez':'primal',
-                        'Jx':'primal', 'Jy':'dual', 'Jz':'primal',
-                        'rho':'primal', 'Vx':'primal','Vy':'primal',
-                        'Vz':'primal','P':'primal'
-                       }
-
-        self.centerZ = {'Bx':'dual', 'By':'dual', 'Bz':'primal',
-                        'Ex':'primal', 'Ey':'primal', 'Ez':'dual',
-                        'Jx':'primal', 'Jy':'primal', 'Jz':'dual',
-                        'rho':'primal', 'Vx':'primal','Vy':'primal',
-                        'Vz':'primal', 'P':'primal'
-                       }
-
-
+        self.centerX = yee_centering["x"]
+        self.centerY = yee_centering["y"]
+        self.centerZ = yee_centering["z"]
 
 class GridLayout(object):
 
