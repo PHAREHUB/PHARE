@@ -62,99 +62,65 @@ namespace core
     }
 
 
+    template<size_t val>
+    using _IC = std::integral_constant<std::size_t, val>;
 
-
-    using OneD   = std::integral_constant<std::size_t, 1>;
-    using TwoD   = std::integral_constant<std::size_t, 2>;
-    using ThreeD = std::integral_constant<std::size_t, 3>;
-
-    using FirstOrder  = std::integral_constant<std::size_t, 1>;
-    using SecondOrder = std::integral_constant<std::size_t, 2>;
-    using ThirdOrder  = std::integral_constant<std::size_t, 3>;
-
-
-
-
-    static auto constexpr possibleDimensions() { return std::tuple<OneD, TwoD, ThreeD>{}; }
-
-
-    static auto constexpr possibleInterpOrders()
+    static auto constexpr possibleSimulators()
     {
-        return std::tuple<FirstOrder, SecondOrder, ThirdOrder>{};
+        // inner tuple = dim, interp, list[possible nbrParticles for dim/interp]
+        return std::tuple< // formatting
+            std::tuple<_IC<1>, _IC<1>, _IC<1>, _IC<2>, _IC<3>>,
+            std::tuple<_IC<1>, _IC<2>, _IC<1>, _IC<2>, _IC<3>, _IC<4>>,
+            std::tuple<_IC<1>, _IC<3>, _IC<2>, _IC<3>, _IC<4>, _IC<5>>>{};
     }
 
-    template<size_t dim, size_t interpOrder>
-    static auto constexpr possibleNmbSplitPartiles()
-    {
-        if constexpr (dim == 1)
-        {
-            return std::tuple<OneD, TwoD, ThreeD>{};
-        }
-        return std::tuple<OneD, TwoD, ThreeD>{};
-    }
 
-    template<typename Maker>
-    auto makeAtRuntime(std::size_t dim, std::size_t interpOrder, Maker&& maker)
+    template<typename Maker> // used from PHARE::amr::Hierarchy
+    auto makeAtRuntime(std::size_t dim, Maker&& maker)
     {
-        using Ptr_t = decltype(maker(dim, interpOrder, 1, 1));
-        Ptr_t p;
-        if constexpr (std::is_same_v<Ptr_t, bool>)
-            p = false;
-        else
-            p = nullptr;
+        using Ptr_t = decltype(maker(dim, 1));
+        Ptr_t p{};
 
-        core::apply(possibleDimensions(), [&](auto const& dim1) {
-            core::apply(possibleInterpOrders(), [&](auto const& order) {
-                if (!p)
-                    p = maker(dim, interpOrder, dim1, order);
-            });
+        core::apply(possibleSimulators(), [&](auto const& simType) {
+            using SimuType = std::decay_t<decltype(simType)>;
+            using _dim     = typename std::tuple_element<0, SimuType>::type;
+
+            if (!p)
+                p = maker(dim, _dim{});
         });
 
         return p;
     }
 
-    template<typename Maker, typename Pointer, typename Dimension, typename InterpOrder>
-    auto _makeAtRuntime(Maker& maker, Pointer& p, std::size_t userDim, std::size_t userInterpOrder,
-                        size_t userNbRefinedPart, Dimension dimension, InterpOrder interp_order)
+    template<typename Maker, typename Pointer, typename Dimension, typename InterpOrder,
+             typename... NbRefinedParts>
+    void _makeAtRuntime(Maker& maker, Pointer& p, std::size_t userDim, std::size_t userInterpOrder,
+                        size_t userNbRefinedPart,
+                        std::tuple<Dimension, InterpOrder, NbRefinedParts...> const&)
     {
-        constexpr size_t dim    = dimension();
-        constexpr size_t interp = interp_order();
-
-        constexpr auto nmbSplitPartiles = possibleNmbSplitPartiles<dim, interp>();
-        core::apply(nmbSplitPartiles, [&](auto const& nbRefinedPart) {
+        core::apply(std::tuple<NbRefinedParts...>{}, [&](auto const& nbRefinedPart) {
             if (!p)
-                p = maker(userDim, userInterpOrder, userNbRefinedPart, dimension, interp_order,
+                p = maker(userDim, userInterpOrder, userNbRefinedPart, Dimension{}, InterpOrder{},
                           nbRefinedPart);
         });
     }
-
 
     template<typename Maker>
     auto makeAtRuntime(std::size_t dim, std::size_t interpOrder, size_t nbRefinedPart,
                        Maker&& maker)
     {
         using Ptr_t = decltype(maker(dim, interpOrder, nbRefinedPart, 1, 1, 1));
-        Ptr_t p;
-        if constexpr (std::is_same_v<Ptr_t, bool>)
-            p = false;
-        else
-            p = nullptr;
+        Ptr_t p{};
 
-        core::apply(possibleDimensions(), [&](auto const& dim1) {
-            core::apply(possibleInterpOrders(), [&](auto const& order) {
-                _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, dim1, order);
-            });
+        core::apply(possibleSimulators(), [&](auto const& simType) {
+            _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, simType);
         });
 
         return p;
     }
 
-
 } // namespace core
 
 } // namespace PHARE
-
-
-
 
 #endif

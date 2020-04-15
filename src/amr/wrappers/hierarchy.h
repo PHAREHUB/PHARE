@@ -184,9 +184,8 @@ public:
         {
         }
 
-        template<typename Dimension, typename InterpOrder>
-        std::shared_ptr<Hierarchy> operator()(std::size_t userDim, std::size_t userInterpOrder,
-                                              Dimension dimension, InterpOrder interp_order);
+        template<typename Dimension>
+        std::shared_ptr<Hierarchy> operator()(std::size_t userDim, Dimension dimension);
 
         PHARE::initializer::PHAREDict& dict;
     };
@@ -195,9 +194,8 @@ public:
     {
         PHARE::initializer::PHAREDict& theDict
             = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-        auto dim         = theDict["simulation"]["dimension"].template to<int>();
-        auto interpOrder = theDict["simulation"]["interp_order"].template to<int>();
-        return core::makeAtRuntime<Maker>(dim, interpOrder, Maker{theDict});
+        auto dim = theDict["simulation"]["dimension"].template to<int>();
+        return core::makeAtRuntime<Maker>(dim, Maker{theDict});
     }
 
 
@@ -236,15 +234,12 @@ private:
     }
 };
 
-template<typename Dimension, typename InterpOrder>
-std::shared_ptr<Hierarchy> Hierarchy::Maker::
-operator()(std::size_t userDim, std::size_t userInterpOrder, Dimension dimension,
-           InterpOrder interp_order)
+template<typename Dimension>
+std::shared_ptr<Hierarchy> Hierarchy::Maker::operator()(std::size_t userDim, Dimension dimension)
 {
     if (userDim == dimension())
     {
-        size_t constexpr d = dimension();
-        return std::make_shared<DimHierarchy<d>>(dict);
+        return std::make_shared<DimHierarchy<dimension()>>(dict);
     }
     return nullptr;
 }

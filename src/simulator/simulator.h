@@ -27,7 +27,7 @@ public:
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart = 2>
+template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
 class Simulator : public ISimulator
 {
 public:
@@ -180,26 +180,6 @@ struct SimulatorMaker
     }
 
     std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy_;
-
-    template<typename Dimension, typename InterpOrder>
-    std::unique_ptr<ISimulator> operator()(std::size_t userDim, std::size_t userInterpOrder,
-                                           Dimension dimension, InterpOrder interp_order)
-    {
-        if (userDim == dimension() and userInterpOrder == interp_order())
-        {
-            std::size_t constexpr d  = dimension();
-            std::size_t constexpr io = interp_order();
-
-            PHARE::initializer::PHAREDict& theDict
-                = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-            return std::make_unique<Simulator<d, io>>(theDict, hierarchy_);
-        }
-        else
-        {
-            return nullptr;
-        }
-    }
-
 
     template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
     std::unique_ptr<ISimulator> operator()(std::size_t userDim, std::size_t userInterpOrder,

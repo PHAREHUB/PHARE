@@ -206,7 +206,7 @@ struct DimInterp
 template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
-    using PHARETypes = PHARE::PHARE_Types<dim, interp_order>;
+    using PHARETypes = PHARE::PHARE_Types<dim, interp_order, 2 /* = nbRefineParts */>;
     using Field      = typename PHARETypes::Field_t;
     using GridLayout = typename PHARETypes::GridLayout_t;
     using Electromag = typename PHARETypes::Electromag_t;
@@ -260,11 +260,11 @@ struct ElectromagBuffers
 template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
-    using PHARETypes                 = PHARE::PHARE_Types<dim, interp_order>;
-    using Field                      = typename PHARETypes::Field_t;
-    using GridLayout                 = typename PHARETypes::GridLayout_t;
-    using Ions                       = typename PHARETypes::Ions_t;
-    using ParticleArray              = typename PHARETypes::ParticleArray_t;
+    using PHARETypes    = PHARE::PHARE_Types<dim, interp_order, 2 /* = nbRefineParts */>;
+    using Field         = typename PHARETypes::Field_t;
+    using GridLayout    = typename PHARETypes::GridLayout_t;
+    using Ions          = typename PHARETypes::Ions_t;
+    using ParticleArray = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
     Field ionDensity;
@@ -436,9 +436,9 @@ struct IonUpdaterTest : public ::testing::Test
 {
     static constexpr auto dim          = DimInterpT::dimension;
     static constexpr auto interp_order = DimInterpT::interp_order;
-    using PHARETypes                   = PHARE::PHARE_Types<dim, interp_order>;
-    using Ions                         = typename PHARETypes::Ions_t;
-    using Electromag                   = typename PHARETypes::Electromag_t;
+    using PHARETypes    = PHARE::PHARE_Types<dim, interp_order, 2 /* = nbRefineParts */>;
+    using Ions          = typename PHARETypes::Ions_t;
+    using Electromag    = typename PHARETypes::Electromag_t;
     using GridLayout    = typename PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
     using ParticleArray = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;

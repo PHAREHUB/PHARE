@@ -11,14 +11,15 @@ using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::solver;
 
-static constexpr std::size_t dim         = 1;
-static constexpr std::size_t interpOrder = 1;
+static constexpr std::size_t dim          = 1;
+static constexpr std::size_t interpOrder  = 1;
+static constexpr std::size_t nbRefinePart = 2;
 
-using Simulator         = PHARE::Simulator<dim, interpOrder>;
+using Simulator         = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
 using HybridModelT      = Simulator::HybridModel;
 using MHDModelT         = Simulator::MHDModel;
 using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder>;
+using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
 
 double density(double x)
 {

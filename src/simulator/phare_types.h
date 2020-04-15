@@ -5,7 +5,7 @@
 
 namespace PHARE
 {
-template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_ = 2>
+template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_>
 struct PHARE_Types
 {
     static auto constexpr dimension     = dimension_;

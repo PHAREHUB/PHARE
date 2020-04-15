@@ -101,7 +101,7 @@ struct RuntimeDiagnosticInterface
                     std::size_t constexpr io = interp_order();
                     std::size_t constexpr nb = nbRefinedPart();
 
-                    using PHARE_Types      = PHARE::PHARE_Types<d, io>;
+                    using PHARE_Types      = PHARE::PHARE_Types<d, io, nb>;
                     using ModelView        = typename PHARE_Types::ModelView;
                     using DiagnosticWriter = typename PHARE_Types::DiagnosticWriter;
 
