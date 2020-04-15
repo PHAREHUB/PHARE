@@ -29,11 +29,13 @@ namespace amr
     };
 
 
-    template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
-             std::size_t refinedParticleNbr, typename SplitT>
+    template<ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
     public:
+        static constexpr size_t dim         = Splitter::dimension;
+        static constexpr size_t interpOrder = Splitter::interpOrder;
+
         ParticlesRefineOperator()
             : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
         {
@@ -146,7 +148,7 @@ namespace amr
             // index relative to the interior
 
 
-            SplitT split{core::Point<int32, dim>{ratio}};
+            Splitter split{core::Point<int32, dim>{ratio}};
 
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
@@ -244,7 +246,7 @@ namespace amr
 
             for (auto iDim = 0u; iDim < dim; ++iDim)
             {
-                growingVec[iDim] = SplitT::maxCellDistanceFromSplit();
+                growingVec[iDim] = Splitter::maxCellDistanceFromSplit();
             }
             splitBox.grow(growingVec);
 
@@ -269,20 +271,14 @@ namespace PHARE::amr
 template<typename Splitter>
 struct RefinementParams
 {
-    static constexpr size_t dimension     = Splitter::dimension;
-    static constexpr size_t interpOrder   = Splitter::interpOrder;
-    static constexpr size_t nbRefinedPart = Splitter::nbRefinedPart;
-
     using InteriorParticleRefineOp
-        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::interior,
-                                  nbRefinedPart, Splitter>;
+        = ParticlesRefineOperator<ParticlesDataSplitType::interior, Splitter>;
+
     using CoarseToFineRefineOpOld
-        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::coarseBoundaryOld,
-                                  nbRefinedPart, Splitter>;
+        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryOld, Splitter>;
 
     using CoarseToFineRefineOpNew
-        = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::coarseBoundaryNew,
-                                  nbRefinedPart, Splitter>;
+        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryNew, Splitter>;
 };
 
 } // namespace PHARE::amr
