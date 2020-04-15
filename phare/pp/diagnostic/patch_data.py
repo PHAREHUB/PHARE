@@ -18,7 +18,7 @@ class PatchData(ABC):
     def __init__(self):
         raise ValueError("Abstract class not to be instantiated manually")
 
-    def data(self, str = ""):
+    def data(self, ds_name=""):
         raise ValueError("Abstract class not to be instantiated manually")
 
     def __init__(self, diag, quantity_key, h5item):
@@ -31,12 +31,14 @@ class PatchData(ABC):
             self.h5item.parent.name
             if isinstance(self.h5item, h5py.Dataset)
             else self.h5item.name
-        ).split("/")[-1] # take last entry in path of hdf5 item
+        ).split("/")[
+            -1
+        ]  # take last entry in path of hdf5 item
 
     def items(self):
         return self.data().items()
 
-    def nGhosts(self, dataset_key=""):
+    def nGhosts(self, dataset_key):
         if isinstance(self.h5item, h5py.Dataset):  # Fields
             return int(self.data()[dataset_key].attrs["ghosts"])
         if dataset_key in list(self.h5item.keys()):  # VecFields
@@ -83,7 +85,6 @@ class _FluidPatchData(PatchData):
         return datasets
 
 
-
 class _ParticlePatchData(PatchData):
     dataset_keys = ["weight", "charge", "iCell", "delta", "v"]
 
@@ -97,7 +98,7 @@ class _ParticlePatchData(PatchData):
             return datasets[ds_name]
         return datasets
 
-    def nGhosts(self, dataset_key=""):
+    def nGhosts(self, ds_name=""):
         if "ghosts" in self.h5item.attrs:
             return int(self.h5item.attrs["ghosts"])
         raise ValueError(
@@ -112,10 +113,15 @@ def particlesForDiags(diags):
     particles, particle_pops = [], {}
     for diag in diags:
         if diag.patch_data_type is _ParticlePatchData:
-            assert 1 in diag.levels  # levelGhost has no level0
+            # levelGhost has no level0, patchGhost always has level0
+            assert any(n in diag.levels for n in [0, 1])
             patches = list(diag.levels[1].patches.values())
+            if not len(patches) and diag.file.endswith("patchGhost.h5"):
+                patches = list(diag.levels[0].patches.values())
+            assert len(patches)
             pop_name = patches[0].patch_data.pop_name
             name = patches[0].patch_data.name
+            assert name in ("domain", "patchGhost", "levelGhost")
             if pop_name not in particle_pops:
                 particle_pops[pop_name] = {}
             particle_pops[pop_name][name] = diag

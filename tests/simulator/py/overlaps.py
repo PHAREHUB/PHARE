@@ -18,8 +18,12 @@ from phare.pp.diagnostic.data.particle_overlap import (
     ParticleOverlapComparator,
     getParticleOverlapsFrom,
 )
-from phare.pp.diagnostic.data.particle_level_overlap import LevelParticleOverlap
-from phare.pp.diagnostic.data.particle_patch_overlap import DomainParticleOverlap
+from phare.pp.diagnostic.data.level_ghost_particle_overlap import (
+    LevelGhostParticleOverlap,
+)
+from phare.pp.diagnostic.data.patch_ghost_particle_overlap import (
+    PatchGhostParticleOverlap,
+)
 
 from datetime import datetime, timezone
 from ddt import ddt, data
@@ -37,7 +41,7 @@ class SimulatorOverlaps(InitValueValidation):
         "em": 18,
         # 2 pops, 1 vecfields + 1 field per pop , + ion density/bulkV
         "fluid": 36,
-        # 2 pops, 3 patchghost/2 levelghost
+        # 10 =  2 pops * (2 intralevel, 1 periodic patchghost) + 2 levelghost
         "particles": 10,
     }
 
@@ -49,7 +53,9 @@ class SimulatorOverlaps(InitValueValidation):
             out = diag_out_dir + str(dim) + "_" + str(interp)
             diagsList = [Diagnostics(out + "_" + str(i)).diags for i in range(0, 2)]
             self._checkEM(diagsList, overlapNbr=SimulatorOverlaps.nbr_overlaps["em"])
-            self._checkFluid(diagsList, overlapNbr=SimulatorOverlaps.nbr_overlaps["fluid"])
+            self._checkFluid(
+                diagsList, overlapNbr=SimulatorOverlaps.nbr_overlaps["fluid"]
+            )
             self._checkParticles(
                 diagsList, overlapNbr=SimulatorOverlaps.nbr_overlaps["particles"]
             )

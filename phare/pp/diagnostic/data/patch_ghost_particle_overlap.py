@@ -13,9 +13,9 @@ class PatchGhostParticleOverlap(ParticleOverlap):
     Parameters:
     -------------------
 
-    domainPatch : patch we use as a domainParticle source
-    ghostPatch  : Patch object with ghost box overlap of patch0
-    data_name   : ghostPatch is the patch witch which domainPatch has a detected overlap
+    lowerXPatch : patch with lower X origin
+    upperXPatch : patch with upper X origin
+    data_name   : Unused for particles
     nGhosts     : number of ghosts associated with the Particles datasets
     sizes       : size of the overlap box
     particles   : Particles object containing all particle types (domain, patchghost, lvlGhost) for the whole hierarchy
@@ -24,25 +24,28 @@ class PatchGhostParticleOverlap(ParticleOverlap):
     """
 
     def __init__(
-        self, domainPatch, ghostPatch, data_name, nGhosts, sizes, particles, periodic
+        self, lowerXPatch, upperXPatch, data_name, nGhosts, sizes, particles, periodic
     ):
         ParticleOverlap.__init__(
-            self, domainPatch, ghostPatch, data_name, nGhosts, sizes
+            self, lowerXPatch, upperXPatch, data_name, nGhosts, sizes
         )
-        self.domainPatch = domainPatch
-        self.ghostPatch = ghostPatch
+
+        self.domainPatch = lowerXPatch
+        self.ghostPatch = get_ghost_patch(
+            particles, upperXPatch, PatchGhostParticleOverlap
+        )
         self.particles = particles
         self.periodic = periodic
+        self.is_mirror = False
 
         import copy  # copy and swap domain/ghost patches
 
         self.mirror = copy.copy(self)
-        self.mirror.domainPatch = particles.domainDiag.levels[
-            domainPatch.patch_level.lvlNbr
-        ].patches[ghostPatch.id]
+        self.mirror.domainPatch = upperXPatch
         self.mirror.ghostPatch = get_ghost_patch(
-            particles, self.domainPatch, PatchGhostParticleOverlap
+            particles, lowerXPatch, PatchGhostParticleOverlap
         )
+        self.mirror.is_mirror = True
         self.mirror.mirror = self
 
 
@@ -60,14 +63,16 @@ def _level_has_patchghost(particles, lvlNbr):
     return len(particles.pGhostDiag.levels[lvlNbr].patches.keys())
 
 
-def _calculate_1d(particles, patch0, patch1, periodic=False):
+def _calculate_1d(particles, refPatch, cmpPatch, periodic=False):
+    assert refPatch.patch_level.diag.dim == 1
     assert isinstance(particles, Particles)
-    assert all([isinstance(x, Patch) for x in [patch0, patch1]])
-    if _level_has_patchghost(particles, patch0.patch_level.lvlNbr):
+    assert all([isinstance(x, Patch) for x in [refPatch, cmpPatch]])
+
+    if _level_has_patchghost(particles, refPatch.patch_level.lvlNbr):
         return overlap_calculate_1d(
             PatchGhostParticleOverlap,
-            patch0,
-            get_ghost_patch(particles, patch1, PatchGhostParticleOverlap),
+            refPatch,
+            cmpPatch,
             "particles",
             particles=particles,
             periodic=periodic,
@@ -81,15 +86,14 @@ def _periodic_1d(particlesList):
         diag = particles.domainDiag
         for lvlNbr, patch_level in diag.levels.items():
             periodic_overlaps = periodic_intralevel_1d(particles, patch_level)
-
-            # we only need one out of the five, v is arbitrary (and short ;))
-            if "v" in periodic_overlaps:
-                minX, maxX = periodic_overlaps["v"]
+            data_names = list(periodic_overlaps.keys())
+            if len(data_names):
+                # we only need one out of the five, hence [0]
+                minX, maxX = periodic_overlaps[data_names[0]]
                 if len(minX) and len(maxX):
                     overlaps += _calculate_1d(
                         particles, minX[0], maxX[0], periodic=True
                     )
-
     return overlaps
 
 
@@ -101,5 +105,4 @@ def _intralevel_1d(particlesList):
             for i, refPatch in enumerate(patches):
                 for cmpPatch in patches[i + 1 :]:
                     overlaps += _calculate_1d(particles, refPatch, cmpPatch)
-
     return overlaps

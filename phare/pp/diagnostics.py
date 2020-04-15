@@ -30,6 +30,7 @@ def _regex_to_ignore_population_name_in(h5FilesPerPatchDataType):
             regexing[Type].append((file, re.compile("^" + left + "(.*)" + right + "$")))
     return regexing
 
+
 """Dict per type with list of possible input HDF5 Files/file quantity strings"""
 h5FilesPerPatchDataType = {
     _EMPatchData: ["EM_B.h5", "EM_E.h5"],
@@ -46,10 +47,14 @@ h5FilesPerPatchDataType = {
     ],
 }
 """List of all files with no associated type"""
-h5Files = [f for files in itertools.chain(h5FilesPerPatchDataType.values()) for f in files]
+h5Files = [
+    f for files in itertools.chain(h5FilesPerPatchDataType.values()) for f in files
+]
 
 """PatchDataType to tuple (quantity_file_string, regex_for_quantity_file_string"""
-h5FilesRegexesPerPatchDataType = _regex_to_ignore_population_name_in(h5FilesPerPatchDataType)
+h5FilesRegexesPerPatchDataType = _regex_to_ignore_population_name_in(
+    h5FilesPerPatchDataType
+)
 """File quantity string to compiled regex for said quauntity string"""
 h5FilesRegexesPerQuantity = {
     PatchDataType: regex_quantity_list
@@ -59,6 +64,7 @@ h5FilesRegexesPerQuantity = {
 
 
 class Diagnostic:
+    ROUNDING_PLACES = 5
     """
     Convenience class for accessing quantities within contained Diagnostic objects
 
@@ -78,7 +84,8 @@ class Diagnostic:
         self.cells = [int(v) for v in self.h5file.attrs["cells"].split(",")]
         self.origin = [float(v) for v in self.h5file.attrs["origin"].split(",")]
         self.domain_upper = [
-            dl * n + ori for dl, n, ori in zip(self.dl, self.cells, self.origin)
+            round(dl * n + ori, Diagnostic.ROUNDING_PLACES)
+            for dl, n, ori in zip(self.dl, self.cells, self.origin)
         ]
         self.dim = len(self.dl)
         self.initialize_patch_hierarchy_from_hdf5_file()
@@ -188,7 +195,7 @@ def patchDataTypeFrom(file):
         for h5File, regex in regexs:
             if regex.match(file):
                 return PatchDataType
-    assert False
+    raise ValueError("Unable to deduce PatchDataType from file " + file)
 
 
 def selectDiags(diags, quantity):

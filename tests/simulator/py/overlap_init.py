@@ -19,8 +19,12 @@ from phare.pp.diagnostic.data.particle_overlap import (
     ParticleOverlapComparator,
     getParticleOverlapsFrom,
 )
-from phare.pp.diagnostic.data.particle_level_overlap import LevelParticleOverlap
-from phare.pp.diagnostic.data.particle_patch_overlap import DomainParticleOverlap
+from phare.pp.diagnostic.data.level_ghost_particle_overlap import (
+    LevelGhostParticleOverlap,
+)
+from phare.pp.diagnostic.data.patch_ghost_particle_overlap import (
+    PatchGhostParticleOverlap,
+)
 
 from phare.pp.diagnostics import (
     Diagnostics,
@@ -48,7 +52,19 @@ class OverlapValueValidation(InitValueValidation):
     valid1D = [
         add_to_dict(
             {
-                "id": 0,
+                "refinement_boxes": {
+                    "L0": {
+                        "B0": [
+                            (5,),
+                            (29,),
+                        ],  # not touching overlap gap of 1 cell, 2 on fine level
+                        "B1": [(31,), (55,)],
+                    }
+                },
+            }
+        ),
+        add_to_dict(
+            {
                 "refinement_boxes": {
                     "L0": {"B0": [(0,), (9,)], "B1": [(55,), (64,)]},
                     "L1": {"B0": [(0,), (9,)], "B1": [(120,), (129,)]},
@@ -64,7 +80,6 @@ class OverlapValueValidation(InitValueValidation):
         ),
         add_to_dict(
             {
-                "id": 1,
                 "refinement_boxes": {
                     "L0": {"B0": [(5,), (55,)]},
                     "L1": {"B0": [(20,), (100,)]},
@@ -72,46 +87,41 @@ class OverlapValueValidation(InitValueValidation):
                 "max_nbr_levels": 3,
             }
         ),
-        add_to_dict({"id": 2, "refinement_boxes": {"L0": {"B0": [(5,), (54,)]}},}),
+        add_to_dict({"refinement_boxes": {"L0": {"B0": [(5,), (54,)]}},}),
     ]
 
     @data(*valid1D)
     def test_1d(self, input):
         dim = 1
+        test_id = self.id().split("_")[-1]  # first id == "test_1d_1"
         min_interp = OverlapValueValidation.min_interp
         max_interp = OverlapValueValidation.max_interp + 1
         for interp in range(min_interp, max_interp):
             # blocks conflicts between runs - possible bug
-            input["diag_options"]["options"]["dir"] = (
-                diag_out_dir
-                + "_"
-                + str(dim)
-                + "_"
-                + str(interp)
-                + "_"
-                + str(input["id"])
+            test_diag_dir = (
+                diag_out_dir + "_" + str(dim) + "_" + str(interp) + "_" + test_id
             )
+            input["diag_options"]["options"]["dir"] = test_diag_dir
             diags = self.runAndDump(dim, interp, input)
-            self._checkEM(getEMOverlapsFrom(diags))
-            self._checkFluid(getFluidOverlapsFrom(diags))
+            self._checkFields(getEMOverlapsFrom(diags))
+            self._checkFields(getFluidOverlapsFrom(diags))
             self._checkParticles(getParticleOverlapsFrom(diags), dim, interp)
 
-    def _checkEM(self, overlaps):
+    def _checkFields(self, overlaps):
         self.assertTrue(len(overlaps))
         for overlap in overlaps:
             patch0_data, patch1_data = overlap.shared_data()
-            self.assertTrue(np.allclose(patch0_data, patch1_data))
-
-    def _checkFluid(self, overlaps):
-        self.assertTrue(len(overlaps))
-        for overlap in overlaps:
-            patch0_data, patch1_data = overlap.shared_data()
-            self.assertTrue(np.allclose(patch0_data, patch1_data, atol=1e-07))
+            self.assertTrue(len(patch0_data) == len(patch1_data))
+            if len(patch0_data) > 1:  # fluid is 1 value and can be 0
+                zeros = np.zeros(len(patch0_data))
+                self.assertFalse(np.array_equal(patch0_data, zeros))
+                self.assertFalse(np.array_equal(patch1_data, zeros))
+            self.assertTrue(np.allclose(patch0_data, patch1_data, atol=1e-6))
 
     def _checkParticles(self, overlaps, dim, interp):
         self.assertTrue(len(overlaps))
         for overlap in overlaps:
-            if isinstance(overlap, DomainParticleOverlap):
+            if isinstance(overlap, PatchGhostParticleOverlap):
                 self._checkPatchGhost(overlap)
                 self._checkPatchGhost(overlap.mirror)
             else:
@@ -119,44 +129,39 @@ class OverlapValueValidation(InitValueValidation):
 
     def _checkPatchGhost(self, overlap):
         assert isinstance(overlap, Overlap)
-        from phare.pp.diagnostic.patch import max_amr_index_for
 
         domain, ghost = overlap.domainPatch, overlap.ghostPatch
-
-        domain_iCell, ghost_iCell = [
-            i.patch_data.data("iCell") for i in [domain, ghost]
-        ]
-
-        uniq_ghostiCell = np.unique(ghost_iCell).tolist()
-        uniq_domain_iCell = np.unique(domain_iCell).tolist()
-
-        max_x_amr_idx = max_amr_index_for(domain.patch_level, "x")
-
-        icells = []
+        domain_iCell, ghost_iCell = [patch.data("iCell") for patch in [domain, ghost]]
+        matching_iCells = []
 
         if overlap.periodic:
-            for index in [0, max_x_amr_idx]:
-                icells.append(index)
-                for nGhost in range(1, overlap.nGhosts + 1):
-                    icells.append(index - nGhost)
+            """
+              for periodic overlaps, the iCells do not actually match
+              lower_x_patch iCell -1 == upper_x iCell domain_size - 1
+            """
+            from phare.pp.diagnostic.patch import max_amr_index_for
+
+            max_x_amr_index = max_amr_index_for(domain.patch_level, "x")
+            for nGhost in range(1, overlap.nGhosts + 1):
+                shift = nGhost - 1 if overlap.is_mirror else -nGhost
+                matching_iCells.extend([shift, max_x_amr_index + shift])
         else:
-            for i in uniq_ghostiCell:
+            """
+              otherwise we use the unique list of ghostPatch icells
+            """
+            uniq_domain_iCell = np.unique(domain_iCell).tolist()
+            for i in np.unique(ghost_iCell).tolist():
                 for index in np.where(np.array(uniq_domain_iCell) == i)[0]:
-                    icells.append(uniq_domain_iCell[index])
+                    matching_iCells.append(uniq_domain_iCell[index])
 
-        icells = np.unique(icells).tolist()
-
-        pcells, gcells = [], []
-        for i in icells:
-            pcells.extend(np.where(np.array(domain_iCell) == i)[0])
-            gcells.extend(np.where(np.array(ghost_iCell) == i)[0])
-
-        self.assertTrue(len(pcells) > 0 and len(gcells) > 0)
-        self.assertEqual(len(pcells), len(gcells))
+        domain_indices, ghost_indices = [], []
+        for i in np.unique(matching_iCells).tolist():
+            domain_indices.extend(np.where(np.array(domain_iCell) == i)[0])
+            ghost_indices.extend(np.where(np.array(ghost_iCell) == i)[0])
 
         self.assertEqual(
-            ParticleOverlapComparator(domain, pcells),
-            ParticleOverlapComparator(ghost, gcells),
+            ParticleOverlapComparator(domain, domain_indices),
+            ParticleOverlapComparator(ghost, ghost_indices),
         )
 
     def _split_coarse(self, coarseDomain, coarsePatchGhost, dim, interp):
@@ -165,18 +170,17 @@ class OverlapValueValidation(InitValueValidation):
 
         arrays = {dataset: [] for dataset in _ParticlePatchData.dataset_keys}
         for patch in [coarseDomain, coarsePatchGhost]:
-            [
-                arrays[dataset].extend(patch.patch_data.data(dataset)[:])
-                for dataset in _ParticlePatchData.dataset_keys
-            ]
+            for dataset in _ParticlePatchData.dataset_keys:
+                arrays[dataset].extend(patch.data(dataset)[:])
+
         contiguous_t = getattr(  # C++ type = ContiguousParticles<dim, interp>
             tst, "ContiguousParticles_" + str(dim) + "_" + str(interp)
         )
         contiguousParticles = contiguous_t(len(arrays["charge"]))  # charge is always 1d
-        [
+
+        for dataset in _ParticlePatchData.dataset_keys:
             object.__setattr__(contiguousParticles, dataset, arrays[dataset][:])
-            for dataset in _ParticlePatchData.dataset_keys
-        ]
+
         return contiguousParticles.split()
 
     def _checkLevelGhost(self, overlap, dim, interp):
@@ -187,21 +191,21 @@ class OverlapValueValidation(InitValueValidation):
             overlap.coarseDomainPatch, overlap.coarsePatchGhostPatch, dim, interp
         )
 
-        icells = [overlap.sizes[0] + g for g in range(overlap.nGhosts)]
+        """
+        lower_x - overlap.firstCommonFineiCell[0] == finePatchLowerXAMRIndex - nGhosts
+        upper_x - overlap.firstCommonFineiCell[0] == finePatchUpperXAMRIndex
+        """
+        icells = [overlap.firstCommonFineiCell[0] + g for g in range(overlap.nGhosts)]
 
-        def where(cells):
-            lst = []
-            for i in icells:
-                lst.extend(np.where(np.array(cells) == i)[0])
-            return lst
+        patchghost_indices, levelghost_indices = [], []
+        for i in icells:
+            patchghost_indices.extend(np.where(coarseSplitParticles.iCell == i)[0])
+            levelghost_indices.extend(np.where(fineLevelGhost.data("iCell") == i)[0])
 
-        gcells = where(fineLevelGhost.patch_data.data("iCell"))
-        pcells = where(coarseSplitParticles.iCell)
-
-        self.assertEqual(len(pcells), len(gcells))
+        self.assertEqual(len(patchghost_indices), len(levelghost_indices))
         self.assertEqual(
-            ParticleOverlapComparator(coarseSplitParticles, pcells),
-            ParticleOverlapComparator(fineLevelGhost, gcells),
+            ParticleOverlapComparator(coarseSplitParticles, patchghost_indices),
+            ParticleOverlapComparator(fineLevelGhost, levelghost_indices),
         )
 
 

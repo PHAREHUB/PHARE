@@ -1,6 +1,7 @@
 import numpy as np, math
 from phare.pp.diagnostics import Patch, _ParticlePatchData, Particles
 from .overlap import Overlap
+from phare.data.wrangler import safe_round
 
 
 class ParticleOverlap(Overlap):
@@ -9,80 +10,84 @@ class ParticleOverlap(Overlap):
 
 
 def getParticleOverlapsFrom(diags):
-    from .particle_level_overlap import getLevelGhostOverlaps
-    from .particle_patch_overlap import getPatchGhostOverlaps
+    from .level_ghost_particle_overlap import getLevelGhostOverlaps
+    from .patch_ghost_particle_overlap import getPatchGhostOverlaps
 
     return getLevelGhostOverlaps(diags) + getPatchGhostOverlaps(diags)
 
 
-def get_ghost_patch(particles, patch, ghostType):
-    from .particle_level_overlap import LevelParticleOverlap
-    from .particle_patch_overlap import DomainParticleOverlap
+def get_ghost_patch(particles, refPatch, ghostType):
+    from .level_ghost_particle_overlap import LevelGhostParticleOverlap
+    from .patch_ghost_particle_overlap import PatchGhostParticleOverlap
 
-    assert ghostType == DomainParticleOverlap or ghostType == LevelParticleOverlap
+    assert (
+        ghostType == PatchGhostParticleOverlap or ghostType == LevelGhostParticleOverlap
+    )
 
-    gDiag = particles.pGhostDiag if ghostType is DomainParticleOverlap else particles.lGhostDiag
+    gDiag = particles.lGhostDiag
+    if ghostType is PatchGhostParticleOverlap:
+        gDiag = particles.pGhostDiag
 
-    return gDiag.levels[patch.patch_level.lvlNbr].patches[patch.id]
+    return gDiag.levels[refPatch.patch_level.lvlNbr].patches[refPatch.id]
 
 
 class ParticleOverlapComparator:
+    """
+    Class to compare PatchGhost with overlapping same level PatchDomain
+          or compare LevelGhost with overlapping coarser level PatchDomain
+
+    Parameters:
+    -------------------
+
+    patch     : Patch object / or C++ ContiguousParticles class representing a Patch object
+    indices   : Subset of Particle indices to use for Comparision with other "self.patch"
+                  i.e. self.deltas[self.indices[0]] == that.deltas[that.indices[0]]
+
+    """
+
     def __init__(self, patch, indices):
+
         assert isinstance(patch, Patch) or type(patch).__name__.startswith(
             "ContiguousParticles"
         )
         if isinstance(patch, Patch):
             self.dim = len(patch.origin)
         else:  # or SoA ContigousParticles
-            self.dim = math.floor(len(patch.iCell) / len(patch.weight))
+            self.dim = safe_round(len(patch.iCell), len(patch.weight))
         self.patch = patch
         self.indices = indices
 
-    def sort(self):  # ONLY WORKS FOR 1D!
-        """returns list[tuple()] sorted on tuple[0])
-            tuple[0] = particle["icell"] + particle["delta"]
-            tuple[1] = position of icell/delta in contigous arrays/particle index
-        """
-
-        icells = self._dataset("iCell")
-        delta = [
-            (particleDelta + icells[self.indices[i]], self.indices[i])
-            for i, particleDelta in enumerate(
-                # select deltas from indices
-                list(map(self._dataset("delta").__getitem__, self.indices))
+    def sortedIndices(self):  # ONLY WORKS FOR 1D!
+        """returns list[indices] sorted on iCell + delta"""
+        sorted_zip = sorted(
+            zip(
+                self._dataset("iCell")[self.indices]
+                + self._dataset("delta")[self.indices],
+                self.indices,
             )
-        ]
-        return sorted(delta, key=lambda x: x[0])
-
-    def cmp(self, that, data_name, sortedDeltaTuple0, sortedDeltaTuple1, dim):
-        dataset0, dataset1 = [x._dataset(data_name) for x in [self, that]]
-
-        return all(
-            [
-                np.array_equiv(
-                    dataset0[
-                        sortedDeltaTuple0[i][1] * dim : sortedDeltaTuple0[i][1] * dim
-                        + dim
-                    ],
-                    dataset1[
-                        sortedDeltaTuple1[i][1] * dim : sortedDeltaTuple1[i][1] * dim
-                        + dim
-                    ],
-                )
-                for i in range(len(sortedDeltaTuple0))
-            ]
         )
+        return [index for _, index in sorted_zip]
+
+    def cmp(self, that, data_name, sortedIndices, dim):
+        ref_datasets = [x._dataset(data_name) for x in [self, that]]
+        cmp_datasets = []
+        for i, dataset in enumerate(ref_datasets):
+            cmp_datasets.append(
+                dataset.reshape(safe_round(len(dataset), dim), dim)[sortedIndices[i]]
+            )
+        return np.array_equiv(*cmp_datasets)
 
     def __eq__(self, that):
         assert type(self) is type(that)
+        assert len(self.indices) == len(that.indices)
 
-        sortedDeltaTuple0, sortedDeltaTuple1 = self.sort(), that.sort()
-        return len(sortedDeltaTuple0) == len(sortedDeltaTuple1) and all(
+        sortedIndices = [self.sortedIndices(), that.sortedIndices()]
+        return len(sortedIndices[0]) == len(sortedIndices[1]) and all(
             [
-                self.cmp(that, "v", sortedDeltaTuple0, sortedDeltaTuple1, 3),
-                self.cmp(that, "delta", sortedDeltaTuple0, sortedDeltaTuple1, self.dim),
+                self.cmp(that, "v", sortedIndices, 3),
+                self.cmp(that, "delta", sortedIndices, self.dim),
                 [
-                    self.cmp(that, data_name, sortedDeltaTuple0, sortedDeltaTuple1, 1)
+                    self.cmp(that, data_name, sortedIndices, 1)
                     for data_name in ["weight", "charge"]
                 ],
             ]
@@ -90,6 +95,6 @@ class ParticleOverlapComparator:
 
     def _dataset(self, data_name):
         if isinstance(self.patch, Patch):
-            return self.patch.patch_data.data(data_name)
+            return np.asarray(self.patch.data(data_name))
         # else ContigousParticles
-        return getattr(self.patch, data_name)
+        return np.asarray(getattr(self.patch, data_name))

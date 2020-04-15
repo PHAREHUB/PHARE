@@ -43,11 +43,13 @@ class FluidInitValidation(InitValueValidation):
             diags = self.runAndDump(dim=1, interp=interp, input=simInputs)[
                 _FluidPatchData.__name__
             ]
-            self.checkPopulationDensityEqualsUserFunction(diags, interp)
-            self.checkPopulationFluxEqualsUserFunction(diags, interp)
-            self.checkIonDensityAndVelocityConsistentWithPopulations(diags, interp)
+            self.checkPopulationDensityEqualsUserFunction(diags, dim, interp)
+            self.checkPopulationFluxEqualsUserFunction(diags, dim, interp)
+            self.checkIonDensityAndVelocityConsistentWithPopulations(diags, dim, interp)
 
-    def checkIonDensityAndVelocityConsistentWithPopulations(self, fluid_diags, interp):
+    def checkIonDensityAndVelocityConsistentWithPopulations(
+        self, fluid_diags, dim, interp
+    ):
         tolerance = 1e-6
         sim = ph.globals.sim
         model_dict = ph.globals.sim.model.model_dict
@@ -65,9 +67,7 @@ class FluidInitValidation(InitValueValidation):
             ions_density_diag.levels[0], shared_patch_border=True
         )["density"]
 
-        np.testing.assert_allclose(
-            total_density, ions_density, rtol=tolerance,
-        )
+        np.testing.assert_allclose(total_density, ions_density, atol=tolerance)
 
         total_flux = {key: _sum_pop_patches(pop_fluxes, key) for key in ["x", "y", "z"]}
         ions_bulkVelocity_diag = selectDiag(fluid_diags, "ions_bulkVelocity")
@@ -77,10 +77,11 @@ class FluidInitValidation(InitValueValidation):
 
         for vel, flux in ions_bulkVelocity.items():
             np.testing.assert_allclose(
-                total_flux[vel] / total_density, flux, rtol=tolerance
+                total_flux[vel] / total_density, flux, atol=tolerance
             )
 
-    def checkPopulationFluxEqualsUserFunction(self, fluid_diags, interp):
+    def checkPopulationFluxEqualsUserFunction(self, fluid_diags, dim, interp):
+        threshold = 0.007
         fn_name = "flux"
         sim = ph.globals.sim
         model_dict = ph.globals.sim.model.model_dict
@@ -90,9 +91,9 @@ class FluidInitValidation(InitValueValidation):
         )
 
         def user_flux(pop_name, component_name, x):
-            return model_dict[pop_name]["v" + component_name](x) * model_dict[pop_name]["density"](
-                x
-            )
+            return model_dict[pop_name]["v" + component_name](x) * model_dict[pop_name][
+                "density"
+            ](x)
 
         datasets, std_devs = _get_std_devs_for(sim, pop_fluxes, model_dict, user_flux)
         dev_per_ppc = _sort_std_devs_per_ppc(pop_fluxes, std_devs, model_dict)
@@ -104,11 +105,18 @@ class FluidInitValidation(InitValueValidation):
         )
         for key, noise in noises.items():
             _save_std_fig(
-                nppc, noise, ratios[key], fn_name + key, test_threashold=0.007
+                nppc,
+                noise,
+                ratios[key],
+                fn_name + key,
+                dim,
+                interp,
+                test_threshold=threshold,
             )
-        _save_dbg_fig(datasets, model_dict, fn_name)
+        _save_dbg_fig(datasets, model_dict, fn_name, dim, interp)
 
-    def checkPopulationDensityEqualsUserFunction(self, fluid_diags, interp):
+    def checkPopulationDensityEqualsUserFunction(self, fluid_diags, dim, interp):
+        threshold = 0.09
         fn_name = "density"
         sim = ph.globals.sim
         model_dict = ph.globals.sim.model.model_dict
@@ -127,15 +135,15 @@ class FluidInitValidation(InitValueValidation):
         noises = _get_noise_from(dev_per_ppc)
         nppc = [x[1] for x in dev_per_ppc]
         ratios = {key: noise[0] * np.sqrt(nppc[0]) for key, noise in noises.items()}
-        self.assertTrue(_get_diff(ratios, nppc, noises)[fn_name] < 0.09)
-        _save_std_fig(nppc, noises[fn_name], ratios[fn_name], fn_name)
-        _save_dbg_fig(datasets, model_dict, fn_name)
+        self.assertTrue(_get_diff(ratios, nppc, noises)[fn_name] < threshold)
+        _save_std_fig(nppc, noises[fn_name], ratios[fn_name], fn_name, dim, interp)
+        _save_dbg_fig(datasets, model_dict, "", dim, interp)  # fn_name == dataset key
 
 
 def _pop_name_to_patch_level0(diags, Type):
     pop_patch_level = {}
     for diag in selectDiags(diags, Type):
-        patches = list(diag.levels[0].patches.values())
+        patches = diag.levels[0].patches_list()
         assert len(patches)
         # pull "alpha" from hd5f path eg /t#/pl0/p0#0/ions/pop/ions_alpha/${fn_name}
         pop_name = patches[0].patch_data.h5item.name.split("/")[-2][5:]
@@ -147,7 +155,7 @@ def _pop_name_to_patch_level0(diags, Type):
 def _get_std_devs_for(sim, pop_patch_levels, model_dict, lmbda):
     datasets, std_devs = {}, {}
     for pop_name, patch_level in pop_patch_levels.items():
-        patches = list(patch_level.patches.values())
+        patches = patch_level.patches_list()
         std_devs[pop_name] = {}
         cell_width = patch_level.cell_width("x")
         datasets[pop_name] = aggregate_level0_patch_domain(
@@ -173,17 +181,22 @@ def _sort_std_devs_per_ppc(pop_patch_levels, std_devs, model_dict):
 
 
 def _get_noise_from(devs_per_ppc):
-    noise = {key: [] for key in devs_per_ppc[0][0].keys()}
-    for dev_per_ppc, _ in devs_per_ppc:
-        for data_name, std_dev in dev_per_ppc.items():
-            noise[data_name].append(std_dev)
-    return noise
+    """
+      devs_per_ppc = list[(data_name: std_dev, n_ppc)] # sorted per ppc
+    """
+    noises = {}
+    for data_name_dev_dict, _ in devs_per_ppc:
+        for data_name, std_dev in data_name_dev_dict.items():
+            if data_name not in noises:
+                noises[data_name] = []
+            noises[data_name].append(std_dev)
+    return noises  # = data_name:list[std_dev] # list sorted by ppc ascending
 
 
 def _get_diff(ratio, nppc, noises):
     return {
-        key: np.std(ratio[key] * 1.0 / np.sqrt(nppc) - noise)
-        for key, noise in noises.items()
+        data_name: np.std(ratio[data_name] * 1.0 / np.sqrt(nppc) - noise)
+        for data_name, noise in noises.items()
     }
 
 
@@ -199,7 +212,7 @@ def _sum_pop_patches(pop_patch_levels, dataset_name):
     )
 
 
-def _save_dbg_fig(pop_datasets, model_dict, fn_name):
+def _save_dbg_fig(pop_datasets, model_dict, fn_name, dim, interp):
     import matplotlib, matplotlib.pyplot as plt
 
     matplotlib.use("Agg")  # for systems without GUI
@@ -214,11 +227,14 @@ def _save_dbg_fig(pop_datasets, model_dict, fn_name):
 
         plt.legend()
         plt.title("Population Flux from FN: " + fn_name + dataset_key)
-        plt.savefig(fn_name + dataset_key + "_data.png", bbox_inches="tight")
+        out_png = (
+            fn_name + dataset_key + "_" + str(dim) + "_" + str(interp) + "_dbg.png"
+        )
+        plt.savefig(out_png, bbox_inches="tight")
         plt.clf()  # clear figure
 
 
-def _save_std_fig(nppc, noise, ratio, fig_name, test_threashold=0.001):
+def _save_std_fig(nppc, noise, ratio, fig_name, dim, interp, test_threshold=0.001):
     import matplotlib, matplotlib.pyplot as plt
 
     matplotlib.use("Agg")  # for systems without GUI
@@ -229,12 +245,13 @@ def _save_std_fig(nppc, noise, ratio, fig_name, test_threashold=0.001):
         marker="o",
         label="theory - measured (noise)",
     )
-    plt.axhline(test_threashold, label="test threshold", color="red")
+    plt.axhline(test_threshold, label="test threshold", color="red")
     plt.axhline(np.std(ratio * 1.0 / np.sqrt(nppc) - noise), label="std")
     plt.legend()
     plt.title("Population density noise: theory vs measure")
     plt.xlabel("# Particles Per Cell")
-    plt.savefig(fig_name + ".png", bbox_inches="tight")
+    out_png = fig_name + "_" + str(dim) + "_" + str(interp) + ".png"
+    plt.savefig(out_png, bbox_inches="tight")
     plt.clf()  # clear figure
 
 

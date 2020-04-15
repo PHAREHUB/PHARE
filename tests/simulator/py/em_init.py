@@ -6,10 +6,12 @@ from tests.simulator.py import InitValueValidation
 
 import numpy as np
 
-from phare.data.wrangler import primal_datasets
+from phare.core.gridlayout import yee_element_is_primal
+
 
 def _as_np_float32(array):
     return np.array(array, dtype=np.float32)
+
 
 class EMInitValidation(InitValueValidation):
     def test_1d(self):
@@ -22,28 +24,28 @@ class EMInitValidation(InitValueValidation):
         diags = self.runAndDump(dim=1, interp=1, input=simInput)
         self.checkEMDataEqualsUserFunctions(diags[_EMPatchData.__name__])
 
-    def checkEMDataEqualsUserFunctions(self, ems):
-        for diag in ems:
+    def checkEMDataEqualsUserFunctions(self, emsDiags):
+        for diag in emsDiags:
             patch_level0 = diag.levels[0]
-            for patch in list(patch_level0.patches.values()):
+            for patch in patch_level0.patches_list():
                 for xyz in ["x", "y", "z"]:
-                    hdf5_data = patch.patch_data.data(xyz)
+                    hdf5_data = patch.data(xyz)
                     nGhosts = patch.patch_data.nGhosts(xyz)
                     fn_name = patch.patch_data.quantity_key.lower() + xyz
                     fn = self.getSimulation().model.model_dict[fn_name]
                     xorigin = patch.origin[0]
                     cell_width = patch.patch_level.cell_width("x")
-                    is_primal = primal_datasets[fn_name]
+                    is_primal = yee_element_is_primal(fn_name, "x")
 
                     x_start = xorigin if is_primal else xorigin + cell_width / 2
                     physical_hdf5_dataset = hdf5_data[nGhosts:-nGhosts]
 
-                    fn_dataset = _as_np_float32([
-                        fn(x_start + (cell_width * i))
-                        for i in range(len(physical_hdf5_dataset))
-                    ])
+                    x = np.arange(len(physical_hdf5_dataset)) * cell_width + x_start
+                    expected_values = _as_np_float32(fn(x))
 
-                    self.assertTrue(np.allclose(fn_dataset, physical_hdf5_dataset, atol=1e-05))
+                    self.assertTrue(
+                        np.allclose(expected_values, physical_hdf5_dataset, atol=1e-05)
+                    )
 
 
 if __name__ == "__main__":

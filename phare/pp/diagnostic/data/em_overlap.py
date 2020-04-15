@@ -1,7 +1,7 @@
 from phare.pp.diagnostics import _EMPatchData
 from .overlap import Overlap, getOverlaps
 
-from phare.data.wrangler import DataWrangler, is_primal_dataset
+from phare.core.gridlayout import yee_element_is_primal
 
 
 class EMOverlap(Overlap):
@@ -12,13 +12,14 @@ class EMOverlap(Overlap):
 
     def shared_data(self):
         data_name = self.data_name
-        size = self.sizes[0]
         is_primal = int(
-            is_primal_dataset(self.patch0.patch_data.name + "_" + data_name)
+            yee_element_is_primal(self.patch0.patch_data.quantity_key + data_name)
         )
+        gap_addition = 2 if self.sizes[0] != self.nGhosts else 0
+        size = (self.sizes[0] * 2) + is_primal + gap_addition
         return (
-            self.patch0.patch_data.data(data_name)[-size * 2 - is_primal :],
-            self.patch1.patch_data.data(data_name)[: size * 2 + is_primal],
+            self.patch0.data(data_name)[-size:],
+            self.patch1.data(data_name)[:size],
         )
 
 

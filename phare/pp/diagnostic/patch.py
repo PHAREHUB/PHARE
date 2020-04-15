@@ -51,17 +51,17 @@ class PatchLevel:
         return self._first_patch().patch_data.nGhosts(data_name)
 
     def _first_patch(self):
-        patches = self._patches_as_list()
+        patches = self.patches_list()
         assert len(patches)
         return patches[0]
 
-    def _patches_as_list(self):
+    def patches_list(self):
         return list(self.patches.values())
 
 
 class Patch:
     """
-    Class representing AMR hierarchy PatchLevel for the purposes of forwarding data contained with HDF5 "Patches"
+    Class representing AMR hierarchy Patch
 
     Parameters:
     -------------------
@@ -90,9 +90,19 @@ class Patch:
         return self.origin[xyz_to_dim[direction]]
 
     def max_coord(self, direction):
-        return self.min_coord(direction) + self.patch_level.patch_length(
-            self.cells[xyz_to_dim[direction]], direction
+        return round(
+            self.min_coord(direction)
+            + self.patch_level.patch_length(
+                self.cells[xyz_to_dim[direction]], direction
+            ),
+            6,
         )
+
+    def min_max_coords(self, direction):
+        return (self.min_coord(direction), self.max_coord(direction))
+
+    def data(self, ds_name=""):
+        return self.patch_data.data(ds_name)
 
 
 def aggregate_level0_patch_domain(patch_level, shared_patch_border=False, ds_names=[]):
@@ -118,12 +128,14 @@ def aggregate_level0_patch_domain(patch_level, shared_patch_border=False, ds_nam
             if ds_name not in physical_datasets:
                 physical_datasets[ds_name] = []
 
-            hdf5_data = patch.patch_data.data(ds_name)
+            hdf5_data = patch.data(ds_name)
             physical_datasets[ds_name].append(np.asarray(hdf5_data[nGhosts:end]))
 
-    assert len(list(physical_datasets.keys())) # you should expect one if you use this function
+    assert len(
+        list(physical_datasets.keys())
+    )  # you should expect one if you use this function
 
     return {
-      dataset_key : np.hstack(array_list)
-      for dataset_key, array_list in physical_datasets.items()
+        dataset_key: np.hstack(array_list)
+        for dataset_key, array_list in physical_datasets.items()
     }

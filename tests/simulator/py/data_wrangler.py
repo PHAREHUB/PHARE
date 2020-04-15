@@ -4,7 +4,8 @@
 
 from phare import cpp
 
-from phare.data.wrangler import DataWrangler, is_primal_dataset
+from phare.data.wrangler import DataWrangler
+from phare.core.gridlayout import yee_element_is_primal
 from phare.pp.diagnostics import Diagnostics
 from phare.pp.diagnostic.patch import aggregate_level0_patch_domain
 
@@ -15,8 +16,10 @@ from tests.diagnostic import dump_all_diags
 import unittest
 import numpy as np
 
+
 def _as_np_float32(array):
     return np.array(array, dtype=np.float32)
+
 
 class DataWranglerTest(unittest.TestCase):
     def tearDown(self):
@@ -65,7 +68,7 @@ class DataWranglerTest(unittest.TestCase):
     def check_fields(self, dw_fields, pop_diags, data_name):
         for pop_diag in pop_diags:
             patch_level0 = pop_diag.levels[0]
-            pop_name = list(patch_level0.patches.values())[0].patch_data.pop_name
+            pop_name = patch_level0.patches_list()[0].patch_data.pop_name
             self.check_field(dw_fields[pop_name], pop_diag, data_name)
 
     def checkEM(self, dw, dw_EB, diags_EM, data_name):
@@ -74,7 +77,7 @@ class DataWranglerTest(unittest.TestCase):
         for component_name in patch_level0.data_names():
             dataset_name = data_name + "_" + component_name
             dw_vecf_xyz = np.array(dw_vecf[dataset_name], dtype=np.float32)
-            is_primal = is_primal_dataset(dataset_name)
+            is_primal = yee_element_is_primal(data_name[-1] + component_name)
             diag_vecf = aggregate_level0_patch_domain(
                 patch_level0, shared_patch_border=is_primal, ds_names=[component_name]
             )
@@ -94,7 +97,7 @@ class DataWranglerTest(unittest.TestCase):
     def check_vec_fields(self, dw_vecfs, pop_diags, pop_data_name):
         for pop_diag in pop_diags:
             patch_level0 = pop_diag.levels[0]
-            pop_name = list(patch_level0.patches.values())[0].patch_data.pop_name
+            pop_name = patch_level0.patches_list()[0].patch_data.pop_name
             self.check_vec_field(
                 dw_vecfs[pop_name], pop_diag, pop_name + "_" + pop_data_name
             )
