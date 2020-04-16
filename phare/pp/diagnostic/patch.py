@@ -34,7 +34,7 @@ class PatchLevel:
     def is_root(self):
         return self.lvlNbr == 0
 
-    def position_to_amr_ndex(self, pos, direction):
+    def position_to_amr_index(self, pos, direction):
         origin = self.diag.origin[xyz_to_dim[direction]]
         return round((pos - origin) / self.cell_width(direction))
 

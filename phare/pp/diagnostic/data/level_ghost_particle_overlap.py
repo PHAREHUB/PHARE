@@ -92,7 +92,7 @@ def _intersect_coarser_1d(coarseDomain, fineLevelGhost, particles):
 
     def _check(fine_X, shift=0):
         fineICell = (
-            fineLevelGhost.patch_level.position_to_amr_ndex(fine_X, direction) + shift
+            fineLevelGhost.patch_level.position_to_amr_index(fine_X, direction) + shift
         )
         has_overlap = coarse_minX <= fine_X <= coarse_maxX
         levelOverlapDataExists = fineICell in uniq_fineLevelGhostICell

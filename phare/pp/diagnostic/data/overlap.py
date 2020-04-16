@@ -49,13 +49,14 @@ def calculate_1d(OverlapType, patch0, patch1, data_name, **kwargs):
     level_cell_width = patch0.patch_level.cell_width("x")
     x_gap = upper.min_coord("x") - lower.max_coord("x")
 
-    assert x_gap >= 0  # should never happen
-
     ghost_area_lgth = level_cell_width * nGhosts
+
+    assert x_gap >= 0  # should never happen
 
     if x_gap < ghost_area_lgth:
 
         cell_gap = safe_round(x_gap, level_cell_width)
+
         return [
             OverlapType(
                 lower, upper, data_name, nGhosts, [int(nGhosts - cell_gap)], **kwargs

@@ -66,6 +66,19 @@ class OverlapValueValidation(InitValueValidation):
         add_to_dict(
             {
                 "refinement_boxes": {
+                    "L0": {
+                        "B0": [
+                            (5,),
+                            (29,),
+                        ],  # not touching overlap gap of 2 cell, 4 on fine level
+                        "B1": [(32,), (55,)],
+                    }
+                },
+            }
+        ),
+        add_to_dict(
+            {
+                "refinement_boxes": {
                     "L0": {"B0": [(0,), (9,)], "B1": [(55,), (64,)]},
                     "L1": {"B0": [(0,), (9,)], "B1": [(120,), (129,)]},
                     "L2": {"B0": [(0,), (9,)], "B1": [(250,), (259,)]},
