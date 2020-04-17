@@ -10,5 +10,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
 
-target_link_libraries(phare-exe PUBLIC phare_core phare_amr phare_initializer phare_solver phare_simulator)
+target_link_libraries(phare-exe PUBLIC
+    phare_simulator
+    pybind11::embed
+)
 

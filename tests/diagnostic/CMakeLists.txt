@@ -23,9 +23,8 @@ if(HighFive)
   )
 
   target_link_libraries(${PROJECT_NAME} PRIVATE
-    phare_solver
-    phare_diagnostic
-    phare_initializer
+    phare_simulator
+    pybind11::embed
     ${GTEST_LIBS}
     ${HDF5_LIBRARIES})
 

@@ -6,7 +6,7 @@ set( SOURCES_INC
     phare_types.h
    )
 
-add_library(${PROJECT_NAME} ${SOURCES_INC} simulator.cpp)
+add_library(${PROJECT_NAME} ${SOURCES_INC} )
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -14,10 +14,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
-  phare_core
-  phare_solver
-  phare_amr
-  phare_initializer
-  pybind11::embed
+  phare_amr # for mpicc
+  phare_diagnostic
   )
 

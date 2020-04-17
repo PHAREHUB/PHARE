@@ -56,8 +56,6 @@
 #include "diagnostic/detail/types/particle.h"
 #include "diagnostic/detail/types/fluid.h"
 
-#include "initializer/python_data_provider.h"
-
 #include <algorithm>
 #include <iterator>
 #include <memory>

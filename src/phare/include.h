@@ -3,6 +3,7 @@
 #define PHARE_PHARE_INCLUDE_H
 
 #include "simulator/simulator.h"
+#include "initializer/python_data_provider.h"
 #include "core/utilities/algorithm.h"
 
 #include <iostream>
