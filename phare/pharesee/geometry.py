@@ -56,9 +56,12 @@ def compute_overlaps(patches, domain_box):
                         gb2 = cmp_pd.ghost_box
                         overlap = gb1 * gb2
                         if overlap is not None:
+                            if ref_pd.quantity == 'field':
+                                overlap = toFieldBox(overlap, ref_pd)
+
                             overlaps.append({"pdatas": (ref_pd, cmp_pd),
                                              "box": overlap,
-                                             "offsets": (0, 0)})
+                                             "offset": (0, 0)})
 
     # now dealing with first and last patches to see their patchdata overlap
     for ref_pdname, ref_pd in patches[0].patch_datas.items():
@@ -66,14 +69,34 @@ def compute_overlaps(patches, domain_box):
             if cmp_pdname == ref_pdname:
                 gb1 = ref_pd.ghost_box
                 gb2 = cmp_pd.ghost_box
+
+                # first check if offseting last to lower left
+                # overlaps first
+
                 offset = domain_box.upper + 1
                 overlap = gb1 * boxm.shift(gb2, -offset)
                 # s = "gb1 {}, gb2 {}, offset {}, shifted gb2 {} and overlap {}"
                 # print(s.format(gb1, gb2, offset, shift(gb2,-offset), overlap))
                 if overlap is not None:
+                    if ref_pd.quantity == 'field':
+                        overlap = toFieldBox(overlap, ref_pd)
+
                     overlaps.append({"pdatas": (ref_pd, cmp_pd),
                                      "box": overlap,
-                                     "offsets": (0, -offset)})
+                                     "offset": (0, -offset)})
+
+                    # if it overlaps one way, it should overlap the other
+                    other_ovrlp = boxm.shift(gb1, offset) * gb2
+
+                    assert(other_ovrlp is not None)
+                    if ref_pd.quantity == 'field':
+                        other_ovrlp= toFieldBox(other_ovrlp, ref_pd)
+
+
+                    overlaps.append({"pdatas":(ref_pd, cmp_pd),
+                                     "box" : other_ovrlp,
+                                     "offset":offset})
+
 
     return overlaps
 
