@@ -30,6 +30,10 @@ class Box:
     def __str__(self):
         return "[ {lower},{upper} ]".format(lower=self.lower, upper=self.upper)
 
+
+    def __repr__(self):
+        return self.__str__()
+
     def __contains__(self, elt):
         if isinstance(elt, int):
             cell = elt
@@ -54,6 +58,8 @@ def shift(box, offset):
 def grow(box, size):
     # in multiple dim, size could be a tuple
     # with a number of cell to grow the box in each dir.
+    if size < 0:
+        raise ValueError("size must be >0")
     new_box = Box(box.lower, box.upper)
     new_box.lower = box.lower - size
     new_box.upper = box.upper + size
