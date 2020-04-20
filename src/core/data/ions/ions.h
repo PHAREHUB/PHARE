@@ -233,47 +233,87 @@ namespace core
         std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
                                                  // although only 1 Ions should exist.
     };
+} // namespace core
+} // namespace PHARE
 
+namespace PHARE::core
+{
+template<size_t dim>
+struct ContiguousNanSetter
+{
+};
 
-
+template<>
+struct ContiguousNanSetter<1>
+{
     template<typename Ions, typename GridLayout>
-    void setNansOnGhosts(Ions& ions, GridLayout const& layout)
+    static void set(Ions& ions, GridLayout const& layout, size_t row_idx = 0, bool force = false)
     {
-        if constexpr (Ions::dimension == 1)
-        {
-            auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-            auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-            auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+        auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+        auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+        auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+        auto xYZ = row_idx * ix2;
 
-            auto set = [](auto& pop, auto start, auto stop) {
-                for (auto i = start; i < stop; ++i)
-                {
-                    pop.density()(i) = NAN;
-                    for (auto& [id, type] : Components::componentMap)
-                        pop.flux().getComponent(type)(i) = NAN;
-                }
-            };
-
+        auto set = [&](auto& pop, auto start, auto stop) {
+            auto ndStart = xYZ + start;
+            auto size    = stop - start;
+            std::fill_n(pop.density().begin() + ndStart, size, NAN);
+            for (auto& [id, type] : Components::componentMap)
+                std::fill_n(pop.flux().getComponent(type).begin() + ndStart, size, NAN);
+        };
+        if (!force)
             for (auto& pop : ions)
             {
                 set(pop, 0u, ix0); // leftGhostNodes
                 set(pop, ix1 + 1, ix2 + 1);
             }
-        }
-        else if constexpr (Ions::dimension == 2)
-        {
-            std::cout << "test2\n";
-        }
-        else if constexpr (Ions::dimension == 3)
-        {
-            std::cout << "test 3\n";
-        }
+        else
+            for (auto& pop : ions)
+                set(pop, 0, ix2 + 1);
     }
+};
+
+template<>
+struct ContiguousNanSetter<2>
+{
+    template<typename Ions, typename GridLayout>
+    static void set(Ions& ions, GridLayout const& layout, size_t z_idx = 0, bool force = false)
+    {
+        auto iy0 = layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
+        auto iy1 = layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
+        auto iy2 = layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+
+        for (size_t y = 0; y <= iy0; y++)
+            ContiguousNanSetter<1>::set(ions, layout, y + (z_idx * iy2),
+                                        force || y < iy0 || y > iy1);
+    }
+};
+
+template<>
+struct ContiguousNanSetter<3>
+{
+    template<typename Ions, typename GridLayout>
+    static void set(Ions& ions, GridLayout const& layout)
+    {
+        auto iz0 = layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
+        auto iz1 = layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
+        auto iz2 = layout.ghostEndIndex(QtyCentering::primal, Direction::Z);
+
+        for (size_t z = 0; z <= iz2; z++)
+            ContiguousNanSetter<2>::set(ions, layout, z, z < iz0 || z > iz1);
+    }
+};
+
+template<typename Ions, typename GridLayout>
+void setNansOnGhosts(Ions& ions, GridLayout const& layout)
+{
+    static_assert(Ions::field_type::is_contiguous,
+                  "Setting NAN is only supported for contiguous ND arrays");
+
+    ContiguousNanSetter<Ions::dimension>::set(ions, layout);
+}
 
 
-
-
-} // namespace core
-} // namespace PHARE
+} // PHARE::core
 
 #endif
