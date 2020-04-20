@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import math
-from core.phare_utilities import listify
+from .phare_utilities import listify
 
 yee_centering = {
     'x': {
