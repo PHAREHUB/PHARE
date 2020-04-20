@@ -1,4 +1,24 @@
 
+
+import os, sys, subprocess
+
+venv_path = os.environ.get('VIRTUAL_ENV')
+
+print("sys.path ", sys.path)
+
+if venv_path is not None:
+    pythonexe = os.path.join(venv_path, "bin/python3")
+    arg = "import sys; print(sys.path)"
+    p = subprocess.run([pythonexe, "-c", arg], stdout=subprocess.PIPE)
+    s = p.stdout.decode()
+    s = s.replace('[','').replace(']','').replace('"',"").replace("\n","").replace("'",'')
+    s = s.split(",")[1:]
+    pythonpath = [ss.strip() for ss in s]
+    sys.path = sys.path + pythonpath
+
+
+
+
 from .uniform_model import UniformModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .electron_model import ElectronModel
@@ -6,14 +26,19 @@ from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagno
 from .simulation import Simulation
 
 
+
+
+
+
 def getSimulation():
-    return phare.pharein.globals.sim
+    from .globals import sim
+    return sim
 
 
 def populateDict():
 
-    from phare.pharein.globals import sim as simulation
-    import phare.pyphare as pp
+    from .globals import sim as simulation
+    import pybindlibs.dictator as pp
 
     add = pp.add
     addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+'D')

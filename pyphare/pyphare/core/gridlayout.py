@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import math
+from .phare_utilities import listify
+from pyphare.core.box import Box
 
 yee_centering = {
     'x': {
@@ -47,7 +49,12 @@ class YeeCentering(object):
 
 class GridLayout(object):
 
-    def __init__(self):
+    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1):
+        self.box = box
+        self.origin = listify(origin)
+        self.dl = listify(dl)
+        self.interp_order = interp_order
+
         self.directions = ['X','Y','Z']
 
         self.hybridQuantities = ['Bx','By','Bz',
@@ -66,6 +73,10 @@ class GridLayout(object):
 
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]
+
+
+    def particleGhostNbr(self, interp_order):
+        return 1 if interp_order == 1 else 2
 
     def nbrGhosts(self,interpOrder, centering):
         minNbrGhost = 5

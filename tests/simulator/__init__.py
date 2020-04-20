@@ -1,8 +1,8 @@
 
 
-from phare import cpp
-import phare.pharein as ph, numpy as np
-from phare.pharein import ElectronModel
+from pybindlibs import cpp
+import pyphare.pharein as ph, numpy as np
+from pyphare.pharein import ElectronModel
 
 def basicSimulatorArgs(dim:int, interp:int, **kwargs):
 

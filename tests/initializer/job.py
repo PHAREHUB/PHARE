@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import phare.pharein
-from phare.pharein import Simulation
-from phare.pharein import MaxwellianFluidModel
-from phare.pharein import ElectromagDiagnostics
-from phare.pharein import ElectronModel
+import pyphare.pharein
+from pyphare.pharein import Simulation
+from pyphare.pharein import MaxwellianFluidModel
+from pyphare.pharein import ElectromagDiagnostics
+from pyphare.pharein import ElectronModel
 
 # configure the simulation
 

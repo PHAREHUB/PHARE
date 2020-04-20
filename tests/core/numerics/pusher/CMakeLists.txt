@@ -17,6 +17,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 add_custom_command(TARGET test-pusher
                    POST_BUILD
-                   COMMAND PYTHONPATH=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_pusher.py ${CMAKE_CURRENT_BINARY_DIR})
+                   COMMAND "PYTHONPATH=${PHARE_PYTHONPATH}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_pusher.py ${CMAKE_CURRENT_BINARY_DIR})
 
 

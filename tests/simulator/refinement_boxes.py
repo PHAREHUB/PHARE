@@ -2,9 +2,9 @@
 #
 # formatted with black
 
-from phare import cpp
+from pybindlibs import cpp
 
-import unittest, os, phare.pharein as ph
+import unittest, os, pyphare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
 from tests.diagnostic import dump_all_diags

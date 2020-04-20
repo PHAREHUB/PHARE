@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 
-from phare.pharein import Simulation
-from phare.pharein import MaxwellianFluidModel
-from phare.pharein import ElectronModel
-from phare.pharein import ElectromagDiagnostics
-from phare.pharein import FluidDiagnostics
-from phare.pharein import getSimulation
-from phare.pharein import ParticleDiagnostics
+from pyphare.pharein import Simulation
+from pyphare.pharein import MaxwellianFluidModel
+from pyphare.pharein import ElectronModel
+from pyphare.pharein import ElectromagDiagnostics
+from pyphare.pharein import FluidDiagnostics
+from pyphare.pharein import getSimulation
+from pyphare.pharein import ParticleDiagnostics
 
 
 
