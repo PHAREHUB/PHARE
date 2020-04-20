@@ -2,12 +2,12 @@ class DataWrangler:
     is_primal = {"bx": True, "by": False, "bz": False, "ex": False, "ey": True, "ez": True}
 
     def __init__(self, sim, hier):
-        import phare.pharein as ph, phare.data.data_wrangler
+        import phare.pharein as ph, phare_lib.data_wrangler as data_wrangler
 
         self.dim = ph.globals.sim.dims
         self.interp = ph.globals.sim.interp_order
         self.cpp = getattr(
-            phare.data.data_wrangler,
+            data_wrangler,
             "DataWrangler_" + str(self.dim) + "_" + str(self.interp),
         )(sim, hier)
 

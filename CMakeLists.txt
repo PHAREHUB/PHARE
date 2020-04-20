@@ -63,7 +63,14 @@ include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 #*******************************************************************************
 
 if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-  file(COPY ${PHARE_PROJECT_DIR}/phare DESTINATION ${CMAKE_BINARY_DIR})
+  if(WIN32)
+
+      file(COPY ${PHARE_PROJECT_DIR}/phare DESTINATION ${CMAKE_BINARY_DIR})
+
+  else()
+    ADD_CUSTOM_TARGET(link_target ALL
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${PHARE_PROJECT_DIR}/phare ${CMAKE_BINARY_DIR}/phare)
+  endif()
 endif()
 
 add_subdirectory(src/core)

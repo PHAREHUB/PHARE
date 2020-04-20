@@ -10,7 +10,7 @@ namespace py = pybind11;
 
 namespace PHARE::pydata
 {
-PYBIND11_MODULE(cpp, m)
+PYBIND11_MODULE(cpp_simulator, m)
 {
     StaticSamraiLifeCycle::INSTANCE(); // init
 

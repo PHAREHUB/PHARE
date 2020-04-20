@@ -2,7 +2,7 @@
 #
 # formatted with black
 
-from phare import cpp
+from phare_lib import cpp_simulator
 
 import unittest, os, phare.pharein as ph
 from datetime import datetime, timezone
@@ -43,7 +43,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
             if hasattr(self, k):
                 v = getattr(self, k)
                 del v  # blocks segfault on test failure, could be None
-        cpp.reset()
+        cpp_simulator.reset()
 
 
     def _do_dim(self, dim, input, valid: bool = False):
@@ -57,7 +57,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
                     self.sim,
                     self.hier,
                 )
-                cpp.reset()
+                cpp_simulator.reset()
             except ValueError as e:
                 self.assertTrue(not valid)
 

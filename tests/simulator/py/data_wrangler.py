@@ -2,7 +2,7 @@
 #
 # formatted with black
 
-from phare import cpp
+from phare_lib import cpp_simulator
 from tests.simulator.py import create_simulator
 from phare.data.wrangler import DataWrangler
 
@@ -13,7 +13,7 @@ import unittest
 class DataWranglerTest(unittest.TestCase):
 
     def tearDown(self):
-        cpp.reset()
+        cpp_simulator.reset()
 
     def test_1d(self):
 
@@ -34,7 +34,7 @@ class DataWranglerTest(unittest.TestCase):
                 self.sim,
                 self.hier,
             )
-            cpp.reset()
+            cpp_simulator.reset()
 
 
 if __name__ == "__main__":

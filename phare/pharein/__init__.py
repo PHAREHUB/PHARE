@@ -13,7 +13,7 @@ def getSimulation():
 def populateDict():
 
     from phare.pharein.globals import sim as simulation
-    import phare.pyphare as pp
+    import phare_lib.pyphare as pp
 
     add = pp.add
     addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+'D')

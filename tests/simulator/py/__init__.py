@@ -1,6 +1,6 @@
 
 
-from phare import cpp
+from phare_lib import cpp_simulator
 import phare.pharein as ph, numpy as np
 from phare.pharein import ElectronModel
 
@@ -78,7 +78,7 @@ def makeBasicModel(extra_pops={}):
 
 def create_simulator(dim, interp, **input):
 
-    cpp.reset()
+    cpp_simulator.reset()
     ph.globals.sim = None
     ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
     extra_pops = {}
@@ -94,10 +94,10 @@ def create_simulator(dim, interp, **input):
     ElectronModel(closure="isothermal",Te = 0.12)
 
     ph.populateDict()
-    hier = cpp.make_hierarchy()
-    sim = cpp.make_simulator(hier)
+    hier = cpp_simulator.make_hierarchy()
+    sim = cpp_simulator.make_simulator(hier)
     sim.initialize()
-    return [cpp.make_diagnostic_manager(sim, hier), sim, hier]
+    return [cpp_simulator.make_diagnostic_manager(sim, hier), sim, hier]
 
 
 
