@@ -1,5 +1,5 @@
 
-from . import phare_utilities
+from core import phare_utilities
 from . import globals
 
 class MaxwellianFluidModel(object):

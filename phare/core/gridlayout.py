@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import math
+from core.phare_utilities import listify
 
 yee_centering = {
     'x': {
@@ -47,7 +48,11 @@ class YeeCentering(object):
 
 class GridLayout(object):
 
-    def __init__(self):
+    def __init__(self, origin, dl, interp_order):
+        self.origin = listify(origin)
+        self.dl = listify(dl)
+        self.interp_order = interp_order
+
         self.directions = ['X','Y','Z']
 
         self.hybridQuantities = ['Bx','By','Bz',
