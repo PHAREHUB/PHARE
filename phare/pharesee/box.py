@@ -16,18 +16,11 @@ class Box:
         of box2 with self. No intersection returns None
         """
         box1 = self
-        if box1.lower <= box2.lower:  # box1 is left of box2
-            lower = box2.lower
-            upper = box1.upper
-
-        else:
-            lower = box1.lower
-            upper = box2.upper
-
-        if lower < upper:
-            return Box(lower, upper)
-        else:
+        inter = Box(max(box1.lower, box2.lower), min(box1.upper, box2.upper))
+        if inter.upper < inter.lower :
             return None
+        else:
+            return inter
 
     def size(self):
         """returns the number of cells in the box"""
