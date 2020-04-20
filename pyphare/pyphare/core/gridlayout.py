@@ -2,7 +2,7 @@
 
 import math
 from .phare_utilities import listify
-from pyphare.core.box import Box
+from .box import Box
 
 yee_centering = {
     'x': {

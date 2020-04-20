@@ -193,6 +193,7 @@ def check_refinement_boxes(**kwargs):
     for ilvl, boxes in refinement_boxes.items():
 
         assert ilvl[0] == "L"
+
         refined_level_number = int(ilvl[1:])+1
         if (kwargs["max_nbr_levels"]) <= refined_level_number:
             err_msg = "Error - refinement boxes to create level {} invalid with 'max_nbr_levels'= {}"

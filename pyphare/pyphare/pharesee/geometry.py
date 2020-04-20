@@ -1,3 +1,4 @@
+
 from ..core import box as boxm
 from .hierarchy import FieldData, is_root_lvl
 
@@ -99,6 +100,7 @@ def compute_overlaps(patches, domain_box):
                                      "box": overlap,
                                      "offset": (0, 0)})
 
+
     # now dealing with first and last patches to see their patchdata overlap
     for ref_pdname, ref_pd in patches[0].patch_datas.items():
         for cmp_pdname, cmp_pd in patches[-1].patch_datas.items():
@@ -148,7 +150,8 @@ def hierarchy_overlaps(hierarchy):
     returns all overlaps for the given hierarchy
     """
     overlaps = {}
-    for ilvl, lvl in enumerate(hierarchy.patch_levels):
+
+    for ilvl, lvl in enumerate(hierarchy.levels()):
         overlaps[ilvl] = compute_overlaps(lvl.patches, hierarchy.refined_domain_box(ilvl))
     return overlaps
 
@@ -199,7 +202,7 @@ def particle_ghost_area_boxes(hierarchy):
     """
     gaboxes = {}
 
-    for ilvl, lvl in enumerate(hierarchy.patch_levels):
+    for ilvl, lvl in enumerate(hierarchy.levels()):
         for patch in lvl.patches:
 
             patch_data = patch.patch_datas["particles"]
@@ -240,7 +243,7 @@ def level_ghost_boxes(hierarchy):
     gaboxes = particle_ghost_area_boxes(hierarchy)
     lvl_gaboxes = {}
 
-    for ilvl, lvl in enumerate(hierarchy.patch_levels):
+    for ilvl, lvl in enumerate(hierarchy.levels()):
 
         if not is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
 

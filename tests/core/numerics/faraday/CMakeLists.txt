@@ -19,4 +19,3 @@ add_custom_command(TARGET test-faraday
                    POST_BUILD
                    COMMAND "PYTHONPATH=${PHARE_PYTHONPATH}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_faraday.py ${CMAKE_CURRENT_BINARY_DIR})
 
-
