@@ -47,22 +47,6 @@ namespace core
     enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
 
 
-    template<typename T> // this is so we can use struct {} initialization with
-                         // shared_ptrs/forwarding
-    struct aggregate_adapter : public T
-    {
-        template<class... Args>
-        aggregate_adapter(Args&&... args)
-            : T{std::forward<Args>(args)...}
-        {
-        }
-    };
-
-    template<typename... Args> // this is so we can specialize
-    struct type_list           // templates with only the outter most type
-    {
-    };
-
     template<typename T>
     struct is_std_vector : std::false_type
     {

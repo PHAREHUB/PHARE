@@ -16,9 +16,7 @@ IModelView::~IModelView() {}
 
 
 template<typename Model>
-bool constexpr is_hybrid_model
-    = std::is_same_v<solver::type_list_to_hybrid_model_t<typename Model::type_list>, Model>;
-
+bool constexpr is_hybrid_model = solver::is_hybrid_model<Model>;
 
 
 

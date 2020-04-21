@@ -26,8 +26,6 @@ namespace solver
     class HybridModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using type_list
-            = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
         using amr_types = AMR_Types;
         using patch_t   = typename AMR_Types::patch_t;
         using level_t   = typename AMR_Types::level_t;
@@ -48,7 +46,6 @@ namespace solver
 
         //! ResourcesManager used for interacting with SAMRAI databases, patchdata etc.
         std::shared_ptr<resources_manager_type> resourcesManager;
-
 
 
         HybridModel(PHARE::initializer::PHAREDict dict,
@@ -146,17 +143,15 @@ namespace solver
     const std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::model_name
         = "HybridModel";
 
-    template<typename... Args>
-    HybridModel<Args...> hybrid_model_from_type_list(core::type_list<Args...>);
 
-    template<typename TypeList>
-    struct type_list_to_hybrid_model
+    template<template<typename...> class Model, typename... Args>
+    static constexpr bool _is_hybrid_model(Model<Args...>*)
     {
-        using type = decltype(hybrid_model_from_type_list(std::declval<TypeList>()));
-    };
+        return std::is_same_v<Model<Args...>, HybridModel<Args...>>;
+    }
 
-    template<typename TypeList>
-    using type_list_to_hybrid_model_t = typename type_list_to_hybrid_model<TypeList>::type;
+    template<typename Model>
+    bool constexpr is_hybrid_model = _is_hybrid_model((Model*)(nullptr));
 
 } // namespace solver
 
