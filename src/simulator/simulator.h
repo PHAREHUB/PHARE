@@ -84,7 +84,7 @@ public:
             auto endTime   = 0.; // TODO make it runtime
 
 
-            integrator_ = std::make_unique<PHARE::amr::Integrator>(
+            integrator_ = std::make_unique<PHARE::amr::DimIntegrator<dimension>>(
                 dict, hierarchy, multiphysInteg_, multiphysInteg_, startTime, endTime);
         }
         else
