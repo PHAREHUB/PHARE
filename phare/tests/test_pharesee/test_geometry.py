@@ -427,3 +427,42 @@ class GeometryTest(unittest.TestCase):
 
                     for exp_box in exp_pdata["boxes"]:
                         self.assertTrue(exp_box in act_pdata["boxes"])
+
+
+
+
+
+    def test_level_ghost_boxes(self):
+
+        expected = {
+
+
+            1: [
+                {
+                    "pdatas": self.L1P1_datas["particles"],
+                    "boxes": [Box(9, 9),]
+                },
+                {
+                    "pdatas": self.L1P1_datas["particles"],
+                    "boxes": [Box(60, 60),]
+                },
+                {
+                    "pdatas": self.L1P2_datas["particles"],
+                    "boxes": [Box(63, 63),]
+                },
+                {
+                    "pdatas": self.L1P2_datas["particles"],
+                    "boxes": [Box(112, 112),]
+                }
+            ]
+        }
+
+        lvl_gaboxes = level_ghost_boxes(self.hierarchy)
+        for ilvl  in range(1, len(self.hierarchy.patch_levels)):
+            for actual, exp in zip(lvl_gaboxes[ilvl], expected[ilvl]):
+
+                act_boxes = actual["boxes"]
+                exp_boxes = exp["boxes"]
+
+                for act_box, exp_box in zip(act_boxes, exp_boxes):
+                    self.assertEqual(act_box, exp_box)
