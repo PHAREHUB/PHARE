@@ -380,3 +380,50 @@ class GeometryTest(unittest.TestCase):
         self.assertTrue(touch_domain_border(Box(40, 64), self.hierarchy.domain_box, "upper"))
 
 
+
+
+    def test_particle_ghost_area_boxes(self):
+
+        expected = {
+
+            0: [
+                {
+                    "pdatas":self.L0P1_datas["particles"],
+                    "boxes":[Box(33, 33), Box(-1,-1)]
+                },
+                {
+                    "pdatas": self.L0P2_datas["particles"],
+                    "boxes": [Box(32, 32), Box(65, 65)]
+                }
+            ],
+
+
+            1: [
+                {
+                    "pdatas": self.L1P1_datas["particles"],
+                    "boxes": [Box(9, 9), Box(60, 60)]
+                },
+                {
+                    "pdatas": self.L1P2_datas["particles"],
+                    "boxes": [Box(63, 63), Box(112, 112)]
+                }
+
+            ]
+        }
+
+        gaboxes = particle_ghost_area_boxes(self.hierarchy)
+
+        # same number of levels
+        self.assertEqual(len(expected), len(gaboxes))
+
+        for ilvl, lvl in enumerate(self.hierarchy.patch_levels):
+
+            # same number of PatchDatas
+            self.assertEqual(len(gaboxes[ilvl]), len(expected[ilvl]))
+
+            for act_pdata, exp_pdata in zip(gaboxes[ilvl], expected[ilvl]):
+
+                    self.assertEqual(len(exp_pdata["boxes"]), len(act_pdata["boxes"]))
+
+                    for exp_box in exp_pdata["boxes"]:
+                        self.assertTrue(exp_box in act_pdata["boxes"])
