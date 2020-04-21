@@ -10,7 +10,7 @@ from pharesee.hierarchy import PatchHierarchy
 from pharesee.hierarchy import Patch, PatchLevel
 from pharesee.geometry import compute_overlaps, toFieldBox
 from pharesee.geometry import particle_ghost_area_boxes
-from pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
+from pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
 from core.gridlayout import GridLayout
 
 import numpy as np
@@ -164,142 +164,185 @@ class GeometryTest(unittest.TestCase):
 
 
     def test_overlaps(self):
-        expected = {0 : [
-
+        expected = {0 :
                         # Middle overlap, for all quantities
-                          {
+                        [  {
                             "pdatas":[self.L0P1_datas["EM_B_x"], self.L0P2_datas["EM_B_x"]],
                             "box":Box(28, 38),
-                            'offset':0
+                            'offset':(0,0)
                           },
 
                           {
                              "pdatas": [self.L0P1_datas["EM_B_y"], self.L0P2_datas["EM_B_y"]],
                             "box": Box(28, 37),
-                              "offset":0
+                              "offset":(0,0)
                           },
                         {
                             "pdatas": [self.L0P1_datas["EM_B_z"], self.L0P2_datas["EM_B_z"]],
                             "box": Box(28, 37),
-                            "offset":0
+                            "offset":(0,0)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["EM_E_x"], self.L0P2_datas["EM_E_x"]],
                             "box": Box(28, 37),
-                            'offset': 0
+                            'offset': (0,0)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["EM_E_y"], self.L0P2_datas["EM_E_y"]],
                             "box": Box(28, 38),
-                            "offset":0
+                            "offset":(0,0)
                         },
                         {
                             "pdatas": [self.L0P1_datas["EM_E_z"], self.L0P2_datas["EM_E_z"]],
                             "box": Box(28, 38),
-                            "offset":0
+                            "offset":(0,0)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["particles"], self.L0P2_datas["particles"]],
                             "box": Box(32,33),
-                            "offset":0
+                            "offset":(0,0)
                         },
 
                         # left side overlap with periodicity, for all quantities
                           {
                             "pdatas": [self.L0P1_datas["EM_B_x"], self.L0P2_datas["EM_B_x"]],
                             "box": Box(-5, 5),
-                              "offset":-65
+                              "offset":(0,-65)
                           },
                         # right side overlap with periodicity, for all quantities
                         {
                             "pdatas": [self.L0P1_datas["EM_B_x"], self.L0P2_datas["EM_B_x"]],
                             "box": Box(60, 70),
-                            "offset": 65
+                            "offset": (0,65)
                         },
 
 
                         {
                             "pdatas": [self.L0P1_datas["EM_B_y"], self.L0P2_datas["EM_B_y"]],
                             "box": Box(-5, 4),
-                            "offset":-65
+                            "offset":(0,-65)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["EM_B_y"], self.L0P2_datas["EM_B_y"]],
                             "box": Box(60, 69),
-                            "offset": 65
+                            "offset": (0,65)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["EM_B_z"], self.L0P2_datas["EM_B_z"]],
                             "box": Box(-5, 4),
-                            "offset":-65
+                            "offset":(0,-65)
                         },
                         {
                             "pdatas": [self.L0P1_datas["EM_B_z"], self.L0P2_datas["EM_B_z"]],
                             "box": Box(60, 69),
-                            "offset": 65
+                            "offset": (0,65)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["EM_E_x"], self.L0P2_datas["EM_E_x"]],
                             "box": Box(-5, 4),
-                            "offset":-65
+                            "offset":(0,-65)
                         },
                         {
                             "pdatas": [self.L0P1_datas["EM_E_x"], self.L0P2_datas["EM_E_x"]],
                             "box": Box(60, 69),
-                            "offset":65
+                            "offset":(0,65)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["EM_E_y"], self.L0P2_datas["EM_E_y"]],
                             "box": Box(-5, 5),
-                            "offset":-65
+                            "offset":(0,-65)
                         },
                         {
                             "pdatas": [self.L0P1_datas["EM_E_y"], self.L0P2_datas["EM_E_y"]],
                             "box": Box(60, 70),
-                            "offset":65
+                            "offset":(0,65)
                         },
                         {
                             "pdatas": [self.L0P1_datas["EM_E_z"], self.L0P2_datas["EM_E_z"]],
                             "box": Box(-5, 5),
-                            "offset":-65
+                            "offset":(0,-65)
                         },
                         {
                             "pdatas": [self.L0P1_datas["EM_E_z"], self.L0P2_datas["EM_E_z"]],
                             "box": Box(60, 70),
-                            "offset":65
+                            "offset":(0,65)
                         },
                         {
                             "pdatas": [self.L0P1_datas["particles"], self.L0P2_datas["particles"]],
                             "box": Box(-1,0),
-                            "offset":-65
+                            "offset":(0,-65)
                         },
 
                         {
                             "pdatas": [self.L0P1_datas["particles"], self.L0P2_datas["particles"]],
                             "box": Box(64, 65),
-                            "offset":65
+                            "offset":(0,65)
                         }
-                    ]
+                    ],
+
+            1:  # level 1
+                [
+                    {
+                        "pdatas": [self.L0P1_datas["EM_B_x"], self.L0P2_datas["EM_B_x"]],
+                        "box": Box(59, 65),
+                        'offset': (0, 0)
+                    },
+
+                    {
+                        "pdatas": [self.L0P1_datas["EM_B_y"], self.L0P2_datas["EM_B_y"]],
+                        "box": Box(59, 64),
+                        "offset": (0, 0)
+                    },
+                    {
+                        "pdatas": [self.L0P1_datas["EM_B_z"], self.L0P2_datas["EM_B_z"]],
+                        "box": Box(59, 64),
+                        "offset": (0, 0)
+                    },
+
+                    {
+                        "pdatas": [self.L0P1_datas["EM_E_x"], self.L0P2_datas["EM_E_x"]],
+                        "box": Box(59, 64),
+                        'offset': (0, 0)
+                    },
+
+                    {
+                        "pdatas": [self.L0P1_datas["EM_E_y"], self.L0P2_datas["EM_E_y"]],
+                        "box": Box(59, 65),
+                        "offset": (0, 0)
+                    },
+                    {
+                        "pdatas": [self.L0P1_datas["EM_E_z"], self.L0P2_datas["EM_E_z"]],
+                        "box": Box(59, 65),
+                        "offset": (0, 0)
                     }
+
+                ]
+
+
+        }
+
+
 
 
 
         overlaps = hierarchy_overlaps(self.hierarchy)
 
-        for ilvl, lvl in enumerate(self.hierarchy.patch_levels[:-1]):
+        for ilvl, lvl in enumerate(self.hierarchy.patch_levels):
             refined_domain_box = self.hierarchy.refined_domain_box(ilvl)
 
 
             overlaps = compute_overlaps(lvl.patches, refined_domain_box)
 
             print("level {} overlap : ".format(ilvl))
+
+            self.assertEqual(len(expected[ilvl]), len(overlaps))
 
             for exp, actual in zip(expected[ilvl], overlaps):
 
@@ -318,8 +361,22 @@ class GeometryTest(unittest.TestCase):
 
 
                 self.assertEqual(act_box, exp_box)
+                self.assertEqual(act_offset, exp_offset)
                 #self.assertEqual(act_box, exp_box)
                 #self.assertEqual(act_box, exp_box)
 
+
+
+
+    def test_touch_border(self):
+
+        self.assertFalse(touch_domain_border(Box(10,20), self.hierarchy.domain_box, "upper"))
+        self.assertFalse(touch_domain_border(Box(10, 20), self.hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(0, 20), self.hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(-5, 20), self.hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(-5, 70), self.hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(-5, 70), self.hierarchy.domain_box, "upper"))
+        self.assertTrue(touch_domain_border(Box(40, 70), self.hierarchy.domain_box, "upper"))
+        self.assertTrue(touch_domain_border(Box(40, 64), self.hierarchy.domain_box, "upper"))
 
 
