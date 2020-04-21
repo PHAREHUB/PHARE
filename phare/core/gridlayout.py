@@ -48,7 +48,7 @@ class YeeCentering(object):
 
 class GridLayout(object):
 
-    def __init__(self, origin, dl, interp_order):
+    def __init__(self, origin=0, dl=0.1, interp_order=1):
         self.origin = listify(origin)
         self.dl = listify(dl)
         self.interp_order = interp_order
