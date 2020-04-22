@@ -8,6 +8,7 @@ import phare.pharein as ph, numpy as np
 from phare.pp.diagnostics import Diagnostics, selectDiag, selectDiags
 from phare.pp.diagnostic.patch import aggregate_level0_patch_domain
 
+diag_out_dir = "phare_outputs/fluid_init"
 
 class FluidInitValidation(InitValueValidation):
     min_interp = 1
@@ -25,7 +26,6 @@ class FluidInitValidation(InitValueValidation):
         min_interp = FluidInitValidation.min_interp
         max_interp = FluidInitValidation.max_interp + 1
         for interp in range(min_interp, max_interp):
-            diag_out_dir = "phare_outputs/fluid_init" + str(dim) + "_" + str(interp)
             simInputs = InitValueValidation.diag_options(diag_out_dir)
             simInputs.update(
                 {

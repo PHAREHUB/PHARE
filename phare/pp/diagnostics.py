@@ -90,6 +90,13 @@ class Diagnostic:
         self.dim = len(self.dl)
         self.initialize_patch_hierarchy_from_hdf5_file()
 
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.h5file.__bool__():
+            self.h5file.close()
+
     def initialize_patch_hierarchy_from_hdf5_file(self):
         for timestamp in self.h5file.keys():
             for patch_level in self.h5file[timestamp].keys():
@@ -114,6 +121,8 @@ class Diagnostic:
                     )
                 self.levels[lvl].patches = {p.id: p for p in patches}
 
+def close_diagnostics(diags_dict):
+    [diag.close() for diags in itertools.chain(diags_dict.values()) for diag in diags]
 
 class Diagnostics:
     """
@@ -135,6 +144,13 @@ class Diagnostics:
         assert len(self.diags) and all(
             [isinstance(diag, Diagnostic) for diag in self._diags_as_list()]
         )
+
+
+    def close(self):
+        """keeping handles open to h5 files via h5py
+            can prevent HighFive from overwriting them
+        """
+        close_diagnostics(self.diags)
 
     def ionDensity(self):
         return self._selectDiag("ions_density")

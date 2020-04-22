@@ -110,11 +110,6 @@ class OverlapValueValidation(InitValueValidation):
         min_interp = OverlapValueValidation.min_interp
         max_interp = OverlapValueValidation.max_interp + 1
         for interp in range(min_interp, max_interp):
-            # blocks conflicts between runs - possible bug
-            test_diag_dir = (
-                diag_out_dir + "_" + str(dim) + "_" + str(interp) + "_" + test_id
-            )
-            input["diag_options"]["options"]["dir"] = test_diag_dir
             diags = self.runAndDump(dim, interp, input)
             self._checkFields(getEMOverlapsFrom(diags))
             self._checkFields(getFluidOverlapsFrom(diags))

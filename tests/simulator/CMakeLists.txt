@@ -28,16 +28,11 @@ if(HighFive)
 
   if(devMode)
     add_python3_test(sim-overlaps     py/overlaps.py         ${CMAKE_CURRENT_BINARY_DIR})
-    if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/py/overlaps)
-      add_custom_command(TARGET test_simulator
-                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/py
-                         POST_BUILD
-                         COMMAND git clone https://github.com/PHARCHIVE/hdf5_patch_overlap --depth 1 overlaps)
-      add_custom_command(TARGET test_simulator
-                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/py/overlaps
-                         POST_BUILD
-                         COMMAND find . -not -path '*/\\.*' -type f -name "*.xz" | xargs unxz)
-    endif() # clone/uncompress
+    # only using add_custom_command, if it fails, it does not run again.
+    add_custom_command(TARGET test_simulator DEPENDS test_simulator}
+            COMMAND PYTHONPATH=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} setup.py
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/py)
+    add_custom_target(test_simulator_setup ALL DEPENDS test_simulator)
 
   endif() # devMode
 

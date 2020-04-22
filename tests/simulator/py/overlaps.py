@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from ddt import ddt, data
 
 
-diag_out_dir = "py/overlaps/"
+diag_out_dir = "py/overlaps_test_data/"
 
 
 class SimulatorOverlaps(InitValueValidation):

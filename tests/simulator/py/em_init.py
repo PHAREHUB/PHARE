@@ -12,13 +12,13 @@ from phare.core.gridlayout import yee_element_is_primal
 def _as_np_float32(array):
     return np.array(array, dtype=np.float32)
 
+diag_out_dir = "phare_outputs/em_init"
 
 class EMInitValidation(InitValueValidation):
     def test_1d(self):
         from phare.pp.diagnostics import _EMPatchData
         from tests.diagnostic import dump_all_diags
 
-        diag_out_dir = "phare_outputs/em_init"
         simInput = InitValueValidation.diag_options(diag_out_dir)
         simInput.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
         diags = self.runAndDump(dim=1, interp=1, input=simInput)

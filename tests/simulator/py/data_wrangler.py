@@ -20,6 +20,7 @@ import numpy as np
 def _as_np_float32(array):
     return np.array(array, dtype=np.float32)
 
+diag_out_dir = "phare_outputs/data_wrangler"
 
 class DataWranglerTest(unittest.TestCase):
     def tearDown(self):
@@ -28,8 +29,6 @@ class DataWranglerTest(unittest.TestCase):
     def test_1d(self):
         dim = 1
         for interp in range(1, 4):
-            # https://github.com/PHAREHUB/PHARE/issues/168
-            diag_out_dir = "phare_outputs/data_wrangler_" + str(dim) + "_" + str(interp)
             simInput = InitValueValidation.diag_options(diag_out_dir)
             simInput.update(
                 {"diags_fn": lambda model: dump_all_diags(model.populations)}
@@ -54,6 +53,7 @@ class DataWranglerTest(unittest.TestCase):
             self.checkEM(dw, dw_EB, diags.E(), "EM_E")
             self.checkEM(dw, dw_EB, diags.B(), "EM_B")
 
+            diags.close()
             del (dw, self.sim, self.hier)
             cpp.reset()
 

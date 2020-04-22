@@ -6,7 +6,7 @@ import unittest
 import phare.pharein as ph, numpy as np, math
 from phare.pharein import ElectronModel
 
-from phare.pp.diagnostics import extract_diagnostics
+from phare.pp.diagnostics import extract_diagnostics, close_diagnostics
 
 
 class InitValueValidation(unittest.TestCase):
@@ -18,17 +18,21 @@ class InitValueValidation(unittest.TestCase):
         return ph.globals.sim
 
     def runAndDump(self, dim, interp, input):
+        self.tearDown()
         self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
         timestamp = 0
         timestep = 1
         self.dman.dump(timestamp, timestep)
         del self.dman, self.sim, self.hier  # force hdf5 flush
-        return extract_diagnostics(ph.globals.sim.diag_options["options"]["dir"])
+        self.diags = extract_diagnostics(ph.globals.sim.diag_options["options"]["dir"])
+        return self.diags
 
     def tearDown(self):
         for k in ["dman", "sim", "hier"]:
             if hasattr(self, k):
                 delattr(self, k)
+        if hasattr(self, "diags"): # close handles on h5py files
+            close_diagnostics(self.diags)
         cpp.reset()
 
 
