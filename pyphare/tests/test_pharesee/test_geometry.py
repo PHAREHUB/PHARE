@@ -109,52 +109,52 @@ class GeometryTest(unittest.TestCase):
         ez_dataL1P2 = ez(L1GB2, dx / ratio, Lx, origin)
 
         interp_order = 1
-        layout = GridLayout(0., dx, interp_order)
+        layout = GridLayout(L0B1, 0., dx, interp_order)
 
-        self.L0P1_datas = {"EM_B_x": FieldData(L0B1, layout, "Bx", bx_dataL0P1),
-                      "EM_B_y": FieldData(L0B1, layout, "By", by_dataL0P1),
-                      "EM_B_z": FieldData(L0B1, layout, "Bz", bz_dataL0P1),
-                      "EM_E_x": FieldData(L0B1, layout, "Ex", ex_dataL0P1),
-                      "EM_E_y": FieldData(L0B1, layout, "Ey", ey_dataL0P1),
-                      "EM_E_z": FieldData(L0B1, layout, "Ez", ez_dataL0P1),
-                      "particles": ParticleData(L0B1, layout, select_particles(coarse_particles, L0B1))
+        self.L0P1_datas = {"EM_B_x": FieldData(layout, "Bx", bx_dataL0P1),
+                      "EM_B_y": FieldData(layout, "By", by_dataL0P1),
+                      "EM_B_z": FieldData(layout, "Bz", bz_dataL0P1),
+                      "EM_E_x": FieldData(layout, "Ex", ex_dataL0P1),
+                      "EM_E_y": FieldData(layout, "Ey", ey_dataL0P1),
+                      "EM_E_z": FieldData(layout, "Ez", ez_dataL0P1),
+                      "particles": ParticleData(layout, select_particles(coarse_particles, layout.box))
                       }
 
-        layout = GridLayout(xtot[33], dx, interp_order)
-        self.L0P2_datas = {"EM_B_x": FieldData(L0B2, layout, "Bx", bx_dataL0P2),
-                      "EM_B_y": FieldData(L0B2, layout, "By", by_dataL0P2),
-                      "EM_B_z": FieldData(L0B2, layout, "Bz", bz_dataL0P2),
-                      "EM_E_x": FieldData(L0B2, layout, "Ex", ex_dataL0P2),
-                      "EM_E_y": FieldData(L0B2, layout, "Ey", ey_dataL0P2),
-                      "EM_E_z": FieldData(L0B2, layout, "Ez", ez_dataL0P2),
-                      "particles": ParticleData(L0B2, layout, select_particles(coarse_particles, L0B2))
+        layout = GridLayout(L0B2, xtot[33], dx, interp_order)
+        self.L0P2_datas = {"EM_B_x": FieldData(layout, "Bx", bx_dataL0P2),
+                      "EM_B_y": FieldData(layout, "By", by_dataL0P2),
+                      "EM_B_z": FieldData(layout, "Bz", bz_dataL0P2),
+                      "EM_E_x": FieldData(layout, "Ex", ex_dataL0P2),
+                      "EM_E_y": FieldData(layout, "Ey", ey_dataL0P2),
+                      "EM_E_z": FieldData(layout, "Ez", ez_dataL0P2),
+                      "particles": ParticleData(layout, select_particles(coarse_particles, layout.box))
                       }
 
-        layout = GridLayout(5 * dx, dx / ratio, interp_order)
-        self.L1P1_datas = {"EM_B_x": FieldData(L1B1, layout, "Bx", bx_dataL1P1),
-                      "EM_B_y": FieldData(L1B1, layout, "By", by_dataL1P1),
-                      "EM_B_z": FieldData(L1B1, layout, "Bz", bz_dataL1P1),
-                      "EM_E_x": FieldData(L1B1, layout, "Ex", ex_dataL1P1),
-                      "EM_E_y": FieldData(L1B1, layout, "Ey", ey_dataL1P1),
-                      "EM_E_z": FieldData(L1B1, layout, "Ez", ez_dataL1P1),
-                      "particles": ParticleData(L1B1, layout, select_particles(fine_particles, L1B1))
+        layout = GridLayout(L1B1, 5 * dx, dx / ratio, interp_order)
+        self.L1P1_datas = {"EM_B_x": FieldData(layout, "Bx", bx_dataL1P1),
+                      "EM_B_y": FieldData(layout, "By", by_dataL1P1),
+                      "EM_B_z": FieldData(layout, "Bz", bz_dataL1P1),
+                      "EM_E_x": FieldData(layout, "Ex", ex_dataL1P1),
+                      "EM_E_y": FieldData(layout, "Ey", ey_dataL1P1),
+                      "EM_E_z": FieldData(layout, "Ez", ez_dataL1P1),
+                      "particles": ParticleData(layout, select_particles(fine_particles, layout.box))
                       }
 
-        layout = GridLayout(32 * dx, dx / ratio, interp_order)
-        self.L1P2_datas = {"EM_B_x": FieldData(L1B2, layout, "Bx", bx_dataL1P2),
-                      "EM_B_y": FieldData(L1B2, layout, "By", by_dataL1P2),
-                      "EM_B_z": FieldData(L1B2, layout, "Bz", bz_dataL1P2),
-                      "EM_E_x": FieldData(L1B2, layout, "Ex", ex_dataL1P2),
-                      "EM_E_y": FieldData(L1B2, layout, "Ey", ey_dataL1P2),
-                      "EM_E_z": FieldData(L1B2, layout, "Ez", ez_dataL1P2),
-                      "particles": ParticleData(L1B2, layout, select_particles(fine_particles, L1B2))
+        layout = GridLayout(L1B2, 32 * dx, dx / ratio, interp_order)
+        self.L1P2_datas = {"EM_B_x": FieldData(layout, "Bx", bx_dataL1P2),
+                      "EM_B_y": FieldData(layout, "By", by_dataL1P2),
+                      "EM_B_z": FieldData(layout, "Bz", bz_dataL1P2),
+                      "EM_E_x": FieldData(layout, "Ex", ex_dataL1P2),
+                      "EM_E_y": FieldData(layout, "Ey", ey_dataL1P2),
+                      "EM_E_z": FieldData(layout, "Ez", ez_dataL1P2),
+                      "particles": ParticleData(layout, select_particles(fine_particles, layout.box))
                       }
 
-        self.L0P1 = Patch(L0B1, GridLayout(0., dx, interp_order), patch_datas = self.L0P1_datas)
-        self.L0P2 = Patch(L0B2, GridLayout(xtot[33], dx, interp_order), patch_datas = self.L0P2_datas)
+        self.L0P1 = Patch(self.L0P1_datas)
+        self.L0P2 = Patch(self.L0P2_datas)
 
-        self.L1P1 = Patch(L1B1, GridLayout(5 * dx, dx / ratio, interp_order), patch_datas = self.L1P1_datas)
-        self.L1P2 = Patch(L1B2, GridLayout(32 * dx, dx / ratio, interp_order), patch_datas = self.L1P2_datas)
+        self.L1P1 = Patch(self.L1P1_datas)
+        self.L1P2 = Patch(self.L1P2_datas)
 
         self.L0 = PatchLevel(0, [self.L0P1, self.L0P2])
         self.L1 = PatchLevel(1, [self.L1P1, self.L1P2])
@@ -328,22 +328,15 @@ class GeometryTest(unittest.TestCase):
         }
 
 
-
-
-
         overlaps = hierarchy_overlaps(self.hierarchy)
 
         for ilvl, lvl in enumerate(self.hierarchy.patch_levels):
-            refined_domain_box = self.hierarchy.refined_domain_box(ilvl)
-
-
-            overlaps = compute_overlaps(lvl.patches, refined_domain_box)
 
             print("level {} overlap : ".format(ilvl))
 
-            self.assertEqual(len(expected[ilvl]), len(overlaps))
+            self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
 
-            for exp, actual in zip(expected[ilvl], overlaps):
+            for exp, actual in zip(expected[ilvl], overlaps[ilvl]):
 
                 act_box    = actual["box"]
                 act_pdatas = actual["pdatas"]

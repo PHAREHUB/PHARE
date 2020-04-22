@@ -4,24 +4,24 @@ import numpy as np
 
 class PatchData:
 
-    def __init__(self, box, layout, quantity):
+    def __init__(self, layout, quantity):
         self.quantity = quantity
-        self._box = box
-        self.origin = layout.origin
-        self.layout = layout
+        self._box     = layout.box
+        self.origin   = layout.origin
+        self.layout   = layout
 
 
 class FieldData(PatchData):
-    def __init__(self, box, layout, field_name, data):
-        super().__init__(box, layout, 'field')
+    def __init__(self, layout, field_name, data):
+        super().__init__(layout, 'field')
 
-
+        self.layout = layout
         self.field_name = field_name
         self.dx = layout.dl[0]
 
         centering = layout.centering["X"][field_name]
         self._ghosts_nbr = layout.nbrGhosts(layout.interp_order, centering)
-        self.ghost_box = boxm.grow(box, self._ghosts_nbr)
+        self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
         if centering == "primal":
             self.size = self.ghost_box.size() + 1
@@ -34,8 +34,8 @@ class FieldData(PatchData):
 
 
 class ParticleData(PatchData):
-    def __init__(self, box, layout, data):
-        super().__init__(box, layout, 'particles')
+    def __init__(self, layout, data):
+        super().__init__(layout, 'particles')
         self.domain_particles = data
         if layout.interp_order == 1:
             self._ghosts_nbr = 1
@@ -43,7 +43,7 @@ class ParticleData(PatchData):
             self._ghosts_nbr = 2
         else:
             raise RuntimeError("invalid interpolation order")
-        self.ghost_box = boxm.grow(box, self._ghosts_nbr)
+        self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
 
 class Patch:
@@ -51,10 +51,14 @@ class Patch:
     A patch represents a hyper-rectangular region of space
     """
 
-    def __init__(self, box, layout, patch_datas):
-        self.box = box
-        self.origin = layout.origin
-        self.dx = layout.dl[0]
+    def __init__(self, patch_datas):
+
+        # all patch_datas are assumed to have the reference to
+        # same layout object so take data from the first
+        pdata0 = list(patch_datas.values())[0]
+        self.box = pdata0.layout.box
+        self.origin = pdata0.layout.origin
+        self.dx = pdata0.layout.dl[0]
         self.patch_datas = patch_datas
 
 

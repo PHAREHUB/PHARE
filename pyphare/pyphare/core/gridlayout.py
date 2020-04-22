@@ -2,6 +2,7 @@
 
 import math
 from .phare_utilities import listify
+from ..pharesee.box import Box
 
 yee_centering = {
     'x': {
@@ -48,7 +49,8 @@ class YeeCentering(object):
 
 class GridLayout(object):
 
-    def __init__(self, origin=0, dl=0.1, interp_order=1):
+    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1):
+        self.box = box
         self.origin = listify(origin)
         self.dl = listify(dl)
         self.interp_order = interp_order
