@@ -25,10 +25,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include/phare/solver>)
 
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-  phare_core
-  phare_amr
-  )
+target_link_libraries(${PROJECT_NAME} PUBLIC phare_amr)
 
 
 target_include_directories(${PROJECT_NAME}  PUBLIC

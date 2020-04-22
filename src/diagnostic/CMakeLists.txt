@@ -34,5 +34,5 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 target_include_directories(${PROJECT_NAME}  PUBLIC
   $<INSTALL_INTERFACE:include/phare/diagnostic>)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE phare_initializer phare_solver)
+target_link_libraries(${PROJECT_NAME} PRIVATE phare_solver)
 
