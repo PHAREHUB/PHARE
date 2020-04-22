@@ -63,7 +63,7 @@ def _level_has_patchghost(particles, lvlNbr):
 def _calculate_1d(particles, patch0, patch1, periodic=False):
     assert isinstance(particles, Particles)
     assert all([isinstance(x, Patch) for x in [patch0, patch1]])
-    if _level_has_patchghost(particles, patch0.patch_level.lvlNbr):
+    if _level_has_patchghost(particles, patch0.patch_level().lvlNbr):
         return overlap_calculate_1d(
             PatchGhostParticleOverlap,
             patch0,

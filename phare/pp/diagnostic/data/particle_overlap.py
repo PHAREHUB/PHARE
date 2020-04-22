@@ -28,7 +28,7 @@ def get_ghost_patch(particles, refPatch, ghostType):
     if ghostType is PatchGhostParticleOverlap:
         gDiag = particles.pGhostDiag
 
-    return gDiag.levels[refPatch.patch_level.lvlNbr].patches[refPatch.id]
+    return gDiag.levels[refPatch.patch_level().lvlNbr].patches[refPatch.id]
 
 
 class ParticleOverlapComparator:

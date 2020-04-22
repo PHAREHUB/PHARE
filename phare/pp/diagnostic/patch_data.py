@@ -1,4 +1,4 @@
-import h5py
+import h5py, weakref
 from abc import ABC  # abstract class
 
 
@@ -24,7 +24,7 @@ class PatchData(ABC):
     def __init__(self, diag, quantity_key, h5item):
         assert isinstance(h5item, h5py.Dataset) or isinstance(h5item, h5py.Group)
 
-        self.diag = diag
+        self.diag = weakref.ref(diag)
         self.quantity_key = quantity_key
         self.h5item = h5item  # group or dataset
         self.name = (

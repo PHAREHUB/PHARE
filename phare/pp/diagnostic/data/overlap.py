@@ -42,11 +42,11 @@ def getOverlaps(OverlapType, diags):
 def calculate_1d(OverlapType, patch0, patch1, data_name, **kwargs):
     assert issubclass(OverlapType, Overlap)
     assert type(patch0.patch_data) == type(patch1.patch_data)
-    assert patch0.patch_level.lvlNbr == patch1.patch_level.lvlNbr
+    assert patch0.patch_level().lvlNbr == patch1.patch_level().lvlNbr
 
     lower, upper = sorted([patch0, patch1], key=lambda x: x.min_coord("x"))
     nGhosts = patch0.patch_data.nGhosts(data_name)
-    level_cell_width = patch0.patch_level.cell_width("x")
+    level_cell_width = patch0.patch_level().cell_width("x")
     x_gap = upper.min_coord("x") - lower.max_coord("x")
 
     ghost_area_lgth = level_cell_width * nGhosts

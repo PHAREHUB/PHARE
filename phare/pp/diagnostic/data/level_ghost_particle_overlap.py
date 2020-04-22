@@ -78,9 +78,9 @@ def _levelGhost(particles):
 def _intersect_coarser_1d(coarseDomain, fineLevelGhost, particles):
     """Particle ghost width is never > 2, as such a fine/coarse overlap will never
         include more than 1 coarsePatch/cell"""
-    assert coarseDomain.patch_level.diag.dim == 1
+    assert coarseDomain.patch_level().diag().dim == 1
     assert all([isinstance(x, Patch) for x in [coarseDomain, fineLevelGhost]])
-    assert coarseDomain.patch_level.lvlNbr == fineLevelGhost.patch_level.lvlNbr - 1
+    assert coarseDomain.patch_level().lvlNbr == fineLevelGhost.patch_level().lvlNbr - 1
 
     import numpy as np
 
@@ -92,7 +92,7 @@ def _intersect_coarser_1d(coarseDomain, fineLevelGhost, particles):
 
     def _check(fine_X, shift=0):
         fineICell = (
-            fineLevelGhost.patch_level.position_to_amr_index(fine_X, direction) + shift
+            fineLevelGhost.patch_level().position_to_amr_index(fine_X, direction) + shift
         )
         has_overlap = coarse_minX <= fine_X <= coarse_maxX
         levelOverlapDataExists = fineICell in uniq_fineLevelGhostICell

@@ -42,7 +42,7 @@ diag_out_dir = "phare_outputs/initializer"
 @ddt
 class OverlapValueValidation(InitValueValidation):
     min_interp = 1
-    max_interp = 3
+    max_interp = 1
 
     def add_to_dict(dic):
         dic.update(InitValueValidation.diag_options(diag_out_dir))
@@ -149,7 +149,7 @@ class OverlapValueValidation(InitValueValidation):
             """
             from phare.pp.diagnostic.patch import max_amr_index_for
 
-            max_x_amr_index = max_amr_index_for(domain.patch_level, "x")
+            max_x_amr_index = max_amr_index_for(domain.patch_level(), "x")
             for nGhost in range(1, overlap.nGhosts + 1):
                 shift = nGhost - 1 if overlap.is_mirror else -nGhost
                 matching_iCells.extend([shift, max_x_amr_index + shift])

@@ -34,7 +34,7 @@ class EMInitValidation(InitValueValidation):
                     fn_name = patch.patch_data.quantity_key.lower() + xyz
                     fn = self.getSimulation().model.model_dict[fn_name]
                     xorigin = patch.origin[0]
-                    cell_width = patch.patch_level.cell_width("x")
+                    cell_width = patch.patch_level().cell_width("x")
                     is_primal = yee_element_is_primal(fn_name, "x")
 
                     x_start = xorigin if is_primal else xorigin + cell_width / 2

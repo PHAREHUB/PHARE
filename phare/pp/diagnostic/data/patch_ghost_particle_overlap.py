@@ -64,11 +64,11 @@ def _level_has_patchghost(particles, lvlNbr):
 
 
 def _calculate_1d(particles, refPatch, cmpPatch, periodic=False):
-    assert refPatch.patch_level.diag.dim == 1
+    assert refPatch.patch_level().diag().dim == 1
     assert isinstance(particles, Particles)
     assert all([isinstance(x, Patch) for x in [refPatch, cmpPatch]])
 
-    if _level_has_patchghost(particles, refPatch.patch_level.lvlNbr):
+    if _level_has_patchghost(particles, refPatch.patch_level().lvlNbr):
         return overlap_calculate_1d(
             PatchGhostParticleOverlap,
             refPatch,

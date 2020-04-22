@@ -1,13 +1,15 @@
 REFINEMENT_RATIO = 2
 xyz_to_dim = {"x": 0, "y": 1, "z": 2}
 
+import weakref
+
 
 def max_amr_index_for(patch_level, direction):
     assert isinstance(patch_level, PatchLevel) and direction in xyz_to_dim
 
     return (
         REFINEMENT_RATIO ** patch_level.lvlNbr
-        * patch_level.diag.cells[xyz_to_dim[direction]]
+        * patch_level.diag().cells[xyz_to_dim[direction]]
     )
 
 
@@ -25,7 +27,7 @@ class PatchLevel:
     """
 
     def __init__(self, diag, lvlNbr):
-        self.diag = diag
+        self.diag = weakref.ref(diag)
         self.lvlNbr = lvlNbr
         power = REFINEMENT_RATIO ** lvlNbr
         self.dl = [x / power for x in diag.dl]
@@ -35,7 +37,7 @@ class PatchLevel:
         return self.lvlNbr == 0
 
     def position_to_amr_index(self, pos, direction):
-        origin = self.diag.origin[xyz_to_dim[direction]]
+        origin = self.diag().origin[xyz_to_dim[direction]]
         return round((pos - origin) / self.cell_width(direction))
 
     def patch_length(self, cells, direction):
@@ -73,7 +75,7 @@ class Patch:
     """
 
     def __init__(self, patch_level, h5PatchGroup, patch_data):
-        self.patch_level = patch_level
+        self.patch_level = weakref.ref(patch_level)
         self.h5PatchGroup = h5PatchGroup
         self.id = h5PatchGroup.name.split("/")[-1][1:]  # samrai patch id e.g. 0x0
         self.patch_data = patch_data
@@ -82,7 +84,7 @@ class Patch:
 
     # copy/transform patch origins for periodic overlap calculations
     def copy(self, transform=[0, 0, 0]):
-        p = Patch(self.patch_level, self.h5PatchGroup, self.patch_data)
+        p = Patch(self.patch_level(), self.h5PatchGroup, self.patch_data)
         p.origin = [f + transform[i] for i, f in enumerate(self.origin)]
         return p
 
@@ -92,7 +94,7 @@ class Patch:
     def max_coord(self, direction):
         return round(
             self.min_coord(direction)
-            + self.patch_level.patch_length(
+            + self.patch_level().patch_length(
                 self.cells[xyz_to_dim[direction]], direction
             ),
             6,
@@ -110,7 +112,7 @@ def aggregate_level0_patch_domain(patch_level, shared_patch_border=False, ds_nam
           used for EM, to avoid mixing non/primal ds_names
     """
     assert isinstance(shared_patch_border, bool)  # you never know
-    assert patch_level.lvlNbr == 0 and patch_level.diag.dim == 1
+    assert patch_level.lvlNbr == 0 and patch_level.diag().dim == 1
     import numpy as np
 
     patches = sorted(patch_level.patches.values(), key=lambda x: x.min_coord("x"))
