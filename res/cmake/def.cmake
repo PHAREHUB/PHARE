@@ -59,7 +59,7 @@ endif()
 # msan is not supported - it's not practical to configure - use valgrind
 
 function(set_exe_paths_ binary)
-  set_property(TEST ${binary}        PROPERTY ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR})
+  set_property(TEST ${binary}        PROPERTY ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
   set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${LD_LIBRARY_PATH})
 endfunction(set_exe_paths_)
 

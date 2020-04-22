@@ -1,6 +1,6 @@
 
 import unittest
-from phare.core import gridlayout
+from pyphare.core import gridlayout
 
 class InitValueValidation(unittest.TestCase):
 

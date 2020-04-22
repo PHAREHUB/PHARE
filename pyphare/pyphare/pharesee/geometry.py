@@ -6,7 +6,6 @@ from .hierarchy import FieldData, is_root_lvl
 
 
 def toFieldBox(box, patch_data):
-    from core.gridlayout import GridLayout
     """
     grows the box by one cell if patch_data is primal
     because box.upper+1 allows to get the rightmost primal node

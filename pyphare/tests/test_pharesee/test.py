@@ -1,16 +1,16 @@
 import numpy as np
 
-import pharesee.box as boxm
-from pharesee.box import Box
-from pharesee.particles import Particles
-from pharesee.hierarchy import FieldData
-from pharesee.hierarchy import ParticleData
-from pharesee.hierarchy import PatchHierarchy
-from pharesee.hierarchy import Patch, PatchLevel
-from pharesee.geometry import compute_overlaps, toFieldBox
-from pharesee.geometry import particle_ghost_area_boxes
-from pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
-from core.gridlayout import GridLayout
+import pyphare.pharesee.box as boxm
+from pyphare.pharesee.box import Box
+from pyphare.pharesee.particles import Particles
+from pyphare.pharesee.hierarchy import FieldData
+from pyphare.pharesee.hierarchy import ParticleData
+from pyphare.pharesee.hierarchy import PatchHierarchy
+from pyphare.pharesee.hierarchy import Patch, PatchLevel
+from pyphare.pharesee.geometry import compute_overlaps, toFieldBox
+from pyphare.pharesee.geometry import particle_ghost_area_boxes
+from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
+from pyphare.core.gridlayout import GridLayout
 
 
 def bx(ghost_box, dx, Lx, origin):

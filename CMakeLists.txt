@@ -62,9 +62,9 @@ include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 #* Build the different libs and executables
 #*******************************************************************************
 
-if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-  file(COPY ${PHARE_PROJECT_DIR}/phare DESTINATION ${CMAKE_BINARY_DIR})
-endif()
+#if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+#  file(COPY ${PHARE_PROJECT_DIR}/pyphare DESTINATION ${CMAKE_BINARY_DIR})
+#endif()
 
 add_subdirectory(src/core)
 add_subdirectory(src/solver)

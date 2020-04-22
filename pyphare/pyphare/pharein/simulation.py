@@ -1,6 +1,6 @@
 import os
 
-from core import phare_utilities
+from ..core import phare_utilities
 #from .globals import objects
 from . import globals
 
@@ -200,7 +200,7 @@ def check_refinement_boxes(**kwargs):
 
 def check_patch_size(**kwargs):
     def get_max_ghosts():
-        from core.gridlayout import GridLayout
+        from ..core.gridlayout import GridLayout
         grid = GridLayout()
         return max(grid.nbrGhosts(kwargs["interp_order"], x) for x in ['primal','dual'])
 

@@ -1,6 +1,5 @@
 
 from . import box as boxm
-from core.gridlayout import GridLayout
 import numpy as np
 
 class PatchData:

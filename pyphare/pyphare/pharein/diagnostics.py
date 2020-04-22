@@ -1,5 +1,5 @@
 
-from core import phare_utilities
+from ..core import phare_utilities
 #from .globals import objects
 from . import globals
 

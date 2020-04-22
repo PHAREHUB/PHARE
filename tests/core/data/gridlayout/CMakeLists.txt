@@ -17,7 +17,7 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-    gridlayout_amr.cpp
+  gridlayout_amr.cpp
   gridlayout_allocsize.cpp
   gridlayout_cell_centered_coord.cpp
   gridlayout_deriv.cpp
@@ -44,7 +44,7 @@ add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(TARGET ${PROJECT_NAME}
   POST_BUILD
-  COMMAND PYTHONPATH=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gridlayout_generate_test_files.py
+  COMMAND "PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gridlayout_generate_test_files.py
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})

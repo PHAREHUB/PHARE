@@ -2,8 +2,8 @@
 
 import unittest
 from ddt import ddt, data, unpack
-from pharesee import box as boxm
-from pharesee.box import Box
+from pyphare.pharesee import box as boxm
+from pyphare.pharesee.box import Box
 
 
 @ddt

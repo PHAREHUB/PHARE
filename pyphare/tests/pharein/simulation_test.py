@@ -1,13 +1,11 @@
 import unittest
 import numpy as np
 
-import sys
 
+import pyphare.pharein.globals as globals
 
-import configparser
-import pharein.globals as globals
-
-from pharein import phare_utilities, uniform_model, diagnostics, simulation
+from pyphare.core  import phare_utilities
+from pyphare.pharein import simulation
 
 
 class TestSimulation(unittest.TestCase):
