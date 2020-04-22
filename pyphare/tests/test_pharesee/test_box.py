@@ -2,10 +2,13 @@
 
 import unittest
 from ddt import ddt, data, unpack
-
+<<<<<<< HEAD:pyphare/pyphare_tests/test_core/test_box.py
 from pyphare.core import box as boxm
 from pyphare.core.box import Box
-
+=======
+from pyphare.pharesee import box as boxm
+from pyphare.pharesee.box import Box
+>>>>>>> udpate cmake config - all work but data_wrangler:pyphare/tests/test_pharesee/test_box.py
 
 
 @ddt
