@@ -89,18 +89,40 @@ namespace amr
 
 
 
-
     class Integrator
     {
     public:
-        Integrator(PHARE::initializer::PHAREDict dict,
-                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
-                   std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
-                   std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
-                   double startTime, double endTime)
+        void initialize()
         {
-            constexpr int dimension = 1;
-            auto loadBalancer       = std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
+            std::cerr << "initializing hierarchy...";
+            timeRefIntegrator_->initializeHierarchy();
+            std::cerr << "done !\n";
+        }
+
+
+        void advance(double dt) { timeRefIntegrator_->advanceHierarchy(dt); }
+
+
+    protected:
+        std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator_;
+    };
+
+
+
+    template<std::size_t _dimension>
+    class DimIntegrator : public Integrator
+    {
+    public:
+        static constexpr size_t dimension = _dimension;
+
+        DimIntegrator(
+            PHARE::initializer::PHAREDict dict,
+            std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
+            std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
+            std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
+            double startTime, double endTime)
+        {
+            auto loadBalancer = std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
                 SAMRAI::tbox::Dimension{dimension}, "LoadBalancer");
 
             auto refineDB    = getUserRefinementBoxesDatabase<dimension>(dict["simulation"]["AMR"]);
@@ -128,22 +150,6 @@ namespace amr
             timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(
                 "TimeRefinementIntegrator", db, hierarchy, timeRefLevelStrategy, gridding);
         }
-
-
-
-        void initialize()
-        {
-            std::cerr << "initializing hierarchy...";
-            timeRefIntegrator_->initializeHierarchy();
-            std::cerr << "done !\n";
-        }
-
-
-        void advance(double dt) { timeRefIntegrator_->advanceHierarchy(dt); }
-
-
-    private:
-        std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator_;
     };
 
 
