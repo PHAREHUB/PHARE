@@ -13,9 +13,8 @@ namespace py = pybind11;
 template<typename T>
 using py_array = py::array_t<T, py::array::c_style | py::array::forcecast>;
 
-template<typename T,
-         typename = std::enable_if_t<cppdict::is_in<T, int, double, std::string, ScalarFunction<1>,
-                                                    ScalarFunction<2>, ScalarFunction<3>>>>
+
+template<typename T>
 void add(std::string path, T&& value)
 {
     cppdict::add(path, std::forward<T>(value),
@@ -58,11 +57,11 @@ PYBIND11_MODULE(pyphare, m)
     m.def("add_size_t", add_size_t, "add_size_t");
     m.def("add_optional_size_t", add_optional_size_t, "add_optional_size_t");
 
-    m.def("add", add<int, void>, "add");
-    m.def("add", add<double, void>, "add");
-    m.def("add", add<std::string, void>, "add");
-    m.def("addScalarFunction1D", add<ScalarFunction<1>, void>, "add");
-    m.def("addScalarFunction2D", add<ScalarFunction<2>, void>, "add");
-    m.def("addScalarFunction3D", add<ScalarFunction<3>, void>, "add");
+    m.def("add", add<int>, "add");
+    m.def("add", add<double>, "add");
+    m.def("add", add<std::string>, "add");
+    m.def("addScalarFunction1D", add<ScalarFunction<1>>, "add");
+    m.def("addScalarFunction2D", add<ScalarFunction<2>>, "add");
+    m.def("addScalarFunction3D", add<ScalarFunction<3>>, "add");
     m.def("add_array_as_vector", add_array_as_vector<double>, "add_array_as_vector");
 }

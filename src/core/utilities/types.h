@@ -89,14 +89,6 @@ namespace core
     template<typename T, std::size_t size>
     inline constexpr auto is_std_array_v = is_std_array<T, size>::value;
 
-    template<typename Val, typename Dict>
-    struct is_dict_leaf
-        : std::conditional<
-              !std::is_same_v<Val, cppdict::NoValue> && !std::is_same_v<Val, typename Dict::map_t>,
-              std::true_type, std::false_type>::type
-    {
-    };
-
     template<typename Tuple, typename Func>
     void apply(Tuple tuple, Func func)
     {
