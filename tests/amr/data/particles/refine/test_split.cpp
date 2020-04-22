@@ -80,7 +80,7 @@ public:
         std::vector<Particle<dimension>> refinedParticles;
 
         auto split
-            = Split<dimension, interpOrder>(Point<int32, dimension>{ratio}, refineParticlesNbr);
+            = Split<dimension, interpOrder, refineParticlesNbr>(Point<int32, dimension>{ratio});
 
         auto geom        = this->hierarchy.getGridGeometry();
         auto domainBoxes = geom->getPhysicalDomain();

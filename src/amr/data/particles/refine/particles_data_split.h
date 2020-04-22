@@ -13,6 +13,7 @@
 
 #include <functional>
 
+
 namespace PHARE
 {
 namespace amr
@@ -27,11 +28,14 @@ namespace amr
         coarseBoundaryNew
     };
 
-    template<std::size_t dim, std::size_t interpOrder, ParticlesDataSplitType splitType,
-             std::size_t refinedParticleNbr, typename SplitT>
+
+    template<ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
     public:
+        static constexpr size_t dim         = Splitter::dimension;
+        static constexpr size_t interpOrder = Splitter::interpOrder;
+
         ParticlesRefineOperator()
             : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
         {
@@ -144,10 +148,7 @@ namespace amr
             // index relative to the interior
 
 
-            // TODO refineParticleNbr should not be runtime and SplitT should be created only once.
-            // SplitT split{computeRatio(), refinedParticleNbr};
-
-            SplitT split{core::Point<int32, dim>{ratio}, refinedParticleNbr};
+            Splitter split{core::Point<int32, dim>{ratio}};
 
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
@@ -245,7 +246,7 @@ namespace amr
 
             for (auto iDim = 0u; iDim < dim; ++iDim)
             {
-                growingVec[iDim] = SplitT::maxCellDistanceFromSplit();
+                growingVec[iDim] = Splitter::maxCellDistanceFromSplit();
             }
             splitBox.grow(growingVec);
 
@@ -263,5 +264,24 @@ namespace amr
 } // namespace amr
 
 } // namespace PHARE
+
+
+namespace PHARE::amr
+{
+template<typename Splitter>
+struct RefinementParams
+{
+    using InteriorParticleRefineOp
+        = ParticlesRefineOperator<ParticlesDataSplitType::interior, Splitter>;
+
+    using CoarseToFineRefineOpOld
+        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryOld, Splitter>;
+
+    using CoarseToFineRefineOpNew
+        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryNew, Splitter>;
+};
+
+} // namespace PHARE::amr
+
 
 #endif

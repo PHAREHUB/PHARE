@@ -32,34 +32,25 @@ namespace amr
     /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid to
      * hybrid data communications.
      */
-    template<typename HybridModel, typename IPhysicalModel>
+    template<typename HybridModel, typename IPhysicalModel, typename RefinementParams>
     class HybridHybridMessengerStrategy
         : public HybridMessengerStrategy<HybridModel, IPhysicalModel>
     {
-        using IonsT                                = typename HybridModel::ions_type;
-        using ElectromagT                          = typename HybridModel::electromag_type;
-        using VecFieldT                            = typename HybridModel::vecfield_type;
-        using GridLayoutT                          = typename HybridModel::gridLayout_type;
-        using FieldT                               = typename VecFieldT::field_type;
-        using ResourcesManagerT                    = typename HybridModel::resources_manager_type;
-        static constexpr std::size_t dimension     = GridLayoutT::dimension;
-        static constexpr std::size_t interpOrder   = GridLayoutT::interp_order;
-        using SplitT                               = Split<dimension, interpOrder>;
-        static constexpr std::size_t nbRefinedPart = 2; // TODO stop hard-coding this
-        using InteriorParticleRefineOp
-            = ParticlesRefineOperator<dimension, interpOrder, ParticlesDataSplitType::interior,
-                                      nbRefinedPart, SplitT>;
+        using IonsT                              = typename HybridModel::ions_type;
+        using ElectromagT                        = typename HybridModel::electromag_type;
+        using VecFieldT                          = typename HybridModel::vecfield_type;
+        using GridLayoutT                        = typename HybridModel::gridLayout_type;
+        using FieldT                             = typename VecFieldT::field_type;
+        using ResourcesManagerT                  = typename HybridModel::resources_manager_type;
+        static constexpr std::size_t dimension   = GridLayoutT::dimension;
+        static constexpr std::size_t interpOrder = GridLayoutT::interp_order;
 
-        using CoarseToFineRefineOpOld
-            = ParticlesRefineOperator<dimension, interpOrder,
-                                      ParticlesDataSplitType::coarseBoundaryOld, nbRefinedPart,
-                                      SplitT>;
+        using InteriorParticleRefineOp = typename RefinementParams::InteriorParticleRefineOp;
+        using CoarseToFineRefineOpOld  = typename RefinementParams::CoarseToFineRefineOpOld;
+        using CoarseToFineRefineOpNew  = typename RefinementParams::CoarseToFineRefineOpNew;
 
-        using CoarseToFineRefineOpNew
-            = ParticlesRefineOperator<dimension, interpOrder,
-                                      ParticlesDataSplitType::coarseBoundaryNew, nbRefinedPart,
-                                      SplitT>;
-
+        template<typename HybridModel_1, typename IPhysicalModel_1>
+        friend class StaticHybridHybridMessengerStrategy;
 
     public:
         static const std::string stratName;
@@ -695,8 +686,9 @@ namespace amr
             std::make_shared<FieldCoarsenOperator<GridLayoutT, FieldT>>()};
     };
 
-    template<typename HybridModel, typename IPhysicalModel>
-    const std::string HybridHybridMessengerStrategy<HybridModel, IPhysicalModel>::stratName
+    template<typename HybridModel, typename IPhysicalModel, typename RefinementParams>
+    const std::string
+        HybridHybridMessengerStrategy<HybridModel, IPhysicalModel, RefinementParams>::stratName
         = "HybridModel-HybridModel";
 
 } // namespace amr

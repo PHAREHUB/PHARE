@@ -5,11 +5,12 @@
 
 namespace PHARE
 {
-template<std::size_t dimension_, std::size_t interp_order_>
+template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_>
 struct PHARE_Types
 {
-    static auto constexpr dimension    = dimension_;
-    static auto constexpr interp_order = interp_order_;
+    static auto constexpr dimension     = dimension_;
+    static auto constexpr interp_order  = interp_order_;
+    static auto constexpr nbRefinedPart = nbRefinedPart_;
 
     using Array_t
         = decltype(PHARE::core::makeNdArray<dimension>(std::array<std::uint32_t, dimension>{}));
@@ -37,9 +38,10 @@ struct PHARE_Types
 
     using ParticleInitializerFactory
         = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
-
+    using Splitter         = PHARE::amr::Split<dimension, interp_order, nbRefinedPart>;
+    using RefinementParams = PHARE::amr::RefinementParams<Splitter>;
     using MessengerFactory
-        = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, IPhysicalModel>;
+        = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, IPhysicalModel, RefinementParams>;
 
     using MultiPhysicsIntegrator
         = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, LevelInitializerFactory_t,

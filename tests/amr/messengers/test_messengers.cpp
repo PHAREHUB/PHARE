@@ -11,14 +11,15 @@ using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::solver;
 
-static constexpr std::size_t dim         = 1;
-static constexpr std::size_t interpOrder = 1;
+static constexpr std::size_t dim          = 1;
+static constexpr std::size_t interpOrder  = 1;
+static constexpr std::size_t nbRefinePart = 2;
 
-using Simulator         = PHARE::Simulator<dim, interpOrder>;
+using Simulator         = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
 using HybridModelT      = Simulator::HybridModel;
 using MHDModelT         = Simulator::MHDModel;
 using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-
+using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
 
 double density(double x)
 {
@@ -214,8 +215,7 @@ class HybridMessengers : public ::testing::Test
 {
     std::vector<MessengerDescriptor> descriptors{
         {"MHDModel", "MHDModel"}, {"MHDModel", "HybridModel"}, {"HybridModel", "HybridModel"}};
-    MessengerFactory<MHDModelT, HybridModelT, IPhysicalModel<SAMRAI_Types>> messengerFactory{
-        descriptors};
+    Phare_Types::MessengerFactory messengerFactory{descriptors};
 
 
 public:
@@ -507,7 +507,8 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
     int const ratio{2};
     short unsigned const dimension = 1;
 
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>;
+    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>,
+                                                        Phare_Types::RefinementParams>;
 
     SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
 

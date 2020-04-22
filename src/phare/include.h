@@ -69,10 +69,12 @@ struct RuntimeDiagnosticInterface
         : hierarchy{_hierarchy}
         , simulator{_simulator}
     {
-        auto dict        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-        auto dim         = dict["simulation"]["dimension"].template to<int>();
-        auto interpOrder = dict["simulation"]["interp_order"].template to<int>();
-        if (!PHARE::core::makeAtRuntime<Maker>(dim, interpOrder, Maker{*this}))
+        auto dict          = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+        auto dim           = dict["simulation"]["dimension"].template to<int>();
+        auto interpOrder   = dict["simulation"]["interp_order"].template to<int>();
+        auto nbRefinedPart = dict["simulation"]["refined_particle_nbr"].template to<int>();
+
+        if (!PHARE::core::makeAtRuntime<Maker>(dim, interpOrder, nbRefinedPart, Maker{*this}))
             throw std::runtime_error("Runtime diagnostic deduction failed");
     }
 
@@ -83,23 +85,27 @@ struct RuntimeDiagnosticInterface
         {
         }
 
-        template<typename Dimension, typename InterpOrder>
-        bool operator()(std::size_t userDim, std::size_t userInterpOrder, Dimension dimension,
-                        InterpOrder interp_order)
+
+
+        template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+        bool operator()(std::size_t userDim, std::size_t userInterpOrder, size_t userNbRefinedPart,
+                        Dimension dimension, InterpOrder interp_order, NbRefinedPart nbRefinedPart)
         {
             auto dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
             if (dict["simulation"].contains("diagnostics"))
             {
-                if (userDim == dimension() and userInterpOrder == interp_order())
+                if (userDim == dimension() and userInterpOrder == interp_order()
+                    and userNbRefinedPart == nbRefinedPart())
                 {
                     std::size_t constexpr d  = dimension();
                     std::size_t constexpr io = interp_order();
+                    std::size_t constexpr nb = nbRefinedPart();
 
-                    using PHARE_Types      = PHARE::PHARE_Types<d, io>;
+                    using PHARE_Types      = PHARE::PHARE_Types<d, io, nb>;
                     using ModelView        = typename PHARE_Types::ModelView;
                     using DiagnosticWriter = typename PHARE_Types::DiagnosticWriter;
 
-                    auto* simulator = dynamic_cast<PHARE::Simulator<d, io>*>(&rdi.simulator);
+                    auto* simulator = dynamic_cast<PHARE::Simulator<d, io, nb>*>(&rdi.simulator);
                     auto& hierarchy = rdi.hierarchy;
 
                     rdi.modelView

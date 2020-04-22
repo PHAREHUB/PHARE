@@ -5,6 +5,7 @@
 #include <pybind11/functional.h>
 
 #include "phare/include.h"
+#include "core/utilities/types.h"
 #include "core/utilities/mpi_utils.h"
 #include "core/data/particles/particle_packer.h"
 
@@ -59,14 +60,15 @@ void setPatchDataFromField(PatchData& data, Field const& field, GridLayout& grid
 }
 
 
-template<std::size_t _dimension, std::size_t _interp_order>
+template<typename DataWrangler>
 class PatchLevel
 {
 public:
-    static constexpr size_t dimension    = _dimension;
-    static constexpr size_t interp_order = _interp_order;
+    static constexpr size_t dimension     = DataWrangler::dimension;
+    static constexpr size_t interp_order  = DataWrangler::interp_order;
+    static constexpr size_t nbRefinedPart = DataWrangler::nbRefinedPart;
 
-    using PHARETypes  = PHARE_Types<dimension, interp_order>;
+    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel = typename PHARETypes::HybridModel_t;
     using GridLayout  = typename HybridModel::gridLayout_type;
 
@@ -246,14 +248,16 @@ private:
     HybridModel& model_;
 };
 
-template<std::size_t _dimension, std::size_t _interp_order>
+template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
 class DataWrangler
 {
 public:
-    static constexpr size_t dimension    = _dimension;
-    static constexpr size_t interp_order = _interp_order;
+    using This                            = DataWrangler;
+    static constexpr size_t dimension     = _dimension;
+    static constexpr size_t interp_order  = _interp_order;
+    static constexpr size_t nbRefinedPart = _nbRefinedPart;
 
-    using PHARETypes  = PHARE_Types<dimension, interp_order>;
+    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel = typename PHARETypes::HybridModel_t;
 
     DataWrangler(std::shared_ptr<ISimulator> const& simulator,
@@ -261,17 +265,17 @@ public:
         : simulator_{simulator}
         , hierarchy_{hierarchy}
     {
-        auto dict        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-        auto dim         = dict["simulation"]["dimension"].template to<int>();
-        auto interpOrder = dict["simulation"]["interp_order"].template to<int>();
-        if (!PHARE::core::makeAtRuntime<Maker>(dim, interpOrder, Maker{*this}))
+        auto dict          = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+        auto dim           = dict["simulation"]["dimension"].template to<int>();
+        auto interpOrder   = dict["simulation"]["interp_order"].template to<int>();
+        auto nbRefinedPart = dict["simulation"]["refined_particle_nbr"].template to<int>();
+        if (!core::makeAtRuntime<Maker>(dim, interpOrder, nbRefinedPart, Maker{*this}))
             throw std::runtime_error("Runtime diagnostic deduction failed");
     }
 
     auto getPatchLevel(size_t lvl)
     {
-        return PatchLevel<dimension, interp_order>{*hierarchy_, *simulator_ptr_->getHybridModel(),
-                                                   lvl};
+        return PatchLevel<This>{*hierarchy_, *simulator_ptr_->getHybridModel(), lvl};
     }
 
     auto sort_merge_1d(std::vector<PatchData<std::vector<double>>> const&& input,
@@ -344,7 +348,7 @@ public:
 private:
     std::shared_ptr<ISimulator> simulator_;
     std::shared_ptr<amr::Hierarchy> hierarchy_;
-    Simulator<dimension, interp_order>* simulator_ptr_ = nullptr;
+    Simulator<dimension, interp_order, nbRefinedPart>* simulator_ptr_ = nullptr;
 
     struct Maker
     {
@@ -353,19 +357,22 @@ private:
         {
         }
 
-        template<typename Dimension, typename InterpOrder>
-        bool operator()(std::size_t userDim, std::size_t userInterpOrder, Dimension dimension_fn,
-                        InterpOrder interp_order_fn)
+        template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+        bool operator()(std::size_t userDim, std::size_t userInterpOrder, size_t userNbRefinedPart,
+                        Dimension dimension_fn, InterpOrder interp_order_fn,
+                        NbRefinedPart nbRefinedPart_fn)
         {
-            if (userDim == dimension_fn() and userInterpOrder == interp_order_fn())
+            if (userDim == dimension_fn() and userInterpOrder == interp_order_fn()
+                and userNbRefinedPart == nbRefinedPart_fn())
             {
                 size_t constexpr d  = dimension_fn();
                 size_t constexpr io = interp_order_fn();
+                size_t constexpr nb = nbRefinedPart_fn();
 
                 // extra if constexpr as cast is templated and not generic interface
-                if constexpr (d == _dimension and io == _interp_order)
+                if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
                     return (dw.simulator_ptr_
-                            = dynamic_cast<PHARE::Simulator<d, io>*>(dw.simulator_.get()));
+                            = dynamic_cast<PHARE::Simulator<d, io, nb>*>(dw.simulator_.get()));
             }
             return 0;
         }
@@ -404,20 +411,26 @@ void declareDim(py::module& m)
     declarePatchData<CP>(m, name.c_str());
 }
 
-template<size_t dim, size_t interp>
-void declareDimInterp(py::module& m)
+template<typename _dim, typename _interp, typename _nbRefinedPart>
+void declare(py::module& m)
 {
-    std::string name;
+    constexpr auto dim           = _dim();
+    constexpr auto interp        = _interp();
+    constexpr auto nbRefinedPart = _nbRefinedPart();
 
-    using DW = DataWrangler<dim, interp>;
-    name     = "DataWrangler_" + std::to_string(dim) + "_" + std::to_string(interp);
+    using DW = DataWrangler<dim, interp, nbRefinedPart>;
+
+    std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
+                              + std::to_string(nbRefinedPart);
+
+    std::string name = "DataWrangler" + type_string;
     py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
         .def("getPatchLevel", &DW::getPatchLevel);
 
-    using PL = PatchLevel<dim, interp>;
-    name     = "PatchLevel_" + std::to_string(dim) + "_" + std::to_string(interp);
+    using PL = PatchLevel<DW>;
+    name     = "PatchLevel_" + type_string;
     py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
         .def("getEM", &PL::getEM)
         .def("getDensity", &PL::getDensity)
@@ -427,24 +440,23 @@ void declareDimInterp(py::module& m)
         .def("getParticles", &PL::getParticles);
 }
 
-template<size_t interp>
-void declareInterpThenDim(py::module& m)
+
+template<typename Dimension, typename InterpOrder, typename... NbRefinedParts>
+void declare(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedParts...> const&)
 {
-    declareDimInterp<1, interp>(m);
-    // declareDimInterp<2, interp>(m);
-    // declareDimInterp<3, interp>(m);
+    core::apply(std::tuple<NbRefinedParts...>{}, [&](auto& nbRefinedPart) {
+        declare<Dimension, InterpOrder, std::decay_t<decltype(nbRefinedPart)>>(m);
+    });
 }
 
 
 PYBIND11_MODULE(data_wrangler, m)
 {
-    declareInterpThenDim<1>(m);
-    declareInterpThenDim<2>(m);
-    declareInterpThenDim<3>(m);
-
     declareDim<1>(m);
-    // declareDim<2>(m);
-    // declareDim<3>(m);
+    declareDim<2>(m);
+    declareDim<3>(m);
+
+    core::apply(core::possibleSimulators(), [&](auto const& simType) { declare(m, simType); });
 
     declarePatchData<std::vector<double>>(m, "PatchDataVectorDouble");
 }
