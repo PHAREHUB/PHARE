@@ -24,6 +24,21 @@ struct FieldMock
     double data;
     double& operator()([[maybe_unused]] uint32 i) { return data; }
     double const& operator()([[maybe_unused]] uint32 i) const { return data; }
+    double& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j) { return data; }
+    double const& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j) const
+    {
+        return data;
+    }
+    double& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j,
+                       [[maybe_unused]] uint32 k)
+    {
+        return data;
+    }
+    double const& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j,
+                             [[maybe_unused]] uint32 k) const
+    {
+        return data;
+    }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
 };
 
@@ -133,21 +148,25 @@ TEST(Faraday, canBe3D)
 
 TEST(Faraday, shouldBeGivenAGridLayoutPointerToBeOperational)
 {
-    VecFieldMock<FieldMock<1>> B, E, Bnew;
+    VecFieldMock<FieldMock<1>> B_1, E_1, Bnew_1;
 
     Faraday<GridLayoutMock1D> faraday1d;
     auto layout1d = std::make_unique<GridLayoutMock1D>();
-    EXPECT_ANY_THROW(faraday1d(B, E, Bnew, 1.));
+    EXPECT_ANY_THROW(faraday1d(B_1, E_1, Bnew_1, 1.));
     faraday1d.setLayout(layout1d.get());
+
+    VecFieldMock<FieldMock<2>> B_2, E_2, Bnew_2;
 
     Faraday<GridLayoutMock2D> faraday2d;
     auto layout2d = std::make_unique<GridLayoutMock2D>();
-    // EXPECT_ANY_THROW(faraday1d(B, E, Bnew, 1.));
+    EXPECT_ANY_THROW(faraday2d(B_2, E_2, Bnew_2, 1.));
     faraday2d.setLayout(layout2d.get());
+
+    VecFieldMock<FieldMock<3>> B_3, E_3, Bnew_3;
 
     Faraday<GridLayoutMock3D> faraday3d;
     auto layout3d = std::make_unique<GridLayoutMock3D>();
-    // EXPECT_ANY_THROW(faraday1d(B, E, Bnew, 1.));
+    EXPECT_ANY_THROW(faraday3d(B_3, E_3, Bnew_3, 1.));
     faraday3d.setLayout(layout3d.get());
 }
 
