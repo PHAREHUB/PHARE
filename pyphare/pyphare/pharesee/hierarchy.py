@@ -68,7 +68,7 @@ class ParticleData(PatchData):
         elif layout.interp_order == 2 or layout.interp_order == 3:
             self._ghosts_nbr = 2
         else:
-            raise RuntimeError("invalid interpolation order")
+            raise RuntimeError("invalid interpolation order {}".format(layout.interp_order))
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
 

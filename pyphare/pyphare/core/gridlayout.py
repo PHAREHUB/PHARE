@@ -74,6 +74,10 @@ class GridLayout(object):
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]
 
+
+    def particleGhostNbr(self, interp_order):
+        return 1 if interp_order == 1 else 2
+
     def nbrGhosts(self,interpOrder, centering):
         minNbrGhost = 5
         if centering == 'primal':

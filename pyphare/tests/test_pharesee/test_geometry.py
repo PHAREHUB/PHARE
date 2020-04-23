@@ -14,6 +14,138 @@ from pyphare.core.gridlayout import GridLayout
 import numpy as np
 
 
+def bx(ghost_box, dx, Lx, origin):
+    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
+    return np.sin(2 * np.pi / Lx * x)
+
+
+def by(ghost_box, dx, Lx, origin):
+    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
+    return np.cos(2 * np.pi / Lx * x)
+
+
+def bz(ghost_box, dx, Lx, origin):
+    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
+    return np.sin(4 * np.pi / Lx * x)
+
+
+def ex(ghost_box, dx, Lx, origin):
+    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
+    return np.sin(2 * np.pi / Lx * x)
+
+
+def ey(ghost_box, dx, Lx, origin):
+    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
+    return np.cos(2 * np.pi / Lx * x)
+
+
+def ez(ghost_box, dx, Lx, origin):
+    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
+    return np.sin(4 * np.pi / Lx * x)
+
+
+
+
+
+def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, refinement_ratio, refinement_boxes):
+
+    domain_box = boxm.Box(0, nbr_cells-1)
+    domain_layout = GridLayout(domain_box, origin, cell_width, interp_order)
+
+    coarse_particles = Particles(box=domain_box)
+
+    # copy domain particles an put them in ghost cells
+    particle_ghost_nbr = domain_layout.particleGhostNbr(interp_order)
+    box_extend         =  particle_ghost_nbr-1
+
+    upper_slct_box = Box(domain_box.upper - box_extend, domain_box.upper)
+    lower_slct_box = Box(domain_box.lower, domain_box.lower+box_extend)
+
+    upper_cell_particles = coarse_particles.select(upper_slct_box)
+    lower_cell_particles = coarse_particles.select(lower_slct_box)
+
+    coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.size()))
+    coarse_particles.add(lower_cell_particles.shift_icell(domain_box.size()))
+
+
+    boxes = {}
+    for ilvl, boxes_data in refinement_boxes.items():
+
+        level_number = ilvl+1
+
+        if level_number not in boxes:
+            boxes[level_number] = []
+
+
+        for boxname, lower_upper in boxes_data.items():
+
+            refinement_box = Box(lower_upper[0], lower_upper[1])
+            refined_box    = boxm.refine(refinement_box, refinement_ratio)
+            boxes[level_number].append(refined_box)
+
+
+    # coarse level boxes are arbitrarily divided in 2 patches in the middle
+    middle_cell = round(domain_box.upper/2)
+    lower_box = Box(0,middle_cell)
+    upper_box = Box(middle_cell+1, domain_box.upper)
+    boxes[0] = [lower_box, upper_box]
+
+
+    patch_datas = {}
+
+    for ilvl, lvl_box in boxes.items():
+
+        lvl_cell_width = cell_width/(refinement_ratio**ilvl)
+
+        if ilvl not in patch_datas:
+            patch_datas[ilvl] = []
+
+        for box in lvl_box:
+
+            ghost_box = boxm.grow(box, 5)
+            origin = box.lower * lvl_cell_width
+            layout = GridLayout(box, origin, lvl_cell_width, interp_order)
+
+            datas = {"Bx"        : bx(ghost_box, cell_width, domain_size, origin),
+                     "By"        : by(ghost_box, cell_width, domain_size, origin),
+                     "Bz"        : bz(ghost_box, cell_width, domain_size, origin),
+                     "Ex"        : ex(ghost_box, cell_width, domain_size, origin),
+                     "Ey"        : ey(ghost_box, cell_width, domain_size, origin),
+                     "Ez"        : ez(ghost_box, cell_width, domain_size, origin),
+                     "particles" : coarse_particles.select(boxm.grow(box, layout.particleGhostNbr(interp_order)))
+                     }
+
+            boxed_patch_datas = {}
+            for qty_name, data in datas.items():
+                if qty_name == 'particles':
+                    pdata = ParticleData(layout, data)
+                else:
+                    pdata = FieldData(layout, qty_name, data)
+
+                    boxed_patch_datas[qty_name] = pdata
+
+            patch_datas[ilvl].append(boxed_patch_datas)
+
+
+
+    patches = {}
+    for ilvl, lvl_patch_datas in patch_datas.items():
+        if ilvl not in patches :
+            patches[ilvl] = []
+
+        for patch_datas in lvl_patch_datas:
+            patches[ilvl].append(Patch(patch_datas))
+
+
+
+    patch_levels = {}
+    for ilvl, lvl_patches in patches.items():
+        patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
+
+    sorted_levels_numbers = sorted(patch_levels)
+    patch_levels = {ilvl: patch_levels[ilvl] for ilvl in sorted_levels_numbers}
+    return PatchHierarchy(list(patch_levels.values()), domain_box, refinement_ratio)
+
 
 
 
@@ -24,29 +156,6 @@ class GeometryTest(unittest.TestCase):
     def setUp(self):
 
 
-        def bx(ghost_box, dx, Lx, origin):
-            x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
-            return np.sin(2 * np.pi / Lx * x)
-
-        def by(ghost_box, dx, Lx, origin):
-            x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
-            return np.cos(2 * np.pi / Lx * x)
-
-        def bz(ghost_box, dx, Lx, origin):
-            x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
-            return np.sin(4 * np.pi / Lx * x)
-
-        def ex(ghost_box, dx, Lx, origin):
-            x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
-            return np.sin(2 * np.pi / Lx * x)
-
-        def ey(ghost_box, dx, Lx, origin):
-            x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
-            return np.cos(2 * np.pi / Lx * x)
-
-        def ez(ghost_box, dx, Lx, origin):
-            x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
-            return np.sin(4 * np.pi / Lx * x)
 
 
         nbr_cells = 65
@@ -543,6 +652,25 @@ class GeometryTest(unittest.TestCase):
 
 
 
+    def test_hier(self):
+
+        nbr_cells = 65
+        origin = 0.
+        interp_order = 1
+        domain_size = 1.
+        cell_width = domain_size / nbr_cells
+        refinement_ratio = 2
+        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)}}
+
+        hier = build_hierarchy(nbr_cells,
+                               origin,
+                               interp_order,
+                               domain_size,
+                               cell_width,
+                               refinement_ratio,
+                               refinement_boxes)
+
+        print(hier)
 
 
 
