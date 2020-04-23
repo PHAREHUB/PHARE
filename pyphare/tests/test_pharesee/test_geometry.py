@@ -122,7 +122,7 @@ def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, re
                 else:
                     pdata = FieldData(layout, qty_name, data)
 
-                    boxed_patch_datas[qty_name] = pdata
+                boxed_patch_datas[qty_name] = pdata
 
             patch_datas[ilvl].append(boxed_patch_datas)
 
