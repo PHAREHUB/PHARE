@@ -12,7 +12,40 @@
 
 
 
+
 namespace py = pybind11;
+
+namespace
+{
+template<typename _dim, typename _interp, typename _nbRefinedPart>
+void declare_splitter(py::module& m)
+{
+    constexpr auto dim           = _dim{}();
+    constexpr auto interp        = _interp{}();
+    constexpr auto nbRefinedPart = _nbRefinedPart{}();
+
+    using _Splitter
+        = PHARE::amr::Splitter<_dim, _interp, PHARE::core::RefinedParticlesConst<nbRefinedPart>>;
+
+    std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
+                              + std::to_string(nbRefinedPart);
+
+    std::string name = "Splitter" + type_string;
+    py::class_<_Splitter, std::shared_ptr<_Splitter>>(m, name.c_str())
+        .def(py::init<>())
+        .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
+        .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
+}
+
+
+template<typename Dimension, typename InterpOrder, typename... NbRefinedParts>
+void declare(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedParts...> const&)
+{
+    PHARE::core::apply(std::tuple<NbRefinedParts...>{}, [&](auto& nbRefinedPart) {
+        declare_splitter<Dimension, InterpOrder, std::decay_t<decltype(nbRefinedPart)>>(m);
+    });
+}
+} // namespace
 
 namespace PHARE::pydata
 {
@@ -480,6 +513,8 @@ PYBIND11_MODULE(cpp, m)
         .def("endTime", &PHARE::ISimulator::endTime)
         .def("timeStep", &PHARE::ISimulator::timeStep)
         .def("to_str", &PHARE::ISimulator::to_str);
+
+    core::apply(core::possibleSimulators(), [&](auto const& simType) { declare(m, simType); });
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {

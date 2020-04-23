@@ -114,8 +114,8 @@ def check_time(**kwargs):
 def check_interp_order(**kwargs):
     interp_order = kwargs.get('interp_order', 1)
 
-    if interp_order not in [1, 2, 3, 4]:
-        raise ValueError("Error: invalid interpolation order. Should be in [1,2,3,4]")
+    if interp_order not in [1, 2, 3]:
+        raise ValueError("Error: invalid interpolation order. Should be in [1,2,3]")
 
     return interp_order
 
@@ -170,6 +170,36 @@ def check_boundaries(dims, **kwargs):
         raise ValueError("Error- boundary_types should have length {} and is of length {}".format(dims, bc_length))
 
     return boundary_types
+
+
+# ------------------------------------------------------------------------------
+
+
+# See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
+# This should match possibleSimulators() in meta_utilities.h
+valid_refined_particle_nbr = {
+  # dim = {interp = [valid list refined_particle_nbr]}
+  1: {
+    1: [2, 3],
+    2: [2, 3, 4],
+    3: [2, 3, 4, 5]
+  },
+  2: {
+    1: [4, 5, 8, 9],
+    2: [4, 5, 8, 9, 16],
+    3: [4, 5, 8, 9, 25]
+  }
+} # Default refined_particle_nbr per dim/interp is considered index 0 of list
+def check_refined_particle_nbr(dims, **kwargs):
+
+    interp = kwargs["interp_order"]
+    refined_particle_nbr = kwargs.get("refined_particle_nbr", valid_refined_particle_nbr[dims][interp][0])
+
+    if refined_particle_nbr not in valid_refined_particle_nbr[dims][interp]:
+        raise ValueError("Invalid split particle number, valid values for dim({}) ".format(dims)
+            + "interp({}) include {}".format(interp, valid_refined_particle_nbr[dims][interp]))
+
+    return refined_particle_nbr
 
 
 # ------------------------------------------------------------------------------
@@ -312,8 +342,8 @@ def checker(func):
         kwargs["boundary_types"] = check_boundaries(dims, **kwargs)
         kwargs["origin"] = check_origin(dims, **kwargs)
 
-        kwargs["refined_particle_nbr"] = kwargs.get('refined_particle_nbr', 2)  # TODO change that default value
-        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'ascii') #TODO add checker with valid formats
+        kwargs["refined_particle_nbr"] = check_refined_particle_nbr(dims, **kwargs)
+        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5') #TODO add checker with valid formats
 
         largest, smallest = check_patch_size(**kwargs)
         kwargs["smallest_patch_size"] = smallest

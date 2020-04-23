@@ -96,8 +96,8 @@ def populateDict():
                 if len(lower)>=2:
                     box_lower_path_y = box + "/lower/y/"
                     box_upper_path_y = box + "/upper/y/"
-                    add(level_path+box_lower_path_y,format(lower[1]))
-                    add(level_path+box_upper_path_y,format(upper[1]))
+                    add(level_path+box_lower_path_y,int(lower[1]))
+                    add(level_path+box_upper_path_y,int(upper[1]))
                     if (len(lower)==3):
                         box_lower_path_z = box + "/lower/z/"
                         box_upper_path_z = box + "/upper/z/"

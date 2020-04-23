@@ -62,16 +62,20 @@ namespace core
     }
 
 
-    template<size_t val>
-    using _IC = std::integral_constant<std::size_t, val>;
+    template<typename DimConstant, typename InterpConstant, size_t... ValidNbrParticles>
+    using SimulatorOption = std::tuple<DimConstant, InterpConstant,
+                                       std::integral_constant<std::size_t, ValidNbrParticles>...>;
 
-    static auto constexpr possibleSimulators()
+    constexpr decltype(auto) possibleSimulators()
     {
         // inner tuple = dim, interp, list[possible nbrParticles for dim/interp]
-        return std::tuple< // formatting
-            std::tuple<_IC<1>, _IC<1>, _IC<1>, _IC<2>, _IC<3>>,
-            std::tuple<_IC<1>, _IC<2>, _IC<1>, _IC<2>, _IC<3>, _IC<4>>,
-            std::tuple<_IC<1>, _IC<3>, _IC<2>, _IC<3>, _IC<4>, _IC<5>>>{};
+        return std::tuple<SimulatorOption<DimConst<1>, InterpConst<1>, 2, 3>,
+                          SimulatorOption<DimConst<1>, InterpConst<2>, 2, 3, 4>,
+                          SimulatorOption<DimConst<1>, InterpConst<3>, 2, 3, 4, 5>,
+
+                          SimulatorOption<DimConst<2>, InterpConst<1>, 4, 5, 8, 9>,
+                          SimulatorOption<DimConst<2>, InterpConst<2>, 4, 5, 8, 9, 16>,
+                          SimulatorOption<DimConst<2>, InterpConst<3>, 4, 5, 8, 9, 25>>{};
     }
 
 

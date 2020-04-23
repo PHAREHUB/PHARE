@@ -152,7 +152,6 @@ namespace amr
         }
     };
 
-
 } // namespace amr
 } // namespace PHARE
 

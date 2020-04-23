@@ -38,12 +38,15 @@ template<typename Type>
 class aSimpleBasicHierarchyWithTwoLevels : public ::testing::Test
 {
 public:
-    static std::size_t constexpr dimension            = Type::dimension;
-    static std::size_t constexpr interpOrder          = Type::interpOrder;
-    static int constexpr refineParticlesNbr           = Type::refineParticlesNbr;
-    static int constexpr ratio                        = Type::ratio;
+    static auto constexpr dimension                   = Type::dimension;
+    static auto constexpr interpOrder                 = Type::interpOrder;
+    static auto constexpr refineParticlesNbr          = Type::refineParticlesNbr;
+    static auto constexpr ratio                       = Type::ratio;
     static constexpr ParticlesDataSplitType SplitType = Type::SplitType;
 
+    using Splitter = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>,
+                                          PHARE::core::InterpConst<interpOrder>,
+                                          RefinedParticlesConst<refineParticlesNbr>>;
 
     aSimpleBasicHierarchyWithTwoLevels()
         : basicHierarchy{ratio}
@@ -79,8 +82,7 @@ public:
     {
         std::vector<Particle<dimension>> refinedParticles;
 
-        auto split
-            = Split<dimension, interpOrder, refineParticlesNbr>(Point<int32, dimension>{ratio});
+        Splitter split;
 
         auto geom        = this->hierarchy.getGridGeometry();
         auto domainBoxes = geom->getPhysicalDomain();
@@ -396,3 +398,27 @@ INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneInterior,
                                ParticlesInteriorDataDescriptorsRange);
 
 // INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneCoarseBoundaries, TestTest);
+
+namespace
+{
+template<size_t dimension, size_t interpOrder, size_t refineParticlesNbr>
+using Splitter
+    = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>, PHARE::core::InterpConst<interpOrder>,
+                           RefinedParticlesConst<refineParticlesNbr>>;
+
+template<typename Splitter>
+struct SplitterTest : public ::testing::Test
+{
+    SplitterTest() { Splitter splitter; }
+};
+
+using Splitters = testing::Types<Splitter<1, 1, 2>, Splitter<2, 1, 8> /*, Splitter<3, 1, 27>*/>;
+
+TYPED_TEST_SUITE(SplitterTest, Splitters);
+
+TYPED_TEST(SplitterTest, constexpr_init)
+{
+    constexpr TypeParam param{};
+}
+
+} // namespace

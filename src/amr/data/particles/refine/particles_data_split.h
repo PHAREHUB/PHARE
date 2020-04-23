@@ -34,7 +34,7 @@ namespace amr
     {
     public:
         static constexpr size_t dim         = Splitter::dimension;
-        static constexpr size_t interpOrder = Splitter::interpOrder;
+        static constexpr size_t interpOrder = Splitter::interp_order;
 
         ParticlesRefineOperator()
             : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
@@ -147,9 +147,7 @@ namespace amr
             // same for destinationGhostBox and destinationDomainBox the later will allow to get an
             // index relative to the interior
 
-
-            Splitter split{core::Point<int32, dim>{ratio}};
-
+            Splitter split;
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
             // In case of a coarseBoundary it will most likely give multiple boxes

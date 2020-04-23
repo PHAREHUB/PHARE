@@ -622,11 +622,10 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 }
 #endif
 
-template<uint8_t dimension>
+template<uint8_t dimension, size_t nbRefinePart>
 struct AfullHybridBasicHierarchy
 {
-    static constexpr std::size_t interpOrder  = 1;
-    static constexpr std::size_t nbRefinePart = 2;
+    static constexpr std::size_t interpOrder = 1;
 
     using Simulator         = typename PHARE::Simulator<dimension, interpOrder, nbRefinePart>;
     using HybridModelT      = typename Simulator::HybridModel;
@@ -687,8 +686,8 @@ struct AfullHybridBasicHierarchy
 };
 
 
-template<uint8_t dimension> // keeps the test "this"
-void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
+template<uint8_t dimension, size_t nbRefinePart> // keeps the test "this"
+void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldGhosts()
 {
     if (mpi.getSize() > 1)
     {
@@ -863,7 +862,7 @@ struct HybridBasicHierarchyTest : public ::testing::Test
 };
 
 using HybridBasicHierarchies
-    = testing::Types<AfullHybridBasicHierarchy<1>, AfullHybridBasicHierarchy<2>>;
+    = testing::Types<AfullHybridBasicHierarchy<1, 2>, AfullHybridBasicHierarchy<2, 4>>;
 
 TYPED_TEST_SUITE(HybridBasicHierarchyTest, HybridBasicHierarchies);
 
