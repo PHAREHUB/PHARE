@@ -3,16 +3,35 @@ from . import box as boxm
 import numpy as np
 
 class PatchData:
-
+    """
+    base class for FieldData and ParticleData
+    this class just factors common geometrical properties
+    """
     def __init__(self, layout, quantity):
+        """
+        :param layout: a GridLayout representing the domain on which the data
+             is defined
+        :param quantity: ['field', 'particle']
+        """
         self.quantity = quantity
         self._box     = layout.box
         self.origin   = layout.origin
         self.layout   = layout
 
 
+
+
 class FieldData(PatchData):
+    """
+    Concrete type of PatchData representing a physical quantity
+    defined on a grid.
+    """
     def __init__(self, layout, field_name, data):
+        """
+        :param layout: A GridLayout representing the domain on which data is defined
+        :param field_name: the name of the field (e.g. "Bx")
+        :param data: the dataset from which data can be accessed
+        """
         super().__init__(layout, 'field')
 
         self.layout = layout
@@ -34,7 +53,14 @@ class FieldData(PatchData):
 
 
 class ParticleData(PatchData):
+    """
+    Concrete type of PatchData representing particles in a region
+    """
     def __init__(self, layout, data):
+        """
+        :param layout: A GridLayout object representing the domain in which particles are
+        :param data: dataset containing particles
+        """
         super().__init__(layout, 'particles')
         self.dataset = data
         if layout.interp_order == 1:
@@ -46,20 +72,24 @@ class ParticleData(PatchData):
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
 
+
 class Patch:
     """
     A patch represents a hyper-rectangular region of space
     """
 
     def __init__(self, patch_datas):
-
-        # all patch_datas are assumed to have the reference to
-        # same layout object so take data from the first
-        pdata0 = list(patch_datas.values())[0]
+        """
+        :param patch_datas: a list of PatchData objects
+        these are assumed to "belong" to the Patch so to
+        share the same origin, mesh size and box.
+        """
+        pdata0 = list(patch_datas.values())[0] #0 represents all others
         self.box = pdata0.layout.box
         self.origin = pdata0.layout.origin
         self.dx = pdata0.layout.dl[0]
         self.patch_datas = patch_datas
+
 
 
 class PatchLevel:
@@ -73,13 +103,19 @@ class PatchLevel:
 class PatchHierarchy:
     """is a collection of patch levels """
 
-    def __init__(self, levels, domain_box, ratio):
-        self.patch_levels = levels
+    def __init__(self, patch_levels, domain_box, refinement_ratio):
+        self.patch_levels = patch_levels
         self.domain_box = domain_box
-        self.refinement_ratio = ratio
+        self.refinement_ratio = refinement_ratio
+
 
     def refined_domain_box(self, level_number):
+        """
+        returns the domain box refined for a given level number
+        """
+        assert(level_number>=0)
         return boxm.refine(self.domain_box, self.refinement_ratio ** level_number)
+
 
     def __str__(self):
         s = "Hierarchy: \n"

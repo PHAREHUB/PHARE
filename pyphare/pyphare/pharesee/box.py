@@ -48,7 +48,11 @@ class Box:
 
 
 def refine(box, ratio):
-    return Box(box.lower * ratio, box.upper * ratio + ratio + -1)
+    # box [2,10] refined with ratio 2 gives [4,21]
+    # upper = 21 because cell 10 is split into 20,21
+    # box [2,10] becomes [6,32] with ratio 3. cell 10 becomes cells 30,31,32
+    # thus upper is former upper*ratio + ratio - 1
+    return Box(box.lower * ratio, box.upper * ratio + ratio  -1)
 
 
 def shift(box, offset):
