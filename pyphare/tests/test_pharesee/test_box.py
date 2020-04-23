@@ -40,7 +40,6 @@ class BoxTesT(unittest.TestCase):
           )
     @unpack
     def test_intersection(self, box1, box2, exp_inter):
-        print("assert = {}*{} = {} and get {}".format(box1, box2, exp_inter, box1*box2))
         self.assertEqual(box1*box2, exp_inter)
 
 
@@ -53,7 +52,6 @@ class BoxTesT(unittest.TestCase):
            )
     @unpack
     def test_shift(self, box, shift, expected):
-        print("assert {} shifted by {} eq {} and get {}".format(box, shift, expected, boxm.shift(box, shift)))
         self.assertEqual(boxm.shift(box, shift), expected)
 
 
@@ -64,7 +62,6 @@ class BoxTesT(unittest.TestCase):
            )
     @unpack
     def test_grow(self, box, size, expected):
-        print("assert {} shifted by {} eq {} and get {}".format(box, size, expected, boxm.grow(box, size)))
         self.assertEqual(boxm.grow(box, size), expected)
 
 
@@ -97,8 +94,6 @@ class BoxTesT(unittest.TestCase):
             self.assertEqual(len(expected), 0)
 
         for exp, keep in zip(expected, keeps):
-            print("removing {} from {}, expect {} and get {}".format(to_remove, box,
-                                                                 exp, keep))
             self.assertEqual(keep, exp)
 
 

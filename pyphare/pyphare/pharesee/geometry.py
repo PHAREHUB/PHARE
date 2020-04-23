@@ -94,7 +94,7 @@ def compute_overlaps(patches, domain_box):
 
                     overlaps.append({"pdatas":(ref_pd, cmp_pd),
                                      "box" : other_ovrlp,
-                                     "offset":(0,offset)})
+                                     "offset":(offset, 0)})
 
 
     return overlaps
