@@ -130,6 +130,27 @@ class PatchHierarchy:
         return s
 
 
+    def plot(self):
+
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(10, 3))
+        for ilvl, lvl in enumerate(self.patch_levels):
+            lvl_offset = ilvl * 0.1
+            for patch in lvl.patches:
+                dx = patch.dx
+                origin = patch.origin
+                x0 = patch.box.lower * dx
+                x1 = patch.box.upper * dx
+                print("x0 = {}, x1 = {} with origin={}, and box {}".format(x0, x1, origin, patch.box))
+                xcells = np.arange(x0, x1 + dx, dx)
+                y = lvl_offset + np.zeros_like(xcells)
+                ax.plot(xcells, y, marker=".")
+
+        fig.savefig("hierarchy.png")
+
+
+
 def is_root_lvl(patch_level):
     return patch_level.level_number == 0
 
