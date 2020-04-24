@@ -44,22 +44,54 @@ def ez(ghost_box, dx, Lx, origin):
     return np.sin(4 * np.pi / Lx * x)
 
 
+def build_hierarchy(**kwargs):
+    """accepted keywords:
+     - simulation : a simulation Object
 
+     or
 
+     - nbr_cells
+     - origin
+     - interp_order
+     - domain_size
+     - cell_width
+     - refinement_ratio
+     - refinement_boxes
+     """
+    if "simulation" in kwargs:
+        for k in kwargs:
+            if k != "simulation":
+                print("warning: 'simulation' given, {} discarded".format(k))
 
-def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, refinement_ratio, refinement_boxes):
+        sim = kwargs["simulation"]
+        nbr_cells = sim.cells[0]
+        origin = sim.origin[0]
+        interp_order = sim.interp_order
+        domain_size = sim.simulation_domain()[0]
+        cell_width = sim.dl[0]
+        refinement_ratio = 2
+        refinement_boxes = sim.refinement_boxes
 
-    domain_box = boxm.Box(0, nbr_cells-1)
+    else:
+        nbr_cells = kwargs["nbr_cells"]
+        origin = kwargs["origin"]
+        interp_order = kwargs["interp_order"]
+        domain_size = kwargs["domain_size"]
+        cell_width = kwargs["cell_width"]
+        refinement_ratio = kwargs.get("refinement_ratio", 1)
+        refinement_boxes = kwargs.get("refinement_boxes", {})
+
+    domain_box = boxm.Box(0, nbr_cells - 1)
     domain_layout = GridLayout(domain_box, origin, cell_width, interp_order)
 
     coarse_particles = Particles(box=domain_box)
 
     # copy domain particles an put them in ghost cells
     particle_ghost_nbr = domain_layout.particleGhostNbr(interp_order)
-    box_extend         =  particle_ghost_nbr-1
+    box_extend = particle_ghost_nbr - 1
 
     upper_slct_box = Box(domain_box.upper - box_extend, domain_box.upper)
-    lower_slct_box = Box(domain_box.lower, domain_box.lower+box_extend)
+    lower_slct_box = Box(domain_box.lower, domain_box.lower + box_extend)
 
     upper_cell_particles = coarse_particles.select(upper_slct_box)
     lower_cell_particles = coarse_particles.select(lower_slct_box)
@@ -67,35 +99,30 @@ def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, re
     coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.size()))
     coarse_particles.add(lower_cell_particles.shift_icell(domain_box.size()))
 
-
     boxes = {}
     for ilvl, boxes_data in refinement_boxes.items():
 
-        level_number = ilvl+1
+        level_number = int(ilvl.strip("L")) + 1
 
         if level_number not in boxes:
             boxes[level_number] = []
 
-
         for boxname, lower_upper in boxes_data.items():
-
-            refinement_box = Box(lower_upper[0], lower_upper[1])
-            refined_box    = boxm.refine(refinement_box, refinement_ratio)
+            refinement_box = Box(lower_upper[0][0], lower_upper[1][0])
+            refined_box = boxm.refine(refinement_box, refinement_ratio)
             boxes[level_number].append(refined_box)
 
-
     # coarse level boxes are arbitrarily divided in 2 patches in the middle
-    middle_cell = round(domain_box.upper/2)
-    lower_box = Box(0,middle_cell)
-    upper_box = Box(middle_cell+1, domain_box.upper)
+    middle_cell = round(domain_box.upper / 2)
+    lower_box = Box(0, middle_cell)
+    upper_box = Box(middle_cell + 1, domain_box.upper)
     boxes[0] = [lower_box, upper_box]
-
 
     patch_datas = {}
 
     for ilvl, lvl_box in boxes.items():
 
-        lvl_cell_width = cell_width/(refinement_ratio**ilvl)
+        lvl_cell_width = cell_width / (refinement_ratio ** ilvl)
 
         if ilvl not in patch_datas:
             patch_datas[ilvl] = []
@@ -106,13 +133,13 @@ def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, re
             origin = box.lower * lvl_cell_width
             layout = GridLayout(box, origin, lvl_cell_width, interp_order)
 
-            datas = {"Bx"        : bx(ghost_box, cell_width, domain_size, origin),
-                     "By"        : by(ghost_box, cell_width, domain_size, origin),
-                     "Bz"        : bz(ghost_box, cell_width, domain_size, origin),
-                     "Ex"        : ex(ghost_box, cell_width, domain_size, origin),
-                     "Ey"        : ey(ghost_box, cell_width, domain_size, origin),
-                     "Ez"        : ez(ghost_box, cell_width, domain_size, origin),
-                     "particles" : Particles(box=boxm.grow(box, layout.particleGhostNbr(interp_order)))
+            datas = {"Bx": bx(ghost_box, cell_width, domain_size, origin),
+                     "By": by(ghost_box, cell_width, domain_size, origin),
+                     "Bz": bz(ghost_box, cell_width, domain_size, origin),
+                     "Ex": ex(ghost_box, cell_width, domain_size, origin),
+                     "Ey": ey(ghost_box, cell_width, domain_size, origin),
+                     "Ez": ez(ghost_box, cell_width, domain_size, origin),
+                     "particles": Particles(box=boxm.grow(box, layout.particleGhostNbr(interp_order)))
                      }
 
             boxed_patch_datas = {}
@@ -126,17 +153,13 @@ def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, re
 
             patch_datas[ilvl].append(boxed_patch_datas)
 
-
-
     patches = {}
     for ilvl, lvl_patch_datas in patch_datas.items():
-        if ilvl not in patches :
+        if ilvl not in patches:
             patches[ilvl] = []
 
         for patch_datas in lvl_patch_datas:
             patches[ilvl].append(Patch(patch_datas))
-
-
 
     patch_levels = {}
     for ilvl, lvl_patches in patches.items():
@@ -145,8 +168,6 @@ def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, re
     sorted_levels_numbers = sorted(patch_levels)
     patch_levels = {ilvl: patch_levels[ilvl] for ilvl in sorted_levels_numbers}
     return PatchHierarchy(list(patch_levels.values()), domain_box, refinement_ratio)
-
-
 
 
 class GeometryTest(unittest.TestCase):
@@ -677,15 +698,15 @@ class GeometryTest(unittest.TestCase):
         domain_size = 1.
         cell_width = domain_size / nbr_cells
         refinement_ratio = 2
-        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)}}
+        refinement_boxes = {"L0": {"B0": [(5,), (29,)], "B1": [(32,), (55,)]}}
 
-        hier = build_hierarchy(nbr_cells,
-                               origin,
-                               interp_order,
-                               domain_size,
-                               cell_width,
-                               refinement_ratio,
-                               refinement_boxes)
+        hier = build_hierarchy(nbr_cells=nbr_cells,
+                               origin=origin,
+                               interp_order=interp_order,
+                               domain_size=domain_size,
+                               cell_width=cell_width,
+                               refinement_ratio=refinement_ratio,
+                               refinement_boxes=refinement_boxes)
 
         print(hier)
 
@@ -695,17 +716,18 @@ class GeometryTest(unittest.TestCase):
         domain_size = 1.
         cell_width = domain_size / nbr_cells
         refinement_ratio = 2
-        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)},
-                            1: {"B0": (21, 31), "B1": (35, 54), "B2": (70, 82)},
-                            2: {"B0": (45, 52), "B1": (54, 61), 'B3': (91, 105), "B4": (152, 160)}}
+        refinement_boxes = {"L0": {"B0": [(5,), (29,)],  "B1": [(32,), (55,)]},
+                            "L1": {"B0": [(15,),(28,)],  "B1": [(33,), (47,)], "B2": [(66,),(101,)]},
+                            "L2": {"B0": [(38,),(52,)],  "B1": [(68,), (80,)], 'B3': [(84,),(95,)], "B4": [(134,),(148,)]}}
 
-        hier = build_hierarchy(nbr_cells,
-                               origin,
-                               interp_order,
-                               domain_size,
-                               cell_width,
-                               refinement_ratio,
-                               refinement_boxes)
+        hier = build_hierarchy(nbr_cells=nbr_cells,
+                               origin=origin,
+                               interp_order=interp_order,
+                               domain_size=domain_size,
+                               cell_width=cell_width,
+                               refinement_ratio=refinement_ratio,
+                               refinement_boxes=refinement_boxes)
+
 
         print(hier)
 
