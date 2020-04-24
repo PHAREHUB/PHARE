@@ -142,7 +142,6 @@ class PatchHierarchy:
                 origin = patch.origin
                 x0 = patch.box.lower * dx
                 x1 = patch.box.upper * dx
-                print("x0 = {}, x1 = {} with origin={}, and box {}".format(x0, x1, origin, patch.box))
                 xcells = np.arange(x0, x1 + dx, dx)
                 y = lvl_offset + np.zeros_like(xcells)
                 ax.plot(xcells, y, marker=".")
