@@ -112,7 +112,7 @@ def build_hierarchy(nbr_cells, origin, interp_order, domain_size, cell_width, re
                      "Ex"        : ex(ghost_box, cell_width, domain_size, origin),
                      "Ey"        : ey(ghost_box, cell_width, domain_size, origin),
                      "Ez"        : ez(ghost_box, cell_width, domain_size, origin),
-                     "particles" : coarse_particles.select(boxm.grow(box, layout.particleGhostNbr(interp_order)))
+                     "particles" : Particles(box=boxm.grow(box, layout.particleGhostNbr(interp_order)))
                      }
 
             boxed_patch_datas = {}
@@ -650,17 +650,34 @@ class GeometryTest(unittest.TestCase):
 
 
 
+    def test_level_ghost_boxes_do_not_overlap_patch_interiors(self):
+
+        lvl_gboxes = level_ghost_boxes(self.hierarchy)
+
+        for ilvl, pdatainfos in lvl_gboxes.items():
+
+            for pdatainfo in pdatainfos:
+
+                for box in pdatainfo["boxes"]:
+
+                    for patch in self.hierarchy.patch_levels[ilvl].patches:
+
+                            self.assertIsNone(patch.box * box)
+
+
+
+
 
 
     def test_hier(self):
 
         nbr_cells = 65
         origin = 0.
-        interp_order = 1
+        interp_order = 2
         domain_size = 1.
         cell_width = domain_size / nbr_cells
         refinement_ratio = 2
-        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)}}
+        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)}, 1:{"B0":(12,30)}}
 
         hier = build_hierarchy(nbr_cells,
                                origin,
