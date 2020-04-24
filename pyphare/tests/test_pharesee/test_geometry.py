@@ -677,7 +677,27 @@ class GeometryTest(unittest.TestCase):
         domain_size = 1.
         cell_width = domain_size / nbr_cells
         refinement_ratio = 2
-        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)}, 1:{"B0":(12,30)}}
+        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)}}
+
+        hier = build_hierarchy(nbr_cells,
+                               origin,
+                               interp_order,
+                               domain_size,
+                               cell_width,
+                               refinement_ratio,
+                               refinement_boxes)
+
+        print(hier)
+
+        nbr_cells = 65
+        origin = 0.
+        interp_order = 2
+        domain_size = 1.
+        cell_width = domain_size / nbr_cells
+        refinement_ratio = 2
+        refinement_boxes = {0: {"B0": (5, 29), "B1": (32, 55)},
+                            1: {"B0": (21,31), "B1": (32, 54), "B2": (70,82)},
+                            2: {"B0": (51,60), "B1": (58, 72), 'B3': (91,105), "B4": (152,160)}}
 
         hier = build_hierarchy(nbr_cells,
                                origin,
