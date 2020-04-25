@@ -58,27 +58,3 @@ class TestSimulation(unittest.TestCase):
                                   boundary_types="periodic",
                                   cells=80, domain_size=10, final_time=10)
         self.assertEqual(0.01, s.time_step)
-
-
-
-
-###############################################################################
-#
-#                   usage example and run tests
-#
-#       the script: - creates a Simulation
-#                   - registers 2 fluid diagnostics to the Simulation
-#                   - registers 2 electromag diagnostics to the Simulation
-#                   - creates a model 'UniformModel'
-#                   - adds default electromagnetic fields to the model
-#                   - adds 2 proton species, the second has a density of 2.
-#                   - registers the model to the Simulation
-#                   - prepare the job directories and input file
-#
-#                   - executs unit tests of this module
-###############################################################################
-if __name__ == '__main__':
-
-
-
-    unittest.main()

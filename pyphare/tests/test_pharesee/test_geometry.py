@@ -1,8 +1,8 @@
 import unittest
 
 from ddt import ddt, data
-import pyphare.pharesee.box as boxm
-from pyphare.pharesee.box import Box
+import pyphare.core.box as boxm
+from pyphare.core.box import Box
 from pyphare.pharesee.particles import Particles
 from pyphare.pharesee.hierarchy import FieldData
 from pyphare.pharesee.hierarchy import ParticleData

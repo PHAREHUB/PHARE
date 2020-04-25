@@ -1,6 +1,4 @@
-
-
-from . import box as boxm
+from ..core import box as boxm
 from .hierarchy import FieldData, is_root_lvl
 
 

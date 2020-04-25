@@ -1,5 +1,4 @@
-
-from . import box as boxm
+from ..core import box as boxm
 import numpy as np
 
 class PatchData:
