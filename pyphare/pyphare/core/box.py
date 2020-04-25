@@ -22,10 +22,17 @@ class Box:
         else:
             return inter
 
+
+    def length(self):
+        return (self.upper - self.lower + 1,)
+
+
     def size(self):
         """returns the number of cells in the box"""
         # later should return that number in each direction
         return self.upper - self.lower + 1
+
+
 
     def __str__(self):
         return "[ {lower},{upper} ]".format(lower=self.lower, upper=self.upper)
