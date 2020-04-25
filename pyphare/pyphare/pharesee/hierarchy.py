@@ -14,7 +14,7 @@ class PatchData:
         :param quantity: ['field', 'particle']
         """
         self.quantity = quantity
-        self._box     = layout.box
+        self.box     = layout.box
         self.origin   = layout.origin
         self.layout   = layout
 

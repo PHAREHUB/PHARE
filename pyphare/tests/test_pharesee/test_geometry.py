@@ -441,6 +441,86 @@ class GeometryTest(unittest.TestCase):
 
 
 
+    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self):
+
+        nbr_cells = 65
+        origin = 0.
+        interp_order = 1
+        domain_size = 1.
+        cell_width = domain_size / nbr_cells
+        refinement_ratio = 2
+
+        # one refined cell between the refined patches
+        refinement_boxes = {"L0": {"B0": [(5,), (30,)], "B1": [(31,), (55,)]}}
+
+        hier = build_hierarchy(nbr_cells=nbr_cells,
+                               origin=origin,
+                               interp_order=interp_order,
+                               domain_size=domain_size,
+                               cell_width=cell_width,
+                               refinement_ratio=refinement_ratio,
+                               refinement_boxes=refinement_boxes)
+
+        overlaps = hierarchy_overlaps(hier)
+        for ilvl, lvl_overlaps in overlaps.items():
+            print(lvl_overlaps)
+            for overlap in lvl_overlaps:
+
+                if overlap["pdatas"][0].quantity == "particles":
+                    ref_pd, cmp_pd = overlap["pdatas"]
+
+                    if ilvl == 0:
+                        box = overlap["box"]
+                        offsets = overlap["offset"]
+
+                        # first let's shift the overlap box over the AMR
+                        # indices of the patchdata. The box has been created
+                        # by shifting the patdata ghost box by 'offset' so here
+                        # the box is shifted by -offset to get over patchdata
+                        shift_refbox, shift_cmpbox = [boxm.shift(box, -off) for off in offsets]
+
+                        # the overlap box overlaps both ghost and domain cells
+                        # we need to extract the domain ones to later select domain
+                        # particles
+                        ovlped_refdom = ref_pd.box * shift_refbox
+                        ovlped_cmpdom = cmp_pd.box * shift_cmpbox
+
+                        # on lvl 0 patches are adjacent
+                        # therefore the overlap box must overlap the
+                        # patchData box. 1 cell in interporder1, 2 cells for higher
+                        self.assertIsNotNone(ovlped_refdom)
+                        self.assertIsNotNone(ovlped_cmpdom)
+
+                        refdomain = ref_pd.dataset.select(ovlped_refdom)
+                        cmpdomain = cmp_pd.dataset.select(ovlped_cmpdom)
+
+                        # now get the ghost cells of each patch data overlaped by
+                        # the overlap box. To do this we need to intersect the shifted
+                        # overlap box with the patchdata ghost box, and remove interior cells
+                        # note that in 1D we don't expect remove to return more than 1 box, hence [0]
+                        ovlped_refghost = boxm.remove(ref_pd.ghost_box * shift_refbox, ref_pd.box)[0]
+                        ovlped_cmpghost = boxm.remove(cmp_pd.ghost_box * shift_cmpbox, cmp_pd.box)[0]
+
+                        refghost  = ref_pd.dataset.select(ovlped_refghost)
+                        cmpghost  = cmp_pd.dataset.select(ovlped_cmpghost)
+
+
+                        # before comparing the particles we need to be sure particles of both patchdatas
+                        # are sorted in the same order. We do that by sorting by x position
+                        sort_refdomain_idx = np.argsort(refdomain.iCells + refdomain.deltas)
+                        sort_cmpdomain_idx = np.argsort(cmpdomain.iCells + cmpdomain.deltas)
+                        sort_refghost_idx = np.argsort(refghost.iCells + refghost.deltas)
+                        sort_cmpghost_idx = np.argsort(cmpghost.iCells + cmpghost.deltas)
+
+                        np.testing.assert_allclose(refdomain.deltas[sort_refdomain_idx], cmpghost.deltas[sort_cmpghost_idx], atol=1e-12)
+                        np.testing.assert_allclose(cmpdomain.deltas[sort_cmpdomain_idx], refghost.deltas[sort_refghost_idx], atol=1e-12)
+
+
+
+
+
+
+
 
 
     def test_hier(self):
