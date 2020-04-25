@@ -382,7 +382,7 @@ class GeometryTest(unittest.TestCase):
 
 
 
-    def test_patch_particle_overlap(self):
+    def test_overlapped_particledatas_have_identical_particles(self):
 
         from copy import copy
         overlaps = hierarchy_overlaps(self.hierarchy)
@@ -431,13 +431,9 @@ class GeometryTest(unittest.TestCase):
         lvl_gboxes = level_ghost_boxes(self.hierarchy)
 
         for ilvl, pdatainfos in lvl_gboxes.items():
-
             for pdatainfo in pdatainfos:
-
                 for box in pdatainfo["boxes"]:
-
                     for patch in self.hierarchy.patch_levels[ilvl].patches:
-
                             self.assertIsNone(patch.box * box)
 
 
@@ -525,6 +521,8 @@ class GeometryTest(unittest.TestCase):
 
 
     def test_hier(self):
+
+        # some draft function
 
         nbr_cells = 65
         origin = 0.
