@@ -1,5 +1,6 @@
 import unittest
 
+from ddt import ddt, data
 import pyphare.pharesee.box as boxm
 from pyphare.pharesee.box import Box
 from pyphare.pharesee.particles import Particles
@@ -177,9 +178,10 @@ def build_hierarchy(**kwargs):
     return PatchHierarchy(list(patch_levels.values()), domain_box, refinement_ratio)
 
 
+
+
+@ddt
 class GeometryTest(unittest.TestCase):
-
-
 
     def setUp(self):
 
@@ -441,11 +443,11 @@ class GeometryTest(unittest.TestCase):
 
 
 
-    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self):
+    @data(1,2,3)
+    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, interp_order):
 
         nbr_cells = 65
         origin = 0.
-        interp_order = 1
         domain_size = 1.
         cell_width = domain_size / nbr_cells
         refinement_ratio = 2
@@ -463,7 +465,6 @@ class GeometryTest(unittest.TestCase):
 
         overlaps = hierarchy_overlaps(hier)
         for ilvl, lvl_overlaps in overlaps.items():
-            print(lvl_overlaps)
             for overlap in lvl_overlaps:
 
                 if overlap["pdatas"][0].quantity == "particles":
