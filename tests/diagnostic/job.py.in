@@ -4,7 +4,6 @@ import os, sys
 import pyphare.pharein as ph
 from pyphare.pharein import ElectronModel
 
-print(sys.path)
 import mpi4py # gives access to mpi_rank/etc
 mpi4py.rc.initialize = False  # disable automatic MPI_Init() at import
 from mpi4py import MPI  # the module is imported, but MPI_Init() is not called

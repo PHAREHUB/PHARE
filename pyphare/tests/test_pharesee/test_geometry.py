@@ -163,6 +163,7 @@ def build_hierarchy(**kwargs):
 
     patches = {}
     for ilvl, lvl_patch_datas in patch_datas.items():
+
         if ilvl not in patches:
             patches[ilvl] = []
 

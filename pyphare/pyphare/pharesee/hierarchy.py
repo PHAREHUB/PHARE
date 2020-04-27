@@ -43,10 +43,12 @@ class FieldData(PatchData):
 
         if centering == "primal":
             self.size = self.ghost_box.size() + 1
+            offset = 0
         else:
             self.size = self.ghost_box.size()
+            offset = 0.5*self.dx
 
-        self.x = self.origin[0] - self._ghosts_nbr * self.dx + np.arange(self.size) * self.dx
+        self.x = self.origin[0] - self._ghosts_nbr * self.dx + np.arange(self.size) * self.dx + offset
         self.dataset = data
 
 

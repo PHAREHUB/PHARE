@@ -238,7 +238,6 @@ public:
                         parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin")}
                         .str(),
                     getMeshSize(dict["simulation"]["grid"]).str())
-
     {
     }
 

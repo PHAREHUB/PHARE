@@ -63,6 +63,13 @@ public:
 
 
 
+    auto domainBox() const { return hierarchy_.domainBox(); }
+
+    auto origin() const { return hierarchy_.origin(); }
+
+    auto cellWidth() const { return hierarchy_.cellWidth(); }
+
+
     std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
 
     static auto getPatchProperties(GridLayout const& grid)
