@@ -13,12 +13,8 @@ if(HighFive)
   endif()
 
   if(DEFINED HDF5_ENABLE_PARALLEL AND "${HDF5_ENABLE_PARALLEL}" STREQUAL "ON")
+    # This if seems to be needed if HDF5 is built from source.
     set (HDF5_IS_PARALLEL TRUE)
-
-    # This is here for HDF5 versions > 1.12
-    #  This should be able to be removed when this is merged to master
-    #   https://github.com/BlueBrain/HighFive/pull/311
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DH5Oget_info_vers=1 -DH5O_info_t_vers=1")
   endif()
 
   if(${HDF5_IS_PARALLEL})
