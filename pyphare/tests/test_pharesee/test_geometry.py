@@ -29,9 +29,17 @@ class GeometryTest(unittest.TestCase):
             x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
             return np.cos(2 * np.pi / Lx * x)
 
+<<<<<<< HEAD
         def bz(ghost_box, dx, Lx, origin):
             x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
             return np.sin(4 * np.pi / Lx * x)
+=======
+    patches = {}
+    for ilvl, lvl_patch_datas in patch_datas.items():
+
+        if ilvl not in patches:
+            patches[ilvl] = []
+>>>>>>> add attributes to diag files
 
         def ex(ghost_box, dx, Lx, origin):
             x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
