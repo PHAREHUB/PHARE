@@ -47,11 +47,9 @@ struct TestSimulator : public HierarchyMaker<_dim>,
     static constexpr size_t interp       = _interp;
     static constexpr size_t nbRefinePart = _nbRefinePart;
 
-    using Simulator  = PHARE::Simulator<dim, interp, nbRefinePart>;
-    using PHARETypes = PHARE::PHARE_Types<dim, interp, nbRefinePart>;
-    using Hierarchy  = PHARE::amr::Hierarchy;
-
-
+    using Simulator   = PHARE::Simulator<dim, interp, nbRefinePart>;
+    using PHARETypes  = PHARE::PHARE_Types<dim, interp, nbRefinePart>;
+    using Hierarchy   = PHARE::amr::Hierarchy;
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;
 

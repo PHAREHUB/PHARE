@@ -26,6 +26,8 @@ if (test)
 
   enable_testing()
 
+  configure_file(${CMAKE_SOURCE_DIR}/tests/__init__.py ${CMAKE_BINARY_DIR}/tests/__init__.py @ONLY)
+
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)
