@@ -126,7 +126,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto initDataSet = [&](auto& lvl, auto& patchID, auto tree, auto& attr) {
         bool null = patchID.empty();
-        std::string path{hi5_.getPatchPathAddTimestamp(lvl, patchID) + tree + "/"};
+        std::string path{hi5_.getPatchPathAddTimestamp(lvl, patchID) + "/"};
         size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
             createDataSet(path + Packer::keys()[part_idx],
@@ -178,7 +178,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
         std::string active{tree + pType};
         if (diagnostic.quantity == active)
-            writeParticles(hi5.patchPath() + active + "/", ps);
+            writeParticles(hi5.patchPath() + "/", ps);
     };
 
     for (auto& pop : hi5.modelView().getIons())
