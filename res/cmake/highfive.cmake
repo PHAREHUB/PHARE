@@ -1,5 +1,12 @@
 
 if(HighFive)
+
+  if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive)
+    execute_process(
+      COMMAND ${Git} clone https://github.com/BlueBrain/HighFive ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive -b master --recursive --depth 10
+    )
+  endif()
+
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive/include
   )
