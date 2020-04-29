@@ -28,6 +28,8 @@ if (test)
 
   configure_file(${CMAKE_SOURCE_DIR}/tests/__init__.py ${CMAKE_BINARY_DIR}/tests/__init__.py @ONLY)
 
+  add_subdirectory(pyphare/tests/test_pharesee/)
+  add_subdirectory(pyphare/tests/pharein/)
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)

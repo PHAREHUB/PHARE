@@ -148,7 +148,7 @@ def hierarchy_overlaps(hierarchy):
     returns all overlaps for the given hierarchy
     """
     overlaps = {}
-    for ilvl, lvl in enumerate(hierarchy.patch_levels):
+    for ilvl, lvl in enumerate(hierarchy.levels()):
         overlaps[ilvl] = compute_overlaps(lvl.patches, hierarchy.refined_domain_box(ilvl))
     return overlaps
 
@@ -199,7 +199,7 @@ def particle_ghost_area_boxes(hierarchy):
     """
     gaboxes = {}
 
-    for ilvl, lvl in enumerate(hierarchy.patch_levels):
+    for ilvl, lvl in enumerate(hierarchy.levels()):
         for patch in lvl.patches:
 
             patch_data = patch.patch_datas["particles"]
@@ -240,7 +240,7 @@ def level_ghost_boxes(hierarchy):
     gaboxes = particle_ghost_area_boxes(hierarchy)
     lvl_gaboxes = {}
 
-    for ilvl, lvl in enumerate(hierarchy.patch_levels):
+    for ilvl, lvl in enumerate(hierarchy.levels()):
 
         if not is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
 
