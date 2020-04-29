@@ -120,7 +120,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap)
         {
-            auto vFPath = path + key + "/" + id;
+            auto vFPath = path + key + "_" + id;
             hi5.template createDataSet<float>(file, vFPath,
                                               null ? 0 : attr[key][id].template to<size_t>());
             this->writeGhostsAttr_(
@@ -129,8 +129,8 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     };
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
-        bool null = patchID.empty();
-        std::string path{hi5.getPatchPathAddTimestamp(lvl, patchID) + "/ions/"};
+        bool null        = patchID.empty();
+        std::string path = hi5.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
         for (auto& pop : ions)
         {
@@ -138,9 +138,9 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
             std::string tree{"/ions/pop/" + pop.name() + "/"};
             std::string popPath(path + "pop/" + pop.name() + "/");
             if (checkActive(tree, "density"))
-                initDS(popPath, attr[popId], "density", null);
+                initDS(path, attr[popId], "density", null);
             if (checkActive(tree, "flux"))
-                initVF(popPath, attr[popId], "flux", null);
+                initVF(path, attr[popId], "flux", null);
         }
 
         std::string tree{"/ions/"};
@@ -165,23 +165,22 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& diag
     auto writeDS     = [&](auto path, auto& field) { hi5.writeDataSet(file, path, field.data()); };
     auto writeVF     = [&](auto path, auto& vecF) { hi5.writeVecFieldAsDataset(file, path, vecF); };
 
-    std::string path{hi5.patchPath() + "/"};
+    std::string path = hi5.patchPath() + "/";
     for (auto& pop : ions)
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        std::string popPath{path + tree};
         if (checkActive(tree, "density"))
-            writeDS(popPath + "density", pop.density());
+            writeDS(path + "density", pop.density());
         if (checkActive(tree, "flux"))
-            writeVF(popPath + "flux", pop.flux());
+            writeVF(path + "flux", pop.flux());
     }
 
     std::string tree{"/ions/"};
     auto& density = ions.density();
     if (checkActive(tree, "density"))
-        writeDS(path + tree + "density", density);
+        writeDS(path + "density", density);
     if (checkActive(tree, "bulkVelocity"))
-        writeVF(path + tree + "bulkVelocity", ions.velocity());
+        writeVF(path + "bulkVelocity", ions.velocity());
 }
 
 

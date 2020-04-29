@@ -13,16 +13,18 @@ using namespace PHARE::diagnostic::h5;
 template<typename Simulator, typename Hi5Diagnostic>
 void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
+    using namespace std::string_literals;
+
     using GridLayout  = typename Simulator::PHARETypes::GridLayout_t;
     auto& hybridModel = *sim.getHybridModel();
 
-    auto checkF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
-        checkField(hifile->file(), layout, val, path + tree, FieldDomainFilter{});
+    auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name));
+        checkField(hifile->file(), layout, val, path + name, FieldDomainFilter{});
     };
-    auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
-        checkVecField(hifile->file(), layout, val, path + tree, FieldDomainFilter{});
+    auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name));
+        checkVecField(hifile->file(), layout, val, path + name, FieldDomainFilter{});
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
@@ -30,14 +32,14 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         auto& ions = hi5.modelView.getIons();
         for (auto& pop : ions)
         {
-            checkF(layout, path, "/ions/pop/" + pop.name() + "/density", pop.density());
-            checkVF(layout, path, "/ions/pop/" + pop.name() + "/flux", pop.flux());
+            checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.density());
+            checkVF(layout, path, "/ions/pop/" + pop.name(), "/flux"s, pop.flux());
         }
-        checkF(layout, path, "/ions/density", ions.density());
+        checkF(layout, path, "/ions"s, "/density"s, ions.density());
 
-        std::string tree{"/ions/bulkVelocity"};
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
-        checkVecField(hifile->file(), layout, ions.velocity(), path + tree, FieldDomainFilter{});
+        std::string tree{"/ions"}, var{"/bulkVelocity"};
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var));
+        checkVecField(hifile->file(), layout, ions.velocity(), path + var, FieldDomainFilter{});
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
@@ -68,7 +70,6 @@ TYPED_TEST(SimulatorTest, fluid)
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
     validateFluidDump(sim, hi5);
 }
-
 
 
 template<typename Simulator, typename Hi5Diagnostic>
@@ -110,7 +111,6 @@ TYPED_TEST(SimulatorTest, electromag)
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, HighFive::File::ReadOnly};
     validateElectromagDump(sim, hi5);
 }
-
 
 template<typename Simulator, typename Hi5Diagnostic>
 void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
@@ -155,9 +155,9 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         }
     };
 
-    auto checkFile = [&](auto& path, auto tree, auto& val) {
+    auto checkFile = [&](auto& path, auto tree, auto& particles) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
-        checkParticles(hifile->file(), val, path + tree + "/");
+        checkParticles(hifile->file(), particles, path + "/");
     };
 
     auto visit = [&](GridLayout&, std::string patchID, size_t iLevel) {

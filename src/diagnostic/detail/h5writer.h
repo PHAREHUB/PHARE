@@ -127,7 +127,7 @@ public:
     static void writeVecFieldAsDataset(HiFile& h5, std::string path, VecField& vecField)
     {
         for (auto& [id, type] : core::Components::componentMap)
-            h5.getDataSet(path + "/" + id).write(vecField.getComponent(type).data());
+            h5.getDataSet(path + "_" + id).write(vecField.getComponent(type).data());
     }
 
 

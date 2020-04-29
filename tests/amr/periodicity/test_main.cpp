@@ -65,7 +65,7 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
     std::unordered_map<std::string, PatchInfo> patches;
 
     auto loadEB = [&](auto& hifile, auto& path, std::string eb, std::string xyz) {
-        std::string ebxyz   = eb + "/" + xyz;
+        std::string ebxyz   = eb + "_" + xyz;
         std::string dataset = path + ebxyz;
         if (!patches.count(ebxyz))
             patches.emplace(ebxyz, PatchInfo{});
@@ -77,9 +77,9 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
 
     for (auto const& time : hiEfile->file().getGroup("/").listObjectNames())
     {
-        for (auto const& leaf : hiEfile->file().getGroup("/" + time + "/pl0").listObjectNames())
+        for (auto const& patch : hiEfile->file().getGroup("/" + time + "/pl0").listObjectNames())
         {
-            std::string path = "/" + time + "/pl0/" + leaf + "/";
+            std::string path = "/" + time + "/pl0/" + patch + "/";
             for (auto const& xyz : {"x", "y", "z"})
             {
                 loadEB(hiEfile->file(), path, "EM_E", xyz);
@@ -126,8 +126,8 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
         }
     };
 
-    checkDual({"EM_E/x", "EM_B/y", "EM_B/z"});
-    checkPrimal({"EM_B/x", "EM_E/y", "EM_E/z"});
+    checkDual({"EM_E_x", "EM_B_y", "EM_B_z"});
+    checkPrimal({"EM_B_x", "EM_E_y", "EM_E_z"});
 }
 
 int main(int argc, char** argv)

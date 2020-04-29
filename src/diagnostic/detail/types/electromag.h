@@ -87,7 +87,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap)
         {
-            auto vFPath = path + "/" + key + "/" + id;
+            auto vFPath = path + "/" + key + "_" + id;
             hi5.template createDataSet<float>(file, vFPath,
                                               null ? 0 : attr[key][id].template to<size_t>());
             this->writeGhostsAttr_(

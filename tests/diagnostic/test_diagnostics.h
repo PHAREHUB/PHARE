@@ -40,7 +40,7 @@ void checkVecField(HighFive::File& file, GridLayout& layout, VecField& vecField,
 {
     for (auto& [id, type] : PHARE::core::Components::componentMap)
     {
-        checkField(file, layout, vecField.getComponent(type), path + "/" + id, ff);
+        checkField(file, layout, vecField.getComponent(type), path + "_" + id, ff);
     }
 }
 
