@@ -199,17 +199,25 @@ public:
     }
 
 
+    auto const& cellWidth() const { return cellWidth_; }
+    auto const& domainBox() const { return domainBox_; }
+    auto const& origin() const { return origin_; }
+
 protected:
     Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
-              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db, std::string meshsize)
+              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db, std::string domainBox,
+              std::string origin, std::string cellWidth)
         : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
-        , meshSize_{meshsize}
+        , cellWidth_{cellWidth}
+        , domainBox_{domainBox}
+        , origin_{origin}
     {
     }
-    auto const& meshSize() const { return meshSize_; }
 
 private:
-    std::string meshSize_;
+    std::string cellWidth_;
+    std::string domainBox_;
+    std::string origin_;
 };
 
 template<size_t _dimension>
@@ -223,7 +231,14 @@ public:
                         SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
                         griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
                     patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
+                    core::Point<double, dimension>{
+                        parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")}
+                        .str(),
+                    core::Point<double, dimension>{
+                        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin")}
+                        .str(),
                     getMeshSize(dict["simulation"]["grid"]).str())
+
     {
     }
 

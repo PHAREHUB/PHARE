@@ -49,7 +49,7 @@ struct TestSimulator : public HierarchyMaker<_dim>,
 
     using Simulator  = PHARE::Simulator<dim, interp, nbRefinePart>;
     using PHARETypes = PHARE::PHARE_Types<dim, interp, nbRefinePart>;
-    using Hierarchy  = typename PHARE::amr::SAMRAI_Types::hierarchy_t;
+    using Hierarchy  = PHARE::amr::Hierarchy;
 
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;

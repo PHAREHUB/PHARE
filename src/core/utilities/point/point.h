@@ -104,7 +104,7 @@ namespace core
             return destArray;
         }
 
-        std::string str()
+        std::string str() const
         {
             std::stringstream ss;
             ss << r[0];
