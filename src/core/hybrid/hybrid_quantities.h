@@ -2,7 +2,7 @@
 #define PHARE_CORE_HYBRID_HYBRID_QUANTITIES_H
 
 
-
+#include <stdexcept>
 #include <array>
 
 namespace PHARE
