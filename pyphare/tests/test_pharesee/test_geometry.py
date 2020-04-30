@@ -565,9 +565,7 @@ class GeometryTest(unittest.TestCase):
                     np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
 
                     self.assertTrue(np.allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12))
-                    self.assertTrue(np.allclose(part1.vx[idx1], part2.vx[idx2], atol=1e-12))
-                    self.assertTrue(np.allclose(part1.vy[idx1], part2.vy[idx2], atol=1e-12))
-                    self.assertTrue(np.allclose(part1.vz[idx1], part2.vz[idx2], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,:], part2.v[idx2,:], atol=1e-12))
 
 
 

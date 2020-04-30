@@ -2,7 +2,9 @@
 from ..core import box as boxm
 from ..core.box import Box
 from ..core.gridlayout import GridLayout
+from .particles import Particles
 import numpy as np
+import os
 
 class PatchData:
 
@@ -148,19 +150,47 @@ def is_root_lvl(patch_level):
 
 import h5py
 
-qties = {"EM_B_x": "Bx",
-         "EM_B_z": "By",
-         "EM_B_y": "Bz",
-         "EM_E_x": "Ex",
-         "EM_E_y": "Ey",
-         "EM_E_z": "Ez",
-         "flux_x": "Vx",
-         "flux_y": "Vy",
-         "flux_z": "Vz",
-         "bulkVelocity_x": "Vx",
-         "bulkVelocity_y": "Vy",
-         "bulkVelocity_z": "Vz",
-         "density": "rho"}
+field_qties = {"EM_B_x": "Bx",
+               "EM_B_z": "By",
+               "EM_B_y": "Bz",
+               "EM_E_x": "Ex",
+               "EM_E_y": "Ey",
+               "EM_E_z": "Ez",
+               "flux_x": "Vx",
+               "flux_y": "Vy",
+               "flux_z": "Vz",
+               "bulkVelocity_x": "Vx",
+               "bulkVelocity_y": "Vy",
+               "bulkVelocity_z": "Vz",
+               "density": "rho"}
+
+
+particle_files_patterns = ("domain", "patchGhost", "levelGhost")
+
+
+def is_particle_file(filename):
+    return any([pattern in filename for pattern in particle_files_patterns])
+
+
+
+def particle_dataset_name(basename):
+    """
+    return "alpha_domain" from ions_pop_ions_alpha_domain.h5
+    """
+    popname = basename.strip(".h5").split("_")[-2]
+    part_type = basename.strip(".h5").split("_")[-1]
+    dataset_name = popname + "_" + part_type
+
+    return dataset_name
+
+
+def is_pop_fluid_file(basename):
+    return (is_particle_file(basename) is False) and "pop" in basename
+
+
+def pop_name(basename):
+    return basename.strip(".h5").split("_")[-2]
+
 
 
 def hierarchy_from(h5_filename):
@@ -168,6 +198,7 @@ def hierarchy_from(h5_filename):
     returns a PatchHierarchy from a PHARE hdf5 diagnostic file
     """
     data_file = h5py.File(h5_filename, "r")
+    basename = os.path.basename(h5_filename)
 
 
     root_cell_width = float(data_file.attrs["cell_width"])
@@ -202,14 +233,30 @@ def hierarchy_from(h5_filename):
                 patch_grp = data_file[time][plvl_key][pkey]
                 datasets_names = list(patch_grp.keys())
 
-                for dataset_name in datasets_names:
-                    dataset = patch_grp[dataset_name]
 
-                    pdata = FieldData(layout, qties[dataset_name], dataset)
-                    patch_datas[dataset_name] = pdata
+                if is_particle_file(basename):
+                    particles = Particles(icells  = patch_grp["iCell"],
+                                          deltas  = patch_grp["delta"],
+                                          v       = patch_grp["v"],
+                                          weights = patch_grp["weight"],
+                                          charges = patch_grp["charges"])
 
-                if ilvl not in patches:
-                    patches[ilvl] = []
+                    patch_datas[particle_dataset_name(basename)] = ParticleData(layout, particles)
+
+                else:
+                    for dataset_name in datasets_names:
+                        dataset = patch_grp[dataset_name]
+
+                        if dataset_name in field_qties:
+                            pdata = FieldData(layout, field_qties[dataset_name], dataset)
+
+                            if is_pop_fluid_file(basename):
+                                dataset_name = pop_name(basename) + "_" + dataset_name
+
+                            patch_datas[dataset_name] = pdata
+
+                    if ilvl not in patches:
+                        patches[ilvl] = []
 
                 patches[ilvl].append(Patch(patch_datas))
 
@@ -291,7 +338,7 @@ def add_data(filename, hier):
 
                         dataset = file_patch[key]
 
-                        pdata = FieldData(layout, qties[key], dataset)
+                        pdata = FieldData(layout, field_qties[key], dataset)
                         hier_patch.patch_datas.update({key: pdata})
                         hier.data_files.update({key:f})
 
@@ -333,7 +380,7 @@ def add_data(filename, hier):
 
                         dataset = file_patch[key]
 
-                        pdata = FieldData(layout, qties[key], dataset)
+                        pdata = FieldData(layout, field_qties[key], dataset)
                         patch_datas.update({key: pdata})
                         #hier.data_files.update({key: f})  # TODO, file handles per time? deal with restarts
 
