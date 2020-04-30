@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
 
+#include <stdexcept>
 #include <array>
 #include <cstdint>
 #include <vector>
