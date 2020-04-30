@@ -30,6 +30,7 @@ if (test)
 
   add_subdirectory(pyphare/tests/test_pharesee/)
   add_subdirectory(pyphare/tests/pharein/)
+  add_subdirectory(pyphare/tests/test_core/)
   add_subdirectory(tests/amr/data/particles)
   add_subdirectory(tests/amr/data/field/coarsening)
   add_subdirectory(tests/amr/data/field/copy_pack)
