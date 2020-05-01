@@ -192,6 +192,14 @@ def pop_name(basename):
     return basename.strip(".h5").split("_")[-2]
 
 
+def make_layout(h5_patch_grp, cell_width):
+    nbrCells = h5_patch_grp.attrs['nbrCells']
+    origin = float(h5_patch_grp.attrs['origin'])
+    upper = int(h5_patch_grp.attrs['upper'])
+    lower = int(h5_patch_grp.attrs['lower'])
+
+    return GridLayout(Box(lower, upper), origin, cell_width)
+
 
 def hierarchy_from(h5_filename):
     """
@@ -209,43 +217,36 @@ def hierarchy_from(h5_filename):
     for time in data_file.keys():
         t = float(time.strip("t"))
 
+        h5_time_grp = data_file[time]
         patch_levels = []
-        for plvl_key in data_file[time].keys():
+
+        for plvl_key in h5_time_grp.keys():
+
+            h5_patch_lvl_grp = data_file[time][plvl_key]
             ilvl = int(plvl_key[2:])
-
             lvl_cell_width = root_cell_width / 2 ** ilvl
-
             patches = {}
-            for pkey in data_file[time][plvl_key].keys():
 
+            for pkey in h5_patch_lvl_grp.keys():
+
+                h5_patch_grp = data_file[time][plvl_key][pkey]
                 patch_datas = {}
-                nbrCells = data_file[time][plvl_key][pkey].attrs['nbrCells']
-                origin = float(data_file[time][plvl_key][pkey].attrs['origin'])
-                upper = int(data_file[time][plvl_key][pkey].attrs['upper'])
-                lower = int(data_file[time][plvl_key][pkey].attrs['lower'])
-
-                patch_box = Box(lower, upper)
-                layout = GridLayout(patch_box, origin, lvl_cell_width)
-                print("reading patch of {} cells origin at {}, patchbox = {}".format(nbrCells,
-                                                                                     origin,
-                                                                                     patch_box))
-
-                patch_grp = data_file[time][plvl_key][pkey]
-                datasets_names = list(patch_grp.keys())
+                layout = make_layout(h5_patch_grp, lvl_cell_width)
+                datasets_names = list(h5_patch_grp.keys())
 
 
                 if is_particle_file(basename):
-                    particles = Particles(icells  = patch_grp["iCell"],
-                                          deltas  = patch_grp["delta"],
-                                          v       = patch_grp["v"],
-                                          weights = patch_grp["weight"],
-                                          charges = patch_grp["charges"])
+                    particles = Particles(icells  = h5_patch_grp["iCell"],
+                                          deltas  = h5_patch_grp["delta"],
+                                          v       = h5_patch_grp["v"],
+                                          weights = h5_patch_grp["weight"],
+                                          charges = h5_patch_grp["charges"])
 
                     patch_datas[particle_dataset_name(basename)] = ParticleData(layout, particles)
 
                 else:
                     for dataset_name in datasets_names:
-                        dataset = patch_grp[dataset_name]
+                        dataset = h5_patch_grp[dataset_name]
 
                         if dataset_name in field_qties:
                             pdata = FieldData(layout, field_qties[dataset_name], dataset)
