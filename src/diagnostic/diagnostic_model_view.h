@@ -55,6 +55,13 @@ public:
         PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, resMan, std::forward<Action>(action),
                                                minLevel, maxLevel, model_);
     }
+    auto domainBox() const { return hierarchy_.domainBox(); }
+
+    auto origin() const { return hierarchy_.origin(); }
+
+    auto cellWidth() const { return hierarchy_.cellWidth(); }
+
+
 
     std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
 
@@ -63,6 +70,8 @@ public:
         PatchProperties dict;
         dict["origin"]   = grid.origin().str();
         dict["nbrCells"] = core::Point<uint32_t, dimension>{grid.nbrCells()}.str();
+        dict["lower"]    = grid.AMRBox().lower.str();
+        dict["upper"]    = grid.AMRBox().upper.str();
         return dict;
     }
 
@@ -72,6 +81,8 @@ public:
         PatchProperties dict;
         dict["origin"]   = std::string{""};
         dict["nbrCells"] = std::string{""};
+        dict["lower"]    = std::string{""};
+        dict["upper"]    = std::string{""};
         return dict;
     }
 

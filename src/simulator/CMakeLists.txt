@@ -3,6 +3,7 @@ project(phare_simulator)
 
 set( SOURCES_INC
     simulator.h
+    simulator.cpp
     phare_types.h
    )
 
