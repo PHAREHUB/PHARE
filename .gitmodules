@@ -4,6 +4,3 @@
 [submodule "subprojects/pharedo"]
 	path = subprojects/pharedo
 	url = https://github.com/PHAREHUB/pharedo.git
-[submodule "subprojects/highfive"]
-	path = subprojects/highfive
-	url = https://github.com/BlueBrain/HighFive
