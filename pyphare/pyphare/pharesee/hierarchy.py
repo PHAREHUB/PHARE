@@ -125,7 +125,7 @@ class PatchHierarchy:
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(10, 3))
-        for ilvl, lvl in enumerate(self.time_hier[0.].values()):
+        for ilvl, lvl in enumerate(self.time_hier[0.]):
             lvl_offset = ilvl * 0.1
             for patch in lvl.patches:
                 dx = patch.dx
@@ -201,20 +201,91 @@ def make_layout(h5_patch_grp, cell_width):
     return GridLayout(Box(lower, upper), origin, cell_width)
 
 
-def hierarchy_from(h5_filename):
+
+def create_from_all_times(time, hier):
+    return time is None and hier is None
+
+
+def create_from_one_time(time, hier):
+    return time is not None and hier is None
+
+
+def load_all_times(time, hier):
+    return time is None and hier is not None
+
+
+def load_one_time(time, hier):
+    return time is not None and hier is not None
+
+
+
+
+def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
     """
-    returns a PatchHierarchy from a PHARE hdf5 diagnostic file
+    adds data in the h5_patch_grp in the given PatchData dict
     """
+
+    if is_particle_file(basename):
+        particles = Particles(icells=h5_patch_grp["iCell"],
+                              deltas=h5_patch_grp["delta"],
+                              v=h5_patch_grp["v"],
+                              weights=h5_patch_grp["weight"],
+                              charges=h5_patch_grp["charge"])
+
+        pdname = particle_dataset_name(basename)
+        if pdname in patch_datas:
+            raise ValueError("error - {} already in patchdata".format(pdname))
+
+        patch_datas[pdname] = ParticleData(layout, particles)
+
+    else:
+        for dataset_name in h5_patch_grp.keys():
+
+            dataset = h5_patch_grp[dataset_name]
+
+            if dataset_name not in field_qties:
+                raise RuntimeError(
+                    "invalid dataset name : {} is not in {}".format(dataset_name, field_qties))
+
+            pdata = FieldData(layout, field_qties[dataset_name], dataset)
+
+            if is_pop_fluid_file(basename):
+                dataset_name = pop_name(basename) + "_" + dataset_name
+
+
+            if dataset_name in patch_datas:
+                raise ValueError("error - {} already in patchdata".format(dataset_name))
+
+            patch_datas[dataset_name] = pdata
+
+
+
+
+
+
+def hierarchy_from(h5_filename, time=None, hier=None):
+
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
-
-
     root_cell_width = float(data_file.attrs["cell_width"])
     domain_box = Box(0, int(data_file.attrs["domain_box"]))
 
-    diag_hier = None
 
-    for time in data_file.keys():
+    if create_from_all_times(time, hier):
+        # first create from first time
+        # then add all other times
+        print("creating hierarchy from all times in file")
+        times = list(data_file.keys())
+        hier = hierarchy_from(h5_filename, time=times[0])
+        if len(times)>1:
+            for time in times[1:]:
+                hierarchy_from(h5_filename, time=time, hier=hier)
+        return hier
+
+
+
+    if create_from_one_time(time, hier):
+        print("creating hierarchy from one time {}".format(time))
         t = float(time.strip("t"))
 
         h5_time_grp = data_file[time]
@@ -222,7 +293,7 @@ def hierarchy_from(h5_filename):
 
         for plvl_key in h5_time_grp.keys():
 
-            h5_patch_lvl_grp = data_file[time][plvl_key]
+            h5_patch_lvl_grp = h5_time_grp[plvl_key]
             ilvl = int(plvl_key[2:])
             lvl_cell_width = root_cell_width / 2 ** ilvl
             patches = {}
@@ -232,32 +303,11 @@ def hierarchy_from(h5_filename):
                 h5_patch_grp = data_file[time][plvl_key][pkey]
                 patch_datas = {}
                 layout = make_layout(h5_patch_grp, lvl_cell_width)
-                datasets_names = list(h5_patch_grp.keys())
 
+                add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
 
-                if is_particle_file(basename):
-                    particles = Particles(icells  = h5_patch_grp["iCell"],
-                                          deltas  = h5_patch_grp["delta"],
-                                          v       = h5_patch_grp["v"],
-                                          weights = h5_patch_grp["weight"],
-                                          charges = h5_patch_grp["charges"])
-
-                    patch_datas[particle_dataset_name(basename)] = ParticleData(layout, particles)
-
-                else:
-                    for dataset_name in datasets_names:
-                        dataset = h5_patch_grp[dataset_name]
-
-                        if dataset_name in field_qties:
-                            pdata = FieldData(layout, field_qties[dataset_name], dataset)
-
-                            if is_pop_fluid_file(basename):
-                                dataset_name = pop_name(basename) + "_" + dataset_name
-
-                            patch_datas[dataset_name] = pdata
-
-                    if ilvl not in patches:
-                        patches[ilvl] = []
+                if ilvl not in patches:
+                    patches[ilvl] = []
 
                 patches[ilvl].append(Patch(patch_datas))
 
@@ -265,128 +315,97 @@ def hierarchy_from(h5_filename):
 
         diag_hier = PatchHierarchy(patch_levels, domain_box, 2, t, data_file)
 
-    return diag_hier
+        return diag_hier
 
 
 
-
-def add_data(filename, hier):
-    """
-    add the datasets contained in the PHARE hdf5 data into
-    an existing PatchHierarchy.
-
-    data in given file should be compatible with the given
-    patch hierarchy, i.e. same number of levels, same number of
-    patches with same boxes, etc.
-
-    data should not already exist in the hierarchy
-    """
-    f = h5py.File(filename, "r")
-
-
-    root_cell_width = float(f.attrs["cell_width"])
-    domain_box = Box(0, int(f.attrs["domain_box"]))
-
-    if domain_box !=  hier.domain_box:
-        err = "filename domain_box {} incompatible with hierarchy domain_box {}"
-        raise ValueError(err.format(domain_box, hier.domain_box))
-
-
-    for time in f.keys():
+    if load_one_time(time, hier):
+        print("loading data at time {} into existing hierarchy".format(time))
+        h5_time_grp = data_file[time]
         t = float(time.strip("t"))
 
         if t in hier.time_hier:
+            print("time already exist, adding data...")
 
             # time already exists in the hierarchy
             # all we need to do is adding the data
             # as patchDatas in the appropriate patches
             # and levels, if data compatible with hierarchy
 
-            lvl_patches = hier.levels(t).patches
+            patch_levels = hier.levels(t)
 
-            for plvl_key in f[time].keys():
+            for plvl_key in h5_time_grp.keys():
+
                 ilvl = int(plvl_key[2:])
 
                 lvl_cell_width = root_cell_width / 2 ** ilvl
 
+                for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
 
-                for ipatch, pkey in enumerate(f[time][plvl_key].keys()):
+                    h5_patch_grp = h5_time_grp[plvl_key][pkey]
+                    hier_patch = patch_levels[ilvl].patches[ipatch]
 
-                    file_patch = f[time][plvl_key][pkey]
-                    hier_patch = lvl_patches[ipatch]
-
-                    nbrCells = f[time][plvl_key][pkey].attrs['nbrCells']
-                    origin = float(f[time][plvl_key][pkey].attrs['origin'])
-                    upper = int(f[time][plvl_key][pkey].attrs['upper'])
-                    lower = int(f[time][plvl_key][pkey].attrs['lower'])
-
+                    origin = float(h5_time_grp[plvl_key][pkey].attrs['origin'])
+                    upper = int(h5_time_grp[plvl_key][pkey].attrs['upper'])
+                    lower = int(h5_time_grp[plvl_key][pkey].attrs['lower'])
                     file_patch_box = Box(lower, upper)
 
                     assert file_patch_box == hier_patch.box
                     assert abs(origin - hier_patch.origin[0]) < 1e-6
                     assert abs(lvl_cell_width - hier_patch.dx) < 1e-6
 
-                    layout = GridLayout(file_patch_box, origin, lvl_cell_width)
+                    layout = make_layout(h5_patch_grp, lvl_cell_width)
 
-                    print("reading patch of {} cells origin at {}, patchbox = {}".format(nbrCells,
-                                                                                         origin,
-                                                                                         file_patch_box))
+                    add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
 
-                    for key in file_patch.keys():
+            return hier
+                    #hier_patch.patch_datas.update({dataset_name: pdata})
 
-                        if key in hier_patch.patch_datas:
-                            raise ValueError("dataset {} already in the hierarchy".format(key))
-
-                        dataset = file_patch[key]
-
-                        pdata = FieldData(layout, field_qties[key], dataset)
-                        hier_patch.patch_datas.update({key: pdata})
-                        hier.data_files.update({key:f})
+                    #hier.data_files.update({dataset_name: f})
 
         else:
-
+            print("adding data to new time")
             # time does not exist in the hierarchy
             # we have to create a brand new set of patchLevels
             # containing patches, and load data in their patchdatas
 
             patch_levels = {}
 
-            for plvl_key in f[time].keys():
+            for plvl_key in h5_time_grp.keys():
                 ilvl = int(plvl_key[2:])
 
                 lvl_cell_width = root_cell_width / 2 ** ilvl
 
                 lvl_patches = []
 
-                for ipatch, pkey in enumerate(f[time][plvl_key].keys()):
+                for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
 
-                    file_patch = f[time][plvl_key][pkey]
+                    h5_patch_grp = h5_time_grp[plvl_key][pkey]
 
-
-                    nbrCells = f[time][plvl_key][pkey].attrs['nbrCells']
-                    origin = float(f[time][plvl_key][pkey].attrs['origin'])
-                    upper = int(f[time][plvl_key][pkey].attrs['upper'])
-                    lower = int(f[time][plvl_key][pkey].attrs['lower'])
-
-                    file_patch_box = Box(lower, upper)
-
-                    layout = GridLayout(file_patch_box, origin, lvl_cell_width)
-
-                    print("reading patch of {} cells origin at {}, patchbox = {}".format(nbrCells,
-                                                                                         origin,
-                                                                                         file_patch_box))
+                    layout = make_layout(h5_patch_grp, lvl_cell_width)
 
                     patch_datas = {}
-                    for key in file_patch.keys():
 
-                        dataset = file_patch[key]
-
-                        pdata = FieldData(layout, field_qties[key], dataset)
-                        patch_datas.update({key: pdata})
-                        #hier.data_files.update({key: f})  # TODO, file handles per time? deal with restarts
+                    add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
 
                     lvl_patches.append(Patch(patch_datas))
 
                 patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
 
             hier.time_hier[t] = patch_levels
+            return hier
+
+
+    if load_all_times(time, hier):
+        print("loading all times in existing hier")
+        for time in data_file.keys():
+            hier = hierarchy_from(h5_filename, time=time, hier=hier)
+
+        return hier
+
+
+
+
+
+
+

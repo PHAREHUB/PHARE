@@ -13,7 +13,7 @@ class Particles:
             self.charges = np.zeros_like(self.weights) + 1
 
         else:
-            self.iCells  = kwargs["icell"]
+            self.iCells  = kwargs["icells"]
             self.deltas  = kwargs["deltas"]
             self.v       = kwargs["v"]
             self.weights = kwargs["weights"]
