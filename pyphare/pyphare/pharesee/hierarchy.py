@@ -264,6 +264,16 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
 
 def hierarchy_from(h5_filename, time=None, hier=None):
+    """
+    this function reads an HDF5 PHARE file and returns a PatchHierarchy from
+    which data is accessible.
+    if 'time' is None, all times in the file will be read, if a time is given
+    then only that time will be read
+    if 'hier' is None, then a new hierarchy will be created, if not then the
+    given hierarchy 'hier' will be filled.
+
+    The function fails if the data is already in hierarchy
+    """
 
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
