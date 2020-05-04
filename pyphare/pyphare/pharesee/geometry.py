@@ -75,30 +75,29 @@ def compute_overlaps(patches, domain_box):
 
             # for two patches, compare patch_datas of the same quantity
             for ref_pdname, ref_pd in refPatch.patch_datas.items():
-                for cmp_pdname, cmp_pd in cmpPatch.patch_datas.items():
+                cmp_pd = cmpPatch.patch_datas[ref_pdname]
+                cmp_pdname = ref_pdname
 
-                    if cmp_pdname == ref_pdname:
+                gb1 = ref_pd.ghost_box
+                gb2 = cmp_pd.ghost_box
+                overlap = gb1 * gb2
 
-                        gb1 = ref_pd.ghost_box
-                        gb2 = cmp_pd.ghost_box
-                        overlap = gb1 * gb2
+                if overlap is not None:
 
-                        if overlap is not None:
+                    # boxes indexes represent cells
+                    # therefore for fields, we need to
+                    # adjust the box. This essentially
+                    # add 1 to upper in case field is on corners
+                    # because upper corner can only be grabbed
+                    # if box extends to upper+1 cell
+                    # particles don't need that as they are contained
+                    # in cells.
+                    if ref_pd.quantity == 'field':
+                        overlap = toFieldBox(overlap, ref_pd)
 
-                            # boxes indexes represent cells
-                            # therefore for fields, we need to
-                            # adjust the box. This essentially
-                            # add 1 to upper in case field is on corners
-                            # because upper corner can only be grabbed
-                            # if box extends to upper+1 cell
-                            # particles don't need that as they are contained
-                            # in cells.
-                            if ref_pd.quantity == 'field':
-                                overlap = toFieldBox(overlap, ref_pd)
-
-                            overlaps.append({"pdatas": (ref_pd, cmp_pd),
-                                             "box": overlap,
-                                             "offset": (0, 0)})
+                    overlaps.append({"pdatas": (ref_pd, cmp_pd),
+                                     "box": overlap,
+                                     "offset": (0, 0)})
 
     # now dealing with first and last patches to see their patchdata overlap
     for ref_pdname, ref_pd in patches[0].patch_datas.items():
@@ -254,8 +253,6 @@ def level_ghost_boxes(hierarchy):
 
                 for gabox in gaboxes:
 
-                    # print("gabox: {}".format(gabox))
-
                     # now loop on all particle patchData
                     # keep only parts of the ghost boxes that do
                     # not intersect other patch data interior
@@ -269,12 +266,6 @@ def level_ghost_boxes(hierarchy):
                         if patch.patch_datas["particles"] is not patch_data:
 
                             keep = boxm.remove(gabox, patch.box)
-
-                            # print("{}*{} = {}, keeping {} boxes".format(gabox, patch.box,
-                            #                                           gabox*patch.box,
-                            #                                          len(keep)))
-                            # for k in keep:
-                            #    print("keep : {}".format(k))
 
                             if ilvl not in lvl_gaboxes:
                                 lvl_gaboxes[ilvl] = []

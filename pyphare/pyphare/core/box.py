@@ -23,8 +23,6 @@ class Box:
             return inter
 
 
-    def length(self):
-        return (self.upper - self.lower + 1,)
 
 
     def size(self):
