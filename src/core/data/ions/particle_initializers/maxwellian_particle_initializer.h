@@ -18,7 +18,7 @@ namespace PHARE
 namespace core
 {
     void maxwellianVelocity(std::array<double, 3> V, std::array<double, 3> Vth,
-                            std::mt19937_64 generator, std::array<double, 3>& partVelocity);
+                            std::mt19937_64& generator, std::array<double, 3>& partVelocity);
 
 
     std::array<double, 3> basisTransform(const std::array<std::array<double, 3>, 3> basis,
