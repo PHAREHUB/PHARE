@@ -33,6 +33,8 @@ include(CheckCXXCompilerFlag)
 
 find_package (PythonInterp  3.0 REQUIRED)
 
+set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
+
 set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 

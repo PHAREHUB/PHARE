@@ -119,3 +119,7 @@ class BoxTesT(unittest.TestCase):
 
     def test_amr_to_local(self):
         self.assertEqual(boxm.amr_to_local(Box(33,64),Box(-5,69)), Box(38,69))
+
+
+if __name__ == "__main__":
+    unittest.main()

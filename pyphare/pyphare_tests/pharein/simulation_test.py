@@ -58,3 +58,8 @@ class TestSimulation(unittest.TestCase):
                                   boundary_types="periodic",
                                   cells=80, domain_size=10, final_time=10)
         self.assertEqual(0.01, s.time_step)
+
+
+
+if __name__ == "__main__":
+    unittest.main()
