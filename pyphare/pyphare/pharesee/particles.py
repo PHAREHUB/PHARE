@@ -18,6 +18,10 @@ class Particles():
             self.vz = kwargs["vz"]
 
     def select(self, box):
+        """
+        select particles from the given box
+        assumption, box has AMR indexes of the same level as the data that the current instance is created from
+        """
         idx = np.where((self.iCells >= box.lower) & (self.iCells <= box.upper))[0]
         return Particles(icell=self.iCells[idx],
                          deltas=self.deltas[idx],

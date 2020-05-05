@@ -39,13 +39,13 @@ class Box:
     def __repr__(self):
         return self.__str__()
 
-    def __contains__(self, elt):
-        if isinstance(elt, int):
-            cell = elt
+    def __contains__(self, item):
+        if isinstance(item, int):
+            cell = item
             return (cell >= self.lower) and (cell <= self.upper)
 
-        if isinstance(elt, Box):
-            box = elt
+        if isinstance(item, Box):
+            box = item
             return box.lower >= self.lower and box.upper <= self.upper
 
     def __eq__(self, other):
