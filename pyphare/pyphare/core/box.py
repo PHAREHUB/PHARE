@@ -7,6 +7,7 @@ class Box:
     """
 
     def __init__(self, lower, upper):
+        assert lower <= upper
         self.lower = lower
         self.upper = upper
 
@@ -16,11 +17,11 @@ class Box:
         of box2 with self. No intersection returns None
         """
         box1 = self
-        inter = Box(max(box1.lower, box2.lower), min(box1.upper, box2.upper))
-        if inter.upper < inter.lower :
-            return None
-        else:
-            return inter
+
+        lower, upper = max(box1.lower, box2.lower), min(box1.upper, box2.upper)
+        if lower <= upper:
+            return Box(lower, upper)
+
 
 
 
@@ -86,25 +87,25 @@ def remove(box, to_remove):
     if intersection is None:
         return [box, ]
 
-    if intersection in box and box.lower < intersection.lower:
+    if to_remove in box and box.lower < to_remove.lower and box.upper > to_remove.upper:
         #   |----------------|    box
         #        |-----|          remove
-        return [Box(box.lower, to_remove.lower - 1), Box(to_remove.upper + 1, box.upper)]
+        return [Box(box.lower, intersection.lower - 1), Box(intersection.upper + 1, box.upper)]
 
-    if box in intersection:
+    if box in to_remove:
         #    |--------------|     box
         #  |-------------------|  remove
         return []
 
-    if box.lower in intersection:
+    if box.lower in intersection and box.upper > to_remove.upper:
         #       |---------------| box
         #  |-----------|          remove
-        return [Box(to_remove.upper + 1, box.upper), ]
+        return [Box(intersection.upper + 1, box.upper), ]
 
-    if box.upper in intersection:
+    if box.upper in to_remove and box.lower < to_remove.lower:
         #  |---------------|      box
         #            |----------| remove
-        return [Box(box.lower, to_remove.lower - 1), ]
+        return [Box(box.lower, intersection.lower - 1), ]
 
 
 
