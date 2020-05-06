@@ -28,5 +28,3 @@ set_target_properties(dictator
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
 )
-
-#configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py.in ${CMAKE_BINARY_DIR}/pyphare/pyphare/__init__.py @ONLY)
