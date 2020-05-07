@@ -3,7 +3,7 @@
 # formatted with black
 
 from phare import cpp
-from tests.simulator.py import create_simulator
+from tests.simulator import create_simulator
 from phare.data.wrangler import DataWrangler
 
 import unittest
