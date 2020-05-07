@@ -2,6 +2,10 @@
 import numpy as np
 
 class Particles():
+    """
+    this class represent a set of particles
+    particles can either be loaded randomly in a given box or have there attribute set from caller
+    """
     def __init__(self, **kwargs):
         if "box" in kwargs:
             box = kwargs["box"]
