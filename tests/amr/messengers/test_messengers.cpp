@@ -6,21 +6,15 @@
 #include "test_integrator_strat.h"
 #include "test_tag_strategy.h"
 
-
 using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::solver;
 
-static constexpr std::size_t dim          = 1;
-static constexpr std::size_t interpOrder  = 1;
-static constexpr std::size_t nbRefinePart = 2;
+template<uint8_t dim>
+using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
 
-using Simulator         = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
-using HybridModelT      = Simulator::HybridModel;
-using MHDModelT         = Simulator::MHDModel;
-using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
-
+namespace func_1d
+{
 double density(double x)
 {
     return /*x * +*/ 2.;
@@ -31,36 +25,30 @@ double vx(double /*x*/)
     return 1.;
 }
 
-
 double vy(double /*x*/)
 {
     return 1.;
 }
-
 
 double vz(double /*x*/)
 {
     return 1.;
 }
 
-
 double vthx(double /*x*/)
 {
     return 1.;
 }
-
 
 double vthy(double /*x*/)
 {
     return 1.;
 }
 
-
 double vthz(double /*x*/)
 {
     return 1.;
 }
-
 
 double bx(double x)
 {
@@ -91,72 +79,235 @@ double ez(double x)
 {
     return x /* + 6.*/;
 }
+} // namespace func_1d
 
 
+template<uint8_t dimension>
+struct DimDict
+{
+};
 
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+template<>
+struct DimDict<1>
+{
+    static constexpr uint8_t dim = 1;
+    static void set(PHARE::initializer::PHAREDict& dict)
+    {
+        using namespace func_1d;
+        dict["ions"]["pop0"]["particle_initializer"]["density"]
+            = static_cast<ScalarFunctionT<dim>>(density);
 
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vx);
+
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vy);
+
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vz);
+
+
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vthx);
+
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vthy);
+
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vthz);
+
+        dict["ions"]["pop1"]["particle_initializer"]["density"]
+            = static_cast<ScalarFunctionT<dim>>(density);
+
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vx);
+
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vy);
+
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vz);
+
+
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vthx);
+
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vthy);
+
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vthz);
+
+        dict["electromag"]["electric"]["initializer"]["x_component"]
+            = static_cast<ScalarFunctionT<dim>>(ex);
+        dict["electromag"]["electric"]["initializer"]["y_component"]
+            = static_cast<ScalarFunctionT<dim>>(ey);
+        dict["electromag"]["electric"]["initializer"]["z_component"]
+            = static_cast<ScalarFunctionT<dim>>(ez);
+
+        dict["electromag"]["magnetic"]["initializer"]["x_component"]
+            = static_cast<ScalarFunctionT<dim>>(bx);
+        dict["electromag"]["magnetic"]["initializer"]["y_component"]
+            = static_cast<ScalarFunctionT<dim>>(by);
+        dict["electromag"]["magnetic"]["initializer"]["z_component"]
+            = static_cast<ScalarFunctionT<dim>>(bz);
+    }
+};
+
+
+namespace func_2d
+{
+double density(double x, double)
+{
+    return /*x * +*/ 2.;
+}
+
+double vx(double /*x*/, double)
+{
+    return 1.;
+}
+
+double vy(double /*x*/, double)
+{
+    return 1.;
+}
+
+double vz(double /*x*/, double)
+{
+    return 1.;
+}
+
+double vthx(double /*x*/, double)
+{
+    return 1.;
+}
+
+double vthy(double /*x*/, double)
+{
+    return 1.;
+}
+
+double vthz(double /*x*/, double)
+{
+    return 1.;
+}
+
+double bx(double x, double)
+{
+    return x /* + 1.*/;
+}
+
+double by(double x, double)
+{
+    return x /* + 2.*/;
+}
+
+double bz(double x, double)
+{
+    return x /*+ 3.*/;
+}
+
+double ex(double x, double)
+{
+    return x /* + 4.*/;
+}
+
+double ey(double x, double)
+{
+    return x /* + 5.*/;
+}
+
+double ez(double x, double)
+{
+    return x /* + 6.*/;
+}
+} // namespace func_2d
+
+template<>
+struct DimDict<2>
+{
+    static constexpr uint8_t dim = 2;
+    static void set(PHARE::initializer::PHAREDict& dict)
+    {
+        using namespace func_2d;
+        dict["ions"]["pop0"]["particle_initializer"]["density"]
+            = static_cast<ScalarFunctionT<dim>>(density);
+
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vx);
+
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vy);
+
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vz);
+
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vthx);
+
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vthy);
+
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vthz);
+
+        dict["ions"]["pop1"]["particle_initializer"]["density"]
+            = static_cast<ScalarFunctionT<dim>>(density);
+
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vx);
+
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vy);
+
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vz);
+
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
+            = static_cast<ScalarFunctionT<dim>>(vthx);
+
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
+            = static_cast<ScalarFunctionT<dim>>(vthy);
+
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
+            = static_cast<ScalarFunctionT<dim>>(vthz);
+
+        dict["electromag"]["electric"]["initializer"]["x_component"]
+            = static_cast<ScalarFunctionT<dim>>(ex);
+        dict["electromag"]["electric"]["initializer"]["y_component"]
+            = static_cast<ScalarFunctionT<dim>>(ey);
+        dict["electromag"]["electric"]["initializer"]["z_component"]
+            = static_cast<ScalarFunctionT<dim>>(ez);
+
+        dict["electromag"]["magnetic"]["initializer"]["x_component"]
+            = static_cast<ScalarFunctionT<dim>>(bx);
+        dict["electromag"]["magnetic"]["initializer"]["y_component"]
+            = static_cast<ScalarFunctionT<dim>>(by);
+        dict["electromag"]["magnetic"]["initializer"]["z_component"]
+            = static_cast<ScalarFunctionT<dim>>(bz);
+    }
+};
+
+template<uint8_t dimension = 1>
 PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
 
     dict["simulation"]["solverPPC"]["pusher"]["name"] = std::string{"modified_boris"};
 
-    dict["ions"]["name"]                                    = std::string{"ions"};
-    dict["ions"]["nbrPopulations"]                          = int{2};
-    dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
-    dict["ions"]["pop0"]["mass"]                            = 1.;
-    dict["ions"]["pop0"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
-
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
-
+    dict["ions"]["name"]                                 = std::string{"ions"};
+    dict["ions"]["nbrPopulations"]                       = int{2};
+    dict["ions"]["pop0"]["name"]                         = std::string{"protons"};
+    dict["ions"]["pop0"]["mass"]                         = 1.;
+    dict["ions"]["pop0"]["particle_initializer"]["name"] = std::string{"maxwellian"};
 
     dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
     dict["ions"]["pop0"]["particle_initializer"]["charge"]            = -1.;
     dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
 
-    dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
-    dict["ions"]["pop1"]["mass"]                            = 1.;
-    dict["ions"]["pop1"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop1"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
-
-    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
-
-    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
-
-    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
-
-
-    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
-
-    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
-
-    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
-
+    dict["ions"]["pop1"]["name"]                         = std::string{"alpha"};
+    dict["ions"]["pop1"]["mass"]                         = 1.;
+    dict["ions"]["pop1"]["particle_initializer"]["name"] = std::string{"maxwellian"};
 
     dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
     dict["ions"]["pop1"]["particle_initializer"]["charge"]            = -1.;
@@ -166,18 +317,29 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["electric"]["name"] = std::string{"E"};
     dict["electromag"]["magnetic"]["name"] = std::string{"B"};
 
-    dict["electromag"]["electric"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(ex);
-    dict["electromag"]["electric"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(ey);
-    dict["electromag"]["electric"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(ez);
-
-    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
-    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
-    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
-
     dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
     dict["electrons"]["pressure_closure"]["Te"]   = 0.12;
+
+
+    DimDict<dimension>::set(dict);
+
     return dict;
 }
+
+
+namespace test_1d
+{
+using namespace func_1d;
+static constexpr std::size_t dim          = 1;
+static constexpr std::size_t interpOrder  = 1;
+static constexpr std::size_t nbRefinePart = 2;
+
+using Simulator         = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
+using HybridModelT      = Simulator::HybridModel;
+using MHDModelT         = Simulator::MHDModel;
+using ResourcesManagerT = typename HybridModelT::resources_manager_type;
+using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
+
 
 
 TEST(MessengerDescriptors, areObtainedFromAModelList)
@@ -415,6 +577,7 @@ TYPED_TEST(SimulatorTest, initializesParticlesOnRefinedLevels)
     }
 }
 
+} // namespace test_1d
 
 #if 0
 TEST_F(HybridHybridMessenger, initializesNewLevelDuringRegrid)
@@ -500,23 +663,33 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 }
 #endif
 
-
-struct AfullHybridBasicHierarchy : public ::testing::Test
+template<uint8_t dimension>
+struct AfullHybridBasicHierarchy
 {
+    static constexpr std::size_t interpOrder  = 1;
+    static constexpr std::size_t nbRefinePart = 2;
+
+    using Simulator         = typename PHARE::Simulator<dimension, interpOrder, nbRefinePart>;
+    using HybridModelT      = typename Simulator::HybridModel;
+    using MHDModelT         = typename Simulator::MHDModel;
+    using ResourcesManagerT = typename HybridModelT::resources_manager_type;
+    using Phare_Types       = PHARE::PHARE_Types<dimension, interpOrder, nbRefinePart>;
+
     int const firstHybLevel{0};
     int const ratio{2};
-    short unsigned const dimension = 1;
 
     using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>,
-                                                        Phare_Types::RefinementParams>;
+                                                        typename Phare_Types::RefinementParams>;
 
     SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
+
+    PHARE::initializer::PHAREDict dict{createDict<dimension>()};
 
     std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
         std::make_shared<ResourcesManagerT>()};
 
     std::shared_ptr<HybridModelT> hybridModel{
-        std::make_shared<HybridModelT>(createDict(), resourcesManagerHybrid)};
+        std::make_shared<HybridModelT>(dict, resourcesManagerHybrid)};
 
 
     std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
@@ -527,8 +700,7 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
             std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
-        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(
-            createDict()["simulation"]["solverPPC"])};
+        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(dict["simulation"]["solverPPC"])};
 
     std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 
@@ -547,14 +719,19 @@ struct AfullHybridBasicHierarchy : public ::testing::Test
         basicHierarchy
             = std::make_shared<BasicHierarchy>(ratio, dimension, tagStrat.get(), integrator);
     }
+
+    inline void fillsRefinedLevelFieldGhosts();
 };
 
-TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
+
+template<uint8_t dimension> // keeps the test "this"
+void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
 {
     if (mpi.getSize() > 1)
     {
         GTEST_SKIP() << "Test Broken for // execution, SHOULD BE FIXED";
     }
+
     auto newTime       = 1.;
     auto& hierarchy    = basicHierarchy->getHierarchy();
     auto const& level0 = hierarchy.getPatchLevel(0);
@@ -591,7 +768,8 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
 
 
 
-    auto iPatch = 0;
+    size_t total_eq = 0;
+    size_t iPatch   = 0;
     for (auto patch : *level1)
     {
         auto exOldId = hybridModel->resourcesManager->getID("HybridModel-HybridModel_EM_old_E_x");
@@ -632,45 +810,114 @@ TEST_F(AfullHybridBasicHierarchy, fillsRefinedLevelFieldGhosts)
         // that defined the field on level0.
         // As a consequence, if the space/time interpolation worked the field on level1
         // should be equal to the outcome of the function used on level0
-        auto checkMyField = [&layout, &iPatch](auto const& field, auto const& func) //
+
+        if constexpr (dimension == 1)
         {
-            auto iGhostStart = layout.ghostStartIndex(field, Direction::X);
-            auto iStart      = layout.physicalStartIndex(field, Direction::X);
-            auto iEnd        = layout.physicalEndIndex(field, Direction::X);
-            auto iGhostEnd   = layout.ghostEndIndex(field, Direction::X);
-
-            for (auto ix = iGhostStart; ix < iStart; ++ix)
+            using namespace func_1d;
+            auto checkMyField = [&](auto const& field, auto const& func) //
             {
-                auto origin   = layout.origin();
-                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                auto expected = func(x[0]);
-                std::cout << iPatch << " " << ix << " " << expected << " " << field(ix)
-                          << expected - field(ix) << "\n";
-                EXPECT_DOUBLE_EQ(expected, field(ix));
-            }
+                auto iGhostStart = layout.ghostStartIndex(field, Direction::X);
+                auto iStart      = layout.physicalStartIndex(field, Direction::X);
+                auto iEnd        = layout.physicalEndIndex(field, Direction::X);
+                auto iGhostEnd   = layout.ghostEndIndex(field, Direction::X);
+
+                for (auto ix = iGhostStart; ix < iStart; ++ix)
+                {
+                    auto origin   = layout.origin();
+                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
+                    auto expected = func(x[0]);
+                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix)
+                              << expected - field(ix) << "\n";
+                    EXPECT_DOUBLE_EQ(expected, field(ix));
+                    total_eq++;
+                }
 
 
-            for (auto ix = iEnd; ix < iGhostEnd; ++ix)
+                for (auto ix = iEnd; ix < iGhostEnd; ++ix)
+                {
+                    auto origin   = layout.origin();
+                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
+                    auto expected = func(x[0]);
+                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << " "
+                              << expected - field(ix) << "\n";
+                    EXPECT_DOUBLE_EQ(expected, field(ix));
+                    total_eq++;
+                }
+            };
+
+            checkMyField(Bx, bx);
+            checkMyField(By, by);
+            checkMyField(Bz, bz);
+
+            checkMyField(Ex, ex);
+            checkMyField(Ey, ey);
+            checkMyField(Ez, ez);
+        }
+
+        if constexpr (dimension == 2)
+        {
+            using namespace func_2d;
+            auto checkMyField = [&](auto const& field, auto const& func) //
             {
-                auto origin   = layout.origin();
-                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                auto expected = func(x[0]);
-                std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << " "
-                          << expected - field(ix) << "\n";
-                EXPECT_DOUBLE_EQ(expected, field(ix));
-            }
-        };
+                auto iXGhostStart = layout.ghostStartIndex(field, Direction::X);
+                auto iXStart      = layout.physicalStartIndex(field, Direction::X);
+                auto iXEnd        = layout.physicalEndIndex(field, Direction::X);
+                auto iXGhostEnd   = layout.ghostEndIndex(field, Direction::X);
 
-        checkMyField(Bx, bx);
-        checkMyField(By, by);
-        checkMyField(Bz, bz);
+                auto iYGhostStart = layout.ghostStartIndex(field, Direction::Y);
+                auto iYStart      = layout.physicalStartIndex(field, Direction::Y);
+                auto iYEnd        = layout.physicalEndIndex(field, Direction::Y);
+                auto iYGhostEnd   = layout.ghostEndIndex(field, Direction::Y);
 
-        checkMyField(Ex, ex);
-        checkMyField(Ey, ey);
-        checkMyField(Ez, ez);
+                for (auto iy = iYGhostStart; iy < iYStart; ++iy)
+                    for (auto ix = iXGhostStart; ix < iXStart; ++ix)
+                    {
+                        auto origin   = layout.origin();
+                        auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
+                        auto expected = func(xy[0], xy[1]);
+                        EXPECT_DOUBLE_EQ(expected, field(ix, iy));
+                        total_eq++;
+                    }
+
+                for (auto iy = iYEnd; iy < iYGhostEnd; ++iy)
+                    for (auto ix = iXEnd; ix < iXGhostEnd; ++ix)
+                    {
+                        auto origin   = layout.origin();
+                        auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
+                        auto expected = func(xy[0], xy[1]);
+                        EXPECT_DOUBLE_EQ(expected, field(ix, iy));
+                        total_eq++;
+                    }
+            };
+
+            checkMyField(Bx, bx);
+            checkMyField(By, by);
+            checkMyField(Bz, bz);
+
+            checkMyField(Ex, ex);
+            checkMyField(Ey, ey);
+            checkMyField(Ez, ez);
+        }
 
         iPatch++;
     }
+
+    ASSERT_TRUE(total_eq > iPatch);
+}
+
+template<typename Simulator>
+struct HybridBasicHierarchyTest : public ::testing::Test
+{
+};
+
+using HybridBasicHierarchies
+    = testing::Types<AfullHybridBasicHierarchy<1>, AfullHybridBasicHierarchy<2>>;
+
+TYPED_TEST_SUITE(HybridBasicHierarchyTest, HybridBasicHierarchies);
+
+TYPED_TEST(HybridBasicHierarchyTest, fillsRefinedLevelFieldGhosts)
+{
+    TypeParam{}.fillsRefinedLevelFieldGhosts();
 }
 
 
