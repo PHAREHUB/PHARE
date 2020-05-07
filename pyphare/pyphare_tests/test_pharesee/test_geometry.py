@@ -460,7 +460,10 @@ class GeometryTest(unittest.TestCase):
 
         overlaps = hierarchy_overlaps(hier)
         for ilvl, lvl_overlaps in overlaps.items():
-            for overlap in lvl_overlaps[0]: #only root level tested here
+            for overlap in lvl_overlaps:
+
+                if ilvl != 0: #only root level tested here
+                    continue
 
                 if overlap["pdatas"][0].quantity != "particles":
                     continue
