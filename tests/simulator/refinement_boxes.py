@@ -8,7 +8,7 @@ import unittest, os, phare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
 from tests.diagnostic import dump_all_diags
-from tests.simulator.py import create_simulator
+from tests.simulator import create_simulator
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
