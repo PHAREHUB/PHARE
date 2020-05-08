@@ -22,7 +22,7 @@ class Particles:
 
     def select(self, box):
         idx = np.where((self.iCells >= box.lower) & (self.iCells <= box.upper))[0]
-        return Particles(icell=self.iCells[idx],
+        return Particles(icells=self.iCells[idx],
                          deltas=self.deltas[idx],
                          v=self.v[idx,:],
                          weights = self.weights[idx],

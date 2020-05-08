@@ -10,7 +10,7 @@ class PatchData:
 
     def __init__(self, box, layout, quantity):
         self.quantity = quantity
-        self._box = box
+        self.box = box
         self.origin = layout.origin
         self.layout = layout
 
@@ -42,7 +42,7 @@ class FieldData(PatchData):
 class ParticleData(PatchData):
     def __init__(self, box, layout, data):
         super().__init__(box, layout, 'particles')
-        self.domain_particles = data
+        self.dataset = data
         if layout.interp_order == 1:
             self._ghosts_nbr = 1
         elif layout.interp_order == 2 or layout.interp_order == 3:

@@ -153,9 +153,9 @@ def build_hierarchy(**kwargs):
             boxed_patch_datas = {}
             for qty_name, data in datas.items():
                 if qty_name == 'particles':
-                    pdata = ParticleData(layout, data)
+                    pdata = ParticleData(box, layout, data)
                 else:
-                    pdata = FieldData(layout, qty_name, data)
+                    pdata = FieldData(box, layout, qty_name, data)
 
                 boxed_patch_datas[qty_name] = pdata
 
@@ -166,7 +166,7 @@ def build_hierarchy(**kwargs):
 
 
         for patch_datas in lvl_patch_datas:
-            patches[ilvl].append(Patch(patch_datas))
+            patches[ilvl].append(Patch(patch_datas["Bx"].box, layout, patch_datas))
 
     patch_levels = {}
     for ilvl, lvl_patches in patches.items():
@@ -418,9 +418,9 @@ class GeometryTest(unittest.TestCase):
                     np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
 
                     self.assertTrue(np.allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12))
-                    self.assertTrue(np.allclose(part1.vx[idx1], part2.vx[idx2], atol=1e-12))
-                    self.assertTrue(np.allclose(part1.vy[idx1], part2.vy[idx2], atol=1e-12))
-                    self.assertTrue(np.allclose(part1.vz[idx1], part2.vz[idx2], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
 
 
 
