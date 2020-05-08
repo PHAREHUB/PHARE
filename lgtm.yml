@@ -1,0 +1,32 @@
+path_classifiers:
+  tag:
+    exclude: "subprojects"
+  docs:
+  - "README.md"
+  - "LICENSE.txt"
+  test: "tests/**/*.cpp"
+queries:
+  exclude: "subprojects"
+extraction:
+  cpp:
+    prepare:
+      packages:
+      - build-essential
+      - cmake
+      - python3
+      - python3-pip
+      - openmpi-bin
+      - libopenmpi-dev
+      - libhdf5-openmpi-dev
+    configure:
+      command:
+      - BD=$PWD
+      - SAMRAI_DIR=/opt/work/samrai
+      - git submodule update --init
+      - python3 -m pip install pip --upgrade
+      - python3 -m pip install ddt mpi4py numpy scipy
+      - git clone https://github.com/PHARCHIVE/SAMRAI_export --depth 1 $SAMRAI_DIR
+      - cd $SAMRAI_DIR; ./unzip.sh;
+      - cd $BD; mkdir build; cd build; cmake .. -DSAMRAI_ROOT=$SAMRAI_DIR
+    index:
+      build_command: cd build; make  # fails with -j, possible OOM
