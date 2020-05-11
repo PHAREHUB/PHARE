@@ -153,9 +153,9 @@ def build_hierarchy(**kwargs):
             boxed_patch_datas = {}
             for qty_name, data in datas.items():
                 if qty_name == 'particles':
-                    pdata = ParticleData(box, layout, data)
+                    pdata = ParticleData(layout, data)
                 else:
-                    pdata = FieldData(box, layout, qty_name, data)
+                    pdata = FieldData(layout, qty_name, data)
 
                 boxed_patch_datas[qty_name] = pdata
 
@@ -166,7 +166,7 @@ def build_hierarchy(**kwargs):
 
 
         for patch_datas in lvl_patch_datas:
-            patches[ilvl].append(Patch(patch_datas["Bx"].box, layout, patch_datas))
+            patches[ilvl].append(Patch(patch_datas))
 
     patch_levels = {}
     for ilvl, lvl_patches in patches.items():

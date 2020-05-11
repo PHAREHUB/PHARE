@@ -8,16 +8,16 @@ import os
 
 class PatchData:
 
-    def __init__(self, box, layout, quantity):
+    def __init__(self, layout, quantity):
         self.quantity = quantity
-        self.box = box
+        self.box = layout.box
         self.origin = layout.origin
         self.layout = layout
 
 
 class FieldData(PatchData):
-    def __init__(self, box, layout, field_name, data):
-        super().__init__(box, layout, 'field')
+    def __init__(self, layout, field_name, data):
+        super().__init__(layout, 'field')
 
 
         self.field_name = field_name
@@ -25,7 +25,7 @@ class FieldData(PatchData):
 
         centering = layout.centering["X"][field_name]
         self._ghosts_nbr = layout.nbrGhosts(layout.interp_order, centering)
-        self.ghost_box = boxm.grow(box, self._ghosts_nbr)
+        self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
         if centering == "primal":
             self.size = self.ghost_box.size() + 1
@@ -40,8 +40,8 @@ class FieldData(PatchData):
 
 
 class ParticleData(PatchData):
-    def __init__(self, box, layout, data):
-        super().__init__(box, layout, 'particles')
+    def __init__(self, layout, data):
+        super().__init__(layout, 'particles')
         self.dataset = data
         if layout.interp_order == 1:
             self._ghosts_nbr = 1
@@ -49,7 +49,7 @@ class ParticleData(PatchData):
             self._ghosts_nbr = 2
         else:
             raise RuntimeError("invalid interpolation order")
-        self.ghost_box = boxm.grow(box, self._ghosts_nbr)
+        self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
 
 class Patch:
@@ -57,8 +57,12 @@ class Patch:
     A patch represents a hyper-rectangular region of space
     """
 
-    def __init__(self, box, layout, patch_datas):
-        self.box = box
+    def __init__(self, patch_datas):
+        # we assume patch data all have the same layout
+        keys = list(patch_datas.keys())
+        patchData0 = patch_datas[keys[0]]
+        layout = patchData0.layout
+        self.box = layout.box
         self.origin = layout.origin
         self.dx = layout.dl[0]
         self.patch_datas = patch_datas
