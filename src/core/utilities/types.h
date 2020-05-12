@@ -24,6 +24,15 @@ namespace core
     enum class Basis { Magnetic, Cartesian };
 
 
+    template<typename Type, size_t dim>
+    constexpr decltype(auto) ZeroArray()
+    {
+        std::array<Type, dim> arr{};
+        for (size_t i = 0; i < dim; i++)
+            arr[i] = 0;
+        return arr;
+    }
+
 
 
     template<typename T>

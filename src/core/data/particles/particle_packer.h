@@ -10,16 +10,20 @@
 
 namespace PHARE::core
 {
-template<size_t dim>
+template<size_t dim, typename Float = double>
 class ParticlePacker
 {
+    using Particle_t            = Particle<dim, Float>;
+    using ParticleArray_t       = ParticleArray<dim, Float>;
+    using ContiguousParticles_t = ContiguousParticles<dim, Float>;
+
 public:
-    ParticlePacker(ParticleArray<dim> const& particles)
+    ParticlePacker(ParticleArray_t const& particles)
         : particles_{particles}
     {
     }
 
-    static auto get(Particle<dim> const& particle)
+    static auto get(Particle_t const& particle)
     {
         return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
                                      particle.delta, particle.v);
@@ -27,7 +31,7 @@ public:
 
     static auto empty()
     {
-        Particle<dim> particle;
+        Particle_t particle;
         return get(particle);
     }
 
@@ -37,7 +41,7 @@ public:
     bool hasNext() const { return it_ < particles_.size(); }
     auto next() { return get(it_++); }
 
-    void pack(ContiguousParticles<dim>& copy)
+    void pack(ContiguousParticles_t& copy)
     {
         auto copyTo = [](auto& a, auto& idx, auto size, auto& v) {
             std::copy(a.begin(), a.begin() + size, v.begin() + (idx * size));
@@ -56,7 +60,7 @@ public:
     }
 
 private:
-    ParticleArray<dim> const& particles_;
+    ParticleArray_t const& particles_;
     size_t it_ = 0;
     static inline std::array<std::string, 5> keys_{"weight", "charge", "iCell", "delta", "v"};
 };

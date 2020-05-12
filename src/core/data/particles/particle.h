@@ -23,66 +23,25 @@ struct ParticleDeltaDistribution
     std::uniform_real_distribution<T> dist{0, 1. - std::numeric_limits<T>::epsilon()};
 };
 
-template<std::size_t dim>
+
+template<std::size_t dim, typename Float = double>
 struct Particle
 {
+    static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
+
+    using float_type                   = Float;
+    static const std::size_t dimension = dim;
+
+    Float weight;
+    Float charge;
+
+    std::array<int32_t, dim> iCell = ZeroArray<int32_t, dim>();
+    std::array<float, dim> delta   = ZeroArray<float, dim>();
+    std::array<Float, 3> v         = ZeroArray<Float, 3>();
+
+    Float Ex = 0, Ey = 0, Ez = 0;
+    Float Bx = 0, By = 0, Bz = 0;
 };
-
-
-
-template<>
-struct Particle<1>
-{
-    double weight;
-    double charge;
-
-    std::array<int, 1> iCell   = {{0}};
-    std::array<float, 1> delta = {{0.0f}};
-    std::array<double, 3> v    = {{0., 0., 0.}};
-
-    double Ex = 0, Ey = 0, Ez = 0;
-    double Bx = 0, By = 0, Bz = 0;
-
-    static const std::size_t dimension = 1;
-};
-
-
-
-
-template<>
-struct Particle<2>
-{
-    double weight;
-    double charge;
-
-    std::array<int, 2> iCell   = {{0, 0}};
-    std::array<float, 2> delta = {{0.0f, 0.0f}};
-    std::array<double, 3> v    = {{0., 0., 0.}};
-
-    double Ex = 0, Ey = 0, Ez = 0;
-    double Bx = 0, By = 0, Bz = 0;
-
-    static const std::size_t dimension = 2;
-};
-
-
-
-template<>
-struct Particle<3>
-{
-    double weight;
-    double charge;
-
-    std::array<int, 3> iCell   = {{0, 0, 0}};
-    std::array<float, 3> delta = {{0.f, 0.f, 0.f}};
-    std::array<double, 3> v    = {{0., 0., 0.}};
-
-    double Ex = 0, Ey = 0, Ez = 0;
-    double Bx = 0, By = 0, Bz = 0;
-
-    static const std::size_t dimension = 3;
-};
-
 
 
 
@@ -94,12 +53,12 @@ auto cellAsPoint(Particle const& particle)
 
 
 
-template<std::size_t dim>
+template<std::size_t dim, typename Float = double>
 struct ContiguousParticles
 {
     std::vector<int> iCell;
     std::vector<float> delta;
-    std::vector<double> weight, charge, v;
+    std::vector<Float> weight, charge, v;
     size_t size_;
     auto size() const { return size_; }
     ContiguousParticles(size_t s)

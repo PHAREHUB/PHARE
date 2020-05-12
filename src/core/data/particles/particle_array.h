@@ -12,17 +12,17 @@ namespace PHARE
 namespace core
 {
     // TODO make a real particleArray class that has copy-deleted Ctor
-    template<std::size_t dim>
-    using ParticleArray = std::vector<Particle<dim>>;
+    template<std::size_t dim, typename Float = double>
+    using ParticleArray = std::vector<Particle<dim, Float>>;
 
-    template<std::size_t dim>
-    void empty(ParticleArray<dim>& array)
+    template<std::size_t dim, typename Float = double>
+    void empty(ParticleArray<dim, Float>& array)
     {
         array.erase(std::begin(array), std::end(array));
     }
 
-    template<std::size_t dim>
-    void swap(ParticleArray<dim>& array1, ParticleArray<dim>& array2)
+    template<std::size_t dim, typename Float = double>
+    void swap(ParticleArray<dim, Float>& array1, ParticleArray<dim, Float>& array2)
     {
         std::swap(array1, array2);
     }

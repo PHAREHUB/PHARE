@@ -12,14 +12,19 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename GridLayout>
     /**
      * @brief positionAsPoint returns a point holding the physical position of the macroparticle.
      * The function assumes the iCell of the particle is in AMR index space.
      */
-    auto positionAsPoint(Particle<GridLayout::dimension> const& particle, GridLayout const& layout)
+    template<typename Particle, typename GridLayout>
+    decltype(auto) positionAsPoint(Particle const& particle, GridLayout const& layout)
     {
-        Point<double, GridLayout::dimension> position;
+        static_assert(Particle::dimension == GridLayout::dimension,
+                      "Invalid use of function, dimension template mismatch");
+
+        using float_type = typename Particle::float_type;
+
+        Point<float_type, GridLayout::dimension> position;
         auto origin       = layout.origin();
         auto startIndexes = layout.physicalStartIndex(QtyCentering::primal);
         auto meshSize     = layout.meshSize();
