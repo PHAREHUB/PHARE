@@ -238,7 +238,7 @@ namespace amr
         // constexpr int maxCellDistanceFromSplit() const { return std::ceil((interpOrder + 1) *
         // 0.5); }
 
-        SAMRAI::hier::Box getSplitBox(SAMRAI::hier::Box destinationBox) const
+        SAMRAI::hier::Box getSplitBox(SAMRAI::hier::Box const& destinationBox) const
         {
             SAMRAI::hier::Box splitBox{destinationBox};
             SAMRAI::tbox::Dimension dimension{dim};

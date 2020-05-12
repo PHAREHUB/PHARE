@@ -154,7 +154,7 @@ namespace amr
             }
             else
             {
-                static_assert(dim >= 0 && dim <= 3);
+                static_assert(dim > 0 && dim <= 3);
             }
         }
 
