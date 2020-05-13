@@ -69,9 +69,6 @@ def makeBasicModel(extra_pops={}):
         bx=lambda x: np.cos(2 * pi_over_xmax * x),
         by=lambda x: np.sin(1 * pi_over_xmax * x),
         bz=lambda x: np.cos(2 * pi_over_xmax * x),
-        ex=lambda x: np.sin(1 * pi_over_xmax * x),
-        ey=lambda x: np.cos(2 * pi_over_xmax * x),
-        ez=lambda x: np.sin(1 * pi_over_xmax * x),
         **pops
     )
 

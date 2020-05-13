@@ -64,21 +64,6 @@ double bz(double x)
 {
     return x /*+ 3.*/;
 }
-
-double ex(double x)
-{
-    return x /* + 4.*/;
-}
-
-double ey(double x)
-{
-    return x /* + 5.*/;
-}
-
-double ez(double x)
-{
-    return x /* + 6.*/;
-}
 } // namespace func_1d
 
 
@@ -137,13 +122,6 @@ struct DimDict<1>
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
             = static_cast<ScalarFunctionT<dim>>(vthz);
-
-        dict["electromag"]["electric"]["initializer"]["x_component"]
-            = static_cast<ScalarFunctionT<dim>>(ex);
-        dict["electromag"]["electric"]["initializer"]["y_component"]
-            = static_cast<ScalarFunctionT<dim>>(ey);
-        dict["electromag"]["electric"]["initializer"]["z_component"]
-            = static_cast<ScalarFunctionT<dim>>(ez);
 
         dict["electromag"]["magnetic"]["initializer"]["x_component"]
             = static_cast<ScalarFunctionT<dim>>(bx);
@@ -206,21 +184,6 @@ double bz(double x, double)
 {
     return x /*+ 3.*/;
 }
-
-double ex(double x, double)
-{
-    return x /* + 4.*/;
-}
-
-double ey(double x, double)
-{
-    return x /* + 5.*/;
-}
-
-double ez(double x, double)
-{
-    return x /* + 6.*/;
-}
 } // namespace func_2d
 
 template<>
@@ -230,6 +193,8 @@ struct DimDict<2>
     static void set(PHARE::initializer::PHAREDict& dict)
     {
         using namespace func_2d;
+        dict["simulation"]["algo"]["pusher"]["name"] = std::string{"modified_boris"};
+
         dict["ions"]["pop0"]["particle_initializer"]["density"]
             = static_cast<ScalarFunctionT<dim>>(density);
 
@@ -272,13 +237,6 @@ struct DimDict<2>
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
             = static_cast<ScalarFunctionT<dim>>(vthz);
 
-        dict["electromag"]["electric"]["initializer"]["x_component"]
-            = static_cast<ScalarFunctionT<dim>>(ex);
-        dict["electromag"]["electric"]["initializer"]["y_component"]
-            = static_cast<ScalarFunctionT<dim>>(ey);
-        dict["electromag"]["electric"]["initializer"]["z_component"]
-            = static_cast<ScalarFunctionT<dim>>(ez);
-
         dict["electromag"]["magnetic"]["initializer"]["x_component"]
             = static_cast<ScalarFunctionT<dim>>(bx);
         dict["electromag"]["magnetic"]["initializer"]["y_component"]
@@ -293,7 +251,7 @@ PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
 
-    dict["simulation"]["solverPPC"]["pusher"]["name"] = std::string{"modified_boris"};
+    dict["simulation"]["algo"]["pusher"]["name"] = std::string{"modified_boris"};
 
     dict["ions"]["nbrPopulations"]                       = int{2};
     dict["ions"]["pop0"]["name"]                         = std::string{"protons"};
@@ -419,7 +377,7 @@ public:
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
 
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
@@ -438,7 +396,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
@@ -448,7 +406,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -461,7 +419,7 @@ TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleFineModel)
 TEST_F(HybridMessengers, throwsIfGivenAnIncompatibleCoarseModel)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
-        createDict()["simulation"]["solverPPC"]);
+        createDict()["simulation"]["algo"]);
 
     auto& hybridhybridMessenger = *messengers[2];
     auto& mhdModel              = *models[0];
@@ -520,10 +478,6 @@ TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
                 EXPECT_DOUBLE_EQ(expected, field(ix));
             }
         };
-
-        checkMyField(Ex, ex);
-        checkMyField(Ey, ey);
-        checkMyField(Ez, ez);
         checkMyField(Bx, bx);
         checkMyField(By, by);
         checkMyField(Bz, bz);
@@ -847,10 +801,6 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
             checkMyField(Bx, bx);
             checkMyField(By, by);
             checkMyField(Bz, bz);
-
-            checkMyField(Ex, ex);
-            checkMyField(Ey, ey);
-            checkMyField(Ez, ez);
         }
 
         if constexpr (dimension == 2)
@@ -892,10 +842,6 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
             checkMyField(Bx, bx);
             checkMyField(By, by);
             checkMyField(Bz, bz);
-
-            checkMyField(Ex, ex);
-            checkMyField(Ey, ey);
-            checkMyField(Ez, ez);
         }
 
         iPatch++;

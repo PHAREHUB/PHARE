@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_FARADAY_FARADAY_H
-#define PHARE_CORE_NUMERICS_FARADAY_FARADAY_H
+#ifndef PHARE_FARADAY_H
+#define PHARE_FARADAY_H
 
 #include <cstddef>
 #include <iostream>

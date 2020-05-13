@@ -110,13 +110,23 @@ public:
 
 
 
-
     void initialize() override
     {
-        if (integrator_ != nullptr)
-            integrator_->initialize();
-        else
-            throw std::runtime_error("Error - Simulator has no integrator");
+        try
+        {
+            if (integrator_ != nullptr)
+                integrator_->initialize();
+            else
+                throw std::runtime_error("Error - Simulator has no integrator");
+        }
+        catch (const std::runtime_error& e)
+        {
+            std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
+        }
+        catch (...)
+        {
+            std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
+        }
     }
 
 

@@ -19,7 +19,7 @@ namespace core
     {
     private:
         template<typename VecField, typename ComponentTag>
-        auto ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index, ComponentTag)
+        auto ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index, ComponentTag) const
         {
             if constexpr (ComponentTag::component == Component::X)
             {
@@ -73,7 +73,7 @@ namespace core
 
 
         template<typename VecField, typename ComponentTag>
-        auto ideal2D_(VecField const& Ve, VecField const& B, MeshIndex<2> index, ComponentTag)
+        auto ideal2D_(VecField const& Ve, VecField const& B, MeshIndex<2> index, ComponentTag) const
         {
             if constexpr (ComponentTag::component == Component::X)
             {
@@ -128,7 +128,7 @@ namespace core
 
 
         template<typename VecField, typename ComponentTag>
-        auto ideal3D_(VecField const& Ve, VecField const& B, MeshIndex<3> index, ComponentTag)
+        auto ideal3D_(VecField const& Ve, VecField const& B, MeshIndex<3> index, ComponentTag) const
         {
             if constexpr (ComponentTag::component == Component::X)
             {
@@ -184,7 +184,7 @@ namespace core
 
         template<typename Field, typename ComponentTag>
         auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index,
-                       ComponentTag)
+                       ComponentTag) const
         {
             if constexpr (ComponentTag::component == Component::X)
             {
@@ -235,7 +235,7 @@ namespace core
 
 
         template<typename VecField, typename ComponentTag>
-        auto resistive_(VecField const& J, MeshIndex<VecField::dimension> index, ComponentTag)
+        auto resistive_(VecField const& J, MeshIndex<VecField::dimension> index, ComponentTag) const
         {
             auto const eta = 1.0; // TODO : eta should comme from input file
 
@@ -265,7 +265,8 @@ namespace core
 
 
         template<typename VecField, typename ComponentTag>
-        auto hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index, ComponentTag)
+        auto hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index,
+                             ComponentTag) const
         {
             auto const nu = 0.001; // TODO : nu should comme from input file
 
@@ -297,7 +298,7 @@ namespace core
         template<typename VecField, std::enable_if_t<VecField::dimension == 1, int> = 0>
         void compute_(typename VecField::field_type const& n, VecField const& Ve,
                       typename VecField::field_type const& Pe, VecField const& B, VecField const& J,
-                      VecField& Enew)
+                      VecField& Enew) const
         {
             auto& Ex = Enew.getComponent(Component::X);
             auto& Ey = Enew.getComponent(Component::Y);
@@ -342,7 +343,7 @@ namespace core
         template<typename VecField, std::enable_if_t<VecField::dimension == 2, int> = 0>
         void compute_(typename VecField::field_type const& n, VecField const& Ve,
                       typename VecField::field_type const& Pe, VecField const& B, VecField const& J,
-                      VecField& Enew)
+                      VecField& Enew) const
         {
             auto& Ex = Enew.getComponent(Component::X);
             auto& Ey = Enew.getComponent(Component::Y);
@@ -401,7 +402,7 @@ namespace core
         template<typename VecField, std::enable_if_t<VecField::dimension == 3, int> = 0>
         void compute_(typename VecField::field_type const& n, VecField const& Ve,
                       typename VecField::field_type const& Pe, VecField const& B, VecField const& J,
-                      VecField& Enew)
+                      VecField& Enew) const
         {
             auto& Ex = Enew.getComponent(Component::X);
             auto& Ey = Enew.getComponent(Component::Y);
@@ -478,7 +479,7 @@ namespace core
         template<typename VecField>
         void operator()(typename VecField::field_type const& n, VecField const& Ve,
                         typename VecField::field_type const& Pe, VecField const& B,
-                        VecField const& J, VecField& Enew)
+                        VecField const& J, VecField& Enew) const
         {
             if (!this->hasLayout())
             {

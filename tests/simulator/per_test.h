@@ -95,7 +95,7 @@ struct SimulatorTest : public ::testing::Test
 {
 };
 
-using Simulators = testing::Types<TestSimulator<1, 1>, TestSimulator<1, 2>, TestSimulator<1, 3>/*,   // dim 1
+using Simulators = testing::Types<TestSimulator<1, 1>, TestSimulator<1, 2>,TestSimulator<1, 3>/*,   // dim 1
                                   TestSimulator<2, 1>, TestSimulator<2, 2>, TestSimulator<2, 3>,     // dim 2
                                   TestSimulator<3, 1>, TestSimulator<3, 2>, TestSimulator<3, 3>*/>;  // dim 3
 TYPED_TEST_SUITE(SimulatorTest, Simulators);

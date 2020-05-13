@@ -109,7 +109,7 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
             for (size_t i = 0; i < nbrGhosts * 2; i++)
             {
                 size_t mirror = v.size() - (nbrGhosts * 2) + i;
-                EXPECT_EQ(v[i], v[mirror]);
+                EXPECT_FLOAT_EQ(v[i], v[mirror]);
             }
         }
     };
@@ -121,7 +121,7 @@ TYPED_TEST(SimulatorTest, verifyCoarsestPeriodicityOfFields)
             for (size_t i = 0; i < nbrGhosts * 2 + 1; i++)
             {
                 size_t mirror = v.size() - (nbrGhosts * 2) + i - 1;
-                EXPECT_EQ(v[i], v[mirror]);
+                EXPECT_FLOAT_EQ(v[i], v[mirror]);
             }
         }
     };

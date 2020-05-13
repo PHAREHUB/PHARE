@@ -24,7 +24,6 @@ namespace core
         explicit Electromag(std::string name)
             : E{name + "_E", HybridQuantity::Vector::E}
             , B{name + "_B", HybridQuantity::Vector::B}
-            , Einit_{}
             , Binit_{}
         {
         }
@@ -36,7 +35,6 @@ namespace core
             , B{dict["name"].template to<std::string>() + "_"
                     + dict["magnetic"]["name"].template to<std::string>(),
                 HybridQuantity::Vector::B}
-            , Einit_{dict["electric"]["initializer"]}
             , Binit_{dict["magnetic"]["initializer"]}
         {
         }
@@ -47,7 +45,6 @@ namespace core
         template<typename GridLayout>
         void initialize(GridLayout const& layout)
         {
-            Einit_.initialize(E, layout);
             Binit_.initialize(B, layout);
         }
 
@@ -79,7 +76,6 @@ namespace core
         VecFieldT B;
 
     private:
-        VecFieldInitializer<dimension> Einit_;
         VecFieldInitializer<dimension> Binit_;
     };
 } // namespace core
