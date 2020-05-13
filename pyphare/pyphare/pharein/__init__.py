@@ -110,7 +110,7 @@ def populateDict():
         as_paths(refinement_boxes)
 
 
-    add("simulation/algo/pusher/name", simulation.particle_pusher)
+    add("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
 
     init_model = simulation.model
     modelDict  = init_model.model_dict
@@ -141,7 +141,7 @@ def populateDict():
 
     add("simulation/electromag/name", "EM")
     add("simulation/electromag/electric/name", "E")
-    elecinit_path = "simulation/electromag/electric/initializer/"
+
 
     add("simulation/electromag/magnetic/name", "B")
     maginit_path = "simulation/electromag/magnetic/initializer/"

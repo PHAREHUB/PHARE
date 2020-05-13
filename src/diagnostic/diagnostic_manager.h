@@ -79,8 +79,8 @@ public:
     void addDiagnostic(DiagnosticProperties& diagnostic)
     {
         diagnostics_.emplace_back(diagnostic);
-        lastWrite_[diagnostic.type + diagnostic.quantity]   = 0;
-        lastCompute_[diagnostic.type + diagnostic.quantity] = 0;
+        nextWrite_[diagnostic.type + diagnostic.quantity]   = -1;
+        nextCompute_[diagnostic.type + diagnostic.quantity] = -1;
     }
 
     auto& diagnostics() const { return diagnostics_; }
@@ -88,14 +88,14 @@ public:
 
     bool needsWrite(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto lastWrite = lastWrite_[diag.type + diag.quantity];
-        return diag.writeTimestamps[lastWrite] + timeStep > timeStamp;
+        auto nextWrite = nextWrite_[diag.type + diag.quantity];
+        return timeStamp + timeStep > diag.writeTimestamps[nextWrite];
     }
 
     bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto lastCompute = lastCompute_[diag.type + diag.quantity];
-        return diag.computeTimestamps[lastCompute] + timeStep > timeStamp;
+        auto nextCompute = nextCompute_[diag.type + diag.quantity];
+        return timeStamp + timeStep > diag.computeTimestamps[nextCompute];
     }
 
     Writer& writer() { return *writer_.get(); }
@@ -106,8 +106,8 @@ protected:
 private:
     std::unique_ptr<Writer> writer_;
 
-    std::map<std::string, std::size_t> lastCompute_;
-    std::map<std::string, std::size_t> lastWrite_;
+    std::map<std::string, std::size_t> nextCompute_;
+    std::map<std::string, std::size_t> nextWrite_;
 
 
     DiagnosticsManager(const DiagnosticsManager&)  = delete;
@@ -115,6 +115,7 @@ private:
     DiagnosticsManager& operator=(const DiagnosticsManager&) = delete;
     DiagnosticsManager& operator=(const DiagnosticsManager&&) = delete;
 };
+
 
 
 
@@ -146,7 +147,7 @@ void DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
         if (needsCompute(diag, timeStamp, timeStep))
         {
             writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
-            lastCompute_[diagID]++;
+            nextCompute_[diagID]++;
         }
         if (needsWrite(diag, timeStamp, timeStep))
         {
@@ -157,12 +158,9 @@ void DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
 
     for (auto const* diag : activeDiagnostics)
     {
-        lastWrite_[diag->type + diag->quantity]++;
+        nextWrite_[diag->type + diag->quantity]++;
     }
 }
-
-
-
 
 } // namespace PHARE::diagnostic
 

@@ -70,12 +70,12 @@ public:
 
     using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel = typename PHARETypes::HybridModel_t;
-    using GridLayout  = typename HybridModel::gridLayout_type;
+    using GridLayout  = typename HybridModel::gridlayout_type;
 
     PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, size_t lvl)
-        : hierarchy_{hierarchy}
+        : lvl_(lvl)
+        , hierarchy_{hierarchy}
         , model_{model}
-        , lvl_(lvl)
     {
     }
 

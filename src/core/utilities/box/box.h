@@ -37,6 +37,19 @@ namespace core
         auto nbrItems(std::size_t dir) const { return upper[dir] - lower[dir]; }
 
 
+        void grow(Type size)
+        {
+            assert(size >= 0);
+            for (auto& c : lower)
+            {
+                c -= size;
+            }
+            for (auto& c : upper)
+            {
+                c += size;
+            }
+        }
+
         using type = Type;
     };
 

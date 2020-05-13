@@ -4,8 +4,10 @@
 
 #include "core/models/physical_state.h"
 #include "initializer/data_provider.h"
+
 #include "core/utilities/algorithm.h"
 #include "core/hybrid/hybrid_quantities.h"
+
 
 #include <cstddef>
 #include <sstream>
@@ -56,11 +58,14 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return electromag.isUsable() and ions.isUsable(); }
+        bool isUsable() const { return electromag.isUsable() and ions.isUsable() && J.isUsable(); }
 
 
 
-        bool isSettable() const { return electromag.isSettable() and ions.isSettable(); }
+        bool isSettable() const
+        {
+            return electromag.isSettable() and ions.isSettable() && J.isSettable();
+        }
 
 
         auto getCompileTimeResourcesUserList() const

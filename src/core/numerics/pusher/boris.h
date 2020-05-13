@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <iostream>
 
 #include "core/numerics/pusher/pusher.h"
 #include "core/utilities/range/range.h"
@@ -13,12 +14,15 @@ namespace PHARE
 namespace core
 {
     template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition, typename GridLayout>
+             typename BoundaryCondition, typename GridLayout>
     class BorisPusher : public Pusher<dim, ParticleIterator, Electromag, Interpolator,
-                                      ParticleSelector, BoundaryCondition, GridLayout>
+                                      BoundaryCondition, GridLayout>
     {
     public:
-        using ParticleRange = Range<ParticleIterator>;
+        using Super = Pusher<dim, ParticleIterator, Electromag, Interpolator, BoundaryCondition,
+                             GridLayout>;
+        using ParticleSelector = typename Super::ParticleSelector;
+        using ParticleRange    = Range<ParticleIterator>;
 
         /** see Pusher::move() domentation*/
         virtual ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
@@ -70,7 +74,7 @@ namespace core
              GridLayout const& layout) override
         {
             // push the particles of half a step
-            // rangeIn : t=n, rangeOut : t=n+1/Z
+            // rangeIn : t=n, rangeOut : t=n+1/2
             // get a pointer on the first particle of rangeOut that leaves the patch
             auto firstLeaving
                 = pushStep_(rangeIn, rangeOut, particleIsNotLeaving, PushStep::PrePush);
@@ -135,10 +139,6 @@ namespace core
         auto pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut,
                        ParticleSelector const& particleIsNotLeaving, PushStep step)
         {
-            auto swapee = rangeOut.end();
-            --swapee;
-            auto newEnd = rangeOut.end();
-
             auto currentOut = rangeOut.begin();
 
             for (auto& currentIn : rangeIn)
@@ -152,31 +152,14 @@ namespace core
                 }
                 // push the particle
                 advancePosition_(currentIn, *currentOut);
-
-                if (particleIsNotLeaving(*currentOut))
-                {
-                    // we advance the output iterator
-                    // only if currentOut has not been
-                    // swapped
-                    ++currentOut;
-                }
-                else
-                {
-                    // if the particle satisfies the predicate
-                    // swap it with the swapee
-                    // and decrement the swapee
-
-                    std::swap(*currentOut, *swapee);
-                    --newEnd;
-                    --swapee;
-                }
+                currentOut++;
             }
 
             // now all particles have been pushed
             // those not satisfying the predicate after the push
             // are found in [newEnd:end[
             // those for which pred is true are in [firstOut,newEnd[
-            return newEnd;
+            return std::partition(std::begin(rangeOut), std::end(rangeOut), particleIsNotLeaving);
         }
 
 

@@ -63,12 +63,13 @@ namespace amr
     public:
         VecFieldDescriptor modelMagnetic;
         VecFieldDescriptor modelElectric;
+        VecFieldDescriptor modelCurrent;
         VecFieldDescriptor modelIonBulkVelocity;
         FieldDescriptor modelIonDensity;
 
 
         //! names of the magnetic quantities that will be communicated by
-        //! HybridMessenger::initLevel() and HybridMessenger::regrid()
+        //! HybridMessenger::initghoLevel() and HybridMessenger::regrid()
         std::vector<VecFieldDescriptor> initMagnetic;
 
 
@@ -85,13 +86,16 @@ namespace amr
         //! name of the magnetic quantities that will be communicated by
         //! HybridMessenger::fillMagneticGhosts()
         std::vector<VecFieldDescriptor> ghostMagnetic;
-        // std::vector<VecFieldT*> ghostsMagnetic;
 
 
         //! name of the electric quantities that will be communicated by the
         //! HybridMessenger::fillGhostElectric
         std::vector<VecFieldDescriptor> ghostElectric;
 
+
+        //! name of the current quantities that will be communicated by the
+        //! HybridMessenger::fillGhostCurrent
+        std::vector<VecFieldDescriptor> ghostCurrent;
 
 
         virtual ~HybridMessengerInfo() = default;

@@ -61,7 +61,21 @@ public:
         }
     }
 
-    VecField const& velocity() const
+    Field& density()
+    {
+        if (isUsable())
+        {
+            return ions_.density();
+        }
+        else
+        {
+            throw std::runtime_error("Error, cannot return density because "
+                                     "StandardHybridElectronFluxComputer is not usable");
+        }
+    }
+
+
+    VecField& velocity()
     {
         if (isUsable())
         {
@@ -255,11 +269,18 @@ public:
 
     Field const& density() const { return fluxComput_.density(); }
 
+    Field& density() { return fluxComput_.density(); }
+
 
     VecField const& velocity() const { return fluxComput_.velocity(); }
 
+    VecField& velocity() { return fluxComput_.velocity(); }
+
 
     Field const& pressure() const { return pressureClosure_.pressure(); }
+    Field& pressure() { return pressureClosure_.pressure(); }
+
+
 
     void computeDensity() { fluxComput_.computeDensity(); }
     void computeBulkVelocity(GridLayout const& layout) { fluxComput_.computeBulkVelocity(layout); }
@@ -322,6 +343,11 @@ public:
     Field const& density() const { return momentModel_.density(); }
     VecField const& velocity() const { return momentModel_.velocity(); }
     Field const& pressure() const { return momentModel_.pressure(); }
+
+
+    Field& density() { return momentModel_.density(); }
+    VecField& velocity() { return momentModel_.velocity(); }
+    Field& pressure() { return momentModel_.pressure(); }
 
 private:
     ElectronMomentModel<Ions> momentModel_;

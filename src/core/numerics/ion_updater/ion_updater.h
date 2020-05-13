@@ -3,8 +3,6 @@
 
 
 #include "core/utilities/box/box.h"
-#include "core/utilities/particle_selector/particle_selector.h"
-
 #include "core/numerics/interpolator/interpolator.h"
 #include "core/numerics/pusher/pusher.h"
 #include "core/numerics/pusher/pusher_factory.h"
@@ -37,23 +35,22 @@ public:
     using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
     using VecField          = typename Ions::vecfield_type;
     using ParticleArray     = typename Ions::particle_array_type;
-    using ParticleSelector  = typename PHARE::core::ParticleSelector<Box>;
     using PartIterator      = typename ParticleArray::iterator;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
     using Pusher            = PHARE::core::Pusher<dimension, PartIterator, Electromag, Interpolator,
-                                       ParticleSelector, BoundaryCondition, GridLayout>;
+                                       BoundaryCondition, GridLayout>;
 
 private:
     constexpr static auto makePusher
         = PHARE::core::PusherFactory::makePusher<dimension, PartIterator, Electromag, Interpolator,
-                                                 ParticleSelector, BoundaryCondition, GridLayout>;
+                                                 BoundaryCondition, GridLayout>;
 
     std::unique_ptr<Pusher> pusher_;
     Interpolator interpolator_;
 
 public:
     IonUpdater(PHARE::initializer::PHAREDict& dict)
-        : pusher_{makePusher(dict["name"].template to<std::string>())}
+        : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
     {
     }
 
@@ -111,7 +108,13 @@ template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, Electromag const& em,
                                                                   GridLayout const& layout)
 {
-    auto inDomainSelector = ParticleSelector{layout.AMRBox()};
+    auto domainBox = layout.AMRBox();
+
+    auto inDomainBox = [&domainBox](auto const& part) {
+        auto cell = cellAsPoint(part);
+        return core::isIn(cell, domainBox);
+    };
+
 
     for (auto& pop : ions)
     {
@@ -126,7 +129,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
             auto outRange = makeRange(std::begin(outputArray), std::end(outputArray));
 
             auto newEnd = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
-                                        inDomainSelector, layout);
+                                        inDomainBox, layout);
 
             interpolator_(std::begin(outputArray), newEnd, pop.density(), pop.flux(), layout);
         };
@@ -146,29 +149,44 @@ template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag const& em,
                                                           GridLayout const& layout)
 {
-    auto inDomainSelector = ParticleSelector{layout.AMRBox()};
+    auto constexpr partGhostWidth = GridLayout::ghostWidthForParticles();
+    auto domainBox                = layout.AMRBox();
+    auto ghostBox{domainBox};
+    ghostBox.grow(partGhostWidth);
+
+    auto ghostSelector = [&ghostBox, &domainBox](auto const& part) {
+        auto cell = cellAsPoint(part);
+        return core::isIn(cell, ghostBox) and !core::isIn(cell, domainBox);
+    };
+
+    auto inDomainSelector
+        = [&domainBox](auto const& part) { return core::isIn(cellAsPoint(part), domainBox); };
+
 
     for (auto& pop : ions)
     {
         auto& domainParticles = pop.domainParticles();
-        auto domainPartRange  = makeRange(std::begin(domainParticles), std::end(domainParticles));
+
+        auto domainPartRange = makeRange(std::begin(domainParticles), std::end(domainParticles));
 
         auto firstOutside = pusher_->move(domainPartRange, domainPartRange, em, pop.mass(),
                                           interpolator_, inDomainSelector, layout);
 
         domainParticles.erase(firstOutside, std::end(domainParticles));
 
+
         auto pushAndCopyInDomain = [&](auto& particleArray) {
-            auto range  = makeRange(std::begin(particleArray), std::end(particleArray));
-            auto newEnd = pusher_->move(range, range, em, pop.mass(), interpolator_,
-                                        inDomainSelector, layout);
-            std::copy(std::begin(particleArray), newEnd, std::back_inserter(domainParticles));
+            auto range = makeRange(std::begin(particleArray), std::end(particleArray));
+            auto firstOutGhostBox
+                = pusher_->move(range, range, em, pop.mass(), interpolator_, ghostSelector, layout);
+
+            std::copy_if(firstOutGhostBox, std::end(particleArray),
+                         std::back_inserter(domainParticles), inDomainSelector);
         };
 
 
         pushAndCopyInDomain(pop.patchGhostParticles());
         pushAndCopyInDomain(pop.levelGhostParticles());
-
 
         interpolator_(std::begin(domainParticles), std::end(domainParticles), pop.density(),
                       pop.flux(), layout);

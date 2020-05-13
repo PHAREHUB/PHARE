@@ -32,16 +32,16 @@ namespace solver
         using patch_t   = typename AMR_Types::patch_t;
         using level_t   = typename AMR_Types::level_t;
         static const std::string model_name;
-        using gridLayout_type           = GridLayoutT;
+        using gridlayout_type           = GridLayoutT;
         using electromag_type           = Electromag;
         using vecfield_type             = typename Electromag::vecfield_type;
         using field_type                = typename vecfield_type::field_type;
         using ions_type                 = Ions;
-        using resources_manager_type    = amr::ResourcesManager<gridLayout_type>;
+        using resources_manager_type    = amr::ResourcesManager<gridlayout_type>;
         static constexpr auto dimension = GridLayoutT::dimension;
         using particle_array_type       = typename Ions::particle_array_type;
         using ParticleInitializerFactory
-            = core::ParticleInitializerFactory<particle_array_type, gridLayout_type>;
+            = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
         //! Physical quantities associated with hybrid equations
         core::HybridState<Electromag, Ions, Electrons> state;
@@ -65,7 +65,7 @@ namespace solver
             for (auto& patch : level)
             {
                 // first initialize the ions
-                auto layout = amr::layoutFromPatch<gridLayout_type>(*patch);
+                auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
                 auto& ions  = state.ions;
                 auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions);
 
@@ -105,12 +105,15 @@ namespace solver
             modelInfo.modelElectric        = amr::VecFieldDescriptor{state.electromag.E};
             modelInfo.modelIonDensity      = state.ions.densityName();
             modelInfo.modelIonBulkVelocity = amr::VecFieldDescriptor{state.ions.velocity()};
+            modelInfo.modelCurrent         = amr::VecFieldDescriptor{state.J};
 
             modelInfo.initElectric.emplace_back(state.electromag.E);
             modelInfo.initMagnetic.emplace_back(state.electromag.B);
 
             modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
             modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
+            modelInfo.ghostCurrent.push_back(state.J);
+
 
             auto transform_ = [](auto& ions, auto& inserter) {
                 std::transform(std::begin(ions), std::end(ions), std::back_inserter(inserter),
