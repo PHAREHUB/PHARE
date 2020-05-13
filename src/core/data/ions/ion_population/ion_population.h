@@ -32,8 +32,8 @@ namespace core
 
 
 
-        IonPopulation(std::string ionName, initializer::PHAREDict initializer)
-            : name_{ionName + "_" + initializer["name"].template to<std::string>()}
+        IonPopulation(initializer::PHAREDict initializer)
+            : name_{initializer["name"].template to<std::string>()}
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , particleInitializerInfo_{initializer["particle_initializer"]}

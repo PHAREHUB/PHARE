@@ -52,7 +52,7 @@ PHAREDict getDict()
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField, DummyLayout> protons{"ions", getDict()};
+    IonPopulation<ParticleArray<1>, DummyVecField, DummyLayout> protons{getDict()};
     virtual ~AnIonPopulation();
 };
 
@@ -70,7 +70,7 @@ TEST_F(AnIonPopulation, hasAMass)
 
 TEST_F(AnIonPopulation, hasAName)
 {
-    EXPECT_EQ("ions_protons", protons.name());
+    EXPECT_EQ("protons", protons.name());
 }
 
 

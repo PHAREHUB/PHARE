@@ -111,7 +111,6 @@ PHARE::initializer::PHAREDict createDict()
 
     dict["simulation"]["pusher"]["name"] = std::string{"modified_boris"};
 
-    dict["ions"]["name"]                                    = std::string{"ions"};
     dict["ions"]["nbrPopulations"]                          = int{2};
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]                            = 1.;
@@ -296,30 +295,27 @@ struct IonsBuffers
     ParticlesPack<ParticleArray> alphaPack;
 
     IonsBuffers(GridLayout const& layout)
-        : ionDensity{"ions_rho", HybridQuantity::Scalar::rho,
+        : ionDensity{"rho", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonDensity{"ions_protons_rho", HybridQuantity::Scalar::rho,
+        , protonDensity{"protons_rho", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaDensity{"ions_alpha_rho", HybridQuantity::Scalar::rho,
+        , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonFx{"ions_protons_flux_x", HybridQuantity::Scalar::Vx,
+        , protonFx{"protons_flux_x", HybridQuantity::Scalar::Vx,
                    layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , protonFy{"ions_protons_flux_y", HybridQuantity::Scalar::Vy,
+        , protonFy{"protons_flux_y", HybridQuantity::Scalar::Vy,
                    layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , protonFz{"ions_protons_flux_z", HybridQuantity::Scalar::Vz,
+        , protonFz{"protons_flux_z", HybridQuantity::Scalar::Vz,
                    layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , alphaFx{"ions_alpha_flux_x", HybridQuantity::Scalar::Vx,
+        , alphaFx{"alpha_flux_x", HybridQuantity::Scalar::Vx,
                   layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , alphaFy{"ions_alpha_flux_y", HybridQuantity::Scalar::Vy,
+        , alphaFy{"alpha_flux_y", HybridQuantity::Scalar::Vy,
                   layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , alphaFz{"ions_alpha_flux_z", HybridQuantity::Scalar::Vz,
+        , alphaFz{"alpha_flux_z", HybridQuantity::Scalar::Vz,
                   layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Vx{"ions_bulkVel_x", HybridQuantity::Scalar::Vx,
-             layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Vy{"ions_bulkVel_y", HybridQuantity::Scalar::Vy,
-             layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Vz{"ions_bulkVel_z", HybridQuantity::Scalar::Vz,
-             layout.allocSize(HybridQuantity::Scalar::Vz)}
+        , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
+        , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
+        , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
 
     {
         protonPack.domainParticles        = &protonDomain;
@@ -336,30 +332,27 @@ struct IonsBuffers
 
 
     IonsBuffers(IonsBuffers const& source, GridLayout const& layout)
-        : ionDensity{"ions_rho", HybridQuantity::Scalar::rho,
+        : ionDensity{"rho", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonDensity{"ions_protons_rho", HybridQuantity::Scalar::rho,
+        , protonDensity{"protons_rho", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaDensity{"ions_alpha_rho", HybridQuantity::Scalar::rho,
+        , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonFx{"ions_protons_flux_x", HybridQuantity::Scalar::Vx,
+        , protonFx{"protons_flux_x", HybridQuantity::Scalar::Vx,
                    layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , protonFy{"ions_protons_flux_y", HybridQuantity::Scalar::Vy,
+        , protonFy{"protons_flux_y", HybridQuantity::Scalar::Vy,
                    layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , protonFz{"ions_protons_flux_z", HybridQuantity::Scalar::Vz,
+        , protonFz{"protons_flux_z", HybridQuantity::Scalar::Vz,
                    layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , alphaFx{"ions_alpha_flux_x", HybridQuantity::Scalar::Vx,
+        , alphaFx{"alpha_flux_x", HybridQuantity::Scalar::Vx,
                   layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , alphaFy{"ions_alpha_flux_y", HybridQuantity::Scalar::Vy,
+        , alphaFy{"alpha_flux_y", HybridQuantity::Scalar::Vy,
                   layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , alphaFz{"ions_alpha_flux_z", HybridQuantity::Scalar::Vz,
+        , alphaFz{"alpha_flux_z", HybridQuantity::Scalar::Vz,
                   layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Vx{"ions_bulkVel_x", HybridQuantity::Scalar::Vx,
-             layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Vy{"ions_bulkVel_y", HybridQuantity::Scalar::Vy,
-             layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Vz{"ions_bulkVel_z", HybridQuantity::Scalar::Vz,
-             layout.allocSize(HybridQuantity::Scalar::Vz)}
+        , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
+        , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
+        , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
         , protonDomain{source.protonDomain}
         , protonPatchGhost{source.protonPatchGhost}
         , protonLevelGhost{source.protonLevelGhost}
@@ -402,29 +395,29 @@ struct IonsBuffers
 
     void setBuffers(Ions& ions)
     {
-        ions.setBuffer("ions_rho", &ionDensity);
+        ions.setBuffer("rho", &ionDensity);
         auto& v = ions.velocity();
-        v.setBuffer("ions_bulkVel_x", &Vx);
-        v.setBuffer("ions_bulkVel_y", &Vy);
-        v.setBuffer("ions_bulkVel_z", &Vz);
+        v.setBuffer("bulkVel_x", &Vx);
+        v.setBuffer("bulkVel_y", &Vy);
+        v.setBuffer("bulkVel_z", &Vz);
 
         auto& populations = ions.getRunTimeResourcesUserList();
 
-        populations[0].setBuffer("ions_protons_rho", &protonDensity);
-        populations[0].flux().setBuffer("ions_protons_flux_x", &protonFx);
-        populations[0].flux().setBuffer("ions_protons_flux_y", &protonFy);
-        populations[0].flux().setBuffer("ions_protons_flux_z", &protonFz);
+        populations[0].setBuffer("protons_rho", &protonDensity);
+        populations[0].flux().setBuffer("protons_flux_x", &protonFx);
+        populations[0].flux().setBuffer("protons_flux_y", &protonFy);
+        populations[0].flux().setBuffer("protons_flux_z", &protonFz);
 
 
-        populations[0].setBuffer("ions_protons", &protonPack);
+        populations[0].setBuffer("protons", &protonPack);
 
-        populations[1].setBuffer("ions_alpha_rho", &alphaDensity);
-        populations[1].flux().setBuffer("ions_alpha_flux_x", &alphaFx);
-        populations[1].flux().setBuffer("ions_alpha_flux_y", &alphaFy);
-        populations[1].flux().setBuffer("ions_alpha_flux_z", &alphaFz);
+        populations[1].setBuffer("alpha_rho", &alphaDensity);
+        populations[1].flux().setBuffer("alpha_flux_x", &alphaFx);
+        populations[1].flux().setBuffer("alpha_flux_y", &alphaFy);
+        populations[1].flux().setBuffer("alpha_flux_z", &alphaFz);
 
 
-        populations[1].setBuffer("ions_alpha", &alphaPack);
+        populations[1].setBuffer("alpha", &alphaPack);
     }
 };
 
