@@ -1,6 +1,5 @@
 
 
-from pybindlibs import cpp
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
@@ -131,6 +130,7 @@ def populate_simulation(dim, interp, **input):
 
 
 def cpp_splitter_type(dim, interp, n_particles):
+    from pybindlibs import cpp # includes static samrai lifecycle
 
     return getattr(cpp,
         "Splitter_" + str(dim) + "_" + str(interp)+ "_" + str(n_particles),
