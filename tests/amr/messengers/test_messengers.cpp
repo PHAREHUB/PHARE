@@ -295,7 +295,6 @@ PHARE::initializer::PHAREDict createDict()
 
     dict["simulation"]["solverPPC"]["pusher"]["name"] = std::string{"modified_boris"};
 
-    dict["ions"]["name"]                                 = std::string{"ions"};
     dict["ions"]["nbrPopulations"]                       = int{2};
     dict["ions"]["pop0"]["name"]                         = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]                         = 1.;

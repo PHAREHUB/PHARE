@@ -97,7 +97,6 @@ using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
-    dict["ions"]["name"]                                    = std::string{"ions"};
     dict["ions"]["nbrPopulations"]                          = int{1};
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]                            = 1.;
@@ -196,19 +195,16 @@ public:
         , J{"J", HybridQuantity::Vector::J}
         , Nibuffer{ions.densityName(), HybridQuantity::Scalar::rho,
                    layout.allocSize(HybridQuantity::Scalar::rho)}
-        , NiProtons{"ions_protons_rho", HybridQuantity::Scalar::rho,
+        , NiProtons{"protons_rho", HybridQuantity::Scalar::rho,
                     layout.allocSize(HybridQuantity::Scalar::rho)}
-        , Vix{"ions_bulkVel_x", HybridQuantity::Scalar::Vx,
+        , Vix{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
+        , Viy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
+        , Viz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
+        , Fxi{"protons_flux_x", HybridQuantity::Scalar::Vx,
               layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Viy{"ions_bulkVel_y", HybridQuantity::Scalar::Vy,
+        , Fyi{"protons_flux_y", HybridQuantity::Scalar::Vy,
               layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Viz{"ions_bulkVel_z", HybridQuantity::Scalar::Vz,
-              layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Fxi{"ions_protons_flux_x", HybridQuantity::Scalar::Vx,
-              layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Fyi{"ions_protons_flux_y", HybridQuantity::Scalar::Vy,
-              layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Fzi{"ions_protons_flux_z", HybridQuantity::Scalar::Vz,
+        , Fzi{"protons_flux_z", HybridQuantity::Scalar::Vz,
               layout.allocSize(HybridQuantity::Scalar::Vz)}
         , Vex{"StandardHybridElectronFluxComputer_Ve_x", HybridQuantity::Scalar::Vx,
               layout.allocSize(HybridQuantity::Scalar::Vx)}
@@ -237,7 +233,7 @@ public:
         pops[0].flux().setBuffer(Fxi.name(), &Fxi);
         pops[0].flux().setBuffer(Fyi.name(), &Fyi);
         pops[0].flux().setBuffer(Fzi.name(), &Fzi);
-        pops[0].setBuffer("ions_protons", &pack);
+        pops[0].setBuffer("protons", &pack);
 
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
@@ -291,7 +287,7 @@ public:
         pops[0].flux().setBuffer(Fxi.name(), nullptr);
         pops[0].flux().setBuffer(Fyi.name(), nullptr);
         pops[0].flux().setBuffer(Fzi.name(), nullptr);
-        pops[0].setBuffer("ions_protons", static_cast<PartPack1D*>(nullptr));
+        pops[0].setBuffer("protons", static_cast<PartPack1D*>(nullptr));
 
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());

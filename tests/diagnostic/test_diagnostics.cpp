@@ -60,10 +60,10 @@ TYPED_TEST(SimulatorTest, fluid)
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
         hi5.dMan.addDiagDict(hi5.fluid("/ions/density"))
             .addDiagDict(hi5.fluid("/ions/bulkVelocity"))
-            .addDiagDict(hi5.fluid("/ions/pop/ions_alpha/density"))
-            .addDiagDict(hi5.fluid("/ions/pop/ions_alpha/flux"))
-            .addDiagDict(hi5.fluid("/ions/pop/ions_protons/density"))
-            .addDiagDict(hi5.fluid("/ions/pop/ions_protons/flux"));
+            .addDiagDict(hi5.fluid("/ions/pop/alpha/density"))
+            .addDiagDict(hi5.fluid("/ions/pop/alpha/flux"))
+            .addDiagDict(hi5.fluid("/ions/pop/protons/density"))
+            .addDiagDict(hi5.fluid("/ions/pop/protons/flux"));
         sim.dump(hi5.dMan);
     }
 
@@ -185,12 +185,12 @@ TYPED_TEST(SimulatorTest, particles)
 
     { // scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, NEW_HI5_FILE};
-        hi5.dMan.addDiagDict(hi5.particles("/ions/pop/ions_alpha/domain"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_alpha/levelGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_alpha/patchGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_protons/domain"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_protons/levelGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/ions_protons/patchGhost"));
+        hi5.dMan.addDiagDict(hi5.particles("/ions/pop/alpha/domain"))
+            .addDiagDict(hi5.particles("/ions/pop/alpha/levelGhost"))
+            .addDiagDict(hi5.particles("/ions/pop/alpha/patchGhost"))
+            .addDiagDict(hi5.particles("/ions/pop/protons/domain"))
+            .addDiagDict(hi5.particles("/ions/pop/protons/levelGhost"))
+            .addDiagDict(hi5.particles("/ions/pop/protons/patchGhost"));
         sim.dump(hi5.dMan);
     }
 

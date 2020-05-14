@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 
+
 #include "core/hybrid/hybrid_quantities.h"
 #include "core/data/ions/ion_population/ion_population.h"
 #include "core/data/vecfield/vecfield_component.h"
@@ -34,17 +35,15 @@ namespace core
 
 
         explicit Ions(PHARE::initializer::PHAREDict dict)
-            : name_{dict["name"].template to<std::string>()}
-            , bulkVelocity_{name_ + "_bulkVel", HybridQuantity::Vector::V}
+            : bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
             , populations_{}
         {
             auto nbrPop = dict["nbrPopulations"].template to<int>();
-            populations_.reserve(nbrPop);
 
             for (int ipop = 0; ipop < nbrPop; ++ipop)
             {
                 auto& pop = dict["pop" + std::to_string(ipop)];
-                populations_.push_back(IonPopulation{name_, pop});
+                populations_.emplace_back(pop);
             }
         }
 
@@ -85,7 +84,7 @@ namespace core
 
         vecfield_type& velocity() { return bulkVelocity_; }
 
-        std::string densityName() const { return name_ + "_rho"; }
+        std::string densityName() const { return "rho"; }
 
 
         void computeDensity()
@@ -191,7 +190,7 @@ namespace core
 
         void setBuffer(std::string const& bufferName, field_type* field)
         {
-            if (bufferName == name_ + "_rho")
+            if (bufferName == "rho")
             {
                 rho_ = field;
             }
@@ -227,7 +226,6 @@ namespace core
 
 
     private:
-        std::string name_;
         field_type* rho_{nullptr};
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique

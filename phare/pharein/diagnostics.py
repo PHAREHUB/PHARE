@@ -135,7 +135,7 @@ class FluidDiagnostics (Diagnostics):
         else:
             if not population_in_model(self.population_name):
                 raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
-            self.quantity = "/ions/pop/ions_" + self.population_name + "/" + self.quantity
+            self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
 
     def to_dict(self):
@@ -181,7 +181,7 @@ class ParticleDiagnostics(Diagnostics):
         if not population_in_model(self.population_name):
             raise ValueError("Error: population '{}' not in simulation initial model".format(self.population_name))
 
-        self.quantity = "/ions/pop/ions_" + self.population_name + "/" + self.quantity
+        self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
     def space_box(self, **kwargs):
 

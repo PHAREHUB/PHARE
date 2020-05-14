@@ -111,7 +111,6 @@ using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 PHARE::initializer::PHAREDict createInitDict()
 {
     PHARE::initializer::PHAREDict dict;
-    dict["ions"]["name"]           = std::string{"ions"};
     dict["ions"]["nbrPopulations"] = int{2};
     dict["ions"]["pop0"]["name"]   = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]   = 1.;
@@ -195,8 +194,7 @@ PHARE::initializer::PHAREDict createInitDict()
 
 struct IonPopulation1D_P
 {
-    std::string ionName = "ions";
-    IonPopulation1D user{ionName, createInitDict()["ions"]["pop0"]};
+    IonPopulation1D user{createInitDict()["ions"]["pop0"]};
 };
 
 

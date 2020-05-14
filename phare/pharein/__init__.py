@@ -90,7 +90,6 @@ def populateDict():
     init_model = simulation.model
     modelDict  = init_model.model_dict
 
-    add("simulation/ions/name", "ions")
     add("simulation/ions/nbrPopulations", init_model.nbr_populations())
 
 

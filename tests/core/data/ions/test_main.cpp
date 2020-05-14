@@ -92,7 +92,6 @@ protected:
     PHARE::initializer::PHAREDict createIonsDict()
     {
         PHARE::initializer::PHAREDict dict;
-        dict["ions"]["name"]           = std::string{"ions"};
         dict["ions"]["nbrPopulations"] = int{2};
         dict["ions"]["pop0"]["name"]   = std::string{"protons"};
         dict["ions"]["pop0"]["mass"]   = 1.;

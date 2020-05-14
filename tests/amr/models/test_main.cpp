@@ -132,7 +132,6 @@ using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
-    dict["ions"]["name"]           = std::string{"ions"};
     dict["ions"]["nbrPopulations"] = int{2};
     dict["ions"]["pop0"]["name"]   = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]   = 1.;
