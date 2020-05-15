@@ -1,6 +1,7 @@
 #ifndef PHARE_TEST_TAG_STRATEGY_H
 #define PHARE_TEST_TAG_STRATEGY_H
 
+#include "kul/log.hpp"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Patch.h>
@@ -40,6 +41,7 @@ public:
         }
     }
 
+
     virtual ~TagStrategy() = default;
 
     void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -61,9 +63,6 @@ public:
             }
         }
 
-
-
-
         if (levelNumber == 0)
         {
             auto level = hierarchy->getPatchLevel(levelNumber);
@@ -79,29 +78,44 @@ public:
 
                     auto particlesBox = particlesData->getBox();
 
-                    // here we are 1D
-                    for (int iCellPos = particlesBox.lower(dirX);
-                         iCellPos <= particlesBox.upper(dirX); ++iCellPos)
+                    auto lowerZ = dimension == 3 ? particlesBox.lower(dirZ) : 0;
+                    auto upperZ = dimension == 3 ? particlesBox.upper(dirZ) : 0;
+
+                    auto lowerY = dimension == 2 ? particlesBox.lower(dirY) : 0;
+                    auto upperY = dimension == 2 ? particlesBox.upper(dirY) : 0;
+
+                    auto lowerX = particlesBox.lower(dirX);
+                    auto upperX = particlesBox.upper(dirX);
+
+                    for (auto iCellZ = lowerZ; iCellZ <= upperZ; ++iCellZ)
                     {
-                        float middle = 0.5;
-                        float delta  = 0.30;
+                        for (auto iCellY = lowerY; iCellY <= upperY; ++iCellY)
+                        {
+                            for (auto iCellX = lowerX; iCellX <= upperX; ++iCellX)
+                            {
+                                std::array<int, 3> _3DiCell = {iCellX, iCellY, iCellZ};
+                                float middle                = 0.5;
+                                float delta                 = 0.30;
 
-                        Particle<dimension> particle;
+                                Particle<dimension> particle;
 
-                        particle.weight = 1.;
-                        particle.charge = 1.;
-                        particle.v      = {{1.0, 0.0, 0.0}};
+                                for (size_t i = 0; i < dimension; i++)
+                                    particle.iCell[i] = _3DiCell[i];
 
-                        particle.iCell[dirX] = iCellPos;
+                                particle.delta.fill(middle);
+                                particle.weight = 1.;
+                                particle.charge = 1.;
+                                particle.v      = {{1.0, 0.0, 0.0}};
 
-                        particle.delta[dirX] = middle - delta;
-                        interior.push_back(particle);
+                                interior.push_back(particle);
 
-                        particle.delta[dirX] = middle + delta;
-                        interior.push_back(particle);
+                                particle.delta[dirX] = middle - delta;
+                                interior.push_back(particle);
 
-                        particle.delta[dirX] = middle;
-                        interior.push_back(particle);
+                                particle.delta[dirX] = middle + delta;
+                                interior.push_back(particle);
+                            }
+                        }
                     }
                 }
             }
