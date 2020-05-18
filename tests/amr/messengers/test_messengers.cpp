@@ -869,8 +869,8 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
                 auto iYEnd        = layout.physicalEndIndex(field, Direction::Y);
                 auto iYGhostEnd   = layout.ghostEndIndex(field, Direction::Y);
 
-                for (auto iy = iYGhostStart; iy < iYStart; ++iy)
-                    for (auto ix = iXGhostStart; ix < iXStart; ++ix)
+                for (auto ix = iXGhostStart; ix < iXStart; ++ix)
+                    for (auto iy = iYGhostStart; iy < iYStart; ++iy)
                     {
                         auto origin   = layout.origin();
                         auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
@@ -879,8 +879,8 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
                         total_eq++;
                     }
 
-                for (auto iy = iYEnd; iy < iYGhostEnd; ++iy)
-                    for (auto ix = iXEnd; ix < iXGhostEnd; ++ix)
+                for (auto ix = iXEnd; ix < iXGhostEnd; ++ix)
+                    for (auto iy = iYEnd; iy < iYGhostEnd; ++iy)
                     {
                         auto origin   = layout.origin();
                         auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
