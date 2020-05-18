@@ -1,9 +1,11 @@
 import unittest
 import numpy as np
-import configparser
-import pharein.globals as globals
 
-from pharein import phare_utilities, uniform_model, diagnostics, simulation
+
+import pyphare.pharein.globals as globals
+
+from pyphare.core  import phare_utilities
+from pyphare.pharein import simulation
 
 
 class TestSimulation(unittest.TestCase):
@@ -59,24 +61,5 @@ class TestSimulation(unittest.TestCase):
 
 
 
-
-###############################################################################
-#
-#                   usage example and run tests
-#
-#       the script: - creates a Simulation
-#                   - registers 2 fluid diagnostics to the Simulation
-#                   - registers 2 electromag diagnostics to the Simulation
-#                   - creates a model 'UniformModel'
-#                   - adds default electromagnetic fields to the model
-#                   - adds 2 proton species, the second has a density of 2.
-#                   - registers the model to the Simulation
-#                   - prepare the job directories and input file
-#
-#                   - executs unit tests of this module
-###############################################################################
-if __name__ == '__main__':
-
-
-
+if __name__ == "__main__":
     unittest.main()

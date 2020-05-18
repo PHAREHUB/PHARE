@@ -49,7 +49,7 @@ namespace initializer
 
     private:
         std::string moduleName_{"job"};
-        std::string initModuleName_{"phare.init"};
+        std::string initModuleName_{"pyphare.pharein.init"};
         py::scoped_interpreter guard_;
     };
 

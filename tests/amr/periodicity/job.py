@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import os, sys, math
-import phare.pharein as ph
-from phare.pharein import ElectronModel
+import pyphare.pharein as ph
+from pyphare.pharein import ElectronModel
 
 print("start test_messengers: input_1d_ratio_2.py")
 print("sys.path ", sys.path)

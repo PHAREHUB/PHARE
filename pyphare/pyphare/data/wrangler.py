@@ -2,13 +2,14 @@ class DataWrangler:
     is_primal = {"bx": True, "by": False, "bz": False, "ex": False, "ey": True, "ez": True}
 
     def __init__(self, sim, hier):
-        import phare.pharein as ph, phare.data.data_wrangler
+        from .. import pharein as ph
+        from pybindlibs.data import data_wrangler
 
         self.dim = ph.globals.sim.dims
         self.interp = ph.globals.sim.interp_order
         self.refined_particle_nbr = ph.globals.sim.refined_particle_nbr
         self.cpp = getattr(
-            phare.data.data_wrangler,
+            data_wrangler,
             "DataWrangler_" + str(self.dim) + "_" + str(self.interp)+ "_" + str(self.refined_particle_nbr),
         )(sim, hier)
 

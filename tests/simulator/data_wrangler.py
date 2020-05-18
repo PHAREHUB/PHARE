@@ -2,9 +2,9 @@
 #
 # formatted with black
 
-from phare import cpp
+from pybindlibs import cpp
 from tests.simulator import create_simulator
-from phare.data.wrangler import DataWrangler
+from pyphare.data.wrangler import DataWrangler
 
 import unittest
 

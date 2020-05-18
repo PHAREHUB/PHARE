@@ -1,7 +1,7 @@
 
 
 def dump_all_diags(pops=[]):
-    import phare.pharein as ph, numpy as np
+    import pyphare.pharein as ph, numpy as np
 
     sim = ph.globals.sim
 

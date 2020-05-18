@@ -52,7 +52,7 @@ void add_array_as_vector(std::string path, py_array<T>& array)
 }
 
 
-PYBIND11_MODULE(pyphare, m)
+PYBIND11_MODULE(dictator, m)
 {
     m.def("add_size_t", add_size_t, "add_size_t");
     m.def("add_optional_size_t", add_optional_size_t, "add_optional_size_t");

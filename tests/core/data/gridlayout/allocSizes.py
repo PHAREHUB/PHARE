@@ -12,8 +12,8 @@ import numpy as np
 import sys
 import os
 
-
-from phare.core import gridlayout
+print(sys.path)
+from pyphare.core import gridlayout
 import utilities
 import gridparams
 

@@ -22,11 +22,9 @@ target_include_directories(${PROJECT_NAME}  PUBLIC
 
 
 # this is the python module that wraps the add() method
-pybind11_add_module(pyphare pyphare.cpp)
-target_link_libraries(pyphare PUBLIC phare_initializer pybind11::embed)
-set_target_properties(pyphare
+pybind11_add_module(dictator dictator.cpp)
+target_link_libraries(dictator PUBLIC phare_initializer pybind11::embed)
+set_target_properties(dictator
     PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/phare"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
 )
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py.in ${CMAKE_BINARY_DIR}/phare/__init__.py @ONLY)

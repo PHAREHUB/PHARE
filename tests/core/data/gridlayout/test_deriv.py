@@ -13,7 +13,7 @@ We derive a primal quantity and a dual quantity.
 
 
 import numpy as np
-from phare.core import gridlayout
+from pyphare.core import gridlayout
 import os
 
 class TestVariables (object) :

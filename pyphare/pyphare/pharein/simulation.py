@@ -1,8 +1,10 @@
 import os
 
-from . import phare_utilities
-#from .globals import objects
+from ..core import phare_utilities
 from . import globals
+from ..core import box as boxm
+from ..core.box import Box
+
 
 def compute_dimension(cells):
     return len(cells)
@@ -180,19 +182,38 @@ def check_origin(dims, **kwargs):
 
 # ------------------------------------------------------------------------------
 
-
 def check_refinement_boxes(**kwargs):
     refinement_boxes = kwargs.get("refinement_boxes", None)
+
     if refinement_boxes is None:
         return refinement_boxes
+
     smallest_patch_size = kwargs.get("smallest_patch_size")
-    for level,boxes in refinement_boxes.items():
-        if (kwargs["max_nbr_levels"]) <= int(level[1:]) + 1:  # + 1 L0 index from 0 vs nbr_levels
-            raise ValueError("Error - refinement_boxes, refined level larger than 'max_nbr_levels'")
-        for box, points in boxes.items():
-            for i in range(len(points[0])):
-                if points[1][i] - points[0][i] + 1 < smallest_patch_size: # +1 as index from 0
-                    raise ValueError("Invalid refineboxes, incompatible with smallest_patch_size")
+
+    for ilvl, boxes in refinement_boxes.items():
+
+        assert ilvl[0] == "L"
+        refined_level_number = int(ilvl[1:])+1
+        if (kwargs["max_nbr_levels"]) <= refined_level_number:
+            err_msg = "Error - refinement boxes to create level {} invalid with 'max_nbr_levels'= {}"
+            raise ValueError(err_msg.format(refined_level_number, kwargs["max_nbr_levels"]))
+
+        boxes = list(boxes.values())
+        if len(boxes) == 0:
+            raise ValueError("Error - missing refinement boxes")
+
+        tmp_boxes = []
+        if isinstance(boxes[0], tuple) or isinstance(boxes[0],list):
+            for points in boxes:
+                tmp_boxes.append(Box(points[0], points[1]))
+            boxes = tmp_boxes
+
+        elif isinstance(boxes[0], Box):
+            for box in boxes:
+                for l in boxm.refine(box, kwargs["refinement_ratio"]).length():
+                    if l < smallest_patch_size:
+                        raise  ValueError("Invalid box incompatible with smallest_patch_size")
+
 
     return refinement_boxes
 
@@ -200,7 +221,7 @@ def check_refinement_boxes(**kwargs):
 
 def check_patch_size(**kwargs):
     def get_max_ghosts():
-        from phare.core.gridlayout import GridLayout
+        from ..core.gridlayout import GridLayout
         grid = GridLayout()
         return max(grid.nbrGhosts(kwargs["interp_order"], x) for x in ['primal','dual'])
 
@@ -208,7 +229,7 @@ def check_patch_size(**kwargs):
     largest_patch_size = kwargs.get("largest_patch_size", None)
     smallest_patch_size = kwargs.get("smallest_patch_size", max_ghosts)
 
-    dl,cells = check_domain(**kwargs)
+    cells = kwargs["cells"]
 
     if largest_patch_size is not None:
 

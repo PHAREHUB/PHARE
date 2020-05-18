@@ -7,7 +7,7 @@ import scipy.misc
 
 import sys
 
-from phare.core import gridlayout
+from pyphare.core import gridlayout
 import os
 import gridparams
 import cellCenteredCoordinates

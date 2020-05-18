@@ -10,7 +10,7 @@ import os
 
 
 import numpy as np
-from phare.core import gridlayout
+from pyphare.core import gridlayout
 
 class TestVariables (object) :
 
