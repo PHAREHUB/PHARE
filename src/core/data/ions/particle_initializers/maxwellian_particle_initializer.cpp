@@ -25,8 +25,8 @@ namespace core
 
 
 
-    std::array<double, 3> basisTransform(const std::array<std::array<double, 3>, 3> basis,
-                                         std::array<double, 3> vec)
+    std::array<double, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
+                                         std::array<double, 3> const& vec)
     {
         std::array<double, 3> newVec;
 

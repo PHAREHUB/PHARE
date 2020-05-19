@@ -21,8 +21,8 @@ namespace core
                             std::mt19937_64& generator, std::array<double, 3>& partVelocity);
 
 
-    std::array<double, 3> basisTransform(const std::array<std::array<double, 3>, 3> basis,
-                                         std::array<double, 3> vec);
+    std::array<double, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
+                                         std::array<double, 3> const& vec);
 
     void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3>, 3>& basis);
 
