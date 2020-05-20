@@ -82,24 +82,20 @@ TEST(PointInBox, returnFalseIfPointNotInBox1D)
 
 TEST(PointInBox, returnTrueIfPointInOneBox)
 {
-    Point<int, 1> point{5};
-    Box<int, 1> box1{Point<int, 1>{0}, Point<int, 1>{2}};
-    Box<int, 1> box2{Point<int, 1>{3}, Point<int, 1>{6}};
     std::vector<Box<int, 1>> boxes;
-    boxes.push_back(std::move(box1));
-    boxes.push_back(std::move(box2));
+    boxes.emplace_back(Point<int, 1>{0}, Point<int, 1>{2});
+    boxes.emplace_back(Point<int, 1>{3}, Point<int, 1>{6});
+    Point<int, 1> point{5};
     EXPECT_TRUE(isIn(point, boxes));
 }
 
 
 TEST(PointInBox, returnFalseIfIsNoBox)
 {
-    Point<int, 1> point{5};
-    Box<int, 1> box1{Point<int, 1>{0}, Point<int, 1>{2}};
-    Box<int, 1> box2{Point<int, 1>{6}, Point<int, 1>{7}};
     std::vector<Box<int, 1>> boxes;
-    boxes.push_back(std::move(box1));
-    boxes.push_back(std::move(box2));
+    boxes.emplace_back(Point<int, 1>{0}, Point<int, 1>{2});
+    boxes.emplace_back(Point<int, 1>{6}, Point<int, 1>{7});
+    Point<int, 1> point{5};
     EXPECT_FALSE(isIn(point, boxes));
 }
 
