@@ -71,6 +71,7 @@ namespace solver
                 else
                 {
                     messenger.initLevel(model, level, initDataTime);
+                    messenger.prepareStep(model, level);
                 }
             }
 
@@ -100,44 +101,47 @@ namespace solver
             }
 
 
-
-            auto& B = hybridModel.state.electromag.B;
-            auto& J = hybridModel.state.J;
-
-
-            for (auto& patch : level)
+            if (isRootLevel(levelNumber))
             {
-                auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
-                auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                auto __     = core::SetLayout(&layout, ampere_);
-                ampere_(B, J);
+                auto& B = hybridModel.state.electromag.B;
+                auto& J = hybridModel.state.J;
 
-                hybridModel.resourcesManager->setTime(J, *patch, 0.);
+
+                for (auto& patch : level)
+                {
+                    auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
+                    auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
+                    auto __     = core::SetLayout(&layout, ampere_);
+                    ampere_(B, J);
+
+                    hybridModel.resourcesManager->setTime(J, *patch, 0.);
+                }
+
+                // hybMessenger.fillCurrentGhosts(J, levelNumber, 0.); //TODO uncomment in
+                // 'advancement'
+
+
+
+                auto& electrons = hybridModel.state.electrons;
+                auto& E         = hybridModel.state.electromag.E;
+
+                for (auto& patch : level)
+                {
+                    auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
+                    auto _ = hybridModel.resourcesManager->setOnPatch(*patch, B, E, J, electrons);
+                    electrons.update(layout);
+                    auto& Ve = electrons.velocity();
+                    auto& Ne = electrons.density();
+                    auto& Pe = electrons.pressure();
+                    auto __  = core::SetLayout(&layout, ohm_);
+                    ohm_(Ne, Ve, Pe, B, J, E);
+                    hybridModel.resourcesManager->setTime(E, *patch, 0.);
+                }
+
+                hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
             }
-            // hybMessenger.fillCurrentGhosts(J, levelNumber, 0.); //TODO uncomment in 'advancement'
-
-
-
-
-            auto& electrons = hybridModel.state.electrons;
-            auto& E         = hybridModel.state.electromag.E;
-
-            for (auto& patch : level)
-            {
-                auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, E, J, electrons);
-                electrons.update(layout);
-                auto& Ve = electrons.velocity();
-                auto& Ne = electrons.density();
-                auto& Pe = electrons.pressure();
-                auto __  = core::SetLayout(&layout, ohm_);
-                ohm_(Ne, Ve, Pe, B, J, E);
-                hybridModel.resourcesManager->setTime(E, *patch, 0.);
-            }
-
-            hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
         }
-    };
+    }; // namespace solver
 } // namespace solver
 } // namespace PHARE
 
