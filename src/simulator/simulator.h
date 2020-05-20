@@ -122,10 +122,12 @@ public:
         catch (const std::runtime_error& e)
         {
             std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
+            std::rethrow_exception(std::current_exception());
         }
         catch (...)
         {
             std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
+            std::rethrow_exception(std::current_exception());
         }
     }
 
