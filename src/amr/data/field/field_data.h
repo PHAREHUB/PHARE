@@ -88,47 +88,35 @@ namespace amr
 
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
-            auto fieldSource = dynamic_cast<FieldData const*>(&source);
+            // throws on failure
+            auto& fieldSource = dynamic_cast<FieldData const&>(source);
 
-            if (fieldSource != nullptr)
+            TBOX_ASSERT(quantity_ == fieldSource.quantity_);
+            // First step is to translate the AMR box into proper index space of the given
+            // quantity_ using the source gridlayout to accomplish that we get the interior box,
+            // from the FieldData. and we call toFieldBox (with the default parameter withGhost
+            // = true). note that we could have stored the ghost box of the field data at
+            // creation
+
+            SAMRAI::hier::Box sourceBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
+                fieldSource.getBox(), quantity_, fieldSource.gridLayout);
+
+
+            SAMRAI::hier::Box destinationBox
+                = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
+                    this->getBox(), quantity_, this->gridLayout);
+
+            // Given the two boxes in correct space we just have to intersect them
+            SAMRAI::hier::Box intersectionBox = sourceBox * destinationBox;
+
+            if (!intersectionBox.empty())
             {
-                TBOX_ASSERT(quantity_ == fieldSource->quantity_);
-                // First step is to translate the AMR box into proper index space of the given
-                // quantity_ using the source gridlayout to accomplish that we get the interior box,
-                // from the FieldData. and we call toFieldBox (with the default parameter withGhost
-                // = true). note that we could have stored the ghost box of the field data at
-                // creation
+                auto const& sourceField = fieldSource.field;
+                auto& destinationField  = field;
 
-                SAMRAI::hier::Box sourceBox
-                    = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                        fieldSource->getBox(), quantity_, fieldSource->gridLayout);
-
-
-                SAMRAI::hier::Box destinationBox
-                    = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                        this->getBox(), quantity_, this->gridLayout);
-
-                // Given the two boxes in correct space we just have to intersect them
-                SAMRAI::hier::Box intersectionBox = sourceBox * destinationBox;
-
-                if (!intersectionBox.empty())
-                {
-                    auto const& sourceField = fieldSource->field;
-                    auto& destinationField  = field;
-
-                    // We can copy field from the source to the destination on the correct region
-                    copy_(intersectionBox, sourceBox, destinationBox, *fieldSource, sourceField,
-                          destinationField);
-                }
-            }
-            else
-            {
-                // If we go there, then the PatchData is not a FieldData
-                // We cannot be in this case since FieldData is final
-                // hence copy2 will directly throw
-                // Note that we still have to implement copy2 and to call it, since it is
-                // what is expected from SAMRAI
-                source.copy2(*this);
+                // We can copy field from the source to the destination on the correct region
+                copy_(intersectionBox, sourceBox, destinationBox, fieldSource, sourceField,
+                      destinationField);
             }
         }
 
@@ -156,23 +144,11 @@ namespace amr
         void copy(const SAMRAI::hier::PatchData& source,
                   const SAMRAI::hier::BoxOverlap& overlap) final
         {
-            auto fieldSource  = dynamic_cast<FieldData const*>(&source);
-            auto fieldOverlap = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
+            // casts throw on failure
+            auto& fieldSource  = dynamic_cast<FieldData const&>(source);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
 
-
-            // So here we just check that the PatchData is a FieldData, and that this is a correct
-            // FieldOverlap
-            if ((fieldSource != nullptr) && (fieldOverlap != nullptr))
-            {
-                // If it is the case,we delegate the copy on another function
-                // that take directly the FieldData, and FieldOverlap
-
-                copy_(*fieldSource, *fieldOverlap);
-            }
-            else
-            {
-                source.copy2(*this, overlap);
-            }
+            copy_(fieldSource, fieldOverlap);
         }
 
 
@@ -221,14 +197,13 @@ namespace amr
             std::vector<typename FieldImpl::type> buffer;
             buffer.reserve(expectedSize);
 
-            auto fieldOverlap = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
-            TBOX_ASSERT(fieldOverlap != nullptr);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
 
-            SAMRAI::hier::Transformation const& transformation = fieldOverlap->getTransformation();
+            SAMRAI::hier::Transformation const& transformation = fieldOverlap.getTransformation();
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
             {
                 SAMRAI::hier::BoxContainer const& boxContainer
-                    = fieldOverlap->getDestinationBoxContainer();
+                    = fieldOverlap.getDestinationBoxContainer();
                 for (auto const& box : boxContainer)
                 {
                     auto const& source = field;
@@ -433,12 +408,12 @@ namespace amr
             // The idea here is to tell SAMRAI the maximum memory will be used by our type
             // on a given region.
 
-            FieldOverlap<dimension> const* fieldOverlap
-                = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
-            TBOX_ASSERT(fieldOverlap != nullptr);
+
+            // throws on failure
+            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
 
             size_t totalSize = 0;
-            if (fieldOverlap->isOverlapEmpty())
+            if (fieldOverlap.isOverlapEmpty())
             {
                 return totalSize;
             }
@@ -446,7 +421,7 @@ namespace amr
             // TODO: see FieldDataFactory todo of the same function
 
             SAMRAI::hier::BoxContainer const& boxContainer
-                = fieldOverlap->getDestinationBoxContainer();
+                = fieldOverlap.getDestinationBoxContainer();
 
             return boxContainer.getTotalSizeOfBoxes() * sizeof(typename FieldImpl::type);
         }
