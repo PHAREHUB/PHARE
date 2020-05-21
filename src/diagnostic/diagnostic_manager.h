@@ -2,6 +2,10 @@
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
+#if !defined(PHARE_HAS_HIGHFIVE)
+#error // PHARE_HAS_HIGHFIVE expected to be defined as bool
+#endif
+
 #include "core/data/particles/particle_array.h"
 #include "initializer/data_provider.h"
 #include "diagnostic_props.h"
@@ -45,30 +49,23 @@ IDiagnosticsManager::~IDiagnosticsManager() {}
 
 
 
-
 template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
-    DiagnosticsManager(Writer& writer)
-        : writer_{writer}
+    DiagnosticsManager(std::unique_ptr<Writer>&& writer_ptr)
+        : writer_{std::forward<std::unique_ptr<Writer>>(writer_ptr)}
     {
     }
 
-
-    DiagnosticsManager(const DiagnosticsManager&)  = delete;
-    DiagnosticsManager(const DiagnosticsManager&&) = delete;
-    DiagnosticsManager& operator=(const DiagnosticsManager&) = delete;
-    DiagnosticsManager& operator=(const DiagnosticsManager&&) = delete;
-
-
-    static std::unique_ptr<DiagnosticsManager> from(Writer& writer, initializer::PHAREDict& dict)
+    template<typename Hierarchy, typename Model>
+    static std::unique_ptr<DiagnosticsManager> make_unique(Hierarchy& hier, Model& model,
+                                                           initializer::PHAREDict& dict)
     {
-        auto dMan = std::make_unique<DiagnosticsManager>(writer);
+        auto dMan = std::make_unique<DiagnosticsManager>(Writer::make_unique(hier, model, dict));
         registerDiagnostics(*dMan, dict);
         return dMan;
     }
-
 
     void dump(double timeStamp, double timeStep) override;
 
@@ -103,19 +100,23 @@ public:
         return diag.computeTimestamps[lastCompute] + timeStep > timeStamp;
     }
 
-
+    Writer& writer() { return *writer_.get(); }
 
 protected:
     std::vector<DiagnosticProperties> diagnostics_;
 
 private:
-    Writer& writer_;
-
+    std::unique_ptr<Writer> writer_;
 
     std::map<std::string, std::size_t> lastCompute_;
     std::map<std::string, std::size_t> lastWrite_;
-};
 
+
+    DiagnosticsManager(const DiagnosticsManager&)  = delete;
+    DiagnosticsManager(const DiagnosticsManager&&) = delete;
+    DiagnosticsManager& operator=(const DiagnosticsManager&) = delete;
+    DiagnosticsManager& operator=(const DiagnosticsManager&&) = delete;
+};
 
 
 
@@ -146,7 +147,7 @@ void DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
 
         if (needsCompute(diag, timeStamp, timeStep))
         {
-            writer_.getDiagnosticWriterForType(diag.type)->compute(diag);
+            writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
             lastCompute_[diagID]++;
         }
         if (needsWrite(diag, timeStamp, timeStep))
@@ -154,7 +155,7 @@ void DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
             activeDiagnostics.emplace_back(&diag);
         }
     }
-    writer_.dump(activeDiagnostics, timeStamp);
+    writer_->dump(activeDiagnostics, timeStamp);
 
     for (auto const* diag : activeDiagnostics)
     {

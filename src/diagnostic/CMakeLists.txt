@@ -8,10 +8,6 @@ set(SOURCES_INC
   ${PROJECT_SOURCE_DIR}/diagnostic_props.h
 )
 
-
-
-
-
 if (HighFive)
  set(SOURCES_INC
    ${SOURCES_INC}
@@ -29,7 +25,7 @@ set(SOURCES_CPP
 )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
 
 target_include_directories(${PROJECT_NAME}  PUBLIC
   $<INSTALL_INTERFACE:include/phare/diagnostic>)

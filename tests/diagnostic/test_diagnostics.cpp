@@ -225,8 +225,6 @@ TYPED_TEST(SimulatorTest, allFromPython)
     TypeParam sim;
     sim.dump(*sim.dMan);
     sim.dMan.reset();
-    sim.modelView.reset();
-    sim.writer.reset(); // keeps a handle and breaks the following readonly opening
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;

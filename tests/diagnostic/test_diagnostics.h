@@ -55,6 +55,9 @@ struct Hi5Diagnostic
         : hierarchy_{hierarchy}
         , model_{hybridModel}
         , flags_{flags}
+        , dMan{std::make_unique<Writer_t>(ModelView_t{hierarchy_, model_}, "phare_outputs", flags_)}
+        , writer{dMan.writer()}
+        , modelView{writer.modelView()}
     {
     }
     ~Hi5Diagnostic() {}
@@ -81,13 +84,13 @@ struct Hi5Diagnostic
         return Writer_t::getFullPatchPath(timestamp, level, patch);
     }
 
-
     Hierarchy& hierarchy_;
     HybridModel& model_;
     unsigned flags_;
-    ModelView_t modelView{hierarchy_, model_};
-    Writer_t writer{modelView, "phare_outputs", flags_};
-    DiagnosticsManager<Writer_t> dMan{writer};
+
+    DiagnosticsManager<Writer_t> dMan;
+    Writer_t& writer;
+    ModelView_t const& modelView;
 };
 
 

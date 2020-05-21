@@ -38,7 +38,7 @@ public:
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
 
-    Writer(ModelView& modelView, std::string const hifivePath,
+    Writer(ModelView&& modelView, std::string const hifivePath,
            unsigned _flags = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate)
         : flags{_flags}
         , filePath_{hifivePath}
@@ -48,10 +48,11 @@ public:
 
     ~Writer() {}
 
-    static std::unique_ptr<Writer> from(ModelView& modelView, initializer::PHAREDict& dict)
+    template<typename Hierarchy, typename Model>
+    static decltype(auto) make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
-        return std::move(std::make_unique<Writer>(modelView, filePath));
+        return std::make_unique<This>(ModelView{hier, model}, filePath);
     }
 
 
@@ -130,6 +131,7 @@ public:
             h5.getDataSet(path + "_" + id).write(vecField.getComponent(type).data());
     }
 
+    auto& modelView() { return modelView_; }
 
     size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
     unsigned flags;
@@ -139,7 +141,7 @@ private:
     double timestamp_ = 0;
     std::string filePath_;
     std::string patchPath_; // is passed around as "virtual write()" has no parameters
-    ModelView& modelView_;
+    ModelView modelView_;
     Attributes fileAttributes_;
 
     std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> writers{
@@ -179,7 +181,6 @@ private:
         return getFullPatchPath(std::to_string(timestamp_), iLevel, globalCoords);
     }
 
-    auto& modelView() const { return modelView_; }
 
     const auto& patchPath() const { return patchPath_; }
     // used by friends end
