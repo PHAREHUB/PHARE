@@ -49,12 +49,7 @@
 #include "solver/solvers/solver_mhd.h"
 #include "solver/solvers/solver_ppc.h"
 
-#include "diagnostic/diagnostic_manager.h"
-#include "diagnostic/diagnostic_model_view.h"
-#include "diagnostic/detail/h5writer.h"
-#include "diagnostic/detail/types/electromag.h"
-#include "diagnostic/detail/types/particle.h"
-#include "diagnostic/detail/types/fluid.h"
+#include "diagnostic/diagnostics.h"
 
 #include <algorithm>
 #include <iterator>

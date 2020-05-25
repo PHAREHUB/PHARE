@@ -92,10 +92,12 @@ def create_simulator(dim, interp, **input):
     ElectronModel(closure="isothermal",Te = 0.12)
 
     ph.populateDict()
-    hier = cpp.make_hierarchy()
-    sim = cpp.make_simulator(hier)
-    sim.initialize()
-    return [cpp.make_diagnostic_manager(sim, hier), sim, hier]
-
-
-
+    import sys
+    try:
+        hier = cpp.make_hierarchy()
+        sim = cpp.make_simulator(hier)
+        sim.initialize()
+        return [cpp.make_diagnostic_manager(sim, hier), sim, hier]
+    except:
+        e = sys.exc_info()[0]
+        print('Exception caught in "create_simulator": {}'.format(e))

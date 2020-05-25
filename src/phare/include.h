@@ -98,26 +98,14 @@ struct RuntimeDiagnosticInterface
                 if (userDim == dimension() and userInterpOrder == interp_order()
                     and userNbRefinedPart == nbRefinedPart())
                 {
-                    std::size_t constexpr d  = dimension();
-                    std::size_t constexpr io = interp_order();
-                    std::size_t constexpr nb = nbRefinedPart();
-
-                    using PHARE_Types      = PHARE::PHARE_Types<d, io, nb>;
-                    using ModelView        = typename PHARE_Types::ModelView;
-                    using DiagnosticWriter = typename PHARE_Types::DiagnosticWriter;
+                    constexpr std::size_t d  = dimension();
+                    constexpr std::size_t io = interp_order();
+                    constexpr std::size_t nb = nbRefinedPart();
 
                     auto* simulator = dynamic_cast<PHARE::Simulator<d, io, nb>*>(&rdi.simulator);
-                    auto& hierarchy = rdi.hierarchy;
 
-                    rdi.modelView
-                        = std::make_unique<ModelView>(hierarchy, *simulator->getHybridModel());
-
-                    rdi.writer
-                        = DiagnosticWriter::from(*static_cast<ModelView*>(rdi.modelView.get()),
-                                                 dict["simulation"]["diagnostics"]);
-
-                    rdi.dMan = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::from(
-                        *static_cast<DiagnosticWriter*>(rdi.writer.get()),
+                    rdi.dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_shared(
+                        rdi.hierarchy, *simulator->getHybridModel(),
                         dict["simulation"]["diagnostics"]);
 
                     return true;
@@ -133,10 +121,7 @@ struct RuntimeDiagnosticInterface
 
     PHARE::amr::Hierarchy& hierarchy;
     PHARE::ISimulator& simulator;
-    std::unique_ptr<PHARE::diagnostic::IModelView> modelView;
-    std::unique_ptr<PHARE::diagnostic::IWriter> writer;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
 };
-
 
 #endif /*PHARE_PHARE_INCLUDE_H*/

@@ -243,9 +243,9 @@ public:
     }
 
 private:
-    size_t lvl_;
     amr::Hierarchy& hierarchy_;
     HybridModel& model_;
+    size_t lvl_;
 };
 
 template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
@@ -314,7 +314,7 @@ public:
             auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
             auto datas    = core::mpi::collect(patch_data.data, mpi_size);
 
-            for (size_t i = 0; i < mpi_size; i++)
+            for (int i = 0; i < mpi_size; i++)
             {
                 auto& data = collected.emplace_back();
                 setPatchData(data, patchIDs[i], origins[i], pCells[i]);

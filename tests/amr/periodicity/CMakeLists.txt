@@ -9,20 +9,25 @@ set(SOURCES_CPP
   test_main.cpp
    )
 
-add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  ${GTEST_INCLUDE_DIRS}
-  )
+if (HighFive)
+  add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  phare_simulator
-  pybind11::embed
-  ${GTEST_LIBS})
+  target_include_directories(${PROJECT_NAME} PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    ${GTEST_INCLUDE_DIRS}
+    )
+
+  target_link_libraries(${PROJECT_NAME} PRIVATE
+    phare_simulator
+    pybind11::embed
+    ${GTEST_LIBS})
 
 
-add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+  add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+
+endif(HighFive)
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)
 

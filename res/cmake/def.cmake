@@ -10,6 +10,11 @@ else()
   endif()
 endif()
 
+set (PHARE_HAS_HIGHFIVE "0")
+if (HighFive)
+ set (PHARE_HAS_HIGHFIVE "1")
+endif()
+
 # Pybind errors with clang, it is default in GCC
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (CMAKE_CXX_FLAGS -fsized-deallocation)
@@ -64,7 +69,7 @@ function(set_exe_paths_ binary)
 endfunction(set_exe_paths_)
 
 function(add_phare_test_ binary directory)
-  target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS})
+  target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
   set_exe_paths_(${binary})
   set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
   set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_MPI_PROCS=${PHARE_MPI_PROCS})

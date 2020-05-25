@@ -53,13 +53,7 @@ struct TestSimulator : public HierarchyMaker<_dim>,
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;
 
-    using ModelView        = PHARE::diagnostic::ModelView<Hierarchy, HybridModel>;
-    using DiagnosticWriter = PHARE::diagnostic::h5::Writer<ModelView>;
-
-    std::unique_ptr<ModelView> modelView;
-    std::unique_ptr<DiagnosticWriter> writer;
-    std::unique_ptr<PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>> dMan;
-
+    std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
 
     auto& dict()
     {
@@ -76,10 +70,8 @@ struct TestSimulator : public HierarchyMaker<_dim>,
 
         if (dict()["simulation"].contains("diagnostics"))
         {
-            modelView = std::make_unique<ModelView>(*this->hierarchy, *this->getHybridModel());
-            writer    = DiagnosticWriter::from(*modelView, dict()["simulation"]["diagnostics"]);
-            dMan      = PHARE::diagnostic::DiagnosticsManager<DiagnosticWriter>::from(
-                *writer, dict()["simulation"]["diagnostics"]);
+            dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_shared(
+                *this->hierarchy, *this->getHybridModel(), dict()["simulation"]["diagnostics"]);
         }
     }
 
