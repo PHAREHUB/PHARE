@@ -2,10 +2,6 @@
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
-#if !defined(PHARE_HAS_HIGHFIVE)
-#error // PHARE_HAS_HIGHFIVE expected to be defined as bool
-#endif
-
 #include "core/data/particles/particle_array.h"
 #include "initializer/data_provider.h"
 #include "diagnostic_props.h"
@@ -56,6 +52,8 @@ public:
     DiagnosticsManager(std::unique_ptr<Writer>&& writer_ptr)
         : writer_{std::forward<std::unique_ptr<Writer>>(writer_ptr)}
     {
+        if (!writer_)
+            throw std::runtime_error("Error: DiagnosticsManager received null Writer");
     }
 
     template<typename Hierarchy, typename Model>

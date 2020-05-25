@@ -55,7 +55,7 @@ struct Hi5Diagnostic
         : hierarchy_{hierarchy}
         , model_{hybridModel}
         , flags_{flags}
-        , dMan{std::make_unique<Writer_t>(ModelView_t{hierarchy_, model_}, "phare_outputs", flags_)}
+        , dMan{std::make_unique<Writer_t>(hierarchy_, model_, "phare_outputs", flags_)}
         , writer{dMan.writer()}
         , modelView{writer.modelView()}
     {

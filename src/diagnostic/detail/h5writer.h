@@ -38,11 +38,12 @@ public:
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
 
-    Writer(ModelView&& modelView, std::string const hifivePath,
+    template<typename Hierarchy, typename Model>
+    Writer(Hierarchy& hier, Model& model, std::string const hifivePath,
            unsigned _flags = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate)
         : flags{_flags}
         , filePath_{hifivePath}
-        , modelView_{modelView}
+        , modelView_{hier, model}
     {
     }
 
@@ -52,7 +53,7 @@ public:
     static decltype(auto) make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
-        return std::make_unique<This>(ModelView{hier, model}, filePath);
+        return std::make_unique<This>(hier, model, filePath);
     }
 
 
