@@ -12,7 +12,6 @@ set(SOURCES_INC
 
 set(SOURCES_CPP
   test_main.cpp
-  test_tag_strategy.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

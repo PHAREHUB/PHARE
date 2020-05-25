@@ -3,8 +3,6 @@
 
 
 #include "amr/data/particles/particles_variable.h"
-#include "amr/data/particles/refine/particles_data_split.h"
-#include "amr/data/particles/refine/split.h"
 #include "test_tag_strategy.h"
 
 
@@ -19,9 +17,6 @@
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
-
-#include <memory>
-#include <string>
 
 
 #include "input_config.h"
