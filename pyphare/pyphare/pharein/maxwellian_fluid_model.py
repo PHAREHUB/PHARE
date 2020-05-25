@@ -17,10 +17,7 @@ class MaxwellianFluidModel(object):
             return lambda x,y,z:value
 
 
-    def __init__(self, ex = None,
-                       ey = None,
-                       ez = None,
-                       bx = None,
+    def __init__(self, bx = None,
                        by = None,
                        bz = None,
                        **kwargs):
@@ -32,11 +29,6 @@ class MaxwellianFluidModel(object):
             raise RuntimeError("A model is already created")
 
         self.dim = globals.sim.dims
-
-        ex = self.defaulter(ex, 0.)
-        ey = self.defaulter(ey, 0.)
-        ez = self.defaulter(ez, 0.)
-
         bx = self.defaulter(bx, 1.)
         by = self.defaulter(by, 0.)
         bz = self.defaulter(bz, 0.)
@@ -48,10 +40,7 @@ class MaxwellianFluidModel(object):
 
         self.model_dict.update({"bx": bx,
                                 "by": by,
-                                "bz": bz,
-                                "ex": ex,
-                                "ey": ey,
-                                "ez": ez})
+                                "bz": bz})
 
         self.populations = kwargs.keys()
         for population in self.populations:
@@ -163,7 +152,7 @@ class MaxwellianFluidModel(object):
             for pop_index, pop in enumerate(self.populations):
                 for v in ["vth", "v"]:
                     valid &= periodic_function_check(v, model_dict[pop])
-            for em in ["e", "b"]:
+            for em in ["b"]:
                 valid &= periodic_function_check(em, model_dict)
             if not valid:
                 print("Warning: Simulation is periodic but some functions are not")

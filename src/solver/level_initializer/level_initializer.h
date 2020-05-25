@@ -21,7 +21,8 @@ namespace solver
         virtual void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
                                 std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
-                                bool isRegridding) const = 0;
+                                bool isRegridding)
+            = 0;
 
 
         virtual ~LevelInitializer() {}

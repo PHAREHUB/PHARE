@@ -37,8 +37,6 @@ vvv = {
 
 ph.MaxwellianFluidModel(
     bx=bx, by=by, bz=bz,
-    ex=ex, ey=ey, ez=ez,
-
     protons={"charge":-1, "density":density, **vvv},
     alpha={"charge":-1, "density":density, **vvv}
 )

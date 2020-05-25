@@ -142,9 +142,6 @@ def populateDict():
     add("simulation/electromag/name", "EM")
     add("simulation/electromag/electric/name", "E")
     elecinit_path = "simulation/electromag/electric/initializer/"
-    addScalarFunction(elecinit_path+"x_component", modelDict["ex"])
-    addScalarFunction(elecinit_path+"y_component", modelDict["ey"])
-    addScalarFunction(elecinit_path+"z_component", modelDict["ez"])
 
     add("simulation/electromag/magnetic/name", "B")
     maginit_path = "simulation/electromag/magnetic/initializer/"

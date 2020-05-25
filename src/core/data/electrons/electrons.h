@@ -320,7 +320,7 @@ public:
 
 
     Field const& density() const { return momentModel_.density(); }
-    Field const& velocity() const { return momentModel_.velocity(); }
+    VecField const& velocity() const { return momentModel_.velocity(); }
     Field const& pressure() const { return momentModel_.pressure(); }
 
 private:
