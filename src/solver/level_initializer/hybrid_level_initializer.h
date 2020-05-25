@@ -141,7 +141,7 @@ namespace solver
                 hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
             }
         }
-    }; // namespace solver
+    };
 } // namespace solver
 } // namespace PHARE
 
