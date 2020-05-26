@@ -93,15 +93,12 @@ public:
                         {
                             for (auto iCellX = lowerX; iCellX <= upperX; ++iCellX)
                             {
-                                std::array<int, 3> _3DiCell = {iCellX, iCellY, iCellZ};
-                                float middle                = 0.5;
-                                float delta                 = 0.30;
+                                float middle = 0.5;
+                                float delta  = 0.30;
 
                                 Particle<dimension> particle;
 
-                                for (size_t i = 0; i < dimension; i++)
-                                    particle.iCell[i] = _3DiCell[i];
-
+                                particle.iCell = as_sized_array<dimension>(iCellX, iCellY, iCellZ);
                                 particle.delta.fill(middle);
                                 particle.weight = 1.;
                                 particle.charge = 1.;

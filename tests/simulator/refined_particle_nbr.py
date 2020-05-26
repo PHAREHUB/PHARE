@@ -33,9 +33,9 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
     def _less_per_dim(self, dim, refined_particle_nbr, patch):
         if dim == 1:
             return refined_particle_nbr * 2
-        cells = [int(v) for v in patch.cells.split(",")]
+        cellNbr = patch.upper - patch.lower + 1
         if dim == 2:
-            return refined_particle_nbr * ((cells[0] * 2 + (cells[1] * 2)))
+            return refined_particle_nbr * ((cellNbr[0] * 2 + (cellNbr[1] * 2)))
         raise ValueError("Unhandled dimension for function")
 
 
@@ -118,10 +118,9 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
     PREVIOUS_ITERATION_MIN_DIFF_2d = 1.125
     PREVIOUS_ITERATION_MAX_DIFF_2d = 1.50
 
-    ## blocked by "electrons.h computeBulkVelocity()" - not updated for 2d
-    # def test_2d(self):
-    #     This = type(self)
-    #     self._do_dim(2, diags, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
+    def test_2d(self):
+        This = type(self)
+        self._do_dim(2, diags, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
 
     def tearDown(self):
         for k in ["dw", "dman", "sim", "hier"]:

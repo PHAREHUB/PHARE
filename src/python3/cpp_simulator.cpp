@@ -46,11 +46,11 @@ void setPatchData(PatchData& data, std::string patchID, std::string origin,
                   std::array<std::size_t, PatchData::dimension> lower,
                   std::array<std::size_t, PatchData::dimension> upper)
 {
+    constexpr size_t bytes = PatchData::dimension * sizeof(size_t);
+    std::memcpy(data.lower.request().ptr, lower.data(), bytes);
+    std::memcpy(data.upper.request().ptr, upper.data(), bytes);
     data.patchID = patchID;
     data.origin  = origin;
-
-    std::memcpy(data.lower.request().ptr, lower.data(), PatchData::dimension);
-    std::memcpy(data.upper.request().ptr, upper.data(), PatchData::dimension);
 }
 
 template<typename PatchData, typename GridLayout>
