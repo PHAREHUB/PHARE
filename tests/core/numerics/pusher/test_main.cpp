@@ -13,8 +13,8 @@
 #include "core/numerics/boundary_condition/boundary_condition.h"
 #include "core/numerics/pusher/boris.h"
 #include "core/numerics/pusher/pusher_factory.h"
-#include "core/utilities/particle_selector/particle_selector.h"
 #include "core/utilities/range/range.h"
+#include "core/utilities/box/box.h"
 
 using namespace PHARE::core;
 
@@ -106,17 +106,18 @@ public:
 };
 
 
+template<std::size_t dimension_>
 struct DummyLayout
 {
+    static constexpr std::size_t dimension = dimension_;
 };
 
 template<size_t dim>
 class APusher : public ::testing::Test
 {
 public:
-    using Pusher_
-        = BorisPusher<dim, typename ParticleArray<dim>::iterator, Electromag, Interpolator,
-                      DummySelector, BoundaryCondition<dim, 1>, DummyLayout>;
+    using Pusher_ = BorisPusher<dim, typename ParticleArray<dim>::iterator, Electromag,
+                                Interpolator, BoundaryCondition<dim, 1>, DummyLayout<dim>>;
 
     APusher()
         : expectedTrajectory{readExpectedTrajectory()}
@@ -151,7 +152,7 @@ protected:
     Electromag em;
     Interpolator interpolator;
     DummySelector selector;
-    DummyLayout layout;
+    DummyLayout<dim> layout;
     // BoundaryCondition bc;
 
     std::array<std::vector<float>, dim> actual;
@@ -249,7 +250,7 @@ public:
         , particlesOut2(1000)
         , pusher{std::make_unique<
               BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                          ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>, DummyLayout>>()}
+                          BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
         , tstart{0}
@@ -257,7 +258,6 @@ public:
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
         , domain{Point<double, 1>{0.}, Point<double, 1>{1.}}
         , cells{Point{0}, Point{9}}
-        , selector{cells}
     {
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -279,9 +279,8 @@ protected:
     ParticleArray<1> particlesIn;
     ParticleArray<1> particlesOut1;
     ParticleArray<1> particlesOut2;
-    std::unique_ptr<
-        BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                    ParticleSelector<Box<int, 1>>, BoundaryCondition<1, 1>, DummyLayout>>
+    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+                                BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
     double mass;
     double dt;
@@ -293,7 +292,6 @@ protected:
     double dx = 0.1;
     Box<double, 1> domain;
     Box<int, 1> cells;
-    ParticleSelector<Box<int, 1>> selector;
     BoundaryCondition<1, 1> bc;
 };
 
@@ -303,13 +301,16 @@ protected:
 TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 {
     auto rangeIn = makeRange(std::begin(particlesIn), std::end(particlesIn));
+    auto newEnd  = std::end(particlesIn);
+    auto selector
+        = [this](Particle<1> const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
 
-    auto newEnd = std::end(particlesIn);
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        auto layout = DummyLayout{};
+        auto layout = DummyLayout<1>{};
         newEnd      = pusher->move(rangeIn, rangeIn, em, mass, interpolator, selector, layout);
+
         if (newEnd != std::end(particlesIn))
         {
             std::cout << "stopping integration at i = " << i << "\n";
@@ -337,9 +338,12 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
 
     bc.setBoundaryBoxes(std::vector<Box<int, 1>>{});
 
+    auto selector
+        = [this](Particle<1> const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
+
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        auto layout = DummyLayout{};
+        auto layout = DummyLayout<1>{};
         newEndWithBC
             = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
         newEndWithoutBC
@@ -374,9 +378,12 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsReturnEqualStayi
 
     bc.setBoundaryBoxes(std::vector<Box<int, 1>>{});
 
+    auto selector
+        = [this](auto const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
+
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        auto layout = DummyLayout{};
+        auto layout = DummyLayout<1>{};
         newEndWithBC
             = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
         newEndWithoutBC
@@ -412,9 +419,9 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsReturnEqualStayi
 
 TEST(APusherFactory, canReturnABorisPusher)
 {
-    auto pusher = PusherFactory::makePusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                                            DummySelector, BoundaryCondition<1, 1>, DummyLayout>(
-        "modified_boris");
+    auto pusher
+        = PusherFactory::makePusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+                                    BoundaryCondition<1, 1>, DummyLayout<1>>("modified_boris");
 
     EXPECT_NE(nullptr, pusher);
 }

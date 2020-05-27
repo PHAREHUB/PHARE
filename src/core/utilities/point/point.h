@@ -132,6 +132,9 @@ namespace core
         }
 
 
+        auto begin() { return r.begin(); }
+        auto end() { return r.end(); }
+
 
     private:
         std::array<Type, dim> r;

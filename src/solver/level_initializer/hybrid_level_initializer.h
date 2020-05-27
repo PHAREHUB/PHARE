@@ -30,9 +30,7 @@ namespace solver
         using IPhysicalModelT = IPhysicalModel<amr_types>;
         using IMessengerT     = amr::IMessenger<IPhysicalModelT>;
         using HybridMessenger = amr::HybridMessenger<HybridModel, IPhysicalModel<amr_types>>;
-        using GridLayoutT     = typename HybridModel::gridLayout_type;
-
-
+        using GridLayoutT     = typename HybridModel::gridlayout_type;
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::interp_order;
 
@@ -106,7 +104,6 @@ namespace solver
                 auto& B = hybridModel.state.electromag.B;
                 auto& J = hybridModel.state.J;
 
-
                 for (auto& patch : level)
                 {
                     auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
@@ -116,9 +113,7 @@ namespace solver
 
                     hybridModel.resourcesManager->setTime(J, *patch, 0.);
                 }
-
-                // hybMessenger.fillCurrentGhosts(J, levelNumber, 0.); //TODO uncomment in
-                // 'advancement'
+                hybMessenger.fillCurrentGhosts(J, levelNumber, 0.);
 
 
 

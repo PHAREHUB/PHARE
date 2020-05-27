@@ -6,7 +6,6 @@
 
 #include "core/data/particles/particle_array.h"
 #include "core/utilities/box/box.h"
-#include "core/utilities/particle_selector/particle_selector.h"
 #include "core/utilities/partitionner/partitionner.h"
 #include "core/utilities/point/point.h"
 
@@ -14,7 +13,6 @@
 #include "gtest/gtest.h"
 
 using PHARE::core::Box;
-using PHARE::core::makeSelector;
 using PHARE::core::Particle;
 using PHARE::core::ParticleArray;
 using PHARE::core::Point;
@@ -27,15 +25,13 @@ class APartitionner : public ::testing::Test
 public:
     auto splitLeaving()
     {
-        auto isInPatch = makeSelector(std::vector<Box<int, 2>>{patchBox});
         return std::partition(std::begin(particles), std::end(particles),
-                              [&isInPatch](Particle<2> const& particle) {
-                                  if (isInPatch(particle))
-                                  {
-                                      return true;
-                                  }
-                                  return false;
-                              });
+                              [this](Particle<2> const& part) {
+                                  return PHARE::core::isIn(PHARE::core::cellAsPoint(part),
+                                                           patchBox);
+                              }
+
+        );
     }
 
 
@@ -136,11 +132,17 @@ TEST_F(APartitionner, sortsParticlesAccordingToBoxTheyAreIn)
 {
     auto partitions = partitionner(firstLeaving, std::end(particles), boundaryBoxes);
     EXPECT_EQ(50, std::distance(partitions[0], partitions[1]));
-    EXPECT_TRUE(std::all_of(partitions[0], partitions[1], makeSelector(boundaryBoxes[0])));
+    EXPECT_TRUE(std::all_of(partitions[0], partitions[1], [this](auto const& part) {
+        return isIn(cellAsPoint(part), boundaryBoxes[0]);
+    }));
     EXPECT_EQ(50, std::distance(partitions[1], partitions[2]));
-    EXPECT_TRUE(std::all_of(partitions[1], partitions[2], makeSelector(boundaryBoxes[1])));
+    EXPECT_TRUE(std::all_of(partitions[1], partitions[2], [this](auto const& part) {
+        return isIn(cellAsPoint(part), boundaryBoxes[1]);
+    }));
     EXPECT_EQ(50, std::distance(partitions[2], partitions[3]));
-    EXPECT_TRUE(std::all_of(partitions[2], partitions[3], makeSelector(boundaryBoxes[2])));
+    EXPECT_TRUE(std::all_of(partitions[2], partitions[3], [this](auto const& part) {
+        return isIn(cellAsPoint(part), boundaryBoxes[2]);
+    }));
 }
 
 TEST_F(APartitionner, putsAllLeavingParticlesAtTheEnd)
@@ -150,7 +152,10 @@ TEST_F(APartitionner, putsAllLeavingParticlesAtTheEnd)
     patchAndBoundaries.push_back(patchBox);
     for (auto const& boundaryBox : boundaryBoxes)
         patchAndBoundaries.push_back(boundaryBox);
-    EXPECT_TRUE(std::none_of(partitions[3], std::end(particles), makeSelector(patchAndBoundaries)));
+    EXPECT_TRUE(
+        std::none_of(partitions[3], std::end(particles), [patchAndBoundaries](auto const& part) {
+            return isIn(cellAsPoint(part), patchAndBoundaries);
+        }));
 }
 
 

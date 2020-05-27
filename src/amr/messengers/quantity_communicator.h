@@ -168,10 +168,11 @@ namespace amr
         Communicator<Refiner> com;
 
         auto registerRefine
-            = [&rm, &com, &refineOp, &timeOp](std::string const& model_, std::string const& ghost_,
+            = [&rm, &com, &refineOp, &timeOp](std::string const& ghost_, std::string const& model_,
                                               std::string const& oldModel_, auto& fillPattern) {
-                  auto src_id  = rm->getID(model_);
+                  auto src_id  = rm->getID(ghost_);
                   auto dest_id = rm->getID(ghost_);
+                  auto new_id  = rm->getID(model_);
                   auto old_id  = rm->getID(oldModel_);
 
                   if (src_id && dest_id && old_id)
@@ -180,7 +181,7 @@ namespace amr
                       com.algo->registerRefine(*dest_id, // dest
                                                *src_id,  // source at same time
                                                *old_id,  // source at past time (for time interp)
-                                               *src_id,  // source at future time (for time interp)
+                                               *new_id,  // source at future time (for time interp)
                                                *dest_id, // scratch
                                                refineOp, timeOp, fillPattern);
                   }

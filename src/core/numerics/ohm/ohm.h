@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_OHM_OHM_H
-#define PHARE_CORE_NUMERICS_OHM_OHM_H
+#ifndef PHARE_OHM_H
+#define PHARE_OHM_H
 
 #include <cstddef>
 #include <iostream>
@@ -310,9 +310,9 @@ namespace core
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 Ex(ix) = ideal1D_(Ve, B, {ix}, ComponentTag<Component::X>{})
-                         + pressure_(n, Pe, {ix}, ComponentTag<Component::X>{})
-                         + resistive_(J, {ix}, ComponentTag<Component::X>{})
-                         + hyperresistive_(J, {ix}, ComponentTag<Component::X>{});
+                         + 0 * pressure_(n, Pe, {ix}, ComponentTag<Component::X>{})
+                         + 0 * resistive_(J, {ix}, ComponentTag<Component::X>{})
+                         + 0 * hyperresistive_(J, {ix}, ComponentTag<Component::X>{});
             }
 
             ix0 = this->layout_->physicalStartIndex(Ey, Direction::X);
@@ -321,9 +321,9 @@ namespace core
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 Ey(ix) = ideal1D_(Ve, B, {ix}, ComponentTag<Component::Y>{})
-                         + pressure_(n, Pe, {ix}, ComponentTag<Component::Y>{})
-                         + resistive_(J, {ix}, ComponentTag<Component::Y>{})
-                         + hyperresistive_(J, {ix}, ComponentTag<Component::Y>{});
+                         + 0 * pressure_(n, Pe, {ix}, ComponentTag<Component::Y>{})
+                         + 0 * resistive_(J, {ix}, ComponentTag<Component::Y>{})
+                         + 0 * hyperresistive_(J, {ix}, ComponentTag<Component::Y>{});
             }
 
             ix0 = this->layout_->physicalStartIndex(Ez, Direction::X);
@@ -332,9 +332,9 @@ namespace core
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 Ez(ix) = ideal1D_(Ve, B, {ix}, ComponentTag<Component::Z>{})
-                         + pressure_(n, Pe, {ix}, ComponentTag<Component::Z>{})
-                         + resistive_(J, {ix}, ComponentTag<Component::Z>{})
-                         + hyperresistive_(J, {ix}, ComponentTag<Component::Z>{});
+                         + 0 * pressure_(n, Pe, {ix}, ComponentTag<Component::Z>{})
+                         + 0 * resistive_(J, {ix}, ComponentTag<Component::Z>{})
+                         + 0 * hyperresistive_(J, {ix}, ComponentTag<Component::Z>{});
             }
         }
 

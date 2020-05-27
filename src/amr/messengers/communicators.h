@@ -101,6 +101,20 @@ namespace amr
                 // for GhostField we need schedules that take on the level where there is an overlap
                 // (there is always for patches lying inside the level)
                 // and goes to coarser level where there is not (patch lying on the level border)
+                // Create a communication schedule that communicates data within a single level and
+                // interpolates data from coarser hierarchy levels where needed.
+
+                // Data will be communicated from the interiors of the source data on the given
+                // level to the interiors and ghosts of destination data on the same level where
+                // those sources and destinations overlap. Where they do not overlap,
+                // data will be interpolated from source data on coarser levels in the patch
+                // hierarchy. Data is time interpolated between old and new sources on coarser
+                // levels when and where time interpolation is needed and copied from the source
+                // components on the patch level into the destination components otherwise. Note
+                // that the next coarser level number must correspond to a level in the hierarchy
+                // that represents a region of coarser index space than the destination level. Note
+                // that the schedule remains valid as long as the levels involved in its creation do
+                // not change; thus, it can be used for multiple data communication cycles.
                 if constexpr (Type == RefinerType::GhostField)
                 {
                     auto schedule = algo->createSchedule(

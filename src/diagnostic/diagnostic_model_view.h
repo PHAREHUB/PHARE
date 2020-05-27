@@ -31,7 +31,7 @@ class ModelView : public IModelView
 
 
 public:
-    using GridLayout      = typename Model::gridLayout_type;
+    using GridLayout      = typename Model::gridlayout_type;
     using PatchProperties = cppdict::Dict<float, double, size_t, std::string>;
 
     ModelView(Hierarchy& hierarchy, Model& model)

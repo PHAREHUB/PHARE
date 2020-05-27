@@ -3,19 +3,23 @@
 
 #include <cstddef>
 #include <utility>
+#include <functional>
+
 #include "core/utilities/range/range.h"
+#include "core/data/particles/particle.h"
 
 namespace PHARE
 {
 namespace core
 {
     template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename ParticleSelector, typename BoundaryCondition, typename GridLayout>
+             typename BoundaryCondition, typename GridLayout>
     class Pusher
     {
     protected:
-        using ParticleRange = Range<ParticleIterator>;
-
+        using ParticleRange             = Range<ParticleIterator>;
+        static auto constexpr dimension = GridLayout::dimension;
+        using ParticleSelector          = std::function<bool(Particle<dimension> const&)>;
 
     public:
         /** Move all particles in rangeIn from t=n to t=n+1 and store their new
@@ -35,8 +39,8 @@ namespace core
          * @param E: electric vector field used to accelerate particles
          * @param B: magnetic vector field used to accelerate particles
          * @param selector : used to place particles in rangeOut.
-         * @param bc : physical boundary condition. Manage particles that intersect with a physical
-         * domain bounday.
+         * @param bc : physical boundary condition. Manage particles that intersect with a
+         * physical domain bounday.
          *
          * @return the function returns an ParticleArray::iterator on the first particle
          * for which the selector returns false. The selector returns true for Particles

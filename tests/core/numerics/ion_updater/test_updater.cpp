@@ -109,7 +109,7 @@ PHARE::initializer::PHAREDict createDict()
 {
     PHARE::initializer::PHAREDict dict;
 
-    dict["simulation"]["pusher"]["name"] = std::string{"modified_boris"};
+    dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
 
     dict["ions"]["nbrPopulations"]                          = int{2};
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
@@ -750,7 +750,8 @@ TYPED_TEST_SUITE(IonUpdaterTest, DimInterps);
 
 TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+        createDict()["simulation"]["algo"]["ion_updater"]};
 }
 
 
@@ -859,7 +860,8 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+        createDict()["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
@@ -933,7 +935,8 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+        createDict()["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
@@ -953,7 +956,8 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+        createDict()["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
@@ -972,7 +976,8 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+        createDict()["simulation"]["algo"]["ion_updater"]};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
                                  UpdaterMode::moments_only);
@@ -1007,7 +1012,8 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 
 TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{createDict()["simulation"]["pusher"]};
+    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+        createDict()["simulation"]["algo"]["ion_updater"]};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
                                  UpdaterMode::moments_only);

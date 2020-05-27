@@ -192,8 +192,6 @@ namespace core
                 throw std::runtime_error(
                     "Error - Ampere - GridLayout not set, cannot proceed to calculate ampere()");
             }
-            std::cout << "I'm solving ampere " << GridLayout::dimension << "\n";
-
             compute_(B, J);
         }
     };

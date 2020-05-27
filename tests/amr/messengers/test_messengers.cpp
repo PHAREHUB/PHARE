@@ -129,6 +129,8 @@ struct DimDict<1>
             = static_cast<ScalarFunctionT<dim>>(by);
         dict["electromag"]["magnetic"]["initializer"]["z_component"]
             = static_cast<ScalarFunctionT<dim>>(bz);
+
+        dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
     }
 };
 
@@ -139,6 +141,7 @@ double density(double x, double)
 {
     return /*x * +*/ 2.;
 }
+
 
 double vx(double /*x*/, double)
 {
@@ -159,6 +162,7 @@ double vthx(double /*x*/, double)
 {
     return 1.;
 }
+
 
 double vthy(double /*x*/, double)
 {
@@ -243,6 +247,8 @@ struct DimDict<2>
             = static_cast<ScalarFunctionT<dim>>(by);
         dict["electromag"]["magnetic"]["initializer"]["z_component"]
             = static_cast<ScalarFunctionT<dim>>(bz);
+
+        dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
     }
 };
 
@@ -653,7 +659,10 @@ struct AfullHybridBasicHierarchy
             std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
-        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(dict["simulation"]["solverPPC"])};
+
+        std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(
+            createDict()["simulation"]["algo"])};
+
 
     std::shared_ptr<TagStrategy<HybridModelT>> tagStrat;
 
@@ -665,6 +674,7 @@ struct AfullHybridBasicHierarchy
     AfullHybridBasicHierarchy()
     {
         hybridModel->resourcesManager->registerResources(hybridModel->state);
+
         solver->registerResources(*hybridModel);
 
         tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
@@ -743,11 +753,7 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
         EXPECT_DOUBLE_EQ(0., patch->getPatchData(*exOldId)->getTime());
         EXPECT_DOUBLE_EQ(0.5, patch->getPatchData(*exId)->getTime());
 
-        auto layout = layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
-
-        auto& Ex = hybridModel->state.electromag.E.getComponent(Component::X);
-        auto& Ey = hybridModel->state.electromag.E.getComponent(Component::Y);
-        auto& Ez = hybridModel->state.electromag.E.getComponent(Component::Z);
+        auto layout = layoutFromPatch<typename HybridModelT::gridlayout_type>(*patch);
 
         auto& Bx = hybridModel->state.electromag.B.getComponent(Component::X);
         auto& By = hybridModel->state.electromag.B.getComponent(Component::Y);
@@ -774,6 +780,7 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
                 auto iEnd        = layout.physicalEndIndex(field, Direction::X);
                 auto iGhostEnd   = layout.ghostEndIndex(field, Direction::X);
 
+
                 for (auto ix = iGhostStart; ix < iStart; ++ix)
                 {
                     auto origin   = layout.origin();
@@ -784,7 +791,6 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
                     EXPECT_DOUBLE_EQ(expected, field(ix));
                     total_eq++;
                 }
-
 
                 for (auto ix = iEnd; ix < iGhostEnd; ++ix)
                 {
@@ -802,6 +808,7 @@ void AfullHybridBasicHierarchy<dimension>::fillsRefinedLevelFieldGhosts()
             checkMyField(By, by);
             checkMyField(Bz, bz);
         }
+
 
         if constexpr (dimension == 2)
         {

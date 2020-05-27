@@ -4,7 +4,8 @@
 #include <vector>
 
 #include "core/utilities/meta/meta_utilities.h"
-#include "core/utilities/particle_selector/particle_selector.h"
+#include "core/utilities/box/box.h"
+#include "core/data/particles/particle.h"
 
 namespace PHARE
 {
@@ -40,7 +41,8 @@ namespace core
 
         for (auto const& box : boxes)
         {
-            pivot = std::partition(pivot, end, makeSelector(box));
+            pivot = std::partition(
+                pivot, end, [&box](auto const& part) { return isIn(cellAsPoint(part), box); });
             iterators.push_back(pivot);
         }
 

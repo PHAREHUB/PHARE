@@ -283,6 +283,21 @@ namespace amr
 
 
         /**
+         * @brief fillCurrentGhosts is called by a ISolver solving a hybrid equatons to fill
+         * the ghost nodes of the electric current density field
+         * @param J is the electric current densityfor which ghost nodes will be filled
+         * @param levelNumber
+         * @param fillTime
+         */
+        void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime)
+        {
+            strat_->fillCurrentGhosts(J, levelNumber, fillTime);
+        }
+
+
+
+
+        /**
          * @brief fillIonGhostParticles is called by a ISolver solving hybrid equations to fill the
          * ghosts particles
          * @param ions for which ghost particles will be filled

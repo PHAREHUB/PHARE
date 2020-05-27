@@ -336,7 +336,7 @@ namespace solver
         virtual double getMaxFinerLevelDt(const int finerLevelNumber, const double coarseDt,
                                           const SAMRAI::hier::IntVector& ratio) override
         {
-            return std::pow(coarseDt, ratio.max());
+            return coarseDt / (ratio.max() * ratio.max()) / 2.;
         }
 
 

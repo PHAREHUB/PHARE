@@ -9,9 +9,11 @@ target_compile_options(phare-exe PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHF
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/phare_init.py ${CMAKE_CURRENT_BINARY_DIR}/phare_init.py @ONLY)
 
 target_link_libraries(phare-exe PUBLIC
     phare_simulator
     pybind11::embed
 )
+
 

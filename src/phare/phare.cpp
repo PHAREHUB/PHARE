@@ -54,15 +54,17 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
-    RuntimeDiagnosticInterface{*simulator, *hierarchy}.dump(simulator->currentTime(),
-                                                            simulator->timeStep());
+    RuntimeDiagnosticInterface diags{*simulator, *hierarchy};
 
-    //
-    // auto time = simulator.startTime();
 
-    // while (time < simulator.endTime())
-    //{
-    //    simulator.advance();
-    //    time += simulator.timeStep();
-    //}
+    auto time = simulator->startTime();
+
+    while (simulator->currentTime() < simulator->endTime())
+    {
+        diags.dump(simulator->currentTime(), simulator->timeStep());
+        simulator->advance(simulator->timeStep());
+        std::cout << simulator->currentTime() << "\n";
+        //    time += simulator.timeStep();
+    }
+    PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
 }

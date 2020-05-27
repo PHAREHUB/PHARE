@@ -153,6 +153,14 @@ namespace core
 
 
 
+        static std::size_t constexpr ghostWidthForParticles()
+        {
+            return (interp_order % 2 == 0 ? interp_order / 2 + 1 : (interp_order + 1) / 2);
+        }
+
+
+
+
         /**
          * @brief physicalStartIndex returns the index of the first node of a given
          * centering and in a given direction that is in the physical domain, i.e. not a ghost node.
