@@ -5,12 +5,216 @@
 #include <array>
 #include <cstdint>
 #include <vector>
+#include <tuple>
+#include <numeric>
 
 
 namespace PHARE
 {
 namespace core
 {
+    template<typename DataType, std::size_t dim>
+    class NdArrayVector
+    {
+    public:
+        NdArrayVector() = delete;
+
+        template<typename... Nodes>
+        explicit NdArrayVector(Nodes... nodes)
+            : nCells_{nodes...}
+            , data_((... * nodes))
+        {
+        }
+        //          , data_(nCellsProductV<std::size_t>(nodes...)) { }
+
+        explicit NdArrayVector(std::array<std::size_t, dim> const& ncells)
+            : nCells_{ncells}
+            , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<int>()))
+        {
+        }
+
+
+        NdArrayVector(NdArrayVector const& source) = default;
+        NdArrayVector(NdArrayVector&& source)      = default;
+
+        static constexpr bool is_contiguous = 1;
+
+        auto data() const { return data_.data(); }
+
+        auto size() const { return data_.size(); }
+
+        auto begin() const { return std::begin(data_); }
+        auto begin() { return std::begin(data_); }
+
+        auto end() const { return std::end(data_); }
+        auto end() { return std::end(data_); }
+
+        void zero() { data_ = std::vector<DataType>(data_.size(), {0}); }
+
+
+        NdArrayVector& operator=(NdArrayVector const& source)
+        {
+            if (nCells_[0] != source.nCells_[0])
+            {
+                throw std::runtime_error(
+                    "Error NdArrayVector cannot be assigned, incompatible sizes");
+            }
+
+            if constexpr (dim > 1)
+            {
+                if (nCells_[1] != source.nCells_[1])
+                {
+                    throw std::runtime_error(
+                        "Error NdArrayVector cannot be assigned, incompatible sizes");
+                }
+
+                if constexpr (dim > 2)
+                {
+                    if (nCells_[2] != source.nCells_[2])
+                    {
+                        throw std::runtime_error(
+                            "Error NdArrayVector cannot be assigned, incompatible sizes");
+                    }
+                }
+            }
+
+            this->data_ = source.data_;
+            return *this;
+        }
+
+        NdArrayVector& operator=(NdArrayVector&& source)
+        {
+            if (nCells_[0] != source.nCells_[0])
+            {
+                throw std::runtime_error(
+                    "Error NdArrayVector cannot be assigned, incompatible sizes");
+            }
+
+            if constexpr (dim > 1)
+            {
+                if (nCells_[1] != source.nCells_[1])
+                {
+                    throw std::runtime_error(
+                        "Error NdArrayVector cannot be assigned, incompatible sizes");
+                }
+
+                if constexpr (dim > 2)
+                {
+                    if (nCells_[2] != source.nCells_[2])
+                    {
+                        throw std::runtime_error(
+                            "Error NdArrayVector cannot be assigned, incompatible sizes");
+                    }
+                }
+            }
+
+            this->data_ = std::move(source.data_);
+            return *this;
+        }
+
+
+        template<typename... Indexes>
+        DataType& operator()(Indexes... indexes)
+        {
+            auto params = std::tuple<Indexes...>{indexes...};
+            static_assert(sizeof...(Indexes) == dim);
+
+            if constexpr (dim == 1)
+            {
+                auto i = std::get<0>(params);
+
+                static_assert(std::is_unsigned<decltype(i)>::value);
+
+                return this->data_[i];
+            }
+
+            if constexpr (dim == 2)
+            {
+                auto i = std::get<0>(params);
+                auto j = std::get<1>(params);
+
+                static_assert(std::is_unsigned<decltype(i)>::value);
+                static_assert(std::is_unsigned<decltype(j)>::value);
+
+                return this->data_[j + i * nCells_[1]];
+            }
+
+            if constexpr (dim == 3)
+            {
+                auto i = std::get<0>(params);
+                auto j = std::get<1>(params);
+                auto k = std::get<2>(params);
+
+                static_assert(std::is_unsigned<decltype(i)>::value);
+                static_assert(std::is_unsigned<decltype(j)>::value);
+                static_assert(std::is_unsigned<decltype(k)>::value);
+
+                return this->data_[k + j * nCells_[2] + i * nCells_[1] * nCells_[2]];
+            }
+
+            if constexpr (dim != 1 && dim != 2 && dim != 3)
+            {
+                return 0;
+            }
+        }
+
+        template<typename... Indexes>
+        DataType const& operator()(Indexes... indexes) const
+        {
+            auto params = std::tuple<Indexes...>{indexes...};
+            static_assert(sizeof...(Indexes) == dim);
+
+            if constexpr (dim == 1)
+            {
+                auto i = std::get<0>(params);
+
+                static_assert(std::is_unsigned<decltype(i)>::value);
+
+                return this->data_[i];
+            }
+
+            if constexpr (dim == 2)
+            {
+                auto i = std::get<0>(params);
+                auto j = std::get<1>(params);
+
+                static_assert(std::is_unsigned<decltype(i)>::value);
+                static_assert(std::is_unsigned<decltype(j)>::value);
+
+                return this->data_[j + i * nCells_[1]];
+            }
+
+            if constexpr (dim == 3)
+            {
+                auto i = std::get<0>(params);
+                auto j = std::get<1>(params);
+                auto k = std::get<2>(params);
+
+                static_assert(std::is_unsigned<decltype(i)>::value);
+                static_assert(std::is_unsigned<decltype(j)>::value);
+                static_assert(std::is_unsigned<decltype(k)>::value);
+
+                return this->data_[k + j * nCells_[2] + i * nCells_[1] * nCells_[2]];
+            }
+
+            if constexpr (dim != 1 && dim != 2 && dim != 3)
+            {
+                return 0;
+            }
+        }
+
+    private:
+        std::array<std::size_t, dim> nCells_;
+        std::vector<DataType> data_;
+    };
+
+
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // All of what is below will have to be removed...
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
     //! base class for NdArrayVector 1D, 2D and 3D.
     /**
      * This base class gathers all code that is common to 1D, 2D and 3D implementations.
