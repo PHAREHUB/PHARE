@@ -83,7 +83,7 @@ double vthz(double x)
 class theIons : public ::testing::Test
 {
 protected:
-    using VecField1D      = VecField<NdArrayVector1D<>, HybridQuantity>;
+    using VecField1D      = VecField<NdArrayVector<1>, HybridQuantity>;
     using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 
     using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;

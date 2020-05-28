@@ -193,18 +193,18 @@ protected:
     using GridLayoutImpl = GridLayoutImplYee<1, 1>;
     GridLayout<GridLayoutImpl> layout;
     static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector1D<>, HybridQuantity> B;
-    VecField<NdArrayVector1D<>, HybridQuantity> E;
-    VecField<NdArrayVector1D<>, HybridQuantity> Bnew;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ex;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ey;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ez;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bxnew;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bynew;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bznew;
+    VecField<NdArrayVector<1>, HybridQuantity> B;
+    VecField<NdArrayVector<1>, HybridQuantity> E;
+    VecField<NdArrayVector<1>, HybridQuantity> Bnew;
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
@@ -244,18 +244,18 @@ protected:
     using GridLayoutImpl = GridLayoutImplYee<2, 1>;
     GridLayout<GridLayoutImpl> layout;
     static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector2D<>, HybridQuantity> B;
-    VecField<NdArrayVector2D<>, HybridQuantity> E;
-    VecField<NdArrayVector2D<>, HybridQuantity> Bnew;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ex;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ey;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ez;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bxnew;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bynew;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bznew;
+    VecField<NdArrayVector<2>, HybridQuantity> B;
+    VecField<NdArrayVector<2>, HybridQuantity> E;
+    VecField<NdArrayVector<2>, HybridQuantity> Bnew;
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
@@ -295,18 +295,18 @@ protected:
     using GridLayoutImpl = GridLayoutImplYee<3, 1>;
     GridLayout<GridLayoutImpl> layout;
     static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector3D<>, HybridQuantity> B;
-    VecField<NdArrayVector3D<>, HybridQuantity> E;
-    VecField<NdArrayVector3D<>, HybridQuantity> Bnew;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ex;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ey;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ez;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bxnew;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bynew;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bznew;
+    VecField<NdArrayVector<3>, HybridQuantity> B;
+    VecField<NdArrayVector<3>, HybridQuantity> E;
+    VecField<NdArrayVector<3>, HybridQuantity> Bnew;
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:

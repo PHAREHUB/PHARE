@@ -45,7 +45,7 @@ TEST_P(TestWithQuantityThatLivesOnPatchBoundary1D, ThatActualDataLivesOnPatchBou
 {
     auto fieldVariable
         = std::make_shared<FieldVariable<GridLayout<GridLayoutImplYee<1, 1>>,
-                                         Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
+                                         Field<NdArrayVector<1>, HybridQuantity::Scalar>>>(
             param.qtyName, param.qty);
 
     EXPECT_TRUE(fieldVariable->dataLivesOnPatchBorder());
@@ -57,7 +57,7 @@ TEST_P(TestWithQuantityThatLivesInsidePatchBoundary1D, ThatActualDataLivesInside
 {
     auto fieldVariable
         = std::make_shared<FieldVariable<GridLayout<GridLayoutImplYee<1, 1>>,
-                                         Field<NdArrayVector1D<double>, HybridQuantity::Scalar>>>(
+                                         Field<NdArrayVector<1>, HybridQuantity::Scalar>>>(
             param.qtyName, param.qty);
 
     EXPECT_FALSE(fieldVariable->dataLivesOnPatchBorder());

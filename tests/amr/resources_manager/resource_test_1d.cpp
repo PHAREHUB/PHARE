@@ -14,7 +14,7 @@ static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using VecField1D                      = VecField<NdArrayVector1D<>, HybridQuantity>;
+using VecField1D                      = VecField<NdArrayVector<1>, HybridQuantity>;
 using IonPopulation1D                 = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
 using Ions1D                          = Ions<IonPopulation1D, GridYee1D>;
 using Electromag1D                    = Electromag<VecField1D>;

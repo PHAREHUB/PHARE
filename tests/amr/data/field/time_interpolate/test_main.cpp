@@ -30,7 +30,7 @@ std::size_t constexpr interpOrder = 1;
 
 using GridYee = GridLayout<GridLayoutImplYee<dim, interpOrder>>;
 
-using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
+using Field1D = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 using FieldDataT = FieldData<GridYee, Field1D>;
 

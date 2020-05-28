@@ -168,15 +168,15 @@ protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector1D<>, HybridQuantity> B;
-    VecField<NdArrayVector1D<>, HybridQuantity> J;
+    VecField<NdArrayVector<1>, HybridQuantity> B;
+    VecField<NdArrayVector<1>, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -209,15 +209,15 @@ protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector2D<>, HybridQuantity> B;
-    VecField<NdArrayVector2D<>, HybridQuantity> J;
+    VecField<NdArrayVector<2>, HybridQuantity> B;
+    VecField<NdArrayVector<2>, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -250,15 +250,15 @@ protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector3D<>, HybridQuantity> B;
-    VecField<NdArrayVector3D<>, HybridQuantity> J;
+    VecField<NdArrayVector<3>, HybridQuantity> B;
+    VecField<NdArrayVector<3>, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 

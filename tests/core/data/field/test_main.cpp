@@ -60,9 +60,9 @@ protected:
 };
 
 
-using NdArrays1D = ::testing::Types<NdArrayVector1D<>>;
-using NdArrays2D = ::testing::Types<NdArrayVector2D<>>;
-using NdArrays3D = ::testing::Types<NdArrayVector3D<>>;
+using NdArrays1D = ::testing::Types<NdArrayVector<1>>;
+using NdArrays2D = ::testing::Types<NdArrayVector<2>>;
+using NdArrays3D = ::testing::Types<NdArrayVector<3>>;
 
 TYPED_TEST_SUITE(GenericField1D, NdArrays1D);
 TYPED_TEST_SUITE(GenericField2D, NdArrays2D);
@@ -89,47 +89,47 @@ TYPED_TEST(GenericField3D, ReturnsTotalNumberOfElements)
 
 TYPED_TEST(GenericField1D, IsModifiable)
 {
-    this->f(3) = 4.8;
-    EXPECT_FLOAT_EQ(4.8, this->f(3));
+    this->f(3u) = 4.8;
+    EXPECT_FLOAT_EQ(4.8, this->f(3u));
 }
 
 
 TYPED_TEST(GenericField2D, IsModifiable)
 {
-    this->f(3, 8) = 8.4;
-    EXPECT_FLOAT_EQ(8.4, this->f(3, 8));
+    this->f(3u, 8u) = 8.4;
+    EXPECT_FLOAT_EQ(8.4, this->f(3u, 8u));
 }
 
 
 TYPED_TEST(GenericField3D, IsModifiable)
 {
-    this->f(3, 8, 2) = 84.48;
-    EXPECT_FLOAT_EQ(84.48, this->f(3, 8, 2));
+    this->f(3u, 8u, 2u) = 84.48;
+    EXPECT_FLOAT_EQ(84.48, this->f(3u, 8u, 2u));
 }
 
 
 
 TYPED_TEST(GenericField1D, CanBeReadOnly)
 {
-    this->f(3)      = 4.8;
+    this->f(3u)     = 4.8;
     auto const& ref = this->f;
-    EXPECT_FLOAT_EQ(4.8, ref(3));
+    EXPECT_FLOAT_EQ(4.8, ref(3u));
 }
 
 
 TYPED_TEST(GenericField2D, CanBeReadOnly)
 {
-    this->f(3, 8)   = 8.4;
+    this->f(3u, 8u) = 8.4;
     auto const& ref = this->f;
-    EXPECT_FLOAT_EQ(8.4, ref(3, 8));
+    EXPECT_FLOAT_EQ(8.4, ref(3u, 8u));
 }
 
 
 TYPED_TEST(GenericField3D, CanBeReadOnly)
 {
-    this->f(3, 8, 2) = 84.48;
-    auto const& ref  = this->f;
-    EXPECT_FLOAT_EQ(84.48, ref(3, 8, 2));
+    this->f(3u, 8u, 2u) = 84.48;
+    auto const& ref     = this->f;
+    EXPECT_FLOAT_EQ(84.48, ref(3u, 8u, 2u));
 }
 
 
@@ -173,9 +173,8 @@ TYPED_TEST(GenericField3D, physiscalQuantity)
 TEST(Field1D, canBeAssigned)
 {
     auto nx = 10u;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx};
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho,
-                                                           nx};
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx};
 
     for (auto& v : f)
     {
@@ -197,9 +196,9 @@ TEST(Field2D, canBeAssigned)
 {
     auto nx = 10u;
     auto ny = 11u;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx, ny};
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx,
-                                                           ny};
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx,
+                                                          ny};
 
     for (auto& v : f)
     {
@@ -222,10 +221,10 @@ TEST(Field3D, canBeAssigned)
     auto nx = 10u;
     auto ny = 11u;
     auto nz = 12u;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx, ny,
-                                                       nz};
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx,
-                                                           ny, nz};
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> f{"test", HybridQuantity::Scalar::rho, nx, ny,
+                                                      nz};
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> other{"other", HybridQuantity::Scalar::rho, nx,
+                                                          ny, nz};
 
     for (auto& v : f)
     {
@@ -246,9 +245,9 @@ TEST(Field3D, canBeAssigned)
 TEST(Field1D, canBeAveraged)
 {
     auto nx = 15u;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx};
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx};
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx};
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx};
 
     //
     for (auto& v : f1)
@@ -277,9 +276,9 @@ TEST(Field2D, canBeAveraged)
 {
     auto nx = 15u;
     auto ny = 25u;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx, ny};
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx, ny};
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx, ny};
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx, ny};
 
     //
     for (auto& v : f1)
@@ -309,12 +308,12 @@ TEST(Field3D, canBeAveraged)
     auto nx = 15u;
     auto ny = 25u;
     auto nz = 35u;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx, ny,
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> f1{"f1", HybridQuantity::Scalar::rho, nx, ny,
+                                                       nz};
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx, ny,
+                                                       nz};
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx, ny,
                                                         nz};
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> f2{"f2", HybridQuantity::Scalar::rho, nx, ny,
-                                                        nz};
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> avg{"f2", HybridQuantity::Scalar::rho, nx, ny,
-                                                         nz};
 
     //
     for (auto& v : f1)
