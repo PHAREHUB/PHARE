@@ -264,20 +264,27 @@ namespace amr
                      std::shared_ptr<ResourcesManager> const& rm,
                      std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp)
     {
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
+            = std::make_shared<XVariableFillPattern>();
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
+            = std::make_shared<YVariableFillPattern>();
+        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
+            = std::make_shared<ZVariableFillPattern>();
+
         Communicator<Synchronizer, dimension> com;
 
-        auto registerCoarsen = [&com, &rm, &coarsenOp](std::string name) //
+        auto registerCoarsen = [&com, &rm, &coarsenOp](std::string name, auto& fillpattern) //
         {
             auto id = rm->getID(name);
             if (id)
             {
-                com.algo->registerCoarsen(*id, *id, coarsenOp);
+                com.algo->registerCoarsen(*id, *id, coarsenOp, fillpattern);
             }
         };
 
-        registerCoarsen(descriptor.xName);
-        registerCoarsen(descriptor.yName);
-        registerCoarsen(descriptor.zName);
+        registerCoarsen(descriptor.xName, xVariableFillPattern);
+        registerCoarsen(descriptor.yName, yVariableFillPattern);
+        registerCoarsen(descriptor.zName, zVariableFillPattern);
 
         return com;
     }

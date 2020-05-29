@@ -11,15 +11,15 @@ import numpy as np
 # configure the simulation
 
 Simulation(
-    smallest_patch_size=10,
+    smallest_patch_size=20,
     largest_patch_size=20,
-    time_step_nbr=5000,        # number of time steps (not specified if time_step and final_time provided)
-    final_time=5.,             # simulation final time (not specified if time_step and time_step_nbr provided)
+    time_step_nbr=50000,        # number of time steps (not specified if time_step and final_time provided)
+    final_time=50.,             # simulation final time (not specified if time_step and time_step_nbr provided)
     boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
-    cells=100,                # integer or tuple length == dimension
+    cells=40,                # integer or tuple length == dimension
     dl=0.3,                  # mesh size of the root level, float or tuple
-    max_nbr_levels=1,          # (default=1) max nbr of levels in the AMR hierarchy
-    #refinement_boxes={"L0": {"B0": [(10, ), (20, )]}},
+    max_nbr_levels=2,          # (default=1) max nbr of levels in the AMR hierarchy
+    refinement_boxes={"L0": {"B0": [(10, ), (20, )]}},
     diag_options={"format": "phareh5", "options": {"dir": "phare_outputs"}}
 )
 
@@ -89,7 +89,7 @@ import pyphare.pharein as ph
 
 sim = ph.globals.sim
 
-timestamps = np.arange(0, sim.final_time +sim.time_step, 10*sim.time_step)
+timestamps = np.arange(0, sim.final_time +sim.time_step, 100*sim.time_step)
 
 
 

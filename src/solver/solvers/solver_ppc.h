@@ -171,6 +171,7 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 
     modelInfo.ghostElectric.emplace_back(Epred);
     modelInfo.ghostMagnetic.emplace_back(Bpred);
+    modelInfo.initMagnetic.emplace_back(Bpred);
 }
 
 

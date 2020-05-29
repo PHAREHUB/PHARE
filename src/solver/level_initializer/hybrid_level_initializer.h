@@ -93,7 +93,7 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
-                core::setNansOnGhosts(ions, layout);
+                core::fixMomentGhosts(ions, layout);
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }

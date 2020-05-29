@@ -24,18 +24,30 @@ namespace core
             // dBydt =  dxEz
             // dBzdt = -dxEy
 
+            auto const& Bx = B.getComponent(Component::X);
             auto const& By = B.getComponent(Component::Y);
             auto const& Bz = B.getComponent(Component::Z);
 
             auto const& Ey = E.getComponent(Component::Y);
             auto const& Ez = E.getComponent(Component::Z);
 
+            auto& Bxnew = Bnew.getComponent(Component::X);
             auto& Bynew = Bnew.getComponent(Component::Y);
             auto& Bznew = Bnew.getComponent(Component::Z);
 
+
+            auto start = this->layout_->physicalStartIndex(Bxnew, Direction::X);
+            auto end   = this->layout_->physicalEndIndex(Bxnew, Direction::X);
+
+            for (auto ix = start; ix <= end; ++ix)
+            {
+                Bxnew(ix) = Bx(ix);
+            }
+
+
             // Direction should not be in gridlayoutdef but in utilities somehow
-            auto start = this->layout_->physicalStartIndex(Bynew, Direction::X);
-            auto end   = this->layout_->physicalEndIndex(Bynew, Direction::X);
+            start = this->layout_->physicalStartIndex(Bynew, Direction::X);
+            end   = this->layout_->physicalEndIndex(Bynew, Direction::X);
 
             for (auto ix = start; ix <= end; ++ix)
             {
