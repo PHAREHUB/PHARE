@@ -214,6 +214,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag
 
             std::copy_if(firstOutGhostBox, std::end(particleArray),
                          std::back_inserter(domainParticles), inDomainSelector);
+
+            particleArray.erase(firstOutGhostBox, std::end(particleArray));
         };
 
 
