@@ -234,6 +234,13 @@ namespace core
 
 
 
+    /**
+     * This routine sets NaNs on all but closest to domain ghost moment nodes
+     * All nodes set to NaN are unsued and NaNs helps finding bugs if they are
+     * used by mistake. The ghost node that is closest to domain is used
+     * in refinement ratio 2 coarsening and should thus not be NaN. It is set
+     * to a copy of the first domain node.
+     */
     template<typename Ions, typename GridLayout>
     void fixMomentGhosts(Ions& ions, GridLayout const& layout)
     {

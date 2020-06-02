@@ -166,7 +166,6 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
             interpolator_(firstGhostOut, endInDomain, pop.density(), pop.flux(), layout);
         };
 
-        // std::cout << "nbr levelghost : " << pop.levelGhostParticles().size() << "\n";
         pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost);
         pushAndAccumulateGhosts(pop.levelGhostParticles(), tmpLevelGhost);
     }
@@ -193,6 +192,12 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag
 
     auto inDomainSelector
         = [&domainBox](auto const& part) { return core::isIn(cellAsPoint(part), domainBox); };
+
+
+    // push domain particles, erase from array those leaving domain
+    // push patch and level ghost particles that are in ghost area (==ghost box without domain)
+    // copy patch and ghost particles out of ghost area that are in domain, in particle array
+    // finally all particles in domain are to be interpolated on mesh.
 
 
     for (auto& pop : ions)
