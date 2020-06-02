@@ -155,8 +155,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
         auto pushAndAccumulateGhosts = [&](auto& inputArray, auto& outputArray) {
             outputArray.resize(inputArray.size());
 
-            auto inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
-            auto outRange = makeRange(std::begin(outputArray), std::end(outputArray));
+            inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
+            outRange = makeRange(std::begin(outputArray), std::end(outputArray));
 
             auto firstGhostOut = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
                                                ghostSelector, layout);
