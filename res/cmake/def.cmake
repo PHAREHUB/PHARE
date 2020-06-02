@@ -24,11 +24,14 @@ if(coverage AND NOT MSVC)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3")
 endif()
 
+set (PHARE_FLAGS ${PHARE_FLAGS})
+set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
+
 if(devMode)
 if(MSVC)
-  set (PHARE_WERROR_FLAGS /W4 /WX)
+  set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS} /W4 /WX)
 else()
-  set (PHARE_WERROR_FLAGS -Wall -Wextra -pedantic -Werror
+  set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS} -Wall -Wextra -pedantic -Werror
         -Wno-unused-variable -Wno-unused-parameter)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_WERROR_FLAGS ${PHARE_WERROR_FLAGS}
