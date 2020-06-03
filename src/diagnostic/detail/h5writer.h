@@ -201,7 +201,6 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
     fileAttributes_["cell_width"]  = modelView_.cellWidth();
     fileAttributes_["origin"]      = modelView_.origin();
 
-
     initializeDatasets_(diagnostics);
     writeDatasets_(diagnostics);
 }

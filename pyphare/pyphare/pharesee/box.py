@@ -40,7 +40,6 @@ class Box:
     def __repr__(self):
         return self.__str__()
 
-
     def __contains__(self, item):
         if isinstance(item, int):
             cell = item
@@ -48,7 +47,6 @@ class Box:
 
         if isinstance(item, Box):
             box = item
-
             return box.lower >= self.lower and box.upper <= self.upper
 
     def __eq__(self, other):
@@ -89,7 +87,6 @@ def remove(box, to_remove):
     if intersection is None:
         return [box, ]
 
-
     if to_remove in box and box.lower < to_remove.lower and box.upper > to_remove.upper:
         #   |----------------|    box
         #        |-----|          remove
@@ -109,7 +106,6 @@ def remove(box, to_remove):
         #  |---------------|      box
         #            |----------| remove
         return [Box(box.lower, intersection.lower - 1), ]
-
 
 
 
