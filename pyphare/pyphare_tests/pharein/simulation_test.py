@@ -14,7 +14,7 @@ class TestSimulation(unittest.TestCase):
         self.cells_array = [80, (80, 40), (80, 40, 12)]
         self.dl_array = [0.1, (0.1, 0.2), (0.1, 0.2, 0.3)]
         self.domain_size_array = [100., (100., 80.), (100., 80., 20.)]
-        self.dims = [1, 2, 3]
+        self.dims = [1, 2] #TODO https://github.com/PHAREHUB/PHARE/issues/232
         self.bcs = ["periodic", ("periodic", "periodic"), ("periodic", "periodic", "periodic")]
         self.layout = "yee"
         self.time_step = 0.001
