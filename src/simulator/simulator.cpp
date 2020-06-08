@@ -3,24 +3,15 @@
 
 namespace PHARE
 {
-/*
-    template definitions for library for methods in this file
-    useful for minimizing compile times during dev
-*/
+std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
+{
+    PHARE::initializer::PHAREDict& theDict
+        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+    auto dim           = theDict["simulation"]["dimension"].template to<int>();
+    auto interpOrder   = theDict["simulation"]["interp_order"].template to<int>();
+    auto nbRefinedPart = theDict["simulation"]["refined_particle_nbr"].template to<int>();
 
-/*
-
-template class Simulator<1, 1>;
-template class Simulator<1, 2>;
-template class Simulator<1, 3>;
-
-template class Simulator<2, 1>;
-template class Simulator<2, 2>;
-template class Simulator<2, 3>;
-
-template class Simulator<3, 1>;
-template class Simulator<3, 2>;
-template class Simulator<3, 3>;
-*/
-
+    return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, nbRefinedPart,
+                                               SimulatorMaker{hierarchy});
+}
 } /* namespace PHARE */

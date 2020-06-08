@@ -39,7 +39,7 @@ class IDiagnosticsManager
 {
 public:
     virtual void dump(double timeStamp, double timeStep) = 0;
-    virtual ~IDiagnosticsManager();
+    inline virtual ~IDiagnosticsManager();
 };
 IDiagnosticsManager::~IDiagnosticsManager() {}
 
