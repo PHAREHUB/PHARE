@@ -1,11 +1,8 @@
 #include "mpi_utils.h"
 
-namespace PHARE::core::mpi {
-
-
-
-std::vector<std::string> collectStrings(std::string str, int mpi_size = 0,
-                                        std::string null_str = "null")
+namespace PHARE::core::mpi
+{
+std::vector<std::string> collectStrings(std::string str, int mpi_size, std::string null_str)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -26,11 +23,11 @@ std::vector<std::string> collectStrings(std::string str, int mpi_size = 0,
 
 
 
-size_t max(size_t local, int mpi_size = 0)
+size_t max(size_t local, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     auto perMPI = collect(local, mpi_size);
     return *std::max_element(std::begin(perMPI), std::end(perMPI));
 }
-}
+} // namespace PHARE::core::mpi
