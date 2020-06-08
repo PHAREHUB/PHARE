@@ -3,13 +3,13 @@ class DataWrangler:
 
     def __init__(self, simulator, hier):
         from .. import pharein as ph
-        from pybindlibs.data import data_wrangler
+        from pybindlibs import cpp
 
         self.dim = ph.globals.sim.dims
         self.interp = ph.globals.sim.interp_order
         self.refined_particle_nbr = ph.globals.sim.refined_particle_nbr
         self.cpp = getattr(
-            data_wrangler,
+            cpp,
             "DataWrangler_" + str(self.dim) + "_" + str(self.interp)+ "_" + str(self.refined_particle_nbr),
         )(simulator, hier)
 
