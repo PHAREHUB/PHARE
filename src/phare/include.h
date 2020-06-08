@@ -52,15 +52,6 @@ public:
     }
 };
 
-class StaticSamraiLifeCycle : public SamraiLifeCycle
-{
-public:
-    inline static StaticSamraiLifeCycle& INSTANCE()
-    {
-        static StaticSamraiLifeCycle i;
-        return i;
-    }
-};
 
 } // namespace PHARE
 

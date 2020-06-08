@@ -12,6 +12,17 @@ namespace PHARE::pydata
 {
 PYBIND11_MODULE(cpp, m)
 {
+    class StaticSamraiLifeCycle : public SamraiLifeCycle
+    {
+    public:
+        inline static StaticSamraiLifeCycle& INSTANCE()
+        {
+            static StaticSamraiLifeCycle i;
+            return i;
+        }
+    };
+
+
     StaticSamraiLifeCycle::INSTANCE(); // init
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");

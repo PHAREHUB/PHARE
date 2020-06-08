@@ -50,6 +50,7 @@ set( SOURCES_CPP
      messengers/messenger.cpp
      data/field/coarsening/field_coarsen.cpp
      resources_manager/resources_manager.cpp
+     messengers/messenger_factory.cpp
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

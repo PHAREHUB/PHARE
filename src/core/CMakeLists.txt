@@ -53,6 +53,7 @@ set( SOURCES_CPP
      data/ndarray/ndarray_vector.cpp
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
+     utilities/mpi_utils.cpp
     )
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})

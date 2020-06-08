@@ -236,18 +236,7 @@ struct SimulatorMaker
 };
 
 
-std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
-{
-    PHARE::initializer::PHAREDict& theDict
-        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-    auto dim           = theDict["simulation"]["dimension"].template to<int>();
-    auto interpOrder   = theDict["simulation"]["interp_order"].template to<int>();
-    auto nbRefinedPart = theDict["simulation"]["refined_particle_nbr"].template to<int>();
-
-    return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, nbRefinedPart,
-                                               SimulatorMaker{hierarchy});
-}
-
+std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
 
 
 } // namespace PHARE
