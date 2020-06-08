@@ -5,7 +5,12 @@
 #include <vector>
 #include <string>
 
+
+#include "initializer/pragma_disable.h"
+DISABLE_WARNING(cast-function-type, bad-function-cast, 42)
 #include "mpi.h"
+ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
+
 
 #include "core/utilities/types.h"
 
