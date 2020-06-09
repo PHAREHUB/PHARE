@@ -1029,7 +1029,7 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
 
     for (auto& pop : this->ions)
     {
-        for (auto ix = 0u; ix < ix0; ++ix) // leftGhostNodes
+        for (auto ix = 0u; ix < ix0 - 1; ++ix) // leftGhostNodes
         {
             auto& density = pop.density();
             auto& flux    = pop.flux();
@@ -1044,7 +1044,7 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
             EXPECT_TRUE(std::isnan(fz(ix)));
         }
 
-        for (auto ix = ix1 + 1; ix <= ix2; ++ix)
+        for (auto ix = ix1 + 1 + 1; ix <= ix2; ++ix)
         {
             auto& density = pop.density();
             auto& flux    = pop.flux();

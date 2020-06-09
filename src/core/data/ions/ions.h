@@ -234,8 +234,15 @@ namespace core
 
 
 
+    /**
+     * This routine sets NaNs on all but closest to domain ghost moment nodes
+     * All nodes set to NaN are unsued and NaNs helps finding bugs if they are
+     * used by mistake. The ghost node that is closest to domain is used
+     * in refinement ratio 2 coarsening and should thus not be NaN. It is set
+     * to a copy of the first domain node.
+     */
     template<typename Ions, typename GridLayout>
-    void setNansOnGhosts(Ions& ions, GridLayout const& layout)
+    void fixMomentGhosts(Ions& ions, GridLayout const& layout)
     {
         if constexpr (Ions::dimension == 1)
         {
@@ -252,10 +259,23 @@ namespace core
                 }
             };
 
+
+            auto copy = [ix0, ix1](auto& pop) {
+                pop.density()(ix0 - 1) = pop.density()(ix0);
+                pop.density()(ix1 + 1) = pop.density()(ix1);
+
+                for (auto& [id, type] : Components::componentMap)
+                {
+                    pop.flux().getComponent(type)(ix0 - 1) = pop.flux().getComponent(type)(ix0);
+                    pop.flux().getComponent(type)(ix1 + 1) = pop.flux().getComponent(type)(ix1);
+                }
+            };
+
             for (auto& pop : ions)
             {
-                set(pop, 0u, ix0); // leftGhostNodes
-                set(pop, ix1 + 1, ix2 + 1);
+                set(pop, 0u, ix0 - 1); // leftGhostNodes
+                set(pop, ix1 + 1 + 1, ix2 + 1);
+                copy(pop);
             }
         }
         else if constexpr (Ions::dimension == 2)

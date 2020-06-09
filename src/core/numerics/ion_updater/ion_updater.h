@@ -93,7 +93,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions, GridLayout const& layout)
 {
-    setNansOnGhosts(ions, layout);
+    fixMomentGhosts(ions, layout);
     ions.computeDensity();
     ions.computeBulkVelocity();
 }
@@ -115,6 +115,15 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
         return core::isIn(cell, domainBox);
     };
 
+    auto constexpr partGhostWidth = GridLayout::ghostWidthForParticles();
+    auto ghostBox{domainBox};
+    ghostBox.grow(partGhostWidth);
+
+    auto ghostSelector = [&ghostBox, &domainBox](auto const& part) {
+        auto cell = cellAsPoint(part);
+        return core::isIn(cell, ghostBox) and !core::isIn(cell, domainBox);
+    };
+
 
     for (auto& pop : ions)
     {
@@ -122,21 +131,43 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
         ParticleArray tmpPatchGhost;
         ParticleArray tmpLevelGhost;
 
-        auto pushAndAccumulate = [&](auto& inputArray, auto& outputArray) {
+        // first push all domain particles
+        // push them while still inDomainBox
+        // accumulate those inDomainBox
+
+        tmpDomain.resize(pop.domainParticles().size());
+
+        auto inRange
+            = makeRange(std::begin(pop.domainParticles()), std::end(pop.domainParticles()));
+        auto outRange = makeRange(std::begin(tmpDomain), std::end(tmpDomain));
+
+        auto newEnd
+            = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_, inDomainBox, layout);
+
+        interpolator_(std::begin(tmpDomain), newEnd, pop.density(), pop.flux(), layout);
+
+
+        // then push patch and level ghost particles
+        // push those in the ghostArea (i.e. stop pushing if they're not out of it)
+        // some will leave the ghost area
+        // deposit moments on those which leave to go inDomainBox
+
+        auto pushAndAccumulateGhosts = [&](auto& inputArray, auto& outputArray) {
             outputArray.resize(inputArray.size());
 
-            auto inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
-            auto outRange = makeRange(std::begin(outputArray), std::end(outputArray));
+            inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
+            outRange = makeRange(std::begin(outputArray), std::end(outputArray));
 
-            auto newEnd = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
-                                        inDomainBox, layout);
+            auto firstGhostOut = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
+                                               ghostSelector, layout);
 
-            interpolator_(std::begin(outputArray), newEnd, pop.density(), pop.flux(), layout);
+            auto endInDomain = std::partition(firstGhostOut, std::end(outputArray), inDomainBox);
+
+            interpolator_(firstGhostOut, endInDomain, pop.density(), pop.flux(), layout);
         };
 
-        pushAndAccumulate(pop.domainParticles(), tmpDomain);
-        pushAndAccumulate(pop.patchGhostParticles(), tmpPatchGhost);
-        pushAndAccumulate(pop.levelGhostParticles(), tmpLevelGhost);
+        pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost);
+        pushAndAccumulateGhosts(pop.levelGhostParticles(), tmpLevelGhost);
     }
 }
 
@@ -163,6 +194,12 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag
         = [&domainBox](auto const& part) { return core::isIn(cellAsPoint(part), domainBox); };
 
 
+    // push domain particles, erase from array those leaving domain
+    // push patch and level ghost particles that are in ghost area (==ghost box without domain)
+    // copy patch and ghost particles out of ghost area that are in domain, in particle array
+    // finally all particles in domain are to be interpolated on mesh.
+
+
     for (auto& pop : ions)
     {
         auto& domainParticles = pop.domainParticles();
@@ -182,6 +219,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag
 
             std::copy_if(firstOutGhostBox, std::end(particleArray),
                          std::back_inserter(domainParticles), inDomainSelector);
+
+            particleArray.erase(firstOutGhostBox, std::end(particleArray));
         };
 
 
