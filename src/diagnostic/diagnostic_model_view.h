@@ -9,7 +9,7 @@ namespace PHARE::diagnostic
 class IModelView
 {
 public:
-    virtual ~IModelView();
+    inline virtual ~IModelView();
 };
 IModelView::~IModelView() {}
 
