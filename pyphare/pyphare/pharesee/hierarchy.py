@@ -4,6 +4,8 @@ from ..core.box import Box
 import numpy as np
 import os
 from ..core.gridlayout import GridLayout
+from .particles import Particles
+from ..data.wrangler import DataWrangler
 
 
 class PatchData:
@@ -142,8 +144,7 @@ class PatchHierarchy:
     def __str__(self):
         s = "Hierarchy: \n"
         for t, patch_levels in self.time_hier.items():
-            print("t = {}".format(t))
-            for ilvl, lvl in enumerate(patch_levels):
+            for ilvl, lvl in patch_levels.items():
                 s = s + "Level {}\n".format(ilvl)
                 for ip, patch in enumerate(lvl.patches):
                     for qty_name, pd in patch.patch_datas.items():
@@ -154,12 +155,12 @@ class PatchHierarchy:
         return s
 
 
-    def plot(self):
+    def plot_patches(self):
 
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(10, 3))
-        for ilvl, lvl in enumerate(self.time_hier[0.]):
+        for ilvl, lvl in self.time_hier[0.].items():
             lvl_offset = ilvl * 0.1
             for patch in lvl.patches:
                 dx = patch.dx
@@ -170,6 +171,36 @@ class PatchHierarchy:
                 ax.plot(xcells, y, marker=".")
 
         fig.savefig("hierarchy.png")
+
+
+
+    def plot(self, qty, xlim=None, ylim=None, title=None,filename=None):
+        import matplotlib.pyplot as plt
+
+        times = np.sort(np.asarray(list(self.time_hier.keys())))
+        fig, ax = plt.subplots(figsize=(10, 6))
+        t = times[0]
+        for il, level in self.levels(t).items():
+            patches = level.patches
+            if il == 0:
+                marker = "+"
+                alpha = 1
+                ls = '-'
+            else:
+                marker = "o"
+                alpha = 0.4
+                ls = 'none'
+            for ip, patch in enumerate(patches):
+                val = patch.patch_datas[qty].dataset[:]
+                x_val = patch.patch_datas[qty].x
+                ax.plot(x_val, val, label=r"Level {} patch {}".format(il, ip), marker=marker, alpha=alpha, ls=ls)
+                if ylim is not None:
+                    ax.set_ylim(ylim)
+        ax.legend(ncol=4)
+        ax.set_title(title)
+
+        if filename is not None:
+            fig.savefig(filename)
 
 
 
@@ -294,25 +325,12 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
 
 
-
-
-def hierarchy_from(h5_filename, time=None, hier=None):
-    """
-    this function reads an HDF5 PHARE file and returns a PatchHierarchy from
-    which data is accessible.
-    if 'time' is None, all times in the file will be read, if a time is given
-    then only that time will be read
-    if 'hier' is None, then a new hierarchy will be created, if not then the
-    given hierarchy 'hier' will be filled.
-
-    The function fails if the data is already in hierarchy
-    """
+def hierarchy_fromh5(h5_filename, time, hier):
 
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
     root_cell_width = float(data_file.attrs["cell_width"])
     domain_box = Box(0, int(data_file.attrs["domain_box"]))
-
 
     if create_from_all_times(time, hier):
         # first create from first time
@@ -320,12 +338,10 @@ def hierarchy_from(h5_filename, time=None, hier=None):
         print("creating hierarchy from all times in file")
         times = list(data_file.keys())
         hier = hierarchy_from(h5_filename, time=times[0])
-        if len(times)>1:
+        if len(times) > 1:
             for time in times[1:]:
                 hierarchy_from(h5_filename, time=time, hier=hier)
         return hier
-
-
 
     if create_from_one_time(time, hier):
         print("creating hierarchy from one time {}".format(time))
@@ -360,8 +376,6 @@ def hierarchy_from(h5_filename, time=None, hier=None):
 
         return diag_hier
 
-
-
     if load_one_time(time, hier):
         print("loading data at time {} into existing hierarchy".format(time))
         h5_time_grp = data_file[time]
@@ -383,7 +397,6 @@ def hierarchy_from(h5_filename, time=None, hier=None):
                 lvl_cell_width = root_cell_width / 2 ** ilvl
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
-
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
                     hier_patch = patch_levels[ilvl].patches[ipatch]
                     origin = float(h5_time_grp[plvl_key][pkey].attrs['origin'])
@@ -399,9 +412,9 @@ def hierarchy_from(h5_filename, time=None, hier=None):
                     add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
 
             return hier
-                    #hier_patch.patch_datas.update({dataset_name: pdata})
+            # hier_patch.patch_datas.update({dataset_name: pdata})
 
-                    #hier.data_files.update({dataset_name: f})
+            # hier.data_files.update({dataset_name: f})
 
         else:
             print("adding data to new time")
@@ -418,7 +431,6 @@ def hierarchy_from(h5_filename, time=None, hier=None):
                 lvl_patches = []
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
-
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
                     layout = make_layout(h5_patch_grp, lvl_cell_width)
                     patch_datas = {}
@@ -430,13 +442,186 @@ def hierarchy_from(h5_filename, time=None, hier=None):
             hier.time_hier[t] = patch_levels
             return hier
 
-
     if load_all_times(time, hier):
         print("loading all times in existing hier")
         for time in data_file.keys():
             hier = hierarchy_from(h5_filename, time=time, hier=hier)
 
         return hier
+
+
+def quantidic(ilvl, wrangler):
+    pl = wrangler.getPatchLevel(ilvl)
+
+    return  {"density": pl.getDensity,
+             "bulkVelocity_x":pl.getVix,
+             "bulkVelocity_y": pl.getViy,
+             "bulkVelocity_z":pl.getViz,
+             "EM_B_x":pl.getBx,
+             "EM_B_y": pl.getBy,
+             "EM_B_z": pl.getBz,
+             "EM_E_x": pl.getEx,
+             "EM_E_y": pl.getEy,
+             "EM_E_z": pl.getEz,
+             "flux_x": pl.getFx,
+             "flux_y": pl.getFy,
+             "flux_z": pl.getFz,
+             "particles":pl.getParticles}
+
+
+
+def isFieldQty(qty):
+    return qty in ("density",
+                   "bulkVelocity_x",
+                   "bulkVelocity_y",
+                   "bulkVelocity_z",
+                   "EM_B_x",
+                   "EM_B_y",
+                   "EM_B_z",
+                   "EM_E_x",
+                   "EM_E_y",
+                   "EM_E_z",
+                   "flux_x", "flux_y", "flux_z")
+
+
+
+def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
+
+    dw = DataWrangler(simulator, sim_hier)
+    nbr_levels = dw.getNumberOfLevels()
+    patch_levels = {}
+
+    root_cell_width = float(simulator.cell_width())
+    domain_box = Box(0, int(simulator.domain_box()))
+
+    for ilvl in range(nbr_levels):
+
+        lvl_cell_width = root_cell_width / 2 ** ilvl
+
+        patches = {ilvl : [] for ilvl in range(nbr_levels)}
+        getters = quantidic(ilvl, dw)
+
+
+        if isFieldQty(qty):
+            wpatches = getters[qty]()
+            for patch in wpatches:
+                patch_datas = {}
+                lower = int(patch.lower[0])
+                upper = int(patch.upper[0])
+                origin = float(patch.origin)
+                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width)
+                pdata = FieldData(layout, field_qties[qty], patch.data)
+                patch_datas[qty] = pdata
+                patches[ilvl].append(Patch(patch_datas))
+
+        elif qty == "particles":
+
+            if pop=="":
+                raise ValueError("must specify pop argument for particles")
+            # here the getter returns a dict like this
+            # {'protons': {'patchGhost': [<pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78970>,
+            #<pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78f70>],
+            # 'domain': [<pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78d70>,
+            # <pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78770>]}}
+
+            # domain particles are assumed to always be here
+            # but patchGhost and levelGhost may not be, depending on the level
+
+            populationdict = getters[qty](pop)[pop]
+
+
+            dom_dw_patches = populationdict["domain"]
+            for patch in dom_dw_patches:
+                patch_datas= {}
+
+                lower = int(patch.lower[0])
+                upper = int(patch.upper[0])
+                origin = float(patch.origin)
+                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width)
+
+                domain_particles = Particles(icells = np.asarray(patch.data.iCell),
+                                             deltas = np.asarray(patch.data.delta),
+                                             v      = np.asarray(patch.data.v),
+                                             weights = np.asarray(patch.data.weight),
+                                             charges = np.asarray(patch.data.charge))
+
+                patch_datas[pop +"_particles"] = ParticleData(layout, domain_particles)
+                patches[ilvl].append(Patch(patch_datas))
+
+
+
+            # ok now let's add the patchGhost if present
+            # note that patchGhost patches may not be the same list as the
+            # domain patches... since not all patches may not have patchGhost while they do have
+            # domain... while looping on the patchGhost items, we need to search in
+            # the already created patches which one to which add the patchGhost particles
+
+
+            for ghostParticles in ["patchGhost", "levelGhost"]:
+                if ghostParticles in populationdict:
+                    for dwpatch in populationdict[ghostParticles]:
+
+                        patchGhost_part = Particles(icells=np.asarray(dwpatch.data.iCell),
+                                                     deltas=np.asarray(dwpatch.data.delta),
+                                                     v=np.asarray(dwpatch.data.v),
+                                                     weights=np.asarray(dwpatch.data.weight),
+                                                     charges=np.asarray(dwpatch.data.charge))
+
+                        lower = int(dwpatch.lower[0])
+                        upper = int(dwpatch.upper[0])
+
+                        box = Box(lower, upper)
+
+                        # now search which of the already created patches has the same box
+                        # once found we add the new particles to the ones already present
+
+                        patch = [p for p in patches[ilvl] if p.box == box][0]
+                        patch.patch_datas[pop+"_particles"].dataset.add(patchGhost_part)
+
+
+
+
+
+
+        else:
+            raise ValueError("{} is not a valid quantity".format(qty))
+
+
+
+        patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
+
+    return PatchHierarchy(patch_levels, domain_box, simulator.currentTime())
+
+
+
+
+    
+
+
+
+
+def hierarchy_from(simulator=None, sim_hier = None, qty= None, pop = "", h5_filename=None, time=None, hier=None):
+    """
+    this function reads an HDF5 PHARE file and returns a PatchHierarchy from
+    which data is accessible.
+    if 'time' is None, all times in the file will be read, if a time is given
+    then only that time will be read
+    if 'hier' is None, then a new hierarchy will be created, if not then the
+    given hierarchy 'hier' will be filled.
+
+    The function fails if the data is already in hierarchy
+    """
+
+    if simulator is not None and h5_filename is not None:
+        raise ValueError("cannot pass both a simulator and a h5 file")
+
+    if h5_filename is not None:
+        return hierarchy_fromh5(h5_filename, time, hier)
+
+    if simulator is not None and sim_hier is not None and qty is not None:
+        return hierarchy_from_sim(simulator, sim_hier, qty, pop=pop)
+
+
 
 
 

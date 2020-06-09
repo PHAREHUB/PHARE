@@ -4,13 +4,14 @@
 
 #include <vector>
 #include <string>
+#include <cstring>
 
-
+// clang-format off
 #include "initializer/pragma_disable.h"
 DISABLE_WARNING(cast-function-type, bad-function-cast, 42)
 #include "mpi.h"
 ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
-
+// clang-format on
 
 #include "core/utilities/types.h"
 
@@ -62,6 +63,48 @@ std::vector<std::vector<Data>> collectVector(std::vector<Data> const& data, int 
 }
 
 
+
+template<typename Container>
+auto collectArrays(Container const& data, int mpi_size)
+{
+    if (mpi_size == 0)
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    std::size_t maxMPISize = 0;
+    if constexpr (core::is_std_vector_v<Container>)
+        maxMPISize = max(data.size(), mpi_size);
+    else if constexpr (core::is_std_array_v<typename Container::value_type, 1>)
+        maxMPISize = data.size();
+
+    auto perMPI = collect(data.size(), mpi_size);
+
+    std::vector<typename Container::value_type> datas(maxMPISize * mpi_size);
+    _collect(data.data(), datas, data.size(), maxMPISize);
+    if constexpr (core::is_std_vector_v<Container>)
+    {
+        std::vector<Container> values;
+        for (int i = 0; i < mpi_size; i++)
+        {
+            auto* array = &datas[maxMPISize * i];
+            values.emplace_back(array, array + perMPI[i]);
+        }
+        return values;
+    }
+    else
+    {
+        std::vector<Container> values(mpi_size);
+        for (int i = 0; i < mpi_size; i++)
+        {
+            auto* array = &datas[maxMPISize * i];
+            auto* valp  = &values[i];
+            std::memcpy(valp, array, maxMPISize);
+        }
+        return values;
+    }
+}
+
+
+
 template<typename Data>
 std::vector<Data> collect(Data const& data, int mpi_size)
 {
@@ -74,12 +117,12 @@ std::vector<Data> collect(Data const& data, int mpi_size)
         values = collectStrings(data, mpi_size);
     else if constexpr (core::is_std_vector_v<Data>)
         values = collectVector(data, mpi_size);
+    else if constexpr (core::is_std_array_v<Data, 1>)
+        values = collectArrays(data, mpi_size);
     else
         _collect(&data, values);
     return values;
 }
-
-
 } // namespace PHARE::core::mpi
 
 

@@ -23,7 +23,7 @@ class DataWranglerTest(unittest.TestCase):
             print("\n", self.dw.lvl0IonDensity())
             print("\n", self.dw.lvl0BulkVelocity())
             print("\n", self.dw.lvl0PopDensity())
-            print("\n", self.dw.lvl0PopFluxs())
+            print("\n", self.dw.lvl0PopFluxes())
             print("\n", self.dw.lvl0EM())
 
             del (

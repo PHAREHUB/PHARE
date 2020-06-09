@@ -14,13 +14,15 @@ namespace PHARE
 class ISimulator
 {
 public:
-    virtual void initialize()       = 0;
-    virtual double startTime()      = 0;
-    virtual double endTime()        = 0;
-    virtual double currentTime()    = 0;
-    virtual double timeStep()       = 0;
-    virtual void advance(double dt) = 0;
-    virtual std::string to_str()    = 0;
+    virtual void initialize()             = 0;
+    virtual double startTime()            = 0;
+    virtual double endTime()              = 0;
+    virtual double currentTime()          = 0;
+    virtual double timeStep()             = 0;
+    virtual void advance(double dt)       = 0;
+    virtual std::string to_str()          = 0;
+    virtual std::string domainBox() const = 0;
+    virtual std::string cellWidth() const = 0;
     virtual ~ISimulator() {}
 };
 
@@ -113,6 +115,9 @@ public:
     {
         try
         {
+            if (isInitialized)
+                std::runtime_error("cannot initialize  - simulator already isInitialized");
+
             if (integrator_ != nullptr)
                 integrator_->initialize();
             else
@@ -128,6 +133,7 @@ public:
             std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
             std::rethrow_exception(std::current_exception());
         }
+        isInitialized = true;
     }
 
 
@@ -137,6 +143,9 @@ public:
     double endTime() override { return finalTime_; }
     double timeStep() override { return dt_; }
     double currentTime() override { return currentTime_; }
+
+    std::string domainBox() const override { return hierarchy_->domainBox(); }
+    std::string cellWidth() const override { return hierarchy_->cellWidth(); }
 
     void advance(double dt) override
     {
@@ -194,6 +203,7 @@ private:
     int timeStepNbr_    = 0;
     double finalTime_   = 0;
     double currentTime_ = 0;
+    bool isInitialized  = false;
 
     // physical models that can be used
     std::shared_ptr<HybridModel> hybridModel_;
@@ -201,6 +211,8 @@ private:
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
 };
+
+
 
 
 struct SimulatorMaker
