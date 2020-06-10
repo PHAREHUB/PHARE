@@ -54,29 +54,9 @@ namespace core
 
         NdArrayVector& operator=(NdArrayVector const& source)
         {
-            if (nCells_[0] != source.nCells_[0])
-            {
+            if (nCells_ != source.nCells_)
                 throw std::runtime_error(
                     "Error NdArrayVector cannot be assigned, incompatible sizes");
-            }
-
-            if constexpr (dim > 1)
-            {
-                if (nCells_[1] != source.nCells_[1])
-                {
-                    throw std::runtime_error(
-                        "Error NdArrayVector cannot be assigned, incompatible sizes");
-                }
-
-                if constexpr (dim > 2)
-                {
-                    if (nCells_[2] != source.nCells_[2])
-                    {
-                        throw std::runtime_error(
-                            "Error NdArrayVector cannot be assigned, incompatible sizes");
-                    }
-                }
-            }
 
             this->data_ = source.data_;
             return *this;
@@ -84,29 +64,9 @@ namespace core
 
         NdArrayVector& operator=(NdArrayVector&& source)
         {
-            if (nCells_[0] != source.nCells_[0])
-            {
+            if (nCells_ != source.nCells_)
                 throw std::runtime_error(
                     "Error NdArrayVector cannot be assigned, incompatible sizes");
-            }
-
-            if constexpr (dim > 1)
-            {
-                if (nCells_[1] != source.nCells_[1])
-                {
-                    throw std::runtime_error(
-                        "Error NdArrayVector cannot be assigned, incompatible sizes");
-                }
-
-                if constexpr (dim > 2)
-                {
-                    if (nCells_[2] != source.nCells_[2])
-                    {
-                        throw std::runtime_error(
-                            "Error NdArrayVector cannot be assigned, incompatible sizes");
-                    }
-                }
-            }
 
             this->data_ = std::move(source.data_);
             return *this;
@@ -154,7 +114,7 @@ namespace core
 
             if constexpr (dim != 1 && dim != 2 && dim != 3)
             {
-                return 0;
+                throw std::runtime_error("Error NdArrayVector must have dim = 1, 2 or 3");
             }
         }
 
@@ -199,7 +159,7 @@ namespace core
 
             if constexpr (dim != 1 && dim != 2 && dim != 3)
             {
-                return 0;
+                throw std::runtime_error("Error NdArrayVector must have dim = 1, 2 or 3");
             }
         }
 
