@@ -1,6 +1,5 @@
 
 
-from pybindlibs import cpp
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
@@ -113,6 +112,7 @@ def makeBasicModel(extra_pops={}):
 
 
 def create_simulator(dim, interp, **input):
+    from pybindlibs import cpp
     cpp.reset()
     ph.globals.sim = None
     ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
