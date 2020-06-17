@@ -149,7 +149,7 @@ PHARE::initializer::PHAREDict createDict()
 using GridImplYee1D = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D     = GridLayout<GridImplYee1D>;
 
-using VecField1D      = VecField<NdArrayVector1D<>, HybridQuantity>;
+using VecField1D      = VecField<NdArrayVector<1>, HybridQuantity>;
 using Field1D         = typename VecField1D::field_type;
 using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
 

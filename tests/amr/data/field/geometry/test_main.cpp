@@ -18,7 +18,7 @@ using testing::Eq;
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-using Field1D = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
+using Field1D = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 template<typename GridLayoutT, typename FieldImpl>
 struct FieldGeometryParam

@@ -25,9 +25,9 @@ class a1DLaplacian : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector1D<>, HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
 
 public:
     a1DLaplacian()
@@ -47,9 +47,9 @@ class a2DLaplacian : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector2D<>, HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
 
 public:
     a2DLaplacian()
@@ -69,9 +69,9 @@ class a3DLaplacian : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector3D<>, HybridQuantity::Scalar> Jz;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
+    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
 
 public:
     a3DLaplacian()

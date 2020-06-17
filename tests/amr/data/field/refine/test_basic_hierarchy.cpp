@@ -11,7 +11,7 @@
 #include "amr/resources_manager/amr_utils.h"
 
 using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
-using Field1D     = Field<NdArrayVector1D<>, HybridQuantity::Scalar>;
+using Field1D     = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 
 template<typename GridLayoutT, typename FieldT>

@@ -29,7 +29,7 @@ using namespace PHARE::amr;
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-using VecField1D                         = VecField<NdArrayVector1D<>, HybridQuantity>;
+using VecField1D                         = VecField<NdArrayVector<1>, HybridQuantity>;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 using MaxwellianParticleInitializer1D

@@ -174,7 +174,7 @@ template<typename InterpolatorT>
 class A1DInterpolator : public ::testing::Test
 {
 public:
-    using VF = VecField<NdArrayVector1D<>, HybridQuantity>;
+    using VF = VecField<NdArrayVector<1>, HybridQuantity>;
     Electromag<VF> em;
     ParticleArray<1> particles;
     InterpolatorT interp;
@@ -183,12 +183,12 @@ public:
     static constexpr uint32_t nx = 50;
     GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {nx}, {0.}};
 
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bx1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> by1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> bz1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> ex1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> ey1d_;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> ez1d_;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> ex1d_;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> ey1d_;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> ez1d_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -286,7 +286,7 @@ template<typename InterpolatorT>
 class A2DInterpolator : public ::testing::Test
 {
 public:
-    using VF = VecField<NdArrayVector2D<>, HybridQuantity>;
+    using VF = VecField<NdArrayVector<2>, HybridQuantity>;
     Electromag<VF> em;
     ParticleArray<2> particles;
     InterpolatorT interp;
@@ -296,12 +296,12 @@ public:
     static constexpr uint32_t ny = 50;
     GridLayout<GridLayoutImplYee<2, 1>> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
 
-    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bx_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> by_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> bz_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> ex_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> ey_;
-    Field<NdArrayVector2D<>, typename HybridQuantity::Scalar> ez_;
+    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bx_;
+    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> by_;
+    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bz_;
+    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> ex_;
+    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> ey_;
+    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> ez_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -402,7 +402,7 @@ template<typename InterpolatorT>
 class A3DInterpolator : public ::testing::Test
 {
 public:
-    using VF = VecField<NdArrayVector3D<>, HybridQuantity>;
+    using VF = VecField<NdArrayVector<3>, HybridQuantity>;
     Electromag<VF> em;
     ParticleArray<3> particles;
     InterpolatorT interp;
@@ -413,12 +413,12 @@ public:
     static constexpr uint32_t nz = 50;
     GridLayout<GridLayoutImplYee<3, 1>> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
 
-    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bx_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> by_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> bz_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> ex_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> ey_;
-    Field<NdArrayVector3D<>, typename HybridQuantity::Scalar> ez_;
+    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bx_;
+    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> by_;
+    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bz_;
+    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> ex_;
+    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> ey_;
+    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> ez_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -534,11 +534,11 @@ public:
     static constexpr uint32_t numOfPart = Interpolator::interp_order + 2;
     Particle<1> part;
     ParticleArray<1> particles;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> rho;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vx;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vy;
-    Field<NdArrayVector1D<>, typename HybridQuantity::Scalar> vz;
-    VecField<NdArrayVector1D<>, HybridQuantity> v;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> rho;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> vx;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> vy;
+    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> vz;
+    VecField<NdArrayVector<1>, HybridQuantity> v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
 
 
@@ -677,10 +677,10 @@ TYPED_TEST_SUITE_P(ACollectionOfParticles);
 
 TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
 {
-    EXPECT_DOUBLE_EQ(this->rho(25), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(25), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(25), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(25), 1.0);
+    EXPECT_DOUBLE_EQ(this->rho(25u), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(25u), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(25u), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(25u), 1.0);
 }
 
 
