@@ -12,7 +12,10 @@
 
 
 
+
 namespace py = pybind11;
+
+
 
 namespace PHARE::pydata
 {
@@ -414,18 +417,20 @@ void declareDim(py::module& m)
     declarePatchData<CP>(m, name.c_str());
 }
 
+
+
 template<typename _dim, typename _interp, typename _nbRefinedPart>
 void declare(py::module& m)
 {
-    constexpr auto dim           = _dim();
-    constexpr auto interp        = _interp();
-    constexpr auto nbRefinedPart = _nbRefinedPart();
+    constexpr auto dim           = _dim{}();
+    constexpr auto interp        = _interp{}();
+    constexpr auto nbRefinedPart = _nbRefinedPart{}();
 
-    using DW = DataWrangler<dim, interp, nbRefinedPart>;
 
     std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
                               + std::to_string(nbRefinedPart);
 
+    using DW         = DataWrangler<dim, interp, nbRefinedPart>;
     std::string name = "DataWrangler" + type_string;
     py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
@@ -433,7 +438,7 @@ void declare(py::module& m)
         .def("getPatchLevel", &DW::getPatchLevel);
 
     using PL = PatchLevel<DW>;
-    name     = "PatchLevel_" + type_string;
+    name     = "PatchLevel" + type_string;
     py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
         .def("getEM", &PL::getEM)
         .def("getDensity", &PL::getDensity)
@@ -441,6 +446,14 @@ void declare(py::module& m)
         .def("getPopDensities", &PL::getPopDensities)
         .def("getPopFluxs", &PL::getPopFluxs)
         .def("getParticles", &PL::getParticles);
+
+    using _Splitter
+        = PHARE::amr::Splitter<_dim, _interp, PHARE::core::RefinedParticlesConst<nbRefinedPart>>;
+    name = "Splitter" + type_string;
+    py::class_<_Splitter, std::shared_ptr<_Splitter>>(m, name.c_str())
+        .def(py::init<>())
+        .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
+        .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
 }
 
 
@@ -452,22 +465,18 @@ void declare(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedParts...
     });
 }
 
-
-
+class StaticSamraiLifeCycle : public SamraiLifeCycle
+{
+public:
+    inline static StaticSamraiLifeCycle& INSTANCE()
+    {
+        static StaticSamraiLifeCycle i;
+        return i;
+    }
+};
 
 PYBIND11_MODULE(cpp, m)
 {
-    class StaticSamraiLifeCycle : public SamraiLifeCycle
-    {
-    public:
-        inline static StaticSamraiLifeCycle& INSTANCE()
-        {
-            static StaticSamraiLifeCycle i;
-            return i;
-        }
-    };
-
-
     StaticSamraiLifeCycle::INSTANCE(); // init
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
@@ -483,10 +492,7 @@ PYBIND11_MODULE(cpp, m)
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {
-        auto sim = PHARE::getSimulator(hier);
-        auto ptr = sim.get();
-        sim.release();
-        return std::shared_ptr<ISimulator>{ptr};
+        return std::shared_ptr<ISimulator>{std::move(PHARE::getSimulator(hier))};
     });
 
     py::class_<RuntimeDiagnosticInterface, std::shared_ptr<RuntimeDiagnosticInterface>>(
@@ -512,7 +518,6 @@ PYBIND11_MODULE(cpp, m)
         py::gil_scoped_release release;
         StaticSamraiLifeCycle::reset();
     });
-
 
     declareDim<1>(m);
     declareDim<2>(m);

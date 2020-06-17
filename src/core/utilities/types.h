@@ -95,6 +95,36 @@ namespace core
         std::apply([&](auto&... args) { (func(args), ...); }, tuple);
     }
 
+    template<typename Type, size_t Size> // std::array::fill is only constexpr in C++20 ffs
+    constexpr void fill(Type value, std::array<Type, Size>& array)
+    {
+        for (size_t i = 0; i < Size; i++)
+            array[i] = value;
+    }
+
+    template<size_t Constant>
+    class StrongIntegralConstant
+    {
+    public:
+        constexpr decltype(auto) operator()() const { return constant(); }
+
+    protected:
+        static constexpr std::integral_constant<std::size_t, Constant> constant{};
+    };
+
+    template<size_t Constant>
+    class DimConst : public StrongIntegralConstant<Constant>
+    {
+    };
+    template<size_t Constant>
+    class InterpConst : public StrongIntegralConstant<Constant>
+    {
+    };
+    template<size_t Constant>
+    class RefinedParticlesConst : public StrongIntegralConstant<Constant>
+    {
+    };
+
 } // namespace core
 } // namespace PHARE
 

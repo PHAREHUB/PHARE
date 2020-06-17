@@ -6,8 +6,14 @@ class MaxwellianFluidModel(object):
 
     def defaulter(self, input, value):
         if input is not None:
-            from inspect import signature
-            assert len(signature(input).parameters) == self.dim
+            import inspect
+            argspec = inspect.getargspec(input)
+            has_args_but_not_kwargs = argspec.varargs != None and argspec.keywords == None
+            sig = inspect.signature(input)
+            params = sig.parameters
+            param_per_dim = len(params) == self.dim
+            param_is_varargs = len(params) == 1 and has_args_but_not_kwargs
+            assert param_per_dim or param_is_varargs
             return input
         if self.dim == 1:
             return lambda x:value + x*0

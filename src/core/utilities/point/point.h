@@ -61,7 +61,7 @@ namespace core
             }
         }
 
-        constexpr Point() { r.fill(static_cast<Type>(0)); }
+        constexpr Point() { core::fill(Type{0}, r); }
 
         type& operator[](std::size_t i) { return r[i]; }
 
@@ -137,12 +137,13 @@ namespace core
 
 
     private:
-        std::array<Type, dim> r;
+        std::array<Type, dim> r{};
     };
 
     template<typename... Indexes>
     Point(Indexes... indexes)
         ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+
 
 
 } // namespace core
