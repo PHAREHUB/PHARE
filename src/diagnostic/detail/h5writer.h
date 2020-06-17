@@ -203,8 +203,10 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
 
     initializeDatasets_(diagnostics);
     writeDatasets_(diagnostics);
-}
 
+    for (auto* diagnostic : diagnostics)
+        writers.at(diagnostic->type)->finalize(*diagnostic);
+}
 
 
 /*

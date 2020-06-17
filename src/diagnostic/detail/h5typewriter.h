@@ -37,6 +37,10 @@ public:
                     size_t maxLevel)
         = 0;
 
+
+    virtual void finalize(DiagnosticProperties& diagnostic) = 0;
+
+
 protected:
     template<typename InitPatch>
     void initDataSets_(std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
