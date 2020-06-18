@@ -143,7 +143,8 @@ class PatchHierarchy:
         s = "Hierarchy: \n"
         for t, patch_levels in self.time_hier.items():
             print("t = {}".format(t))
-            for ilvl, lvl in enumerate(patch_levels):
+            for ilvl, lvl in patch_levels.items():
+                print("ilvl", ilvl, "lvl", lvl)
                 s = s + "Level {}\n".format(ilvl)
                 for ip, patch in enumerate(lvl.patches):
                     for qty_name, pd in patch.patch_datas.items():
