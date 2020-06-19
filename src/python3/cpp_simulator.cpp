@@ -497,7 +497,7 @@ PYBIND11_MODULE(cpp, m)
 
     py::class_<RuntimeDiagnosticInterface, std::shared_ptr<RuntimeDiagnosticInterface>>(
         m, "IDiagnosticsManager")
-        .def("dump", &RuntimeDiagnosticInterface::dump);
+        .def("dump", &RuntimeDiagnosticInterface::dump, py::arg("timestamp"), py::arg("timestep"));
 
     m.def("make_diagnostic_manager", [](std::shared_ptr<ISimulator> const& sim,
                                         std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {

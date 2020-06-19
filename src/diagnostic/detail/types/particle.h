@@ -54,6 +54,8 @@ public:
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
                     size_t maxLevel) override;
 
+    void finalize(DiagnosticProperties& diagnostic) override;
+
 private:
     size_t levels_ = 0;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
@@ -200,6 +202,15 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
     writeAttributes_(fileData.at(diagnostic.quantity)->file(), diagnostic, fileAttributes,
                      patchAttributes, maxLevel);
 }
+
+
+template<typename HighFiveDiagnostic>
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::finalize(DiagnosticProperties& diagnostic)
+{
+    fileData.erase(diagnostic.quantity);
+    assert(fileData.count(diagnostic.quantity) == 0);
+}
+
 
 } // namespace PHARE::diagnostic::h5
 
