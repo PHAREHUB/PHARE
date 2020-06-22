@@ -246,17 +246,16 @@ namespace amr
             std::vector<double> buffer;
             buffer.resize(expectedSize, 0.);
 
-            auto fieldOverlap = dynamic_cast<FieldOverlap<dimension> const*>(&overlap);
-            TBOX_ASSERT(fieldOverlap != nullptr);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
 
             // We flush a portion of the stream on the buffer.
             stream.unpack(buffer.data(), expectedSize);
 
-            SAMRAI::hier::Transformation const& transformation = fieldOverlap->getTransformation();
+            SAMRAI::hier::Transformation const& transformation = fieldOverlap.getTransformation();
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
             {
                 SAMRAI::hier::BoxContainer const& boxContainer
-                    = fieldOverlap->getDestinationBoxContainer();
+                    = fieldOverlap.getDestinationBoxContainer();
                 for (auto const& box : boxContainer)
                 {
                     // For unpackStream, there is no transformation needed, since all the box
