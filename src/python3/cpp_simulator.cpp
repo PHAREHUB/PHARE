@@ -46,11 +46,11 @@ void setPatchData(PatchData& data, std::string patchID, std::string origin,
                   std::array<std::size_t, PatchData::dimension> lower,
                   std::array<std::size_t, PatchData::dimension> upper)
 {
+    constexpr size_t bytes = PatchData::dimension * sizeof(size_t);
+    std::memcpy(data.lower.request().ptr, lower.data(), bytes);
+    std::memcpy(data.upper.request().ptr, upper.data(), bytes);
     data.patchID = patchID;
     data.origin  = origin;
-
-    std::memcpy(data.lower.request().ptr, lower.data(), PatchData::dimension);
-    std::memcpy(data.upper.request().ptr, upper.data(), PatchData::dimension);
 }
 
 template<typename PatchData, typename GridLayout>
@@ -633,7 +633,8 @@ PYBIND11_MODULE(cpp, m)
         .def("timeStep", &PHARE::ISimulator::timeStep)
         .def("to_str", &PHARE::ISimulator::to_str)
         .def("domain_box", &PHARE::ISimulator::domainBox)
-        .def("cell_width", &PHARE::ISimulator::cellWidth);
+        .def("cell_width", &PHARE::ISimulator::cellWidth)
+        .def("interp_order", &PHARE::ISimulator::interporder);
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {

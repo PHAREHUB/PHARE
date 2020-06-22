@@ -111,7 +111,7 @@ class PatchHierarchy:
     """is a collection of patch levels """
 
 
-    def __init__(self, patch_levels, domain_box, refinement_ratio, time=0., data_files=None):
+    def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
         self.patch_levels = patch_levels
         self.time_hier = {}
         self.time_hier.update({time:patch_levels})
@@ -290,9 +290,14 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
     """
 
     if is_particle_file(basename):
+
+        v = np.asarray(h5_patch_grp["v"])
+        s = v.size
+        v = v[:].reshape(int(s / 3), 3)
+
         particles = Particles(icells=h5_patch_grp["iCell"],
                               deltas=h5_patch_grp["delta"],
-                              v=h5_patch_grp["v"],
+                              v=v,
                               weights=h5_patch_grp["weight"],
                               charges=h5_patch_grp["charge"])
 
@@ -492,7 +497,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
     patch_levels = {}
 
     root_cell_width = float(simulator.cell_width())
-    domain_box = Box(0, int(simulator.domain_box()))
+    domain_box = Box(0, int(simulator.domain_box())-1)
 
     for ilvl in range(nbr_levels):
 
@@ -509,7 +514,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
                 lower = int(patch.lower[0])
                 upper = int(patch.upper[0])
                 origin = float(patch.origin)
-                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width)
+                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order = simulator.interporder())
                 pdata = FieldData(layout, field_qties[qty], patch.data)
                 patch_datas[qty] = pdata
                 patches[ilvl].append(Patch(patch_datas))
@@ -537,11 +542,15 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
                 lower = int(patch.lower[0])
                 upper = int(patch.upper[0])
                 origin = float(patch.origin)
-                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width)
+                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order=simulator.interp_order())
+
+                v = np.asarray(patch.data.v)
+                s = v.size
+                v = v[:].reshape(int(s / 3), 3)
 
                 domain_particles = Particles(icells = np.asarray(patch.data.iCell),
                                              deltas = np.asarray(patch.data.delta),
-                                             v      = np.asarray(patch.data.v),
+                                             v      = v,
                                              weights = np.asarray(patch.data.weight),
                                              charges = np.asarray(patch.data.charge))
 
@@ -561,9 +570,14 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
 
+                        v = np.asarray(dwpatch.data.v)
+                        s = v.size
+                        v = v[:].reshape(int(s / 3), 3)
+
+
                         patchGhost_part = Particles(icells=np.asarray(dwpatch.data.iCell),
                                                      deltas=np.asarray(dwpatch.data.delta),
-                                                     v=np.asarray(dwpatch.data.v),
+                                                     v= v,
                                                      weights=np.asarray(dwpatch.data.weight),
                                                      charges=np.asarray(dwpatch.data.charge))
 
@@ -590,7 +604,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, domain_box, simulator.currentTime())
+    return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
 
 
 

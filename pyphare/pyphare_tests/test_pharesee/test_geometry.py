@@ -174,7 +174,7 @@ def build_hierarchy(**kwargs):
 
     sorted_levels_numbers = sorted(patch_levels)
     patch_levels = {ilvl: patch_levels[ilvl] for ilvl in sorted_levels_numbers}
-    return PatchHierarchy(list(patch_levels.values()), domain_box, refinement_ratio)
+    return PatchHierarchy(patch_levels, domain_box, refinement_ratio)
 
 
 
