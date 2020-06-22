@@ -1,9 +1,10 @@
 #include "phare/include.h"
 
-#include <pybind11/functional.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/complex.h>
-#include <pybind11/stl.h>
+#include "pybind11/stl.h"
+#include "pybind11/numpy.h"
+#include "pybind11/chrono.h"
+#include "pybind11/complex.h"
+#include "pybind11/functional.h"
 
 #include "phare/include.h"
 #include "core/utilities/types.h"
@@ -11,10 +12,10 @@
 #include "core/data/particles/particle_packer.h"
 
 
-
-
 namespace py = pybind11;
 
+template<typename T>
+using py_array_t = py::array_t<T, py::array::c_style | py::array::forcecast>;
 
 
 namespace PHARE::pydata
@@ -25,8 +26,8 @@ struct PatchData
     static auto constexpr dimension = dim;
     std::string patchID;
     std::string origin;
-    std::array<std::size_t, dim> lower;
-    std::array<std::size_t, dim> upper;
+    py_array_t<std::size_t> lower{dim};
+    py_array_t<std::size_t> upper{dim};
     size_t nGhosts;
     Data data;
 
@@ -47,8 +48,9 @@ void setPatchData(PatchData& data, std::string patchID, std::string origin,
 {
     data.patchID = patchID;
     data.origin  = origin;
-    data.lower   = lower;
-    data.upper   = upper;
+
+    std::memcpy(data.lower.request().ptr, lower.data(), PatchData::dimension);
+    std::memcpy(data.upper.request().ptr, upper.data(), PatchData::dimension);
 }
 
 template<typename PatchData, typename GridLayout>
@@ -428,11 +430,16 @@ public:
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
         std::vector<PatchData<std::vector<double>, dimension>> collected;
 
+        auto reinterpret_array = [&](auto& py_array) {
+            return reinterpret_cast<std::array<size_t, dimension>&>(
+                *static_cast<size_t*>(py_array.request().ptr));
+        };
+
         auto collect = [&](auto& patch_data) {
             auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
             auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
-            auto lower    = core::mpi::collect(patch_data.lower, mpi_size);
-            auto upper    = core::mpi::collect(patch_data.upper, mpi_size);
+            auto lower    = core::mpi::collect(reinterpret_array(patch_data.lower), mpi_size);
+            auto upper    = core::mpi::collect(reinterpret_array(patch_data.upper), mpi_size);
             auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
             auto datas    = core::mpi::collect(patch_data.data, mpi_size);
 
