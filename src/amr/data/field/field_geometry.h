@@ -58,22 +58,10 @@ namespace amr
                          SAMRAI::hier::BoxContainer const& destinationRestrictBoxes
                          = SAMRAI::hier::BoxContainer{}) const final
         {
-            std::shared_ptr<SAMRAI::hier::BoxOverlap> overlap;
-            auto destinationCast = dynamic_cast<FieldGeometry const*>(&destinationGeometry);
-            auto sourceCast      = dynamic_cast<FieldGeometry const*>(&sourceGeometry);
-
-            if ((destinationCast != 0) && (sourceCast != 0))
-            {
-                overlap = doOverlap_(*destinationCast, *sourceCast, sourceMask, fillBox,
-                                     overwriteInterior, sourceOffset, destinationRestrictBoxes);
-            }
-            else if (retry)
-            {
-                overlap = sourceGeometry.calculateOverlap(
-                    destinationGeometry, sourceGeometry, sourceMask, fillBox, overwriteInterior,
-                    sourceOffset, false, destinationRestrictBoxes);
-            }
-            return overlap;
+            auto& destinationCast = dynamic_cast<FieldGeometry const&>(destinationGeometry);
+            auto& sourceCast      = dynamic_cast<FieldGeometry const&>(sourceGeometry);
+            return doOverlap_(destinationCast, sourceCast, sourceMask, fillBox, overwriteInterior,
+                              sourceOffset, destinationRestrictBoxes);
         }
 
 
