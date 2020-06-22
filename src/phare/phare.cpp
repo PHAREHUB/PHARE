@@ -2,6 +2,7 @@
 
 #include "include.h"
 #include "amr/wrappers/hierarchy.h"
+#include "kul/signal.hpp"
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
@@ -24,8 +25,12 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     return nullptr;
 }
 
+
 int main(int argc, char** argv)
 {
+    kul::Signal sig; // forces exit with ctrl+c, GIL seems to block otherwise
+    sig.intr([&](int16_t s) { exit(s); });
+
     std::string const welcome = R"~(
                   _____   _    _            _____   ______
                  |  __ \ | |  | |    /\    |  __ \ |  ____|
