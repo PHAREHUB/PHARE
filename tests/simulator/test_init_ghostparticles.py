@@ -93,9 +93,9 @@ class ParticleInitializationTest(unittest.TestCase):
     @data((1, {"L0": {"B0": [(10, ), (20, )]}}),
           (2, {"L0": {"B0": [(10, ), (20, )]}}),
           (3, {"L0": {"B0": [(10, ), (20, )]}}),
-          (1, {"L0": {"B0": [(2, ), (12, )], "B1":[(15,),(25,)]}}),
-          (2, {"L0": {"B0": [(2, ), (12, )], "B1":[(15,),(25,)]}}),
-          (3, {"L0": {"B0": [(2, ), (12, )], "B1":[(15,),(25,)]}}))
+          (1, {"L0": {"B0": [(2, ), (12, )], "B1":[(13,),(25,)]}}),
+          (2, {"L0": {"B0": [(2, ), (12, )], "B1":[(13,),(25,)]}}),
+          (3, {"L0": {"B0": [(2, ), (12, )], "B1":[(13,),(25,)]}}))
     @unpack
     def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self,interp_order, refinement_boxes):
 
@@ -103,6 +103,7 @@ class ParticleInitializationTest(unittest.TestCase):
         print("interporder : {}".format(interp_order))
         overlaps = hierarchy_overlaps(datahier)
         for ilvl, lvl_overlaps in overlaps.items():
+            print("level {}".format(ilvl))
             for overlap in lvl_overlaps:
 
                 if ilvl != 0: #only root level tested here
