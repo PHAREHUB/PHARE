@@ -1,13 +1,11 @@
 
 
-from pybindlibs import cpp
-import pyphare.pharein as ph
-from pyphare.data.wrangler import DataWrangler
 
 life_cycles = {}
 
 class Simulator:
     def __init__(self, simulation):
+        import pyphare.pharein as ph
         assert isinstance(simulation, ph.Simulation)
         self.simulation = simulation
         self.cpp_hier = None   # HERE
@@ -22,6 +20,7 @@ class Simulator:
         if self.cpp_sim is not None:
             raise ValueError("Simulator already initialized: requires reset to re-initialize")
         try:
+            from pybindlibs import cpp
             if "samrai" not in life_cycles:
                 life_cycles["samrai"] = cpp.SamraiLifeCycle()
             self.cpp_hier = cpp.make_hierarchy()
@@ -41,12 +40,14 @@ class Simulator:
     def diagnostics(self):
         self._check_init()
         if self.cpp_dman is None:
+            from pybindlibs import cpp
             self.cpp_dman = cpp.make_diagnostic_manager(self.cpp_sim, self.cpp_hier)
         return self.cpp_dman
 
     def data_wrangler(self):
         self._check_init()
         if self.cpp_dw is None:
+            from pyphare.data.wrangler import DataWrangler
             self.cpp_dw = DataWrangler(self)
         return self.cpp_dw
 
