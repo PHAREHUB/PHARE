@@ -112,10 +112,9 @@ def makeBasicModel(extra_pops={}):
     )
 
 
-def create_simulator(dim, interp, **input):
-    cpp.reset()
+def populate_simulation(dim, interp, **input):
     ph.globals.sim = None
-    ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
+    simulation = ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
     extra_pops = {}
     if "populations" in input:
         for pop, vals in input["populations"].items():
@@ -128,12 +127,8 @@ def create_simulator(dim, interp, **input):
 
     ElectronModel(closure="isothermal", Te=0.12)
 
-    ph.populateDict()
-    hier = cpp.make_hierarchy()
+    return simulation
 
-    sim = cpp.make_simulator(hier)
-    sim.initialize()
-    return [cpp.make_diagnostic_manager(sim, hier), sim, hier]
 
 def cpp_splitter_type(dim, interp, n_particles):
 

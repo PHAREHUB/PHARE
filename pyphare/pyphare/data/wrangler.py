@@ -1,7 +1,10 @@
+
+
+
 class DataWrangler:
     is_primal = {"bx": True, "by": False, "bz": False, "ex": False, "ey": True, "ez": True}
 
-    def __init__(self, simulator, hier):
+    def __init__(self, simulator):
         from .. import pharein as ph
         from pybindlibs import cpp
 
@@ -11,7 +14,10 @@ class DataWrangler:
         self.cpp = getattr(
             cpp,
             "DataWrangler_" + str(self.dim) + "_" + str(self.interp)+ "_" + str(self.refined_particle_nbr),
-        )(simulator, hier)
+        )(simulator.cpp_sim, simulator.cpp_hier)
+
+    def kill(self):
+        del self.cpp
 
 
     def getNumberOfLevels(self):

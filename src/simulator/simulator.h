@@ -11,15 +11,16 @@ namespace PHARE
 class ISimulator
 {
 public:
-    virtual void initialize()             = 0;
-    virtual double startTime()            = 0;
-    virtual double endTime()              = 0;
-    virtual double currentTime()          = 0;
-    virtual double timeStep()             = 0;
-    virtual void advance(double dt)       = 0;
-    virtual std::string to_str()          = 0;
-    virtual std::string domainBox() const = 0;
-    virtual std::string cellWidth() const = 0;
+    virtual void initialize()               = 0;
+    virtual double startTime()              = 0;
+    virtual double endTime()                = 0;
+    virtual double currentTime()            = 0;
+    virtual double timeStep()               = 0;
+    virtual void advance(double dt)         = 0;
+    virtual std::string to_str()            = 0;
+    virtual std::string domainBox() const   = 0;
+    virtual std::string cellWidth() const   = 0;
+    virtual std::size_t interporder() const = 0;
     virtual ~ISimulator() {}
 };
 
@@ -142,6 +143,7 @@ public:
 
     std::string domainBox() const override { return hierarchy_->domainBox(); }
     std::string cellWidth() const override { return hierarchy_->cellWidth(); }
+    std::size_t interporder() const override { return interp_order; }
 
     void advance(double dt) override
     {

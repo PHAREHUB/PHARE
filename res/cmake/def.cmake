@@ -102,7 +102,7 @@ if(testMPI)
   endfunction(add_phare_test)
 
   function(add_python3_test name file directory)
-    add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 ${file} WORKING_DIRECTORY ${directory})
+    add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PYTHON_EXECUTABLE} ${file} WORKING_DIRECTORY ${directory})
     set_exe_paths_(py3_${name})
   endfunction(add_python3_test)
 else()
