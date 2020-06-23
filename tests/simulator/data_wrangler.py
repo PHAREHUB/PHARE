@@ -4,21 +4,27 @@
 
 
 from pybindlibs import cpp
-from tests.simulator import create_simulator
+from tests.simulator import populate_simulation
 from pyphare.data.wrangler import DataWrangler
+from pyphare.simulator.simulator import Simulator
 import unittest
 
 # TODO - validate data from somewhere!
 
 class DataWranglerTest(unittest.TestCase):
 
+    def __init__(self, *args, **kwargs):
+        super(DataWranglerTest, self).__init__(*args, **kwargs)
+        self.dw = None
+        self.simulator = None
 
     def test_1d(self):
 
         for interp in range(1, 4):
 
-            self.dman, self.sim, self.hier = create_simulator(1, interp)
-            self.dw = DataWrangler(self.sim, self.hier)
+            self.simulator = Simulator(populate_simulation(1, interp))
+            self.simulator.initialize()
+            self.dw = DataWrangler(self.simulator)
 
             print("\n", self.dw.lvl0IonDensity())
             print("\n", self.dw.lvl0BulkVelocity())
@@ -26,20 +32,14 @@ class DataWranglerTest(unittest.TestCase):
             print("\n", self.dw.lvl0PopFluxs())
             print("\n", self.dw.lvl0EM())
 
-            del (
-                self.dw,
-                self.dman,
-                self.sim,
-                self.hier,
-            )
-            cpp.reset()
+            self.dw.kill()
+            self.simulator = None
 
     def tearDown(self):
-        for k in ["dw", "dman", "sim", "hier"]:
-            if hasattr(self, k):
-                v = getattr(self, k)
-                del v  # blocks segfault on test failure, could be None
-        cpp.reset()
+        del self.dw
+        if self.simulator is not None:
+            self.simulator.reset()
+
 
 
 if __name__ == "__main__":

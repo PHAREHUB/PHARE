@@ -8,19 +8,18 @@ import os, sys, unittest, yaml
 import numpy as np
 import pyphare.pharein as ph
 from tests.diagnostic import dump_all_diags
-from tests.simulator import create_simulator, cpp_splitter_type
+from tests.simulator import populate_simulation, cpp_splitter_type
+from pyphare.simulator.simulator import Simulator
 from pyphare.data.wrangler import DataWrangler
 
 from tests.simulator.config import project_root
-
-out = "phare_outputs/refined_particle_nbr"
-diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
 
 
 class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(SimulatorRefinedParticleNbr, self).__init__(*args, **kwargs)
+        self.simulator = None
         with open(os.path.join(project_root, "res/amr/splitting.yml"), 'r') as stream:
             try:
                 self.yaml_root = yaml.safe_load(stream)
@@ -52,7 +51,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         np.testing.assert_allclose(yaml_weight, splitter_t.weight)
 
 
-    def _do_dim(self, dim, input, min_diff, max_diff):
+    def _do_dim(self, dim, min_diff, max_diff):
         from pyphare.pharein.simulation import valid_refined_particle_nbr
 
         for interp in range(1, 4):
@@ -62,9 +61,12 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
                 self._check_deltas_and_weights(dim, interp, refined_particle_nbr)
 
-                input["refined_particle_nbr"] = refined_particle_nbr
-                self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
-                self.dw = DataWrangler(self.sim, self.hier)
+                input = {"refined_particle_nbr" : refined_particle_nbr}
+
+                self.simulator = Simulator(populate_simulation(dim, interp, **input))
+                self.simulator.initialize()
+                self.dw = DataWrangler(self.simulator)
+
                 max_per_pop = 0
                 leaving_particles = 0
                 for pop, particles in self.dw.getPatchLevel(1).getParticles().items():
@@ -85,13 +87,10 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
                     prev_max_diff = prev_min_diff * dim * max_diff
                     self.assertTrue(max_per_pop < prev_max_diff)
                 prev_split_particle_max = max_per_pop
-                del (
-                    self.dw,
-                    self.dman,
-                    self.sim,
-                    self.hier,
-                )
-                cpp.reset()
+
+                self.dw.kill()
+                self.simulator = None
+
 
     """ 1d
       refine 10 cells in 1d, ppc 100
@@ -107,7 +106,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def test_1d(self):
         This = type(self)
-        self._do_dim(1, diags, This.PREVIOUS_ITERATION_MIN_DIFF_1d, This.PREVIOUS_ITERATION_MAX_DIFF_1d)
+        self._do_dim(1, This.PREVIOUS_ITERATION_MIN_DIFF_1d, This.PREVIOUS_ITERATION_MAX_DIFF_1d)
 
     """ 2d
       refine 10x10 cells in 2d, ppc 100
@@ -121,14 +120,11 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
     ## blocked by "electrons.h computeBulkVelocity()" - not updated for 2d
     # def test_2d(self):
     #     This = type(self)
-    #     self._do_dim(2, diags, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
+    #     self._do_dim(2, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
 
     def tearDown(self):
-        for k in ["dw", "dman", "sim", "hier"]:
-            if hasattr(self, k):
-                v = getattr(self, k)
-                del v  # blocks segfault on test failure, could be None
-        cpp.reset()
+        if self.simulator is not None:
+            self.simulator.reset()
 
 
 if __name__ == "__main__":

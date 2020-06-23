@@ -465,19 +465,12 @@ void declare(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedParts...
     });
 }
 
-class StaticSamraiLifeCycle : public SamraiLifeCycle
-{
-public:
-    inline static StaticSamraiLifeCycle& INSTANCE()
-    {
-        static StaticSamraiLifeCycle i;
-        return i;
-    }
-};
 
 PYBIND11_MODULE(cpp, m)
 {
-    StaticSamraiLifeCycle::INSTANCE(); // init
+    py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
+        .def(py::init<>())
+        .def("reset", &SamraiLifeCycle::reset);
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
 
@@ -513,10 +506,6 @@ PYBIND11_MODULE(cpp, m)
         int mpi_rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
         return mpi_rank;
-    });
-    m.def("reset", []() {
-        py::gil_scoped_release release;
-        StaticSamraiLifeCycle::reset();
     });
 
     declareDim<1>(m);
