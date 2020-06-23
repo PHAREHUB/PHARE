@@ -111,7 +111,7 @@ class PatchHierarchy:
     """is a collection of patch levels """
 
 
-    def __init__(self, patch_levels, domain_box, refinement_ratio, time=0., data_files=None):
+    def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
         self.patch_levels = patch_levels
         self.time_hier = {}
         self.time_hier.update({time:patch_levels})
@@ -212,7 +212,7 @@ def is_root_lvl(patch_level):
 
 
 
-import h5py
+
 
 field_qties = {"EM_B_x": "Bx",
                "EM_B_z": "By",
@@ -292,12 +292,13 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
     if is_particle_file(basename):
 
-        if "iCell" not in h5_patch_grp.keys():
-            return False # patch attributes exist, but no data.
+        v = np.asarray(h5_patch_grp["v"])
+        s = v.size
+        v = v[:].reshape(int(s / 3), 3)
 
         particles = Particles(icells=h5_patch_grp["iCell"],
                               deltas=h5_patch_grp["delta"],
-                              v=h5_patch_grp["v"],
+                              v=v,
                               weights=h5_patch_grp["weight"],
                               charges=h5_patch_grp["charge"])
 
@@ -331,27 +332,32 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
 
 
+def patch_has_datasets(h5_patch_grp):
+    return len(h5_patch_grp.keys())>0
 
-def hierarchy_fromh5(h5_filename, time, hier):
 
+def hierarchy_fromh5(h5_filename, time, hier, silent=True):
+    import h5py
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
     root_cell_width = float(data_file.attrs["cell_width"])
-    domain_box = Box(0, int(data_file.attrs["domain_box"]))
+    domain_box = Box(0, int(data_file.attrs["domain_box"])-1)
 
     if create_from_all_times(time, hier):
         # first create from first time
         # then add all other times
-        print("creating hierarchy from all times in file")
+        if not silent:
+            print("creating hierarchy from all times in file")
         times = list(data_file.keys())
         hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier)
         if len(times) > 1:
             for time in times[1:]:
-                hierarchy_fromh5(h5_filename, time=time, hier=hier)
+                hierarchy_fromh5(h5_filename, time, hier)
         return hier
 
     if create_from_one_time(time, hier):
-        print("creating hierarchy from one time {}".format(time))
+        if not silent:
+            print("creating hierarchy from time {}".format(time))
         t = float(time.strip("t"))
 
         h5_time_grp = data_file[time]
@@ -366,31 +372,33 @@ def hierarchy_fromh5(h5_filename, time, hier):
 
             for pkey in h5_patch_lvl_grp.keys():
 
-                h5_patch_grp = data_file[time][plvl_key][pkey]
-                patch_datas = {}
-                layout = make_layout(h5_patch_grp, lvl_cell_width)
+                h5_patch_grp = h5_patch_lvl_grp[pkey]
 
-                data_exists = add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
+                if patch_has_datasets(h5_patch_grp):
+                    patch_datas = {}
+                    layout = make_layout(h5_patch_grp, lvl_cell_width)
+                    add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
 
-                if ilvl not in patches:
-                    patches[ilvl] = []
+                    if ilvl not in patches:
+                        patches[ilvl] = []
 
-                if data_exists:
                     patches[ilvl].append(Patch(patch_datas))
 
-            patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
+                    patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
         diag_hier = PatchHierarchy(patch_levels, domain_box, 2, t, data_file)
 
         return diag_hier
 
     if load_one_time(time, hier):
-        print("loading data at time {} into existing hierarchy".format(time))
+        if not silent:
+            print("loading data at time {} into existing hierarchy".format(time))
         h5_time_grp = data_file[time]
         t = float(time.strip("t"))
 
         if t in hier.time_hier:
-            print("time already exist, adding data...")
+            if not silent:
+                print("time already exist, adding data...")
 
             # time already exists in the hierarchy
             # all we need to do is adding the data
@@ -400,32 +408,33 @@ def hierarchy_fromh5(h5_filename, time, hier):
             patch_levels = hier.levels(t)
 
             for plvl_key in h5_time_grp.keys():
-
                 ilvl = int(plvl_key[2:])
                 lvl_cell_width = root_cell_width / 2 ** ilvl
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
-                    hier_patch = patch_levels[ilvl].patches[ipatch]
-                    origin = float(h5_time_grp[plvl_key][pkey].attrs['origin'])
-                    upper = int(h5_time_grp[plvl_key][pkey].attrs['upper'])
-                    lower = int(h5_time_grp[plvl_key][pkey].attrs['lower'])
-                    file_patch_box = Box(lower, upper)
 
-                    assert file_patch_box == hier_patch.box
-                    assert abs(origin - hier_patch.origin[0]) < 1e-6
-                    assert abs(lvl_cell_width - hier_patch.dx) < 1e-6
+                    if patch_has_datasets(h5_patch_grp):
+                        hier_patch = patch_levels[ilvl].patches[ipatch]
+                        origin = float(h5_time_grp[plvl_key][pkey].attrs['origin'])
+                        upper = int(h5_time_grp[plvl_key][pkey].attrs['upper'])
+                        lower = int(h5_time_grp[plvl_key][pkey].attrs['lower'])
+                        file_patch_box = Box(lower, upper)
 
-                    layout = make_layout(h5_patch_grp, lvl_cell_width)
-                    add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
+                        assert file_patch_box == hier_patch.box
+                        assert abs(origin - hier_patch.origin[0]) < 1e-6
+                        assert abs(lvl_cell_width - hier_patch.dx) < 1e-6
+
+                        layout = make_layout(h5_patch_grp, lvl_cell_width)
+                        add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
 
             return hier
-            # hier_patch.patch_datas.update({dataset_name: pdata})
 
-            # hier.data_files.update({dataset_name: f})
+
 
         else:
-            print("adding data to new time")
+            if not silent:
+                print("adding data to new time")
             # time does not exist in the hierarchy
             # we have to create a brand new set of patchLevels
             # containing patches, and load data in their patchdatas
@@ -440,10 +449,12 @@ def hierarchy_fromh5(h5_filename, time, hier):
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
-                    layout = make_layout(h5_patch_grp, lvl_cell_width)
-                    patch_datas = {}
-                    add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
-                    lvl_patches.append(Patch(patch_datas))
+
+                    if patch_has_datasets(h5_patch_grp):
+                        layout = make_layout(h5_patch_grp, lvl_cell_width)
+                        patch_datas = {}
+                        add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
+                        lvl_patches.append(Patch(patch_datas))
 
                 patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
 
@@ -451,9 +462,10 @@ def hierarchy_fromh5(h5_filename, time, hier):
             return hier
 
     if load_all_times(time, hier):
-        print("loading all times in existing hier")
+        if not silent:
+            print("loading all times in existing hier")
         for time in data_file.keys():
-            hier = hierarchy_from(h5_filename, time=time, hier=hier)
+            hier = hierarchy_fromh5(h5_filename, time, hier)
 
         return hier
 
@@ -493,14 +505,13 @@ def isFieldQty(qty):
 
 
 
-def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
-
-    dw = DataWrangler(simulator, sim_hier)
+def hierarchy_from_sim(simulator, qty, pop=""):
+    dw = simulator.data_wrangler()    
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 
     root_cell_width = float(simulator.cell_width())
-    domain_box = Box(0, int(simulator.domain_box()))
+    domain_box = Box(0, int(simulator.domain_box())-1)
 
     for ilvl in range(nbr_levels):
 
@@ -517,7 +528,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
                 lower = int(patch.lower[0])
                 upper = int(patch.upper[0])
                 origin = float(patch.origin)
-                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width)
+                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order = simulator.interporder())
                 pdata = FieldData(layout, field_qties[qty], patch.data)
                 patch_datas[qty] = pdata
                 patches[ilvl].append(Patch(patch_datas))
@@ -545,11 +556,13 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
                 lower = int(patch.lower[0])
                 upper = int(patch.upper[0])
                 origin = float(patch.origin)
-                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width)
+                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order=simulator.interp_order())
+
+                v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
 
                 domain_particles = Particles(icells = np.asarray(patch.data.iCell),
                                              deltas = np.asarray(patch.data.delta),
-                                             v      = np.asarray(patch.data.v),
+                                             v      = v,
                                              weights = np.asarray(patch.data.weight),
                                              charges = np.asarray(patch.data.charge))
 
@@ -569,9 +582,14 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
 
+                        v = np.asarray(dwpatch.data.v)
+                        s = v.size
+                        v = v[:].reshape(int(s / 3), 3)
+
+
                         patchGhost_part = Particles(icells=np.asarray(dwpatch.data.iCell),
                                                      deltas=np.asarray(dwpatch.data.delta),
-                                                     v=np.asarray(dwpatch.data.v),
+                                                     v= v,
                                                      weights=np.asarray(dwpatch.data.weight),
                                                      charges=np.asarray(dwpatch.data.charge))
 
@@ -598,7 +616,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, domain_box, simulator.currentTime())
+    return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
 
 
 
@@ -608,7 +626,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
 
 
 
-def hierarchy_from(simulator=None, sim_hier = None, qty= None, pop = "", h5_filename=None, time=None, hier=None):
+def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=None, hier=None):
     """
     this function reads an HDF5 PHARE file and returns a PatchHierarchy from
     which data is accessible.
@@ -626,10 +644,39 @@ def hierarchy_from(simulator=None, sim_hier = None, qty= None, pop = "", h5_file
     if h5_filename is not None:
         return hierarchy_fromh5(h5_filename, time, hier)
 
-    if simulator is not None and sim_hier is not None and qty is not None:
-        return hierarchy_from_sim(simulator, sim_hier, qty, pop=pop)
+    if simulator is not None and qty is not None:
+        return hierarchy_from_sim(simulator, qty, pop=pop)
+
+    print(h5_filename)
+    raise ValueError("can't make hierarchy")
 
 
+
+def merge_particles(hierarchy):
+
+    for time, patch_levels in hierarchy.time_hier.items():
+        for ilvl, plvl in hierarchy.patch_levels.items():
+            for ip, patch in enumerate(plvl.patches):
+                pdatas = patch.patch_datas
+                domain_pdata = [(pdname,pd) for pdname, pd in pdatas.items() if "domain" in pdname][0]
+
+                pghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "patchGhost" in pdname]
+                lghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "levelGhost" in pdname]
+
+                pghost_pdata = pghost_pdatas[0] if len(pghost_pdatas) else None
+                lghost_pdata = lghost_pdatas[0]if len(lghost_pdatas) else None
+
+                if pghost_pdata is not None:
+                    domain_pdata[1].dataset.add(pghost_pdata[1].dataset)
+                    del pdatas[pghost_pdata[0]]
+
+                if lghost_pdata is not None:
+                    domain_pdata[1].dataset.add(lghost_pdata[1].dataset)
+                    del pdatas[lghost_pdata[0]]
+
+                popname = domain_pdata[0].split('_')[0]
+                pdatas[popname+"_particles"] = pdatas[domain_pdata[0]]
+                del pdatas[domain_pdata[0]]
 
 
 
