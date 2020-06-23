@@ -22,8 +22,8 @@ class ParticleInitializationTest(unittest.TestCase):
         globals.sim =None
 
         Simulation(
-            smallest_patch_size=20,
-            largest_patch_size=20,
+            smallest_patch_size=10,
+            largest_patch_size=10,
             time_step_nbr=30000,
             final_time=30.,
             boundary_types="periodic",
@@ -92,7 +92,10 @@ class ParticleInitializationTest(unittest.TestCase):
 
     @data((1, {"L0": {"B0": [(10, ), (20, )]}}),
           (2, {"L0": {"B0": [(10, ), (20, )]}}),
-          (3, {"L0": {"B0": [(10, ), (20, )]}}) )
+          (3, {"L0": {"B0": [(10, ), (20, )]}}),
+          (1, {"L0": {"B0": [(2, ), (12, )], "B1":[(15,),(25,)]}}),
+          (2, {"L0": {"B0": [(2, ), (12, )], "B1":[(15,),(25,)]}}),
+          (3, {"L0": {"B0": [(2, ), (12, )], "B1":[(15,),(25,)]}}))
     @unpack
     def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self,interp_order, refinement_boxes):
 
