@@ -148,6 +148,8 @@ class ParticleInitializationTest(unittest.TestCase):
                 refghost  = ref_pd.dataset.select(ovlped_refghost)
                 cmpghost  = cmp_pd.dataset.select(ovlped_cmpghost)
 
+                print("ghost box {} has {} particles".format(ovlped_refghost, len(refghost.iCells)))
+                print("ghost box {} has {} particles".format(ovlped_cmpghost, len(cmpghost.iCells)))
 
                 # before comparing the particles we need to be sure particles of both patchdatas
                 # are sorted in the same order. We do that by sorting by x position
