@@ -10,7 +10,6 @@ import pyphare.pharein as ph
 from tests.diagnostic import dump_all_diags
 from tests.simulator import populate_simulation, cpp_splitter_type
 from pyphare.simulator.simulator import Simulator
-from pyphare.data.wrangler import DataWrangler
 
 from tests.simulator.config import project_root
 
@@ -65,7 +64,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
                 self.simulator = Simulator(populate_simulation(dim, interp, **input))
                 self.simulator.initialize()
-                self.dw = DataWrangler(self.simulator)
+                self.dw = self.simulator.data_wrangler()
 
                 max_per_pop = 0
                 leaving_particles = 0
@@ -88,7 +87,6 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
                     self.assertTrue(max_per_pop < prev_max_diff)
                 prev_split_particle_max = max_per_pop
 
-                self.dw.kill()
                 self.simulator = None
 
 

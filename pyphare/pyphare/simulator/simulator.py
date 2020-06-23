@@ -2,6 +2,7 @@
 
 from pybindlibs import cpp
 import pyphare.pharein as ph
+from pyphare.data.wrangler import DataWrangler
 
 life_cycles = {}
 
@@ -9,9 +10,10 @@ class Simulator:
     def __init__(self, simulation):
         assert isinstance(simulation, ph.Simulation)
         self.simulation = simulation
-        self.cpp_dman = None
-        self.cpp_sim  = None
-        self.cpp_hier = None
+        self.cpp_hier = None   # HERE
+        self.cpp_sim  = None   # BE
+        self.cpp_dman = None   # DRAGONS
+        self.cpp_dw   = None   # i.e. use weakrefs if you have to ref these.
 
     def __del__(self):
         self.reset()
@@ -28,11 +30,13 @@ class Simulator:
         except:
             import sys
             print('Exception caught in "Simulator.initialize()": {}'.format(sys.exc_info()[0]))
-            raise ValueError("no")
+            raise ValueError("Error in Simulator.initialize(), see previous error")
 
-    def advance(self):
+    def advance(self, dt = None):
         self._check_init()
-        self.cpp_sim.advance()
+        if dt is None:
+            dt = self.timeStep()
+        self.cpp_sim.advance(dt)
 
     def diagnostics(self):
         self._check_init()
@@ -40,7 +44,16 @@ class Simulator:
             self.cpp_dman = cpp.make_diagnostic_manager(self.cpp_sim, self.cpp_hier)
         return self.cpp_dman
 
+    def data_wrangler(self):
+        self._check_init()
+        if self.cpp_dw is None:
+            self.cpp_dw = DataWrangler(self)
+        return self.cpp_dw
+
     def reset(self):
+        if self.cpp_dw is not None:
+            self.cpp_dw.kill()
+        self.cpp_dw = None
         self.cpp_dman = None
         self.cpp_sim = None
         self.cpp_hier = None

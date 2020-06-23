@@ -5,7 +5,6 @@
 
 from pybindlibs import cpp
 from tests.simulator import populate_simulation
-from pyphare.data.wrangler import DataWrangler
 from pyphare.simulator.simulator import Simulator
 import unittest
 
@@ -24,7 +23,7 @@ class DataWranglerTest(unittest.TestCase):
 
             self.simulator = Simulator(populate_simulation(1, interp))
             self.simulator.initialize()
-            self.dw = DataWrangler(self.simulator)
+            self.dw = self.simulator.data_wrangler()
 
             print("\n", self.dw.lvl0IonDensity())
             print("\n", self.dw.lvl0BulkVelocity())
@@ -32,7 +31,6 @@ class DataWranglerTest(unittest.TestCase):
             print("\n", self.dw.lvl0PopFluxs())
             print("\n", self.dw.lvl0EM())
 
-            self.dw.kill()
             self.simulator = None
 
     def tearDown(self):

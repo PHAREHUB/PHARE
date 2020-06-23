@@ -1,11 +1,10 @@
 
-from pyphare.simulator.simulator import Simulator
+
 
 class DataWrangler:
     is_primal = {"bx": True, "by": False, "bz": False, "ex": False, "ey": True, "ez": True}
 
     def __init__(self, simulator):
-        assert isinstance(simulator, Simulator)
         from .. import pharein as ph
         from pybindlibs import cpp
 
