@@ -13,6 +13,10 @@ class DataWrangler:
             "DataWrangler_" + str(self.dim) + "_" + str(self.interp)+ "_" + str(self.refined_particle_nbr),
         )(simulator, hier)
 
+
+    def getNumberOfLevels(self):
+        return self.cpp.getNumberOfLevels()
+
     def getPatchLevel(self, lvl):
         return self.cpp.getPatchLevel(lvl)
 
@@ -34,10 +38,10 @@ class DataWrangler:
             for pop, density in self.getPatchLevel(0).getPopDensities().items()
         }
 
-    def lvl0PopFluxs(self):
+    def lvl0PopFluxes(self):
         return {
             pop: {xyz: self._lvl0FullContiguous(data) for xyz, data in flux.items()}
-            for pop, flux in self.getPatchLevel(0).getPopFluxs().items()
+            for pop, flux in self.getPatchLevel(0).getPopFluxes().items()
         }
 
     def extract_is_primal_key_from(self, em_xyz):

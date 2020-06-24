@@ -1,9 +1,10 @@
 #include "phare/include.h"
 
-#include <pybind11/functional.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/complex.h>
-#include <pybind11/stl.h>
+#include "pybind11/stl.h"
+#include "pybind11/numpy.h"
+#include "pybind11/chrono.h"
+#include "pybind11/complex.h"
+#include "pybind11/functional.h"
 
 #include "phare/include.h"
 #include "core/utilities/types.h"
@@ -11,20 +12,22 @@
 #include "core/data/particles/particle_packer.h"
 
 
-
-
 namespace py = pybind11;
 
+template<typename T>
+using py_array_t = py::array_t<T, py::array::c_style | py::array::forcecast>;
 
 
 namespace PHARE::pydata
 {
-template<typename Data>
+template<typename Data, std::size_t dim>
 struct PatchData
 {
+    static auto constexpr dimension = dim;
     std::string patchID;
     std::string origin;
-    std::string cells;
+    py_array_t<std::size_t> lower{dim};
+    py_array_t<std::size_t> upper{dim};
     size_t nGhosts;
     Data data;
 
@@ -39,38 +42,44 @@ struct PatchData
 
 
 template<typename PatchData>
-void setPatchData(PatchData& data, std::string patchID, std::string origin, std::string cells)
+void setPatchData(PatchData& data, std::string patchID, std::string origin,
+                  std::array<std::size_t, PatchData::dimension> lower,
+                  std::array<std::size_t, PatchData::dimension> upper)
 {
     data.patchID = patchID;
     data.origin  = origin;
-    data.cells   = cells;
+
+    std::memcpy(data.lower.request().ptr, lower.data(), PatchData::dimension);
+    std::memcpy(data.upper.request().ptr, upper.data(), PatchData::dimension);
 }
 
 template<typename PatchData, typename GridLayout>
-void setPatchDataFromGrid(PatchData& data, GridLayout& grid, std::string patchID)
+void setPatchDataFromGrid(PatchData& pdata, GridLayout& grid, std::string patchID)
 {
-    setPatchData(data, patchID, grid.origin().str(),
-                 core::Point<uint32_t, GridLayout::dimension>{grid.nbrCells()}.str());
+    setPatchData(pdata, patchID, grid.origin().str(),
+                 grid.AMRBox().lower.template toArray<std::size_t>(),
+                 grid.AMRBox().upper.template toArray<std::size_t>());
 }
 
 template<typename PatchData, typename Field, typename GridLayout>
-void setPatchDataFromField(PatchData& data, Field const& field, GridLayout& grid,
+void setPatchDataFromField(PatchData& pdata, Field const& field, GridLayout& grid,
                            std::string patchID)
 {
-    setPatchDataFromGrid(data, grid, patchID);
-    data.nGhosts = static_cast<size_t>(
+    setPatchDataFromGrid(pdata, grid, patchID);
+    pdata.nGhosts = static_cast<size_t>(
         GridLayout::nbrGhosts(GridLayout::centering(field.physicalQuantity())[0]));
-    data.data.assign(field.data(), field.data() + field.size());
+    pdata.data.assign(field.data(), field.data() + field.size());
 }
 
 
-template<typename DataWrangler>
+
+template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
 class PatchLevel
 {
 public:
-    static constexpr size_t dimension     = DataWrangler::dimension;
-    static constexpr size_t interp_order  = DataWrangler::interp_order;
-    static constexpr size_t nbRefinedPart = DataWrangler::nbRefinedPart;
+    static constexpr size_t dimension     = dim;
+    static constexpr size_t interp_order  = interpOrder;
+    static constexpr size_t nbRefinedPart = nbrRefPart;
 
     using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel = typename PHARETypes::HybridModel_t;
@@ -85,17 +94,17 @@ public:
 
     auto getDensity()
     {
-        std::vector<PatchData<std::vector<double>>> patch_data;
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
         auto& ions = model_.state.ions;
 
         auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
-            setPatchDataFromField(patch_data.emplace_back(), ions.density(), grid, patchID);
+            setPatchDataFromField(patchDatas.emplace_back(), ions.density(), grid, patchID);
         };
 
         PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
                                            *model_.resourcesManager, visit, ions);
 
-        return patch_data;
+        return patchDatas;
     }
 
     auto getPopDensities()
@@ -166,7 +175,7 @@ public:
         return bulkV;
     }
 
-    auto getPopFluxs()
+    auto getPopFlux()
     {
         using Inner = decltype(getPopDensities());
 
@@ -195,7 +204,9 @@ public:
 
         auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
             for (auto& vecFieldPtr : {&em.B, &em.E})
+            {
                 getVecFields(*vecFieldPtr, em_data, grid, patchID, vecFieldPtr->name());
+            }
         };
 
         PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
@@ -204,9 +215,110 @@ public:
         return em_data;
     }
 
-    auto getParticles()
+
+    auto getB(std::string componentName)
     {
-        using Nested = std::vector<PatchData<core::ContiguousParticles<dimension>>>;
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
+
+        auto& B = model_.state.electromag.B;
+
+        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+            auto compo = PHARE::core::Components::componentMap.at(componentName);
+            setPatchDataFromField(patchDatas.emplace_back(), B.getComponent(compo), grid, patchID);
+        };
+
+        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                           *model_.resourcesManager, visit, B);
+
+        return patchDatas;
+    }
+
+
+    auto getE(std::string componentName)
+    {
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
+
+        auto& E = model_.state.electromag.E;
+
+        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+            auto compo = PHARE::core::Components::componentMap.at(componentName);
+            setPatchDataFromField(patchDatas.emplace_back(), E.getComponent(compo), grid, patchID);
+        };
+
+        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                           *model_.resourcesManager, visit, E);
+
+        return patchDatas;
+    }
+
+
+
+    auto getVi(std::string componentName)
+    {
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
+
+        auto& V = model_.state.ions.velocity();
+
+        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+            auto compo = PHARE::core::Components::componentMap.at(componentName);
+            setPatchDataFromField(patchDatas.emplace_back(), V.getComponent(compo), grid, patchID);
+        };
+
+        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                           *model_.resourcesManager, visit, V);
+
+        return patchDatas;
+    }
+
+
+
+    auto getPopFluxCompo(std::string component, std::string popName)
+    {
+        using Inner = decltype(getPopDensities());
+
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
+
+        auto& ions = model_.state.ions;
+
+        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+            auto compo = PHARE::core::Components::componentMap.at(component);
+            for (auto const& pop : ions)
+                if (pop.name() == popName)
+                    setPatchDataFromField(patchDatas.emplace_back(), pop.flux().getComponent(compo),
+                                          grid, patchID);
+        };
+
+        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                           *model_.resourcesManager, visit, ions);
+
+        return patchDatas;
+    }
+
+
+
+
+    auto getEx() { return getE("x"); }
+    auto getEy() { return getE("y"); }
+    auto getEz() { return getE("z"); }
+
+    auto getBx() { return getB("x"); }
+    auto getBy() { return getB("y"); }
+    auto getBz() { return getB("z"); }
+
+    auto getVix() { return getVi("x"); }
+    auto getViy() { return getVi("y"); }
+    auto getViz() { return getVi("z"); }
+
+    auto getFx(std::string pop) { return getPopFluxCompo("x", pop); }
+    auto getFy(std::string pop) { return getPopFluxCompo("y", pop); }
+    auto getFz(std::string pop) { return getPopFluxCompo("z", pop); }
+
+
+
+
+    auto getParticles(std::string userPopName)
+    {
+        using Nested = std::vector<PatchData<core::ContiguousParticles<dimension>, dimension>>;
         using Inner  = std::unordered_map<std::string, Nested>;
 
         std::unordered_map<std::string, Inner> pop_particles;
@@ -229,14 +341,17 @@ public:
         auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
             for (auto& pop : ions)
             {
-                if (!pop_particles.count(pop.name()))
-                    pop_particles.emplace(pop.name(), Inner());
+                if ((userPopName != "" and userPopName == pop.name()) or userPopName == "all")
+                {
+                    if (!pop_particles.count(pop.name()))
+                        pop_particles.emplace(pop.name(), Inner());
 
-                auto& inner = pop_particles.at(pop.name());
+                    auto& inner = pop_particles.at(pop.name());
 
-                getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
-                getParticleData(inner, grid, patchID, "patchGhost", pop.patchGhostParticles());
-                getParticleData(inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
+                    getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
+                    getParticleData(inner, grid, patchID, "patchGhost", pop.patchGhostParticles());
+                    getParticleData(inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
+                }
             }
         };
 
@@ -277,15 +392,19 @@ public:
             throw std::runtime_error("Runtime diagnostic deduction failed");
     }
 
+
+    auto getNumberOfLevels() const { return hierarchy_->getNumberOfLevels(); }
+
     auto getPatchLevel(size_t lvl)
     {
-        return PatchLevel<This>{*hierarchy_, *simulator_ptr_->getHybridModel(), lvl};
+        return PatchLevel<_dimension, _interp_order, _nbRefinedPart>{
+            *hierarchy_, *simulator_ptr_->getHybridModel(), lvl};
     }
 
-    auto sort_merge_1d(std::vector<PatchData<std::vector<double>>> const&& input,
+    auto sort_merge_1d(std::vector<PatchData<std::vector<double>, dimension>> const&& input,
                        bool shared_patch_border = false)
     {
-        std::vector<std::pair<double, const PatchData<std::vector<double>>*>> sorted;
+        std::vector<std::pair<double, const PatchData<std::vector<double>, dimension>*>> sorted;
         for (auto const& data : input)
             sorted.emplace_back(core::Point<double, 1>::fromString(data.origin)[0], &data);
         std::sort(sorted.begin(), sorted.end(), [](auto& a, auto& b) { return a.first < b.first; });
@@ -305,23 +424,29 @@ public:
         return ret;
     }
 
-    auto sync(std::vector<PatchData<std::vector<double>>> const& input)
+    auto sync(std::vector<PatchData<std::vector<double>, dimension>> const& input)
     {
         int mpi_size = 0;
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-        std::vector<PatchData<std::vector<double>>> collected;
+        std::vector<PatchData<std::vector<double>, dimension>> collected;
+
+        auto reinterpret_array = [&](auto& py_array) {
+            return reinterpret_cast<std::array<size_t, dimension>&>(
+                *static_cast<size_t*>(py_array.request().ptr));
+        };
 
         auto collect = [&](auto& patch_data) {
             auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
             auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
-            auto pCells   = core::mpi::collect(patch_data.cells, mpi_size);
+            auto lower    = core::mpi::collect(reinterpret_array(patch_data.lower), mpi_size);
+            auto upper    = core::mpi::collect(reinterpret_array(patch_data.upper), mpi_size);
             auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
             auto datas    = core::mpi::collect(patch_data.data, mpi_size);
 
             for (int i = 0; i < mpi_size; i++)
             {
                 auto& data = collected.emplace_back();
-                setPatchData(data, patchIDs[i], origins[i], pCells[i]);
+                setPatchData(data, patchIDs[i], origins[i], lower[i], upper[i]);
                 data.nGhosts = ghosts[i];
                 data.data    = std::move(datas[i]);
             }
@@ -329,7 +454,7 @@ public:
 
         auto max = core::mpi::max(input.size(), mpi_size);
 
-        PatchData<std::vector<double>> empty;
+        PatchData<std::vector<double>, dimension> empty;
 
         for (size_t i = 0; i < max; i++)
         {
@@ -341,7 +466,8 @@ public:
         return collected;
     }
 
-    auto sync_merge(std::vector<PatchData<std::vector<double>>> const& input, bool primal)
+    auto sync_merge(std::vector<PatchData<std::vector<double>, dimension>> const& input,
+                    bool primal)
     {
         if constexpr (dimension == 1)
             return sort_merge_1d(sync(input), primal);
@@ -387,14 +513,15 @@ private:
 
 
 
-template<typename Type>
+template<typename Type, std::size_t dimension>
 void declarePatchData(py::module& m, std::string key)
 {
-    using PatchDataType = PatchData<Type>;
+    using PatchDataType = PatchData<Type, dimension>;
     py::class_<PatchDataType>(m, key.c_str())
         .def_readonly("patchID", &PatchDataType::patchID)
         .def_readonly("origin", &PatchDataType::origin)
-        .def_readonly("cells", &PatchDataType::cells)
+        .def_readonly("lower", &PatchDataType::lower)
+        .def_readonly("upper", &PatchDataType::upper)
         .def_readonly("nGhosts", &PatchDataType::nGhosts)
         .def_readonly("data", &PatchDataType::data);
 }
@@ -414,7 +541,7 @@ void declareDim(py::module& m)
         .def("size", &CP::size);
 
     name = "PatchData" + name;
-    declarePatchData<CP>(m, name.c_str());
+    declarePatchData<CP, dim>(m, name.c_str());
 }
 
 
@@ -435,17 +562,33 @@ void declare(py::module& m)
     py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
-        .def("getPatchLevel", &DW::getPatchLevel);
+        .def("getPatchLevel", &DW::getPatchLevel)
+        .def("getNumberOfLevels", &DW::getNumberOfLevels);
 
-    using PL = PatchLevel<DW>;
-    name     = "PatchLevel" + type_string;
+    using PL = PatchLevel<dim, interp, nbRefinedPart>;
+    name     = "PatchLevel_" + type_string;
+
     py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
         .def("getEM", &PL::getEM)
+        .def("getE", &PL::getE)
+        .def("getB", &PL::getB)
+        .def("getBx", &PL::getBx)
+        .def("getBy", &PL::getBy)
+        .def("getBz", &PL::getBz)
+        .def("getEx", &PL::getEx)
+        .def("getEy", &PL::getEy)
+        .def("getEz", &PL::getEz)
+        .def("getVix", &PL::getVix)
+        .def("getViy", &PL::getViy)
+        .def("getViz", &PL::getViz)
         .def("getDensity", &PL::getDensity)
         .def("getBulkVelocity", &PL::getBulkVelocity)
         .def("getPopDensities", &PL::getPopDensities)
-        .def("getPopFluxs", &PL::getPopFluxs)
-        .def("getParticles", &PL::getParticles);
+        .def("getPopFluxes", &PL::getPopFlux)
+        .def("getFx", &PL::getFx)
+        .def("getFy", &PL::getFy)
+        .def("getFz", &PL::getFz)
+        .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
 
     using _Splitter
         = PHARE::amr::Splitter<_dim, _interp, PHARE::core::RefinedParticlesConst<nbRefinedPart>>;
@@ -488,7 +631,9 @@ PYBIND11_MODULE(cpp, m)
         .def("currentTime", &PHARE::ISimulator::currentTime)
         .def("endTime", &PHARE::ISimulator::endTime)
         .def("timeStep", &PHARE::ISimulator::timeStep)
-        .def("to_str", &PHARE::ISimulator::to_str);
+        .def("to_str", &PHARE::ISimulator::to_str)
+        .def("domain_box", &PHARE::ISimulator::domainBox)
+        .def("cell_width", &PHARE::ISimulator::cellWidth);
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {
@@ -525,7 +670,9 @@ PYBIND11_MODULE(cpp, m)
 
     core::apply(core::possibleSimulators(), [&](auto const& simType) { declare(m, simType); });
 
-    declarePatchData<std::vector<double>>(m, "PatchDataVectorDouble");
+    declarePatchData<std::vector<double>, 1>(m, "PatchDataVectorDouble_1D");
+    declarePatchData<std::vector<double>, 2>(m, "PatchDataVectorDouble_2D");
+    declarePatchData<std::vector<double>, 3>(m, "PatchDataVectorDouble_3D");
 }
 
 } // namespace PHARE::pydata

@@ -89,6 +89,8 @@ namespace core
     template<typename T, std::size_t size>
     inline constexpr auto is_std_array_v = is_std_array<T, size>::value;
 
+
+
     template<typename Tuple, typename Func>
     void apply(Tuple tuple, Func func)
     {
