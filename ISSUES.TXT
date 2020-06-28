@@ -6,3 +6,8 @@
     Solution:
       import ctypes
       ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
+
+2. Python launching, with C++ MPI init, doesn't work so well with MPI4PY
+    Source: https://bitbucket.org/mpi4py/mpi4py/issues/154/attempting-to-use-an-mpi-routine-before
+    Solution:
+      LD_PRELOAD=/path/to/your/libmpi.so python3 $SCRIPT
