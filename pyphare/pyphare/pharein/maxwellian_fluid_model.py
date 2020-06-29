@@ -148,7 +148,7 @@ class MaxwellianFluidModel(object):
         def periodic_function_check(vec_field, dic):
             for xyz in ["x", "y", "z"]:
                 fn = dic[vec_field + xyz]
-                if not math.isclose(fn(*sim.origin), fn(*sim.simulation_domain()), rel_tol=1e-5):
+                if not math.isclose(fn(*sim.origin), fn(*sim.simulation_domain()), abs_tol=1e-5):
                     return False
             return True
 
