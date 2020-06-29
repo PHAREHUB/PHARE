@@ -23,7 +23,17 @@ PHARE is an open-source projet licenced under the GPLv3. Please refer to [LICENC
 
 ## Install
 
-How to install the code...
+For system library requirements see the file:
+  https://github.com/PHARCHIVE/phare-teamcity-fc31/blob/master/Dockerfile
+
+For Python API, install dependencies:
+  python3 -m pip install -r requirements.txt
+
+Build with CMake and latest SAMRAI
+  mkdir build; cd build; cmake ..; make
+
+Build with CMake and specific SAMRAI
+  mkdir build; cd build; cmake .. -DSAMRAI_ROOT=/path/to/SAMRAI/install; make
 
 
 ## User Documentation
