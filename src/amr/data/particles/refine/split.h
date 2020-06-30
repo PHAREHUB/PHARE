@@ -32,39 +32,67 @@ struct SplitPattern
 template<typename... Patterns>
 struct PatternDispatcher
 {
-    constexpr PatternDispatcher(Patterns&&... patterns_)
-        : patterns{patterns_...}
+    constexpr PatternDispatcher(Patterns&&... patterns)
+        : _patterns{patterns...}
+        , _nbRefinedPart{(patterns.deltas_.size() + ...)}
     {
     }
 
-    template<std::size_t dimension>
-    inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
-                           std::vector<core::Particle<dimension>>& refinedParticles) const
+    template<size_t dimension, typename Particle, typename RefinedDeltas>
+    static void _set_(Particle& particle, RefinedDeltas const& refinedDeltas)
     {
-        auto get = [](size_t iDim, auto& icell, auto& delta, auto& refinedDeltas) {
-            delta[iDim] += refinedDeltas[iDim];
-            float integra = std::floor(delta[iDim]);
-            delta[iDim] -= integra;
-            icell[iDim] += static_cast<int32_t>(integra);
-        };
+        for (size_t iDim = 0; iDim < dimension; iDim++)
+        {
+            particle.delta[iDim] += refinedDeltas[iDim];
+            float integra = std::floor(particle.delta[iDim]);
+            particle.delta[iDim] -= integra;
+            particle.iCell[iDim] += static_cast<int32_t>(integra);
+        }
+    }
 
-        core::apply(patterns, [&](auto const& pattern) {
+
+    template<size_t dimension, typename Particle, typename Particles>
+    void _dispatch(Particle const& particle, Particles& particles, size_t idx) const
+    {
+        using FineParticle
+            = std::conditional_t<std::is_same_v<Particles, std::vector<core::Particle<dimension>>>,
+                                 core::Particle<dimension>&,
+                                 core::ContiguousParticleView<dimension>>;
+
+        core::apply(_patterns, [&](auto const& pattern) {
             for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)
             {
-                auto icell = coarsePartOnRefinedGrid.iCell;
-                auto delta = coarsePartOnRefinedGrid.delta;
-
-                for (size_t i = 0; i < dimension; i++)
-                    get(i, icell, delta, pattern.deltas_[rpIndex]);
-
-                float weight = coarsePartOnRefinedGrid.weight * pattern.weight_;
-                refinedParticles.push_back({weight, coarsePartOnRefinedGrid.charge, icell, delta,
-                                            coarsePartOnRefinedGrid.v});
+                FineParticle fineParticle = particles[idx++];
+                fineParticle.weight       = particle.weight * pattern.weight_;
+                fineParticle.charge       = particle.charge;
+                fineParticle.iCell        = particle.iCell;
+                fineParticle.delta        = particle.delta;
+                fineParticle.v            = particle.v;
+                _set_<dimension>(fineParticle, pattern.deltas_[rpIndex]);
             }
         });
     }
 
-    std::tuple<Patterns...> patterns{};
+    template<size_t dimension, bool OwnedState>
+    inline void operator()(core::ContiguousParticleView<dimension> const& coarsePartOnRefinedGrid,
+                           core::ContiguousParticles<dimension, OwnedState>& refinedParticles,
+                           size_t idx) const
+    {
+        _dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
+    }
+
+    template<size_t dimension>
+    inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
+                           std::vector<core::Particle<dimension>>& refinedParticles) const
+    {
+        size_t idx = refinedParticles.size();
+        for (size_t i = 0; i < _nbRefinedPart; i++)
+            refinedParticles.emplace_back();
+        _dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
+    }
+
+    std::tuple<Patterns...> _patterns{};
+    size_t _nbRefinedPart{0};
 };
 
 

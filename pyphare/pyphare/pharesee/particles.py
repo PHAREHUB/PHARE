@@ -38,6 +38,13 @@ class Particles:
         self.iCells += offset
         return self
 
+    def size(self):
+          """
+            weights or charges are always the same as n_particles,
+          """
+          assert len(self.weights) == len(self.charges)
+          return len(self.weights)
+
     def select(self, box):
         """
         select particles from the given box
@@ -49,3 +56,18 @@ class Particles:
                          v = self.v[idx,:],
                          weights=self.weights[idx],
                          charges=self.charges[idx])
+
+
+    def split(self, sim): # REQUIRES C++ PYBIND PHARE LIB
+        from pyphare.cpp import split_pyarrays_fn
+
+        split_pyarrays = split_pyarrays_fn(sim.dims, sim.interp_order, sim.refined_particle_nbr)(
+          (self.iCells, self.deltas, self.weights, self.charges, self.v)
+        )
+        return Particles(
+          icells=split_pyarrays[0],
+          deltas=split_pyarrays[1],
+          weights=split_pyarrays[2],
+          charges=split_pyarrays[3],
+          v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3)
+        )

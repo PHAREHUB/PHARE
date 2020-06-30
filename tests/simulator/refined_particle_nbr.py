@@ -7,11 +7,9 @@ from pybindlibs import cpp
 import os, sys, unittest, yaml
 import numpy as np
 import pyphare.pharein as ph
-from tests.diagnostic import dump_all_diags
 from pyphare.simulator.simulator import Simulator
-from tests.simulator import  cpp_splitter_type
-from pyphare.data.wrangler import DataWrangler
 from tests.simulator import populate_simulation
+from pyphare.cpp import splitter_type
 
 from tests.simulator.config import project_root
 
@@ -49,7 +47,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         yaml_delta = [float(s) for s in str(yaml_n_particles["delta"]).split(" ")]
         yaml_weight = [float(s) for s in str(yaml_n_particles["weight"]).split(" ")]
 
-        splitter_t = cpp_splitter_type(dim, interp, refined_particle_nbr)
+        splitter_t = splitter_type(dim, interp, refined_particle_nbr)
         np.testing.assert_allclose(yaml_delta, splitter_t.delta)
         np.testing.assert_allclose(yaml_weight, splitter_t.weight)
 
