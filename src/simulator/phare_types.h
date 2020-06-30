@@ -12,8 +12,7 @@ struct PHARE_Types
     static auto constexpr interp_order  = interp_order_;
     static auto constexpr nbRefinedPart = nbRefinedPart_;
 
-    using Array_t
-        = decltype(PHARE::core::makeNdArray<dimension>(std::array<std::uint32_t, dimension>{}));
+    using Array_t         = PHARE::core::NdArrayVector<dimension>;
     using VecField_t      = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
     using Field_t         = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
     using Electromag_t    = PHARE::core::Electromag<VecField_t>;

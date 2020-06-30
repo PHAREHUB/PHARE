@@ -93,6 +93,8 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
+        constexpr auto dimension = GridLayout::dimension;
+
         auto const& Ni = ions_.density();
         auto const& Vi = ions_.velocity();
 
@@ -108,25 +110,45 @@ public:
         auto& Jy = J_.getComponent(Component::Y);
         auto& Jz = J_.getComponent(Component::Z);
 
-        if constexpr (GridLayout::dimension == 1)
-        {
-            auto ix0 = layout.physicalStartIndex(Vex, Direction::X);
-            auto ix1 = layout.physicalEndIndex(Vex, Direction::X);
+        // from Vex because all components defined on primal
 
-            for (auto ix = ix0; ix <= ix1; ++ix)
+        auto _compute = [&](auto&& arr) {
+            auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
+            auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
+            auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
+
+            Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
+            Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
+            Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
+        };
+
+        auto lowerX = layout.physicalStartIndex(Vex, Direction::X);
+        auto upperX = layout.physicalEndIndex(Vex, Direction::X);
+
+        if constexpr (dimension == 1)
+            for (auto ix = lowerX; ix <= upperX; ++ix)
+                _compute(std::array{ix});
+
+        if constexpr (dimension >= 2)
+        {
+            auto lowerY = layout.physicalStartIndex(Vex, Direction::Y);
+            auto upperY = layout.physicalEndIndex(Vex, Direction::Y);
+
+            if constexpr (dimension == 2)
+                for (auto ix = lowerX; ix <= upperX; ++ix)
+                    for (auto iy = lowerY; iy <= upperY; ++iy)
+                        _compute(std::array{ix, iy});
+
+            if constexpr (dimension == 3)
             {
-                auto const JxOnVx = GridLayout::project(Jx, {ix}, GridLayout::JxToMoments());
-                auto const JyOnVy = GridLayout::project(Jy, {ix}, GridLayout::JyToMoments());
-                auto const JzOnVz = GridLayout::project(Jz, {ix}, GridLayout::JzToMoments());
+                auto lowerZ = layout.physicalStartIndex(Vex, Direction::Z);
+                auto upperZ = layout.physicalEndIndex(Vex, Direction::Z);
 
-                Vex(ix) = Vix(ix) - JxOnVx / Ni(ix);
-                Vey(ix) = Viy(ix) - JyOnVy / Ni(ix);
-                Vez(ix) = Viz(ix) - JzOnVz / Ni(ix);
+                for (auto ix = lowerX; ix <= upperX; ++ix)
+                    for (auto iy = lowerY; iy <= upperY; ++iy)
+                        for (auto iz = lowerZ; iz <= upperZ; ++iz)
+                            _compute(std::array{ix, iy, iz});
             }
-        }
-        else
-        {
-            throw std::runtime_error("computeBulkVelocity not implemented if not 1D");
         }
     }
 

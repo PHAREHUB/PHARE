@@ -127,6 +127,32 @@ namespace core
     {
     };
 
+    template<size_t To_Size, size_t From_Size, typename Type>
+    constexpr decltype(auto) sized_array(std::array<Type, From_Size> const& from)
+    {
+        static_assert(To_Size <= From_Size, "invalid sized_array Size template, too large");
+
+        if constexpr (To_Size == From_Size)
+            return from;
+
+        std::array<Type, To_Size> to{};
+
+        for (size_t i = 0; i < to.size(); i++)
+            to[i] = from[i];
+
+        return to;
+    }
+
+
+    template<size_t To_Size, typename... Args>
+    constexpr decltype(auto) as_sized_array(Args&&... args)
+    {
+        auto arr = std::array{std::forward<decltype(args)>(args)...};
+
+        return sized_array<To_Size>(arr);
+    }
+
+
 } // namespace core
 } // namespace PHARE
 
