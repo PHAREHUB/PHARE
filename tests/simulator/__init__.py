@@ -39,10 +39,39 @@ def pi_over_max_domain():
     return [np.pi / max_domain for max_domain in ph.globals.sim.simulation_domain()]
 
 
+def fn_2d_periodic(sim, x, y):
+
+    nx, ny = sim.cells
+    xmax, ymax = sim.simulation_domain()
+    dx, dy = (xmax / nx, ymax / ny)
+    orix, oriy = sim.origin
+    xx, yy = np.meshgrid(x,y,indexing="ij")
+    kx, ky = 3, 6
+    zx = np.cos(kx * 2 * np.pi / xmax * xx)
+    zy = np.sin(ky * 2 * np.pi / ymax * yy)
+    return zx * zy
+
+
+def density_2d_periodic(sim, x, y):
+
+    background_particles = 0.3  # avoids 0 density
+
+    nx, ny = sim.cells
+    xmax, ymax = sim.simulation_domain()
+    dx, dy = (xmax / nx, ymax / ny)
+    orix, oriy = sim.origin
+    xx, yy = np.meshgrid(x,y,indexing="ij")
+
+    return np.exp(-(xx-0.5*xmax)**2)*np.exp(-(yy-ymax/2.)**2) + background_particles
+
+
 def defaultPopulationSettings():
-    dim = ph.globals.sim.dims
     background_particles = 0.1  # avoids 0 density
-    xmax = ph.globals.sim.simulation_domain()[0]
+
+    sim = ph.globals.sim
+    dim = sim.dims
+
+    xmax = sim.simulation_domain()[0]
     pi_over_xmax = pi_over_max_domain()[0]
     func_per_dim = {
         1: {
@@ -53,11 +82,10 @@ def defaultPopulationSettings():
             "vbulkz": lambda x: np.sin(1 * pi_over_xmax * x),
         },
         2: {
-            "density": lambda x, y: 1.0 / np.cosh((x - xmax * 0.5)) ** 2
-            + background_particles,
-            "vbulkx": lambda x, y: np.sin(1 * pi_over_xmax * x),
-            "vbulky": lambda x, y: np.sin(1 * pi_over_xmax * x),
-            "vbulkz": lambda x, y: np.sin(1 * pi_over_xmax * x),
+            "density": lambda x, y: density_2d_periodic(sim, x, y),
+            "vbulkx": lambda x, y: fn_2d_periodic(sim, x, y) + 0.01,
+            "vbulky": lambda x, y: fn_2d_periodic(sim, x, y) + 0.02,
+            "vbulkz": lambda x, y: fn_2d_periodic(sim, x, y) + 0.03,
         },
     }
     assert dim in func_per_dim
@@ -74,7 +102,8 @@ def defaultPopulationSettings():
 
 
 def makeBasicModel(extra_pops={}):
-    dim = ph.globals.sim.dims
+    sim = ph.globals.sim
+    dim = sim.dims
     pi_over_xmax = pi_over_max_domain()[0]
     func_per_dim = {
         1: {
@@ -83,9 +112,9 @@ def makeBasicModel(extra_pops={}):
             "bz": lambda x: np.cos(2 * pi_over_xmax * x),
         },
         2: {
-            "bx": lambda x, y: np.cos(2 * pi_over_xmax * x),
-            "by": lambda x, y: np.sin(1 * pi_over_xmax * x),
-            "bz": lambda x, y: np.cos(2 * pi_over_xmax * x),
+            "bx": lambda x, y: fn_2d_periodic(sim, x, y) + 0.04,
+            "by": lambda x, y: fn_2d_periodic(sim, x, y) + 0.05,
+            "bz": lambda x, y: fn_2d_periodic(sim, x, y) + 0.06,
         },
     }
     assert dim in func_per_dim

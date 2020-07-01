@@ -704,13 +704,18 @@ struct ACollectionOfParticles_2d : public ::testing::Test
         v.setBuffer("v_y", &vy);
         v.setBuffer("v_z", &vz);
 
+        double weight = [](auto const& meshSize) {
+            return std::accumulate(meshSize.begin(), meshSize.end(), 1.0,
+                                   std::multiplies<double>());
+        }(layout.meshSize());
+
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)
             {
                 auto& part  = particles.emplace_back();
                 part.iCell  = {i, j};
                 part.delta  = ConstArray<float, dim>(.5);
-                part.weight = .1 * layout.meshSize()[0];
+                part.weight = weight;
                 part.v[0]   = +2.;
                 part.v[1]   = -1.;
                 part.v[2]   = +1.;

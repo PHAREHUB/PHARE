@@ -9,6 +9,7 @@
 #include "diagnostic/detail/types/particle.h"
 #include "diagnostic/detail/types/fluid.h"
 
+
 using namespace PHARE;
 using namespace PHARE::diagnostic;
 using namespace PHARE::diagnostic::h5;
@@ -16,22 +17,21 @@ using namespace PHARE::diagnostic::h5;
 constexpr unsigned NEW_HI5_FILE
     = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
 
-template<typename FieldFilter, typename F, typename GridLayout>
-std::array<uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, F&& func,
-                                                         GridLayout& layout)
+template<typename FieldFilter, typename Func, typename GridLayout, typename Field>
+std::array<uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Func&& func,
+                                                         GridLayout& layout, Field& field)
 {
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto get = [&](auto dir) { return static_cast<uint32_t>(((ff).*(func))(layout, dir)); };
+    auto get = [&](auto dir) { return static_cast<uint32_t>(((ff).*(func))(layout, field, dir)); };
 
     if constexpr (dim == 1)
-        return {get(PHARE::core::Direction::X)};
+        return {get(core::Direction::X)};
     if constexpr (dim == 2)
-        return {get(PHARE::core::Direction::X), get(PHARE::core::Direction::Y)};
+        return {get(core::Direction::X), get(core::Direction::Y)};
     if constexpr (dim == 3)
-        return {get(PHARE::core::Direction::X), get(PHARE::core::Direction::Y),
-                get(PHARE::core::Direction::Z)};
+        return {get(core::Direction::X), get(core::Direction::Y), get(core::Direction::Z)};
 }
 
 template<typename GridLayout, typename Field, typename FieldFilter = PHARE::FieldNullFilter>
@@ -46,14 +46,20 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
     EXPECT_EQ(fieldV.size(), field.size());
 
     auto siz = fieldIndices(FieldNullFilter{}, &FieldNullFilter::template end<Field, GridLayout>,
-                            layout);
+                            layout, field);
+    for (auto& s : siz) // dim sizes are last index + 1
+        s += 1;
+    size_t items = siz[0];
+    for (size_t i = 1; i < siz.size(); i++)
+        items *= siz[i];
+    EXPECT_EQ(items, field.size());
 
-    auto beg = fieldIndices(ff, &FieldFilter::template start<Field, GridLayout>, layout);
-    auto end = fieldIndices(ff, &FieldFilter::template end<Field, GridLayout>, layout);
+    auto beg = fieldIndices(ff, &FieldFilter::template start<Field, GridLayout>, layout, field);
+    auto end = fieldIndices(ff, &FieldFilter::template end<Field, GridLayout>, layout, field);
 
+    core::NdArrayView<dim, float> view{fieldV, siz};
     if constexpr (dim == 1)
     {
-        PHARE::core::NdArrayView<1, float> view{fieldV, siz};
         for (size_t i = beg[0]; i < end[0]; i++)
         {
             if (std::isnan(view(i)) || std::isnan(field(i)))
@@ -63,7 +69,6 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
     }
     else if constexpr (dim == 2)
     {
-        PHARE::core::NdArrayView<2, float> view{fieldV, siz};
         for (size_t i = beg[0]; i < end[0]; i++)
         {
             for (size_t j = beg[1]; j < end[1]; j++)
@@ -82,7 +87,7 @@ template<typename GridLayout, typename VecField, typename FieldFilter = PHARE::F
 void checkVecField(HighFive::File& file, GridLayout& layout, VecField& vecField, std::string path,
                    FieldFilter ff = FieldFilter{})
 {
-    for (auto& [id, type] : PHARE::core::Components::componentMap)
+    for (auto& [id, type] : core::Components::componentMap)
     {
         checkField(file, layout, vecField.getComponent(type), path + "_" + id, ff);
     }
@@ -100,7 +105,7 @@ struct Hi5Diagnostic
         , model_{hybridModel}
         , out_{out}
         , flags_{flags}
-        , dMan{std::make_unique<Writer_t>(hierarchy_, model_, "phare_outputs", flags_)}
+        , dMan{std::make_unique<Writer_t>(hierarchy_, model_, out, flags_)}
         , writer{dMan.writer()}
         , modelView{writer.modelView()}
     {
@@ -193,8 +198,8 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
 
     auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
         auto path = hi5.getPatchPath(iLevel, patchID) + "/";
-        checkVF(layout, path, "/EM_B", hybridModel.state.electromag.B);
-        checkVF(layout, path, "/EM_E", hybridModel.state.electromag.E);
+        checkVF(layout, path, "EM_B", hybridModel.state.electromag.B);
+        checkVF(layout, path, "EM_E", hybridModel.state.electromag.E);
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
@@ -267,15 +272,26 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    using GridLayout         = typename Simulator::PHARETypes::GridLayout_t;
+    constexpr auto dimension = Simulator::dimension;
 
     auto& hybridModel = *sim.getHybridModel();
     auto hifile       = hi5.writer.makeFile(hi5.writer.fileString("/EM_B"));
 
-    auto visit = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
-        std::string patchPath = hi5.getPatchPath(iLevel, patchID), origin;
-        hifile->file().getGroup(patchPath).getAttribute("origin").read(origin);
-        EXPECT_EQ(gridLayout.origin().str(), origin);
+    auto _check_equal = [](auto& group, auto expected, auto key) {
+        std::vector<typename decltype(expected)::value_type> attr;
+        group.getAttribute(key).read(attr);
+        EXPECT_EQ(expected, attr);
+    };
+
+    auto visit = [&](GridLayout& grid, std::string patchID, size_t iLevel) {
+        auto group = hifile->file().getGroup(hi5.getPatchPath(iLevel, patchID));
+
+        _check_equal(group, grid.origin().toVector(), "origin");
+        _check_equal(group, core::Point<uint32_t, dimension>{grid.nbrCells()}.toVector(),
+                     "nbrCells");
+        _check_equal(group, grid.AMRBox().lower.toVector(), "lower");
+        _check_equal(group, grid.AMRBox().upper.toVector(), "upper");
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,

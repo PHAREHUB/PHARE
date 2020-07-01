@@ -81,9 +81,6 @@ void allFromPython_test(Simulator&& sim, std::string out_dir)
     using Hierarchy   = typename Simulator::Hierarchy;
 
     sim.dump(*sim.dMan);
-    sim.dMan.reset();
-    // sim.modelView.reset();
-    // sim.writer.reset(); // keeps a handle and breaks the following readonly opening
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;
