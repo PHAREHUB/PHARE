@@ -1,3 +1,5 @@
+
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -525,7 +527,7 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 template<typename Interpolator>
-class ACollectionOfParticles : public ::testing::Test
+class ACollectionOfParticles_1d : public ::testing::Test
 {
 public:
     static constexpr uint32_t nx = 40;
@@ -543,7 +545,7 @@ public:
 
 
 
-    ACollectionOfParticles()
+    ACollectionOfParticles_1d()
         : part{}
         , particles{}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
@@ -669,38 +671,77 @@ public:
 protected:
     Interpolator interpolator;
 };
+TYPED_TEST_SUITE_P(ACollectionOfParticles_1d);
 
-
-
-TYPED_TEST_SUITE_P(ACollectionOfParticles);
-
-
-TYPED_TEST_P(ACollectionOfParticles, DepositCorrectlyTheirWeight)
+TYPED_TEST_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d)
 {
-    EXPECT_DOUBLE_EQ(this->rho(25u), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(25u), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(25u), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(25u), 1.0);
+    EXPECT_DOUBLE_EQ(this->rho(25), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(25), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(25), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(25), 1.0);
 }
-
-
-
-REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles, DepositCorrectlyTheirWeight);
-
-
-
-/*using GridLayoutYee2DO1 = GridLayout<GridLayoutImplYee<2,1>>;
-using GridLayoutYee2DO2 = GridLayout<GridLayoutImplYee<2,2>>;
-using GridLayoutYee2DO3 = GridLayout<GridLayoutImplYee<2,3>>;
-using GridLayoutYee3DO1 = GridLayout<GridLayoutImplYee<3,1>>;
-using GridLayoutYee3DO2 = GridLayout<GridLayoutImplYee<3,2>>;
-using GridLayoutYee3DO3 = GridLayout<GridLayoutImplYee<3,3>>;*/
-
-
+REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d);
 
 using MyTypes = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
-INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles, MyTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_1d, MyTypes);
 
+
+template<typename Interpolator>
+struct ACollectionOfParticles_2d : public ::testing::Test
+{
+    static constexpr size_t dim  = 2;
+    static constexpr uint32_t nx = 15, ny = 15;
+    static constexpr int start = 0, end = 5;
+
+    ACollectionOfParticles_2d()
+        : rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        , vx{"v_x", HybridQuantity::Scalar::Vx, nx, ny}
+        , vy{"v_y", HybridQuantity::Scalar::Vy, nx, ny}
+        , vz{"v_z", HybridQuantity::Scalar::Vz, nx, ny}
+        , v{"v", HybridQuantity::Vector::V}
+    {
+        v.setBuffer("v_x", &vx);
+        v.setBuffer("v_y", &vy);
+        v.setBuffer("v_z", &vz);
+
+        for (int i = start; i < end; i++)
+            for (int j = start; j < end; j++)
+            {
+                auto& part  = particles.emplace_back();
+                part.iCell  = {i, j};
+                part.delta  = ConstArray<float, dim>(.5);
+                part.weight = .1 * layout.meshSize()[0];
+                part.v[0]   = +2.;
+                part.v[1]   = -1.;
+                part.v[2]   = +1.;
+            }
+
+        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+    }
+
+    GridLayout<GridLayoutImplYee<dim, Interpolator::interp_order>> layout{
+        ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
+
+    ParticleArray<dim> particles;
+    Field<NdArrayVector<dim>, typename HybridQuantity::Scalar> rho, vx, vy, vz;
+    VecField<NdArrayVector<dim>, HybridQuantity> v;
+    Interpolator interpolator;
+};
+TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);
+
+
+TYPED_TEST_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d)
+{
+    EXPECT_DOUBLE_EQ(this->rho(7, 7), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(7, 7), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(7, 7), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(7, 7), 1.0);
+}
+REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d);
+
+
+using My2dTypes = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
+INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_2d, My2dTypes);
 
 
 int main(int argc, char** argv)

@@ -152,6 +152,15 @@ namespace core
         return sized_array<To_Size>(arr);
     }
 
+    template<typename Type, size_t size>
+    constexpr decltype(auto) ConstArray(Type val = 0)
+    {
+        std::array<Type, size> arr{};
+        for (uint8_t i = 0; i < size; i++)
+            arr[i] = val;
+        return arr;
+    }
+
 
 } // namespace core
 } // namespace PHARE
