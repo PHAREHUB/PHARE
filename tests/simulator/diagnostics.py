@@ -9,6 +9,7 @@ from tests.simulator import create_simulator
 from pyphare.data.wrangler import DataWrangler
 import unittest, os, shutil
 from pyphare.pharesee.hierarchy import hierarchy_from
+from ddt import ddt, data
 
 
 out = "phare_outputs/diagnostic_test"
@@ -20,16 +21,25 @@ def dup(dic):
     dic.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
     return dic
 
+@ddt
 class DiagnosticsTest(unittest.TestCase):
 
-    def test_dump_diags_with_killing_dman_1d(self):
+    @data(
+      dup({
+        "smallest_patch_size": 5,
+        "largest_patch_size": 64}),
+      dup({
+        "smallest_patch_size": 65,
+        "largest_patch_size": 65})
+    )
+    def test_dump_diags_with_killing_dman_1d(self, input):
 
         for interp in range(1, 4):
 
             if rank == 0 and os.path.exists(out):
                 shutil.rmtree(out)
 
-            self.dman, self.sim, self.hier = create_simulator(1, interp, **dup({}))
+            self.dman, self.sim, self.hier = create_simulator(1, interp, **input)
             self.dman.dump(timestamp=0, timestep=1)
             em_b_file = os.path.join(out, "EM_B.h5")
             self.assertTrue(os.path.exists(os.path.join(out, "EM_B.h5")))
