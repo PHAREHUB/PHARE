@@ -285,6 +285,8 @@ void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> c
     std::unordered_map<size_t, std::vector<std::string>> lvlPatchIDs;
     Attributes patchAttributes; // stores dataset info/size for synced MPI creation
 
+    for (auto* diag : diagnostics)
+        writers.at(diag->type)->createFiles(*diag);
 
     auto collectPatchAttributes = [&](GridLayout&, std::string patchID, size_t iLevel) {
         if (!lvlPatchIDs.count(iLevel))

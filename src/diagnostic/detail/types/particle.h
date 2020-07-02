@@ -44,11 +44,16 @@ public:
     }
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override {}
+
+    void createFiles(DiagnosticProperties& diagnostic) override;
+
     void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
+
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, size_t maxLevel) override;
+
     void
     writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
@@ -61,6 +66,26 @@ private:
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
+
+template<typename HighFiveDiagnostic>
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
+{
+    auto& hi5 = this->hi5_;
+
+    auto checkCreate = [&](auto& tree, auto var) {
+        bool b = diagnostic.quantity == tree + var;
+        if (b && !fileData.count(diagnostic.quantity))
+            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
+    };
+
+    for (auto& pop : hi5.modelView().getIons())
+    {
+        std::string tree{"/ions/pop/" + pop.name() + "/"};
+        checkCreate(tree, "domain");
+        checkCreate(tree, "levelGhost");
+        checkCreate(tree, "patchGhost");
+    }
+}
 
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticProperties& diagnostic,
@@ -90,11 +115,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPro
     auto checkInfo = [&](auto& tree, auto pType, auto& attr, auto& ps) {
         std::string active{tree + pType};
         if (diagnostic.quantity == active)
-        {
             particleInfo(attr[pType], ps);
-            if (!fileData.count(diagnostic.quantity))
-                fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
-        }
     };
 
     for (auto& pop : hi5.modelView().getIons())

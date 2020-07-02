@@ -23,9 +23,12 @@ public:
     {
     }
 
+    virtual void createFiles(DiagnosticProperties& diagnostic) = 0;
+
     virtual void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel,
                                 std::string const& patchID, Attributes& patchAttributes)
         = 0;
+
     virtual void initDataSets(DiagnosticProperties& diagnostic,
                               std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                               Attributes& patchAttributes, size_t maxLevel)
@@ -36,7 +39,6 @@ public:
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
                     size_t maxLevel)
         = 0;
-
 
     virtual void finalize(DiagnosticProperties& diagnostic) = 0;
 

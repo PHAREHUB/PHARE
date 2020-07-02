@@ -33,11 +33,16 @@ public:
     }
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override {}
+
+    void createFiles(DiagnosticProperties& diagnostic) override;
+
     void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
+
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, size_t maxLevel) override;
+
     void
     writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
@@ -50,6 +55,31 @@ private:
 };
 
 
+
+template<typename HighFiveDiagnostic>
+void FluidDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
+{
+    auto& hi5 = this->hi5_;
+
+    auto checkCreate = [&](auto& tree, auto var) {
+        auto active = tree + var;
+        bool b      = diagnostic.quantity == active;
+        if (b && !fileData.count(diagnostic.quantity))
+            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
+    };
+
+    for (auto& pop : hi5.modelView().getIons())
+    {
+        std::string tree{"/ions/pop/" + pop.name() + "/"};
+        checkCreate(tree, "density");
+        checkCreate(tree, "flux");
+    }
+
+    std::string tree{"/ions/"};
+    checkCreate(tree, "density");
+    checkCreate(tree, "bulkVelocity");
+}
+
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                                size_t iLevel,
@@ -60,13 +90,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPropert
     auto& ions = hi5.modelView().getIons();
     std::string lvlPatchID{std::to_string(iLevel) + "_" + patchID};
 
-    auto checkActive = [&](auto& tree, auto var) {
-        auto active = tree + var;
-        bool b      = diagnostic.quantity == active;
-        if (b && !fileData.count(diagnostic.quantity))
-            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
-        return b;
-    };
+    auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
     auto infoDS = [&](auto& field, std::string name, auto& attr) {
         attr[name]             = field.size();
