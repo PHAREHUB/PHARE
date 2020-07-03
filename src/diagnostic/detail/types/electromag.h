@@ -56,7 +56,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticPrope
     auto& hi5 = this->hi5_;
 
     for (auto* vecField : hi5.modelView().getElectromagFields())
-        if (diagnostic.quantity == "/" + vecField->name() && !fileData.count(diagnostic.quantity))
+        if (diagnostic.quantity == "/" + vecField->name() and !fileData.count(diagnostic.quantity))
             fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
 }
 

@@ -89,6 +89,15 @@ protected:
         hi5_.writeAttributeDict(file, dsAttr, null ? "" : path);
     }
 
+    template<typename FileMap>
+    void checkCreateFileFor_(DiagnosticProperties const& diagnostic, std::string const& tree,
+                             std::string const var, FileMap& fileData)
+    {
+        if (diagnostic.quantity == tree + var and !fileData.count(diagnostic.quantity))
+            fileData.emplace(diagnostic.quantity, this->hi5_.makeFile(diagnostic));
+    }
+
+
     Writer& hi5_;
 };
 

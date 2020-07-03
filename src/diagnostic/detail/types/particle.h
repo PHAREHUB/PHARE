@@ -3,7 +3,6 @@
 
 #include "diagnostic/detail/h5typewriter.h"
 #include "diagnostic/detail/h5_utils.h"
-#include "diagnostic/detail/h5file.h"
 
 #include "core/data/particles/particle_packer.h"
 
@@ -29,6 +28,7 @@ class ParticlesDiagnosticWriter : public H5TypeWriter<HighFiveDiagnostic>
 {
 public:
     using Super = H5TypeWriter<HighFiveDiagnostic>;
+    using Super::checkCreateFileFor_;
     using Super::hi5_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
@@ -70,20 +70,12 @@ private:
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
 {
-    auto& hi5 = this->hi5_;
-
-    auto checkCreate = [&](auto& tree, auto var) {
-        bool b = diagnostic.quantity == tree + var;
-        if (b && !fileData.count(diagnostic.quantity))
-            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
-    };
-
-    for (auto& pop : hi5.modelView().getIons())
+    for (auto const& pop : this->hi5_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreate(tree, "domain");
-        checkCreate(tree, "levelGhost");
-        checkCreate(tree, "patchGhost");
+        checkCreateFileFor_(diagnostic, tree, "domain", fileData);
+        checkCreateFileFor_(diagnostic, tree, "levelGhost", fileData);
+        checkCreateFileFor_(diagnostic, tree, "patchGhost", fileData);
     }
 }
 

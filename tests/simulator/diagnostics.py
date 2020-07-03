@@ -6,15 +6,16 @@
 from pybindlibs import cpp
 from tests.diagnostic import dump_all_diags
 from tests.simulator import create_simulator
-from pyphare.data.wrangler import DataWrangler
-import unittest, os, shutil
 from pyphare.pharesee.hierarchy import hierarchy_from
+import pyphare.pharein as ph
+import unittest, os, shutil
 from ddt import ddt, data
 
 
 out = "phare_outputs/diagnostic_test"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
 rank = cpp.mpi_rank()
+
 
 def dup(dic):
     dic.update(diags.copy())
@@ -34,17 +35,19 @@ class DiagnosticsTest(unittest.TestCase):
     )
     def test_dump_diags_with_killing_dman_1d(self, input):
 
+        dim = 1
         for interp in range(1, 4):
-
-            if rank == 0 and os.path.exists(out):
-                shutil.rmtree(out)
+            local_out = out + "_" + str(dim) + "_" + str(interp)
+            input["diag_options"]["options"]["dir"] = local_out
 
             self.dman, self.sim, self.hier = create_simulator(1, interp, **input)
             self.dman.dump(timestamp=0, timestep=1)
-            em_b_file = os.path.join(out, "EM_B.h5")
-            self.assertTrue(os.path.exists(os.path.join(out, "EM_B.h5")))
-            hier = hierarchy_from(em_b_file)
-            print("hier", hier)
+
+            for diagInfo in ph.globals.sim.diagnostics:
+                # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
+                h5_file = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
+                self.assertTrue(os.path.exists(h5_file))
+                print("hier", hierarchy_from(h5_filename=h5_file))
 
             del (
                 self.dman,

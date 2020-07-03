@@ -73,11 +73,11 @@ public:
         return fileStr + ".h5";
     }
 
-    auto makeFile(std::string filename)
+    auto makeFile(std::string const filename)
     {
         return std::make_unique<HighFiveFile>(filePath_ + "/" + filename, flags);
     }
-    auto makeFile(DiagnosticProperties& diagnostic)
+    auto makeFile(DiagnosticProperties const& diagnostic)
     {
         return makeFile(fileString(diagnostic.quantity));
     }

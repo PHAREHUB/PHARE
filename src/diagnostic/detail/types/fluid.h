@@ -24,6 +24,7 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
+    using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename HighFiveDiagnostic::GridLayout;
 
@@ -59,25 +60,16 @@ private:
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
 {
-    auto& hi5 = this->hi5_;
-
-    auto checkCreate = [&](auto& tree, auto var) {
-        auto active = tree + var;
-        bool b      = diagnostic.quantity == active;
-        if (b && !fileData.count(diagnostic.quantity))
-            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
-    };
-
-    for (auto& pop : hi5.modelView().getIons())
+    for (auto const& pop : this->hi5_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreate(tree, "density");
-        checkCreate(tree, "flux");
+        checkCreateFileFor_(diagnostic, tree, "density", fileData);
+        checkCreateFileFor_(diagnostic, tree, "flux", fileData);
     }
 
     std::string tree{"/ions/"};
-    checkCreate(tree, "density");
-    checkCreate(tree, "bulkVelocity");
+    checkCreateFileFor_(diagnostic, tree, "density", fileData);
+    checkCreateFileFor_(diagnostic, tree, "bulkVelocity", fileData);
 }
 
 template<typename HighFiveDiagnostic>
