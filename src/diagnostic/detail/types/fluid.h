@@ -63,13 +63,11 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties
     for (auto const& pop : this->hi5_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, tree, "density", fileData);
-        checkCreateFileFor_(diagnostic, tree, "flux", fileData);
+        checkCreateFileFor_(diagnostic, fileData, tree, "density", "flux");
     }
 
     std::string tree{"/ions/"};
-    checkCreateFileFor_(diagnostic, tree, "density", fileData);
-    checkCreateFileFor_(diagnostic, tree, "bulkVelocity", fileData);
+    checkCreateFileFor_(diagnostic, fileData, tree, "density", "bulkVelocity");
 }
 
 template<typename HighFiveDiagnostic>

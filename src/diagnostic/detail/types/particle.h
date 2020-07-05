@@ -73,9 +73,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProper
     for (auto const& pop : this->hi5_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, tree, "domain", fileData);
-        checkCreateFileFor_(diagnostic, tree, "levelGhost", fileData);
-        checkCreateFileFor_(diagnostic, tree, "patchGhost", fileData);
+        checkCreateFileFor_(diagnostic, fileData, tree, "domain", "levelGhost", "patchGhost");
     }
 }
 

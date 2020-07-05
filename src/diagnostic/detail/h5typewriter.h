@@ -89,12 +89,14 @@ protected:
         hi5_.writeAttributeDict(file, dsAttr, null ? "" : path);
     }
 
-    template<typename FileMap>
-    void checkCreateFileFor_(DiagnosticProperties const& diagnostic, std::string const& tree,
-                             std::string const var, FileMap& fileData)
+    template<typename FileMap, typename... Quantities>
+    void checkCreateFileFor_(DiagnosticProperties const& diagnostic, FileMap& fileData,
+                             std::string const tree, Quantities const... vars)
     {
-        if (diagnostic.quantity == tree + var and !fileData.count(diagnostic.quantity))
-            fileData.emplace(diagnostic.quantity, this->hi5_.makeFile(diagnostic));
+        core::apply(std::forward_as_tuple(vars...), [&](auto const& var) {
+            if (diagnostic.quantity == tree + var and !fileData.count(diagnostic.quantity))
+                fileData.emplace(diagnostic.quantity, this->hi5_.makeFile(diagnostic));
+        });
     }
 
 

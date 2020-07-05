@@ -19,6 +19,7 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
+    using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename HighFiveDiagnostic::GridLayout;
 
@@ -53,11 +54,8 @@ private:
 template<typename HighFiveDiagnostic>
 void ElectromagDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
 {
-    auto& hi5 = this->hi5_;
-
-    for (auto* vecField : hi5.modelView().getElectromagFields())
-        if (diagnostic.quantity == "/" + vecField->name() and !fileData.count(diagnostic.quantity))
-            fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
+    for (auto* vecField : this->hi5_.modelView().getElectromagFields())
+        checkCreateFileFor_(diagnostic, fileData, "/", vecField->name());
 }
 
 
