@@ -287,9 +287,14 @@ def load_one_time(time, hier):
 def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
     """
     adds data in the h5_patch_grp in the given PatchData dict
+    returns True if valid h5 patch found
     """
 
     if is_particle_file(basename):
+
+        if "iCell" not in h5_patch_grp.keys():
+            return False # patch attributes exist, but no data.
+
         particles = Particles(icells=h5_patch_grp["iCell"],
                               deltas=h5_patch_grp["delta"],
                               v=h5_patch_grp["v"],
@@ -322,6 +327,8 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
             patch_datas[dataset_name] = pdata
 
+    return True # valid patch assumed
+
 
 
 
@@ -337,10 +344,10 @@ def hierarchy_fromh5(h5_filename, time, hier):
         # then add all other times
         print("creating hierarchy from all times in file")
         times = list(data_file.keys())
-        hier = hierarchy_from(h5_filename, time=times[0])
+        hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier)
         if len(times) > 1:
             for time in times[1:]:
-                hierarchy_from(h5_filename, time=time, hier=hier)
+                hierarchy_fromh5(h5_filename, time=time, hier=hier)
         return hier
 
     if create_from_one_time(time, hier):
@@ -363,12 +370,13 @@ def hierarchy_fromh5(h5_filename, time, hier):
                 patch_datas = {}
                 layout = make_layout(h5_patch_grp, lvl_cell_width)
 
-                add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
+                data_exists = add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
 
                 if ilvl not in patches:
                     patches[ilvl] = []
 
-                patches[ilvl].append(Patch(patch_datas))
+                if data_exists:
+                    patches[ilvl].append(Patch(patch_datas))
 
             patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
@@ -595,7 +603,7 @@ def hierarchy_from_sim(simulator, sim_hier, qty, pop=""):
 
 
 
-    
+
 
 
 

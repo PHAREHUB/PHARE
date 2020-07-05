@@ -73,11 +73,11 @@ public:
         return fileStr + ".h5";
     }
 
-    auto makeFile(std::string filename)
+    auto makeFile(std::string const filename)
     {
         return std::make_unique<HighFiveFile>(filePath_ + "/" + filename, flags);
     }
-    auto makeFile(DiagnosticProperties& diagnostic)
+    auto makeFile(DiagnosticProperties const& diagnostic)
     {
         return makeFile(fileString(diagnostic.quantity));
     }
@@ -285,6 +285,8 @@ void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> c
     std::unordered_map<size_t, std::vector<std::string>> lvlPatchIDs;
     Attributes patchAttributes; // stores dataset info/size for synced MPI creation
 
+    for (auto* diag : diagnostics)
+        writers.at(diag->type)->createFiles(*diag);
 
     auto collectPatchAttributes = [&](GridLayout&, std::string patchID, size_t iLevel) {
         if (!lvlPatchIDs.count(iLevel))

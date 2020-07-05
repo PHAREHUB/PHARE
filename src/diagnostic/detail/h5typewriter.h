@@ -23,9 +23,12 @@ public:
     {
     }
 
+    virtual void createFiles(DiagnosticProperties& diagnostic) = 0;
+
     virtual void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel,
                                 std::string const& patchID, Attributes& patchAttributes)
         = 0;
+
     virtual void initDataSets(DiagnosticProperties& diagnostic,
                               std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                               Attributes& patchAttributes, size_t maxLevel)
@@ -36,7 +39,6 @@ public:
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
                     size_t maxLevel)
         = 0;
-
 
     virtual void finalize(DiagnosticProperties& diagnostic) = 0;
 
@@ -86,6 +88,17 @@ protected:
         dsAttr["ghosts"] = ghosts;
         hi5_.writeAttributeDict(file, dsAttr, null ? "" : path);
     }
+
+    template<typename FileMap, typename... Quantities>
+    void checkCreateFileFor_(DiagnosticProperties const& diagnostic, FileMap& fileData,
+                             std::string const tree, Quantities const... vars)
+    {
+        core::apply(std::forward_as_tuple(vars...), [&](auto const& var) {
+            if (diagnostic.quantity == tree + var and !fileData.count(diagnostic.quantity))
+                fileData.emplace(diagnostic.quantity, this->hi5_.makeFile(diagnostic));
+        });
+    }
+
 
     Writer& hi5_;
 };

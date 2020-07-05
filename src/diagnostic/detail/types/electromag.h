@@ -19,6 +19,7 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
+    using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename HighFiveDiagnostic::GridLayout;
 
@@ -28,11 +29,16 @@ public:
     }
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override {}
+
+    void createFiles(DiagnosticProperties& diagnostic) override;
+
     void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
+
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, size_t maxLevel) override;
+
     void
     writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
@@ -43,6 +49,14 @@ public:
 private:
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
+
+
+template<typename HighFiveDiagnostic>
+void ElectromagDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
+{
+    for (auto* vecField : this->hi5_.modelView().getElectromagFields())
+        checkCreateFileFor_(diagnostic, fileData, "/", vecField->name());
+}
 
 
 template<typename HighFiveDiagnostic>
@@ -67,11 +81,7 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(
     {
         auto& name = vecField->name();
         if (diagnostic.quantity == "/" + name)
-        {
             infoVF(*vecField, name, patchAttributes[lvlPatchID]);
-            if (!fileData.count(diagnostic.quantity))
-                fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
-        }
     }
 }
 

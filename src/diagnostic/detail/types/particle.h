@@ -3,7 +3,6 @@
 
 #include "diagnostic/detail/h5typewriter.h"
 #include "diagnostic/detail/h5_utils.h"
-#include "diagnostic/detail/h5file.h"
 
 #include "core/data/particles/particle_packer.h"
 
@@ -29,6 +28,7 @@ class ParticlesDiagnosticWriter : public H5TypeWriter<HighFiveDiagnostic>
 {
 public:
     using Super = H5TypeWriter<HighFiveDiagnostic>;
+    using Super::checkCreateFileFor_;
     using Super::hi5_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
@@ -44,11 +44,16 @@ public:
     }
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override {}
+
+    void createFiles(DiagnosticProperties& diagnostic) override;
+
     void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
                         Attributes& patchAttributes) override;
+
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
                       Attributes& patchAttributes, size_t maxLevel) override;
+
     void
     writeAttributes(DiagnosticProperties&, Attributes&,
                     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
@@ -61,6 +66,16 @@ private:
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
+
+template<typename HighFiveDiagnostic>
+void ParticlesDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
+{
+    for (auto const& pop : this->hi5_.modelView().getIons())
+    {
+        std::string tree{"/ions/pop/" + pop.name() + "/"};
+        checkCreateFileFor_(diagnostic, fileData, tree, "domain", "levelGhost", "patchGhost");
+    }
+}
 
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticProperties& diagnostic,
@@ -90,11 +105,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPro
     auto checkInfo = [&](auto& tree, auto pType, auto& attr, auto& ps) {
         std::string active{tree + pType};
         if (diagnostic.quantity == active)
-        {
             particleInfo(attr[pType], ps);
-            if (!fileData.count(diagnostic.quantity))
-                fileData.emplace(diagnostic.quantity, hi5.makeFile(diagnostic));
-        }
     };
 
     for (auto& pop : hi5.modelView().getIons())
