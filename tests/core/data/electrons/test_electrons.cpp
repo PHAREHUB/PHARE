@@ -183,10 +183,10 @@ class nDLayout
     {
     }
 
-    //    constexpr nDLayout(theDim<2>)
-    //        : nDLayout{{{0.1, 0.2}}, {{50, 30}}, Point<double, 2>{0., 0.}}
-    //    {
-    //    }
+    // constexpr nDLayout(theDim<2>)
+    //    : nDLayout{{{0.1, 0.2}}, {{50, 30}}, {0., 0.}}
+    //{
+    //}
 
 private:
     std::array<double, dim> meshSize;
@@ -196,10 +196,9 @@ private:
 
 
 
-class Electrons1DTest : public ::testing::Test
+class ElectronsTest : public ::testing::Test
 {
 protected:
-    std::uint32_t nx = 50;
     GridYee layout;
     IonsT ions;
     Electromag<VecFieldND> electromag;
@@ -223,9 +222,9 @@ protected:
     FieldND Pe;
 
 public:
-    Electrons1DTest()
+    ElectronsTest()
         : // layout{nDLayout(theDim<dim>)}
-        layout{{{0.1}}, {{nx}}, Point<double, dim>{0.}}
+        layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
@@ -306,6 +305,12 @@ public:
 
             fill(Nibuffer, [](double x) { return std::cosh(0.1 * x); });
         }
+        else if constexpr (dim == 2)
+        {
+        }
+        else if constexpr (dim == 3)
+        {
+        }
     }
 
 
@@ -344,11 +349,11 @@ public:
 
 
 
-TEST_F(Electrons1DTest, ThatElectronsHasCtor) {}
+TEST_F(ElectronsTest, ThatElectronsHasCtor) {}
 
 
 
-TEST_F(Electrons1DTest, ThatElectronsAreUsable)
+TEST_F(ElectronsTest, ThatElectronsAreUsable)
 {
     EXPECT_TRUE(electrons.isUsable());
 }
@@ -356,39 +361,58 @@ TEST_F(Electrons1DTest, ThatElectronsAreUsable)
 
 
 
-TEST_F(Electrons1DTest, ThatElectronsDensityEqualIonDensity)
+TEST_F(ElectronsTest, ThatElectronsDensityEqualIonDensity)
 {
     electrons.update(layout);
 
     auto& Ne = electrons.density();
     auto& Ni = ions.density();
 
-    auto psi_X = this->layout.physicalStartIndex(Ne, Direction::X);
-    auto pei_X = this->layout.physicalEndIndex(Ne, Direction::X);
-
-    for (std::uint32_t i = psi_X; i < pei_X; ++i)
+    if constexpr (dim == 1)
     {
-        EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
+        auto psi_X = this->layout.physicalStartIndex(Ne, Direction::X);
+        auto pei_X = this->layout.physicalEndIndex(Ne, Direction::X);
+
+        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        {
+            EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
+        }
+    }
+    else if constexpr (dim == 2)
+    {
+    }
+    else if constexpr (dim == 3)
+    {
     }
 }
 
 
-TEST_F(Electrons1DTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
+TEST_F(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 {
     electrons.update(layout);
 
     auto& Ne = electrons.density();
 
+
     auto check = [this](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
                         FieldND const& Ne_, auto const& projector) {
-        auto psi_X = this->layout.physicalStartIndex(Vicomp, Direction::X);
-        auto pei_X = this->layout.physicalEndIndex(Vicomp, Direction::X);
-
-        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        if constexpr (dim == 1)
         {
-            auto const JOnV = GridYee::project(Jcomp, {i}, projector());
+            auto psi_X = this->layout.physicalStartIndex(Vicomp, Direction::X);
+            auto pei_X = this->layout.physicalEndIndex(Vicomp, Direction::X);
 
-            EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
+            for (std::uint32_t i = psi_X; i < pei_X; ++i)
+            {
+                auto const JOnV = GridYee::project(Jcomp, {i}, projector());
+
+                EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
+            }
+        }
+        else if constexpr (dim == 2)
+        {
+        }
+        else if constexpr (dim == 3)
+        {
         }
     };
 
@@ -399,21 +423,45 @@ TEST_F(Electrons1DTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 
 
 
-TEST_F(Electrons1DTest, ThatElectronsPressureEqualsNeTe)
+TEST_F(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 {
     electrons.update(layout);
 
     auto& Ne_ = electrons.density();
     auto& Pe_ = electrons.pressure();
 
-    auto psi_X = this->layout.physicalStartIndex(Ne_, Direction::X);
-    auto pei_X = this->layout.physicalEndIndex(Ne_, Direction::X);
-
-    for (std::uint32_t i = psi_X; i < pei_X; ++i)
+    if constexpr (dim == 1)
     {
-        EXPECT_DOUBLE_EQ(Pe_(i), Ne_(i) * Te);
+        auto psi_X = this->layout.physicalStartIndex(Ne_, Direction::X);
+        auto pei_X = this->layout.physicalEndIndex(Ne_, Direction::X);
+
+        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        {
+            EXPECT_DOUBLE_EQ(Pe_(i), Ne_(i) * Te);
+        }
+    }
+    else if constexpr (dim == 2)
+    {
+    }
+    else if constexpr (dim == 3)
+    {
     }
 }
+
+
+
+template<std::size_t dim, std::size_t interpO>
+struct dimAndInterpOrder
+{
+    static constexpr auto dimension = dim;
+    static constexpr auto interp    = interpO;
+};
+
+using MyDimAndInterpOrders
+    = ::testing::Types<dimAndInterpOrder<1, 1>, dimAndInterpOrder<1, 2>, dimAndInterpOrder<1, 3>>;
+
+// typedef ::testing::Types<Dimension<1>,Dimension<2>,Dimension<3>
+
 
 
 
