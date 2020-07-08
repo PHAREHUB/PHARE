@@ -146,18 +146,53 @@ PHARE::initializer::PHAREDict createDict()
 
 
 
-using GridImplYee1D = GridLayoutImplYee<dim, interpOrder>;
-using GridYee1D     = GridLayout<GridImplYee1D>;
+using GridImplYee = GridLayoutImplYee<dim, interpOrder>;
+using GridYee     = GridLayout<GridImplYee>;
 
-using VecField1D      = VecField<NdArrayVector<1>, HybridQuantity>;
-using Field1D         = typename VecField1D::field_type;
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using VecFieldND      = VecField<NdArrayVector<dim>, HybridQuantity>;
+using FieldND         = typename VecFieldND::field_type;
+using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
 
-using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
-using IonsT           = Ions<IonPopulation1D, GridYee1D>;
-using PartPack1D      = ParticlesPack<typename IonPopulation1D::particle_array_type>;
+using IonPopulationND = IonPopulation<ParticleArray<dim>, VecFieldND, GridYee>;
+using IonsT           = Ions<IonPopulationND, GridYee>;
+using PartPackND      = ParticlesPack<typename IonPopulationND::particle_array_type>;
 using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
 
+
+
+
+// https://stackoverflow.com/questions/46101569/compile-time-constructor-switch-in-c
+template<int>
+struct theDim
+{
+};
+
+
+class nDLayout
+{
+    constexpr nDLayout(std::array<double, dim> mesh, std::array<uint32, dim> numofcells,
+                       Point<double, dim> origin)
+        : meshSize{mesh}
+        , nbrCells{numofcells}
+        , origin{origin}
+    {
+    }
+
+    constexpr nDLayout(theDim<1>)
+        : nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+    {
+    }
+
+    //    constexpr nDLayout(theDim<2>)
+    //        : nDLayout{{{0.1, 0.2}}, {{50, 30}}, Point<double, 2>{0., 0.}}
+    //    {
+    //    }
+
+private:
+    std::array<double, dim> meshSize;
+    std::array<uint32, dim> nbrCells;
+    Point<double, dim> origin;
+};
 
 
 
@@ -165,31 +200,32 @@ class Electrons1DTest : public ::testing::Test
 {
 protected:
     std::uint32_t nx = 50;
-    GridYee1D layout;
+    GridYee layout;
     IonsT ions;
-    Electromag<VecField1D> electromag;
-    VecField1D J;
-    Field1D Nibuffer;
-    Field1D NiProtons;
-    Field1D Vix;
-    Field1D Viy;
-    Field1D Viz;
-    Field1D Fxi;
-    Field1D Fyi;
-    Field1D Fzi;
-    PartPack1D pack;
-    Field1D Vex;
-    Field1D Vey;
-    Field1D Vez;
-    Field1D Jx;
-    Field1D Jy;
-    Field1D Jz;
+    Electromag<VecFieldND> electromag;
+    VecFieldND J;
+    FieldND Nibuffer;
+    FieldND NiProtons;
+    FieldND Vix;
+    FieldND Viy;
+    FieldND Viz;
+    FieldND Fxi;
+    FieldND Fyi;
+    FieldND Fzi;
+    PartPackND pack;
+    FieldND Vex;
+    FieldND Vey;
+    FieldND Vez;
+    FieldND Jx;
+    FieldND Jy;
+    FieldND Jz;
     Electrons<IonsT> electrons;
-    Field1D Pe;
+    FieldND Pe;
 
 public:
     Electrons1DTest()
-        : layout{{{0.1}}, {{nx}}, Point<double, 1>{0.}}
+        : // layout{nDLayout(theDim<dim>)}
+        layout{{{0.1}}, {{nx}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
@@ -247,26 +283,29 @@ public:
 
         pc.setBuffer(Pe.name(), &Pe);
 
-        auto fill = [this](Field1D& field, auto const& filler) {
-            auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
-            auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
+        if constexpr (dim == 1)
+        {
+            auto fill = [this](FieldND& field, auto const& filler) {
+                auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
+                auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
 
-            for (auto ix = gsi_X; ix <= gei_X; ++ix)
-            {
-                auto point = this->layout.fieldNodeCoordinates(field, Point<double, 1>{0.}, ix);
-                field(ix)  = filler(point[0]);
-            }
-        };
+                for (auto ix = gsi_X; ix <= gei_X; ++ix)
+                {
+                    auto point = this->layout.fieldNodeCoordinates(field, Point<double, 1>{0.}, ix);
+                    field(ix)  = filler(point[0]);
+                }
+            };
 
-        fill(Vix, [](double x) { return std::cosh(0.2 * x); });
-        fill(Viy, [](double x) { return std::cosh(0.3 * x); });
-        fill(Viz, [](double x) { return std::cosh(0.4 * x); });
+            fill(Vix, [](double x) { return std::cosh(0.2 * x); });
+            fill(Viy, [](double x) { return std::cosh(0.3 * x); });
+            fill(Viz, [](double x) { return std::cosh(0.4 * x); });
 
-        fill(Jx, [](double x) { return std::sinh(0.2 * x); });
-        fill(Jy, [](double x) { return std::sinh(0.3 * x); });
-        fill(Jz, [](double x) { return std::sinh(0.4 * x); });
+            fill(Jx, [](double x) { return std::sinh(0.2 * x); });
+            fill(Jy, [](double x) { return std::sinh(0.3 * x); });
+            fill(Jz, [](double x) { return std::sinh(0.4 * x); });
 
-        fill(Nibuffer, [](double x) { return std::cosh(0.1 * x); });
+            fill(Nibuffer, [](double x) { return std::cosh(0.1 * x); });
+        }
     }
 
 
@@ -283,11 +322,11 @@ public:
 
         auto& pops = ions.getRunTimeResourcesUserList();
 
-        pops[0].setBuffer(NiProtons.name(), static_cast<Field1D*>(nullptr));
+        pops[0].setBuffer(NiProtons.name(), static_cast<FieldND*>(nullptr));
         pops[0].flux().setBuffer(Fxi.name(), nullptr);
         pops[0].flux().setBuffer(Fyi.name(), nullptr);
         pops[0].flux().setBuffer(Fzi.name(), nullptr);
-        pops[0].setBuffer("protons", static_cast<PartPack1D*>(nullptr));
+        pops[0].setBuffer("protons", static_cast<PartPackND*>(nullptr));
 
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
@@ -324,7 +363,10 @@ TEST_F(Electrons1DTest, ThatElectronsDensityEqualIonDensity)
     auto& Ne = electrons.density();
     auto& Ni = ions.density();
 
-    for (std::uint32_t i = 0; i < nx; ++i)
+    auto psi_X = this->layout.physicalStartIndex(Ne, Direction::X);
+    auto pei_X = this->layout.physicalEndIndex(Ne, Direction::X);
+
+    for (std::uint32_t i = psi_X; i < pei_X; ++i)
     {
         EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
     }
@@ -337,22 +379,22 @@ TEST_F(Electrons1DTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 
     auto& Ne = electrons.density();
 
-    auto check = [this](Field1D const& Vecomp, Field1D const& Vicomp, Field1D const& Jcomp,
-                        Field1D const& Ne_, auto const& projector) {
+    auto check = [this](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
+                        FieldND const& Ne_, auto const& projector) {
         auto psi_X = this->layout.physicalStartIndex(Vicomp, Direction::X);
         auto pei_X = this->layout.physicalEndIndex(Vicomp, Direction::X);
 
         for (std::uint32_t i = psi_X; i < pei_X; ++i)
         {
-            auto const JOnV = GridYee1D::project(Jcomp, {i}, projector());
+            auto const JOnV = GridYee::project(Jcomp, {i}, projector());
 
             EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
         }
     };
 
-    check(Vex, Vix, Jx, Ne, GridYee1D::JxToMoments);
-    check(Vey, Viy, Jy, Ne, GridYee1D::JyToMoments);
-    check(Vez, Viz, Jz, Ne, GridYee1D::JzToMoments);
+    check(Vex, Vix, Jx, Ne, GridYee::JxToMoments);
+    check(Vey, Viy, Jy, Ne, GridYee::JyToMoments);
+    check(Vez, Viz, Jz, Ne, GridYee::JzToMoments);
 }
 
 
