@@ -26,41 +26,58 @@
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-template<std::size_t dimension>
-std::vector<Particle<dimension>> loadCell(int iCell)
+template<std::size_t dimension, typename Box>
+std::array<int, 3> boxBoundsLower(Box const& box)
 {
+    return {box.lower(dirX), dimension > 1 ? box.lower(dirY) : 0,
+            dimension > 2 ? box.lower(dirZ) : 0};
+}
+template<std::size_t dimension, typename Box>
+std::array<int, 3> boxBoundsUpper(Box const& box)
+{
+    return {box.upper(dirX), dimension > 1 ? box.upper(dirY) : 0,
+            dimension > 2 ? box.upper(dirZ) : 0};
+}
+
+
+template<std::size_t dimension>
+std::vector<Particle<dimension>> loadCell(int iCellX, int iCellY, int iCellZ)
+{
+    std::array<int, 3> _3diCell = {iCellX, iCellY, iCellZ};
+
     float middle = 0.5;
     float delta  = 0.30f;
 
-    Particle<dimension> tmpParticle;
+    Particle<dimension> particle;
     std::vector<Particle<dimension>> particles;
 
-    tmpParticle.weight = 1.;
-    tmpParticle.charge = 1.;
-    tmpParticle.v      = {{1.0, 0.0, 0.0}};
+    particle.weight = 1.;
+    particle.charge = 1.;
+    particle.v      = {{1.0, 0.0, 0.0}};
+    particle.delta.fill(middle);
 
-    tmpParticle.iCell[dirX] = iCell;
+    particle.iCell = sized_array<dimension>(_3diCell);
 
-    tmpParticle.delta[dirX] = middle - delta;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle - delta;
+    particles.push_back(particle);
 
-    tmpParticle.delta[dirX] = middle + delta;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle + delta;
+    particles.push_back(particle);
 
-    tmpParticle.delta[dirX] = middle;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle;
+    particles.push_back(particle);
 
-    tmpParticle.delta[dirX] = middle - delta / 2;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle - delta / 2;
+    particles.push_back(particle);
 
-    tmpParticle.delta[dirX] = middle + delta / 2;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle + delta / 2;
+    particles.push_back(particle);
 
-    tmpParticle.delta[dirX] = middle - delta / 3;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle - delta / 3;
+    particles.push_back(particle);
 
-    tmpParticle.delta[dirX] = middle + delta / 3;
-    particles.push_back(tmpParticle);
+    particle.delta[dirX] = middle + delta / 3;
+    particles.push_back(particle);
 
     return particles;
 }
@@ -131,19 +148,22 @@ public:
 
                     auto& interior = particlesData->domainParticles;
 
-                    auto particlesBox      = particlesData->getBox();
-                    auto particlesGhostBox = particlesData->getGhostBox();
-                    // particlesBox           = AMRToLocal(
-                    //    static_cast<std::add_const_t<decltype(particlesBox)>>(particlesBox),
-                    //    particlesGhostBox);
+                    auto const particlesBox = particlesData->getBox();
 
-                    // here we are 1D
-                    for (int iCellPos = particlesBox.lower(dirX);
-                         iCellPos <= particlesBox.upper(dirX); ++iCellPos)
+                    auto const lower = boxBoundsLower<dimension>(particlesBox);
+                    auto const upper = boxBoundsUpper<dimension>(particlesBox);
+
+                    for (auto iCellX = lower[dirX]; iCellX <= upper[dirX]; ++iCellX)
                     {
-                        auto particles = loadCell<dimension>(iCellPos);
-                        interior.insert(std::end(interior), std::begin(particles),
-                                        std::end(particles));
+                        for (auto iCellY = lower[dirY]; iCellY <= upper[dirY]; ++iCellY)
+                        {
+                            for (auto iCellZ = lower[dirZ]; iCellZ <= upper[dirZ]; ++iCellZ)
+                            {
+                                auto const particles = loadCell<dimension>(iCellX, iCellY, iCellZ);
+                                interior.insert(std::end(interior), std::begin(particles),
+                                                std::end(particles));
+                            }
+                        }
                     }
                 }
             }
@@ -179,7 +199,6 @@ public:
         // auto ghostFiller = algorithm_.createSchedule(hierarchy->getPatchLevel(levelNumber));
         // ghostFiller->fillData(initDataTime);
     }
-
 
 
 
