@@ -56,8 +56,7 @@ std::vector<Particle<dimension>> loadCell(int iCellX, int iCellY, int iCellZ)
     particle.v      = {{1.0, 0.0, 0.0}};
     particle.delta.fill(middle);
 
-    for (size_t i = 0; i < dimension; i++)
-        particle.iCell[i] = _3diCell[i];
+    particle.iCell = sized_array<dimension>(_3diCell);
 
     particle.delta[dirX] = middle - delta;
     particles.push_back(particle);
@@ -149,18 +148,18 @@ public:
 
                     auto& interior = particlesData->domainParticles;
 
-                    auto particlesBox = particlesData->getBox();
+                    auto const particlesBox = particlesData->getBox();
 
-                    auto lower = boxBoundsLower<dimension>(particlesBox);
-                    auto upper = boxBoundsUpper<dimension>(particlesBox);
+                    auto const lower = boxBoundsLower<dimension>(particlesBox);
+                    auto const upper = boxBoundsUpper<dimension>(particlesBox);
 
-                    for (auto iCellZ = lower[dirZ]; iCellZ <= upper[dirZ]; ++iCellZ)
+                    for (auto iCellX = lower[dirX]; iCellX <= upper[dirX]; ++iCellX)
                     {
                         for (auto iCellY = lower[dirY]; iCellY <= upper[dirY]; ++iCellY)
                         {
-                            for (auto iCellX = lower[dirX]; iCellX <= upper[dirX]; ++iCellX)
+                            for (auto iCellZ = lower[dirZ]; iCellZ <= upper[dirZ]; ++iCellZ)
                             {
-                                auto particles = loadCell<dimension>(iCellX, iCellY, iCellZ);
+                                auto const particles = loadCell<dimension>(iCellX, iCellY, iCellZ);
                                 interior.insert(std::end(interior), std::begin(particles),
                                                 std::end(particles));
                             }
