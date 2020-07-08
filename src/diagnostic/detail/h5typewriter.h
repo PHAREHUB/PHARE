@@ -62,8 +62,7 @@ protected:
     }
 
     void
-    writeAttributes_(HighFive::File& file, DiagnosticProperties& diagnostic,
-                     Attributes& fileAttributes,
+    writeAttributes_(HighFive::File& file, Attributes& fileAttributes,
                      std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&
                          patchAttributes,
                      std::size_t maxLevel)

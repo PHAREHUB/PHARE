@@ -137,7 +137,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
             return hi5.template createDataSet<ValueType>(file, path, size);
     };
 
-    auto initDataSet = [&](auto& lvl, auto& patchID, auto tree, auto& attr) {
+    auto initDataSet = [&](auto& lvl, auto& patchID, auto& attr) {
         bool null = patchID.empty();
         std::string path{hi5_.getPatchPathAddTimestamp(lvl, patchID) + "/"};
         size_t part_idx = 0;
@@ -151,7 +151,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto initIfActive = [&](auto& lvl, auto& tree, auto& attr, auto& pop, auto& patch, auto var) {
         if (diagnostic.quantity == tree + var)
-            initDataSet(lvl, patch, tree + var, patch.empty() ? attr : attr[pop][var]);
+            initDataSet(lvl, patch, patch.empty() ? attr : attr[pop][var]);
     };
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
@@ -210,8 +210,8 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
     size_t maxLevel)
 {
-    writeAttributes_(fileData.at(diagnostic.quantity)->file(), diagnostic, fileAttributes,
-                     patchAttributes, maxLevel);
+    writeAttributes_(fileData.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
+                     maxLevel);
 }
 
 

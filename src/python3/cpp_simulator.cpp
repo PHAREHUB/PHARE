@@ -384,11 +384,10 @@ public:
         : simulator_{simulator}
         , hierarchy_{hierarchy}
     {
-        auto dict          = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-        auto dim           = dict["simulation"]["dimension"].template to<int>();
-        auto interpOrder   = dict["simulation"]["interp_order"].template to<int>();
-        auto nbRefinedPart = dict["simulation"]["refined_particle_nbr"].template to<int>();
-        if (!core::makeAtRuntime<Maker>(dim, interpOrder, nbRefinedPart, Maker{*this}))
+        auto simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
+        if (!core::makeAtRuntime<Maker>(
+                simDict["dimension"].template to<int>(), simDict["interp_order"].template to<int>(),
+                simDict["refined_particle_nbr"].template to<int>(), Maker{*this}))
             throw std::runtime_error("Runtime diagnostic deduction failed");
     }
 

@@ -206,8 +206,8 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
     std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
     size_t maxLevel)
 {
-    writeAttributes_(fileData.at(diagnostic.quantity)->file(), diagnostic, fileAttributes,
-                     patchAttributes, maxLevel);
+    writeAttributes_(fileData.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
+                     maxLevel);
 }
 
 template<typename HighFiveDiagnostic>
