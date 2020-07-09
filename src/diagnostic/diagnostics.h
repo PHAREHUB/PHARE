@@ -3,7 +3,8 @@
 #define DIAGNOSTIC_DIAGNOSTICS_H
 
 #if !defined(PHARE_HAS_HIGHFIVE)
-#error // PHARE_HAS_HIGHFIVE expected to be defined as bool
+#pragma message PHARE_HAS_HIGHFIVE undefined, disabled.
+#define PHARE_HAS_HIGHFIVE 0
 #endif
 
 #include "diagnostic_manager.h"
