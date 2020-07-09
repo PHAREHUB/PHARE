@@ -92,7 +92,7 @@ double ez(double x)
 const double Te = 0.12;
 
 
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
 
 PHARE::initializer::PHAREDict createDict()
 {
@@ -163,7 +163,7 @@ using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<I
 
 // https://stackoverflow.com/questions/46101569/compile-time-constructor-switch-in-c
 template<int>
-struct theDim
+struct with
 {
 };
 
@@ -178,12 +178,12 @@ class nDLayout
     {
     }
 
-    constexpr nDLayout(theDim<1>)
+    constexpr nDLayout(with<1>)
         : nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
     {
     }
 
-    // constexpr nDLayout(theDim<2>)
+    // constexpr nDLayout(with<2>)
     //    : nDLayout{{{0.1, 0.2}}, {{50, 30}}, {0., 0.}}
     //{
     //}
@@ -223,7 +223,7 @@ protected:
 
 public:
     ElectronsTest()
-        : // layout{nDLayout(theDim<dim>)}
+        : // layout{nDLayout(with<dim>)}
         layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
