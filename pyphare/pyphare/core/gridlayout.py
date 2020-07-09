@@ -37,8 +37,8 @@ yee_centering_lower = {
 
 def yee_element_is_primal(key, direction = 'x'):
     if key in yee_centering_lower[direction]:
-        return yee_centering_lower[direction][key] is 'primal'
-    return yee_centering[direction][key] is 'primal'
+        return yee_centering_lower[direction][key] == 'primal'
+    return yee_centering[direction][key] == 'primal'
 
 
 class YeeCentering(object):
