@@ -16,14 +16,12 @@
 
 #include "simulator/phare_types.h"
 
-//#include "initializer/data_provider.h"
-
 using namespace PHARE::core;
 
 
 
 
-double density(double x)
+double density(double /*x*/)
 {
     return 1.;
 }
@@ -874,8 +872,6 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
-
-    auto& protonDomainPart = populations[0].domainParticles();
 
     auto checkIsUnTouched = [](auto const& original, auto const& cpy) {
         // no particles should have moved, so none should have left the domain

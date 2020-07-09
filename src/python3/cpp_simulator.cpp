@@ -362,9 +362,9 @@ public:
     }
 
 private:
+    size_t lvl_;
     amr::Hierarchy& hierarchy_;
     HybridModel& model_;
-    size_t lvl_;
 };
 
 template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
