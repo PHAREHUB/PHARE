@@ -82,6 +82,9 @@ function(add_no_mpi_phare_test binary directory)
   if(NOT testMPI OR (testMPI AND forceSerialTests))
     add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
     add_phare_test_(${binary} ${directory})
+  else()
+    # this prevents building targets even when added via "add_executable"
+    set_target_properties(${binary} PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
   endif()
 endfunction(add_no_mpi_phare_test)
 
