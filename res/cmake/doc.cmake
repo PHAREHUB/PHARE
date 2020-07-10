@@ -30,7 +30,6 @@ if (documentation)
     endif()
 
 
-
   set(DOC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pharead)
 
   if (NOT EXISTS ${DOC_DIR})
