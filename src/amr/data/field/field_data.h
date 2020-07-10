@@ -241,8 +241,7 @@ namespace amr
             // For unpacking we need to know how much element we will need to
             // extract
             size_t expectedSize = getDataStreamSize(overlap) / sizeof(double);
-            // Here the seek counter will be used to index buffer
-            size_t seek = 0;
+
             std::vector<double> buffer;
             buffer.resize(expectedSize, 0.);
 
@@ -254,6 +253,9 @@ namespace amr
             SAMRAI::hier::Transformation const& transformation = fieldOverlap.getTransformation();
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
             {
+                // Here the seek counter will be used to index buffer
+                size_t seek = 0;
+
                 SAMRAI::hier::BoxContainer const& boxContainer
                     = fieldOverlap.getDestinationBoxContainer();
                 for (auto const& box : boxContainer)
@@ -411,10 +413,9 @@ namespace amr
             // throws on failure
             auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
 
-            size_t totalSize = 0;
             if (fieldOverlap.isOverlapEmpty())
             {
-                return totalSize;
+                return 0;
             }
 
             // TODO: see FieldDataFactory todo of the same function
