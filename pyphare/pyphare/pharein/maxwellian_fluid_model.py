@@ -7,13 +7,11 @@ class MaxwellianFluidModel(object):
     def defaulter(self, input, value):
         if input is not None:
             import inspect
-            argspec = inspect.getargspec(input)
-            has_args_but_not_kwargs = argspec.varargs != None and argspec.keywords == None
-            sig = inspect.signature(input)
-            params = sig.parameters
+            params = list(inspect.signature(input).parameters.values())
+            assert len(params)
             param_per_dim = len(params) == self.dim
-            param_is_varargs = len(params) == 1 and has_args_but_not_kwargs
-            assert param_per_dim or param_is_varargs
+            has_vargs = params[0].kind == inspect.Parameter.VAR_POSITIONAL
+            assert param_per_dim or has_vargs
             return input
         if self.dim == 1:
             return lambda x:value + x*0
