@@ -49,14 +49,13 @@ namespace amr
          * the mask will be shifted).
          * Finaly we can also add some restrictions on the boxes for the destination.
          */
-        std::shared_ptr<SAMRAI::hier::BoxOverlap>
-        calculateOverlap(SAMRAI::hier::BoxGeometry const& destinationGeometry,
-                         SAMRAI::hier::BoxGeometry const& sourceGeometry,
-                         SAMRAI::hier::Box const& sourceMask, SAMRAI::hier::Box const& fillBox,
-                         bool const overwriteInterior,
-                         SAMRAI::hier::Transformation const& sourceOffset, bool const retry,
-                         SAMRAI::hier::BoxContainer const& destinationRestrictBoxes
-                         = SAMRAI::hier::BoxContainer{}) const final
+        std::shared_ptr<SAMRAI::hier::BoxOverlap> calculateOverlap(
+            SAMRAI::hier::BoxGeometry const& destinationGeometry,
+            SAMRAI::hier::BoxGeometry const& sourceGeometry, SAMRAI::hier::Box const& sourceMask,
+            SAMRAI::hier::Box const& fillBox, bool const overwriteInterior,
+            SAMRAI::hier::Transformation const& sourceOffset, [[maybe_unused]] bool const retry,
+            SAMRAI::hier::BoxContainer const& destinationRestrictBoxes
+            = SAMRAI::hier::BoxContainer{}) const final
         {
             auto& destinationCast = dynamic_cast<FieldGeometry const&>(destinationGeometry);
             auto& sourceCast      = dynamic_cast<FieldGeometry const&>(sourceGeometry);

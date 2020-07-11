@@ -25,7 +25,10 @@ namespace PHARE::diagnostic
 {
 struct NullOpDiagnosticsManager : public IDiagnosticsManager
 {
-    void dump(double timeStamp, double timeStep) override { throw std::runtime_error("NOOP"); }
+    void dump([[maybe_unused]] double timeStamp, [[maybe_unused]] double timeStep) override
+    {
+        throw std::runtime_error("NOOP");
+    }
 };
 
 struct DiagnosticsManagerResolver

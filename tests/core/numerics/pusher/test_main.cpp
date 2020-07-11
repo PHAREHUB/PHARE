@@ -71,9 +71,8 @@ class Interpolator
 {
 public:
     template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const& em, GridLayout& layout)
+    void operator()(PartIterator begin, PartIterator end, Electromag const&, GridLayout&)
     {
-        (void)em;
         for (auto currPart = begin; currPart != end; ++currPart)
         {
             currPart->Ex = 0.01;

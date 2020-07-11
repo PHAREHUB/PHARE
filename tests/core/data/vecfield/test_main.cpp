@@ -268,7 +268,7 @@ TEST_F(VecFieldTest, ComponentNames)
 
 TEST_F(VecFieldTest, VecFieldsHaveBeginAndEnd)
 {
-    for (auto const& component : B1D_) {}
+    for ([[maybe_unused]] auto const& component : B1D_) {}
 }
 
 
