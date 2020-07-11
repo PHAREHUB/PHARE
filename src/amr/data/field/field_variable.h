@@ -59,8 +59,8 @@ namespace amr
         bool dataLivesOnPatchBorder() const final { return dataLivesOnPatchBorder_; }
 
     private:
-        bool const fineBoundaryRepresentsVariable_;
-        bool const dataLivesOnPatchBorder_;
+        bool const fineBoundaryRepresentsVariable_ = false;
+        bool const dataLivesOnPatchBorder_         = false;
 
 
 
