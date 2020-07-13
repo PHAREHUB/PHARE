@@ -1261,7 +1261,6 @@ namespace core
         std::array<std::array<uint32, dimension>, 2> physicalStartIndexTable_;
         std::array<std::array<uint32, dimension>, 2> physicalEndIndexTable_;
         std::array<std::array<uint32, dimension>, 2> ghostEndIndexTable_;
-        // Box<int, dimension> localBox_;
         Box<int, dimension> AMRBox_;
 
 
