@@ -1,23 +1,10 @@
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <algorithm>
-#include <array>
-#include <iterator>
-
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/grid/gridlayoutimplyee.h"
-#include "core/data/ions/ion_population/particle_pack.h"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.h"
+#include "phare_core.h"
 
 #include "core/numerics/ion_updater/ion_updater.h"
-#include "core/numerics/moments/moments.h"
-
-#include "simulator/phare_types.h"
 
 using namespace PHARE::core;
-
 
 
 
@@ -203,7 +190,7 @@ struct DimInterp
 template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
-    using PHARETypes = PHARE::PHARE_Types<dim, interp_order, 2 /* = nbRefineParts */>;
+    using PHARETypes = PHARE::core::PHARE_Types<dim, interp_order>;
     using Field      = typename PHARETypes::Field_t;
     using GridLayout = typename PHARETypes::GridLayout_t;
     using Electromag = typename PHARETypes::Electromag_t;
@@ -257,11 +244,11 @@ struct ElectromagBuffers
 template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
-    using PHARETypes    = PHARE::PHARE_Types<dim, interp_order, 2 /* = nbRefineParts */>;
-    using Field         = typename PHARETypes::Field_t;
-    using GridLayout    = typename PHARETypes::GridLayout_t;
-    using Ions          = typename PHARETypes::Ions_t;
-    using ParticleArray = typename PHARETypes::ParticleArray_t;
+    using PHARETypes                 = PHARE::core::PHARE_Types<dim, interp_order>;
+    using Field                      = typename PHARETypes::Field_t;
+    using GridLayout                 = typename PHARETypes::GridLayout_t;
+    using Ions                       = typename PHARETypes::Ions_t;
+    using ParticleArray              = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
     Field ionDensity;
@@ -427,9 +414,9 @@ struct IonUpdaterTest : public ::testing::Test
 {
     static constexpr auto dim          = DimInterpT::dimension;
     static constexpr auto interp_order = DimInterpT::interp_order;
-    using PHARETypes    = PHARE::PHARE_Types<dim, interp_order, 2 /* = nbRefineParts */>;
-    using Ions          = typename PHARETypes::Ions_t;
-    using Electromag    = typename PHARETypes::Electromag_t;
+    using PHARETypes                   = PHARE::core::PHARE_Types<dim, interp_order>;
+    using Ions                         = typename PHARETypes::Ions_t;
+    using Electromag                   = typename PHARETypes::Electromag_t;
     using GridLayout    = typename PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
     using ParticleArray = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
