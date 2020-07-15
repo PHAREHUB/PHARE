@@ -168,9 +168,8 @@ struct with
 };
 
 
-class nDLayout
+struct nDLayout
 {
-public:
     nDLayout(with<1>)
         : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
     // nDLayout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50),
@@ -192,7 +191,6 @@ public:
     //{
     //}
 
-private:
     GridYee layout;
     // std::array<double, dim> meshSize;
     // std::array<uint32, dim> nbrCells;
@@ -204,7 +202,8 @@ private:
 class ElectronsTest : public ::testing::Test
 {
 protected:
-    GridYee layout;
+    nDLayout _nDLayout;
+    GridYee& layout = _nDLayout.layout;
     IonsT ions;
     Electromag<VecFieldND> electromag;
     VecFieldND J;
@@ -230,7 +229,7 @@ public:
     ElectronsTest()
         : // layout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50), Point<double,
           // dim>{ConstArray<double, dim>(0.)}}
-        layout{nDLayout(with<dim>{})} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+        _nDLayout{with<dim>{}} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
