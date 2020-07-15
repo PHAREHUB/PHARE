@@ -198,10 +198,12 @@ struct nDLayout
 };
 
 
-
-class ElectronsTest : public ::testing::Test
+template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
+struct ElectronsTest
 {
-protected:
+    static constexpr auto dim    = typename TypeInfo::first_type{}();
+    static constexpr auto interp = typename TypeInfo::second_type{}();
+
     nDLayout _nDLayout;
     GridYee& layout = _nDLayout.layout;
     IonsT ions;
@@ -225,7 +227,6 @@ protected:
     Electrons<IonsT> electrons;
     FieldND Pe;
 
-public:
     ElectronsTest()
         : // layout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50), Point<double,
           // dim>{ConstArray<double, dim>(0.)}}
@@ -318,8 +319,7 @@ public:
         }
     }
 
-
-    void TearDown() override
+    ~ElectronsTest()
     {
         J.setBuffer(Jx.name(), nullptr);
         J.setBuffer(Jy.name(), nullptr);
@@ -353,21 +353,42 @@ public:
 };
 
 
-
-TEST_F(ElectronsTest, ThatElectronsHasCtor) {}
-
-
-
-TEST_F(ElectronsTest, ThatElectronsAreUsable)
+template<typename TypeInfo>
+struct TElectronsTest : public ::testing::Test
 {
+};
+
+using ElectronsTupleInfos = testing::Types<ElectronsTest<std::pair<DimConst<1>, InterpConst<1>>>>;
+
+TYPED_TEST_SUITE(TElectronsTest, ElectronsTupleInfos);
+
+TYPED_TEST(TElectronsTest, ThatElectronsHasCtor)
+{
+    using ElectronsTest = TypeParam;
+
+    std::cout << __FILE__ << " " << __LINE__ << " " << ElectronsTest::dim << std::endl;
+    std::cout << __FILE__ << " " << __LINE__ << " " << ElectronsTest::interp << std::endl;
+}
+
+
+
+TYPED_TEST(TElectronsTest, ThatElectronsAreUsable)
+{
+    TypeParam test;
+    auto& electrons = test.electrons;
     EXPECT_TRUE(electrons.isUsable());
 }
 
 
 
 
-TEST_F(ElectronsTest, ThatElectronsDensityEqualIonDensity)
+TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
 {
+    TypeParam test;
+    auto& electrons = test.electrons;
+    auto& layout    = test.layout;
+    auto& ions      = test.ions;
+
     electrons.update(layout);
 
     auto& Ne = electrons.density();
@@ -375,8 +396,8 @@ TEST_F(ElectronsTest, ThatElectronsDensityEqualIonDensity)
 
     if constexpr (dim == 1)
     {
-        auto psi_X = this->layout.physicalStartIndex(Ne, Direction::X);
-        auto pei_X = this->layout.physicalEndIndex(Ne, Direction::X);
+        auto psi_X = layout.physicalStartIndex(Ne, Direction::X);
+        auto pei_X = layout.physicalEndIndex(Ne, Direction::X);
 
         for (std::uint32_t i = psi_X; i < pei_X; ++i)
         {
@@ -392,19 +413,22 @@ TEST_F(ElectronsTest, ThatElectronsDensityEqualIonDensity)
 }
 
 
-TEST_F(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
+TYPED_TEST(TElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 {
+    TypeParam test;
+    auto& electrons = test.electrons;
+    auto& layout    = test.layout;
+
     electrons.update(layout);
 
     auto& Ne = electrons.density();
 
-
-    auto check = [this](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
-                        FieldND const& Ne_, auto const& projector) {
+    auto check = [&layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
+                           FieldND const& Ne_, auto const& projector) {
         if constexpr (dim == 1)
         {
-            auto psi_X = this->layout.physicalStartIndex(Vicomp, Direction::X);
-            auto pei_X = this->layout.physicalEndIndex(Vicomp, Direction::X);
+            auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
+            auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
 
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
             {
@@ -421,15 +445,19 @@ TEST_F(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
         }
     };
 
-    check(Vex, Vix, Jx, Ne, GridYee::JxToMoments);
-    check(Vey, Viy, Jy, Ne, GridYee::JyToMoments);
-    check(Vez, Viz, Jz, Ne, GridYee::JzToMoments);
+    check(test.Vex, test.Vix, test.Jx, Ne, GridYee::JxToMoments);
+    check(test.Vey, test.Viy, test.Jy, Ne, GridYee::JyToMoments);
+    check(test.Vez, test.Viz, test.Jz, Ne, GridYee::JzToMoments);
 }
 
 
 
-TEST_F(ElectronsTest, ThatElectronsPressureEqualsNeTe)
+TYPED_TEST(TElectronsTest, ThatElectronsPressureEqualsNeTe)
 {
+    TypeParam test;
+    auto& electrons = test.electrons;
+    auto& layout    = test.layout;
+
     electrons.update(layout);
 
     auto& Ne_ = electrons.density();
@@ -437,8 +465,8 @@ TEST_F(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 
     if constexpr (dim == 1)
     {
-        auto psi_X = this->layout.physicalStartIndex(Ne_, Direction::X);
-        auto pei_X = this->layout.physicalEndIndex(Ne_, Direction::X);
+        auto psi_X = layout.physicalStartIndex(Ne_, Direction::X);
+        auto pei_X = layout.physicalEndIndex(Ne_, Direction::X);
 
         for (std::uint32_t i = psi_X; i < pei_X; ++i)
         {
@@ -452,21 +480,6 @@ TEST_F(ElectronsTest, ThatElectronsPressureEqualsNeTe)
     {
     }
 }
-
-
-
-template<std::size_t dim, std::size_t interpO>
-struct dimAndInterpOrder
-{
-    static constexpr auto dimension = dim;
-    static constexpr auto interp    = interpO;
-};
-
-using MyDimAndInterpOrders
-    = ::testing::Types<dimAndInterpOrder<1, 1>, dimAndInterpOrder<1, 2>, dimAndInterpOrder<1, 3>>;
-
-// typedef ::testing::Types<Dimension<1>,Dimension<2>,Dimension<3>
-
 
 
 
