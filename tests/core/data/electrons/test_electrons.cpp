@@ -223,8 +223,7 @@ protected:
 
 public:
     ElectronsTest()
-        : // layout{nDLayout(with<dim>)}
-        layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+        : layout{nDLayout(with<dim>)} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
