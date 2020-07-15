@@ -8,7 +8,7 @@
 #include "core/data/ions/ion_population/ion_population.h"
 #include "core/data/ions/ions.h"
 #include "core/data/electromag/electromag.h"
-
+#include "src/core/utilities/types.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -170,16 +170,12 @@ struct with
 
 class nDLayout
 {
-    constexpr nDLayout(std::array<double, dim> mesh, std::array<uint32, dim> numofcells,
-                       Point<double, dim> origin)
-        : meshSize{mesh}
-        , nbrCells{numofcells}
-        , origin{origin}
-    {
-    }
-
-    constexpr nDLayout(with<1>)
-        : nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+public:
+    nDLayout(with<1>)
+        : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+    // nDLayout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50),
+    //         Point<double, dim>{ConstArray<double, dim>(0.)}}
+    // nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
     {
     }
 
@@ -188,10 +184,19 @@ class nDLayout
     //{
     //}
 
+    // constexpr nDLayout(std::array<double, dim> mesh, std::array<uint32, dim> numofcells,
+    //                   Point<double, dim> origin)
+    //    : meshSize{mesh}
+    //    , nbrCells{numofcells}
+    //    , origin{origin}
+    //{
+    //}
+
 private:
-    std::array<double, dim> meshSize;
-    std::array<uint32, dim> nbrCells;
-    Point<double, dim> origin;
+    GridYee layout;
+    // std::array<double, dim> meshSize;
+    // std::array<uint32, dim> nbrCells;
+    // Point<double, dim> origin;
 };
 
 
@@ -223,7 +228,9 @@ protected:
 
 public:
     ElectronsTest()
-        : layout{nDLayout(with<dim>)} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+        : // layout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50), Point<double,
+          // dim>{ConstArray<double, dim>(0.)}}
+        layout{nDLayout(with<dim>{})} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
