@@ -8,7 +8,7 @@ import unittest, os, pyphare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
 from tests.diagnostic import dump_all_diags
-from tests.simulator import populate_simulation
+from tests.simulator import NoOverwriteDict, populate_simulation
 from pyphare.simulator.simulator import Simulator
 
 out = "phare_outputs/valid/refinement_boxes/"
@@ -23,6 +23,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
         self.simulator = None
 
     def dup(dic):
+        dic = NoOverwriteDict(dic)
         dic.update(diags.copy())
         dic.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
         return dic

@@ -3,6 +3,18 @@
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
+# Block accidental dictionary key rewrites
+class NoOverwriteDict(dict):
+    def __init__(self, dict):
+        for k, v in dict.items():
+            self[k] = v
+
+    def __setitem__(self, k, v):
+        if k in self.keys():
+            raise ValueError("Key is already present")
+        else:
+            return super(NoOverwriteDict, self).__setitem__(k, v)
+
 
 def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     from pyphare.pharein.simulation import valid_refined_particle_nbr
