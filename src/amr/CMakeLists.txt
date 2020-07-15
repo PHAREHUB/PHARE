@@ -45,11 +45,8 @@ set( SOURCES_INC
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
-     data/particles/refine/split.cpp
      resources_manager/amr_utils.cpp
-     messengers/messenger.cpp
      data/field/coarsening/field_coarsen.cpp
-     resources_manager/resources_manager.cpp
      messengers/messenger_factory.cpp
    )
 

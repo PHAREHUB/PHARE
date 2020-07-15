@@ -14,20 +14,14 @@ set( SOURCES_INC
      level_initializer/hybrid_level_initializer.h
      level_initializer/level_initializer_factory.h
    )
-set( SOURCES_CPP
-     solvers/solver.cpp
-   )
 
-add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
-target_include_directories(${PROJECT_NAME} PUBLIC
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include/phare/amr>
   $<INSTALL_INTERFACE:include/phare/solver>)
 
 
-target_link_libraries(${PROJECT_NAME} PUBLIC phare_amr)
+target_link_libraries(${PROJECT_NAME} INTERFACE phare_amr)
 
-
-target_include_directories(${PROJECT_NAME}  PUBLIC
-  $<INSTALL_INTERFACE:include/phare/amr>)
 
