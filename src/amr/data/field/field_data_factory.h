@@ -171,8 +171,8 @@ namespace amr
 
 
     private:
-        bool const fineBoundaryRepresentsVariable_;
-        bool const dataLivesOnPatchBorder_;
+        bool const fineBoundaryRepresentsVariable_ = false;
+        bool const dataLivesOnPatchBorder_         = false;
         PhysicalQuantity const quantity_;
         std::string name_;
     };

@@ -53,12 +53,10 @@ namespace amr
             , weighters_{make_weighters(nbrFinePoints_(centering, ratio),
                                         std::make_index_sequence<dimension>{})}
         {
-            std::array<bool, dimension> evenRatio;
             std::array<int, dimension> halfRatio;
 
             for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
             {
-                evenRatio[iDir] = ratio(iDir) % 2 == 0;
                 halfRatio[iDir] = ratio(iDir) / 2;
             }
 
