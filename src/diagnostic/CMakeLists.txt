@@ -20,15 +20,11 @@ if (HighFive)
  )
 endif()
 
-set(SOURCES_CPP
-  ${PROJECT_SOURCE_DIR}/diagnostic_manager.cpp
-)
 
-add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
+add_library(${PROJECT_NAME} INTERFACE)
 
-target_include_directories(${PROJECT_NAME}  PUBLIC
+target_include_directories(${PROJECT_NAME}  INTERFACE
   $<INSTALL_INTERFACE:include/phare/diagnostic>)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE phare_solver)
+target_link_libraries(${PROJECT_NAME} INTERFACE phare_solver)
 
