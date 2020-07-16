@@ -4,9 +4,6 @@
 
 #include "include.h"
 #include "phare_types.h"
-#include "amr/wrappers/hierarchy.h"
-#include "amr/wrappers/integrator.h"
-
 
 
 namespace PHARE
@@ -25,7 +22,6 @@ public:
     virtual std::string cellWidth() const = 0;
     virtual ~ISimulator() {}
 };
-
 
 
 
