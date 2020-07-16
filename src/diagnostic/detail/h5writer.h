@@ -223,7 +223,7 @@ void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, size_
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     auto sizes = core::mpi::collect(dataSetSize, mpi_size);
-    auto paths = core::mpi::collectStrings(path, mpi_size);
+    auto paths = core::mpi::collect(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
         if (sizes[i] == 0)
@@ -260,7 +260,7 @@ void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std:
 
     int mpi_size = core::mpi::size();
     auto values  = core::mpi::collect(data, mpi_size);
-    auto paths   = core::mpi::collectStrings(path, mpi_size);
+    auto paths   = core::mpi::collect(path, mpi_size);
 
     for (int i = 0; i < mpi_size; i++)
     {

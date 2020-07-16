@@ -77,7 +77,7 @@ public:
 
 
     static auto getEmptyPatchProperties()
-    { // MPI has problems sending empty arrays. Values are ignored anyway.
+    {
         PatchProperties dict;
         dict["origin"]   = std::vector<double>{};
         dict["nbrCells"] = std::vector<uint32_t>{};
