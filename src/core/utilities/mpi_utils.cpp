@@ -10,7 +10,7 @@ int size()
 }
 
 
-size_t max(size_t local, int mpi_size)
+size_t max(size_t const local, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);

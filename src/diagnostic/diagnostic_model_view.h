@@ -63,7 +63,7 @@ public:
 
     auto cellWidth() const { return hierarchy_.cellWidth(); }
 
-    auto getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
+    std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
 
     static auto getPatchProperties(GridLayout const& grid)
     {

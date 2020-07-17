@@ -93,7 +93,7 @@ namespace core
         }
 
 
-        decltype(auto) toVector() const
+        std::vector<Type> toVector() const
         {
             return std::vector<Type>(r.data(), r.data() + dimension);
         }

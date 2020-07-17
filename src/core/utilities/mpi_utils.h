@@ -21,12 +21,12 @@ namespace PHARE::core::mpi
 template<typename Data>
 std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
-size_t max(size_t local, int mpi_size = 0);
+size_t max(size_t const local, int mpi_size = 0);
 
 int size();
 
 template<typename Data, typename GatherFunc>
-void _gather(GatherFunc&& gather)
+void _gather(GatherFunc const&& gather)
 {
     if constexpr (std::is_same_v<double, Data>)
         gather(MPI_DOUBLE);
@@ -47,18 +47,18 @@ void _gather(GatherFunc&& gather)
 }
 
 template<typename Data>
-void _collect(Data const* const data, std::vector<Data>& values, size_t send = 1,
-              size_t receive = 1)
+void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff, size_t const sendcount = 1,
+              size_t const recvcount = 1)
 {
     _gather<Data>([&](auto mpi_type) {
-        MPI_Allgather(     // MPI_Allgather
-            data,          //   void         *sendbuf,
-            send,          //   int          sendcount,
-            mpi_type,      //   MPI_Datatype sendtype,
-            values.data(), //   void         *recvbuf,
-            receive,       //   int          recvcount,
-            mpi_type,      //   MPI_Datatype recvtype,
-            MPI_COMM_WORLD //   MPI_Comm     comm
+        MPI_Allgather(      // MPI_Allgather
+            sendbuf,        //   void         *sendbuf,
+            sendcount,      //   int          sendcount,
+            mpi_type,       //   MPI_Datatype sendtype,
+            rcvBuff.data(), //   void         *recvbuf,
+            recvcount,      //   int          recvcount,
+            mpi_type,       //   MPI_Datatype recvtype,
+            MPI_COMM_WORLD  //   MPI_Comm     comm
 
         );
     });
@@ -66,16 +66,16 @@ void _collect(Data const* const data, std::vector<Data>& values, size_t send = 1
 
 
 
-template<typename Send, typename Data>
-void _collect_vector(Send const& send, std::vector<Data>& receive, int mpi_size)
+template<typename SendBuff, typename Data>
+void _collect_vector(SendBuff const& sendBuff, std::vector<Data>& rcvBuff, int const mpi_size)
 {
-    _gather<Data>([&](auto mpi_type) {
-        auto displs     = std::vector<int>(mpi_size);
-        auto recvcounts = std::vector<int>(mpi_size);
+    _gather<Data>([&](auto const mpi_type) {
+        std::vector<int> displs(mpi_size);
+        std::vector<int> recvcounts(mpi_size);
 
         {
-            int offset = 0;
-            auto sizes = core::mpi::collect(send.size(), mpi_size);
+            int offset       = 0;
+            auto const sizes = core::mpi::collect(sendBuff.size(), mpi_size);
 
             for (int i = 0; i < mpi_size; i++)
             {
@@ -86,10 +86,10 @@ void _collect_vector(Send const& send, std::vector<Data>& receive, int mpi_size)
         }
 
         MPI_Allgatherv(        // MPI_Allgatherv
-            send.data(),       //   void         *sendbuf,
-            send.size(),       //   int          sendcount,
+            sendBuff.data(),   //   void         *sendbuf,
+            sendBuff.size(),   //   int          sendcount,
             mpi_type,          //   MPI_Datatype sendtype,
-            receive.data(),    //   void         *recvbuf,
+            rcvBuff.data(),    //   void         *recvbuf,
             recvcounts.data(), //   int          *recvcounts,
             displs.data(),     //   int          *displs,
             mpi_type,          //   MPI_Datatype recvtype,
@@ -100,22 +100,22 @@ void _collect_vector(Send const& send, std::vector<Data>& receive, int mpi_size)
 
 
 template<typename Vector>
-std::vector<Vector> collectVector(Vector const& send, int mpi_size = 0)
+std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    auto perMPI     = collect(send.size(), mpi_size);
-    auto maxMPISize = *std::max_element(perMPI.begin(), perMPI.end());
+    auto const perMPISize = collect(sendBuff.size(), mpi_size);
+    auto const maxMPISize = *std::max_element(perMPISize.begin(), perMPISize.end());
 
-    std::vector<typename Vector::value_type> receive(maxMPISize * mpi_size);
-    _collect_vector(send, receive, mpi_size);
+    std::vector<typename Vector::value_type> rcvBuff(maxMPISize * mpi_size);
+    _collect_vector(sendBuff, rcvBuff, mpi_size);
 
     std::vector<Vector> collected;
     for (int i = 0; i < mpi_size; i++)
     {
-        auto* data = &receive[maxMPISize * i];
-        collected.emplace_back(data, data + perMPI[i]);
+        auto const* const data = &rcvBuff[maxMPISize * i];
+        collected.emplace_back(data, data + perMPISize[i]);
     }
     return collected;
 }
@@ -134,7 +134,7 @@ auto collectArrays(Container const& data, int mpi_size)
     else if constexpr (core::is_std_array_v<typename Container::value_type, 1>)
         maxMPISize = data.size();
 
-    auto perMPI = collect(data.size(), mpi_size);
+    auto perMPISize = collect(data.size(), mpi_size);
 
     std::vector<typename Container::value_type> datas(maxMPISize * mpi_size);
     _collect(data.data(), datas, data.size(), maxMPISize);
@@ -143,8 +143,8 @@ auto collectArrays(Container const& data, int mpi_size)
         std::vector<Container> values;
         for (int i = 0; i < mpi_size; i++)
         {
-            auto* array = &datas[maxMPISize * i];
-            values.emplace_back(array, array + perMPI[i]);
+            auto const* const array = &datas[maxMPISize * i];
+            values.emplace_back(array, array + perMPISize[i]);
         }
         return values;
     }
@@ -169,15 +169,16 @@ std::vector<Data> collect(Data const& data, int mpi_size)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    std::vector<Data> values(mpi_size);
-
     if constexpr (std::is_same_v<std::string, Data> or core::is_std_vector_v<Data>)
-        values = collectVector(data, mpi_size);
+        return collectVector(data, mpi_size);
     else if constexpr (core::is_std_array_v<Data, 1>)
-        values = collectArrays(data, mpi_size);
+        return collectArrays(data, mpi_size);
     else
+    {
+        std::vector<Data> values(mpi_size);
         _collect(&data, values);
-    return values;
+        return values;
+    }
 }
 } // namespace PHARE::core::mpi
 
