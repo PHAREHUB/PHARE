@@ -1,6 +1,8 @@
 #ifndef PHARE_CORE_NUMERICS_INTERPOLATOR_INTERPOLATOR_H
 #define PHARE_CORE_NUMERICS_INTERPOLATOR_INTERPOLATOR_H
 
+
+
 #include <array>
 #include <cstddef>
 
@@ -360,17 +362,17 @@ namespace core
 
 
 
-            auto const& yDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
-            auto const& yDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+            auto const& yDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][1];
+            auto const& yDenWeights    = weights[static_cast<int>(densityCentering[0])][1];
 
-            auto const& yXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][1])][0];
-            auto const& yXFluxWeights    = weights[static_cast<int>(fluxCentering[0][1])][0];
+            auto const& yXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][1])][1];
+            auto const& yXFluxWeights    = weights[static_cast<int>(fluxCentering[0][1])][1];
 
-            auto const& yYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][1])][0];
-            auto const& yYFluxWeights    = weights[static_cast<int>(fluxCentering[1][1])][0];
+            auto const& yYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][1])][1];
+            auto const& yYFluxWeights    = weights[static_cast<int>(fluxCentering[1][1])][1];
 
-            auto const& yZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][1])][0];
-            auto const& yZFluxWeights    = weights[static_cast<int>(fluxCentering[2][1])][0];
+            auto const& yZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][1])][1];
+            auto const& yZFluxWeights    = weights[static_cast<int>(fluxCentering[2][1])][1];
 
 
 
@@ -441,32 +443,32 @@ namespace core
 
 
 
-            auto const& yDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
-            auto const& yDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
+            auto const& yDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][1];
+            auto const& yDenWeights    = weights[static_cast<int>(densityCentering[0])][1];
 
-            auto const& yXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][1])][0];
-            auto const& yXFluxWeights    = weights[static_cast<int>(fluxCentering[0][1])][0];
+            auto const& yXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][1])][1];
+            auto const& yXFluxWeights    = weights[static_cast<int>(fluxCentering[0][1])][1];
 
-            auto const& yYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][1])][0];
-            auto const& yYFluxWeights    = weights[static_cast<int>(fluxCentering[1][1])][0];
+            auto const& yYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][1])][1];
+            auto const& yYFluxWeights    = weights[static_cast<int>(fluxCentering[1][1])][1];
 
-            auto const& yZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][1])][0];
-            auto const& yZFluxWeights    = weights[static_cast<int>(fluxCentering[2][1])][0];
-
-
+            auto const& yZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][1])][1];
+            auto const& yZFluxWeights    = weights[static_cast<int>(fluxCentering[2][1])][1];
 
 
-            auto const& zDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
-            auto const& zDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
 
-            auto const& zXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][2])][0];
-            auto const& zXFluxWeights    = weights[static_cast<int>(fluxCentering[0][2])][0];
 
-            auto const& zYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][2])][0];
-            auto const& zYFluxWeights    = weights[static_cast<int>(fluxCentering[1][2])][0];
+            auto const& zDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][2];
+            auto const& zDenWeights    = weights[static_cast<int>(densityCentering[0])][2];
 
-            auto const& zZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][2])][0];
-            auto const& zZFluxWeights    = weights[static_cast<int>(fluxCentering[2][2])][0];
+            auto const& zXFluxStartIndex = startIndex[static_cast<int>(fluxCentering[0][2])][2];
+            auto const& zXFluxWeights    = weights[static_cast<int>(fluxCentering[0][2])][2];
+
+            auto const& zYFluxStartIndex = startIndex[static_cast<int>(fluxCentering[1][2])][2];
+            auto const& zYFluxWeights    = weights[static_cast<int>(fluxCentering[1][2])][2];
+
+            auto const& zZFluxStartIndex = startIndex[static_cast<int>(fluxCentering[2][2])][2];
+            auto const& zZFluxWeights    = weights[static_cast<int>(fluxCentering[2][2])][2];
 
             auto const partRho   = particle.weight * coef / cellVolume;
             auto const xPartFlux = particle.v[0] * particle.weight * coef / cellVolume;

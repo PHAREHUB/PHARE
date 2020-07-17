@@ -6,17 +6,10 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-// Having multiple PythonDataProvider per binary execution doesn't work so well
 
 struct __attribute__((visibility("hidden"))) StaticIntepreter
 {
     static std::shared_ptr<PHARE::initializer::PythonDataProvider> input;
-
-    StaticIntepreter()
-    {
-        input = std::make_shared<PHARE::initializer::PythonDataProvider>();
-        input->read();
-    }
 
     static StaticIntepreter& INSTANCE()
     {
@@ -24,7 +17,7 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
         return i;
     }
 };
-std::shared_ptr<PHARE::initializer::PythonDataProvider> StaticIntepreter::input = 0;
+std::shared_ptr<PHARE::initializer::PythonDataProvider> StaticIntepreter::input{nullptr};
 
 
 template<size_t _dim>
@@ -39,7 +32,7 @@ struct HierarchyMaker
 
 
 
-template<size_t _dim, size_t _interp, size_t _nbRefinePart = 2>
+template<size_t _dim, size_t _interp, size_t _nbRefinePart>
 struct TestSimulator : public HierarchyMaker<_dim>,
                        public PHARE::Simulator<_dim, _interp, _nbRefinePart>
 {
@@ -55,25 +48,32 @@ struct TestSimulator : public HierarchyMaker<_dim>,
 
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
 
-    auto& dict()
+    auto& dict(std::string job_py)
     {
-        StaticIntepreter::INSTANCE();
+        auto& input = StaticIntepreter::INSTANCE().input;
+        if (!input)
+        {
+            input = std::make_shared<PHARE::initializer::PythonDataProvider>(job_py);
+            input->read();
+        }
         auto st = SAMRAI::hier::VariableDatabase::getDatabase();
         return PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     }
 
-    TestSimulator()
-        : HierarchyMaker<_dim>{dict()}
-        , Simulator{dict(), this->hierarchy}
+    TestSimulator(std::string job_py = "job")
+        : HierarchyMaker<_dim>{dict(job_py)}
+        , Simulator{dict(job_py), this->hierarchy}
     {
         Simulator::initialize();
 
-        if (dict()["simulation"].contains("diagnostics"))
+        if (dict(job_py)["simulation"].contains("diagnostics"))
         {
             dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_shared(
-                *this->hierarchy, *this->getHybridModel(), dict()["simulation"]["diagnostics"]);
+                *this->hierarchy, *this->getHybridModel(),
+                dict(job_py)["simulation"]["diagnostics"]);
         }
     }
+
 
     template<typename DMan>
     void dump(DMan& dman, double current_timestamp = 0, double current_timestep = 1)
@@ -83,25 +83,33 @@ struct TestSimulator : public HierarchyMaker<_dim>,
 };
 
 template<typename Simulator>
-struct SimulatorTest : public ::testing::Test
+struct /*[[deprecated]]*/ SimulatorTest : public ::testing::Test
 {
 };
 
-using Simulators = testing::Types<TestSimulator<1, 1>, TestSimulator<1, 2>,TestSimulator<1, 3>/*,   // dim 1
-                                  TestSimulator<2, 1>, TestSimulator<2, 2>, TestSimulator<2, 3>,     // dim 2
-                                  TestSimulator<3, 1>, TestSimulator<3, 2>, TestSimulator<3, 3>*/>;  // dim 3
+// deprecated
+using Simulators
+    = testing::Types<TestSimulator<1, 1, 2>, TestSimulator<1, 2, 2>, TestSimulator<1, 3, 2>>;
 TYPED_TEST_SUITE(SimulatorTest, Simulators);
 
-/*
-int main(int argc, char** argv)
+
+template<typename Simulator>
+struct Simulator1dTest : public ::testing::Test
 {
-    int testResult = RUN_ALL_TESTS();
+};
+using Simulators1d
+    = testing::Types<TestSimulator<1, 1, 2>, TestSimulator<1, 2, 2>, TestSimulator<1, 3, 2>>;
+TYPED_TEST_SUITE(Simulator1dTest, Simulators1d);
 
-    StaticIntepreter::INSTANCE().kill(); // <-- mandatory
 
-    return testResult;
-}
-*/
+template<typename Simulator>
+struct Simulator2dTest : public ::testing::Test
+{
+};
+using Simulators2d
+    = testing::Types<TestSimulator<2, 1, 8>, TestSimulator<2, 2, 8>, TestSimulator<2, 3, 8>>;
+TYPED_TEST_SUITE(Simulator2dTest, Simulators2d);
+
 
 
 namespace PHARE
@@ -110,53 +118,47 @@ class FieldNullFilter
 {
 public:
     template<typename Field, typename GridLayout>
-    size_t start(GridLayout& layout, core::Direction direction)
+    size_t start(GridLayout& layout, Field& field, core::Direction direction)
     {
-        return layout.ghostStartIndex(typename Field::physical_quantity_type{}, direction);
+        return layout.ghostStartIndex(field, direction);
     }
-    template<typename Field, typename GridLayout>
-    size_t end(GridLayout& layout, core::Direction direction)
-    {
-        return layout.ghostEndIndex(typename Field::physical_quantity_type{}, direction);
-    }
-};
 
-class FieldDomainFilter
-{
-public:
     template<typename Field, typename GridLayout>
-    size_t start(GridLayout& layout, core::Direction direction)
+    size_t end(GridLayout& layout, Field& field, core::Direction direction)
     {
-        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction);
-    }
-    template<typename Field, typename GridLayout>
-    size_t end(GridLayout& layout, core::Direction direction)
-    {
-        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction);
+        return layout.ghostEndIndex(field, direction);
     }
 };
 
 class FieldDomainPlusNFilter
 {
 public:
-    FieldDomainPlusNFilter(size_t n)
+    FieldDomainPlusNFilter(size_t n = 0)
         : n_{n}
     {
     }
+
     template<typename Field, typename GridLayout>
-    size_t start(GridLayout& layout, core::Direction direction)
+    size_t start(GridLayout& layout, Field& field, core::Direction direction)
     {
-        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) - n_;
+        return layout.physicalStartIndex(field, direction) - n_;
     }
+
     template<typename Field, typename GridLayout>
-    size_t end(GridLayout& layout, core::Direction direction)
+    size_t end(GridLayout& layout, Field& field, core::Direction direction)
     {
-        return layout.physicalStartIndex(typename Field::physical_quantity_type{}, direction) + n_;
+        return layout.physicalEndIndex(field, direction) + n_;
     }
 
 private:
     size_t n_;
 };
+
+
+struct FieldDomainFilter : public FieldDomainPlusNFilter
+{
+};
+
 
 } // namespace PHARE
 

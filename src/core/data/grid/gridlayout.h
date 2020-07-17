@@ -127,7 +127,7 @@ namespace core
         /**
          * @brief returns the mesh size in the 'dim' dimensions
          */
-        std::array<double, dimension> meshSize() const noexcept { return meshSize_; }
+        std::array<double, dimension> const& meshSize() const noexcept { return meshSize_; }
 
 
 
