@@ -18,10 +18,36 @@ using namespace PHARE::core;
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
-double density(double /* x */)
+//_____ only works for dim=1
+double density(double)
 {
     return 2.;
 }
+
+
+//_____ first attempt
+// template<typename... Xyz>
+// double density(Xyz...)
+//{
+//    return 2.;
+//}
+
+
+//_____ second attempt
+// template<typename T>
+// T density(T)
+//{
+//    return 2.;
+//}
+//
+// template<typename T, typename... Args>
+// T density(T, Args... args)
+//{
+//    return density(args...);
+//}
+
+
+
 
 double vx(double /*x*/)
 {
@@ -88,6 +114,7 @@ double ez(double x)
 {
     return x /* + 6.*/;
 }
+
 
 const double Te = 0.12;
 
