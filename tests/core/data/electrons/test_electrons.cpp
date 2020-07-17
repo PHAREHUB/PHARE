@@ -18,9 +18,9 @@ using namespace PHARE::core;
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
-double density(double x)
+double density(double /* x */)
 {
-    return /*x * +*/ 2.;
+    return 2.;
 }
 
 double vx(double /*x*/)
@@ -358,7 +358,9 @@ struct TElectronsTest : public ::testing::Test
 {
 };
 
-using ElectronsTupleInfos = testing::Types<ElectronsTest<std::pair<DimConst<1>, InterpConst<1>>>>;
+using ElectronsTupleInfos = testing::Types<ElectronsTest<std::pair<DimConst<1>, InterpConst<1>>>,
+                                           ElectronsTest<std::pair<DimConst<1>, InterpConst<2>>>,
+                                           ElectronsTest<std::pair<DimConst<1>, InterpConst<3>>>>;
 
 TYPED_TEST_SUITE(TElectronsTest, ElectronsTupleInfos);
 
