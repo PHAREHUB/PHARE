@@ -32,7 +32,8 @@ class ModelView : public IModelView
 
 public:
     using GridLayout      = typename Model::gridlayout_type;
-    using PatchProperties = cppdict::Dict<float, double, size_t, std::string>;
+    using PatchProperties = cppdict::Dict<float, double, size_t, std::vector<int>,
+                                          std::vector<uint32_t>, std::vector<double>, std::string>;
 
     ModelView(Hierarchy& hierarchy, Model& model)
         : model_{model}
@@ -55,22 +56,22 @@ public:
         PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, resMan, std::forward<Action>(action),
                                                minLevel, maxLevel, model_);
     }
+
     auto domainBox() const { return hierarchy_.domainBox(); }
 
     auto origin() const { return hierarchy_.origin(); }
 
     auto cellWidth() const { return hierarchy_.cellWidth(); }
 
-
     std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
 
     static auto getPatchProperties(GridLayout const& grid)
     {
         PatchProperties dict;
-        dict["origin"]   = grid.origin().str();
-        dict["nbrCells"] = core::Point<uint32_t, dimension>{grid.nbrCells()}.str();
-        dict["lower"]    = grid.AMRBox().lower.str();
-        dict["upper"]    = grid.AMRBox().upper.str();
+        dict["origin"]   = grid.origin().toVector();
+        dict["nbrCells"] = core::Point<uint32_t, dimension>{grid.nbrCells()}.toVector();
+        dict["lower"]    = grid.AMRBox().lower.toVector();
+        dict["upper"]    = grid.AMRBox().upper.toVector();
         return dict;
     }
 
@@ -78,10 +79,10 @@ public:
     static auto getEmptyPatchProperties()
     {
         PatchProperties dict;
-        dict["origin"]   = std::string{""};
-        dict["nbrCells"] = std::string{""};
-        dict["lower"]    = std::string{""};
-        dict["upper"]    = std::string{""};
+        dict["origin"]   = std::vector<double>{};
+        dict["nbrCells"] = std::vector<uint32_t>{};
+        dict["lower"]    = std::vector<int>{};
+        dict["upper"]    = std::vector<int>{};
         return dict;
     }
 
@@ -93,9 +94,7 @@ protected:
 
 
 
-
 } // namespace PHARE::diagnostic
-
 
 
 

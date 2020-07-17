@@ -223,7 +223,7 @@ void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, size_
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     auto sizes = core::mpi::collect(dataSetSize, mpi_size);
-    auto paths = core::mpi::collectStrings(path, mpi_size);
+    auto paths = core::mpi::collect(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
         if (sizes[i] == 0)
@@ -248,20 +248,26 @@ template<typename Data>
 void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
                                               Data const& data)
 {
-    auto doAttribute = [&](auto node, auto& _key, auto& value) {
-        node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value)).write(value);
+    auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
+        if constexpr (core::is_std_vector_v<Data>)
+            node.template createAttribute<typename Data::value_type>(
+                    _key, HighFive::DataSpace(value.size()))
+                .write(value);
+        else
+            node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
+                .write(value);
     };
 
-    int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto values = core::mpi::collect(data, mpi_size);
-    auto paths  = core::mpi::collectStrings(path, mpi_size);
+    int mpi_size = core::mpi::size();
+    auto values  = core::mpi::collect(data, mpi_size);
+    auto paths   = core::mpi::collect(path, mpi_size);
 
     for (int i = 0; i < mpi_size; i++)
     {
-        std::string keyPath = paths[i] == "null" ? "" : paths[i];
+        std::string const keyPath = paths[i] == "null" ? "" : paths[i];
         if (keyPath.empty())
             continue;
+
         if (h5.exist(keyPath) && h5.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
         {
             if (!h5.getDataSet(keyPath).hasAttribute(key))

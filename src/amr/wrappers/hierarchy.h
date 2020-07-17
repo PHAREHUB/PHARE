@@ -204,20 +204,23 @@ public:
     auto const& origin() const { return origin_; }
 
 protected:
-    Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
-              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db, std::string domainBox,
-              std::string origin, std::string cellWidth)
+    template<size_t dimension>
+    Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo, //
+              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,         //
+              std::array<int, dimension> const domainBox,                 //
+              std::array<double, dimension> const origin,                 //
+              std::array<double, dimension> const cellWidth)
         : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
-        , cellWidth_{cellWidth}
-        , domainBox_{domainBox}
-        , origin_{origin}
+        , cellWidth_(cellWidth.data(), cellWidth.data() + dimension)
+        , domainBox_(domainBox.data(), domainBox.data() + dimension)
+        , origin_(origin.data(), origin.data() + dimension)
     {
     }
 
 private:
-    std::string cellWidth_;
-    std::string domainBox_;
-    std::string origin_;
+    std::vector<double> const cellWidth_;
+    std::vector<int> const domainBox_;
+    std::vector<double> const origin_;
 };
 
 template<size_t _dimension>
@@ -231,20 +234,10 @@ public:
                         SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
                         griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
                     patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
-                    core::Point<double, dimension>{
-                        parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")}
-                        .str(),
-                    core::Point<double, dimension>{
-                        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin")}
-                        .str(),
-                    getMeshSize(dict["simulation"]["grid"]).str())
+                    parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells"),
+                    parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
+                    parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"))
     {
-    }
-
-private:
-    static core::Point<double, dimension> getMeshSize(PHARE::initializer::PHAREDict& grid)
-    {
-        return parseDimXYZType<double, dimension>(grid, "meshsize");
     }
 };
 

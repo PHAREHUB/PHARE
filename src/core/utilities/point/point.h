@@ -81,18 +81,6 @@ namespace core
             return areEqual;
         }
 
-        bool operator<(Point const& p) const
-        {
-            bool isLessThan = true;
-            for (size_t i = 0; i < dim; ++i)
-            {
-                static_assert(std::is_arithmetic_v<Type>,
-                              "this function is only valid for arithmetic type of Point");
-                isLessThan &= ((*this)[i] < p[i]);
-            }
-            return isLessThan;
-        }
-
         template<typename DestType>
         auto toArray() const
         {
@@ -102,6 +90,12 @@ namespace core
                 destArray[i] = static_cast<DestType>(r[i]);
             }
             return destArray;
+        }
+
+
+        std::vector<Type> toVector() const
+        {
+            return std::vector<Type>(r.data(), r.data() + dimension);
         }
 
         std::string str() const

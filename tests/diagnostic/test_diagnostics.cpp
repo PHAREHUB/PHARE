@@ -201,15 +201,26 @@ TYPED_TEST(SimulatorTest, particles)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    using GridLayout         = typename Simulator::PHARETypes::GridLayout_t;
+    constexpr auto dimension = Simulator::dimension;
 
     auto& hybridModel = *sim.getHybridModel();
     auto hifile       = hi5.writer.makeFile(hi5.writer.fileString("/EM_B"));
 
-    auto visit = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
-        std::string patchPath = hi5.getPatchPath(iLevel, patchID), origin;
-        hifile->file().getGroup(patchPath).getAttribute("origin").read(origin);
-        EXPECT_EQ(gridLayout.origin().str(), origin);
+    auto _check_equal = [](auto& group, auto expected, auto key) {
+        std::vector<typename decltype(expected)::value_type> attr;
+        group.getAttribute(key).read(attr);
+        EXPECT_EQ(expected, attr);
+    };
+
+    auto visit = [&](GridLayout& grid, std::string patchID, size_t iLevel) {
+        auto group = hifile->file().getGroup(hi5.getPatchPath(iLevel, patchID));
+
+        _check_equal(group, grid.origin().toVector(), "origin");
+        _check_equal(group, core::Point<uint32_t, dimension>{grid.nbrCells()}.toVector(),
+                     "nbrCells");
+        _check_equal(group, grid.AMRBox().lower.toVector(), "lower");
+        _check_equal(group, grid.AMRBox().upper.toVector(), "upper");
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
