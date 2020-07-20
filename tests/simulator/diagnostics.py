@@ -52,12 +52,11 @@ class DiagnosticsTest(unittest.TestCase):
             self.simulator.initialize()
             self.simulator.diagnostics().dump(timestamp=0, timestep=1)
 
-            if dim == 1: # TODO REMOVE IF WHEN PHARESEE SUPPORTS 2D!
-                for diagInfo in ph.globals.sim.diagnostics:
-                    # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
-                    h5_file = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
-                    self.assertTrue(os.path.exists(h5_file))
-                    print("hier", hierarchy_from(h5_filename=h5_file))
+            for diagInfo in ph.globals.sim.diagnostics:
+                # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
+                h5_file = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
+                self.assertTrue(os.path.exists(h5_file))
+                print("hier", hierarchy_from(h5_filename=h5_file))
 
             self.simulator = None
 

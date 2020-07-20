@@ -1,5 +1,13 @@
 
+import numpy as np
 
+def is_nd_array(arg):
+    return isinstance(arg, np.ndarray)
+
+def np_array_ify(arg):
+    if not is_nd_array(arg):
+        return np.asarray(arg)
+    return arg
 
 class Box:
     """represents a box in AMR index cell
@@ -7,7 +15,9 @@ class Box:
     """
 
     def __init__(self, lower, upper):
-        assert lower <= upper
+        lower, upper = [np_array_ify(arr) for arr in [lower, upper]]
+        assert lower.size == upper.size
+        assert (lower <= upper).all()
         self.lower = lower
         self.upper = upper
 
@@ -19,10 +29,8 @@ class Box:
         box1 = self
 
         lower, upper = max(box1.lower, box2.lower), min(box1.upper, box2.upper)
-        if lower <= upper:
+        if (lower <= upper).all():
             return Box(lower, upper)
-
-
 
 
 
@@ -43,12 +51,14 @@ class Box:
 
     def __contains__(self, item):
         if isinstance(item, int):
+            item = np_array_ify(item)
+
+        if is_nd_array(item):
             cell = item
             return (cell >= self.lower) and (cell <= self.upper)
 
         if isinstance(item, Box):
             box = item
-
             return box.lower >= self.lower and box.upper <= self.upper
 
     def __eq__(self, other):
@@ -109,7 +119,6 @@ def remove(box, to_remove):
         #  |---------------|      box
         #            |----------| remove
         return [Box(box.lower, intersection.lower - 1), ]
-
 
 
 

@@ -87,8 +87,9 @@ class BoxTesT(unittest.TestCase):
     @unpack
     def test_remove(self, box, to_remove, expected):
 
-
         keeps = boxm.remove(box, to_remove)
+
+        assert keeps is not None
 
         if len(keeps) == 0:
             self.assertEqual(len(expected), 0)
