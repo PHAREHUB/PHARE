@@ -7,14 +7,14 @@
 namespace PHARE::pydata
 {
 template<typename T, typename PyArray>
-decltype(auto) make_ptr(PyArray const& py_array)
+auto make_ptr(PyArray const& py_array)
 {
     auto ar_info = py_array.request();
     return kul::Pointers{static_cast<T*>(ar_info.ptr), static_cast<size_t>(ar_info.shape[0])};
 }
 
 template<size_t dim, typename PyArrayTuple>
-decltype(auto) contiguous_view_from(PyArrayTuple const& py_particles)
+auto contiguous_view_from(PyArrayTuple const& py_particles)
 {
     constexpr auto OwnedState = false;
     return core::ContiguousParticles<dim, OwnedState>{
@@ -26,7 +26,7 @@ decltype(auto) contiguous_view_from(PyArrayTuple const& py_particles)
 }
 
 template<size_t dim>
-decltype(auto) make_py_array_tuple(size_t const size)
+auto make_py_array_tuple(size_t const size)
 {
     return std::make_tuple(py_array_t<int32_t>(size * dim), // iCell
                            py_array_t<float>(size * dim),   // delta
@@ -63,6 +63,7 @@ pyarray_particles_t split_pyarray_particles(pyarray_particles_crt const& py_part
 {
     constexpr auto dim           = Splitter::dimension;
     constexpr auto nbRefinedPart = Splitter::nbRefinedPart;
+    constexpr auto ratio         = core::ConstArray<size_t, dim>(2);
 
     KUL_DEBUG_DO( // doesn't exist for release builds
         assert_particle_py_array_sizes<dim>(py_particles));
@@ -71,9 +72,13 @@ pyarray_particles_t split_pyarray_particles(pyarray_particles_crt const& py_part
     auto particlesOut     = make_py_array_tuple<dim>(particlesInView.size() * nbRefinedPart);
     auto particlesOutView = contiguous_view_from<dim>(particlesOut);
 
+
     Splitter splitter;
     for (size_t i = 0; i < particlesInView.size(); i++)
-        splitter(particlesInView[i], particlesOutView, i * nbRefinedPart);
+    {
+        auto fineParticle = amr::toFineGrid(particlesInView.copy_to_particle(i), ratio);
+        splitter(fineParticle, particlesOutView, i * nbRefinedPart);
+    }
 
     return particlesOut;
 }

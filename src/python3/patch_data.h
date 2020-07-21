@@ -16,7 +16,7 @@ struct PatchData
     std::size_t nGhosts;
     Data data;
 
-    PatchData() {}
+    PatchData() = default;
 
     template<typename... Args>
     PatchData(Args&&... args)

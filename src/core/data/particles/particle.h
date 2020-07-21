@@ -141,12 +141,23 @@ struct ContiguousParticles
     auto size() const { return weight.size(); }
 
     template<size_t S, typename T>
-    static decltype(auto) _array_cast(T const* array)
+    static auto _array_cast(T const* array)
     {
         return reinterpret_cast<std::array<T, S>*>(const_cast<T*>(array));
     }
 
-    decltype(auto) particle(size_t i)
+    auto copy_to_particle(size_t i)
+    {
+        return Particle<dim>{
+            *(weight.data() + i),                        //
+            *(charge.data() + i),                        //
+            *_array_cast<dim>(iCell.data() + (dim * i)), //
+            *_array_cast<dim>(delta.data() + (dim * i)), //
+            *_array_cast<THREE>(v.data() + (THREE * i)),
+        };
+    }
+
+    auto particle(size_t i)
     {
         return ContiguousParticleView<dim>{
             *const_cast<double*>(weight.data() + i),     //
@@ -156,7 +167,8 @@ struct ContiguousParticles
             *_array_cast<THREE>(v.data() + (THREE * i)),
         };
     }
-    decltype(auto) operator[](size_t i) { return particle(i); }
+
+    auto operator[](size_t i) { return particle(i); }
 
     container_t<int> iCell;
     container_t<float> delta;

@@ -25,23 +25,19 @@ namespace amr
         coarseBoundaryNew
     };
 
-    template<std::size_t dim>
-    struct CoarseParticlePrefiner
+    template<std::size_t dim, typename Ratio>
+    core::Particle<dim> toFineGrid(core::Particle<dim> const& coarse, Ratio const& ratio)
     {
-        template<typename Ratio>
-        static core::Particle<dim> prefine(core::Particle<dim> const& coarse, Ratio const& ratio)
+        auto fine{coarse};
+        for (size_t iDim = 0; iDim < dim; ++iDim)
         {
-            auto fine{coarse};
-            for (size_t iDim = 0; iDim < dim; ++iDim)
-            {
-                fine.iCell[iDim] = coarse.iCell[iDim] * ratio[iDim]
-                                   + static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
-                fine.delta[iDim] = coarse.delta[iDim] * ratio[iDim]
-                                   - static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
-            }
-            return fine;
+            fine.iCell[iDim] = coarse.iCell[iDim] * ratio[iDim]
+                               + static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
+            fine.delta[iDim] = coarse.delta[iDim] * ratio[iDim]
+                               - static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
         }
-    };
+        return fine;
+    }
 
 
     template<ParticlesDataSplitType splitType, typename Splitter>
@@ -182,9 +178,7 @@ namespace amr
                     for (auto const& particle : *sourceParticlesArray)
                     {
                         std::vector<core::Particle<dim>> refinedParticles;
-                        auto particleRefinedPos
-                            = CoarseParticlePrefiner<dim>::prefine(particle, ratio);
-
+                        auto particleRefinedPos = toFineGrid<dim>(particle, ratio);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))
                         {

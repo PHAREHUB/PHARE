@@ -39,9 +39,6 @@ class Particles:
         return self
 
     def size(self):
-          """
-            weights or charges are always the same as n_particles,
-          """
           assert len(self.weights) == len(self.charges)
           return len(self.weights)
 
