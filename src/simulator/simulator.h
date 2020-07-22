@@ -249,5 +249,14 @@ struct SimulatorMaker
 std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
 
 
+template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>
+std::unique_ptr<Simulator<dim, interp, nbRefinedPart>>
+makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
+{
+    return std::make_unique<Simulator<dim, interp, nbRefinedPart>>(
+        initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
+}
+
+
 } // namespace PHARE
 #endif
