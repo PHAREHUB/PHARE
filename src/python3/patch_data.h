@@ -1,6 +1,11 @@
 #ifndef PHARE_PYTHON_PATCH_DATA_H
 #define PHARE_PYTHON_PATCH_DATA_H
 
+#include <array>
+#include <string>
+#include <cstring>
+#include <utility>
+
 #include "pybind_def.h"
 
 namespace PHARE::pydata

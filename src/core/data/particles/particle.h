@@ -1,13 +1,13 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_H
 
-#include "core/utilities/point/point.h"
-
 #include <array>
 #include <random>
 #include <type_traits>
 
-#include "kul/tuple.hpp"
+#include "core/utilities/point/point.h"
+#include "core/utilities/span.h"
+#include "core/utilities/types.h"
 
 
 namespace PHARE::core
@@ -27,8 +27,6 @@ template<std::size_t dim>
 struct Particle
 {
 };
-
-
 
 template<>
 struct Particle<1>
@@ -84,19 +82,18 @@ struct Particle<3>
 };
 
 
-
-
 template<typename Particle>
 auto cellAsPoint(Particle const& particle)
 {
     return Point<int, Particle::dimension>{particle.iCell};
 }
 
-template<size_t dim>
-struct ContiguousParticleView
+
+template<std::size_t dim>
+struct ParticleView
 {
-    static constexpr size_t THREE     = 3;
-    static constexpr size_t dimension = dim;
+    static constexpr std::size_t THREE     = 3;
+    static constexpr std::size_t dimension = dim;
 
     double& weight;
     double& charge;
@@ -106,17 +103,28 @@ struct ContiguousParticleView
 };
 
 
+template<std::size_t dim, typename Particle>
+void copy(ParticleView<dim> const& from, Particle& to)
+{
+    to.weight = from.weight;
+    to.charge = from.charge;
+    to.iCell  = from.iCell;
+    to.delta  = from.delta;
+    to.v      = from.v;
+}
+
+
 template<std::size_t dim, bool OwnedState = true>
 struct ContiguousParticles
 {
-    static constexpr size_t THREE     = 3;
-    static constexpr size_t dimension = dim;
+    static constexpr std::size_t THREE     = 3;
+    static constexpr std::size_t dimension = dim;
 
     template<typename T>
-    using container_t = std::conditional_t<OwnedState, std::vector<T>, kul::Pointers<T>>;
+    using container_t = std::conditional_t<OwnedState, std::vector<T>, Span<T>>;
 
-    template<bool OS = OwnedState, typename = typename std::enable_if_t<OS>>
-    ContiguousParticles(size_t s)
+    template<bool OS = OwnedState, typename = std::enable_if_t<OS>>
+    ContiguousParticles(std::size_t s)
         : iCell(s * dim)
         , delta(s * dim)
         , weight(s)
@@ -124,7 +132,6 @@ struct ContiguousParticles
         , v(s * 3)
     {
     }
-
 
     template<typename Container_int, typename Container_float, typename Container_double>
     ContiguousParticles(Container_int&& _iCell, Container_float&& _delta,
@@ -138,17 +145,28 @@ struct ContiguousParticles
     {
     }
 
-    auto size() const { return weight.size(); }
+    std::size_t size() const { return weight.size(); }
 
-    template<size_t S, typename T>
-    static auto _array_cast(T const* array)
+    template<std::size_t S, typename T>
+    static std::array<T, S>* _array_cast(T const* array)
     {
         return reinterpret_cast<std::array<T, S>*>(const_cast<T*>(array));
     }
 
-    auto copy_to_particle(size_t i)
+
+    template<typename Particle>
+    void copy_to(std::size_t i, Particle& to)
     {
-        return Particle<dim>{
+        to.weight = *(weight.data() + i);
+        to.charge = *(charge.data() + i);
+        to.iCell  = *_array_cast<dim>(iCell.data() + (dim * i));
+        to.delta  = *_array_cast<dim>(delta.data() + (dim * i));
+        to.v      = *_array_cast<THREE>(v.data() + (THREE * i));
+    }
+
+    Particle<dim> copy_to_particle(std::size_t i)
+    {
+        return {
             *(weight.data() + i),                        //
             *(charge.data() + i),                        //
             *_array_cast<dim>(iCell.data() + (dim * i)), //
@@ -157,9 +175,9 @@ struct ContiguousParticles
         };
     }
 
-    auto particle(size_t i)
+    ParticleView<dim> particle(std::size_t i)
     {
-        return ContiguousParticleView<dim>{
+        return {
             *const_cast<double*>(weight.data() + i),     //
             *const_cast<double*>(charge.data() + i),     //
             *_array_cast<dim>(iCell.data() + (dim * i)), //
@@ -168,13 +186,16 @@ struct ContiguousParticles
         };
     }
 
-    auto operator[](size_t i) { return particle(i); }
+    auto operator[](std::size_t i) { return particle(i); }
 
     container_t<int> iCell;
     container_t<float> delta;
     container_t<double> weight, charge, v;
 };
 
+
+template<std::size_t dim>
+using ContiguousParticlesView = ContiguousParticles<dim, /*OwnedState=*/false>;
 
 } // namespace PHARE::core
 

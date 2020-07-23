@@ -39,7 +39,6 @@ class Particles:
         return self
 
     def size(self):
-          assert len(self.weights) == len(self.charges)
           return len(self.weights)
 
     def select(self, box):
@@ -68,3 +67,4 @@ class Particles:
           charges=split_pyarrays[3],
           v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3)
         )
+

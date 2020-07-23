@@ -79,10 +79,10 @@ class DiagnosticsTest(unittest.TestCase):
 
         self._test_dump_diags_with_killing_dman_nd(1, **input)
 
-    @data(*_test_cases)
-    def test_dump_diags_with_killing_dman_2d(self, input):
+    # @data(*_test_cases)
+    # def test_dump_diags_with_killing_dman_2d(self, input):
 
-        self._test_dump_diags_with_killing_dman_nd(2, **input)
+    #     self._test_dump_diags_with_killing_dman_nd(2, **input)
 
     def tearDown(self):
         if self.simulator is not None:

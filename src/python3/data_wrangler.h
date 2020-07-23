@@ -1,8 +1,11 @@
 #ifndef PHARE_PYTHON_DATA_WRANGLER_H
 #define PHARE_PYTHON_DATA_WRANGLER_H
 
+#include <memory>
+
 #include "python3/patch_data.h"
 #include "python3/patch_level.h"
+#include "simulator/simulator.h"
 
 namespace PHARE::pydata
 {
@@ -10,24 +13,19 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class DataWrangler
 {
 public:
-    using This                                 = DataWrangler;
     static constexpr std::size_t dimension     = _dimension;
     static constexpr std::size_t interp_order  = _interp_order;
     static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
 
-    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
-    using HybridModel = typename PHARETypes::HybridModel_t;
+    using Simulator   = PHARE::Simulator<dimension, interp_order, nbRefinedPart>;
+    using HybridModel = typename Simulator::HybridModel;
 
     DataWrangler(std::shared_ptr<ISimulator> const& simulator,
                  std::shared_ptr<amr::Hierarchy> const& hierarchy)
-        : simulator_{simulator}
+        : simulator_{cast_simulator(simulator)}
         , hierarchy_{hierarchy}
+
     {
-        auto simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
-        if (!core::makeAtRuntime<Maker>(
-                simDict["dimension"].template to<int>(), simDict["interp_order"].template to<int>(),
-                simDict["refined_particle_nbr"].template to<int>(), Maker{*this}))
-            throw std::runtime_error("Runtime diagnostic deduction failed");
     }
 
 
@@ -36,7 +34,7 @@ public:
     auto getPatchLevel(size_t lvl)
     {
         return PatchLevel<_dimension, _interp_order, _nbRefinedPart>{
-            *hierarchy_, *simulator_ptr_->getHybridModel(), lvl};
+            *hierarchy_, *simulator_.getHybridModel(), lvl};
     }
 
     auto sort_merge_1d(std::vector<PatchData<std::vector<double>, dimension>> const&& input,
@@ -114,39 +112,24 @@ public:
     }
 
 private:
-    std::shared_ptr<ISimulator> simulator_;
+    Simulator& simulator_;
     std::shared_ptr<amr::Hierarchy> hierarchy_;
-    Simulator<dimension, interp_order, nbRefinedPart>* simulator_ptr_ = nullptr;
 
-    struct Maker
+
+    static Simulator& cast_simulator(std::shared_ptr<ISimulator> const& simulator)
     {
-        Maker(DataWrangler& _dw)
-            : dw{_dw}
-        {
-        }
+        using SimulatorCaster = PHARE::SimulatorCaster<dimension, interp_order, nbRefinedPart>;
 
-        template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-        bool operator()(std::size_t userDim, std::size_t userInterpOrder,
-                        std::size_t userNbRefinedPart, Dimension dimension_fn,
-                        InterpOrder interp_order_fn, NbRefinedPart nbRefinedPart_fn)
-        {
-            if (userDim == dimension_fn() and userInterpOrder == interp_order_fn()
-                and userNbRefinedPart == nbRefinedPart_fn())
-            {
-                std::size_t constexpr d  = dimension_fn();
-                std::size_t constexpr io = interp_order_fn();
-                std::size_t constexpr nb = nbRefinedPart_fn();
+        auto simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
 
-                // extra if constexpr as cast is templated and not generic interface
-                if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
-                    return (dw.simulator_ptr_
-                            = dynamic_cast<PHARE::Simulator<d, io, nb>*>(dw.simulator_.get()));
-            }
-            return 0;
-        }
+        Simulator* simulator_ptr = core::makeAtRuntime<SimulatorCaster>(
+            simDict["dimension"].template to<int>(), simDict["interp_order"].template to<int>(),
+            simDict["refined_particle_nbr"].template to<int>(), SimulatorCaster{simulator});
+        if (!simulator_ptr)
+            throw std::runtime_error("Data Wranger creation error: failed to cast Simulator");
 
-        DataWrangler& dw;
-    };
+        return *simulator_ptr;
+    }
 };
 } // namespace PHARE::pydata
 

@@ -128,7 +128,7 @@ void declare(py::module& m)
         .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
 
     name = "split_pyarray_particles" + type_string;
-    m.def(name.c_str(), split_pyarray_particles<_Splitter>);
+    m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
 }
 
 

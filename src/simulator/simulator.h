@@ -246,6 +246,40 @@ struct SimulatorMaker
 };
 
 
+template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
+class SimulatorCaster
+{
+public:
+    using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart>;
+
+    SimulatorCaster(std::shared_ptr<ISimulator> const& _simulator)
+        : simulator{_simulator}
+    {
+    }
+
+    template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+    Simulator_t* operator()(std::size_t userDim, std::size_t userInterpOrder,
+                            std::size_t userNbRefinedPart, Dimension dimension_fn,
+                            InterpOrder interp_order_fn, NbRefinedPart nbRefinedPart_fn)
+    {
+        if (userDim == dimension_fn() and userInterpOrder == interp_order_fn()
+            and userNbRefinedPart == nbRefinedPart_fn())
+        {
+            std::size_t constexpr d  = dimension_fn();
+            std::size_t constexpr io = interp_order_fn();
+            std::size_t constexpr nb = nbRefinedPart_fn();
+
+            // extra if constexpr as cast is templated and not generic interface
+            if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
+                return dynamic_cast<Simulator_t*>(simulator.get());
+        }
+        return nullptr;
+    }
+
+private:
+    std::shared_ptr<ISimulator> const& simulator;
+};
+
 std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
 
 

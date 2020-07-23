@@ -25,18 +25,19 @@ namespace amr
         coarseBoundaryNew
     };
 
+
     template<std::size_t dim, typename Ratio>
-    core::Particle<dim> toFineGrid(core::Particle<dim> const& coarse, Ratio const& ratio)
+    core::Particle<dim> toFineGrid(core::Particle<dim> toFine, Ratio const& ratio)
     {
-        auto fine{coarse};
         for (size_t iDim = 0; iDim < dim; ++iDim)
         {
-            fine.iCell[iDim] = coarse.iCell[iDim] * ratio[iDim]
-                               + static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
-            fine.delta[iDim] = coarse.delta[iDim] * ratio[iDim]
-                               - static_cast<int>(coarse.delta[iDim] * ratio[iDim]);
+            auto fineDelta     = toFine.delta[iDim] * ratio[iDim];
+            int fineDeltaInt   = static_cast<int>(fineDelta);
+            toFine.iCell[iDim] = toFine.iCell[iDim] * ratio[iDim] + fineDeltaInt;
+            toFine.delta[iDim] = fineDelta - fineDeltaInt;
         }
-        return fine;
+
+        return toFine;
     }
 
 

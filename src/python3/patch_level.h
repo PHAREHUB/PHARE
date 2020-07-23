@@ -1,7 +1,18 @@
 #ifndef PHARE_PYTHON_PATCH_LEVEL_H
 #define PHARE_PYTHON_PATCH_LEVEL_H
 
+#include <string>
+#include <vector>
+#include <cstddef>
+#include <unordered_map>
+
+#include "amr/wrappers/hierarchy.h"
+#include "amr/resources_manager/amr_utils.h"
+#include "simulator/phare_types.h"
+
 #include "pybind_def.h"
+#include "patch_data.h"
+
 
 namespace PHARE::pydata
 {

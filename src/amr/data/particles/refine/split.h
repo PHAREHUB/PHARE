@@ -52,8 +52,7 @@ public:
                            std::vector<core::Particle<dimension>>& refinedParticles) const
     {
         size_t idx = refinedParticles.size();
-        for (size_t i = 0; i < nbRefinedParts; i++)
-            refinedParticles.emplace_back();
+        refinedParticles.resize(refinedParticles.size() + nbRefinedParts);
         dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
     }
 
@@ -66,8 +65,7 @@ private:
     {
         using FineParticle
             = std::conditional_t<std::is_same_v<Particles, std::vector<core::Particle<dimension>>>,
-                                 core::Particle<dimension>&,
-                                 core::ContiguousParticleView<dimension>>;
+                                 core::Particle<dimension>&, core::ParticleView<dimension>>;
 
         core::apply(patterns, [&](auto const& pattern) {
             for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)
