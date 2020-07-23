@@ -18,8 +18,6 @@ namespace PHARE
 {
 namespace amr
 {
-    using core::uint32;
-
     // We use another class here so that we can specialize specifics function: copy , pack , unpack
     // on the dimension and we don't want to loose non specialized function related to SAMRAI
     // interface
@@ -59,7 +57,7 @@ namespace amr
         [[deprecated]] FieldData(SAMRAI::hier::Box const& domain,
                                  SAMRAI::hier::IntVector const& ghost, std::string name,
                                  std::array<double, dimension> const& dl,
-                                 std::array<uint32, dimension> const& nbrCells,
+                                 std::array<std::uint32_t, dimension> const& nbrCells,
                                  core::Point<double, dimension> const& origin, PhysicalQuantity qty)
 
             : SAMRAI::hier::PatchData(domain, ghost)
@@ -178,7 +176,7 @@ namespace amr
         /*** \brief Compute the maximum amount of memory needed to hold FieldData information on
          * the specified overlap
          */
-        size_t getDataStreamSize(const SAMRAI::hier::BoxOverlap& overlap) const final
+        std::size_t getDataStreamSize(const SAMRAI::hier::BoxOverlap& overlap) const final
         {
             return getDataStreamSize_<false>(overlap);
         }
@@ -193,7 +191,7 @@ namespace amr
                         const SAMRAI::hier::BoxOverlap& overlap) const final
         {
             // getDataStreamSize_<true> mean that we want to apply the transformation
-            size_t expectedSize = getDataStreamSize_<true>(overlap) / sizeof(double);
+            std::size_t expectedSize = getDataStreamSize_<true>(overlap) / sizeof(double);
             std::vector<typename FieldImpl::type> buffer;
             buffer.reserve(expectedSize);
 
@@ -240,7 +238,7 @@ namespace amr
         {
             // For unpacking we need to know how much element we will need to
             // extract
-            size_t expectedSize = getDataStreamSize(overlap) / sizeof(double);
+            std::size_t expectedSize = getDataStreamSize(overlap) / sizeof(double);
 
             std::vector<double> buffer;
             buffer.resize(expectedSize, 0.);
@@ -254,7 +252,7 @@ namespace amr
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
             {
                 // Here the seek counter will be used to index buffer
-                size_t seek = 0;
+                std::size_t seek = 0;
 
                 SAMRAI::hier::BoxContainer const& boxContainer
                     = fieldOverlap.getDestinationBoxContainer();
@@ -404,7 +402,7 @@ namespace amr
          * depending on withTransform parameter
          */
         template<bool withTransform>
-        size_t getDataStreamSize_(SAMRAI::hier::BoxOverlap const& overlap) const
+        std::size_t getDataStreamSize_(SAMRAI::hier::BoxOverlap const& overlap) const
         {
             // The idea here is to tell SAMRAI the maximum memory will be used by our type
             // on a given region.
@@ -441,13 +439,15 @@ namespace amr
         void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
                       SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
         {
-            uint32 xSourceStart      = static_cast<uint32>(localSourceBox.lower(0));
-            uint32 xDestinationStart = static_cast<uint32>(localDestinationBox.lower(0));
+            std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
+            std::uint32_t xDestinationStart
+                = static_cast<std::uint32_t>(localDestinationBox.lower(0));
 
-            uint32 xSourceEnd      = static_cast<uint32>(localSourceBox.upper(0));
-            uint32 xDestinationEnd = static_cast<uint32>(localDestinationBox.upper(0));
+            std::uint32_t xSourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(0));
+            std::uint32_t xDestinationEnd
+                = static_cast<std::uint32_t>(localDestinationBox.upper(0));
 
-            for (uint32 xSource = xSourceStart, xDestination = xDestinationStart;
+            for (std::uint32_t xSource = xSourceStart, xDestination = xDestinationStart;
                  xSource <= xSourceEnd && xDestination <= xDestinationEnd;
                  ++xSource, ++xDestination)
             {
@@ -496,23 +496,27 @@ namespace amr
         void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
                       SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
         {
-            uint32 xSourceStart      = static_cast<uint32>(localSourceBox.lower(0));
-            uint32 xDestinationStart = static_cast<uint32>(localDestinationBox.lower(0));
+            std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
+            std::uint32_t xDestinationStart
+                = static_cast<std::uint32_t>(localDestinationBox.lower(0));
 
-            uint32 xSourceEnd      = static_cast<uint32>(localSourceBox.upper(0));
-            uint32 xDestinationEnd = static_cast<uint32>(localDestinationBox.upper(0));
+            std::uint32_t xSourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(0));
+            std::uint32_t xDestinationEnd
+                = static_cast<std::uint32_t>(localDestinationBox.upper(0));
 
-            uint32 ySourceStart      = static_cast<uint32>(localSourceBox.lower(1));
-            uint32 yDestinationStart = static_cast<uint32>(localDestinationBox.lower(1));
+            std::uint32_t ySourceStart = static_cast<std::uint32_t>(localSourceBox.lower(1));
+            std::uint32_t yDestinationStart
+                = static_cast<std::uint32_t>(localDestinationBox.lower(1));
 
-            uint32 ySourceEnd      = static_cast<uint32>(localSourceBox.upper(1));
-            uint32 yDestinationEnd = static_cast<uint32>(localDestinationBox.upper(1));
+            std::uint32_t ySourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(1));
+            std::uint32_t yDestinationEnd
+                = static_cast<std::uint32_t>(localDestinationBox.upper(1));
 
-            for (uint32 xSource = xSourceStart, xDestination = xDestinationStart;
+            for (std::uint32_t xSource = xSourceStart, xDestination = xDestinationStart;
                  xSource <= xSourceEnd && xDestination <= xDestinationEnd;
                  ++xSource, ++xDestination)
             {
-                for (uint32 ySource = ySourceStart, yDestination = yDestinationStart;
+                for (std::uint32_t ySource = ySourceStart, yDestination = yDestinationStart;
                      ySource <= ySourceEnd && yDestination <= yDestinationEnd;
                      ++ySource, ++yDestination)
                 {
@@ -577,33 +581,39 @@ namespace amr
         void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
                       SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
         {
-            uint32 xSourceStart      = static_cast<uint32>(localSourceBox.lower(0));
-            uint32 xDestinationStart = static_cast<uint32>(localDestinationBox.lower(0));
+            std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
+            std::uint32_t xDestinationStart
+                = static_cast<std::uint32_t>(localDestinationBox.lower(0));
 
-            uint32 xSourceEnd      = static_cast<uint32>(localSourceBox.upper(0));
-            uint32 xDestinationEnd = static_cast<uint32>(localDestinationBox.upper(0));
+            std::uint32_t xSourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(0));
+            std::uint32_t xDestinationEnd
+                = static_cast<std::uint32_t>(localDestinationBox.upper(0));
 
-            uint32 ySourceStart      = static_cast<uint32>(localSourceBox.lower(1));
-            uint32 yDestinationStart = static_cast<uint32>(localDestinationBox.lower(1));
+            std::uint32_t ySourceStart = static_cast<std::uint32_t>(localSourceBox.lower(1));
+            std::uint32_t yDestinationStart
+                = static_cast<std::uint32_t>(localDestinationBox.lower(1));
 
-            uint32 ySourceEnd      = static_cast<uint32>(localSourceBox.upper(1));
-            uint32 yDestinationEnd = static_cast<uint32>(localDestinationBox.upper(1));
+            std::uint32_t ySourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(1));
+            std::uint32_t yDestinationEnd
+                = static_cast<std::uint32_t>(localDestinationBox.upper(1));
 
-            uint32 zSourceStart      = static_cast<uint32>(localSourceBox.lower(2));
-            uint32 zDestinationStart = static_cast<uint32>(localDestinationBox.lower(2));
+            std::uint32_t zSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(2));
+            std::uint32_t zDestinationStart
+                = static_cast<std::uint32_t>(localDestinationBox.lower(2));
 
-            uint32 zSourceEnd      = static_cast<uint32>(localSourceBox.upper(2));
-            uint32 zDestinationEnd = static_cast<uint32>(localDestinationBox.upper(2));
+            std::uint32_t zSourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(2));
+            std::uint32_t zDestinationEnd
+                = static_cast<std::uint32_t>(localDestinationBox.upper(2));
 
-            for (uint32 xSource = xSourceStart, xDestination = xDestinationStart;
+            for (std::uint32_t xSource = xSourceStart, xDestination = xDestinationStart;
                  xSource <= xSourceEnd && xDestination <= xDestinationEnd;
                  ++xSource, ++xDestination)
             {
-                for (uint32 ySource = ySourceStart, yDestination = yDestinationStart;
+                for (std::uint32_t ySource = ySourceStart, yDestination = yDestinationStart;
                      ySource <= ySourceEnd && yDestination <= yDestinationEnd;
                      ++ySource, ++yDestination)
                 {
-                    for (uint32 zSource = zSourceStart, zDestination = zDestinationStart;
+                    for (std::uint32_t zSource = zSourceStart, zDestination = zDestinationStart;
                          zSource <= zSourceEnd && zDestination <= zDestinationEnd;
                          ++zSource, ++zDestination)
                     {

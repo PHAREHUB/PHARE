@@ -28,7 +28,7 @@ namespace amr
 
 
 
-    template<typename ResourcesUser, typename ResourcesType, size_t interp>
+    template<typename ResourcesUser, typename ResourcesType, std::size_t interp>
     using isUserParticleType = std::is_same<typename std::remove_reference<ResourcesType>::type,
                                             UserParticleType<ResourcesUser, interp>>;
 

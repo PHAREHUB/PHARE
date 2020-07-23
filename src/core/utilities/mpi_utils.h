@@ -34,11 +34,11 @@ void _gather(GatherFunc const&& gather)
         gather(MPI_FLOAT);
     else if constexpr (std::is_same_v<int, Data>)
         gather(MPI_INT);
-    else if constexpr (std::is_same_v<uint32_t, Data>)
+    else if constexpr (std::is_same_v<std::uint32_t, Data>)
         gather(MPI_UNSIGNED);
     else if constexpr (std::is_same_v<uint8_t, Data>)
         gather(MPI_UNSIGNED_SHORT);
-    else if constexpr (std::is_same_v<size_t, Data>)
+    else if constexpr (std::is_same_v<std::size_t, Data>)
         gather(MPI_UINT64_T);
     else if constexpr (std::is_same_v<char, Data>)
         gather(MPI_CHAR);
@@ -47,8 +47,8 @@ void _gather(GatherFunc const&& gather)
 }
 
 template<typename Data>
-void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff, size_t const sendcount = 1,
-              size_t const recvcount = 1)
+void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
+              std::size_t const sendcount = 1, std::size_t const recvcount = 1)
 {
     _gather<Data>([&](auto mpi_type) {
         MPI_Allgather(      // MPI_Allgather

@@ -38,7 +38,7 @@ struct BrownDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticles
     {
         for (size_t i = 0; i < 2; i++)
         {
-            size_t offset              = (i * 4);
+            std::size_t offset         = (i * 4);
             float sign                 = i % 2 ? -1 : 1;
             Super::deltas_[0 + offset] = {-delta[0] * sign, delta[1] * sign};
             Super::deltas_[1 + offset] = {-delta[1] * sign, delta[0] * sign};

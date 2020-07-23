@@ -113,7 +113,7 @@ namespace amr
     class DimIntegrator : public Integrator
     {
     public:
-        static constexpr size_t dimension = _dimension;
+        static constexpr std::size_t dimension = _dimension;
 
         DimIntegrator(
             PHARE::initializer::PHAREDict dict,

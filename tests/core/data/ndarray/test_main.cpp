@@ -20,7 +20,7 @@ public:
     }
 
 protected:
-    const uint32_t nx = 10;
+    const std::uint32_t nx = 10;
     NdArray a;
 };
 
@@ -35,8 +35,8 @@ public:
     }
 
 protected:
-    const uint32_t nx = 10;
-    const uint32_t ny = 20;
+    const std::uint32_t nx = 10;
+    const std::uint32_t ny = 20;
     NdArray a;
 };
 
@@ -51,9 +51,9 @@ public:
     }
 
 protected:
-    const uint32_t nx = 10;
-    const uint32_t ny = 20;
-    const uint32_t nz = 30;
+    const std::uint32_t nx = 10;
+    const std::uint32_t ny = 20;
+    const std::uint32_t nz = 30;
     NdArray a;
 };
 
@@ -77,7 +77,7 @@ TYPED_TEST(GenericNdArray1D, SizeIsOkAfterNonEmptyCreation)
 
 TYPED_TEST(GenericNdArray1D, IsModifiable)
 {
-    uint32_t i{2};
+    std::uint32_t i{2};
     this->a(i) = 12.;
     EXPECT_EQ(12., this->a(i));
 }
@@ -85,7 +85,7 @@ TYPED_TEST(GenericNdArray1D, IsModifiable)
 
 TYPED_TEST(GenericNdArray1D, CanBeReadOnly)
 {
-    uint32_t i{2};
+    std::uint32_t i{2};
     this->a(i)                  = 12.;
     NdArrayVector<1> const& ref = this->a;
     EXPECT_EQ(12., ref(i));
@@ -102,7 +102,7 @@ TYPED_TEST(GenericNdArray1D, AccessWholeArray)
     for (auto& v : numbers)
         v = dis(gen);
 
-    for (uint32_t i = 0; i < this->nx; ++i)
+    for (std::uint32_t i = 0; i < this->nx; ++i)
     {
         this->a(i) = numbers[i];
         EXPECT_DOUBLE_EQ(numbers[i], this->a(i));
@@ -144,7 +144,7 @@ TYPED_TEST(GenericNdArray2D, SizeIsOkAfterNonEmptyCreation)
 
 TYPED_TEST(GenericNdArray2D, IsModifiable)
 {
-    uint32_t i{2}, j{3};
+    std::uint32_t i{2}, j{3};
     this->a(i, j) = 12.;
     EXPECT_EQ(12., this->a(i, j));
 }
@@ -152,7 +152,7 @@ TYPED_TEST(GenericNdArray2D, IsModifiable)
 
 TYPED_TEST(GenericNdArray2D, CanBeReadOnly)
 {
-    uint32_t i{2}, j{3};
+    std::uint32_t i{2}, j{3};
     this->a(i, j)               = 12.;
     NdArrayVector<2> const& ref = this->a;
     EXPECT_EQ(12., ref(i, j));
@@ -169,10 +169,10 @@ TYPED_TEST(GenericNdArray2D, AccessWholeArray)
     for (auto& v : numbers)
         v = dis(gen);
 
-    uint32_t idx{0};
-    for (uint32_t i = 0; i < this->nx; ++i)
+    std::uint32_t idx{0};
+    for (std::uint32_t i = 0; i < this->nx; ++i)
     {
-        for (uint32_t j = 0; j < this->ny; ++j)
+        for (std::uint32_t j = 0; j < this->ny; ++j)
         {
             this->a(i, j) = numbers[idx];
             EXPECT_DOUBLE_EQ(numbers[idx++], this->a(i, j));
@@ -215,7 +215,7 @@ TYPED_TEST(GenericNdArray3D, SizeIsOkAfterNonEmptyCreation)
 
 TYPED_TEST(GenericNdArray3D, IsModifiable)
 {
-    uint32_t i{2}, j{3}, k{4};
+    std::uint32_t i{2}, j{3}, k{4};
     this->a(i, j, k) = 12.;
     EXPECT_EQ(12., this->a(i, j, k));
 }
@@ -223,7 +223,7 @@ TYPED_TEST(GenericNdArray3D, IsModifiable)
 
 TYPED_TEST(GenericNdArray3D, CanBeReadOnly)
 {
-    uint32_t i{2}, j{3}, k{4};
+    std::uint32_t i{2}, j{3}, k{4};
     this->a(i, j, k)            = 12.;
     NdArrayVector<3> const& ref = this->a;
     EXPECT_EQ(12., ref(i, j, k));
@@ -241,12 +241,12 @@ TYPED_TEST(GenericNdArray3D, AccessWholeArray)
         v = dis(gen);
 
 
-    uint32_t idx{0};
-    for (uint32_t i = 0; i < this->nx; ++i)
+    std::uint32_t idx{0};
+    for (std::uint32_t i = 0; i < this->nx; ++i)
     {
-        for (uint32_t j = 0; j < this->ny; ++j)
+        for (std::uint32_t j = 0; j < this->ny; ++j)
         {
-            for (uint32_t k = 0; k < this->nz; ++k)
+            for (std::uint32_t k = 0; k < this->nz; ++k)
             {
                 this->a(i, j, k) = numbers[idx];
                 EXPECT_DOUBLE_EQ(numbers[idx++], this->a(i, j, k));

@@ -57,7 +57,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
 
     std::array<double, dim> dl{{0.01}};
 
-    std::array<uint32, dim> nbrCells{{static_cast<uint32>(domain.numberCells(dirX))}};
+    std::array<std::uint32_t, dim> nbrCells{{static_cast<std::uint32_t>(domain.numberCells(dirX))}};
 
     Point<double, dim> origin{0.};
 

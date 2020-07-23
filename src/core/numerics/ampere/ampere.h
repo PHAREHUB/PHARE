@@ -92,9 +92,9 @@ namespace core
             psi_Y = this->layout_->physicalStartIndex(Jz, Direction::Y);
             pei_Y = this->layout_->physicalEndIndex(Jz, Direction::Y);
 
-            for (uint32 ix = psi_X; ix <= pei_X; ++ix)
+            for (std::uint32_t ix = psi_X; ix <= pei_X; ++ix)
             {
-                for (uint32 iy = psi_Y; iy <= pei_Y; ++iy)
+                for (std::uint32_t iy = psi_Y; iy <= pei_Y; ++iy)
                 {
                     Jz(ix, iy) = this->layout_->deriv(By, {ix, iy}, DirectionTag<Direction::X>{})
                                  - this->layout_->deriv(Bx, {ix, iy}, DirectionTag<Direction::Y>{});

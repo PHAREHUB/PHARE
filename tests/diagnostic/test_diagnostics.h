@@ -18,13 +18,14 @@ constexpr unsigned NEW_HI5_FILE
     = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
 
 template<typename FieldFilter, typename Func, typename GridLayout, typename Field>
-std::array<uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Func&& func,
-                                                         GridLayout& layout, Field& field)
+std::array<std::uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Func&& func,
+                                                              GridLayout& layout, Field& field)
 {
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto get = [&](auto dir) { return static_cast<uint32_t>(((ff).*(func))(layout, field, dir)); };
+    auto get
+        = [&](auto dir) { return static_cast<std::uint32_t>(((ff).*(func))(layout, field, dir)); };
 
     if constexpr (dim == 1)
         return {get(core::Direction::X)};
@@ -49,7 +50,7 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
                             layout, field);
     for (auto& s : siz) // dim sizes are last index + 1
         s += 1;
-    size_t items = siz[0];
+    std::size_t items = siz[0];
     for (size_t i = 1; i < siz.size(); i++)
         items *= siz[i];
     EXPECT_EQ(items, field.size());
@@ -163,7 +164,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         checkVecField(hifile->file(), layout, val, path + name, FieldDomainFilter{});
     };
 
-    auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
+    auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
         auto path  = hi5.getPatchPath(iLevel, patchID);
         auto& ions = hi5.modelView.getIons();
         for (auto& pop : ions)
@@ -196,7 +197,7 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
         checkVecField(hifile->file(), layout, val, path + tree);
     };
 
-    auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
+    auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
         auto path = hi5.getPatchPath(iLevel, patchID) + "/";
         checkVF(layout, path, "EM_B", hybridModel.state.electromag.B);
         checkVF(layout, path, "EM_E", hybridModel.state.electromag.E);
@@ -228,11 +229,11 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 
         core::ParticlePacker packer{particles};
 
-        auto first       = packer.empty();
-        size_t iCellSize = std::get<2>(first).size();
-        size_t deltaSize = std::get<3>(first).size();
-        size_t vSize     = std::get<4>(first).size();
-        size_t part_idx  = 0;
+        auto first            = packer.empty();
+        std::size_t iCellSize = std::get<2>(first).size();
+        std::size_t deltaSize = std::get<3>(first).size();
+        std::size_t vSize     = std::get<4>(first).size();
+        std::size_t part_idx  = 0;
         while (packer.hasNext())
         {
             auto next = packer.next();
@@ -255,7 +256,7 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         checkParticles(hifile->file(), particles, path + "/");
     };
 
-    auto visit = [&](GridLayout&, std::string patchID, size_t iLevel) {
+    auto visit = [&](GridLayout&, std::string patchID, std::size_t iLevel) {
         auto path = hi5.getPatchPath(iLevel, patchID);
         for (auto& pop : hybridModel.state.ions)
         {
@@ -284,11 +285,11 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
         EXPECT_EQ(expected, attr);
     };
 
-    auto visit = [&](GridLayout& grid, std::string patchID, size_t iLevel) {
+    auto visit = [&](GridLayout& grid, std::string patchID, std::size_t iLevel) {
         auto group = hifile->file().getGroup(hi5.getPatchPath(iLevel, patchID));
 
         _check_equal(group, grid.origin().toVector(), "origin");
-        _check_equal(group, core::Point<uint32_t, dimension>{grid.nbrCells()}.toVector(),
+        _check_equal(group, core::Point<std::uint32_t, dimension>{grid.nbrCells()}.toVector(),
                      "nbrCells");
         _check_equal(group, grid.AMRBox().lower.toVector(), "lower");
         _check_equal(group, grid.AMRBox().upper.toVector(), "upper");

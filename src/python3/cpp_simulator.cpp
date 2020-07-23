@@ -28,7 +28,7 @@ struct PatchData
     std::string origin;
     py_array_t<std::size_t> lower{dim};
     py_array_t<std::size_t> upper{dim};
-    size_t nGhosts;
+    std::size_t nGhosts;
     Data data;
 
     PatchData() {}
@@ -46,7 +46,7 @@ void setPatchData(PatchData& data, std::string patchID, std::string origin,
                   std::array<std::size_t, PatchData::dimension> lower,
                   std::array<std::size_t, PatchData::dimension> upper)
 {
-    constexpr size_t bytes = PatchData::dimension * sizeof(size_t);
+    constexpr std::size_t bytes = PatchData::dimension * sizeof(size_t);
     std::memcpy(data.lower.request().ptr, lower.data(), bytes);
     std::memcpy(data.upper.request().ptr, upper.data(), bytes);
     data.patchID = patchID;
@@ -66,7 +66,7 @@ void setPatchDataFromField(PatchData& pdata, Field const& field, GridLayout& gri
                            std::string patchID)
 {
     setPatchDataFromGrid(pdata, grid, patchID);
-    pdata.nGhosts = static_cast<size_t>(
+    pdata.nGhosts = static_cast<std::size_t>(
         GridLayout::nbrGhosts(GridLayout::centering(field.physicalQuantity())[0]));
     pdata.data.assign(field.data(), field.data() + field.size());
 }
@@ -77,15 +77,15 @@ template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
 class PatchLevel
 {
 public:
-    static constexpr size_t dimension     = dim;
-    static constexpr size_t interp_order  = interpOrder;
-    static constexpr size_t nbRefinedPart = nbrRefPart;
+    static constexpr std::size_t dimension     = dim;
+    static constexpr std::size_t interp_order  = interpOrder;
+    static constexpr std::size_t nbRefinedPart = nbrRefPart;
 
     using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel = typename PHARETypes::HybridModel_t;
     using GridLayout  = typename HybridModel::gridlayout_type;
 
-    PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, size_t lvl)
+    PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, std::size_t lvl)
         : lvl_(lvl)
         , hierarchy_{hierarchy}
         , model_{model}
@@ -97,7 +97,7 @@ public:
         std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
         auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             setPatchDataFromField(patchDatas.emplace_back(), ions.density(), grid, patchID);
         };
 
@@ -114,7 +114,7 @@ public:
         std::unordered_map<std::string, Inner> pop_data;
         auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             for (auto const& pop : ions)
             {
                 if (!pop_data.count(pop.name()))
@@ -157,7 +157,7 @@ public:
 
         auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             for (auto& [id, type] : core::Components::componentMap)
             {
                 auto& field = ions.velocity().getComponent(type);
@@ -183,7 +183,7 @@ public:
 
         auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             for (auto const& pop : ions)
                 getVecFields(pop.flux(), pop_data, grid, patchID, pop.name());
         };
@@ -202,7 +202,7 @@ public:
 
         auto& em = model_.state.electromag;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             for (auto& vecFieldPtr : {&em.B, &em.E})
             {
                 getVecFields(*vecFieldPtr, em_data, grid, patchID, vecFieldPtr->name());
@@ -222,7 +222,7 @@ public:
 
         auto& B = model_.state.electromag.B;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             auto compo = PHARE::core::Components::componentMap.at(componentName);
             setPatchDataFromField(patchDatas.emplace_back(), B.getComponent(compo), grid, patchID);
         };
@@ -240,7 +240,7 @@ public:
 
         auto& E = model_.state.electromag.E;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             auto compo = PHARE::core::Components::componentMap.at(componentName);
             setPatchDataFromField(patchDatas.emplace_back(), E.getComponent(compo), grid, patchID);
         };
@@ -259,7 +259,7 @@ public:
 
         auto& V = model_.state.ions.velocity();
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             auto compo = PHARE::core::Components::componentMap.at(componentName);
             setPatchDataFromField(patchDatas.emplace_back(), V.getComponent(compo), grid, patchID);
         };
@@ -280,7 +280,7 @@ public:
 
         auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             auto compo = PHARE::core::Components::componentMap.at(component);
             for (auto const& pop : ions)
                 if (pop.name() == popName)
@@ -338,7 +338,7 @@ public:
 
         auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, size_t /*iLevel*/) {
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
             for (auto& pop : ions)
             {
                 if ((userPopName != "" and userPopName == pop.name()) or userPopName == "all")
@@ -362,19 +362,19 @@ public:
     }
 
 private:
-    size_t lvl_;
+    std::size_t lvl_;
     amr::Hierarchy& hierarchy_;
     HybridModel& model_;
 };
 
-template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 class DataWrangler
 {
 public:
-    using This                            = DataWrangler;
-    static constexpr size_t dimension     = _dimension;
-    static constexpr size_t interp_order  = _interp_order;
-    static constexpr size_t nbRefinedPart = _nbRefinedPart;
+    using This                                 = DataWrangler;
+    static constexpr std::size_t dimension     = _dimension;
+    static constexpr std::size_t interp_order  = _interp_order;
+    static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
 
     using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel = typename PHARETypes::HybridModel_t;
@@ -430,8 +430,8 @@ public:
         std::vector<PatchData<std::vector<double>, dimension>> collected;
 
         auto reinterpret_array = [&](auto& py_array) {
-            return reinterpret_cast<std::array<size_t, dimension>&>(
-                *static_cast<size_t*>(py_array.request().ptr));
+            return reinterpret_cast<std::array<std::size_t, dimension>&>(
+                *static_cast<std::size_t*>(py_array.request().ptr));
         };
 
         auto collect = [&](auto& patch_data) {
@@ -487,16 +487,16 @@ private:
         }
 
         template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-        bool operator()(std::size_t userDim, std::size_t userInterpOrder, size_t userNbRefinedPart,
-                        Dimension dimension_fn, InterpOrder interp_order_fn,
-                        NbRefinedPart nbRefinedPart_fn)
+        bool operator()(std::size_t userDim, std::size_t userInterpOrder,
+                        std::size_t userNbRefinedPart, Dimension dimension_fn,
+                        InterpOrder interp_order_fn, NbRefinedPart nbRefinedPart_fn)
         {
             if (userDim == dimension_fn() and userInterpOrder == interp_order_fn()
                 and userNbRefinedPart == nbRefinedPart_fn())
             {
-                size_t constexpr d  = dimension_fn();
-                size_t constexpr io = interp_order_fn();
-                size_t constexpr nb = nbRefinedPart_fn();
+                std::size_t constexpr d  = dimension_fn();
+                std::size_t constexpr io = interp_order_fn();
+                std::size_t constexpr nb = nbRefinedPart_fn();
 
                 // extra if constexpr as cast is templated and not generic interface
                 if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
@@ -525,13 +525,13 @@ void declarePatchData(py::module& m, std::string key)
         .def_readonly("data", &PatchDataType::data);
 }
 
-template<size_t dim>
+template<std::size_t dim>
 void declareDim(py::module& m)
 {
     using CP         = core::ContiguousParticles<dim>;
     std::string name = "ContiguousParticles_" + std::to_string(dim);
     py::class_<CP, std::shared_ptr<CP>>(m, name.c_str())
-        .def(py::init<size_t>())
+        .def(py::init<std::size_t>())
         .def_readwrite("iCell", &CP::iCell)
         .def_readwrite("delta", &CP::delta)
         .def_readwrite("weight", &CP::weight)

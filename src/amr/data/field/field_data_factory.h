@@ -86,7 +86,7 @@ namespace amr
             // it can use it to get the final box representation.
 
             std::array<double, dimension> dl;
-            std::array<uint32, dimension> nbCell;
+            std::array<std::uint32_t, dimension> nbCell;
             core::Point<double, dimension> origin;
 
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)
@@ -114,7 +114,7 @@ namespace amr
             //       alignedMemory(nx*ny*nz*sizeof(double)) + alignedMemory(baseSize)
 
             std::array<double, dimension> dl;
-            std::array<uint32, dimension> nbCell;
+            std::array<std::uint32_t, dimension> nbCell;
             core::Point<double, dimension> origin;
 
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)

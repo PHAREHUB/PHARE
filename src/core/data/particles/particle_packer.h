@@ -10,7 +10,7 @@
 
 namespace PHARE::core
 {
-template<size_t dim>
+template<std::size_t dim>
 class ParticlePacker
 {
 public:
@@ -42,7 +42,7 @@ public:
         auto copyTo = [](auto& a, auto& idx, auto size, auto& v) {
             std::copy(a.begin(), a.begin() + size, v.begin() + (idx * size));
         };
-        size_t idx = 0;
+        std::size_t idx = 0;
         while (this->hasNext())
         {
             auto next        = this->next();
@@ -57,7 +57,7 @@ public:
 
 private:
     ParticleArray<dim> const& particles_;
-    size_t it_ = 0;
+    std::size_t it_ = 0;
     static inline std::array<std::string, 5> keys_{"weight", "charge", "iCell", "delta", "v"};
 };
 

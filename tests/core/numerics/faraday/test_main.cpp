@@ -22,20 +22,24 @@ struct FieldMock
 {
     static auto constexpr dimension = dim;
     double data;
-    double& operator()([[maybe_unused]] uint32 i) { return data; }
-    double const& operator()([[maybe_unused]] uint32 i) const { return data; }
-    double& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j) { return data; }
-    double const& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j) const
+    double& operator()([[maybe_unused]] std::uint32_t i) { return data; }
+    double const& operator()([[maybe_unused]] std::uint32_t i) const { return data; }
+    double& operator()([[maybe_unused]] std::uint32_t i, [[maybe_unused]] std::uint32_t j)
     {
         return data;
     }
-    double& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j,
-                       [[maybe_unused]] uint32 k)
+    double const& operator()([[maybe_unused]] std::uint32_t i,
+                             [[maybe_unused]] std::uint32_t j) const
     {
         return data;
     }
-    double const& operator()([[maybe_unused]] uint32 i, [[maybe_unused]] uint32 j,
-                             [[maybe_unused]] uint32 k) const
+    double& operator()([[maybe_unused]] std::uint32_t i, [[maybe_unused]] std::uint32_t j,
+                       [[maybe_unused]] std::uint32_t k)
+    {
+        return data;
+    }
+    double const& operator()([[maybe_unused]] std::uint32_t i, [[maybe_unused]] std::uint32_t j,
+                             [[maybe_unused]] std::uint32_t k) const
     {
         return data;
     }

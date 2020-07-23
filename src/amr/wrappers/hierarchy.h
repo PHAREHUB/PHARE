@@ -23,7 +23,7 @@
 
 namespace PHARE::amr
 {
-template<typename Type, size_t dimension>
+template<typename Type, std::size_t dimension>
 void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type* arr)
 {
     arr[0] = grid[key]["x"].template to<Type>();
@@ -33,7 +33,7 @@ void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type*
         arr[2] = grid[key]["z"].template to<Type>();
 }
 
-template<typename Type, size_t dimension>
+template<typename Type, std::size_t dimension>
 auto parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key)
 {
     std::array<Type, dimension> arr;
@@ -204,7 +204,7 @@ public:
     auto const& origin() const { return origin_; }
 
 protected:
-    template<size_t dimension>
+    template<std::size_t dimension>
     Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo, //
               std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,         //
               std::array<int, dimension> const domainBox,                 //
@@ -223,11 +223,11 @@ private:
     std::vector<double> const origin_;
 };
 
-template<size_t _dimension>
+template<std::size_t _dimension>
 class DimHierarchy : public Hierarchy
 {
 public:
-    static constexpr size_t dimension = _dimension;
+    static constexpr std::size_t dimension = _dimension;
 
     DimHierarchy(PHARE::initializer::PHAREDict dict)
         : Hierarchy(std::make_shared<SAMRAI::geom::CartesianGridGeometry>(

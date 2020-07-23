@@ -20,7 +20,7 @@ struct __attribute__((visibility("hidden"))) StaticIntepreter
 std::shared_ptr<PHARE::initializer::PythonDataProvider> StaticIntepreter::input{nullptr};
 
 
-template<size_t _dim>
+template<std::size_t _dim>
 struct HierarchyMaker
 {
     HierarchyMaker(PHARE::initializer::PHAREDict& dict)
@@ -32,13 +32,13 @@ struct HierarchyMaker
 
 
 
-template<size_t _dim, size_t _interp, size_t _nbRefinePart>
+template<std::size_t _dim, std::size_t _interp, std::size_t _nbRefinePart>
 struct TestSimulator : public HierarchyMaker<_dim>,
                        public PHARE::Simulator<_dim, _interp, _nbRefinePart>
 {
-    static constexpr size_t dim          = _dim;
-    static constexpr size_t interp       = _interp;
-    static constexpr size_t nbRefinePart = _nbRefinePart;
+    static constexpr std::size_t dim          = _dim;
+    static constexpr std::size_t interp       = _interp;
+    static constexpr std::size_t nbRefinePart = _nbRefinePart;
 
     using Simulator   = PHARE::Simulator<dim, interp, nbRefinePart>;
     using PHARETypes  = PHARE::PHARE_Types<dim, interp, nbRefinePart>;
@@ -118,13 +118,13 @@ class FieldNullFilter
 {
 public:
     template<typename Field, typename GridLayout>
-    size_t start(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t start(GridLayout& layout, Field& field, core::Direction direction)
     {
         return layout.ghostStartIndex(field, direction);
     }
 
     template<typename Field, typename GridLayout>
-    size_t end(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t end(GridLayout& layout, Field& field, core::Direction direction)
     {
         return layout.ghostEndIndex(field, direction);
     }
@@ -139,19 +139,19 @@ public:
     }
 
     template<typename Field, typename GridLayout>
-    size_t start(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t start(GridLayout& layout, Field& field, core::Direction direction)
     {
         return layout.physicalStartIndex(field, direction) - n_;
     }
 
     template<typename Field, typename GridLayout>
-    size_t end(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t end(GridLayout& layout, Field& field, core::Direction direction)
     {
         return layout.physicalEndIndex(field, direction) + n_;
     }
 
 private:
-    size_t n_;
+    std::size_t n_;
 };
 
 

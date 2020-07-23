@@ -22,7 +22,7 @@ namespace amr
     using core::dirX;
     using core::dirY;
     using core::dirZ;
-    using core::uint32;
+
     /**
      * @brief offsetIsZero_ returns true of the transformation has zero offset
      */
@@ -190,11 +190,11 @@ namespace amr
 
         SAMRAI::hier::Box domain = patch.getBox();
 
-        std::array<uint32, dimension> nbrCell;
+        std::array<std::uint32_t, dimension> nbrCell;
 
         for (std::size_t iDim = 0; iDim < dimension; ++iDim)
         {
-            nbrCell[iDim] = static_cast<uint32>(domain.numberCells(iDim));
+            nbrCell[iDim] = static_cast<std::uint32_t>(domain.numberCells(iDim));
         }
 
         return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
@@ -210,7 +210,7 @@ namespace amr
             GridLayout layout = layoutFromPatch<GridLayout>(*patch);
             std::stringstream patchID;
             patchID << patch->getGlobalId();
-            action(layout, patchID.str(), static_cast<size_t>(level.getLevelNumber()));
+            action(layout, patchID.str(), static_cast<std::size_t>(level.getLevelNumber()));
         }
     }
 

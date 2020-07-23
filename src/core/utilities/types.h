@@ -16,11 +16,6 @@ namespace PHARE
 {
 namespace core
 {
-    using uint32 = std::uint32_t;
-    using uint64 = std::uint64_t;
-    using int32  = std::int32_t;
-    using int64  = std::int64_t;
-
     enum class Basis { Magnetic, Cartesian };
 
 
@@ -76,12 +71,12 @@ namespace core
     template<typename T>
     inline constexpr auto is_std_vector_v = is_std_vector<T>::value;
 
-    template<typename T, size_t size>
+    template<typename T, std::size_t size>
     struct is_std_array : std::false_type
     {
     };
 
-    template<typename T, size_t size>
+    template<typename T, std::size_t size>
     struct is_std_array<std::array<T, size>, size> : std::true_type
     {
     };
@@ -97,14 +92,14 @@ namespace core
         std::apply([&](auto&... args) { (func(args), ...); }, tuple);
     }
 
-    template<typename Type, size_t Size> // std::array::fill is only constexpr in C++20 ffs
+    template<typename Type, std::size_t Size> // std::array::fill is only constexpr in C++20 ffs
     constexpr void fill(Type value, std::array<Type, Size>& array)
     {
         for (size_t i = 0; i < Size; i++)
             array[i] = value;
     }
 
-    template<size_t Constant>
+    template<std::size_t Constant>
     class StrongIntegralConstant
     {
     public:
@@ -114,20 +109,20 @@ namespace core
         static constexpr std::integral_constant<std::size_t, Constant> constant{};
     };
 
-    template<size_t Constant>
+    template<std::size_t Constant>
     class DimConst : public StrongIntegralConstant<Constant>
     {
     };
-    template<size_t Constant>
+    template<std::size_t Constant>
     class InterpConst : public StrongIntegralConstant<Constant>
     {
     };
-    template<size_t Constant>
+    template<std::size_t Constant>
     class RefinedParticlesConst : public StrongIntegralConstant<Constant>
     {
     };
 
-    template<size_t To_Size, size_t From_Size, typename Type>
+    template<std::size_t To_Size, std::size_t From_Size, typename Type>
     constexpr decltype(auto) sized_array(std::array<Type, From_Size> const& from)
     {
         static_assert(To_Size <= From_Size, "invalid sized_array Size template, too large");
@@ -144,7 +139,7 @@ namespace core
     }
 
 
-    template<size_t To_Size, typename... Args>
+    template<std::size_t To_Size, typename... Args>
     constexpr decltype(auto) as_sized_array(Args&&... args)
     {
         auto arr = std::array{std::forward<decltype(args)>(args)...};
@@ -152,7 +147,7 @@ namespace core
         return sized_array<To_Size>(arr);
     }
 
-    template<typename Type, size_t size>
+    template<typename Type, std::size_t size>
     constexpr decltype(auto) ConstArray(Type val = 0)
     {
         std::array<Type, size> arr{};

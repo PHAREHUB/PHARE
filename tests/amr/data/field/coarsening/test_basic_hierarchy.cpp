@@ -84,10 +84,10 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
 
                     // here we are 1D
 
-                    uint32 iStartX = layout.ghostStartIndex(field, Direction::X);
-                    uint32 iEndX   = layout.ghostEndIndex(field, Direction::X);
+                    std::uint32_t iStartX = layout.ghostStartIndex(field, Direction::X);
+                    std::uint32_t iEndX   = layout.ghostEndIndex(field, Direction::X);
 
-                    for (uint32 ix = iStartX; ix <= iEndX; ++ix)
+                    for (std::uint32_t ix = iStartX; ix <= iEndX; ++ix)
                     {
                         auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
                         field(ix)     = fillFunction(position);
@@ -144,8 +144,8 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
 
             // here we are 1D
 
-            uint32 iStartX = layout.physicalStartIndex(field, Direction::X);
-            uint32 iEndX   = layout.physicalEndIndex(field, Direction::X);
+            std::uint32_t iStartX = layout.physicalStartIndex(field, Direction::X);
+            std::uint32_t iEndX   = layout.physicalEndIndex(field, Direction::X);
 
 
             auto const& currentBox = patch->getBox();
@@ -207,7 +207,7 @@ TEST_P(ALinearFieldCoarsen1DO1, conserveLinearFunction)
             SAMRAI::tbox::Dimension dim{1};
 
 
-            for (uint32 ix = iStartX; ix <= iEndX; ++ix)
+            for (std::uint32_t ix = iStartX; ix <= iEndX; ++ix)
             {
                 auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
 

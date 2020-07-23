@@ -20,7 +20,7 @@ struct GridLayoutTestParam
     static constexpr std::size_t interpOrder = GridLayoutImpl::interp_order;
 
     std::array<double, dim> dxdydz;
-    std::array<uint32, dim> nbCellXYZ;
+    std::array<std::uint32_t, dim> nbCellXYZ;
 
     Point<double, dim> origin;
 
