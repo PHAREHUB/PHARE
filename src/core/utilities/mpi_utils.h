@@ -21,7 +21,7 @@ namespace PHARE::core::mpi
 template<typename Data>
 std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
-size_t max(size_t const local, int mpi_size = 0);
+std::size_t max(std::size_t const local, int mpi_size = 0);
 
 int size();
 
@@ -109,7 +109,7 @@ std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
     std::vector<Data> rcvBuff(std::accumulate(perMPISize.begin(), perMPISize.end(), 0));
     _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, mpi_size);
 
-    size_t offset = 0;
+    std::size_t offset = 0;
     std::vector<Vector> collected;
     for (int i = 0; i < mpi_size; i++)
     {
@@ -120,7 +120,7 @@ std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
 }
 
 template<typename T, typename Vector>
-decltype(auto) collectSplitVector(Vector const& sendBuff, int mpi_size = 0)
+kul::SplitVector<T, int> collectSplitVector(Vector const& sendBuff, int mpi_size = 0)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -174,7 +174,7 @@ auto collectArrays(Container const& data, int mpi_size)
 
 
 template<typename T>
-decltype(auto) collect_raw(std::vector<T> const& data, int mpi_size)
+kul::SplitVector<T, int> collect_raw(std::vector<T> const& data, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
