@@ -543,6 +543,19 @@ void declareDim(py::module& m)
     declarePatchData<CP, dim>(m, name.c_str());
 }
 
+template<typename Simulator, typename PyClass>
+void declareSimulator(PyClass&& sim)
+{
+    sim.def("initialize", &Simulator::initialize)
+        .def("advance", &Simulator::advance)
+        .def("startTime", &Simulator::startTime)
+        .def("currentTime", &Simulator::currentTime)
+        .def("endTime", &Simulator::endTime)
+        .def("timeStep", &Simulator::timeStep)
+        .def("to_str", &Simulator::to_str)
+        .def("domain_box", &Simulator::domainBox)
+        .def("cell_width", &Simulator::cellWidth);
+}
 
 
 template<typename _dim, typename _interp, typename _nbRefinedPart>
@@ -556,9 +569,30 @@ void declare(py::module& m)
     std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
                               + std::to_string(nbRefinedPart);
 
-    using DW         = DataWrangler<dim, interp, nbRefinedPart>;
-    std::string name = "DataWrangler" + type_string;
+    using Sim        = Simulator<dim, interp, nbRefinedPart>;
+    std::string name = "Simulator" + type_string;
+    declareSimulator<Sim>(
+        py::class_<Sim, std::shared_ptr<Sim>>(m, name.c_str())
+            .def_property_readonly_static("dims", [](py::object) { return Sim::dimension; })
+            .def_property_readonly_static("interp_order",
+                                          [](py::object) { return Sim::interp_order; })
+            .def_property_readonly_static("refined_particle_nbr",
+                                          [](py::object) { return Sim::nbRefinedPart; }));
+
+
+    name = "make_simulator" + type_string;
+    m.def(name.c_str(), [](std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
+        return std::shared_ptr<Sim>{std::move(makeSimulator<dim, interp, nbRefinedPart>(hier))};
+    });
+    m.def("make_diagnostic_manager",
+          [](std::shared_ptr<Sim> const& sim, std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
+              return std::make_shared<RuntimeDiagnosticInterface>(*sim, *hier);
+          });
+
+    using DW = DataWrangler<dim, interp, nbRefinedPart>;
+    name     = "DataWrangler" + type_string;
     py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
+        .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
         .def("getPatchLevel", &DW::getPatchLevel)
@@ -616,17 +650,9 @@ PYBIND11_MODULE(cpp, m)
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
 
-    py::class_<ISimulator, std::shared_ptr<ISimulator>>(m, "ISimulator")
-        .def("initialize", &PHARE::ISimulator::initialize)
-        .def("advance", &PHARE::ISimulator::advance)
-        .def("startTime", &PHARE::ISimulator::startTime)
-        .def("currentTime", &PHARE::ISimulator::currentTime)
-        .def("endTime", &PHARE::ISimulator::endTime)
-        .def("timeStep", &PHARE::ISimulator::timeStep)
-        .def("to_str", &PHARE::ISimulator::to_str)
-        .def("domain_box", &PHARE::ISimulator::domainBox)
-        .def("cell_width", &PHARE::ISimulator::cellWidth)
-        .def("interp_order", &PHARE::ISimulator::interporder);
+    declareSimulator<ISimulator>(
+        py::class_<ISimulator, std::shared_ptr<ISimulator>>(m, "ISimulator")
+            .def("interp_order", &ISimulator::interporder));
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {

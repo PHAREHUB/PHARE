@@ -9,6 +9,11 @@ def clear_life_cycles():
     life_cycles.clear()
 
 
+def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
+    from pybindlibs import cpp
+    return getattr(cpp, "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart))(hier)
+
+
 class Simulator:
     def __init__(self, simulation):
         import pyphare.pharein as ph
@@ -34,7 +39,11 @@ class Simulator:
                 life_cycles["samrai"] = cpp.SamraiLifeCycle()
             populateDict()
             self.cpp_hier = cpp.make_hierarchy()
-            self.cpp_sim = cpp.make_simulator(self.cpp_hier)
+
+            self.cpp_sim = make_cpp_simulator(
+              self.simulation.dims, self.simulation.interp_order, self.simulation.refined_particle_nbr, self.cpp_hier
+            )
+
             self.cpp_sim.initialize()
         except:
             import sys
