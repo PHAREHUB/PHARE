@@ -41,8 +41,8 @@ namespace core
             PHARE::initializer::ScalarFunction<dimension> density,
             std::array<PHARE::initializer::ScalarFunction<dimension>, 3> bulkVelocity,
             std::array<PHARE::initializer::ScalarFunction<dimension>, 3> thermalVelocity,
-            double particleCharge, uint32 nbrParticlesPerCell, std::optional<size_t> seed = {},
-            Basis basis = Basis::Cartesian,
+            double particleCharge, std::uint32_t nbrParticlesPerCell,
+            std::optional<std::size_t> seed = {}, Basis basis = Basis::Cartesian,
             std::array<PHARE::initializer::ScalarFunction<dimension>, 3> magneticField
             = {nullptr, nullptr, nullptr})
             : density_{density}
@@ -84,7 +84,7 @@ namespace core
 
     private:
         // can be relocated if needed
-        static std::mt19937_64 getRNG(std::optional<size_t> const& seed)
+        static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
         {
             if (!seed.has_value())
             {
@@ -105,8 +105,8 @@ namespace core
 
             /* get indices start and stop. we take primal/primal/primal because
                that is what GridLayout::cellCenteredCoordinate() requires */
-            uint32 ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-            uint32 ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
+            std::uint32_t ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
+            std::uint32_t ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
             double cellVolume = dx;
 
@@ -123,7 +123,7 @@ namespace core
             // auto& bulkVelocity    = *bulkVelocity_;
             // auto& thermalVelocity = *thermalVelocity_;
 
-            for (uint32 ix = ix0; ix < ix1; ++ix)
+            for (std::uint32_t ix = ix0; ix < ix1; ++ix)
             {
                 double n; // cell centered density
                 std::array<double, 3> particleVelocity;
@@ -157,7 +157,7 @@ namespace core
                     localMagneticBasis({Bx, By, Bz}, basis);
                 }
 
-                for (uint32 ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
+                for (std::uint32_t ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
                 {
                     maxwellianVelocity({Vx, Vy, Vz}, {Vthx, Vthy, Vthz}, generator,
                                        particleVelocity);
@@ -216,9 +216,9 @@ namespace core
             // auto& thermalVelocity = *thermalVelocity_;
 
 
-            for (uint32 ix = ix0; ix < ix1; ++ix)
+            for (std::uint32_t ix = ix0; ix < ix1; ++ix)
             {
-                for (uint32 iy = iy0; iy < iy1; ++iy)
+                for (std::uint32_t iy = iy0; iy < iy1; ++iy)
                 {
                     double n; // cell centered density
                     std::array<double, 3> particleVelocity;
@@ -254,7 +254,7 @@ namespace core
                     }
 
 
-                    for (uint32 ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
+                    for (std::uint32_t ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
                     {
                         maxwellianVelocity({Vx, Vy, Vz}, {Vthx, Vthy, Vthz}, generator,
                                            particleVelocity);
@@ -320,11 +320,11 @@ namespace core
             // auto& thermalVelocity = *thermalVelocity_;
 
 
-            for (uint32 ix = ix0; ix < ix1; ++ix)
+            for (std::uint32_t ix = ix0; ix < ix1; ++ix)
             {
-                for (uint32 iy = iy0; iy < iy1; ++iy)
+                for (std::uint32_t iy = iy0; iy < iy1; ++iy)
                 {
-                    for (uint32 iz = iz0; iz < iz1; ++iz)
+                    for (std::uint32_t iz = iz0; iz < iz1; ++iz)
                     {
                         double n; // cell centered density
                         std::array<double, 3> particleVelocity;
@@ -361,7 +361,7 @@ namespace core
                             localMagneticBasis({Bx, By, Bz}, basis);
                         }
 
-                        for (uint32 ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
+                        for (std::uint32_t ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
                         {
                             maxwellianVelocity({Vx, Vy, Vz}, {Vthx, Vthy, Vthz}, generator,
                                                particleVelocity);
@@ -401,9 +401,9 @@ namespace core
         std::array<PHARE::initializer::ScalarFunction<dimension>, 3> magneticField_;
 
         double particleCharge_;
-        uint32 nbrParticlePerCell_;
+        std::uint32_t nbrParticlePerCell_;
         Basis basis_;
-        std::optional<size_t> rngSeed_;
+        std::optional<std::size_t> rngSeed_;
     };
 } // namespace core
 } // namespace PHARE

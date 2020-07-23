@@ -22,7 +22,7 @@ public:
     }
 
 protected:
-    const uint32_t nx = 10;
+    const std::uint32_t nx = 10;
     Field<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
@@ -37,8 +37,8 @@ public:
     }
 
 protected:
-    const uint32_t nx = 10u;
-    const uint32_t ny = 12u;
+    const std::uint32_t nx = 10u;
+    const std::uint32_t ny = 12u;
     Field<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
@@ -53,9 +53,9 @@ public:
     }
 
 protected:
-    const uint32_t nx = 10;
-    const uint32_t ny = 12;
-    const uint32_t nz = 12;
+    const std::uint32_t nx = 10;
+    const std::uint32_t ny = 12;
+    const std::uint32_t nz = 12;
     Field<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 

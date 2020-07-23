@@ -52,7 +52,8 @@ namespace amr
             return std::make_shared<SAMRAI::pdat::CellGeometry>(box, d_ghosts);
         }
 
-        virtual size_t getSizeOfMemory([[maybe_unused]] const SAMRAI::hier::Box& box) const final
+        virtual std::size_t getSizeOfMemory([
+            [maybe_unused]] const SAMRAI::hier::Box& box) const final
         {
             throw std::runtime_error("cannot compute size from box");
         }

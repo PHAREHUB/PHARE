@@ -22,11 +22,11 @@ struct GridLayoutAllocSizeParam
 {
     GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::array<uint32, GridLayoutImpl::dimension> expectedAllocSize;
-    std::array<uint32, GridLayoutImpl::dimension> expectedAllocSizeDerived;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedAllocSize;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedAllocSizeDerived;
 
-    std::array<uint32, GridLayoutImpl::dimension> actualAllocSize;
-    std::array<uint32, GridLayoutImpl::dimension> actualAllocSizeDerived;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> actualAllocSize;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> actualAllocSizeDerived;
 
 
     void init()
@@ -74,8 +74,8 @@ auto createAllocSizeParam()
 
     while (!inputFile.eof())
     {
-        uint32 iQuantity;
-        std::array<uint32, GridLayoutImpl::dimension> numberCells;
+        std::uint32_t iQuantity;
+        std::array<std::uint32_t, GridLayoutImpl::dimension> numberCells;
         std::array<double, GridLayoutImpl::dimension> dl;
 
         inputFile >> iQuantity;

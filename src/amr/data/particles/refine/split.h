@@ -37,7 +37,7 @@ struct PatternDispatcher
     {
     }
 
-    template<size_t dimension>
+    template<std::size_t dimension>
     inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
                            std::vector<core::Particle<dimension>>& refinedParticles) const
     {

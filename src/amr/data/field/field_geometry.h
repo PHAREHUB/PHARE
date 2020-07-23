@@ -13,9 +13,6 @@ namespace PHARE
 {
 namespace amr
 {
-    using core::int32;
-    using core::uint32;
-
     template<typename GridLayoutT, typename PhysicalQuantity>
     /**
      * @brief The FieldGeometry class
@@ -128,24 +125,24 @@ namespace amr
 
             if (!withGhost)
             {
-                int32 xStart = layout.physicalStartIndex(qty, core::Direction::X);
-                int32 xEnd   = layout.physicalEndIndex(qty, core::Direction::X);
+                std::int32_t xStart = layout.physicalStartIndex(qty, core::Direction::X);
+                std::int32_t xEnd   = layout.physicalEndIndex(qty, core::Direction::X);
 
                 box.setLower(dirX, lower[dirX]);
                 box.setUpper(dirX, xEnd - xStart + lower[dirX]);
 
                 if (dimension > 1)
                 {
-                    int32 yStart = layout.physicalStartIndex(qty, core::Direction::Y);
-                    int32 yEnd   = layout.physicalEndIndex(qty, core::Direction::Y);
+                    std::int32_t yStart = layout.physicalStartIndex(qty, core::Direction::Y);
+                    std::int32_t yEnd   = layout.physicalEndIndex(qty, core::Direction::Y);
 
                     box.setLower(dirY, lower[dirY]);
                     box.setUpper(dirY, yEnd - yStart + lower[dirY]);
                 }
                 if (dimension > 2)
                 {
-                    int32 zStart = layout.physicalStartIndex(qty, core::Direction::Z);
-                    int32 zEnd   = layout.physicalEndIndex(qty, core::Direction::Z);
+                    std::int32_t zStart = layout.physicalStartIndex(qty, core::Direction::Z);
+                    std::int32_t zEnd   = layout.physicalEndIndex(qty, core::Direction::Z);
 
                     box.setLower(dirZ, lower[dirZ]);
                     box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
@@ -172,24 +169,24 @@ namespace amr
 
                 lower = lower - shift;
 
-                int32 xStart = layout.ghostStartIndex(qty, core::Direction::X);
-                int32 xEnd   = layout.ghostEndIndex(qty, core::Direction::X);
+                std::int32_t xStart = layout.ghostStartIndex(qty, core::Direction::X);
+                std::int32_t xEnd   = layout.ghostEndIndex(qty, core::Direction::X);
 
                 box.setLower(dirX, lower[dirX]);
                 box.setUpper(dirX, xEnd - xStart + lower[dirX]);
 
                 if (dimension > 1)
                 {
-                    int32 yStart = layout.ghostStartIndex(qty, core::Direction::Y);
-                    int32 yEnd   = layout.ghostEndIndex(qty, core::Direction::Y);
+                    std::int32_t yStart = layout.ghostStartIndex(qty, core::Direction::Y);
+                    std::int32_t yEnd   = layout.ghostEndIndex(qty, core::Direction::Y);
 
                     box.setLower(dirY, lower[dirY]);
                     box.setUpper(dirY, yEnd - yStart + lower[dirY]);
                 }
                 if (dimension > 2)
                 {
-                    int32 zStart = layout.ghostStartIndex(qty, core::Direction::Z);
-                    int32 zEnd   = layout.ghostEndIndex(qty, core::Direction::Z);
+                    std::int32_t zStart = layout.ghostStartIndex(qty, core::Direction::Z);
+                    std::int32_t zEnd   = layout.ghostEndIndex(qty, core::Direction::Z);
 
                     box.setLower(dirZ, lower[dirZ]);
                     box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
@@ -208,10 +205,10 @@ namespace amr
          */
         static GridLayoutT layoutFromBox(SAMRAI::hier::Box const& box, GridLayoutT const& layout)
         {
-            std::array<uint32, dimension> nbCell;
+            std::array<std::uint32_t, dimension> nbCell;
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)
             {
-                nbCell[iDim] = static_cast<uint32>(box.numberCells(iDim));
+                nbCell[iDim] = static_cast<std::uint32_t>(box.numberCells(iDim));
             }
 
             return GridLayoutT(layout.meshSize(), nbCell, layout.origin());

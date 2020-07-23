@@ -91,7 +91,7 @@ TYPED_TEST(a1DLaplacian, LaplacianJz1D)
         this->Jz(ix) = std::sinh(0.2 * point[0]);
     }
 
-    for (uint32 ix = psi_X; ix <= pei_X; ++ix)
+    for (std::uint32_t ix = psi_X; ix <= pei_X; ++ix)
     {
         auto localLaplacian = this->layout.laplacian(this->Jz, make_index(ix));
         EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
@@ -136,7 +136,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJx2D)
         }
     }
 
-    std::array<uint32, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
+    std::array<std::uint32_t, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
@@ -178,7 +178,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJy2D)
         }
     }
 
-    std::array<uint32, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jy);
+    std::array<std::uint32_t, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jy);
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
@@ -220,7 +220,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJz2D)
         }
     }
 
-    std::array<uint32, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jz);
+    std::array<std::uint32_t, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jz);
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
@@ -283,7 +283,7 @@ TYPED_TEST(a3DLaplacian, LaplacianJx3D)
         }
     }
 
-    std::array<uint32, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
+    std::array<std::uint32_t, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
@@ -338,7 +338,7 @@ TYPED_TEST(a3DLaplacian, LaplacianJy3D)
         }
     }
 
-    std::array<uint32, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jy);
+    std::array<std::uint32_t, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jy);
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
@@ -393,7 +393,7 @@ TYPED_TEST(a3DLaplacian, LaplacianJz3D)
         }
     }
 
-    std::array<uint32, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jz);
+    std::array<std::uint32_t, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jz);
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {

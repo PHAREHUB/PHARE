@@ -111,7 +111,7 @@ struct DummyLayout
     static constexpr std::size_t dimension = dimension_;
 };
 
-template<size_t dim>
+template<std::size_t dim>
 class APusher : public ::testing::Test
 {
 public:

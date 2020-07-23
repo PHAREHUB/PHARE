@@ -20,7 +20,7 @@
 using testing::DoubleNear;
 using testing::Eq;
 
-template<std::size_t dimension_, std::size_t interpOrder_, size_t refineParticlesNbr_,
+template<std::size_t dimension_, std::size_t interpOrder_, std::size_t refineParticlesNbr_,
          ParticlesDataSplitType SplitType_>
 struct ParticlesDataSplitTestDescriptors
 {
@@ -332,27 +332,27 @@ REGISTER_TYPED_TEST_SUITE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefine
 // int constexpr refinedParticlesNbr = 2;
 
 // dimension , ratio , interpOrder, refinedParticlesNbr
-template<size_t dim, size_t babies = 2>
+template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o1ref2C2F
     = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::coarseBoundary>;
 
-template<size_t dim, size_t babies = 2>
+template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o2ref2C2F
     = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::coarseBoundary>;
 
-template<size_t dim, size_t babies = 2>
+template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o3ref2C2F
     = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::coarseBoundary>;
 
-template<size_t dim, size_t babies = 3>
+template<std::size_t dim, std::size_t babies = 3>
 using ParticlesDataSplitDescriptorsNDr2o1ref3C2F
     = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::coarseBoundary>;
 
-template<size_t dim, size_t babies = 3>
+template<std::size_t dim, std::size_t babies = 3>
 using ParticlesDataSplitDescriptorsNDr2o2ref3C2F
     = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::coarseBoundary>;
 
-template<size_t dim, size_t babies = 3>
+template<std::size_t dim, std::size_t babies = 3>
 using ParticlesDataSplitDescriptorsNDr2o3ref3C2F
     = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::coarseBoundary>;
 
@@ -368,27 +368,27 @@ typedef ::testing::Types<
     ParticlesDataSplitDescriptorsNDr2o3ref3C2F<2, 4>>
     ParticlesCoarseToFineDataDescriptorsRange;
 
-template<size_t dim, size_t babies = 2>
+template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o1ref2Int
     = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::interior>;
 
-template<size_t dim, size_t babies = 2>
+template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o2ref2Int
     = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::interior>;
 
-template<size_t dim, size_t babies = 2>
+template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o3ref2Int
     = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::interior>;
 
-template<size_t dim, size_t babies = 3>
+template<std::size_t dim, std::size_t babies = 3>
 using ParticlesDataSplitDescriptorsNDr2o1ref3Int
     = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::interior>;
 
-template<size_t dim, size_t babies = 3>
+template<std::size_t dim, std::size_t babies = 3>
 using ParticlesDataSplitDescriptorsNDr2o2ref3Int
     = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::interior>;
 
-template<size_t dim, size_t babies = 3>
+template<std::size_t dim, std::size_t babies = 3>
 using ParticlesDataSplitDescriptorsNDr2o3ref3Int
     = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::interior>;
 
@@ -418,7 +418,7 @@ INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneInterior,
 
 namespace
 {
-template<size_t dimension, size_t interpOrder, size_t refineParticlesNbr>
+template<std::size_t dimension, std::size_t interpOrder, std::size_t refineParticlesNbr>
 using Splitter
     = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>, PHARE::core::InterpConst<interpOrder>,
                            RefinedParticlesConst<refineParticlesNbr>>;

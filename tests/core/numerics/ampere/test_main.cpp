@@ -21,8 +21,8 @@ struct FieldMock
 {
     static auto constexpr dimension = dim;
     double data;
-    double& operator()([[maybe_unused]] uint32 i) { return data; }
-    double const& operator()([[maybe_unused]] uint32 i) const { return data; }
+    double& operator()([[maybe_unused]] std::uint32_t i) { return data; }
+    double const& operator()([[maybe_unused]] std::uint32_t i) const { return data; }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
 };
 
@@ -292,10 +292,10 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
     auto expectedJy  = read(filename_jy);
     auto expectedJz  = read(filename_jz);
 
-    uint32 gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    std::uint32_t gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
+    std::uint32_t gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
-    for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
+    for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
         auto point = this->layout.fieldNodeCoordinates(By, Point{0.}, ix);
         By(ix)     = std::cos(2 * M_PI / 5. * point[0]);
@@ -308,7 +308,7 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (std::uint32_t ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
         EXPECT_THAT(Jy(ix), ::testing::DoubleNear((expectedJy[ix]), 1e-12));
         EXPECT_THAT(Jz(ix), ::testing::DoubleNear((expectedJz[ix]), 1e-12));
@@ -325,36 +325,36 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     auto expectedJy  = read(filename_jy);
     auto expectedJz  = read(filename_jz);
 
-    uint32 gsi_p_X = this->layout.ghostStartIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gsi_p_Y = this->layout.ghostStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
-    uint32 gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
+    std::uint32_t gsi_p_X = this->layout.ghostStartIndex(QtyCentering::primal, Direction::X);
+    std::uint32_t gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    std::uint32_t gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
+    std::uint32_t gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    std::uint32_t gsi_p_Y = this->layout.ghostStartIndex(QtyCentering::primal, Direction::Y);
+    std::uint32_t gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    std::uint32_t gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
+    std::uint32_t gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
 
-    for (uint32 ix = gsi_p_X; ix <= gei_p_X; ++ix)
+    for (std::uint32_t ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
+        for (std::uint32_t iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
             auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0.}, ix, iy);
             Bx(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
     }
 
-    for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
+    for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
+        for (std::uint32_t iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
             auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0.}, ix, iy);
             By(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
     }
 
-    for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
+    for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
+        for (std::uint32_t iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
             auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0.}, ix, iy);
             Bz(ix, iy) = std::sin(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
@@ -373,13 +373,13 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
     auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
 
-    std::array<uint32, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
+    std::array<std::uint32_t, 2> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
 
     for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            uint32 index_ = ix * nPts_[1] + iy;
+            std::uint32_t index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Jx(ix, iy), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
         }
     }
@@ -390,7 +390,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            uint32 index_ = ix * nPts_[1] + iy;
+            std::uint32_t index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Jy(ix, iy), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
         }
     }
@@ -401,7 +401,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            uint32 index_ = ix * nPts_[1] + iy;
+            std::uint32_t index_ = ix * nPts_[1] + iy;
             EXPECT_THAT(Jz(ix, iy), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
         }
     }
@@ -418,24 +418,24 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
     auto expectedJy  = read(filename_jy);
     auto expectedJz  = read(filename_jz);
 
-    uint32 gsi_p_X = this->layout.ghostStartIndex(QtyCentering::primal, Direction::X);
-    uint32 gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    uint32 gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
-    uint32 gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    uint32 gsi_p_Y = this->layout.ghostStartIndex(QtyCentering::primal, Direction::Y);
-    uint32 gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    uint32 gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
-    uint32 gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
-    uint32 gsi_p_Z = this->layout.ghostStartIndex(QtyCentering::primal, Direction::Z);
-    uint32 gei_p_Z = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Z);
-    uint32 gsi_d_Z = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Z);
-    uint32 gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+    std::uint32_t gsi_p_X = this->layout.ghostStartIndex(QtyCentering::primal, Direction::X);
+    std::uint32_t gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+    std::uint32_t gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
+    std::uint32_t gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    std::uint32_t gsi_p_Y = this->layout.ghostStartIndex(QtyCentering::primal, Direction::Y);
+    std::uint32_t gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
+    std::uint32_t gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
+    std::uint32_t gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
+    std::uint32_t gsi_p_Z = this->layout.ghostStartIndex(QtyCentering::primal, Direction::Z);
+    std::uint32_t gei_p_Z = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Z);
+    std::uint32_t gsi_d_Z = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Z);
+    std::uint32_t gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
 
-    for (uint32 ix = gsi_p_X; ix <= gei_p_X; ++ix)
+    for (std::uint32_t ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {
-        for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
+        for (std::uint32_t iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            for (uint32 iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
+            for (std::uint32_t iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
                 Point<double, 3> point = this->layout.fieldNodeCoordinates(
                     Bx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
@@ -446,11 +446,11 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         }
     }
 
-    for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
+    for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
+        for (std::uint32_t iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            for (uint32 iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
+            for (std::uint32_t iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
                 Point<double, 3> point = this->layout.fieldNodeCoordinates(
                     By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
@@ -461,11 +461,11 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         }
     }
 
-    for (uint32 ix = gsi_d_X; ix <= gei_d_X; ++ix)
+    for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        for (uint32 iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
+        for (std::uint32_t iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            for (uint32 iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
+            for (std::uint32_t iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
                 Point<double, 3> point = this->layout.fieldNodeCoordinates(
                     Bz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
@@ -494,15 +494,15 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
     auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
     auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    std::array<uint32, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
+    std::array<std::uint32_t, 3> nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jx);
 
-    for (uint32 ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (std::uint32_t ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (std::uint32_t iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
+            for (std::uint32_t iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                std::uint32_t index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(Jx(ix, iy, iz), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
             }
         }
@@ -510,13 +510,13 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
 
     nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jy);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (std::uint32_t ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_d_Y; iy <= pei_d_Y; ++iy)
+        for (std::uint32_t iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            for (uint32 iz = psi_p_Z; iz <= pei_p_Z; ++iz)
+            for (std::uint32_t iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                std::uint32_t index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(Jy(ix, iy, iz), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
             }
         }
@@ -524,13 +524,13 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
 
     nPts_ = this->layout.allocSize(HybridQuantity::Scalar::Jz);
 
-    for (uint32 ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (std::uint32_t ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        for (uint32 iy = psi_p_Y; iy <= pei_p_Y; ++iy)
+        for (std::uint32_t iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            for (uint32 iz = psi_d_Z; iz <= pei_d_Z; ++iz)
+            for (std::uint32_t iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
-                uint32 index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
+                std::uint32_t index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(Jz(ix, iy, iz), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
             }
         }

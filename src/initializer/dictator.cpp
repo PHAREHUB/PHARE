@@ -22,18 +22,18 @@ void add(std::string path, T&& value)
 }
 
 
-/* This function exists as the above "add" has issues differentiating between int and size_t for
-    input
+/* This function exists as the above "add" has issues differentiating between int and std::size_t
+   for input
 */
-void add_size_t(std::string path, size_t&& value)
+void add_size_t(std::string path, std::size_t&& value)
 {
-    cppdict::add(path, std::forward<size_t>(value),
+    cppdict::add(path, std::forward<std::size_t>(value),
                  PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
 }
 
-void add_optional_size_t(std::string path, std::optional<size_t>&& value)
+void add_optional_size_t(std::string path, std::optional<std::size_t>&& value)
 {
-    cppdict::add(path, std::forward<std::optional<size_t>>(value),
+    cppdict::add(path, std::forward<std::optional<std::size_t>>(value),
                  PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
 }
 

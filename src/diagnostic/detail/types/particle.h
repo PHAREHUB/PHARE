@@ -47,22 +47,22 @@ public:
 
     void createFiles(DiagnosticProperties& diagnostic) override;
 
-    void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
-                        Attributes& patchAttributes) override;
+    void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
+                        std::string const& patchID, Attributes& patchAttributes) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
-                      std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-                      Attributes& patchAttributes, size_t maxLevel) override;
+                      std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
+                      Attributes& patchAttributes, std::size_t maxLevel) override;
 
-    void
-    writeAttributes(DiagnosticProperties&, Attributes&,
-                    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
-                    size_t maxLevel) override;
+    void writeAttributes(
+        DiagnosticProperties&, Attributes&,
+        std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
+        std::size_t maxLevel) override;
 
     void finalize(DiagnosticProperties& diagnostic) override;
 
 private:
-    size_t levels_ = 0;
+    std::size_t levels_ = 0;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
@@ -79,7 +79,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProper
 
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticProperties& diagnostic,
-                                                                   size_t iLevel,
+                                                                   std::size_t iLevel,
                                                                    std::string const& patchID,
                                                                    Attributes& patchAttributes)
 {
@@ -95,7 +95,7 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPro
     };
 
     auto particleInfo = [&](auto& attr, auto& particles) {
-        size_t part_idx = 0;
+        std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
             attr[Packer::keys()[part_idx]] = getSize(arg) * particles.size();
             part_idx++;
@@ -123,8 +123,8 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPro
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     DiagnosticProperties& diagnostic,
-    std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-    Attributes& patchAttributes, size_t maxLevel)
+    std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
+    Attributes& patchAttributes, std::size_t maxLevel)
 {
     auto& hi5  = this->hi5_;
     auto& file = fileData.at(diagnostic.quantity)->file();
@@ -140,10 +140,11 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     auto initDataSet = [&](auto& lvl, auto& patchID, auto& attr) {
         bool null = patchID.empty();
         std::string path{hi5_.getPatchPathAddTimestamp(lvl, patchID) + "/"};
-        size_t part_idx = 0;
+        std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
             createDataSet(path + Packer::keys()[part_idx],
-                          null ? 0 : attr[Packer::keys()[part_idx]].template to<size_t>(), arg);
+                          null ? 0 : attr[Packer::keys()[part_idx]].template to<std::size_t>(),
+                          arg);
             part_idx++;
         });
         this->writeGhostsAttr_(file, path, amr::ghostWidthForParticles<interpOrder>(), null);
@@ -207,8 +208,9 @@ void ParticlesDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& 
 template<typename HighFiveDiagnostic>
 void ParticlesDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
     DiagnosticProperties& diagnostic, Attributes& fileAttributes,
-    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
-    size_t maxLevel)
+    std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&
+        patchAttributes,
+    std::size_t maxLevel)
 {
     writeAttributes_(fileData.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
                      maxLevel);

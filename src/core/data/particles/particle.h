@@ -100,7 +100,7 @@ struct ContiguousParticles
     std::vector<int> iCell;
     std::vector<float> delta;
     std::vector<double> weight, charge, v;
-    size_t size_;
+    std::size_t size_;
     auto size() const { return size_; }
     ContiguousParticles(size_t s)
         : iCell(s * dim)

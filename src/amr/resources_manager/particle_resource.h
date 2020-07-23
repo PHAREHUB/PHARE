@@ -14,7 +14,7 @@ namespace amr
     /** @brief tells SAMRAI which kind of variable, patchdata are used for a Field Resource
      * also says the type of the actual data buffer
      */
-    template<class ResourcesUser, size_t interp>
+    template<class ResourcesUser, std::size_t interp>
     struct UserParticleType
     {
         static constexpr std::size_t dimension    = ResourcesUser::dimension;

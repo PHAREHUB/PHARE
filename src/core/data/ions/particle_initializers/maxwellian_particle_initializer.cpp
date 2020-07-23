@@ -30,7 +30,7 @@ namespace core
     {
         std::array<double, 3> newVec;
 
-        for (uint32 comp = 0; comp < 3; comp++)
+        for (std::uint32_t comp = 0; comp < 3; comp++)
         {
             newVec[comp]
                 = basis[0][comp] * vec[0] + basis[1][comp] * vec[1] + basis[2][comp] * vec[2];

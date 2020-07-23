@@ -18,9 +18,6 @@ namespace PHARE
 {
 namespace amr
 {
-    using core::int32;
-    using core::uint32;
-
     enum class ParticlesDataSplitType {
         coarseBoundary,
         interior,
@@ -33,8 +30,8 @@ namespace amr
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
     public:
-        static constexpr size_t dim         = Splitter::dimension;
-        static constexpr size_t interpOrder = Splitter::interp_order;
+        static constexpr std::size_t dim         = Splitter::dimension;
+        static constexpr std::size_t interpOrder = Splitter::interp_order;
 
         ParticlesRefineOperator()
             : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}

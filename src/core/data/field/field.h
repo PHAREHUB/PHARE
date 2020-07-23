@@ -50,7 +50,7 @@ namespace core
         }
 
         template<std::size_t dim>
-        Field(std::string name, PhysicalQuantity qty, std::array<uint32_t, dim> const& dims)
+        Field(std::string name, PhysicalQuantity qty, std::array<std::uint32_t, dim> const& dims)
             : NdArrayImpl{dims}
             , name_{std::move(name)}
             , qty_{qty}

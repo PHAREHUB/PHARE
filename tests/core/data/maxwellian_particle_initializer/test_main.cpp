@@ -89,7 +89,7 @@ public:
 
     GridLayoutT layout;
     ParticleArrayT particles;
-    uint32 nbrParticlesPerCell{1000};
+    std::uint32_t nbrParticlesPerCell{1000};
     std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
 };
 

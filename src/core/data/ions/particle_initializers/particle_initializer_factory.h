@@ -59,9 +59,9 @@ namespace core
                 std::array<PHARE::initializer::ScalarFunction<dimension>, 3> vth
                     = {vthx, vthy, vthz};
 
-                std::optional<size_t> seed;
+                std::optional<std::size_t> seed;
                 if (dict.contains("init") && dict["init"].contains("seed"))
-                    seed = dict["init"]["seed"].template to<std::optional<size_t>>();
+                    seed = dict["init"]["seed"].template to<std::optional<std::size_t>>();
 
                 if (basisName == "cartesian")
                 {

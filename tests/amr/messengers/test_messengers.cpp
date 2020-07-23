@@ -463,7 +463,7 @@ TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
     auto& hierarchy   = *sim.hierarchy;
     using GridLayout  = typename TypeParam::PHARETypes::GridLayout_t;
 
-    auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
+    auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
         auto& Ex = hybridModel.state.electromag.E.getComponent(Component::X);
         auto& Ey = hybridModel.state.electromag.E.getComponent(Component::Y);
         auto& Ez = hybridModel.state.electromag.E.getComponent(Component::Z);
@@ -622,7 +622,7 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 }
 #endif
 
-template<uint8_t dimension, size_t nbRefinePart>
+template<uint8_t dimension, std::size_t nbRefinePart>
 struct AfullHybridBasicHierarchy
 {
     static constexpr std::size_t interpOrder = 1;
@@ -686,7 +686,7 @@ struct AfullHybridBasicHierarchy
 };
 
 
-template<uint8_t dimension, size_t nbRefinePart> // keeps the test "this"
+template<uint8_t dimension, std::size_t nbRefinePart> // keeps the test "this"
 void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldGhosts()
 {
     if (mpi.getSize() > 1)
@@ -730,8 +730,8 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
 
 
-    size_t total_eq = 0;
-    size_t iPatch   = 0;
+    std::size_t total_eq = 0;
+    std::size_t iPatch   = 0;
     for (auto patch : *level1)
     {
         auto exOldId = hybridModel->resourcesManager->getID("HybridModel-HybridModel_EM_old_E_x");

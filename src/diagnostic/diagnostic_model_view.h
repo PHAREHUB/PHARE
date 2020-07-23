@@ -31,9 +31,10 @@ class ModelView : public IModelView
 
 
 public:
-    using GridLayout      = typename Model::gridlayout_type;
-    using PatchProperties = cppdict::Dict<float, double, size_t, std::vector<int>,
-                                          std::vector<uint32_t>, std::vector<double>, std::string>;
+    using GridLayout = typename Model::gridlayout_type;
+    using PatchProperties
+        = cppdict::Dict<float, double, std::size_t, std::vector<int>, std::vector<std::uint32_t>,
+                        std::vector<double>, std::string>;
 
     ModelView(Hierarchy& hierarchy, Model& model)
         : model_{model}
@@ -69,7 +70,7 @@ public:
     {
         PatchProperties dict;
         dict["origin"]   = grid.origin().toVector();
-        dict["nbrCells"] = core::Point<uint32_t, dimension>{grid.nbrCells()}.toVector();
+        dict["nbrCells"] = core::Point<std::uint32_t, dimension>{grid.nbrCells()}.toVector();
         dict["lower"]    = grid.AMRBox().lower.toVector();
         dict["upper"]    = grid.AMRBox().upper.toVector();
         return dict;
@@ -80,7 +81,7 @@ public:
     {
         PatchProperties dict;
         dict["origin"]   = std::vector<double>{};
-        dict["nbrCells"] = std::vector<uint32_t>{};
+        dict["nbrCells"] = std::vector<std::uint32_t>{};
         dict["lower"]    = std::vector<int>{};
         dict["upper"]    = std::vector<int>{};
         return dict;

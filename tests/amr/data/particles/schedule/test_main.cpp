@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-template<size_t dim>
+template<std::size_t dim>
 class ALevelWithDomainParticles
 {
 public:
@@ -51,7 +51,7 @@ using LevelWithDomainParticlesNd
     = testing::Types<ALevelWithDomainParticles<1>, ALevelWithDomainParticles<2>>;
 TYPED_TEST_SUITE(LevelWithDomainParticlesTest, LevelWithDomainParticlesNd);
 
-template<size_t dim>
+template<std::size_t dim>
 void ALevelWithDomainParticles<
     dim>::ghostParticleNumberisZeroBeforeScheduleAndCorrectAfterSchedule()
 {
@@ -70,15 +70,15 @@ void ALevelWithDomainParticles<
     std::cout << "filling ghosts\n";
     schedule->fillData(0.);
 
-    using Cells = size_t;
-    using Sides = size_t;
+    using Cells = std::size_t;
+    using Sides = std::size_t;
 
-    constexpr size_t PPC                = 3;
-    constexpr size_t ghost_particles_1d = PPC * Cells{1} * Sides{2};
-    constexpr size_t ghost_particles_2d = PPC * (Cells{6} * Sides{2} + Cells{4} * Sides{2});
+    constexpr std::size_t PPC                = 3;
+    constexpr std::size_t ghost_particles_1d = PPC * Cells{1} * Sides{2};
+    constexpr std::size_t ghost_particles_2d = PPC * (Cells{6} * Sides{2} + Cells{4} * Sides{2});
 
-    constexpr size_t dim_particles[] = {ghost_particles_1d, ghost_particles_2d};
-    constexpr size_t eq              = dim_particles[dim - 1];
+    constexpr std::size_t dim_particles[] = {ghost_particles_1d, ghost_particles_2d};
+    constexpr std::size_t eq              = dim_particles[dim - 1];
 
     for (auto const& patch : *level)
     {
@@ -100,7 +100,7 @@ TYPED_TEST(LevelWithDomainParticlesTest,
 }
 
 
-template<size_t dim>
+template<std::size_t dim>
 void ALevelWithDomainParticles<dim>::hasGhostParticlesInGhostAMRCellsAfterSchedule()
 {
     ASSERT_TRUE(level->getNumberOfPatches());
@@ -139,7 +139,7 @@ TYPED_TEST(LevelWithDomainParticlesTest, hasGhostParticlesInGhostAMRCellsAfterSc
 }
 
 
-template<size_t dim>
+template<std::size_t dim>
 void ALevelWithDomainParticles<dim>::hasGhostParticleFilledFromNeighborFirstCell()
 {
     ASSERT_TRUE(level->getNumberOfPatches());

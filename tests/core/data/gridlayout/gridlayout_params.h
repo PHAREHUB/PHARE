@@ -24,7 +24,7 @@ using namespace PHARE::core;
 /* void PrintTo(GridLayoutTestParam<Layout::Yee, 1> const& param, ::std::ostream& os); */
 
 
-inline HybridQuantity::Scalar getQuantity(uint32 iQuantity)
+inline HybridQuantity::Scalar getQuantity(std::uint32_t iQuantity)
 {
     switch (iQuantity)
     {
@@ -52,7 +52,7 @@ inline HybridQuantity::Scalar getQuantity(uint32 iQuantity)
 
 template<typename GridLayoutImpl>
 auto createParam(std::array<double, GridLayoutImpl::dimension> const& dxdydz,
-                 std::array<uint32, GridLayoutImpl::dimension> const& nbCellXYZ,
+                 std::array<std::uint32_t, GridLayoutImpl::dimension> const& nbCellXYZ,
                  Point<double, GridLayoutImpl::dimension> const& origin)
 {
     GridLayoutTestParam<GridLayoutImpl> param{};

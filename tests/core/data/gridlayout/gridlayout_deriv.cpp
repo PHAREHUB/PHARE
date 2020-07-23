@@ -115,7 +115,7 @@ TYPED_TEST(a2DDerivative, DXBY2D)
         }
     }
 
-    std::array<uint32, 2> nPts_
+    std::array<std::uint32_t, 2> nPts_
         = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
     for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)

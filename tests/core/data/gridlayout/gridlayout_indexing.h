@@ -17,15 +17,15 @@ struct GridLayoutIndexingParam
 {
     GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::array<uint32, GridLayoutImpl::dimension> actualPSI;
-    std::array<uint32, GridLayoutImpl::dimension> actualPEI;
-    std::array<uint32, GridLayoutImpl::dimension> actualGSI;
-    std::array<uint32, GridLayoutImpl::dimension> actualGEI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> actualPSI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> actualPEI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> actualGSI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> actualGEI;
 
-    std::array<uint32, GridLayoutImpl::dimension> expectedPSI;
-    std::array<uint32, GridLayoutImpl::dimension> expectedPEI;
-    std::array<uint32, GridLayoutImpl::dimension> expectedGSI;
-    std::array<uint32, GridLayoutImpl::dimension> expectedGEI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedPSI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedPEI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedGSI;
+    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedGEI;
 
 
     void init()
@@ -47,7 +47,7 @@ struct GridLayoutIndexingParam
             directions[2] = Direction::Z;
         }
 
-        for (uint32 iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
+        for (std::uint32_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
         {
             actualPSI[iDim] = layout->physicalStartIndex(*field, directions[iDim]);
             actualPEI[iDim] = layout->physicalEndIndex(*field, directions[iDim]);
@@ -83,8 +83,8 @@ auto createIndexingParam()
 
     while (!inputFile.eof())
     {
-        uint32 iQuantity;
-        std::array<uint32, GridLayoutImpl::dimension> numberCells;
+        std::uint32_t iQuantity;
+        std::array<std::uint32_t, GridLayoutImpl::dimension> numberCells;
         std::array<double, GridLayoutImpl::dimension> dl;
 
         inputFile >> iQuantity;

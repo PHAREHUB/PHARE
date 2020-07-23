@@ -232,7 +232,7 @@ namespace amr
 
 
 
-        virtual size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
+        virtual std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
         {
             SAMRAI::pdat::CellOverlap const* pOverlap{
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
@@ -341,7 +341,7 @@ namespace amr
             if (!pOverlap->isOverlapEmpty())
             {
                 // unpack particles into a particle array
-                size_t numberParticles = 0;
+                std::size_t numberParticles = 0;
                 stream >> numberParticles;
                 std::vector<core::Particle<dim>> particleArray(numberParticles);
                 stream.unpack(particleArray.data(), numberParticles);

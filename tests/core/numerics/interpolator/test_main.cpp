@@ -182,7 +182,7 @@ public:
     InterpolatorT interp;
 
     // arbitrary number of cells
-    static constexpr uint32_t nx = 50;
+    static constexpr std::uint32_t nx = 50;
     GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {nx}, {0.}};
 
     Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
@@ -294,8 +294,8 @@ public:
     InterpolatorT interp;
 
     // arbitrary number of cells
-    static constexpr uint32_t nx = 50;
-    static constexpr uint32_t ny = 50;
+    static constexpr std::uint32_t nx = 50;
+    static constexpr std::uint32_t ny = 50;
     GridLayout<GridLayoutImplYee<2, 1>> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
 
     Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bx_;
@@ -410,9 +410,9 @@ public:
     InterpolatorT interp;
 
     // arbitrary number of cells
-    static constexpr uint32_t nx = 50;
-    static constexpr uint32_t ny = 50;
-    static constexpr uint32_t nz = 50;
+    static constexpr std::uint32_t nx = 50;
+    static constexpr std::uint32_t ny = 50;
+    static constexpr std::uint32_t nz = 50;
     GridLayout<GridLayoutImplYee<3, 1>> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
 
     Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bx_;
@@ -530,10 +530,10 @@ template<typename Interpolator>
 class ACollectionOfParticles_1d : public ::testing::Test
 {
 public:
-    static constexpr uint32_t nx = 40;
+    static constexpr std::uint32_t nx = 40;
     GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
-    static constexpr uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
-    static constexpr uint32_t numOfPart = Interpolator::interp_order + 2;
+    static constexpr std::uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
+    static constexpr std::uint32_t numOfPart = Interpolator::interp_order + 2;
     Particle<1> part;
     ParticleArray<1> particles;
     Field<NdArrayVector<1>, typename HybridQuantity::Scalar> rho;
@@ -689,8 +689,8 @@ INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_1d, MyTy
 template<typename Interpolator>
 struct ACollectionOfParticles_2d : public ::testing::Test
 {
-    static constexpr size_t dim  = 2;
-    static constexpr uint32_t nx = 15, ny = 15;
+    static constexpr std::size_t dim  = 2;
+    static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
 
     ACollectionOfParticles_2d()

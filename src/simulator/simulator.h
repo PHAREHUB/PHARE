@@ -26,13 +26,13 @@ public:
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 class Simulator : public ISimulator
 {
 public:
-    static constexpr size_t dimension     = _dimension;
-    static constexpr size_t interp_order  = _interp_order;
-    static constexpr size_t nbRefinedPart = _nbRefinedPart;
+    static constexpr std::size_t dimension     = _dimension;
+    static constexpr std::size_t interp_order  = _interp_order;
+    static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
 
     using SAMRAITypes = PHARE::amr::SAMRAI_Types;
     using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
@@ -224,7 +224,7 @@ struct SimulatorMaker
 
     template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
     std::unique_ptr<ISimulator> operator()(std::size_t userDim, std::size_t userInterpOrder,
-                                           size_t userNbRefinedPart, Dimension dimension,
+                                           std::size_t userNbRefinedPart, Dimension dimension,
                                            InterpOrder interp_order, NbRefinedPart nbRefinedPart)
     {
         if (userDim == dimension() and userInterpOrder == interp_order()

@@ -14,7 +14,7 @@ class StreamAppender : public SAMRAI::tbox::Logger::Appender
 {
 public:
     StreamAppender(std::ostream* stream) { d_stream = stream; }
-    void logMessage(const std::string& message, const std::string& filename, const int line)
+    void logMessage(std::string const& message, std::string const& filename, const int line)
     {
         (*d_stream) << "At :" << filename << " line :" << line << " message: " << message
                     << std::endl;
@@ -80,8 +80,9 @@ struct RuntimeDiagnosticInterface
 
 
         template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-        bool operator()(std::size_t userDim, std::size_t userInterpOrder, size_t userNbRefinedPart,
-                        Dimension dimension, InterpOrder interp_order, NbRefinedPart nbRefinedPart)
+        bool operator()(std::size_t userDim, std::size_t userInterpOrder,
+                        std::size_t userNbRefinedPart, Dimension dimension,
+                        InterpOrder interp_order, NbRefinedPart nbRefinedPart)
         {
             auto dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
             if (dict["simulation"].contains("diagnostics"))

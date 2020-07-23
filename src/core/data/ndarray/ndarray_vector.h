@@ -68,13 +68,14 @@ template<std::size_t dim, typename DataType = double, typename Pointer = DataTyp
 class NdArrayView : NdArrayViewer<dim, DataType>
 {
 public:
-    explicit NdArrayView(Pointer ptr, std::array<uint32_t, dim> const& nCells)
+    explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
         , nCells_{nCells}
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v, std::array<uint32_t, dim> const& nbCell)
+    explicit NdArrayView(std::vector<DataType> const& v,
+                         std::array<std::uint32_t, dim> const& nbCell)
         : NdArrayView{v.data(), nbCell}
     {
     }
