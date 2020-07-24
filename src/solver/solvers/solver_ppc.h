@@ -47,7 +47,7 @@ private:
     using ResourcesManager = typename HybridModel::resources_manager_type;
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
-    using HybridMessenger  = amr::HybridMessenger<HybridModel, IPhysicalModel_t>;
+    using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
 
     Electromag electromagPred_{"EMPred"};
@@ -97,7 +97,7 @@ public:
 
 
 private:
-    using Messenger = amr::HybridMessenger<HybridModel, IPhysicalModel_t>;
+    using Messenger = amr::HybridMessenger<HybridModel>;
 
 
     void predictor1_(level_t& level, HybridModel& model, Messenger& fromCoarser,

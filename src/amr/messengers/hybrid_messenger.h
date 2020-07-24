@@ -55,14 +55,16 @@ namespace amr
      * - syncIonMOments()
      *
      */
-    template<typename HybridModel, typename IPhysicalModel>
-    class HybridMessenger : public IMessenger<IPhysicalModel>
+    template<typename HybridModel>
+    class HybridMessenger : public IMessenger<typename HybridModel::Interface>
     {
     private:
-        using IonsT     = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IonsT          = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IPhysicalModel = typename HybridModel::Interface;
 
-        using stratT = HybridMessengerStrategy<HybridModel, IPhysicalModel>;
+
+        using stratT = HybridMessengerStrategy<HybridModel>;
 
     public:
         explicit HybridMessenger(std::unique_ptr<stratT> strat)

@@ -18,10 +18,11 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename MHDModel, typename IPhysicalModel>
-    class MHDMessenger : public IMessenger<IPhysicalModel>
+    template<typename MHDModel>
+    class MHDMessenger : public IMessenger<typename MHDModel::Interface>
     {
     public:
+        using IPhysicalModel = typename MHDModel::Interface;
         MHDMessenger(std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager,
                      int const firstLevel)
             : resourcesManager_{std::move(resourcesManager)}
@@ -119,8 +120,8 @@ namespace amr
     };
 
 
-    template<typename MHDModel, typename IPhysicalModel>
-    const std::string MHDMessenger<MHDModel, IPhysicalModel>::stratName = "MHDModel-MHDModel";
+    template<typename MHDModel>
+    const std::string MHDMessenger<MHDModel>::stratName = "MHDModel-MHDModel";
 } // namespace amr
 } // namespace PHARE
 #endif

@@ -31,7 +31,7 @@ namespace core
         using impl_type              = NdArrayImpl;
         using type                   = typename NdArrayImpl::type;
         using physical_quantity_type = PhysicalQuantity;
-        static constexpr std::size_t dimension{NdArrayImpl::dimension};
+        using NdArrayImpl::dimension;
 
 
         Field()                    = delete;

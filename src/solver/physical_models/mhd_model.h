@@ -24,8 +24,9 @@ namespace solver
     class MHDModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using patch_t = typename AMR_Types::patch_t;
-        using level_t = typename AMR_Types::level_t;
+        using patch_t   = typename AMR_Types::patch_t;
+        using level_t   = typename AMR_Types::level_t;
+        using Interface = IPhysicalModel<AMR_Types>;
 
         static const std::string model_name;
         static constexpr auto dimension = GridLayoutT::dimension;

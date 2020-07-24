@@ -35,9 +35,8 @@ namespace amr
     /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid to
      * hybrid data communications.
      */
-    template<typename HybridModel, typename IPhysicalModel, typename RefinementParams>
-    class HybridHybridMessengerStrategy
-        : public HybridMessengerStrategy<HybridModel, IPhysicalModel>
+    template<typename HybridModel, typename RefinementParams>
+    class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
     {
         using IonsT                              = typename HybridModel::ions_type;
         using ElectromagT                        = typename HybridModel::electromag_type;
@@ -47,6 +46,7 @@ namespace amr
         using ResourcesManagerT                  = typename HybridModel::resources_manager_type;
         static constexpr std::size_t dimension   = GridLayoutT::dimension;
         static constexpr std::size_t interpOrder = GridLayoutT::interp_order;
+        using IPhysicalModel                     = typename HybridModel::Interface;
 
         using InteriorParticleRefineOp = typename RefinementParams::InteriorParticleRefineOp;
         using CoarseToFineRefineOpOld  = typename RefinementParams::CoarseToFineRefineOpOld;
@@ -63,7 +63,7 @@ namespace amr
 
         HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> manager,
                                       int const firstLevel)
-            : HybridMessengerStrategy<HybridModel, IPhysicalModel>{stratName}
+            : HybridMessengerStrategy<HybridModel>{stratName}
             , resourcesManager_{std::move(manager)}
             , firstLevel_{firstLevel}
         {
@@ -140,7 +140,7 @@ namespace amr
         virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                    int const levelNumber) override
         {
-            auto level = hierarchy->getPatchLevel(levelNumber);
+            auto const level = hierarchy->getPatchLevel(levelNumber);
 
             magneticGhosts_.registerLevel(hierarchy, level);
             electricGhosts_.registerLevel(hierarchy, level);
@@ -711,9 +711,8 @@ namespace amr
             std::make_shared<FieldCoarsenOperator<GridLayoutT, FieldT>>()};
     };
 
-    template<typename HybridModel, typename IPhysicalModel, typename RefinementParams>
-    const std::string
-        HybridHybridMessengerStrategy<HybridModel, IPhysicalModel, RefinementParams>::stratName
+    template<typename HybridModel, typename RefinementParams>
+    const std::string HybridHybridMessengerStrategy<HybridModel, RefinementParams>::stratName
         = "HybridModel-HybridModel";
 
 } // namespace amr

@@ -16,11 +16,12 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename HybridModel, typename IPhysicalModel>
+    template<typename HybridModel>
     class HybridMessengerStrategy
     {
-        using IonsT     = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IonsT          = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IPhysicalModel = typename HybridModel::Interface;
 
     public:
         /**

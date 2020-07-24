@@ -45,7 +45,7 @@ struct PHARE_Types
     using RefinementParams = typename amr_types::RefinementParams;
 
     using MessengerFactory // = amr/solver bidirectional dependency
-        = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, IPhysicalModel, RefinementParams>;
+        = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, RefinementParams>;
     // amr deps
 
     using MultiPhysicsIntegrator

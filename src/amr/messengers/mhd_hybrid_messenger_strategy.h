@@ -12,11 +12,12 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename MHDModel, typename HybridModel, typename IPhysicalModel>
-    class MHDHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel, IPhysicalModel>
+    template<typename MHDModel, typename HybridModel>
+    class MHDHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
     {
-        using IonsT     = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IonsT          = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IPhysicalModel = typename HybridModel::Interface;
 
     public:
         static const std::string stratName;
@@ -25,7 +26,7 @@ namespace amr
             std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager,
             std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager,
             int const firstLevel)
-            : HybridMessengerStrategy<HybridModel, IPhysicalModel>{stratName}
+            : HybridMessengerStrategy<HybridModel>{stratName}
             , mhdResourcesManager_{std::move(mhdResourcesManager)}
             , hybridResourcesManager_{std::move(hybridResourcesManager)}
             , firstLevel_{firstLevel}
@@ -156,8 +157,8 @@ namespace amr
         Electromag EM_old_{stratName + "_EM_old"};
     };
 
-    template<typename MHDModel, typename HybridModel, typename IPhysicalModel>
-    const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel, IPhysicalModel>::stratName
+    template<typename MHDModel, typename HybridModel>
+    const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
         = "MHDModel-HybridModel";
 
 
