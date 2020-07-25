@@ -40,7 +40,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 #* variables/functions
 include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
-include("${PHARE_PROJECT_DIR}/res/cmake/mkn.kul.cmake")
 
 #* Cppcheck option
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")

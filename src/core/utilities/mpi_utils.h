@@ -13,15 +13,15 @@ DISABLE_WARNING(cast-function-type, bad-function-cast, 42)
 ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
 // clang-format on
 
+#include "core/utilities/span.h"
 #include "core/utilities/types.h"
-
 
 namespace PHARE::core::mpi
 {
 template<typename Data>
 std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
-size_t max(size_t const local, int mpi_size = 0);
+std::size_t max(std::size_t const local, int mpi_size = 0);
 
 int size();
 
@@ -43,7 +43,8 @@ void _gather(GatherFunc const&& gather)
     else if constexpr (std::is_same_v<char, Data>)
         gather(MPI_CHAR);
     else
-        throw std::runtime_error("Unhandled MPI data type collection");
+        throw std::runtime_error(std::string("Unhandled MPI data type collection: ")
+                                 + typeid(Data).name());
 }
 
 template<typename Data>
@@ -66,22 +67,20 @@ void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
 
 
 
-template<typename SendBuff, typename Data>
-void _collect_vector(SendBuff const& sendBuff, std::vector<Data>& rcvBuff, int const mpi_size)
+template<typename Data, typename SendBuff, typename RcvBuff>
+void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int> const& recvcounts,
+                     int const mpi_size)
 {
     _gather<Data>([&](auto const mpi_type) {
         std::vector<int> displs(mpi_size);
-        std::vector<int> recvcounts(mpi_size);
 
         {
-            int offset       = 0;
-            auto const sizes = core::mpi::collect(sendBuff.size(), mpi_size);
+            int offset = 0;
 
             for (int i = 0; i < mpi_size; i++)
             {
-                displs[i]     = offset;
-                recvcounts[i] = sizes[i];
-                offset += sizes[i];
+                displs[i] = offset;
+                offset += recvcounts[i];
             }
         }
 
@@ -98,26 +97,38 @@ void _collect_vector(SendBuff const& sendBuff, std::vector<Data>& rcvBuff, int c
     });
 }
 
-
 template<typename Vector>
 std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
+{
+    using Data = typename Vector::value_type;
+
+    if (mpi_size == 0)
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    auto const perMPISize = collect(static_cast<int>(sendBuff.size()), mpi_size);
+    std::vector<Data> rcvBuff(std::accumulate(perMPISize.begin(), perMPISize.end(), 0));
+    _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, mpi_size);
+
+    std::size_t offset = 0;
+    std::vector<Vector> collected;
+    for (int i = 0; i < mpi_size; i++)
+    {
+        collected.emplace_back(&rcvBuff[offset], &rcvBuff[offset] + perMPISize[i]);
+        offset += perMPISize[i];
+    }
+    return collected;
+}
+
+template<typename T, typename Vector>
+SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    auto const perMPISize = collect(sendBuff.size(), mpi_size);
-    auto const maxMPISize = *std::max_element(perMPISize.begin(), perMPISize.end());
+    SpanSet<T, int> rcvBuff{collect(static_cast<int>(sendBuff.size()), mpi_size)};
+    _collect_vector<T>(sendBuff, rcvBuff, rcvBuff.sizes, mpi_size);
 
-    std::vector<typename Vector::value_type> rcvBuff(maxMPISize * mpi_size);
-    _collect_vector(sendBuff, rcvBuff, mpi_size);
-
-    std::vector<Vector> collected;
-    for (int i = 0; i < mpi_size; i++)
-    {
-        auto const* const data = &rcvBuff[maxMPISize * i];
-        collected.emplace_back(data, data + perMPISize[i]);
-    }
-    return collected;
+    return rcvBuff;
 }
 
 
@@ -161,6 +172,15 @@ auto collectArrays(Container const& data, int mpi_size)
     }
 }
 
+
+template<typename T>
+SpanSet<T, int> collect_raw(std::vector<T> const& data, int mpi_size)
+{
+    if (mpi_size == 0)
+        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    return collectSpanSet<T>(data, mpi_size);
+}
 
 
 template<typename Data>

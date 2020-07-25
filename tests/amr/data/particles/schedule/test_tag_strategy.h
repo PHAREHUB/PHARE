@@ -1,8 +1,6 @@
 #ifndef PHARE_TEST_TAG_STRATEGY_H
 #define PHARE_TEST_TAG_STRATEGY_H
 
-#include "kul/log.hpp"
-
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/RefineOperator.h>

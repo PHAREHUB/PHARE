@@ -248,19 +248,26 @@ template<typename Data>
 void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
                                               Data const& data)
 {
+    constexpr bool data_is_vector = core::is_std_vector_v<Data>;
+
     auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
-        if constexpr (core::is_std_vector_v<Data>)
+        if constexpr (data_is_vector)
             node.template createAttribute<typename Data::value_type>(
                     _key, HighFive::DataSpace(value.size()))
-                .write(value);
+                .write(value.data());
         else
             node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
                 .write(value);
     };
 
     int mpi_size = core::mpi::size();
-    auto values  = core::mpi::collect(data, mpi_size);
-    auto paths   = core::mpi::collect(path, mpi_size);
+    auto values  = [&]() {
+        if constexpr (data_is_vector)
+            return core::mpi::collect_raw(data, mpi_size);
+        else
+            return core::mpi::collect(data, mpi_size);
+    }();
+    auto paths = core::mpi::collect(path, mpi_size);
 
     for (int i = 0; i < mpi_size; i++)
     {
