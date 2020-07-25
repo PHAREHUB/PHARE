@@ -33,7 +33,7 @@ public:
 
     static auto& keys() { return keys_; }
 
-    auto get(size_t i) const { return get(particles_[i]); }
+    auto get(std::size_t i) const { return get(particles_[i]); }
     bool hasNext() const { return it_ < particles_.size(); }
     auto next() { return get(it_++); }
 

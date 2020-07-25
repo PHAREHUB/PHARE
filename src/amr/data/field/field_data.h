@@ -471,7 +471,7 @@ namespace amr
 
 
 
-        void unpackImpl(size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
+        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {
@@ -550,7 +550,7 @@ namespace amr
 
 
 
-        void unpackImpl(size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
+        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {
@@ -654,7 +654,7 @@ namespace amr
 
 
 
-        void unpackImpl(size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
+        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {

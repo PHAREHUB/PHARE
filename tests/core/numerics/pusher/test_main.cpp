@@ -134,7 +134,7 @@ public:
         particlesIn[0].iCell.fill(5);
         particlesIn[0].delta.fill(0.0);
         dxyz.fill(0.05);
-        for (size_t i = 0; i < dim; i++)
+        for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
         pusher->setMeshAndTimeStep(dxyz, dt);
     }

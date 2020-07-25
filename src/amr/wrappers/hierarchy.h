@@ -51,7 +51,7 @@ void getDomainCoords(PHARE::initializer::PHAREDict& grid, float lower[dimension]
     auto mesh_size = parseDimXYZType<double, dimension>(grid, "meshsize");
     auto origin    = parseDimXYZType<double, dimension>(grid, "origin");
 
-    for (size_t i = 0; i < dimension; i++)
+    for (std::size_t i = 0; i < dimension; i++)
     {
         lower[i] = static_cast<float>(origin[i]);
         upper[i] = static_cast<float>(lower[i] + nbr_cells[i] * mesh_size[i]);

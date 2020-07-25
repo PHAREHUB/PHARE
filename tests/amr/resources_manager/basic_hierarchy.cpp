@@ -21,7 +21,7 @@ void BasicHierarchy::init()
     auto dim
         = static_cast<unsigned short int>(inputDatabase->getDatabase("Main")->getInteger("dim"));
     std::vector<int> lowerIndex, upperIndex;
-    for (size_t i = 0; i < dim; i++)
+    for (std::size_t i = 0; i < dim; i++)
     {
         lowerIndex.emplace_back(0);
         upperIndex.emplace_back(64);

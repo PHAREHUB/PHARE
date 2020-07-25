@@ -1,6 +1,7 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
 
+#include "diagnostic/detail/h5file.h"
 #include "diagnostic/detail/h5typewriter.h"
 #include "diagnostic/detail/h5_utils.h"
 
