@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <array>
+#include <algorithm>
 #include <cinttypes>
 #include <cmath>
 #include <numeric>
@@ -159,5 +160,6 @@ namespace core
 
 } // namespace core
 } // namespace PHARE
+
 
 #endif // TYPES_H

@@ -13,8 +13,8 @@ DISABLE_WARNING(cast-function-type, bad-function-cast, 42)
 ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
 // clang-format on
 
+#include "core/utilities/span.h"
 #include "core/utilities/types.h"
-#include "kul/tuple.hpp"
 
 namespace PHARE::core::mpi
 {
@@ -120,12 +120,12 @@ std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
 }
 
 template<typename T, typename Vector>
-kul::SplitVector<T, int> collectSplitVector(Vector const& sendBuff, int mpi_size = 0)
+SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    kul::SplitVector<T, int> rcvBuff{collect(static_cast<int>(sendBuff.size()), mpi_size)};
+    SpanSet<T, int> rcvBuff{collect(static_cast<int>(sendBuff.size()), mpi_size)};
     _collect_vector<T>(sendBuff, rcvBuff, rcvBuff.sizes, mpi_size);
 
     return rcvBuff;
@@ -174,12 +174,12 @@ auto collectArrays(Container const& data, int mpi_size)
 
 
 template<typename T>
-kul::SplitVector<T, int> collect_raw(std::vector<T> const& data, int mpi_size)
+SpanSet<T, int> collect_raw(std::vector<T> const& data, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    return collectSplitVector<T>(data, mpi_size);
+    return collectSpanSet<T>(data, mpi_size);
 }
 
 
