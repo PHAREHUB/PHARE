@@ -2,6 +2,12 @@
 
 function(get_pybind)
 
+  # Pybind errors with clang, it is default in GCC
+  # https://github.com/pybind/pybind11/issues/1604
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set (PHARE_FLAGS ${PHARE_FLAGS} -fsized-deallocation)
+  endif()
+
   message("downloading subproject pybind11")
   set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
 

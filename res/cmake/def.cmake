@@ -4,34 +4,15 @@ set (PHARE_FLAGS ${PHARE_FLAGS})
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 
-set (PHARE_HAS_HIGHFIVE "0")
-if (HighFive)
- set (PHARE_HAS_HIGHFIVE "1")
-endif()
-
-if (NOT DEFINED PHARE_MPI_PROCS)
-  set(PHARE_MPI_PROCS 1)
-  if(testMPI)
-    set(PHARE_MPI_PROCS 2)
-  endif()
-endif()
-
-# Pybind errors with clang, it is default in GCC
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsized-deallocation")
-endif()
-
 if(devMode) # -DdevMode=ON
   # Having quotes on strings here has lead to quotes being added to the compile string, so avoid.
 
   set (_Werr ${PHARE_WERROR_FLAGS} -Wall -Wextra -pedantic -Werror -Wno-unused-variable -Wno-unused-parameter)
 
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-
     set (_Werr ${_Werr} -Wno-gnu-zero-variadic-macro-arguments)
 
   else() # !Clang
-
     set (_Werr ${_Werr} -Wno-class-memaccess -Wno-unused-but-set-variable -Wno-unused-but-set-parameter)
 
   endif() # clang

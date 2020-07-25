@@ -1,20 +1,27 @@
 
-# public functions
+# public test functions
 #
-#   add_phare_test($project $directory)
-#
+#   add_phare_test($binary $directory)
+#    execute binary in target directory, with mpirun when -DtestMPI=ON
 #
 #   add_python3_test($name $file $directory)
+#    launch python3 file described by name in target directory, with mpirun when -DtestMPI=ON
 #
-#
-#   add_no_mpi_phare_test($project $directory)
-#
+#   add_no_mpi_phare_test($binary $directory)
+#    execute binary in target directory, does not run when -DtestMPI=ON
 #
 #   add_no_mpi_python3_test($name $file $directory)
-#
+#    launch python3 file described by name in target directory, does not run when -DtestMPI=ON
 #
 
 if (test)
+
+  if (NOT DEFINED PHARE_MPI_PROCS)
+    set(PHARE_MPI_PROCS 1)
+    if(testMPI)
+      set(PHARE_MPI_PROCS 2)
+    endif()
+  endif()
 
   function(set_exe_paths_ binary)
     set_property(TEST ${binary}        PROPERTY ENVIRONMENT "PYTHONPATH=${PHARE_PYTHONPATH}")
@@ -74,9 +81,7 @@ if (test)
     set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
 
     if (NOT EXISTS ${GTEST_ROOT})
-      execute_process(
-        COMMAND ${Git} clone https://github.com/google/googletest ${GTEST_ROOT}
-      )
+      execute_process(COMMAND ${Git} clone https://github.com/google/googletest ${GTEST_ROOT})
     endif()
 
     add_subdirectory(subprojects/googletest)
@@ -130,7 +135,6 @@ if (test)
   add_subdirectory(tests/amr/data/field/time_interpolate)
   add_subdirectory(tests/amr/resources_manager)
   add_subdirectory(tests/amr/messengers)
-  add_subdirectory(tests/amr/periodicity)
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
 

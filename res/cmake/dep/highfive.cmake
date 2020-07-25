@@ -1,4 +1,6 @@
 
+
+set (PHARE_HAS_HIGHFIVE "0")
 if(HighFive)
 
   if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive)
@@ -33,4 +35,5 @@ if(HighFive)
   message(STATUS "HDF5_LIBRARIES " ${HDF5_LIBRARIES})
   message(STATUS "HDF5_INCLUDE_DIRS " ${HDF5_INCLUDE_DIRS})
   message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
+  set (PHARE_HAS_HIGHFIVE "1")
 endif()

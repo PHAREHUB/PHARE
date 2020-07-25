@@ -7,7 +7,7 @@ if (cppcheck)
 
     add_custom_command(
       OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
-      COMMAND ${Cppcheck} --enable=all --std=c++11 --language=c++ --xml -i${CMAKE_CURRENT_LIST_DIR}/subprojects
+      COMMAND ${Cppcheck} --enable=all --std=c++17 --language=c++ --xml -i${CMAKE_CURRENT_LIST_DIR}/subprojects
       --project=${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json 2> ${CMAKE_CURRENT_BINARY_DIR}/cppcheck.xml
     )
 
