@@ -429,12 +429,11 @@ public:
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
         std::vector<PatchData<std::vector<double>, dimension>> collected;
 
-        auto reinterpret_array = [&](auto& py_array) {
-            return reinterpret_cast<std::array<std::size_t, dimension>&>(
-                *static_cast<std::size_t*>(py_array.request().ptr));
+        auto reinterpret_array = [](py_array_t<std::size_t> const& py_array) {
+            return *reinterpret_cast<std::array<std::size_t, dimension>*>(py_array.request().ptr);
         };
 
-        auto collect = [&](auto& patch_data) {
+        auto collect = [&](PatchData<std::vector<double>, dimension> const& patch_data) {
             auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
             auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
             auto lower    = core::mpi::collect(reinterpret_array(patch_data.lower), mpi_size);
@@ -444,14 +443,14 @@ public:
 
             for (int i = 0; i < mpi_size; i++)
             {
-                auto& data = collected.emplace_back();
+                PatchData<std::vector<double>, dimension>& data = collected.emplace_back();
                 setPatchData(data, patchIDs[i], origins[i], lower[i], upper[i]);
                 data.nGhosts = ghosts[i];
                 data.data    = std::move(datas[i]);
             }
         };
 
-        auto max = core::mpi::max(input.size(), mpi_size);
+        std::size_t max = core::mpi::max(input.size(), mpi_size);
 
         PatchData<std::vector<double>, dimension> empty;
 
