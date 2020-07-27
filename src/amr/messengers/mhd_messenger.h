@@ -30,7 +30,7 @@ namespace amr
         {
         }
 
-        virtual void
+        void
         registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
                            [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
         {
@@ -40,33 +40,31 @@ namespace amr
 
 
 
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                   int const levelNumber) override
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           int const levelNumber) override
         {
         }
 
 
         static const std::string stratName;
 
-        virtual std::string fineModelName() const override { return MHDModel::model_name; }
+        std::string fineModelName() const override { return MHDModel::model_name; }
 
-        virtual std::string coarseModelName() const override { return MHDModel::model_name; }
+        std::string coarseModelName() const override { return MHDModel::model_name; }
 
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override {}
+
+        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       double const initDataTime) override
         {
         }
 
-        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) override
-        {
-        }
-
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
         {
             return std::make_unique<MHDMessengerInfo>();
         }
@@ -74,34 +72,34 @@ namespace amr
 
 
 
-        virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
-                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                            IPhysicalModel& model, double const initDataTime) override
+        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                    const int levelNumber,
+                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                    IPhysicalModel& model, double const initDataTime) override
         {
         }
 
 
-        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                               double time) final
+        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+                       double time) final
         {
         }
 
 
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
 
 
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
 
-        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                                    double const initDataTime) final
+        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                            double const initDataTime) final
         {
         }
 
 
 
-        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        void synchronize(SAMRAI::hier::PatchLevel& level) final
         {
             (void)level;
             // call coarsning schedules...
@@ -109,7 +107,7 @@ namespace amr
 
 
 
-        virtual std::string name() override { return stratName; }
+        std::string name() override { return stratName; }
 
         virtual ~MHDMessenger() = default;
 

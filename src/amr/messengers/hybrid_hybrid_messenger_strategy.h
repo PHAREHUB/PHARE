@@ -83,7 +83,7 @@ namespace amr
         /**
          * @brief allocate the messenger strategy internal variables to the model resourceManager
          */
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
             resourcesManager_->allocate(EM_old_, patch, allocateTime);
             resourcesManager_->allocate(Jold_, patch, allocateTime);
@@ -99,9 +99,8 @@ namespace amr
          * variables. The function does not create the SAMRAI schedules since they depend on the
          * levels
          */
-        virtual void
-        registerQuantities([[maybe_unused]] std::unique_ptr<IMessengerInfo> fromCoarserInfo,
-                           std::unique_ptr<IMessengerInfo> fromFinerInfo) override
+        void registerQuantities([[maybe_unused]] std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+                                std::unique_ptr<IMessengerInfo> fromFinerInfo) override
         {
             std::unique_ptr<HybridMessengerInfo> hybridInfo{
                 dynamic_cast<HybridMessengerInfo*>(fromFinerInfo.release())};
@@ -137,8 +136,8 @@ namespace amr
          *  - ion interior particle arrays
          *  - ion levelGhostParticlesOld particle arrays
          */
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                   int const levelNumber) override
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           int const levelNumber) override
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
@@ -173,10 +172,10 @@ namespace amr
          *
          * basically, all quantities that are in initialization refiners need to be regridded
          */
-        virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
-                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                            IPhysicalModel& model, double const initDataTime) override
+        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                    const int levelNumber,
+                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                    IPhysicalModel& model, double const initDataTime) override
         {
             auto level = hierarchy->getPatchLevel(levelNumber);
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -191,16 +190,16 @@ namespace amr
 
 
 
-        virtual std::string fineModelName() const override { return HybridModel::model_name; }
+        std::string fineModelName() const override { return HybridModel::model_name; }
 
 
 
-        virtual std::string coarseModelName() const override { return HybridModel::model_name; }
+        std::string coarseModelName() const override { return HybridModel::model_name; }
 
 
 
 
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {
             return std::make_unique<HybridMessengerInfo>();
         }
@@ -208,7 +207,7 @@ namespace amr
 
 
 
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
         {
             return std::make_unique<HybridMessengerInfo>();
         }
@@ -219,8 +218,8 @@ namespace amr
          * @brief initLevel is used to initialize hybrid data on the level levelNumer at time
          * initDataTime from hybrid coarser data.
          */
-        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) override
+        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
@@ -267,8 +266,7 @@ namespace amr
          * The method finds if the name of the VecField is
          *
          */
-        virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
-                                        double const fillTime) override
+        void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime) override
         {
             magneticGhosts_.fill(B, levelNumber, fillTime);
         }
@@ -276,8 +274,7 @@ namespace amr
 
 
 
-        virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber,
-                                        double const fillTime) override
+        void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
             electricGhosts_.fill(E, levelNumber, fillTime);
         }
@@ -285,8 +282,7 @@ namespace amr
 
 
 
-        virtual void fillCurrentGhosts(VecFieldT& J, int const levelNumber,
-                                       double const fillTime) override
+        void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
             currentGhosts_.fill(J, levelNumber, fillTime);
         }
@@ -298,8 +294,8 @@ namespace amr
          * @brief fillIonGhostParticles will fill the interior ghost particle array from neighbor
          * patches of the same level. Before doing that, it empties the array for all populations
          */
-        virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                           double const fillTime) override
+        void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                   double const fillTime) override
         {
             for (auto patch : level)
             {
@@ -323,9 +319,8 @@ namespace amr
          * For level ghost nodes, levelGhostParticlesOld and new are both projected with a time
          * interpolation coef.
          */
-        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double const beforePushTime,
-                                         double const afterPushTime) override
+        void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                 double const beforePushTime, double const afterPushTime) override
         {
             auto alpha = timeInterpCoef_(beforePushTime, afterPushTime);
 
@@ -371,9 +366,9 @@ namespace amr
          * The method is does nothing if the level is the root level because the root level
          * cannot get levelGhost from next coarser (it has none).
          */
-        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                               double time) override
+        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+                       double time) override
         {
             auto levelNumber = level.getLevelNumber();
             if (levelNumber != 0)
@@ -402,7 +397,7 @@ namespace amr
          * substepping cycle. the new CoarseToFineOld content is then copied to levelGhostParticles
          * so that they can be pushed during the next subcycle
          */
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -437,7 +432,7 @@ namespace amr
          * at its ghost nodes, this level will have its model EM field  and current at t=n+1 and
          * thanks to this methods, the t=n field will be in the messenger.
          */
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
+        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -455,8 +450,8 @@ namespace amr
 
 
 
-        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                                    double const initDataTime) final
+        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                            double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
             assert(levelNumber == 0);
@@ -473,7 +468,7 @@ namespace amr
 
 
 
-        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        void synchronize(SAMRAI::hier::PatchLevel& level) override
         {
             auto levelNumber = level.getLevelNumber();
 
