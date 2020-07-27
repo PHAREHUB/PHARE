@@ -67,4 +67,3 @@ class Particles:
           charges=split_pyarrays[3],
           v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3)
         )
-

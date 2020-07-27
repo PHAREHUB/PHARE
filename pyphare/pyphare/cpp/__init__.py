@@ -15,4 +15,3 @@ def split_pyarrays_fn(dim, interp, n_particles):
     return getattr(cpp,
         "split_pyarray_particles_" + str(dim) + "_" + str(interp)+ "_" + str(n_particles),
     )
-

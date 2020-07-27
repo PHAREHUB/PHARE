@@ -52,7 +52,8 @@ class DiagnosticsTest(unittest.TestCase):
             self.simulator.initialize()
             self.simulator.diagnostics().dump(timestamp=0, timestep=1)
 
-            if dim == 1: # TODO REMOVE IF WHEN PHARESEE SUPPORTS 2D!
+            # SEE https://github.com/PHAREHUB/PHARE/issues/275
+            if dim == 1: # REMOVE WHEN PHARESEE SUPPORTS 2D
                 for diagInfo in ph.globals.sim.diagnostics:
                     # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
                     h5_file = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
@@ -76,13 +77,13 @@ class DiagnosticsTest(unittest.TestCase):
 
     @data(*_test_cases)
     def test_dump_diags_with_killing_dman_1d(self, input):
-
         self._test_dump_diags_with_killing_dman_nd(1, **input)
 
-    # @data(*_test_cases)
-    # def test_dump_diags_with_killing_dman_2d(self, input):
 
-    #     self._test_dump_diags_with_killing_dman_nd(2, **input)
+    @data(*_test_cases)
+    def test_dump_diags_with_killing_dman_2d(self, input):
+        self._test_dump_diags_with_killing_dman_nd(2, **input)
+
 
     def tearDown(self):
         if self.simulator is not None:
