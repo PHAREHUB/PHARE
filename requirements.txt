@@ -1,3 +1,6 @@
 ddt
 mpi4py
 pyyaml
+numpy
+scipy
+
