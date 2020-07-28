@@ -31,10 +31,9 @@ struct PatchData
 };
 
 
-template<typename PatchData>
-void setPatchData(PatchData& data, std::string patchID, std::string origin,
-                  std::array<std::size_t, PatchData::dimension> lower,
-                  std::array<std::size_t, PatchData::dimension> upper)
+template<typename PatchData, typename Container>
+void setPatchData(PatchData& data, std::string const patchID, std::string const origin,
+                  Container lower, Container upper)
 {
     constexpr std::size_t bytes = PatchData::dimension * sizeof(size_t);
     std::memcpy(data.lower.request().ptr, lower.data(), bytes);

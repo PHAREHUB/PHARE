@@ -82,11 +82,11 @@ public:
                 *static_cast<std::size_t*>(py_array.request().ptr));
         };
 
-        auto collect = [&](auto& patch_data) {
+        auto collect = [&](PatchData<std::vector<double>, dimension> const& patch_data) {
             auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
             auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
-            auto lower    = core::mpi::collect(reinterpret_array(patch_data.lower), mpi_size);
-            auto upper    = core::mpi::collect(reinterpret_array(patch_data.upper), mpi_size);
+            auto lower    = core::mpi::collect_raw(to_span(patch_data.lower), mpi_size);
+            auto upper    = core::mpi::collect_raw(to_span(patch_data.upper), mpi_size);
             auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
             auto datas    = core::mpi::collect(patch_data.data, mpi_size);
 
@@ -99,7 +99,7 @@ public:
             }
         };
 
-        auto max = core::mpi::max(input.size(), mpi_size);
+        std::size_t max = core::mpi::max(input.size(), mpi_size);
 
         PatchData<std::vector<double>, dimension> empty;
 

@@ -12,6 +12,8 @@ namespace PHARE::core
 template<typename T, typename SIZE = size_t>
 struct Span
 {
+    using value_type = T;
+
     T& operator[](SIZE i) const { return ptr[i]; }
     T const* const& data() const { return ptr; }
     T const* const& begin() const { return ptr; }
