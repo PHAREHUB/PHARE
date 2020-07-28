@@ -30,41 +30,63 @@ struct SplitPattern
 };
 
 template<typename... Patterns>
-struct PatternDispatcher
+class PatternDispatcher
 {
-    constexpr PatternDispatcher(Patterns&&... patterns_)
-        : patterns{patterns_...}
+public:
+    constexpr PatternDispatcher(Patterns&&... _patterns)
+        : patterns{_patterns...}
+        , nbRefinedParts{(_patterns.deltas_.size() + ...)}
     {
     }
 
-    template<std::size_t dimension>
+    template<size_t dimension, bool OwnedState>
+    inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
+                           core::ContiguousParticles<dimension, OwnedState>& refinedParticles,
+                           size_t idx) const
+    {
+        dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
+    }
+
+    template<size_t dimension>
     inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
                            std::vector<core::Particle<dimension>>& refinedParticles) const
     {
-        auto get = [](size_t iDim, auto& icell, auto& delta, auto& refinedDeltas) {
-            delta[iDim] += refinedDeltas[iDim];
-            float integra = std::floor(delta[iDim]);
-            delta[iDim] -= integra;
-            icell[iDim] += static_cast<int32_t>(integra);
-        };
+        size_t idx = refinedParticles.size();
+        refinedParticles.resize(refinedParticles.size() + nbRefinedParts);
+        dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
+    }
+
+    std::tuple<Patterns...> patterns{};
+    size_t nbRefinedParts{0};
+
+private:
+    template<size_t dimension, typename Particle, typename Particles>
+    void dispatch(Particle const& particle, Particles& particles, size_t idx) const
+    {
+        using FineParticle
+            = std::conditional_t<std::is_same_v<Particles, std::vector<core::Particle<dimension>>>,
+                                 core::Particle<dimension>&, core::ParticleView<dimension>>;
 
         core::apply(patterns, [&](auto const& pattern) {
             for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)
             {
-                auto icell = coarsePartOnRefinedGrid.iCell;
-                auto delta = coarsePartOnRefinedGrid.delta;
+                FineParticle fineParticle = particles[idx++];
+                fineParticle.weight       = particle.weight * pattern.weight_;
+                fineParticle.charge       = particle.charge;
+                fineParticle.iCell        = particle.iCell;
+                fineParticle.delta        = particle.delta;
+                fineParticle.v            = particle.v;
 
-                for (size_t i = 0; i < dimension; i++)
-                    get(i, icell, delta, pattern.deltas_[rpIndex]);
-
-                float weight = coarsePartOnRefinedGrid.weight * pattern.weight_;
-                refinedParticles.push_back({weight, coarsePartOnRefinedGrid.charge, icell, delta,
-                                            coarsePartOnRefinedGrid.v});
+                for (size_t iDim = 0; iDim < dimension; iDim++)
+                {
+                    fineParticle.delta[iDim] += pattern.deltas_[rpIndex][iDim];
+                    float integra = std::floor(fineParticle.delta[iDim]);
+                    fineParticle.delta[iDim] -= integra;
+                    fineParticle.iCell[iDim] += static_cast<int32_t>(integra);
+                }
             }
         });
     }
-
-    std::tuple<Patterns...> patterns{};
 };
 
 

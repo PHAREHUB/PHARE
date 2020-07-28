@@ -26,6 +26,21 @@ namespace amr
     };
 
 
+    template<std::size_t dim, typename Ratio>
+    core::Particle<dim> toFineGrid(core::Particle<dim> toFine, Ratio const& ratio)
+    {
+        for (size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            auto fineDelta     = toFine.delta[iDim] * ratio[iDim];
+            int fineDeltaInt   = static_cast<int>(fineDelta);
+            toFine.iCell[iDim] = toFine.iCell[iDim] * ratio[iDim] + fineDeltaInt;
+            toFine.delta[iDim] = fineDelta - fineDeltaInt;
+        }
+
+        return toFine;
+    }
+
+
     template<ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
@@ -164,18 +179,7 @@ namespace amr
                     for (auto const& particle : *sourceParticlesArray)
                     {
                         std::vector<core::Particle<dim>> refinedParticles;
-                        auto particleRefinedPos{particle};
-
-                        for (auto iDim = 0u; iDim < dim; ++iDim)
-                        {
-                            particleRefinedPos.iCell[iDim]
-                                = particle.iCell[iDim] * ratio[iDim]
-                                  + static_cast<int>(particle.delta[iDim] * ratio[iDim]);
-                            particleRefinedPos.delta[iDim]
-                                = particle.delta[iDim] * ratio[iDim]
-                                  - static_cast<int>(particle.delta[iDim] * ratio[iDim]);
-                        }
-
+                        auto particleRefinedPos = toFineGrid<dim>(particle, ratio);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))
                         {

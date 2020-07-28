@@ -2,6 +2,8 @@
 #ifndef DIAGNOSTIC_DIAGNOSTICS_H
 #define DIAGNOSTIC_DIAGNOSTICS_H
 
+#include <memory>
+
 #if !defined(PHARE_HAS_HIGHFIVE)
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
 #endif
@@ -34,7 +36,8 @@ struct NullOpDiagnosticsManager : public IDiagnosticsManager
 struct DiagnosticsManagerResolver
 {
     template<typename Hierarchy, typename Model>
-    static decltype(auto) make_shared(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
+    static std::unique_ptr<IDiagnosticsManager> make_unique(Hierarchy& hier, Model& model,
+                                                            initializer::PHAREDict& dict)
     {
 #if PHARE_HAS_HIGHFIVE
         using ModelView_t = ModelView<Hierarchy, Model>;

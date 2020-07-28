@@ -114,7 +114,7 @@ namespace core
                        Maker&& maker)
     {
         using Ptr_t = decltype(maker(dim, interpOrder, nbRefinedPart, 1, 1, 1));
-        Ptr_t p{};
+        Ptr_t p     = nullptr;
 
         core::apply(possibleSimulators(), [&](auto const& simType) {
             _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, simType);

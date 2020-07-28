@@ -20,7 +20,7 @@ class PatchData:
         :param quantity: ['field', 'particle']
         """
         self.quantity = quantity
-        self.box     = layout.box
+        self.box      = layout.box
         self.origin   = layout.origin
         self.layout   = layout
 
@@ -148,8 +148,8 @@ class PatchHierarchy:
                 s = s + "Level {}\n".format(ilvl)
                 for ip, patch in enumerate(lvl.patches):
                     for qty_name, pd in patch.patch_datas.items():
-                        pdstr = "    P{ip} {pdname} box is {box} and ghost box is {gbox}"
-                        s = s + pdstr.format(ip=ip, pdname=qty_name,
+                        pdstr = "    P{ip} {type} {pdname} box is {box} and ghost box is {gbox}"
+                        s = s + pdstr.format(ip=ip, type=type(pd.dataset), pdname=qty_name,
                                              box=patch.box, gbox=pd.ghost_box)
                         s = s + "\n"
         return s

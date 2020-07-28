@@ -6,6 +6,7 @@
 #include "initializer/python_data_provider.h"
 #include "core/utilities/algorithm.h"
 
+#include <memory>
 #include <iostream>
 
 namespace PHARE
@@ -66,7 +67,9 @@ struct RuntimeDiagnosticInterface
         auto interpOrder   = dict["simulation"]["interp_order"].template to<int>();
         auto nbRefinedPart = dict["simulation"]["refined_particle_nbr"].template to<int>();
 
-        if (!PHARE::core::makeAtRuntime<Maker>(dim, interpOrder, nbRefinedPart, Maker{*this}))
+        this->dMan
+            = PHARE::core::makeAtRuntime<Maker>(dim, interpOrder, nbRefinedPart, Maker{*this});
+        if (!this->dMan)
             throw std::runtime_error("Runtime diagnostic deduction failed");
     }
 
@@ -80,9 +83,9 @@ struct RuntimeDiagnosticInterface
 
 
         template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-        bool operator()(std::size_t userDim, std::size_t userInterpOrder,
-                        std::size_t userNbRefinedPart, Dimension dimension,
-                        InterpOrder interp_order, NbRefinedPart nbRefinedPart)
+        std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager>
+        operator()(std::size_t userDim, std::size_t userInterpOrder, std::size_t userNbRefinedPart,
+                   Dimension dimension, InterpOrder interp_order, NbRefinedPart nbRefinedPart)
         {
             auto dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
             if (dict["simulation"].contains("diagnostics"))
@@ -96,14 +99,12 @@ struct RuntimeDiagnosticInterface
 
                     auto* simulator = dynamic_cast<PHARE::Simulator<d, io, nb>*>(&rdi.simulator);
 
-                    rdi.dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_shared(
+                    return PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
                         rdi.hierarchy, *simulator->getHybridModel(),
                         dict["simulation"]["diagnostics"]);
-
-                    return true;
                 }
             }
-            return false;
+            return nullptr;
         }
 
         RuntimeDiagnosticInterface& rdi;

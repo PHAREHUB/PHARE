@@ -68,7 +68,7 @@ struct TestSimulator : public HierarchyMaker<_dim>,
 
         if (dict(job_py)["simulation"].contains("diagnostics"))
         {
-            dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_shared(
+            dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
                 *this->hierarchy, *this->getHybridModel(),
                 dict(job_py)["simulation"]["diagnostics"]);
         }

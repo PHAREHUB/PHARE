@@ -156,16 +156,3 @@ def populate_simulation(dim, interp, **input):
     ElectronModel(closure="isothermal", Te=0.12)
 
     return simulation
-
-
-def cpp_splitter_type(dim, interp, n_particles):
-    from pybindlibs import cpp # includes static samrai lifecycle
-
-    return getattr(cpp,
-        "Splitter_" + str(dim) + "_" + str(interp)+ "_" + str(n_particles),
-    )
-
-
-def create_splitter(dim, interp, n_particles):
-
-    return cpp_splitter_type(dim, interp, n_particles)()
