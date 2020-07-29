@@ -11,6 +11,11 @@ if (NOT SAMRAI_FOUND)
       execute_process(
         COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b master --recursive --depth 10
         )
+    else()
+      if(devMode)
+        message("downloading latest SAMRAI updates")
+        execute_process(COMMAND ${Git} pull origin master WORKING_DIRECTORY ${SAMRAI_SRCDIR})
+      endif(devMode)
     endif()
 
     option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
