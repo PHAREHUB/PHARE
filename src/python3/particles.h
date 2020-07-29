@@ -1,6 +1,15 @@
 #ifndef PHARE_PYTHON_PARTICLES_H
 #define PHARE_PYTHON_PARTICLES_H
 
+#include <cassert>
+#include <cstddef>
+#include <tuple>
+#include "amr/data/particles/refine/particles_data_split.h"
+#include "core/data/particles/particle_packer.h"
+#include "core/data/particles/particle.h"
+#include "core/utilities/span.h"
+#include "core/utilities/types.h"
+#include "pybind11/numpy.h"
 #include "pybind_def.h"
 
 namespace PHARE::pydata

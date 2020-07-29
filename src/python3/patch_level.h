@@ -1,17 +1,12 @@
 #ifndef PHARE_PYTHON_PATCH_LEVEL_H
 #define PHARE_PYTHON_PATCH_LEVEL_H
 
-#include <string>
-#include <vector>
+#include <array>
+#include <cstring>
 #include <cstddef>
-#include <unordered_map>
-
-#include "amr/wrappers/hierarchy.h"
-#include "amr/resources_manager/amr_utils.h"
-#include "simulator/phare_types.h"
-
-#include "pybind_def.h"
-#include "patch_data.h"
+#include <string>
+#include <utility>
+#include "phare_solver.h"
 
 
 namespace PHARE::pydata
@@ -24,9 +19,10 @@ public:
     static constexpr std::size_t interp_order  = interpOrder;
     static constexpr std::size_t nbRefinedPart = nbrRefPart;
 
-    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
-    using HybridModel = typename PHARETypes::HybridModel_t;
-    using GridLayout  = typename HybridModel::gridlayout_type;
+    using PHARESolverTypes = solver::PHARE_Types<dimension, interp_order, nbRefinedPart>;
+    using HybridModel      = typename PHARESolverTypes::HybridModel_t;
+
+    using GridLayout = typename HybridModel::gridlayout_type;
 
     PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, std::size_t lvl)
         : lvl_(lvl)
