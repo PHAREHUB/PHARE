@@ -96,19 +96,9 @@ std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    auto const perMPISize = collect(static_cast<int>(sendBuff.size()), mpi_size);
+    std::vector<int> const perMPISize = collect(static_cast<int>(sendBuff.size()), mpi_size);
+    std::vector<int> const displs     = core::displacementFrom(perMPISize);
     std::vector<Data> rcvBuff(std::accumulate(perMPISize.begin(), perMPISize.end(), 0));
-
-    std::vector<int> displs(mpi_size);
-    {
-        int offset = 0;
-        for (int i = 0; i < mpi_size; i++)
-        {
-            displs[i] = offset;
-            offset += perMPISize[i];
-        }
-    }
-
     _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, displs, mpi_size);
 
     std::size_t offset = 0;
