@@ -1,8 +1,20 @@
 #ifndef PHARE_PYTHON_DATA_WRANGLER_H
 #define PHARE_PYTHON_DATA_WRANGLER_H
 
-#include <memory>
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <iterator>
+#include <memory>
+#include <stdexcept>
+#include <vector>
+#include "amr/wrappers/hierarchy.h"
+#include "core/utilities/meta/meta_utilities.h"
+#include "core/utilities/mpi_utils.h"
+#include "core/utilities/point/point.h"
+#include "cppdict/include/dict.hpp"
+#include "initializer/data_provider.h"
 #include "python3/patch_data.h"
 #include "python3/patch_level.h"
 #include "simulator/simulator.h"
@@ -62,8 +74,7 @@ public:
 
     auto sync(std::vector<PatchData<std::vector<double>, dimension>> const& input)
     {
-        int mpi_size = 0;
-        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+        int mpi_size = core::mpi::size();
         std::vector<PatchData<std::vector<double>, dimension>> collected;
 
         auto reinterpret_array = [&](auto& py_array) {

@@ -1,9 +1,28 @@
 
+// Philip Deegan comments: IWYU may work on this file, but it takes forever so I never found out.
+//   headers were included manually
+
+#include <vector>
+#include <cstddef>
+
+#include "mpi.h"
+
+#include "core/data/particles/particle.h"
+#include "core/utilities/meta/meta_utilities.h"
+#include "amr/wrappers/hierarchy.h"
+#include "phare/include.h"
+#include "simulator/simulator.h"
 
 #include "python3/particles.h"
 #include "python3/patch_data.h"
 #include "python3/patch_level.h"
 #include "python3/data_wrangler.h"
+
+#include "pybind11/stl.h"
+#include "pybind11/numpy.h"
+#include "pybind11/chrono.h"
+#include "pybind11/complex.h"
+#include "pybind11/functional.h"
 
 namespace py = pybind11;
 

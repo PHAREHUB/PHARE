@@ -1,13 +1,9 @@
 #ifndef PHARE_PYTHON_PYBIND_DEF_H
 #define PHARE_PYTHON_PYBIND_DEF_H
 
-#include "phare/include.h"
-
-#include "pybind11/stl.h"
+#include <cstdint>
+#include <tuple>
 #include "pybind11/numpy.h"
-#include "pybind11/chrono.h"
-#include "pybind11/complex.h"
-#include "pybind11/functional.h"
 
 namespace PHARE::pydata
 {
