@@ -1,7 +1,7 @@
 #ifndef PHARE_TEST_SIMULATOR_PER_TEST_H
 #define PHARE_TEST_SIMULATOR_PER_TEST_H
 
-#include "phare/include.h"
+#include "phare/phare.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

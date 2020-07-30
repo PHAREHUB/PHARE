@@ -292,5 +292,64 @@ makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
 }
 
 
+
+struct SimulatorDiagnostics
+{
+    SimulatorDiagnostics(PHARE::ISimulator& simulator, PHARE::amr::Hierarchy& hierarchy)
+    {
+        auto dict  = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+        this->dMan = PHARE::core::makeAtRuntime<Maker>(
+            dict["simulation"]["dimension"].template to<int>(),
+            dict["simulation"]["interp_order"].template to<int>(),
+            dict["simulation"]["refined_particle_nbr"].template to<int>(),
+            Maker{simulator, hierarchy});
+        if (!this->dMan)
+            throw std::runtime_error("Runtime diagnostic deduction failed");
+    }
+
+    struct Maker
+    {
+        Maker(PHARE::ISimulator& _simulator, PHARE::amr::Hierarchy& _hierarchy)
+            : hierarchy{_hierarchy}
+            , simulator{_simulator}
+        {
+        }
+
+
+        template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+        std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager>
+        operator()(std::size_t userDim, std::size_t userInterpOrder, std::size_t userNbRefinedPart,
+                   Dimension dimension, InterpOrder interp_order, NbRefinedPart nbRefinedPart)
+        {
+            auto& dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+            if (dict["simulation"].contains("diagnostics"))
+            {
+                if (userDim == dimension() and userInterpOrder == interp_order()
+                    and userNbRefinedPart == nbRefinedPart())
+                {
+                    constexpr std::size_t d  = dimension();
+                    constexpr std::size_t io = interp_order();
+                    constexpr std::size_t nb = nbRefinedPart();
+
+                    auto& cast_simulator = dynamic_cast<PHARE::Simulator<d, io, nb>&>(simulator);
+
+                    return PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
+                        hierarchy, *cast_simulator.getHybridModel(),
+                        dict["simulation"]["diagnostics"]);
+                }
+            }
+            return nullptr;
+        }
+
+        PHARE::amr::Hierarchy& hierarchy;
+        PHARE::ISimulator& simulator;
+    };
+
+    void dump(double timestamp, double timestep) { dMan->dump(timestamp, timestep); }
+
+    std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
+};
+
+
 } // namespace PHARE
 #endif
