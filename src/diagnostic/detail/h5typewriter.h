@@ -49,15 +49,15 @@ protected:
     void initDataSets_(std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
                        Attributes& patchAttributes, std::size_t maxLevel, InitPatch&& initPatch)
     {
-        for (size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
+        for (std::size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
         {
             auto& lvlPatches       = patchIDs.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
             std::size_t maxPatches = core::mpi::max(patchNbr);
-            for (size_t i = 0; i < patchNbr; i++)
+            for (std::size_t i = 0; i < patchNbr; i++)
                 initPatch(lvl, patchAttributes[std::to_string(lvl) + "_" + lvlPatches[i]],
                           lvlPatches[i]);
-            for (size_t i = patchNbr; i < maxPatches; i++)
+            for (std::size_t i = patchNbr; i < maxPatches; i++)
                 initPatch(lvl, patchAttributes);
         }
     }
@@ -68,14 +68,14 @@ protected:
             patchAttributes,
         std::size_t maxLevel)
     {
-        for (size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
+        for (std::size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
         {
             auto& lvlPatches       = patchAttributes.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
             std::size_t maxPatches = core::mpi::max(patchNbr);
             for (auto const& [patch, attr] : lvlPatches)
                 hi5_.writeAttributeDict(file, attr, hi5_.getPatchPathAddTimestamp(lvl, patch));
-            for (size_t i = patchNbr; i < maxPatches; i++)
+            for (std::size_t i = patchNbr; i < maxPatches; i++)
                 hi5_.writeAttributeDict(file, hi5_.modelView().getEmptyPatchProperties(), "");
         }
 

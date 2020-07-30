@@ -6,6 +6,12 @@ Splitting reference material can be found @
 #ifndef PHARE_SPLIT_2D_H
 #define PHARE_SPLIT_2D_H
 
+#include <array>
+#include <cstddef>
+#include "core/utilities/point/point.h"
+#include "core/utilities/types.h"
+#include "splitter.h"
+
 namespace PHARE::amr
 {
 using namespace PHARE::core;
@@ -36,7 +42,7 @@ struct BrownDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticles
     constexpr BrownDispatcher(float const weight, Delta const& delta)
         : Super{weight}
     {
-        for (size_t i = 0; i < 2; i++)
+        for (std::size_t i = 0; i < 2; i++)
         {
             std::size_t offset         = (i * 4);
             float sign                 = i % 2 ? -1 : 1;

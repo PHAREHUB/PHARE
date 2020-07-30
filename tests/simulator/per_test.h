@@ -133,7 +133,7 @@ public:
 class FieldDomainPlusNFilter
 {
 public:
-    FieldDomainPlusNFilter(size_t n = 0)
+    FieldDomainPlusNFilter(std::size_t n = 0)
         : n_{n}
     {
     }

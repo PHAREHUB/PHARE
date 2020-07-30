@@ -55,7 +55,7 @@ namespace core
         template<typename Container, is_subscriptable<Container> = dummy::value>
         Point(Container c)
         {
-            for (size_t i = 0; i < dim; ++i)
+            for (std::size_t i = 0; i < dim; ++i)
             {
                 r[i] = c[i];
             }
@@ -71,7 +71,7 @@ namespace core
         bool operator==(Point const& p) const
         {
             bool areEqual = true;
-            for (size_t i = 0; i < dim; ++i)
+            for (std::size_t i = 0; i < dim; ++i)
             {
                 static_assert(std::is_integral_v<Type>,
                               "this function is only valid for integral type of Point");
@@ -102,7 +102,7 @@ namespace core
         {
             std::stringstream ss;
             ss << r[0];
-            for (size_t i = 1; i < dim; ++i)
+            for (std::size_t i = 1; i < dim; ++i)
             {
                 ss << "," << r[i];
             }
@@ -116,7 +116,7 @@ namespace core
             std::vector<std::string> tokens;
             for (std::string each; std::getline(split, each, ','); tokens.push_back(each)) {}
             assert(tokens.size() == dimension);
-            for (size_t i = 0; i < tokens.size(); i++)
+            for (std::size_t i = 0; i < tokens.size(); i++)
             {
                 std::stringstream ss;
                 ss << tokens[i];
@@ -149,7 +149,7 @@ template<typename Type, std::size_t dim>
 PHARE::core::Point<Type, dim> abs(PHARE::core::Point<Type, dim> const& point)
 {
     std::array<Type, dim> postive;
-    for (size_t i = 0; i < dim; ++i)
+    for (std::size_t i = 0; i < dim; ++i)
         postive[i] = std::abs(point[i]);
     return postive;
 }

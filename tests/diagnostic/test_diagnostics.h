@@ -51,7 +51,7 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
     for (auto& s : siz) // dim sizes are last index + 1
         s += 1;
     std::size_t items = siz[0];
-    for (size_t i = 1; i < siz.size(); i++)
+    for (std::size_t i = 1; i < siz.size(); i++)
         items *= siz[i];
     EXPECT_EQ(items, field.size());
 
@@ -61,7 +61,7 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
     core::NdArrayView<dim, float> view{fieldV, siz};
     if constexpr (dim == 1)
     {
-        for (size_t i = beg[0]; i < end[0]; i++)
+        for (std::size_t i = beg[0]; i < end[0]; i++)
         {
             if (std::isnan(view(i)) || std::isnan(field(i)))
                 throw std::runtime_error("This field should not be NaN");
@@ -70,9 +70,9 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
     }
     else if constexpr (dim == 2)
     {
-        for (size_t i = beg[0]; i < end[0]; i++)
+        for (std::size_t i = beg[0]; i < end[0]; i++)
         {
-            for (size_t j = beg[1]; j < end[1]; j++)
+            for (std::size_t j = beg[1]; j < end[1]; j++)
             {
                 if (std::isnan(view(i, j)) || std::isnan(field(i, j)))
                     throw std::runtime_error("This field should not be NaN");
@@ -238,13 +238,13 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         {
             auto next = packer.next();
 
-            for (size_t i = 0; i < iCellSize; i++)
+            for (std::size_t i = 0; i < iCellSize; i++)
                 EXPECT_EQ(iCellV[(part_idx * iCellSize) + i], std::get<2>(next)[i]);
 
-            for (size_t i = 0; i < deltaSize; i++)
+            for (std::size_t i = 0; i < deltaSize; i++)
                 EXPECT_FLOAT_EQ(deltaV[(part_idx * deltaSize) + i], std::get<3>(next)[i]);
 
-            for (size_t i = 0; i < vSize; i++)
+            for (std::size_t i = 0; i < vSize; i++)
                 EXPECT_FLOAT_EQ(vV[(part_idx * vSize) + i], std::get<4>(next)[i]);
 
             part_idx++;

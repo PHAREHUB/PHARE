@@ -93,7 +93,7 @@ public:
         auto lowerXYZ = boxBoundsLower<dimension>(domainBox);
         auto upperXYZ = boxBoundsUpper<dimension>(domainBox);
 
-        for (size_t i = 0; i < dimension; i++)
+        for (std::size_t i = 0; i < dimension; i++)
         {
             lowerXYZ[i] -= ghostWidth;
             upperXYZ[i] += ghostWidth;

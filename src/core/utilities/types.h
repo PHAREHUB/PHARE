@@ -100,7 +100,7 @@ namespace core
     template<typename Type, std::size_t Size> // std::array::fill is only constexpr in C++20 ffs
     constexpr void fill(Type value, std::array<Type, Size>& array)
     {
-        for (size_t i = 0; i < Size; i++)
+        for (std::size_t i = 0; i < Size; i++)
             array[i] = value;
     }
 
@@ -137,7 +137,7 @@ namespace core
 
         std::array<Type, To_Size> to{};
 
-        for (size_t i = 0; i < to.size(); i++)
+        for (std::size_t i = 0; i < to.size(); i++)
             to[i] = from[i];
 
         return to;
