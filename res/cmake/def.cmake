@@ -19,7 +19,7 @@ if(devMode) # -DdevMode=ON
 
   set (PHARE_WERROR_FLAGS ${_Werr})
 
-endif() # devMode
+endif(devMode)
 
 function(phare_sanitize_ san cflags )
   set(CMAKE_REQUIRED_FLAGS ${san})
@@ -36,11 +36,11 @@ endfunction(phare_sanitize_)
 
 if (asan)   # -Dasan=ON
   phare_sanitize_("-fsanitize=address" "-fno-omit-frame-pointer" )
-endif()
+endif(asan)
 
 if (ubsan)  # -Dubsan=ON
   phare_sanitize_("-fsanitize=undefined" "" )
-endif()
+endif(ubsan)
 
 # msan is not supported - it's not practical to configure - use valgrind
 

@@ -72,5 +72,3 @@ function(print_phare_options)
   message("build with ubsan support                    : " ${ubsan})
 
 endfunction(print_phare_options)
-
-
