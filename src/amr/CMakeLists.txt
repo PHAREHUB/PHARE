@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.9)
 project(phare_amr)
 
 set( SOURCES_INC
@@ -52,6 +52,7 @@ set( SOURCES_CPP
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
 
 target_link_libraries(${PROJECT_NAME} PUBLIC

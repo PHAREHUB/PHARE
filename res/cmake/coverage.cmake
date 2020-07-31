@@ -1,6 +1,9 @@
 
 if (test AND coverage)
 
+  # LTO disabled for coverage builds
+  set (PHARE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+
   set (_Cvr " -g -O0 -Wall -W -Wshadow -Wunused-variable")
   set (_Cvr " ${_Cvr} -Wunused-parameter -Wunused-function -Wunused -Wno-system-headers")
   set (_Cvr " ${_Cvr} -Wno-deprecated -Woverloaded-virtual -Wwrite-strings")
@@ -14,8 +17,8 @@ if (test AND coverage)
   add_custom_target(build-time-make-directory ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage)
 
-  set (_Gcvr "gcovr --exclude='.*subprojects.*' --exclude='.*tests.*' --exclude='/usr/include/.*' ")
-  set (_Gcvr "${_Gcvr} --object-directory ${CMAKE_BINARY_DIR} -r ${CMAKE_SOURCE_DIR}")
+  set (_Gcvr gcovr --exclude='.*subprojects.*' --exclude='.*tests.*' --exclude='/usr/include/.*' )
+  set (_Gcvr ${_Gcvr} --object-directory ${CMAKE_BINARY_DIR} -r ${CMAKE_SOURCE_DIR})
 
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
     COMMAND ${_Gcvr} --html --html-details -o ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html

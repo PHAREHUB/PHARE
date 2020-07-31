@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 
 project(PHARE VERSION 0.1)
 set(CMAKE_CXX_STANDARD 17)
@@ -9,6 +9,9 @@ endif()
 
 if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
   cmake_policy(SET CMP0074 NEW)
+endif()
+if (POLICY CMP0069) # allow LTO if available, requires cmake 3.9 (released August 2017)
+  cmake_policy(SET CMP0069 NEW)
 endif()
 
 # Enables -fPIC  typically required for shared libraries with dependencies. e.g. pybind modules
@@ -25,9 +28,9 @@ include_directories(${PHARE_PROJECT_DIR}/src)
 
 include("${PHARE_PROJECT_DIR}/res/cmake/options.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
-include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 
 #*******************************************************************************
