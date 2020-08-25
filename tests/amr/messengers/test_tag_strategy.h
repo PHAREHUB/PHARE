@@ -44,13 +44,12 @@ class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 private:
     std::shared_ptr<HybridModel> model_;
     std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver_;
-    std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel<SAMRAI_Types>>> messenger_;
+    std::shared_ptr<HybridMessenger<HybridModel>> messenger_;
 
 public:
-    explicit TagStrategy(
-        std::shared_ptr<HybridModel> model,
-        std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver,
-        std::shared_ptr<HybridMessenger<HybridModel, IPhysicalModel<SAMRAI_Types>>> messenger)
+    explicit TagStrategy(std::shared_ptr<HybridModel> model,
+                         std::shared_ptr<SolverPPC<HybridModel, SAMRAI_Types>> solver,
+                         std::shared_ptr<HybridMessenger<HybridModel>> messenger)
         : model_{std::move(model)}
         , solver_{std::move(solver)}
         , messenger_{std::move(messenger)}

@@ -2,12 +2,16 @@
 #define PHARE_FIELD_COARSENER_H
 
 #include "core/data/grid/gridlayoutdefs.h"
-#include "amr/data/field/coarsening/field_coarsen_index_weight.h"
 #include "core/utilities/constants.h"
+#include "core/utilities/point/point.h"
+
+#include "amr/data/field/coarsening/field_coarsen_index_weight.h"
+#include "amr/resources_manager/amr_utils.h"
 
 #include <SAMRAI/hier/Box.h>
 
 #include <cstddef>
+#include <array>
 
 
 
@@ -44,7 +48,6 @@ namespace amr
          */
         template<typename FieldT>
         void operator()(FieldT const& fineField, FieldT& coarseField,
-
                         core::Point<int, dimension> coarseIndex)
         {
             // For the moment we only take the case of field with the same centering
@@ -66,7 +69,6 @@ namespace amr
             {
                 auto const& xStartIndex = fineStartIndex[dirX];
                 auto const& xWeights    = indexesAndWeights_.weights(core::Direction::X);
-
 
                 for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
                 {

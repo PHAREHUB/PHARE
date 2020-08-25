@@ -70,9 +70,9 @@ def ExToMoment(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,2, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0, 0, dualToPrimal(interpOrder),0, 0.5))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0,0,0, dualToPrimal(interpOrder), 0, 0, 0.5))
 
 
@@ -82,9 +82,9 @@ def EyToMoment(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1,0, 1.))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0,0, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0,0,0, 0,dualToPrimal(interpOrder), 0, 0.5))
 
 
@@ -94,9 +94,9 @@ def EzToMoment(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1.))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0,0, 1))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0,0,0, 0,0,dualToPrimal(interpOrder), 0.5))
 
 
@@ -106,9 +106,9 @@ def JxToMoment(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,2, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0, 0, dualToPrimal(interpOrder), 0, 0.5))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0, 0, 0, dualToPrimal(interpOrder), 0, 0, 0.5))
 
 
@@ -118,9 +118,9 @@ def JyToMoment(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1.))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0, 0, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0, 0, 0, 0, dualToPrimal(interpOrder), 0, 0.5))
 
 
@@ -130,9 +130,9 @@ def JzToMoment(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1.))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0, 0, 1))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0, 0, 0, 0, 0, dualToPrimal(interpOrder), 0.5))
 
 
@@ -142,9 +142,9 @@ def MomentToEx(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,2, 0, primalToDual(interpOrder), 0.5))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0,0, primalToDual(interpOrder), 0, 0.5))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0,0,0, primalToDual(interpOrder),0,0, 0.5))
 
 
@@ -154,9 +154,9 @@ def MomentToEy(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0,0, 0, primalToDual(interpOrder), 0.5))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0,0,0, 0,primalToDual(interpOrder),0, 0.5))
 
 
@@ -166,9 +166,9 @@ def MomentToEz(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0,0, 1))
-    elif dim == 3:
+    if dim == 3:
         return tupleToString((dim,interpOrder,2, 0,0,0,  0, 0,primalToDual(interpOrder), 0.5))
 
 
@@ -190,9 +190,9 @@ def BzToEx(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0,0, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,2, 0,0,0, 0,dualToPrimal(interpOrder),0, 0.5))
 
 
@@ -202,9 +202,9 @@ def BxToEz(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0,0, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,2, 0,0,0, 0,dualToPrimal(interpOrder), 0, 0.5))
 
 
@@ -214,9 +214,9 @@ def ByToEz(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,2, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0,0, dualToPrimal(interpOrder),0, 0.5))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,2, 0,0,0, dualToPrimal(interpOrder), 0, 0, 0.5))
 
 
@@ -226,9 +226,9 @@ def BxToEy(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0,0, 1))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,2, 0,0,0, 0,0,dualToPrimal(interpOrder), 0.5))
 
 
@@ -238,9 +238,9 @@ def BzToEy(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,2, 0, dualToPrimal(interpOrder), 0.5))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,2, 0, 0, dualToPrimal(interpOrder),0, 0.5))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,2, 0,0,0, dualToPrimal(interpOrder), 0, 0, 0.5))
 
 
@@ -250,9 +250,9 @@ def JxToEx(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1.0))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0,0, 1.0))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,1, 0,0,0, 1.0))
 
 
@@ -262,9 +262,9 @@ def JyToEy(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1.0))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0,0, 1.0))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,1, 0,0,0, 1.0))
 
 
@@ -274,9 +274,9 @@ def JzToEz(dim, interpOrder):
     """
     if dim == 1:
         return tupleToString((dim,interpOrder,1, 0, 1.0))
-    elif dim == 2:
+    if dim == 2:
         return tupleToString((dim,interpOrder,1, 0,0, 1.0))
-    elif dim==3:
+    if dim==3:
         return tupleToString((dim,interpOrder,1, 0,0,0, 1.0))
 
 

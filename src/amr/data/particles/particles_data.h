@@ -129,7 +129,7 @@ namespace amr
          * the source PatchData was not a ParticleData like we are, we'd give ourselves
          * to its copy2 function, assuming it can copy its source content into us.
          */
-        virtual void copy(SAMRAI::hier::PatchData const& source) override
+        void copy(SAMRAI::hier::PatchData const& source) override
         {
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
@@ -152,7 +152,7 @@ namespace amr
          * given to be copied into another kind of PatchData. Here we chose that
          * copy2 throws unconditiionnally.
          */
-        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const override
+        void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const override
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -163,8 +163,8 @@ namespace amr
          * the copy must account for the intersection with the boxes within the overlap
          * The copy is done between the source patch data and myself
          */
-        virtual void copy(SAMRAI::hier::PatchData const& source,
-                          SAMRAI::hier::BoxOverlap const& overlap) override
+        void copy(SAMRAI::hier::PatchData const& source,
+                  SAMRAI::hier::BoxOverlap const& overlap) override
         {
             // casts throw on failure
             auto& pSource  = dynamic_cast<ParticlesData const&>(source);
@@ -209,7 +209,6 @@ namespace amr
                     {
                         std::runtime_error("Error - multiblock hierarchies not handled");
                     }
-
                 } // end loop over boxes
             }     // end no rotate
             else
@@ -219,20 +218,20 @@ namespace amr
         }
 
 
-        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
-                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const override
+        void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
+                   [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             throw std::runtime_error("Cannot cast");
         }
 
 
 
-        virtual bool canEstimateStreamSizeFromBox() const final { return false; }
+        bool canEstimateStreamSizeFromBox() const override { return false; }
 
 
 
 
-        virtual std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
+        std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap{
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
@@ -261,8 +260,8 @@ namespace amr
          * Note that step 2 could be done upon reception of the pack, we chose to do it before.
          *
          */
-        virtual void packStream(SAMRAI::tbox::MessageStream& stream,
-                                SAMRAI::hier::BoxOverlap const& overlap) const override
+        void packStream(SAMRAI::tbox::MessageStream& stream,
+                        SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap{
                 dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
@@ -331,8 +330,8 @@ namespace amr
          * AMRToLocal() to get the proper shift to apply to them
          *
          */
-        virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                                  SAMRAI::hier::BoxOverlap const& overlap) override
+        void unpackStream(SAMRAI::tbox::MessageStream& stream,
+                          SAMRAI::hier::BoxOverlap const& overlap) override
         {
             SAMRAI::pdat::CellOverlap const* pOverlap
                 = dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap);

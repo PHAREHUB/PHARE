@@ -157,9 +157,8 @@ def check_boundaries(dims, **kwargs):
     if phare_utilities.none_iterable(boundary_types):
         bc_length = 1
         if boundary_types not in valid_boundary_types:
-            raise ValueError("Error: '{}' is not a valid boundary type".format(boundary_types))
-        else:
-            boundary_types = phare_utilities.listify(boundary_types)
+            raise ValueError("Error: '{}' is not a valid boundary type".format(boundary_types))       
+        boundary_types = phare_utilities.listify(boundary_types)
     else:
         bc_length = len(boundary_types)
         for bc in boundary_types:
@@ -234,7 +233,7 @@ def check_refinement_boxes(**kwargs):
             raise ValueError("Error - missing refinement boxes")
 
         tmp_boxes = []
-        if isinstance(boxes[0], tuple) or isinstance(boxes[0],list):
+        if isinstance(boxes[0], (tuple,list)):
             for points in boxes:
                 tmp_boxes.append(Box(points[0], points[1]))
             boxes = tmp_boxes
@@ -394,9 +393,8 @@ class Simulation(object):
 
         if globals.sim is not None:
             raise RuntimeError("simulation is already created")
-        else:
-            globals.sim = self
-            # raise RuntimeError("simulation is already lol")
+
+        globals.sim = self
 
         for k, v in kwargs.items():
             object.__setattr__(self, k, v)
@@ -421,8 +419,7 @@ class Simulation(object):
         if len(extent) == 2:
             # 1D case
             return extent[0] >= domain[0] and extent[1] <= domain[1]
-        else:
-            raise NotImplementedError("Error: 2D and 3D not implemented yet")
+        raise NotImplementedError("Error: 2D and 3D not implemented yet")
 
 
 

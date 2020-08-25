@@ -60,8 +60,7 @@ namespace core
         /**
          * @brief load particles in a ParticleArray in a domain defined by the given layout
          */
-        virtual void loadParticles(ParticleArray& particles,
-                                   GridLayout const& layout) const override
+        void loadParticles(ParticleArray& particles, GridLayout const& layout) const override
         {
             if constexpr (dimension == 1)
             {

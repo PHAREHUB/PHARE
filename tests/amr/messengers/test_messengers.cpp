@@ -636,8 +636,8 @@ struct AfullHybridBasicHierarchy
     int const firstHybLevel{0};
     int const ratio{2};
 
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>,
-                                                        typename Phare_Types::RefinementParams>;
+    using HybridHybridT
+        = HybridHybridMessengerStrategy<HybridModelT, typename Phare_Types::RefinementParams>;
 
     SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
 
@@ -650,12 +650,11 @@ struct AfullHybridBasicHierarchy
         std::make_shared<HybridModelT>(dict, resourcesManagerHybrid)};
 
 
-    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
-        hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
+    std::unique_ptr<HybridMessengerStrategy<HybridModelT>> hybhybStrat{
+        std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
 
-    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>> messenger{
-        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>>(
-            std::move(hybhybStrat))};
+    std::shared_ptr<HybridMessenger<HybridModelT>> messenger{
+        std::make_shared<HybridMessenger<HybridModelT>>(std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
 

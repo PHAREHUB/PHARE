@@ -9,6 +9,7 @@
 #include "core/utilities/point/point.h"
 
 #include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/IntVector.h>
 
 #include <array>
 #include <utility>
@@ -33,14 +34,14 @@ namespace amr
          * also which coarseIndex to start for refine operation
          *
          */
-        FieldRefineIndexesAndWeights(std::array<core::QtyCentering, dimension> centerings,
+        FieldRefineIndexesAndWeights(std::array<core::QtyCentering, dimension> const& centerings,
                                      SAMRAI::hier::IntVector const& ratio)
             : ratio_{ratio}
             , weighters_{make_weighters(centerings, ratio, std::make_index_sequence<dimension>{})}
 
         {
             // this shift will be use to determine which coarseIndexe we take
-            for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
+            for (auto iDir = dirX; iDir < dimension; ++iDir)
             {
                 if (centerings[iDir] == core::QtyCentering::primal)
                 {
@@ -59,9 +60,10 @@ namespace amr
 
 
 
-        core::Point<int, dimension> coarseStartIndex(core::Point<int, dimension> fineIndex) const
+        core::Point<int, dimension>
+        coarseStartIndex(core::Point<int, dimension> const& fineIndex) const
         {
-            core::Point<int, dimension> coarseIndex{fineIndex};
+            auto coarseIndex{fineIndex};
 
             // here we perform the floating point division, and then we truncate to integer
             coarseIndex[dirX]
@@ -98,9 +100,10 @@ namespace amr
 
         /** @brief Compute the index of weigths for a given fineIndex
          */
-        core::Point<int, dimension> computeWeightIndex(core::Point<int, dimension> fineIndex) const
+        core::Point<int, dimension>
+        computeWeightIndex(core::Point<int, dimension> const& fineIndex) const
         {
-            core::Point<int, dimension> indexesWeights{std::abs(fineIndex)};
+            auto indexesWeights{std::abs(fineIndex)};
 
             indexesWeights[dirX] %= ratio_[dirX];
 

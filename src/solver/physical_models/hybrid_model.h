@@ -28,6 +28,7 @@ namespace solver
     public:
         using type_list
             = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
+        using Interface = IPhysicalModel<AMR_Types>;
         using amr_types = AMR_Types;
         using patch_t   = typename AMR_Types::patch_t;
         using level_t   = typename AMR_Types::level_t;

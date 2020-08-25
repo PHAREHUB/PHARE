@@ -29,14 +29,14 @@ namespace amr
 
 
 
-        virtual bool fineBoundaryRepresentsVariable() const final
+        bool fineBoundaryRepresentsVariable() const final
         {
             return fineBoundaryRepresentsVariable_;
         }
 
 
 
-        virtual bool dataLivesOnPatchBorder() const final { return true; }
+        bool dataLivesOnPatchBorder() const final { return true; }
 
     private:
         bool fineBoundaryRepresentsVariable_;

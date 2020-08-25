@@ -116,7 +116,7 @@ public:
     NdArrayVector() = delete;
 
     template<typename... Nodes>
-    NdArrayVector(Nodes... nodes)
+    explicit NdArrayVector(Nodes... nodes)
         : nCells_{nodes...}
         , data_((... * nodes))
     {

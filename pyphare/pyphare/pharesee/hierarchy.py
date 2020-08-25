@@ -351,8 +351,8 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         times = list(data_file.keys())
         hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier)
         if len(times) > 1:
-            for time in times[1:]:
-                hierarchy_fromh5(h5_filename, time, hier)
+            for t in times[1:]:
+                hierarchy_fromh5(h5_filename, t, hier)
         return hier
 
     if create_from_one_time(time, hier):
@@ -430,36 +430,33 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             return hier
 
+        if not silent:
+            print("adding data to new time")
+        # time does not exist in the hierarchy
+        # we have to create a brand new set of patchLevels
+        # containing patches, and load data in their patchdatas
 
+        patch_levels = {}
 
-        else:
-            if not silent:
-                print("adding data to new time")
-            # time does not exist in the hierarchy
-            # we have to create a brand new set of patchLevels
-            # containing patches, and load data in their patchdatas
+        for plvl_key in h5_time_grp.keys():
+            ilvl = int(plvl_key[2:])
 
-            patch_levels = {}
+            lvl_cell_width = root_cell_width / 2 ** ilvl
+            lvl_patches = []
 
-            for plvl_key in h5_time_grp.keys():
-                ilvl = int(plvl_key[2:])
+            for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
+                h5_patch_grp = h5_time_grp[plvl_key][pkey]
 
-                lvl_cell_width = root_cell_width / 2 ** ilvl
-                lvl_patches = []
+                if patch_has_datasets(h5_patch_grp):
+                    layout = make_layout(h5_patch_grp, lvl_cell_width)
+                    patch_datas = {}
+                    add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
+                    lvl_patches.append(Patch(patch_datas))
 
-                for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
-                    h5_patch_grp = h5_time_grp[plvl_key][pkey]
+            patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
 
-                    if patch_has_datasets(h5_patch_grp):
-                        layout = make_layout(h5_patch_grp, lvl_cell_width)
-                        patch_datas = {}
-                        add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
-                        lvl_patches.append(Patch(patch_datas))
-
-                patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
-
-            hier.time_hier[t] = patch_levels
-            return hier
+        hier.time_hier[t] = patch_levels
+        return hier
 
     if load_all_times(time, hier):
         if not silent:
@@ -663,8 +660,8 @@ def merge_particles(hierarchy):
                 pghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "patchGhost" in pdname]
                 lghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "levelGhost" in pdname]
 
-                pghost_pdata = pghost_pdatas[0] if len(pghost_pdatas) else None
-                lghost_pdata = lghost_pdatas[0]if len(lghost_pdatas) else None
+                pghost_pdata = pghost_pdatas[0] if pghost_pdatas else None
+                lghost_pdata = lghost_pdatas[0]if lghost_pdatas else None
 
                 if pghost_pdata is not None:
                     domain_pdata[1].dataset.add(pghost_pdata[1].dataset)
@@ -677,7 +674,3 @@ def merge_particles(hierarchy):
                 popname = domain_pdata[0].split('_')[0]
                 pdatas[popname+"_particles"] = pdatas[domain_pdata[0]]
                 del pdatas[domain_pdata[0]]
-
-
-
-
