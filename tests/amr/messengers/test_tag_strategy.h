@@ -67,7 +67,7 @@ public:
 
     void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                              int const levelNumber, double const initDataTime,
-                             bool const canBeRefined, bool const initialTime,
+                             bool const /*canBeRefined*/, bool const /*initialTime*/,
                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
                              = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                              bool const allocateData = true) override
@@ -113,8 +113,9 @@ public:
         }
     }
 
-    void resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                     int const coarsestLevel, int const finestLevel) override
+    void
+    resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                                int const /*coarsestLevel*/, int const /*finestLevel*/) override
     {
     }
 

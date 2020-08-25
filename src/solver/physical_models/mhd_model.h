@@ -39,7 +39,7 @@ namespace solver
         {
         }
 
-        virtual void initialize(level_t& level) override {}
+        virtual void initialize(level_t& /*level*/) override {}
 
 
         virtual void allocate(patch_t& patch, double const allocateTime) override
@@ -51,7 +51,7 @@ namespace solver
 
 
         virtual void
-        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
+        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
         {
         }
 

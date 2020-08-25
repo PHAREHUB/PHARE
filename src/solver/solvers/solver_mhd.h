@@ -26,24 +26,24 @@ namespace solver
 
 
         virtual void
-        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
+        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
         {
-            //
         }
 
 
-        virtual void registerResources(IPhysicalModel<AMR_Types>& model) override {}
+        virtual void registerResources(IPhysicalModel<AMR_Types>& /*model*/) override {}
 
         // TODO make this a resourcesUser
-        virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
-                              double const allocateTime) const override
+        virtual void allocate(IPhysicalModel<AMR_Types>& /*model*/, SAMRAI::hier::Patch& /*patch*/,
+                              double const /*allocateTime*/) const override
         {
         }
 
-        virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                  int const levelNumber, IPhysicalModel<AMR_Types>& model,
-                                  amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarser,
-                                  const double currentTime, const double newTime) override
+        virtual void
+        advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                     int const /*levelNumber*/, IPhysicalModel<AMR_Types>& /*model*/,
+                     amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
+                     const double /*currentTime*/, const double /*newTime*/) override
         {
         }
     };

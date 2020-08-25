@@ -37,10 +37,10 @@ public:
         return SAMRAI::hier::IntVector::getOne(dim);
     }
 
-    void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
-                int const destinationComponent, int const sourceComponent,
-                SAMRAI::hier::BoxOverlap const& destinationOverlap,
-                SAMRAI::hier::IntVector const& ratio) const override
+    void refine(SAMRAI::hier::Patch& /*destination*/, SAMRAI::hier::Patch const& /*source*/,
+                int const /*destinationComponent*/, int const /*sourceComponent*/,
+                SAMRAI::hier::BoxOverlap const& /*destinationOverlap*/,
+                SAMRAI::hier::IntVector const& /*ratio*/) const override
     {
         // do nothing
     }

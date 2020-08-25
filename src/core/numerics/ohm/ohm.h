@@ -186,6 +186,8 @@ namespace core
         auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index,
                        ComponentTag) const
         {
+            (void)index; // silence spurious possibly false postive warning
+
             if constexpr (ComponentTag::component == Component::X)
             {
                 auto const nOnEx = GridLayout::project(n, index, GridLayout::momentsToEx());

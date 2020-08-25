@@ -29,7 +29,6 @@ using testing::Eq;
 
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalEven)
 {
-    auto ratio = 2u;
     LinearWeighter uipw{QtyCentering::primal, 2};
 
     std::array<double, 2> expectedDistances{0, 0.5};

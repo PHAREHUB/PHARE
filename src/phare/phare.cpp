@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     RuntimeDiagnosticInterface diags{*simulator, *hierarchy};
 
 
-    auto time = simulator->startTime();
+    [[maybe_unused]] auto time = simulator->startTime();
 
     while (simulator->currentTime() < simulator->endTime())
     {

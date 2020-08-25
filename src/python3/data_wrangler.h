@@ -114,12 +114,12 @@ public:
     }
 
     auto sync_merge(std::vector<PatchData<std::vector<double>, dimension>> const& input,
-                    bool primal)
+                    [[maybe_unused]] bool primal)
     {
         if constexpr (dimension == 1)
             return sort_merge_1d(sync(input), primal);
 
-        static_assert("Unhandled dimension: sort_merge_fluid");
+        throw std::runtime_error("Not handled for >1 dim");
     }
 
 private:

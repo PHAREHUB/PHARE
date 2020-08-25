@@ -21,18 +21,18 @@ public:
 
 
     virtual void initializeLevelIntegrator(
-        const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& griddingAlg) override
+        const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& /*griddingAlg*/) override
     {
     }
 
-    virtual double getLevelDt(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                              const double dtTime, const bool initialTime) override
+    virtual double getLevelDt(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
+                              const double dtTime, const bool /*initialTime*/) override
     {
         return dtTime;
     }
 
 
-    virtual double getMaxFinerLevelDt(const int finerLevelNumber, const double coarseDt,
+    virtual double getMaxFinerLevelDt(const int /*finerLevelNumber*/, const double coarseDt,
                                       const SAMRAI::hier::IntVector& ratio) override
     {
         return std::pow(coarseDt, ratio.max());
@@ -41,11 +41,11 @@ public:
 
 
 
-    virtual double advanceLevel(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                                const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                const double currentTime, const double newTime,
-                                const bool firstStep, const bool lastStep,
-                                const bool regridAdvance = false) override
+    virtual double advanceLevel(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
+                                const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                                const double /*currentTime*/, const double newTime,
+                                const bool /*firstStep*/, const bool /*lastStep*/,
+                                [[maybe_unused]] const bool regridAdvance = false) override
     {
         return newTime;
     }
@@ -53,28 +53,31 @@ public:
 
 
 
-    virtual void standardLevelSynchronization(
-        const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy, const int coarsestLevel,
-        const int finestLevel, const double syncTime, const std::vector<double>& oldTimes) override
+    virtual void
+    standardLevelSynchronization(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                                 const int /*coarsestLevel*/, const int /*finestLevel*/,
+                                 const double /*syncTime*/,
+                                 const std::vector<double>& /*oldTimes*/) override
     {
         // TODO use messengers to sync with coarser
     }
 
     virtual void
-    synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                         const int coarsestLevel, const int finestLevel, const double syncTime,
-                         const bool initialTime) override
+    synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                         const int /*coarsestLevel*/, const int /*finestLevel*/,
+                         const double /*syncTime*/, const bool /*initialTime*/) override
     {
     }
 
 
-    virtual void resetTimeDependentData(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                                        const double newTime, const bool canBeRefined) override
+    virtual void resetTimeDependentData(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
+                                        const double /*newTime*/,
+                                        const bool /*canBeRefined*/) override
     {
     }
 
     virtual void
-    resetDataToPreadvanceState(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level) override
+    resetDataToPreadvanceState(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/) override
     {
     }
 

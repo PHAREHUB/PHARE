@@ -46,15 +46,15 @@ namespace amr
 
 
 
-        void
-        registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
-                           [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
+        void registerQuantities(
+            std::unique_ptr<IMessengerInfo> /*fromCoarserInfo*/,
+            [[maybe_unused]] std::unique_ptr<IMessengerInfo> /*fromFinerInfo*/) override
         {
         }
 
 
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           int const levelNumber) override
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                           int const /*levelNumber*/) override
         {
         }
 
@@ -71,10 +71,10 @@ namespace amr
 
 
 
-        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                    const int levelNumber,
-                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                    IPhysicalModel& model, double const initDataTime) override
+        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                    const int /*levelNumber*/,
+                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
+                    IPhysicalModel& /*model*/, double const /*initDataTime*/) override
         {
             //
         }
@@ -88,56 +88,59 @@ namespace amr
 
 
 
-        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       double const initDataTime) override
+        void initLevel(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                       double const /*initDataTime*/) override
         {
         }
 
         virtual ~MHDHybridMessengerStrategy() = default;
 
 
-        void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime) override
+        void fillMagneticGhosts(VecFieldT& /*B*/, int const /*levelNumber*/,
+                                double const /*fillTime*/) override
         {
         }
-        void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
+        void fillElectricGhosts(VecFieldT& /*E*/, int const /*levelNumber*/,
+                                double const /*fillTime*/) override
         {
         }
 
-        void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
-        {
-        }
-
-
-        void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                   double const fillTime) override
-        {
-        }
-        void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                 double const currentTime, double const fillTime) override
+        void fillCurrentGhosts(VecFieldT& /*J*/, int const /*levelNumber*/,
+                               double const /*fillTime*/) override
         {
         }
 
 
-
-        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                       double time) override
+        void fillIonGhostParticles(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                                   double const /*fillTime*/) override
         {
         }
-
-        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
-
-
-        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
-
-        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                            double const initDataTime) final
+        void fillIonMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                                 double const /*currentTime*/, double const /*fillTime*/) override
         {
         }
 
 
 
-        void synchronize(SAMRAI::hier::PatchLevel& level) final
+        void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                       double /*time*/) override
+        {
+        }
+
+        void lastStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) override {}
+
+
+        void prepareStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) final {}
+
+        void fillRootGhosts(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                            double const /*initDataTime*/) final
+        {
+        }
+
+
+
+        void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
         {
             // call coarsning schedules...
         }

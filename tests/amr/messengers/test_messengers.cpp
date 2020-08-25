@@ -15,9 +15,9 @@ using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
 
 namespace func_1d
 {
-double density(double x)
+double density(double /*x*/)
 {
-    return /*x * +*/ 2.;
+    return 2.;
 }
 
 double vx(double /*x*/)
@@ -137,9 +137,9 @@ struct DimDict<1>
 
 namespace func_2d
 {
-double density(double x, double)
+double density(double /*x*/, double)
 {
-    return /*x * +*/ 2.;
+    return 2.;
 }
 
 
@@ -463,10 +463,7 @@ TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
     auto& hierarchy   = *sim.hierarchy;
     using GridLayout  = typename TypeParam::PHARETypes::GridLayout_t;
 
-    auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
-        auto& Ex = hybridModel.state.electromag.E.getComponent(Component::X);
-        auto& Ey = hybridModel.state.electromag.E.getComponent(Component::Y);
-        auto& Ez = hybridModel.state.electromag.E.getComponent(Component::Z);
+    auto visit = [&](GridLayout& layout, std::string /*patchID*/, std::size_t /*iLevel*/) {
         auto& Bx = hybridModel.state.electromag.B.getComponent(Component::X);
         auto& By = hybridModel.state.electromag.B.getComponent(Component::Y);
         auto& Bz = hybridModel.state.electromag.B.getComponent(Component::Z);
@@ -491,7 +488,6 @@ TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
 
     PHARE::amr::visitHierarchy<GridLayout>(hierarchy, *hybridModel.resourcesManager, visit, 1,
                                            sim.hierarchy->getNumberOfLevels(), hybridModel);
-    // sim.visitHierarchy(visit, 1, sim.getNumberOfLevels(), hybridModel);
 }
 
 

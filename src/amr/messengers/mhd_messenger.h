@@ -40,8 +40,8 @@ namespace amr
 
 
 
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           int const levelNumber) override
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                           int const /*levelNumber*/) override
         {
         }
 
@@ -52,10 +52,12 @@ namespace amr
 
         std::string coarseModelName() const override { return MHDModel::model_name; }
 
-        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override {}
+        void allocate(SAMRAI::hier::Patch& /*patch*/, double const /*allocateTime*/) const override
+        {
+        }
 
-        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       double const initDataTime) override
+        void initLevel(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                       double const /*initDataTime*/) override
         {
         }
 
@@ -72,36 +74,35 @@ namespace amr
 
 
 
-        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                    const int levelNumber,
-                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                    IPhysicalModel& model, double const initDataTime) override
+        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                    const int /*levelNumber*/,
+                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
+                    IPhysicalModel& /*model*/, double const /*initDataTime*/) override
         {
         }
 
 
-        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                       double time) final
+        void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                       double /*time*/) final
         {
         }
 
 
-        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+        void lastStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) final {}
 
 
-        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+        void prepareStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) final {}
 
-        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                            double const initDataTime) final
+        void fillRootGhosts(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                            double const /*initDataTime*/) final
         {
         }
 
 
 
-        void synchronize(SAMRAI::hier::PatchLevel& level) final
+        void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
         {
-            (void)level;
             // call coarsning schedules...
         }
 
