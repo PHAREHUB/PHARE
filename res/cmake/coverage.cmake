@@ -4,14 +4,10 @@ if (test AND coverage)
   # LTO disabled for coverage builds
   set (PHARE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 
-  set (_Cvr " -g -O0 -Wall -W -Wshadow -Wunused-variable")
-  set (_Cvr " ${_Cvr} -Wunused-parameter -Wunused-function -Wunused -Wno-system-headers")
-  set (_Cvr " ${_Cvr} -Wno-deprecated -Woverloaded-virtual -Wwrite-strings")
   set (_Fvr " -fprofile-arcs -ftest-coverage")
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3 ")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${_Cvr} ${_Fvr}")
-  set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} ${_Cvr} ${_Fvr}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3 -O0")
+  set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} ${_Fvr}")
   set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS}  ${_Fvr}")
 
   add_custom_target(build-time-make-directory ALL
