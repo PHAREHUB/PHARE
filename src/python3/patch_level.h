@@ -213,8 +213,6 @@ public:
 
     auto getPopFluxCompo(std::string component, std::string popName)
     {
-        using Inner = decltype(getPopDensities());
-
         std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
 
         auto& ions = model_.state.ions;

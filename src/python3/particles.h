@@ -46,8 +46,9 @@ pyarray_particles_t makePyArrayTuple(std::size_t const size)
 template<std::size_t dim, typename PyArrayTuple>
 void assertParticlePyArraySizes(PyArrayTuple const& py_particles)
 {
-    auto shape_nd
-        = [](auto const& ar, std::size_t dimdex = 0) { return ar.request().shape[dimdex]; };
+    auto shape_nd = [](auto const& ar, std::size_t dimdex = 0) -> std::size_t {
+        return ar.request().shape[dimdex];
+    };
 
     auto const& n_iCell  = shape_nd(std::get<0>(py_particles));
     auto const& n_delta  = shape_nd(std::get<1>(py_particles));

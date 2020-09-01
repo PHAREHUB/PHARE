@@ -264,7 +264,7 @@ namespace solver
          */
         void initializeLevelData(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
                                  const int levelNumber, const double initDataTime,
-                                 const bool canBeRefined, const bool initialTime,
+                                 const bool /*canBeRefined*/, const bool /*initialTime*/,
                                  const std::shared_ptr<SAMRAI::hier::PatchLevel>& oldLevel
                                  = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                                  const bool allocateData = true) override
@@ -296,18 +296,19 @@ namespace solver
 
 
 
-        void
-        resetHierarchyConfiguration(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                    const int coarsestLevel, const int finestLevel) override
+        void resetHierarchyConfiguration(
+            const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+            const int /*coarsestLevel*/, const int /*finestLevel*/) override
         {
         }
 
 
 
-        void applyGradientDetector(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                   const int levelNumber, const double error_data_time,
-                                   const int tag_index, const bool initialTime,
-                                   const bool usesRichardsonExtrapolationToo) override
+        void
+        applyGradientDetector(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                              const int /*levelNumber*/, const double /*error_data_time*/,
+                              const int /*tag_index*/, const bool /*initialTime*/,
+                              const bool /*usesRichardsonExtrapolationToo*/) override
         {
         }
 
@@ -321,18 +322,19 @@ namespace solver
 
 
         void initializeLevelIntegrator(
-            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& griddingAlg) override
+            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& /*griddingAlg*/)
+            override
         {
         }
 
-        double getLevelDt(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                          const double dtTime, const bool initialTime) override
+        double getLevelDt(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
+                          const double dtTime, const bool /*initialTime*/) override
         {
             return dtTime;
         }
 
 
-        double getMaxFinerLevelDt(const int finerLevelNumber, const double coarseDt,
+        double getMaxFinerLevelDt(const int /*finerLevelNumber*/, const double coarseDt,
                                   const SAMRAI::hier::IntVector& ratio) override
         {
             return coarseDt / (ratio.max() * ratio.max()) / 2.;
@@ -398,9 +400,9 @@ namespace solver
 
         void
         standardLevelSynchronization(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                     const int coarsestLevel, const int finestLevel,
-                                     const double syncTime,
-                                     const std::vector<double>& oldTimes) override
+                                     const int /*coarsestLevel*/, const int finestLevel,
+                                     const double /*syncTime*/,
+                                     const std::vector<double>& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
             auto& toCoarser = getMessengerWithCoarser_(finestLevel);
@@ -411,20 +413,21 @@ namespace solver
 
 
 
-        void synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                  const int coarsestLevel, const int finestLevel,
-                                  const double syncTime, const bool initialTime) override
-        {
-        }
-
-
-        void resetTimeDependentData(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                                    const double newTime, const bool canBeRefined) override
-        {
-        }
-
         void
-        resetDataToPreadvanceState(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level) override
+        synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                             const int /*coarsestLevel*/, const int /*finestLevel*/,
+                             const double /*syncTime*/, const bool /*initialTime*/) override
+        {
+        }
+
+
+        void resetTimeDependentData(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
+                                    const double /*newTime*/, const bool /*canBeRefined*/) override
+        {
+        }
+
+        void resetDataToPreadvanceState(
+            const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/) override
         {
         }
 

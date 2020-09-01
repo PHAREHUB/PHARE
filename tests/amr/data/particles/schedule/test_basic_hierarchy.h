@@ -94,8 +94,6 @@ public:
 
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
-
-        auto particlesVariableTypeName = typeid(ParticlesVariable<dimension, interpOrder>).name();
     }
 
 

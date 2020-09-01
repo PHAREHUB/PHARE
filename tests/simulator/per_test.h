@@ -56,7 +56,7 @@ struct TestSimulator : public HierarchyMaker<_dim>,
             input = std::make_shared<PHARE::initializer::PythonDataProvider>(job_py);
             input->read();
         }
-        auto st = SAMRAI::hier::VariableDatabase::getDatabase();
+        SAMRAI::hier::VariableDatabase::getDatabase();
         return PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     }
 

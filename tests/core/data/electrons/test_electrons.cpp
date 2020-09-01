@@ -18,9 +18,9 @@ using namespace PHARE::core;
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
-double density(double x)
+double density(double /*x*/)
 {
-    return /*x * +*/ 2.;
+    return 2.;
 }
 
 double vx(double /*x*/)

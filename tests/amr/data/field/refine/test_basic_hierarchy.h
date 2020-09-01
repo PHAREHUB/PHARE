@@ -147,9 +147,6 @@ public:
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
 
-        auto fieldVariableTypeName
-            = typeid(FieldVariable<typename GridLayoutT::implT, FieldT>).name();
-
 
         // gridGeometry_->addRefineOperator(fieldVariableTypeName, refineOperator_);
     }
