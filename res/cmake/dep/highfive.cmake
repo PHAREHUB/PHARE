@@ -1,14 +1,23 @@
 
+
+set (PHARE_HAS_HIGHFIVE "0")
 if(HighFive)
 
-  if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive)
+  set (HIGHFIVE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive)
+
+  if (NOT EXISTS ${HIGHFIVE_SRC})
     execute_process(
-      COMMAND ${Git} clone https://github.com/BlueBrain/HighFive ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive -b master --depth 1
+      COMMAND ${Git} clone https://github.com/BlueBrain/HighFive ${HIGHFIVE_SRC} -b master --depth 1
     )
+
+    # Remove symlinks that cause infinite looping
+    #  https://github.com/BlueBrain/HighFive/issues/338
+    file(REMOVE_RECURSE ${HIGHFIVE_SRC}/tests)
+
   endif()
 
   include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive/include
+    ${HIGHFIVE_SRC}/include
   )
 
   message("HighFive enabled - checking HDF5")
@@ -33,4 +42,5 @@ if(HighFive)
   message(STATUS "HDF5_LIBRARIES " ${HDF5_LIBRARIES})
   message(STATUS "HDF5_INCLUDE_DIRS " ${HDF5_INCLUDE_DIRS})
   message(STATUS "HDF5_LIBRARY_PATH " ${HDF5_LIBRARY_PATH})
+  set (PHARE_HAS_HIGHFIVE "1")
 endif()
