@@ -14,6 +14,8 @@
 
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
 #define PHARE_DEBUG_DO(...) __VA_ARGS__
+#else
+#define PHARE_DEBUG_DO(...)
 #endif
 
 
@@ -128,7 +130,7 @@ namespace core
     };
 
     template<std::size_t To_Size, std::size_t From_Size, typename Type>
-    constexpr decltype(auto) sized_array(std::array<Type, From_Size> const& from)
+    constexpr std::array<Type, To_Size> sized_array(std::array<Type, From_Size> const& from)
     {
         static_assert(To_Size <= From_Size, "invalid sized_array Size template, too large");
 
@@ -145,7 +147,7 @@ namespace core
 
 
     template<std::size_t To_Size, typename... Args>
-    constexpr decltype(auto) as_sized_array(Args&&... args)
+    constexpr auto as_sized_array(Args&&... args)
     {
         auto arr = std::array{std::forward<decltype(args)>(args)...};
 
@@ -153,7 +155,7 @@ namespace core
     }
 
     template<typename Type, std::size_t size>
-    constexpr decltype(auto) ConstArray(Type val = 0)
+    constexpr std::array<Type, size> ConstArray(Type val = 0)
     {
         std::array<Type, size> arr{};
         for (uint8_t i = 0; i < size; i++)
