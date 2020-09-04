@@ -1,6 +1,7 @@
 
 
-#include "include.h"
+#include "phare/phare.h"
+#include "simulator/simulator.h"
 #include "amr/wrappers/hierarchy.h"
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
@@ -54,7 +55,7 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
-    RuntimeDiagnosticInterface diags{*simulator, *hierarchy};
+    PHARE::SimulatorDiagnostics diags{*simulator, *hierarchy};
 
 
     [[maybe_unused]] auto time = simulator->startTime();

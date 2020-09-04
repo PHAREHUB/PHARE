@@ -10,7 +10,7 @@
 #include "core/data/particles/particle.h"
 #include "core/utilities/meta/meta_utilities.h"
 #include "amr/wrappers/hierarchy.h"
-#include "phare/include.h"
+#include "phare/phare.h"
 #include "simulator/simulator.h"
 
 #include "python3/particles.h"
@@ -101,7 +101,7 @@ void declare(py::module& m)
     });
     m.def("make_diagnostic_manager",
           [](std::shared_ptr<Sim> const& sim, std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-              return std::make_shared<RuntimeDiagnosticInterface>(*sim, *hier);
+              return std::make_shared<SimulatorDiagnostics>(*sim, *hier);
           });
 
     using DW = DataWrangler<dim, interp, nbRefinedPart>;
@@ -177,13 +177,13 @@ PYBIND11_MODULE(cpp, m)
         return std::shared_ptr<ISimulator>{std::move(PHARE::getSimulator(hier))};
     });
 
-    py::class_<RuntimeDiagnosticInterface, std::shared_ptr<RuntimeDiagnosticInterface>>(
-        m, "IDiagnosticsManager")
-        .def("dump", &RuntimeDiagnosticInterface::dump, py::arg("timestamp"), py::arg("timestep"));
+    py::class_<SimulatorDiagnostics, std::shared_ptr<SimulatorDiagnostics>>(m,
+                                                                            "IDiagnosticsManager")
+        .def("dump", &SimulatorDiagnostics::dump, py::arg("timestamp"), py::arg("timestep"));
 
     m.def("make_diagnostic_manager", [](std::shared_ptr<ISimulator> const& sim,
                                         std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-        return std::make_shared<RuntimeDiagnosticInterface>(*sim, *hier);
+        return std::make_shared<SimulatorDiagnostics>(*sim, *hier);
     });
 
     m.def("mpi_size", []() {
