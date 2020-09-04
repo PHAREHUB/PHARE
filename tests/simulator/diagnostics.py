@@ -1,13 +1,11 @@
 
 #!/usr/bin/env python3
-#
-# formatted with black
 
 
 
 from pybindlibs import cpp
 from tests.diagnostic import dump_all_diags
-from tests.simulator import populate_simulation
+from tests.simulator import NoOverwriteDict, populate_simulation
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy import hierarchy_from
 import pyphare.pharein as ph
@@ -21,6 +19,7 @@ diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
 
 
 def dup(dic):
+    dic = NoOverwriteDict(dic)
     dic.update(diags.copy())
     dic.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
     return dic

@@ -8,13 +8,14 @@ import os, sys, unittest, yaml
 import numpy as np
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
+from tests.simulator import NoOverwriteDict
 from tests.simulator import populate_simulation
 from pyphare.cpp import splitter_type
 
 from tests.simulator.config import project_root
 
 out = "phare_outputs/refined_particle_nbr"
-diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
+diags = NoOverwriteDict({"diag_options": {"format": "phareh5", "options": {"dir": out}}})
 
 
 class SimulatorRefinedParticleNbr(unittest.TestCase):
@@ -54,6 +55,8 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def _do_dim(self, dim, input, min_diff, max_diff):
         from pyphare.pharein.simulation import valid_refined_particle_nbr
+        input = input.copy() # copy dict as keys are not rewritable
+        # otherwise "input["refined_particle_nbr"] = refined_particle_nbr" would fail the second time
 
         for interp in range(1, 4):
 
