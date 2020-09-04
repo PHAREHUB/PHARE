@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <string>
+#include <cassert>
 #include <cstring>
 
 // clang-format off
@@ -69,21 +70,11 @@ void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
 
 template<typename Data, typename SendBuff, typename RcvBuff>
 void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int> const& recvcounts,
-                     int const mpi_size)
+                     std::vector<int> const& displs, int const mpi_size)
 {
+    assert(recvcounts.size() == displs.size() and static_cast<int>(displs.size()) == mpi_size);
+
     _gather<Data>([&](auto const mpi_type) {
-        std::vector<int> displs(mpi_size);
-
-        {
-            int offset = 0;
-
-            for (int i = 0; i < mpi_size; i++)
-            {
-                displs[i] = offset;
-                offset += recvcounts[i];
-            }
-        }
-
         MPI_Allgatherv(        // MPI_Allgatherv
             sendBuff.data(),   //   void         *sendbuf,
             sendBuff.size(),   //   int          sendcount,
@@ -105,9 +96,10 @@ std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    auto const perMPISize = collect(static_cast<int>(sendBuff.size()), mpi_size);
+    std::vector<int> const perMPISize = collect(static_cast<int>(sendBuff.size()), mpi_size);
+    std::vector<int> const displs     = core::displacementFrom(perMPISize);
     std::vector<Data> rcvBuff(std::accumulate(perMPISize.begin(), perMPISize.end(), 0));
-    _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, mpi_size);
+    _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, displs, mpi_size);
 
     std::size_t offset = 0;
     std::vector<Vector> collected;
@@ -126,60 +118,41 @@ SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
     SpanSet<T, int> rcvBuff{collect(static_cast<int>(sendBuff.size()), mpi_size)};
-    _collect_vector<T>(sendBuff, rcvBuff, rcvBuff.sizes, mpi_size);
+    _collect_vector<T>(sendBuff, rcvBuff, rcvBuff.sizes, rcvBuff.displs, mpi_size);
 
     return rcvBuff;
 }
 
 
 
-template<typename Container>
-auto collectArrays(Container const& data, int mpi_size)
+template<typename T, std::size_t size>
+auto collectArrays(std::array<T, size> const& arr, int mpi_size)
 {
+    using Array = std::array<T, size>;
+    using Data  = typename Array::value_type;
+
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    std::size_t maxMPISize = 0;
-    if constexpr (core::is_std_vector_v<Container>)
-        maxMPISize = max(data.size(), mpi_size);
-    else if constexpr (core::is_std_array_v<typename Container::value_type, 1>)
-        maxMPISize = data.size();
+    std::size_t maxMPISize = arr.size();
+    std::vector<Data> datas(maxMPISize * mpi_size);
+    _collect(arr.data(), datas, arr.size(), maxMPISize);
 
-    auto perMPISize = collect(data.size(), mpi_size);
+    std::vector<Array> values(mpi_size);
+    for (int i = 0; i < mpi_size; i++)
+        std::memcpy(&values[i], &datas[maxMPISize * i], maxMPISize);
 
-    std::vector<typename Container::value_type> datas(maxMPISize * mpi_size);
-    _collect(data.data(), datas, data.size(), maxMPISize);
-    if constexpr (core::is_std_vector_v<Container>)
-    {
-        std::vector<Container> values;
-        for (int i = 0; i < mpi_size; i++)
-        {
-            auto const* const array = &datas[maxMPISize * i];
-            values.emplace_back(array, array + perMPISize[i]);
-        }
-        return values;
-    }
-    else
-    {
-        std::vector<Container> values(mpi_size);
-        for (int i = 0; i < mpi_size; i++)
-        {
-            auto* array = &datas[maxMPISize * i];
-            auto* valp  = &values[i];
-            std::memcpy(valp, array, maxMPISize);
-        }
-        return values;
-    }
+    return values;
 }
 
 
-template<typename T>
-SpanSet<T, int> collect_raw(std::vector<T> const& data, int mpi_size)
+template<typename Vector>
+SpanSet<typename Vector::value_type, int> collect_raw(Vector const& data, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    return collectSpanSet<T>(data, mpi_size);
+    return collectSpanSet<typename Vector::value_type>(data, mpi_size);
 }
 
 

@@ -6,12 +6,15 @@
 #include <cstddef> // for size_t
 #include <numeric> // for accumulate
 #include <vector>  // for vector
+#include "core/utilities/types.h"
 
 namespace PHARE::core
 {
 template<typename T, typename SIZE = size_t>
 struct Span
 {
+    using value_type = T;
+
     T& operator[](SIZE i) const { return ptr[i]; }
     T const* const& data() const { return ptr; }
     T const* const& begin() const { return ptr; }
@@ -34,22 +37,16 @@ struct SpanSet
     SpanSet(std::vector<SIZE>&& sizes_)
         : size{std::accumulate(sizes_.begin(), sizes_.end(), 0)}
         , sizes(sizes_)
-        , displs(sizes_.size())
+        , displs(core::displacementFrom(sizes))
         , vec(size)
     {
-        SIZE off = 0;
-        for (SIZE i = 0; i < static_cast<SIZE>(sizes_.size()); i++)
-        {
-            displs[i] = off;
-            off += sizes_[i];
-        }
     }
 
     SpanSet(SpanSet&& from)
         : size{from.size}
-        , sizes{std::move(from.sizes)}
-        , displs{std::move(from.displs)}
-        , vec{std::move(from.vec)}
+        , sizes(std::move(from.sizes))
+        , displs(std::move(from.displs))
+        , vec(std::move(from.vec))
     {
     }
 
@@ -85,7 +82,8 @@ struct SpanSet
     auto cend() const { return iterator(this); }
 
     SIZE size;
-    std::vector<SIZE> sizes, displs;
+    std::vector<SIZE> sizes;
+    std::vector<SIZE> displs;
     std::vector<T> vec;
 };
 } // namespace PHARE::core

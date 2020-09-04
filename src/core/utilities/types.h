@@ -163,6 +163,19 @@ namespace core
         return arr;
     }
 
+    template<typename Type>
+    std::vector<Type> displacementFrom(std::vector<Type> const& input)
+    {
+        std::vector<Type> displs(input.size());
+        Type off = 0;
+        for (Type i = 0; i < static_cast<Type>(input.size()); i++)
+        {
+            displs[i] = off;
+            off += input[i];
+        }
+        return displs;
+    }
+
 
 } // namespace core
 } // namespace PHARE
