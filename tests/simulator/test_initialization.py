@@ -24,8 +24,8 @@ class InitializationTest(unittest.TestCase):
                      cells= 120,
                      dl=0.1):
 
-        from pyphare.pharein import globals
-        globals.sim =None
+        from pyphare.pharein import global_vars
+        global_vars.sim =None
 
         Simulation(
             smallest_patch_size=smallest_patch_size,
@@ -45,12 +45,12 @@ class InitializationTest(unittest.TestCase):
             return np.zeros_like(x)+0.3
 
         def by(x):
-            from pyphare.pharein.globals import sim
+            from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             return 0.1*np.cos(2*np.pi*x/L[0])
 
         def bz(x):
-            from pyphare.pharein.globals import sim
+            from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             return 0.1*np.sin(2*np.pi*x/L[0])
 
@@ -58,17 +58,17 @@ class InitializationTest(unittest.TestCase):
             return 1.
 
         def vx(x):
-            from pyphare.pharein.globals import sim
+            from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             return 0.1*np.cos(2*np.pi*x/L[0]) + 0.2
 
         def vy(x):
-            from pyphare.pharein.globals import sim
+            from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             return 0.1*np.cos(2*np.pi*x/L[0])
 
         def vz(x):
-            from pyphare.pharein.globals import sim
+            from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             return 0.1*np.sin(2*np.pi*x/L[0])
 
@@ -140,7 +140,7 @@ class InitializationTest(unittest.TestCase):
                                     write_timestamps=np.zeros(1),
                                     population_name=pop)
 
-        simulator = Simulator(globals.sim)
+        simulator = Simulator(global_vars.sim)
         simulator.initialize()
         simulator.diagnostics().dump(timestamp=0, timestep=1)
 
@@ -175,8 +175,8 @@ class InitializationTest(unittest.TestCase):
         print("test_B_is_as_provided_by_user : interp_order : {}".format(interp_order))
         hier = self.getHierarchy(interp_order, {"L0": {"B0": [(10, ), (20, )]}}, "b")
 
-        from pyphare.pharein import globals
-        model = globals.sim.model
+        from pyphare.pharein import global_vars
+        model = global_vars.sim.model
         bx_fn = model.model_dict["bx"]
         by_fn = model.model_dict["by"]
         bz_fn = model.model_dict["bz"]
@@ -259,8 +259,8 @@ class InitializationTest(unittest.TestCase):
                                  "moments",
                                  nbr_part_per_cell=10000, beam=True)
 
-        from pyphare.pharein import globals
-        model = globals.sim.model
+        from pyphare.pharein import global_vars
+        model = global_vars.sim.model
         # protons and beam have same bulk vel here so take
         # only proton func.
         vx_fn = model.model_dict["protons"]["vx"]
@@ -313,8 +313,8 @@ class InitializationTest(unittest.TestCase):
                                  "moments",
                                  nbr_part_per_cell=10000, beam=True)
 
-        from pyphare.pharein import globals
-        model = globals.sim.model
+        from pyphare.pharein import global_vars
+        model = global_vars.sim.model
         proton_density_fn = model.model_dict["protons"]["density"]
         beam_density_fn = model.model_dict["beam"]["density"]
 
@@ -376,8 +376,8 @@ class InitializationTest(unittest.TestCase):
                                      cells=960,
                                      dl=0.0125)
 
-            from pyphare.pharein import globals
-            model   = globals.sim.model
+            from pyphare.pharein import global_vars
+            model   = global_vars.sim.model
             protons = model.model_dict["protons"]
             density_fn = protons["density"]
 

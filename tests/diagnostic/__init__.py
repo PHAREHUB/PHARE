@@ -3,7 +3,7 @@
 def dump_all_diags(pops=[]):
     import pyphare.pharein as ph, numpy as np
 
-    sim = ph.globals.sim
+    sim = ph.global_vars.sim
 
     timestamps = np.arange(0, sim.time_step+3)*sim.time_step
 

@@ -48,7 +48,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
 
 
 def pi_over_max_domain():
-    return [np.pi / max_domain for max_domain in ph.globals.sim.simulation_domain()]
+    return [np.pi / max_domain for max_domain in ph.global_vars.sim.simulation_domain()]
 
 
 def fn_2d_periodic(sim, x, y):
@@ -80,7 +80,7 @@ def density_2d_periodic(sim, x, y):
 def defaultPopulationSettings():
     background_particles = 0.1  # avoids 0 density
 
-    sim = ph.globals.sim
+    sim = ph.global_vars.sim
     dim = sim.dims
 
     xmax = sim.simulation_domain()[0]
@@ -114,7 +114,7 @@ def defaultPopulationSettings():
 
 
 def makeBasicModel(extra_pops={}):
-    sim = ph.globals.sim
+    sim = ph.global_vars.sim
     dim = sim.dims
     pi_over_xmax = pi_over_max_domain()[0]
     func_per_dim = {
@@ -153,7 +153,7 @@ def makeBasicModel(extra_pops={}):
 
 
 def populate_simulation(dim, interp, **input):
-    ph.globals.sim = None
+    ph.global_vars.sim = None
     simulation = ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
     extra_pops = {}
     if "populations" in input:

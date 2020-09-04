@@ -8,9 +8,9 @@ class DataWrangler:
         from .. import pharein as ph
         from pybindlibs import cpp
 
-        self.dim = ph.globals.sim.dims
-        self.interp = ph.globals.sim.interp_order
-        self.refined_particle_nbr = ph.globals.sim.refined_particle_nbr
+        self.dim = ph.global_vars.sim.dims
+        self.interp = ph.global_vars.sim.interp_order
+        self.refined_particle_nbr = ph.global_vars.sim.refined_particle_nbr
         self.cpp = getattr(
             cpp,
             "DataWrangler_" + str(self.dim) + "_" + str(self.interp)+ "_" + str(self.refined_particle_nbr),

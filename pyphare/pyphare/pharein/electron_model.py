@@ -1,5 +1,5 @@
 
-from . import globals
+from . import global_vars
 
 class IsothermalClosure(object):
 
@@ -32,7 +32,7 @@ class ElectronModel(object):
         else:
             self.closure=None
 
-        globals.sim.set_electrons(self)
+        global_vars.sim.set_electrons(self)
 
 
     def dict_path(self):
