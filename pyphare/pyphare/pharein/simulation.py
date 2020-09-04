@@ -342,7 +342,8 @@ def checker(func):
         kwargs["origin"] = check_origin(dims, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(dims, **kwargs)
-        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5') #TODO add checker with valid formats
+        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5')
+        assert kwargs["diag_export_format"] in ["hdf5"] # only hdf5 supported for now
 
         largest, smallest = check_patch_size(**kwargs)
         kwargs["smallest_patch_size"] = smallest
