@@ -6,11 +6,10 @@ set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 
 # Link Time Optimisation flags - is disabled if coverage is enabled
 set (PHARE_INTERPROCEDURAL_OPTIMIZATION FALSE)
-include(CheckIPOSupported)
-check_ipo_supported(RESULT ipo_supported OUTPUT error)
-if(ipo_supported)
-  set (PHARE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif(ipo_supported)
+if(withIPO)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT PHARE_INTERPROCEDURAL_OPTIMIZATION OUTPUT error)
+endif(withIPO)
 
 if(devMode) # -DdevMode=ON
   # Having quotes on strings here has lead to quotes being added to the compile string, so avoid.
