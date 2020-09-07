@@ -85,8 +85,8 @@ public:
         auto collect = [&](PatchData<std::vector<double>, dimension> const& patch_data) {
             auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
             auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
-            auto lower    = core::mpi::collect_raw(to_span(patch_data.lower), mpi_size);
-            auto upper    = core::mpi::collect_raw(to_span(patch_data.upper), mpi_size);
+            auto lower    = core::mpi::collect_raw(makeSpan(patch_data.lower), mpi_size);
+            auto upper    = core::mpi::collect_raw(makeSpan(patch_data.upper), mpi_size);
             auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
             auto datas    = core::mpi::collect(patch_data.data, mpi_size);
 

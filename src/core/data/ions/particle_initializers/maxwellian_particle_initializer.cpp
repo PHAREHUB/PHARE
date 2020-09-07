@@ -1,5 +1,4 @@
 
-//#include "data/ions/particle_initializers/fluid_particle_initializer.h"
 #include <array>
 #include <random>
 
@@ -82,7 +81,6 @@ namespace core
             basis[2][2] = basis[0][0] * basis[1][1] - basis[0][1] * basis[1][0];
         }
     }
-
 
 } // namespace core
 } // namespace PHARE

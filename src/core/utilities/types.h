@@ -176,6 +176,13 @@ namespace core
         return displs;
     }
 
+    template<typename T>
+    struct StackVar
+    {
+        using value_type = T;
+
+        T var;
+    };
 
 } // namespace core
 } // namespace PHARE

@@ -18,9 +18,9 @@ namespace core
         VecFieldInitializer() = default;
 
         VecFieldInitializer(initializer::PHAREDict dict)
-            : x_{dict["x_component"].template to<initializer::ScalarFunction<dimension>>()}
-            , y_{dict["y_component"].template to<initializer::ScalarFunction<dimension>>()}
-            , z_{dict["z_component"].template to<initializer::ScalarFunction<dimension>>()}
+            : x_{dict["x_component"].template to<initializer::InitFunction<dimension>>()}
+            , y_{dict["y_component"].template to<initializer::InitFunction<dimension>>()}
+            , z_{dict["z_component"].template to<initializer::InitFunction<dimension>>()}
         {
         }
 
@@ -31,65 +31,37 @@ namespace core
             static_assert(GridLayout::dimension == VecField::dimension,
                           "dimension mismatch between vecfield and gridlayout");
 
-            auto& vx = v.getComponent(Component::X);
-            auto& vy = v.getComponent(Component::Y);
-            auto& vz = v.getComponent(Component::Z);
-
-            initializeComponent_(vx, layout, x_);
-            initializeComponent_(vy, layout, y_);
-            initializeComponent_(vz, layout, z_);
+            initializeComponent_(v.getComponent(Component::X), layout, x_);
+            initializeComponent_(v.getComponent(Component::Y), layout, y_);
+            initializeComponent_(v.getComponent(Component::Z), layout, z_);
         }
 
     private:
         template<typename Field, typename GridLayout>
         void initializeComponent_(Field& field, GridLayout const& layout,
-                                  initializer::ScalarFunction<dimension> const& init)
+                                  initializer::InitFunction<dimension> const& init)
         {
-            auto psi_X = layout.ghostStartIndex(field, Direction::X);
-            auto pei_X = layout.ghostEndIndex(field, Direction::X);
+            auto indices      = layout.ghostStartToEndIndices(field, /*plus=*/1);
+            auto const coords = layout.template gridVectors</*ByField=*/true>(
+                indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
+                    return gridLayout.fieldNodeCoordinates(field_, gridLayout.origin(), args...);
+                });
 
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                if constexpr (dimension > 1)
-                {
-                    auto psi_Y = layout.ghostStartIndex(field, Direction::Y);
-                    auto pei_Y = layout.ghostEndIndex(field, Direction::Y);
+            // keep grid data alive
+            std::shared_ptr<Span<double>> gridPtr
+                = std::apply([&](auto&... args) { return init(args...); }, coords);
+            Span<double>& grid = *gridPtr;
 
-                    for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                    {
-                        if constexpr (dimension > 2)
-                        {
-                            auto psi_Z = layout.ghostStartIndex(field, Direction::Z);
-                            auto pei_Z = layout.ghostEndIndex(field, Direction::Z);
-
-                            for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                            {
-                                auto pos = layout.fieldNodeCoordinates(field, layout.origin(), ix,
-                                                                       iy, iz);
-                                field(ix, iy, iz) = init(pos[0], pos[1], pos[2]);
-                            }
-                        }
-                        else // 2D
-                        {
-                            auto pos = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
-                            field(ix, iy) = init(pos[0], pos[1]);
-                        }
-                    }
-                }
-                else // 1D
-                {
-                    auto pos  = layout.fieldNodeCoordinates(field, layout.origin(), ix);
-                    field(ix) = init(pos[0]);
-                }
-            }
+            for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)
+                std::apply([&](auto&... args) { field(args...) = grid[cell_idx]; },
+                           indices[cell_idx]);
         }
 
 
 
-
-        initializer::ScalarFunction<dimension> x_;
-        initializer::ScalarFunction<dimension> y_;
-        initializer::ScalarFunction<dimension> z_;
+        initializer::InitFunction<dimension> x_;
+        initializer::InitFunction<dimension> y_;
+        initializer::InitFunction<dimension> z_;
     };
 
 } // namespace core

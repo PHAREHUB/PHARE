@@ -9,6 +9,8 @@
 #include "core/data/ions/ions.h"
 #include "core/data/electromag/electromag.h"
 
+#include "tests/initializer/init_functions.h"
+using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -17,82 +19,10 @@ using namespace PHARE::core;
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-
-double density(double /*x*/)
-{
-    return 2.;
-}
-
-double vx(double /*x*/)
-{
-    return 1.;
-}
+static constexpr double Te               = 0.12;
 
 
-double vy(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vz(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vthx(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vthy(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vthz(double /*x*/)
-{
-    return 1.;
-}
-
-
-double bx(double x)
-{
-    return x /* + 1.*/;
-}
-
-double by(double x)
-{
-    return x /* + 2.*/;
-}
-
-double bz(double x)
-{
-    return x /*+ 3.*/;
-}
-
-double ex(double x)
-{
-    return x /* + 4.*/;
-}
-
-double ey(double x)
-{
-    return x /* + 5.*/;
-}
-
-double ez(double x)
-{
-    return x /* + 6.*/;
-}
-
-const double Te = 0.12;
-
-
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
 PHARE::initializer::PHAREDict createDict()
 {
@@ -101,26 +31,26 @@ PHARE::initializer::PHAREDict createDict()
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]                            = 1.;
     dict["ions"]["pop0"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
+    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
+        = static_cast<InitFunctionT>(vx);
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
+        = static_cast<InitFunctionT>(vy);
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
+        = static_cast<InitFunctionT>(vz);
 
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
+        = static_cast<InitFunctionT>(vthx);
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
+        = static_cast<InitFunctionT>(vthy);
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
+        = static_cast<InitFunctionT>(vthz);
 
     dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
     dict["ions"]["pop0"]["particle_initializer"]["charge"]            = -1.;
@@ -130,13 +60,9 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["electric"]["name"] = std::string{"E"};
     dict["electromag"]["magnetic"]["name"] = std::string{"B"};
 
-    dict["electromag"]["electric"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(ex);
-    dict["electromag"]["electric"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(ey);
-    dict["electromag"]["electric"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(ez);
-
-    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
-    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
-    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
+    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<InitFunctionT>(bx);
+    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<InitFunctionT>(by);
+    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<InitFunctionT>(bz);
 
     dict["electrons"]["pressure_closure"]["name"] = std::string{"isothermal"};
     dict["electrons"]["pressure_closure"]["Te"]   = Te;
@@ -149,9 +75,9 @@ PHARE::initializer::PHAREDict createDict()
 using GridImplYee1D = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D     = GridLayout<GridImplYee1D>;
 
-using VecField1D      = VecField<NdArrayVector<1>, HybridQuantity>;
-using Field1D         = typename VecField1D::field_type;
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using VecField1D    = VecField<NdArrayVector<1>, HybridQuantity>;
+using Field1D       = typename VecField1D::field_type;
+using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
 using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
 using IonsT           = Ions<IonPopulation1D, GridYee1D>;

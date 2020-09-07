@@ -8,87 +8,65 @@ using namespace PHARE::core;
 
 
 
-double density(double /*x*/)
+using Param  = std::vector<double> const&;
+using Return = std::shared_ptr<PHARE::core::Span<double>>;
+
+Return density(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vx(double /*x*/)
+Return vx(Param x)
 {
-    return 0.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+}
+
+Return vy(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+}
+
+Return vz(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+}
+
+Return vthx(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), .1);
+}
+
+Return vthy(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), .1);
+}
+
+Return vthz(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), .1);
+}
+
+Return bx(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+}
+
+Return by(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+}
+
+Return bz(Param x)
+{
+    return std::make_shared<VectorSpan<double>>(x.size(), 0);
 }
 
 
-double vy(double /*x*/)
-{
-    return 0.;
-}
-
-
-double vz(double /*x*/)
-{
-    return 0.;
-}
-
-
-double vthx(double /*x*/)
-{
-    return 0.1;
-}
-
-
-double vthy(double /*x*/)
-{
-    return 0.1;
-}
-
-
-double vthz(double /*x*/)
-{
-    return 0.1;
-}
-
-
-double bx(double x)
-{
-    (void)x;
-    return 0.;
-}
-
-double by(double x)
-{
-    (void)x;
-    return 0.;
-}
-
-double bz(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-double ex(double x)
-{
-    (void)x;
-    return 0.;
-}
-
-double ey(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-double ez(double x)
-{
-    (void)x;
-    return 0.;
-}
 
 
 int nbrPartPerCell = 1000;
 
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
 PHARE::initializer::PHAREDict createDict()
 {
@@ -100,26 +78,26 @@ PHARE::initializer::PHAREDict createDict()
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]                            = 1.;
     dict["ions"]["pop0"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
+    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
+        = static_cast<InitFunctionT>(vx);
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
+        = static_cast<InitFunctionT>(vy);
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
+        = static_cast<InitFunctionT>(vz);
 
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
+        = static_cast<InitFunctionT>(vthx);
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
+        = static_cast<InitFunctionT>(vthy);
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
+        = static_cast<InitFunctionT>(vthz);
 
 
     dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
@@ -129,26 +107,26 @@ PHARE::initializer::PHAREDict createDict()
     dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
     dict["ions"]["pop1"]["mass"]                            = 1.;
     dict["ions"]["pop1"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop1"]["particle_initializer"]["density"] = static_cast<ScalarFunctionT>(density);
+    dict["ions"]["pop1"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
 
     dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<ScalarFunctionT>(vx);
+        = static_cast<InitFunctionT>(vx);
 
     dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<ScalarFunctionT>(vy);
+        = static_cast<InitFunctionT>(vy);
 
     dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<ScalarFunctionT>(vz);
+        = static_cast<InitFunctionT>(vz);
 
 
     dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<ScalarFunctionT>(vthx);
+        = static_cast<InitFunctionT>(vthx);
 
     dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<ScalarFunctionT>(vthy);
+        = static_cast<InitFunctionT>(vthy);
 
     dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<ScalarFunctionT>(vthz);
+        = static_cast<InitFunctionT>(vthz);
 
 
     dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
@@ -159,13 +137,9 @@ PHARE::initializer::PHAREDict createDict()
     dict["electromag"]["electric"]["name"] = std::string{"E"};
     dict["electromag"]["magnetic"]["name"] = std::string{"B"};
 
-    dict["electromag"]["electric"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(ex);
-    dict["electromag"]["electric"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(ey);
-    dict["electromag"]["electric"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(ez);
-
-    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<ScalarFunctionT>(bx);
-    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<ScalarFunctionT>(by);
-    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<ScalarFunctionT>(bz);
+    dict["electromag"]["magnetic"]["initializer"]["x_component"] = static_cast<InitFunctionT>(bx);
+    dict["electromag"]["magnetic"]["initializer"]["y_component"] = static_cast<InitFunctionT>(by);
+    dict["electromag"]["magnetic"]["initializer"]["z_component"] = static_cast<InitFunctionT>(bz);
 
     return dict;
 }
@@ -691,32 +665,42 @@ struct IonUpdaterTest : public ::testing::Test
 
 
 
-
     void checkDensityIsAsPrescribed()
     {
-        auto& populations = this->ions.getRunTimeResourcesUserList();
-
-        auto& protonDensity = populations[0].density();
-        auto& alphaDensity  = populations[1].density();
-
         auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
         auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
-
         auto check = [&](auto const& density, auto const& function) {
+            std::vector<std::size_t> ixes;
+            std::vector<double> x;
+
             for (auto ix = ix0; ix < ix1; ++ix)
             {
-                auto coord = layout.cellCenteredCoordinates(ix);
-                auto x     = coord[0];
+                ixes.emplace_back(ix);
+                x.emplace_back(layout.cellCenteredCoordinates(ix)[0]);
+            }
 
-                auto diff = std::abs(density(ix) - function(x));
+            auto functionXPtr = function(x); // keep alive
+            EXPECT_EQ(functionXPtr->size(), (ix1 - ix0));
+
+            auto& functionX = *functionXPtr;
+
+            for (std::size_t i = 0; i < functionX.size(); i++)
+            {
+                auto ix   = ixes[i];
+                auto diff = std::abs(density(ix) - functionX[i]);
 
                 EXPECT_GE(0.07, diff);
+
                 if (diff >= 0.07)
-                    std::cout << "actual : " << density(ix) << " prescribed : " << function(x)
+                    std::cout << "actual : " << density(ix) << " prescribed : " << functionX[i]
                               << " diff : " << diff << " ix : " << ix << "\n";
             }
         };
+
+        auto& populations   = this->ions.getRunTimeResourcesUserList();
+        auto& protonDensity = populations[0].density();
+        auto& alphaDensity  = populations[1].density();
 
         check(protonDensity, density);
         check(alphaDensity, density);

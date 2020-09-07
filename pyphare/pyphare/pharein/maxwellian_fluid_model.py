@@ -1,6 +1,8 @@
 
+
 from ..core import phare_utilities
 from . import global_vars
+
 
 class MaxwellianFluidModel(object):
 
@@ -156,7 +158,6 @@ class MaxwellianFluidModel(object):
             for pop_index, pop in enumerate(self.populations):
                 for v in ["vth", "v"]:
                     valid &= periodic_function_check(v, model_dict[pop])
-            for em in ["b"]:
-                valid &= periodic_function_check(em, model_dict)
+            valid &= periodic_function_check("b", model_dict)
             if not valid:
                 print("Warning: Simulation is periodic but some functions are not")

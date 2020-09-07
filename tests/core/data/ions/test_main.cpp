@@ -19,6 +19,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include "tests/initializer/init_functions.h"
+using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 using namespace PHARE::core;
 
@@ -30,61 +32,11 @@ using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleAr
 
 
 
-double density(double x)
-{
-    return x * x + 2.;
-}
-
-
-double vx(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vy(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vz(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vthx(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-double vthy(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-
-double vthz(double x)
-{
-    (void)x;
-    return 1.;
-}
-
-
-
 class theIons : public ::testing::Test
 {
 protected:
-    using VecField1D      = VecField<NdArrayVector<1>, HybridQuantity>;
-    using ScalarFunctionT = PHARE::initializer::ScalarFunction<1>;
+    using VecField1D    = VecField<NdArrayVector<1>, HybridQuantity>;
+    using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
     using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
     Ions<IonPopulation1D, GridYee1D> ions;
@@ -98,26 +50,26 @@ protected:
         dict["ions"]["pop0"]["ParticleInitializer"]["name"]
             = std::string{"MaxwellianParticleInitializer"};
         dict["ions"]["pop0"]["ParticleInitializer"]["density"]
-            = static_cast<ScalarFunctionT>(density);
+            = static_cast<InitFunctionT>(density);
 
         dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT>(vx);
+            = static_cast<InitFunctionT>(vx);
 
         dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT>(vy);
+            = static_cast<InitFunctionT>(vy);
 
         dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT>(vz);
+            = static_cast<InitFunctionT>(vz);
 
 
         dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT>(vthx);
+            = static_cast<InitFunctionT>(vthx);
 
         dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT>(vthy);
+            = static_cast<InitFunctionT>(vthy);
 
         dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT>(vthz);
+            = static_cast<InitFunctionT>(vthz);
 
 
         dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
@@ -129,26 +81,26 @@ protected:
         dict["ions"]["pop1"]["ParticleInitializer"]["name"]
             = std::string{"MaxwellianParticleInitializer"};
         dict["ions"]["pop1"]["ParticleInitializer"]["density"]
-            = static_cast<ScalarFunctionT>(density);
+            = static_cast<InitFunctionT>(density);
 
         dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT>(vx);
+            = static_cast<InitFunctionT>(vx);
 
         dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT>(vy);
+            = static_cast<InitFunctionT>(vy);
 
         dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT>(vz);
+            = static_cast<InitFunctionT>(vz);
 
 
         dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT>(vthx);
+            = static_cast<InitFunctionT>(vthx);
 
         dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT>(vthy);
+            = static_cast<InitFunctionT>(vthy);
 
         dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT>(vthz);
+            = static_cast<InitFunctionT>(vthz);
 
 
         dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};

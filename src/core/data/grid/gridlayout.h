@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cmath>
+#include <tuple>
 #include <cstddef>
 #include <type_traits>
 
@@ -158,8 +159,156 @@ namespace core
             return (interp_order % 2 == 0 ? interp_order / 2 + 1 : (interp_order + 1) / 2);
         }
 
+        template<typename Centering, typename Direction>
+        auto ghostStartToEnd(Centering const& centering, Direction const direction) const
+        {
+            return std::make_tuple(ghostStartIndex(centering, direction),
+                                   ghostEndIndex(centering, direction));
+        }
+
+        template<typename NdArrayImpl>
+        auto ghostStartToEnd(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
+                             Direction direction) const
+        {
+            return ghostStartToEnd(field.physicalQuantity(), direction);
+        }
+
+        template<typename Centering, typename Direction>
+        auto physicalStartToEnd(Centering const& centering, Direction const direction) const
+        {
+            return std::make_tuple(physicalStartIndex(centering, direction),
+                                   physicalEndIndex(centering, direction));
+        }
+
+        template<typename NdArrayImpl>
+        auto physicalStartToEnd(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
+                                Direction direction) const
+        {
+            return physicalStartToEnd(field.physicalQuantity(), direction);
+        }
+
+        static constexpr auto _indice_tuple() // type deduction doesn't get used anywhere
+        {
+            using Param = std::uint32_t;
+            if constexpr (dimension == 1)
+                return std::tuple<Param>{};
+            if constexpr (dimension == 2)
+                return std::tuple<Param, Param>{};
+            if constexpr (dimension == 3)
+                return std::tuple<Param, Param, Param>{};
+        }
+
+        template<typename Centering, typename StartToEnd>
+        auto _StartToEndIndices(Centering const& centering, StartToEnd const&& startToEnd,
+                                std::size_t const plus = 0) const
+        {
+            std::vector<decltype(_indice_tuple())> indices;
+
+            auto const [ix0, ix1] = startToEnd(centering, Direction::X);
+
+            for (auto ix = ix0; ix < ix1 + plus; ++ix)
+            {
+                if constexpr (dimension > 1)
+                {
+                    auto const [iy0, iy1] = startToEnd(centering, Direction::Y);
+
+                    for (auto iy = iy0; iy < iy1 + plus; ++iy)
+                    {
+                        if constexpr (dimension > 2)
+                        {
+                            auto const [iz0, iz1] = startToEnd(centering, Direction::Z);
+
+                            for (auto iz = iz0; iz < iz1 + plus; ++iz)
+                                indices.emplace_back(std::make_tuple(ix, iy, iz));
+                        }
+                        else // 2D
+                        {
+                            indices.emplace_back(std::make_tuple(ix, iy));
+                        }
+                    }
+                }
+                else // 1D
+                {
+                    indices.emplace_back(std::make_tuple(ix));
+                }
+            }
+            return indices;
+        }
 
 
+        template<typename Centering>
+        auto physicalStartToEndIndices(Centering const& centering, std::size_t const plus = 0) const
+        {
+            return _StartToEndIndices(
+                centering,
+                [&](auto const& centering_, auto const direction) {
+                    return this->physicalStartToEnd(centering_, direction);
+                },
+                plus);
+        }
+
+        template<typename Centering>
+        auto ghostStartToEndIndices(Centering const& centering, std::size_t const plus = 0) const
+        {
+            return _StartToEndIndices(
+                centering,
+                [&](auto const& centering_, auto const direction) {
+                    return this->ghostStartToEnd(centering_, direction);
+                },
+                plus);
+        }
+
+        template<bool ByField, typename Centering, typename CoordsFn, typename... Args>
+        auto inline gridCoords([[maybe_unused]] Centering const& centering,
+                               CoordsFn const& coordsFn, Args const&... args) const
+        {
+            if constexpr (ByField)
+                return coordsFn(*this, centering, args...);
+            else
+                return coordsFn(*this, args...);
+        }
+
+        static constexpr auto _coord_tuple()
+        {
+            using Param = std::vector<double>;
+            if constexpr (dimension == 1)
+                return std::tuple<Param>{};
+            if constexpr (dimension == 2)
+                return std::tuple<Param, Param>{};
+            if constexpr (dimension == 3)
+                return std::tuple<Param, Param, Param>{};
+        }
+
+        template<bool ByField = false, typename Indices, typename Centering, typename CoordsFn>
+        auto gridVectors(Indices const& indices, Centering const& centering,
+                         CoordsFn const&& coordsFn) const
+        {
+            auto emplace_back = [](auto& vectors, auto const&& point) {
+                std::get<0>(vectors).emplace_back(point[0]);
+                if constexpr (dimension > 1)
+                    std::get<1>(vectors).emplace_back(point[1]);
+                if constexpr (dimension > 2)
+                    std::get<2>(vectors).emplace_back(point[2]);
+            };
+
+            auto xyz = _coord_tuple();
+
+            for (const auto& indiceTuple : indices)
+                std::apply(
+                    [&](auto const&... args) {
+                        emplace_back(xyz, gridCoords<ByField>(centering, coordsFn, args...));
+                    },
+                    indiceTuple);
+
+            return xyz;
+        }
+
+
+        double cellVolume() const
+        {
+            return std::accumulate(meshSize().begin(), meshSize().end(), 1.0,
+                                   std::multiplies<double>());
+        }
 
         /**
          * @brief physicalStartIndex returns the index of the first node of a given

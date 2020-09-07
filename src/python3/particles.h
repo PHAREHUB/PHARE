@@ -7,20 +7,12 @@
 #include "amr/data/particles/refine/particles_data_split.h"
 #include "core/data/particles/particle_packer.h"
 #include "core/data/particles/particle.h"
-#include "core/utilities/span.h"
 #include "core/utilities/types.h"
-#include "pybind11/numpy.h"
-#include "pybind_def.h"
+
+#include "python3/pybind_def.h"
 
 namespace PHARE::pydata
 {
-template<typename T, typename PyArray>
-core::Span<T> makeSpan(PyArray const& py_array)
-{
-    auto ar_info = py_array.request();
-    return {static_cast<T*>(ar_info.ptr), static_cast<std::size_t>(ar_info.shape[0])};
-}
-
 template<std::size_t dim, typename PyArrayTuple>
 core::ContiguousParticlesView<dim> contiguousViewFrom(PyArrayTuple const& py_particles)
 {
