@@ -25,13 +25,19 @@ struct PHARE_Types
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
 
-    using Array_t         = PHARE::core::NdArrayVector<dimension>;
-    using VecField_t      = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
-    using Field_t         = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
-    using Electromag_t    = PHARE::core::Electromag<VecField_t>;
-    using YeeLayout_t     = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
-    using GridLayout_t    = PHARE::core::GridLayout<YeeLayout_t>;
-    using ParticleArray_t = PHARE::core::ParticleArray<dimension>;
+    using Array_t      = PHARE::core::NdArrayVector<dimension>;
+    using VecField_t   = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
+    using Field_t      = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
+    using Electromag_t = PHARE::core::Electromag<VecField_t>;
+    using YeeLayout_t  = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
+    using GridLayout_t = PHARE::core::GridLayout<YeeLayout_t>;
+
+    using Particle_t      = PHARE::core::Particle<dimension>;
+    using ParticleAoS_t   = PHARE::core::ParticleArray<dimension>;
+    using ParticleArray_t = ParticleAoS_t;
+    using ParticleSoA_t   = PHARE::core::ContiguousParticles<dimension>;
+
+
     using MaxwellianParticleInitializer_t
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
     using IonPopulation_t = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, GridLayout_t>;

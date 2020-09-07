@@ -35,8 +35,8 @@ struct AParticlesData1D : public testing::Test
     SAMRAI::hier::Patch destPatch{destDomain, patchDescriptor};
     SAMRAI::hier::Patch sourcePatch{sourceDomain, patchDescriptor};
 
-    ParticlesData<1> destData{destDomain, ghost};
-    ParticlesData<1> sourceData{sourceDomain, ghost};
+    ParticlesData<ParticleArray<1>> destData{destDomain, ghost};
+    ParticlesData<ParticleArray<1>> sourceData{sourceDomain, ghost};
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destGeom{
         std::make_shared<SAMRAI::pdat::CellGeometry>(destPatch.getBox(), ghost)};

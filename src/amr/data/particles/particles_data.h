@@ -26,9 +26,11 @@ namespace amr
         return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
     }
 
-    template<std::size_t dim>
-    inline bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle)
+    template<typename Particle>
+    inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
     {
+        constexpr auto dim = Particle::dimension;
+
         auto const& iCell = particle.iCell;
 
         auto const& lower = box.lower();
@@ -85,12 +87,16 @@ namespace amr
      * particle refinement from a coarser level
      *
      */
-    template<std::size_t dim>
     /**
      * @brief The ParticlesData class
      */
+    template<typename ParticleArray>
     class ParticlesData : public SAMRAI::hier::PatchData
     {
+        using Particle_t          = typename ParticleArray::Particle_t;
+        static constexpr auto dim = ParticleArray::dimension;
+
+
     public:
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)
@@ -233,12 +239,9 @@ namespace amr
 
         std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const override
         {
-            SAMRAI::pdat::CellOverlap const* pOverlap{
-                dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
+            auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            std::size_t numberParticles = countNumberParticlesIn_(*pOverlap);
-            auto size                   = numberParticles * sizeof(core::Particle<dim>);
-            return size;
+            return countNumberParticlesIn_(pOverlap) * sizeof(Particle_t);
         }
 
 
@@ -263,25 +266,22 @@ namespace amr
         void packStream(SAMRAI::tbox::MessageStream& stream,
                         SAMRAI::hier::BoxOverlap const& overlap) const override
         {
-            SAMRAI::pdat::CellOverlap const* pOverlap{
-                dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
+            auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            TBOX_ASSERT(pOverlap != nullptr);
+            std::vector<Particle_t> specie;
 
-            std::vector<core::Particle<dim>> specie;
-
-            if (pOverlap->isOverlapEmpty())
+            if (pOverlap.isOverlapEmpty())
             {
                 constexpr std::size_t zero = 0;
                 stream << zero;
             }
             else
             {
-                SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+                SAMRAI::hier::Transformation const& transformation = pOverlap.getTransformation();
                 if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
                 {
                     SAMRAI::hier::BoxContainer const& boxContainer
-                        = pOverlap->getDestinationBoxContainer();
+                        = pOverlap.getDestinationBoxContainer();
 
                     auto const& sourceGhostBox = getGhostBox();
 
@@ -333,22 +333,20 @@ namespace amr
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
                           SAMRAI::hier::BoxOverlap const& overlap) override
         {
-            SAMRAI::pdat::CellOverlap const* pOverlap
-                = dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap);
-            TBOX_ASSERT(pOverlap != nullptr);
+            auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            if (!pOverlap->isOverlapEmpty())
+            if (!pOverlap.isOverlapEmpty())
             {
                 // unpack particles into a particle array
                 std::size_t numberParticles = 0;
                 stream >> numberParticles;
-                std::vector<core::Particle<dim>> particleArray(numberParticles);
+                std::vector<Particle_t> particleArray(numberParticles);
                 stream.unpack(particleArray.data(), numberParticles);
 
                 // ok now our goal is to put the particles we have just unpacked
                 // into the particleData and in the proper particleArray : interior or ghost
 
-                SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+                SAMRAI::hier::Transformation const& transformation = pOverlap.getTransformation();
                 if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
                 {
                     // we loop over all boxes in the overlap
@@ -356,7 +354,7 @@ namespace amr
                     // with our ghostBox. This is where unpacked particles should go.
 
                     SAMRAI::hier::BoxContainer const& overlapBoxes
-                        = pOverlap->getDestinationBoxContainer();
+                        = pOverlap.getDestinationBoxContainer();
 
                     auto myBox      = getBox();
                     auto myGhostBox = getGhostBox();
@@ -390,22 +388,22 @@ namespace amr
 
 
 
-        core::ParticlesPack<core::ParticleArray<dim>>* getPointer() { return &pack; }
+        core::ParticlesPack<ParticleArray>* getPointer() { return &pack; }
 
 
 
         // Core interface
         // these particles arrays are public because core module is free to use
         // them easily
-        core::ParticleArray<dim> domainParticles;
-        core::ParticleArray<dim> patchGhostParticles;
+        ParticleArray domainParticles;
+        ParticleArray patchGhostParticles;
 
-        core::ParticleArray<dim> levelGhostParticles;
+        ParticleArray levelGhostParticles;
 
-        core::ParticleArray<dim> levelGhostParticlesOld;
-        core::ParticleArray<dim> levelGhostParticlesNew;
+        ParticleArray levelGhostParticlesOld;
+        ParticleArray levelGhostParticlesNew;
 
-        core::ParticlesPack<core::ParticleArray<dim>> pack;
+        core::ParticlesPack<ParticleArray> pack;
 
 
 
@@ -573,8 +571,7 @@ namespace amr
 
 
 
-        void pack_(std::vector<core::Particle<dim>>& buffer,
-                   SAMRAI::hier::Box const& intersectionBox,
+        void pack_(std::vector<Particle_t>& buffer, SAMRAI::hier::Box const& intersectionBox,
                    [[maybe_unused]] SAMRAI::hier::Box const& sourceBox,
                    SAMRAI::hier::Transformation const& transformation) const
         {

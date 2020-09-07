@@ -27,8 +27,8 @@ struct AParticlesData1D : public testing::Test
 
     SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
 
-    ParticlesData<1> destData{destDomain, ghost};
-    ParticlesData<1> sourceData{sourceDomain, ghost};
+    ParticlesData<ParticleArray<1>> destData{destDomain, ghost};
+    ParticlesData<ParticleArray<1>> sourceData{sourceDomain, ghost};
     Particle<1> particle;
 
 

@@ -37,6 +37,8 @@ using namespace PHARE::amr;
 template<std::size_t dimension, std::size_t interpOrder>
 class BasicHierarchy
 {
+    using ParticlesVariable_t = ParticlesVariable<ParticleArray<dimension>, interpOrder>;
+
 public:
     /**
      * @brief Construct the hierarchy consisting of two levels
@@ -59,7 +61,7 @@ public:
             inputBase + "input/input_" + std::to_string(dimension) + "d.txt")}
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
-        , protons_{std::make_shared<ParticlesVariable<dimension, interpOrder>>(
+        , protons_{std::make_shared<ParticlesVariable_t>(
               "protons", true,
               SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
                                       ghostWidthForParticles<interpOrder>()})}
@@ -134,7 +136,7 @@ private:
 
     SAMRAI::hier::VariableDatabase* variableDatabase_;
 
-    std::shared_ptr<ParticlesVariable<dimension, interpOrder>> protons_;
+    std::shared_ptr<ParticlesVariable_t> protons_;
 
 
 

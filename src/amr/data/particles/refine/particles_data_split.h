@@ -26,9 +26,11 @@ namespace amr
     };
 
 
-    template<std::size_t dim, typename Ratio>
-    core::Particle<dim> toFineGrid(core::Particle<dim> toFine, Ratio const& ratio)
+    template<typename Particle, typename Ratio>
+    Particle toFineGrid(Particle toFine, Ratio const& ratio)
     {
+        constexpr auto dim = Particle::dimension;
+
         for (size_t iDim = 0; iDim < dim; ++iDim)
         {
             auto fineDelta     = toFine.delta[iDim] * ratio[iDim];
@@ -41,12 +43,13 @@ namespace amr
     }
 
 
-    template<ParticlesDataSplitType splitType, typename Splitter>
+    template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
     public:
-        static constexpr std::size_t dim         = Splitter::dimension;
-        static constexpr std::size_t interpOrder = Splitter::interp_order;
+        static constexpr auto dim           = Splitter::dimension;
+        static constexpr auto interpOrder   = Splitter::interp_order;
+        static constexpr auto nbRefinedPart = Splitter::nbRefinedPart;
 
         ParticlesRefineOperator()
             : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
@@ -82,11 +85,12 @@ namespace amr
 
 
             // We then need to get our ParticlesData from the patch
-            auto destinationParticlesData = std::dynamic_pointer_cast<ParticlesData<dim>>(
+            auto destinationParticlesData = std::dynamic_pointer_cast<ParticlesData<ParticleArray>>(
                 destination.getPatchData(destinationComponent));
 
-            auto const sourceParticlesData = std::dynamic_pointer_cast<ParticlesData<dim>>(
-                source.getPatchData(sourceComponent));
+            auto const sourceParticlesData
+                = std::dynamic_pointer_cast<ParticlesData<ParticleArray>>(
+                    source.getPatchData(sourceComponent));
 
             // Finnaly we need the cartesion geometry of both patch.
             auto patchGeomDestination
@@ -128,8 +132,8 @@ namespace amr
          * an overlap , a ratio and the geometry of both patches, perform the
          * splitting of coarse particules onto the destination patch
          */
-        void refine_(ParticlesData<dim>& destParticlesData,
-                     ParticlesData<dim> const& srcParticlesData,
+        void refine_(ParticlesData<ParticleArray>& destParticlesData,
+                     ParticlesData<ParticleArray> const& srcParticlesData,
                      SAMRAI::pdat::CellOverlap const& destFieldOverlap,
                      SAMRAI::hier::IntVector const& ratio,
                      SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomDest*/,
@@ -178,8 +182,8 @@ namespace amr
                 {
                     for (auto const& particle : *sourceParticlesArray)
                     {
-                        std::vector<core::Particle<dim>> refinedParticles;
-                        auto particleRefinedPos = toFineGrid<dim>(particle, ratio);
+                        ParticleArray refinedParticles{nbRefinedPart};
+                        auto particleRefinedPos = toFineGrid(particle, ratio);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))
                         {
@@ -267,17 +271,19 @@ namespace amr
 
 namespace PHARE::amr
 {
-template<typename Splitter>
+template<typename ParticleArray, typename Splitter>
 struct RefinementParams
 {
     using InteriorParticleRefineOp
-        = ParticlesRefineOperator<ParticlesDataSplitType::interior, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::interior, Splitter>;
 
     using CoarseToFineRefineOpOld
-        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryOld, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::coarseBoundaryOld,
+                                  Splitter>;
 
     using CoarseToFineRefineOpNew
-        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryNew, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::coarseBoundaryNew,
+                                  Splitter>;
 };
 
 } // namespace PHARE::amr

@@ -78,9 +78,9 @@ public:
 
 
 
-    std::vector<Particle<dimension>> getRefinedL0Particles()
+    ParticleArray<dimension> getRefinedL0Particles()
     {
-        std::vector<Particle<dimension>> refinedParticles;
+        ParticleArray<dimension> refinedParticles;
 
         Splitter split;
 
@@ -98,6 +98,7 @@ public:
             lowerXYZ[i] -= ghostWidth;
             upperXYZ[i] += ghostWidth;
         }
+
 
         for (int iCellZ = lowerXYZ[dirZ]; iCellZ <= upperXYZ[dirZ]; ++iCellZ)
         {
@@ -118,7 +119,9 @@ public:
                             coarseOnRefinedGrid.delta[iDim] = part.delta[iDim] * ratio - delta;
                         }
 
-                        split(coarseOnRefinedGrid, refinedParticles);
+                        refinedParticles.resize(refinedParticles.size() + refineParticlesNbr);
+                        split(coarseOnRefinedGrid, refinedParticles,
+                              refinedParticles.size() - refineParticlesNbr);
                     }
                 }
             }
@@ -136,15 +139,16 @@ class levelOneCoarseBoundaries : public aSimpleBasicHierarchyWithTwoLevels<Type>
 public:
     using BaseType                         = aSimpleBasicHierarchyWithTwoLevels<Type>;
     static constexpr std::size_t dimension = BaseType::dimension;
+    using ParticlesData_t                  = ParticlesData<ParticleArray<dimension>>;
 
-    std::vector<Particle<dimension>>
-    filterLevelGhostParticles(std::vector<Particle<dimension>> const& refinedParticles,
+    ParticleArray<dimension>
+    filterLevelGhostParticles(ParticleArray<dimension> const& refinedParticles,
                               std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        std::vector<Particle<dimension>> levelGhosts;
+        ParticleArray<dimension> levelGhosts;
 
         auto pData    = patch->getPatchData(this->dataID);
-        auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
+        auto partData = std::dynamic_pointer_cast<ParticlesData_t>(pData);
 
         auto myBox      = partData->getBox();
         auto myGhostBox = partData->getGhostBox();
@@ -166,7 +170,7 @@ public:
     auto& getLevelGhosts(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
         auto pDat    = patch->getPatchData(this->dataID);
-        auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData_t>(pDat);
 
         return partDat->levelGhostParticles;
     }
@@ -237,15 +241,16 @@ class levelOneInterior : public aSimpleBasicHierarchyWithTwoLevels<Type>
 public:
     using BaseType                         = aSimpleBasicHierarchyWithTwoLevels<Type>;
     static constexpr std::size_t dimension = BaseType::dimension;
+    using ParticlesData_t                  = ParticlesData<ParticleArray<dimension>>;
 
-    std::vector<Particle<dimension>>
-    filterInteriorParticles(std::vector<Particle<dimension>> const& refinedParticles,
+    ParticleArray<dimension>
+    filterInteriorParticles(ParticleArray<dimension> const& refinedParticles,
                             std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        std::vector<Particle<dimension>> interiors;
+        ParticleArray<dimension> interiors;
 
         auto pData    = patch->getPatchData(this->dataID);
-        auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
+        auto partData = std::dynamic_pointer_cast<ParticlesData_t>(pData);
 
         auto myBox = partData->getBox();
 
@@ -262,7 +267,7 @@ public:
     auto& getInterior(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
         auto pDat    = patch->getPatchData(this->dataID);
-        auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData_t>(pDat);
 
         return partDat->domainParticles;
     }

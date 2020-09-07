@@ -38,9 +38,9 @@ namespace solver
         using vecfield_type             = typename Electromag::vecfield_type;
         using field_type                = typename vecfield_type::field_type;
         using ions_type                 = Ions;
+        using particle_array_type       = typename Ions::particle_array_type;
         using resources_manager_type    = amr::ResourcesManager<gridlayout_type>;
         static constexpr auto dimension = GridLayoutT::dimension;
-        using particle_array_type       = typename Ions::particle_array_type;
         using ParticleInitializerFactory
             = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 

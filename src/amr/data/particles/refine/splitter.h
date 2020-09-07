@@ -3,14 +3,15 @@
 #ifndef PHARE_SPLITTER_H
 #define PHARE_SPLITTER_H
 
-
 #include <array>
 #include <cmath>
 #include <tuple>
 #include <vector>
+#include <cassert>
 #include <cstdint>
 #include <cstddef>
 #include "core/utilities/types.h"
+#include "core/utilities/point/point.h"
 
 namespace PHARE::amr
 {
@@ -39,33 +40,25 @@ public:
     {
     }
 
-    template<size_t dimension, bool OwnedState>
-    inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
-                           core::ContiguousParticles<dimension, OwnedState>& refinedParticles,
-                           size_t idx) const
+    template<typename Particle, typename Particles>
+    inline void operator()(Particle const& coarsePartOnRefinedGrid, Particles& refinedParticles,
+                           size_t idx = 0) const
     {
-        dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
-    }
-
-    template<size_t dimension>
-    inline void operator()(core::Particle<dimension> const& coarsePartOnRefinedGrid,
-                           std::vector<core::Particle<dimension>>& refinedParticles) const
-    {
-        size_t idx = refinedParticles.size();
-        refinedParticles.resize(refinedParticles.size() + nbRefinedParts);
-        dispatch<dimension>(coarsePartOnRefinedGrid, refinedParticles, idx);
+        dispatch(coarsePartOnRefinedGrid, refinedParticles, idx);
     }
 
     std::tuple<Patterns...> patterns{};
     size_t nbRefinedParts{0};
 
 private:
-    template<size_t dimension, typename Particle, typename Particles>
+    template<typename Particle, typename Particles>
     void dispatch(Particle const& particle, Particles& particles, size_t idx) const
     {
-        using FineParticle
-            = std::conditional_t<std::is_same_v<Particles, std::vector<core::Particle<dimension>>>,
-                                 core::Particle<dimension>&, core::ParticleView<dimension>>;
+        constexpr auto dimension = Particle::dimension;
+
+        assert(particles.size() >= idx + nbRefinedParts);
+
+        using FineParticle = decltype(particles[0]); // may be a reference
 
         core::apply(patterns, [&](auto const& pattern) {
             for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)

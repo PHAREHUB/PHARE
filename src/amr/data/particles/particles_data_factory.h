@@ -15,10 +15,10 @@ namespace PHARE
 {
 namespace amr
 {
-    template<std::size_t dim>
     /**
      * @brief The ParticlesDataFactory class
      */
+    template<typename ParticleArray>
     class ParticlesDataFactory : public SAMRAI::hier::PatchDataFactory
 
     {
@@ -43,7 +43,7 @@ namespace amr
         std::shared_ptr<SAMRAI::hier::PatchData>
         allocate(const SAMRAI::hier::Patch& patch) const final
         {
-            return std::make_shared<ParticlesData<dim>>(patch.getBox(), d_ghosts);
+            return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts);
         }
 
         std::shared_ptr<SAMRAI::hier::BoxGeometry>
