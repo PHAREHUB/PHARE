@@ -48,11 +48,15 @@ option(forceSerialTest "force the test to be serial under MPI mode" OFF)
 #    add_no_mpi_python3_test
 
 
-
 # -DforceGetPybind=ON
 option(forceGetPybind "force retrieval of pybind from github" OFF)
 # Useful if you want to avoid using the system wide installed version of pybind
 
+
+# -DwithIPO=OFF
+option(withIPO "Use IPO/LTO if system supported" OFF)
+# IPO can cause linking to fail so default off
+# https://cmake.org/cmake/help/latest/module/CheckIPOSupported.html
 
 
 # print options
@@ -67,7 +71,8 @@ function(print_phare_options)
   message("Enable cppcheck xml report                  : " ${cppcheck})
   message("Add doxygen target to generate documentation: " ${documentation})
   message("force the test to be serial under MPI mode  : " ${forceSerialTest})
-  message("force retrieval of pybind from github       : " ${forceGetPybind})
+  message("Enable IPO/LTO if system supported          : " ${withIPO})
+  message("build with ubsan support                    : " ${ubsan})
   message("build with asan support                     : " ${asan})
   message("build with ubsan support                    : " ${ubsan})
 
