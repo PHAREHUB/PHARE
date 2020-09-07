@@ -31,13 +31,13 @@ from .simulation import Simulation
 
 
 def getSimulation():
-    from .globals import sim
+    from .global_vars import sim
     return sim
 
 
 def populateDict():
 
-    from .globals import sim as simulation
+    from .global_vars import sim as simulation
     import pybindlibs.dictator as pp
 
     add = pp.add

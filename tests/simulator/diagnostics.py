@@ -53,7 +53,7 @@ class DiagnosticsTest(unittest.TestCase):
 
             # SEE https://github.com/PHAREHUB/PHARE/issues/275
             if dim == 1: # REMOVE WHEN PHARESEE SUPPORTS 2D
-                for diagInfo in ph.globals.sim.diagnostics:
+                for diagInfo in ph.global_vars.sim.diagnostics:
                     # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
                     h5_file = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
                     self.assertTrue(os.path.exists(h5_file))
@@ -63,7 +63,7 @@ class DiagnosticsTest(unittest.TestCase):
                     if h5_file.endswith("domain.h5"):
                         for patch in hier.level(0).patches:
                             for qty_name, pd in patch.patch_datas.items():
-                                splits = pd.dataset.split(ph.globals.sim)
+                                splits = pd.dataset.split(ph.global_vars.sim)
                                 self.assertTrue(splits.size() == pd.dataset.size() * 2)
                                 print("splits.iCell", splits.iCells)
                                 print("splits.delta", splits.deltas)

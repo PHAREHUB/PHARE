@@ -1,6 +1,6 @@
 
 from ..core import phare_utilities
-from . import globals
+from . import global_vars
 
 class MaxwellianFluidModel(object):
 
@@ -26,13 +26,13 @@ class MaxwellianFluidModel(object):
                        bz = None,
                        **kwargs):
 
-        if globals.sim is None:
+        if global_vars.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
 
-        if globals.sim.model is not None:
+        if global_vars.sim.model is not None:
             raise RuntimeError("A model is already created")
 
-        self.dim = globals.sim.dims
+        self.dim = global_vars.sim.dims
         bx = self.defaulter(bx, 1.)
         by = self.defaulter(by, 0.)
         bz = self.defaulter(bz, 0.)
@@ -50,9 +50,9 @@ class MaxwellianFluidModel(object):
         for population in self.populations:
             self.add_population(population, **kwargs[population])
 
-        self.validate(globals.sim)
+        self.validate(global_vars.sim)
 
-        globals.sim.set_model(self)
+        global_vars.sim.set_model(self)
 
 
 # ------------------------------------------------------------------------------

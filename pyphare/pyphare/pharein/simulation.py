@@ -1,7 +1,7 @@
 import os
 
 from ..core import phare_utilities
-from . import globals
+from . import global_vars
 from ..core import box as boxm
 from ..core.box import Box
 
@@ -157,7 +157,7 @@ def check_boundaries(dims, **kwargs):
     if phare_utilities.none_iterable(boundary_types):
         bc_length = 1
         if boundary_types not in valid_boundary_types:
-            raise ValueError("Error: '{}' is not a valid boundary type".format(boundary_types))       
+            raise ValueError("Error: '{}' is not a valid boundary type".format(boundary_types))
         boundary_types = phare_utilities.listify(boundary_types)
     else:
         bc_length = len(boundary_types)
@@ -342,7 +342,8 @@ def checker(func):
         kwargs["origin"] = check_origin(dims, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(dims, **kwargs)
-        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5') #TODO add checker with valid formats
+        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5')
+        assert kwargs["diag_export_format"] in ["hdf5"] # only hdf5 supported for now
 
         largest, smallest = check_patch_size(**kwargs)
         kwargs["smallest_patch_size"] = smallest
@@ -391,10 +392,10 @@ class Simulation(object):
     @checker
     def __init__(self, **kwargs):
 
-        if globals.sim is not None:
+        if global_vars.sim is not None:
             raise RuntimeError("simulation is already created")
 
-        globals.sim = self
+        global_vars.sim = self
 
         for k, v in kwargs.items():
             object.__setattr__(self, k, v)
