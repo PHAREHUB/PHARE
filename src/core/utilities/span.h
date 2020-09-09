@@ -68,7 +68,7 @@ struct SpanSet
             curr_pos += sv->sizes[curr_ptr++];
             return *this;
         }
-        bool operator!=(const iterator& other) const { return curr_ptr != sv->sizes.size(); }
+        bool operator!=(iterator const& other) const { return curr_ptr != sv->sizes.size(); }
         Span<T, SIZE> operator*() const { return {sv->vec.data() + curr_pos, sv->sizes[curr_ptr]}; }
 
         SpanSet_* sv  = nullptr;

@@ -45,6 +45,8 @@ template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType 
          std::size_t refinedParticlesNbr>
 class BasicHierarchy
 {
+    using ParticlesVariable_t = ParticlesVariable<ParticleArray<dimension>, interpOrder>;
+
 public:
     /**
      * @brief Construct the hierarchy consisting of two levels
@@ -77,7 +79,7 @@ public:
 
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
-        , specie1_{std::make_shared<ParticlesVariable<dimension, interpOrder>>(
+        , specie1_{std::make_shared<ParticlesVariable_t>(
               "proton1", true,
               SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
                                       ghostWidthForParticles<interpOrder>()})}
@@ -93,9 +95,10 @@ public:
               dimension_, "ChopAndPackLoadBalancer",
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
-        , refineOperator_{std::make_shared<ParticlesRefineOperator<
-              splitType, Splitter<DimConst<dimension>, InterpConst<interpOrder>,
-                                  RefinedParticlesConst<refinedParticlesNbr>>>>()}
+        , refineOperator_{std::make_shared<
+              ParticlesRefineOperator<ParticleArray<dimension>, splitType,
+                                      Splitter<DimConst<dimension>, InterpConst<interpOrder>,
+                                               RefinedParticlesConst<refinedParticlesNbr>>>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,
@@ -139,7 +142,7 @@ public:
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
 
-        auto particlesVariableTypeName = typeid(ParticlesVariable<dimension, interpOrder>).name();
+        auto particlesVariableTypeName = typeid(ParticlesVariable_t).name();
 
         gridGeometry_->addRefineOperator(particlesVariableTypeName, refineOperator_);
     }
@@ -184,7 +187,7 @@ private:
 
     SAMRAI::hier::VariableDatabase* variableDatabase_;
 
-    std::shared_ptr<ParticlesVariable<dimension, interpOrder>> specie1_;
+    std::shared_ptr<ParticlesVariable_t> specie1_;
 
 
 

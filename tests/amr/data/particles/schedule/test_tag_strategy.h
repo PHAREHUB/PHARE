@@ -69,8 +69,9 @@ public:
                 for (auto const& variablesId : dataToAllocate_)
                 {
                     auto const& dataId = variablesId.second;
-                    auto particlesData = std::dynamic_pointer_cast<ParticlesData<dimension>>(
-                        patch->getPatchData(dataId));
+                    auto particlesData
+                        = std::dynamic_pointer_cast<ParticlesData<ParticleArray<dimension>>>(
+                            patch->getPatchData(dataId));
 
                     auto& interior = particlesData->domainParticles;
 

@@ -21,18 +21,12 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename GridLayoutT, typename ResourcesUser, typename ResourcesType>
-    using isUserFieldType = std::is_same<std::remove_reference_t<ResourcesType>,
-                                         UserFieldType<GridLayoutT, ResourcesUser>>;
+    template<typename UserField_t, typename ResourcesType>
+    using isUserFieldType = std::is_same<std::decay_t<ResourcesType>, UserField_t>;
 
 
-
-
-    template<typename ResourcesUser, typename ResourcesType, std::size_t interp>
-    using isUserParticleType = std::is_same<typename std::remove_reference<ResourcesType>::type,
-                                            UserParticleType<ResourcesUser, interp>>;
-
-
+    template<typename UserParticle_t, typename ResourcesType>
+    using isUserParticleType = std::is_same<typename std::decay_t<ResourcesType>, UserParticle_t>;
 
 
     /**
@@ -98,12 +92,19 @@ namespace amr
     class ResourcesManager
     {
     public:
+        static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+
+        template<typename ResourcesUser>
+        using UserField_t = UserFieldType<ResourcesUser, GridLayoutT>;
+
+        template<typename ResourcesUser>
+        using UserParticle_t = UserParticleType<ResourcesUser, interp_order>;
 
         ResourcesManager()
             : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
             , context_{variableDatabase_->getContext(contextName_)}
-            , dimension_{SAMRAI::tbox::Dimension{GridLayoutT::dimension}}
+            , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
         }
 
@@ -132,13 +133,12 @@ namespace amr
         {
             if constexpr (has_field<ResourcesUser>::value)
             {
-                registerResources_<ResourcesUser, UserFieldType<GridLayoutT, ResourcesUser>>(obj);
+                registerResources_<ResourcesUser, UserField_t<ResourcesUser>>(obj);
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
             {
-                registerResources_<ResourcesUser, UserParticleType<ResourcesUser, interp_order>>(
-                    obj);
+                registerResources_<ResourcesUser, UserParticle_t<ResourcesUser>>(obj);
             }
 
 
@@ -413,13 +413,13 @@ namespace amr
         {
             if constexpr (has_field<ResourcesUser>::value)
             {
-                setResourcesInternal_(obj, UserFieldType<GridLayoutT, ResourcesUser>{},
+                setResourcesInternal_(obj, UserField_t<ResourcesUser>{},
                                       obj.getFieldNamesAndQuantities(), patch, nullOrResourcePtr);
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
             {
-                setResourcesInternal_(obj, UserParticleType<ResourcesUser, interp_order>{},
+                setResourcesInternal_(obj, UserParticle_t<ResourcesUser>{},
                                       obj.getParticleArrayNames(), patch, nullOrResourcePtr);
             }
 
@@ -459,7 +459,7 @@ namespace amr
                 return foundResource == std::end(map);
             };
 
-            if constexpr (isUserFieldType<GridLayoutT, ResourcesUser, ResourcesType>::value)
+            if constexpr (isUserFieldType<UserField_t<ResourcesUser>, ResourcesType>::value)
             {
                 auto const& resourcesProperties = user.getFieldNamesAndQuantities();
                 for (auto const& properties : resourcesProperties)
@@ -481,7 +481,7 @@ namespace amr
                 }
             }
 
-            if constexpr (isUserParticleType<ResourcesUser, ResourcesType, interp_order>::value)
+            if constexpr (isUserParticleType<UserParticle_t<ResourcesUser>, ResourcesType>::value)
             {
                 auto const& resourcesProperties = user.getParticleArrayNames();
                 for (auto const& properties : resourcesProperties)

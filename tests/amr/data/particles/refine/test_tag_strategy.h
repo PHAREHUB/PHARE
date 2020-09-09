@@ -41,7 +41,7 @@ std::array<int, 3> boxBoundsUpper(Box const& box)
 
 
 template<std::size_t dimension>
-std::vector<Particle<dimension>> loadCell(int iCellX, int iCellY, int iCellZ)
+ParticleArray<dimension> loadCell(int iCellX, int iCellY, int iCellZ)
 {
     std::array<int, 3> _3diCell = {iCellX, iCellY, iCellZ};
 
@@ -49,7 +49,7 @@ std::vector<Particle<dimension>> loadCell(int iCellX, int iCellY, int iCellZ)
     float delta  = 0.30f;
 
     Particle<dimension> particle;
-    std::vector<Particle<dimension>> particles;
+    ParticleArray<dimension> particles;
 
     particle.weight = 1.;
     particle.charge = 1.;
@@ -143,8 +143,9 @@ public:
             {
                 for (auto const& [name, dataId] : dataToAllocate_)
                 {
-                    auto particlesData = std::dynamic_pointer_cast<ParticlesData<dimension>>(
-                        patch->getPatchData(dataId));
+                    auto particlesData
+                        = std::dynamic_pointer_cast<ParticlesData<ParticleArray<dimension>>>(
+                            patch->getPatchData(dataId));
 
                     auto& interior = particlesData->domainParticles;
 

@@ -55,12 +55,14 @@ template<std::size_t dim>
 void ALevelWithDomainParticles<
     dim>::ghostParticleNumberisZeroBeforeScheduleAndCorrectAfterSchedule()
 {
+    using ParticlesData_t = ParticlesData<ParticleArray<dim>>;
+
     ASSERT_TRUE(level->getNumberOfPatches());
 
     for (auto const& patch : *level)
     {
         auto pdat    = patch->getPatchData(0);
-        auto partDat = std::dynamic_pointer_cast<ParticlesData<dim>>(pdat);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData_t>(pdat);
         auto& ghosts = partDat->patchGhostParticles;
         EXPECT_EQ(0u, ghosts.size());
 
@@ -83,7 +85,7 @@ void ALevelWithDomainParticles<
     for (auto const& patch : *level)
     {
         auto pdat    = patch->getPatchData(0);
-        auto partDat = std::dynamic_pointer_cast<ParticlesData<dim>>(pdat);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData_t>(pdat);
         auto& ghosts = partDat->patchGhostParticles;
 
         // 1d expects 3 particles in each (left/right) ghost cell
@@ -110,7 +112,7 @@ void ALevelWithDomainParticles<dim>::hasGhostParticlesInGhostAMRCellsAfterSchedu
     for (auto const& patch : *level)
     {
         auto pdat     = patch->getPatchData(0);
-        auto partDat  = std::dynamic_pointer_cast<ParticlesData<dim>>(pdat);
+        auto partDat  = std::dynamic_pointer_cast<ParticlesData<ParticleArray<dim>>>(pdat);
         auto ghostBox = partDat->getGhostBox();
         auto lower    = ghostBox.lower();
         auto upper    = ghostBox.upper();
@@ -142,12 +144,14 @@ TYPED_TEST(LevelWithDomainParticlesTest, hasGhostParticlesInGhostAMRCellsAfterSc
 template<std::size_t dim>
 void ALevelWithDomainParticles<dim>::hasGhostParticleFilledFromNeighborFirstCell()
 {
+    using ParticlesData_t = ParticlesData<ParticleArray<dim>>;
+
     ASSERT_TRUE(level->getNumberOfPatches());
 
     for (auto const& patch : *level)
     {
         auto pdat       = patch->getPatchData(0);
-        auto partDat    = std::dynamic_pointer_cast<ParticlesData<dim>>(pdat);
+        auto partDat    = std::dynamic_pointer_cast<ParticlesData_t>(pdat);
         auto& particles = partDat->domainParticles;
         auto& ghosts    = partDat->patchGhostParticles;
         std::cout << "patch has " << particles.size() << " domain particles "
@@ -159,7 +163,7 @@ void ALevelWithDomainParticles<dim>::hasGhostParticleFilledFromNeighborFirstCell
     for (auto const& patch : *level)
     {
         auto pdat       = patch->getPatchData(0);
-        auto partDat    = std::dynamic_pointer_cast<ParticlesData<dim>>(pdat);
+        auto partDat    = std::dynamic_pointer_cast<ParticlesData_t>(pdat);
         auto& particles = partDat->domainParticles;
         auto& ghosts    = partDat->patchGhostParticles;
         std::cout << "patch has " << particles.size() << " domain particles "

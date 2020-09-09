@@ -82,7 +82,7 @@ pyarray_particles_t splitPyArrayParticles(pyarray_particles_crt const& py_partic
     Splitter splitter;
 
     for (std::size_t i = 0; i < particlesInView.size(); i++)
-        splitter(amr::toFineGrid(particlesInView.copy_to_particle(i), ratio), particlesOutView,
+        splitter(amr::toFineGrid(std::copy(particlesInView[i]), ratio), particlesOutView,
                  i * nbRefinedPart);
 
     return particlesOut;
