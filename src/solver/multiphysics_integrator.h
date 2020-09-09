@@ -306,10 +306,11 @@ namespace solver
 
         void
         applyGradientDetector(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
-                              const int /*levelNumber*/, const double /*error_data_time*/,
+                              const int levelNumber, const double /*error_data_time*/,
                               const int /*tag_index*/, const bool /*initialTime*/,
                               const bool /*usesRichardsonExtrapolationToo*/) override
         {
+            std::cout << "apply gradient detector on level " << levelNumber << "\n";
         }
 
 
