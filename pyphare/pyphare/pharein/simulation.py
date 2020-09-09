@@ -297,13 +297,21 @@ def check_diag_options(**kwargs):
             if os.path.exists(diag_dir) and os.path.isfile(diag_dir):
                 raise ValueError ("Error: Simulation diag_options dir exists as a file.")
             try:
-                if not os.path.exists(diag_dir):
-                    os.makedirs(diag_dir, exist_ok=True)
+                os.makedirs(diag_dir, exist_ok=True)
                 if not os.path.exists(diag_dir):
                     raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
-            except OSError:
+            except FileExistsError:
                 raise ValueError ("Creation of the directory %s failed" % diag_dir)
     return diag_options
+
+
+
+
+
+def check_refinement(**kwargs):
+    return kwargs.get("refinement", "boxes")
+
+
 
 
 
@@ -314,7 +322,7 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path',
-                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes',
+                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes','refinement',
                              'smallest_patch_size', 'largest_patch_size', "diag_options" ]
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
@@ -350,7 +358,11 @@ def checker(func):
         kwargs["largest_patch_size"] = largest
 
         kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
-        kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
+        kwargs["refinement"] = check_refinement(**kwargs)
+        if kwargs["refinement"] == "boxes":
+            kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
+        else:
+            kwargs["refinement_boxes"] = None
 
         return func(simulation_object, **kwargs)
 

@@ -29,6 +29,9 @@
 #include "core/data/vecfield/vecfield.h"
 #include "core/data/grid/gridlayout_utils.h"
 
+
+#include <iomanip>
+
 namespace PHARE::solver
 {
 // -----------------------------------------------------------------------------
@@ -450,18 +453,31 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
-    std::size_t nbrParticles = 0;
+    std::size_t nbrDomainParticles        = 0;
+    std::size_t nbrPatchGhostParticles    = 0;
+    std::size_t nbrLevelGhostNewParticles = 0;
+    std::size_t nbrLevelGhostOldParticles = 0;
+    std::size_t nbrLevelGhostParticles    = 0;
     for (auto& patch : level)
     {
         auto _ = rm.setOnPatch(*patch, ions);
 
         for (auto& pop : ions)
         {
-            nbrParticles += pop.domainParticles().size();
+            nbrDomainParticles += pop.domainParticles().size();
+            nbrPatchGhostParticles += pop.patchGhostParticles().size();
+            nbrLevelGhostNewParticles += pop.levelGhostParticlesNew().size();
+            nbrLevelGhostOldParticles += pop.levelGhostParticlesOld().size();
+            nbrLevelGhostParticles += pop.levelGhostParticles().size();
+            nbrPatchGhostParticles += pop.patchGhostParticles().size();
         }
     }
-    std::cout << "t = " << currentTime << ";  nbr Particles = " << nbrParticles << "\n";
-
+    std::cout << "level = " << level.getLevelNumber() << std::setprecision(6)
+              << " t = " << currentTime << ";  nbrDomParticles = " << nbrDomainParticles
+              << "; LevelGhostNew = " << nbrLevelGhostNewParticles
+              << "; LevelGhostOld = " << nbrLevelGhostOldParticles
+              << "; LevelGhost = " << nbrLevelGhostParticles
+              << "; patchGhost = " << nbrPatchGhostParticles << "\n";
 
 
 

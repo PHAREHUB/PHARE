@@ -181,6 +181,7 @@ namespace amr
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
@@ -365,22 +366,25 @@ namespace amr
          * The method is does nothing if the level is the root level because the root level
          * cannot get levelGhost from next coarser (it has none).
          */
-        void firstNonRootStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& level,
-                              std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                              double time, double newCoarserTime) override
+        void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& level,
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                       double time, double newCoarserTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
-            assert(levelNumber > 0);
+            // root level has no levelghost particles
+            if (levelNumber != 0)
+            {
+                std::cout << "level " << level.getLevelNumber()
+                          << " FIRST STEP : filling levelghostNew from next coarser\n";
+                levelGhostParticlesNew_.fill(levelNumber, time);
 
-            levelGhostParticlesNew_.fill(levelNumber, time);
-
-            // during firstStep() coarser level and current level are at the same time
-            // so 'time' is also the beforePushCoarseTime_
-            beforePushCoarseTime_ = time;
-            afterPushCoarseTime_  = newCoarserTime;
+                // during firstStep() coarser level and current level are at the same time
+                // so 'time' is also the beforePushCoarseTime_
+                beforePushCoarseTime_ = time;
+                afterPushCoarseTime_  = newCoarserTime;
+            }
         }
-
 
 
         /**
@@ -404,11 +408,20 @@ namespace amr
                     auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
                     auto& levelGhostParticles    = pop.levelGhostParticles();
 
+                    std::cout
+                        << "level " << level.getLevelNumber()
+                        << " : LAST STEP : copying new into old levelghost, emptying new, empty "
+                           "pushable, "
+                           "copying old into "
+                           "pushable\n";
                     core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
                     core::empty(levelGhostParticlesNew);
                     core::empty(levelGhostParticles);
                     std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
                               std::back_inserter(levelGhostParticles));
+                    std::cout << "new : " << levelGhostParticlesNew.size() << " "
+                              << " old : " << levelGhostParticlesOld.size() << " "
+                              << "pushable : " << levelGhostParticles.size() << "\n";
                 }
             }
         }

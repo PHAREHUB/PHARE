@@ -1,5 +1,7 @@
 
-from pyphare.simulator.simulator import Simulator
+from pybindlibs import cpp
+
+from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
@@ -26,7 +28,7 @@ class InitializationTest(unittest.TestCase):
 
         from pyphare.pharein import global_vars
         global_vars.sim =None
-
+        startMPI()
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
@@ -167,8 +169,6 @@ class InitializationTest(unittest.TestCase):
 
 
 
-
-
     @data(1,2,3)
     def test_B_is_as_provided_by_user(self, interp_order):
         print("test_B_is_as_provided_by_user : interp_order : {}".format(interp_order))
@@ -179,7 +179,6 @@ class InitializationTest(unittest.TestCase):
         bx_fn = model.model_dict["bx"]
         by_fn = model.model_dict["by"]
         bz_fn = model.model_dict["bz"]
-
         for ilvl, level in hier.levels().items():
             print("checking level {}".format(ilvl))
             for ip, patch in enumerate(level.patches):
@@ -400,6 +399,8 @@ class InitializationTest(unittest.TestCase):
             plt.title(r"$\sigma =$ {}".format(noise[inbr]))
             plt.savefig("noise_{}_interp_{}.png".format(nbrpart, interp_order))
             plt.close("all")
+
+
 
         plt.figure()
         plt.plot(nbr_particles, noise/noise[0], label=r"$\sigma/\sigma_0$")

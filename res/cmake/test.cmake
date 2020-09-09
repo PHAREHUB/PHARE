@@ -121,6 +121,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   function(phare_python3_exec level target file directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
       add_test(NAME ${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+      set_exe_paths_(${target})
     endif()
   endfunction(phare_python3_exec)
   # use
@@ -178,6 +179,8 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   add_subdirectory(tests/simulator)
 
+  add_subdirectory(tests/functional/alfven_wave)
+  add_subdirectory(tests/functional/td)
 
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)

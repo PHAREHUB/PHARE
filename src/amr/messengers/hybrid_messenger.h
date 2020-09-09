@@ -149,11 +149,11 @@ namespace amr
          * @brief see IMessenger::firstStep
          * @param model
          */
-        void firstNonRootStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                              std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                              double time, double newCoarserTime) final
+        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy, double time,
+                       double newCoarserTime) final
         {
-            strat_->firstNonRootStep(model, level, hierarchy, time, newCoarserTime);
+            strat_->firstStep(model, level, hierarchy, time, newCoarserTime);
         }
 
 
