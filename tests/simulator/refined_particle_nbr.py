@@ -14,9 +14,6 @@ from pyphare.cpp import splitter_type
 
 from tests.simulator.config import project_root
 
-out = "phare_outputs/refined_particle_nbr"
-diags = NoOverwriteDict({"diag_options": {"format": "phareh5", "options": {"dir": out}}})
-
 
 class SimulatorRefinedParticleNbr(unittest.TestCase):
 
@@ -53,10 +50,8 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         np.testing.assert_allclose(yaml_weight, splitter_t.weight)
 
 
-    def _do_dim(self, dim, input, min_diff, max_diff):
+    def _do_dim(self, dim, min_diff, max_diff):
         from pyphare.pharein.simulation import valid_refined_particle_nbr
-        input = input.copy() # copy dict as keys are not rewritable
-        # otherwise "input["refined_particle_nbr"] = refined_particle_nbr" would fail the second time
 
         for interp in range(1, 4):
 
@@ -65,8 +60,8 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
                 self._check_deltas_and_weights(dim, interp, refined_particle_nbr)
 
-                input["refined_particle_nbr"] = refined_particle_nbr
-                self.simulator = Simulator(populate_simulation(dim, interp, **input))
+                simInput = NoOverwriteDict({"refined_particle_nbr": refined_particle_nbr})
+                self.simulator = Simulator(populate_simulation(dim, interp, **simInput))
                 self.simulator.initialize()
                 dw = self.simulator.data_wrangler()
                 max_per_pop = 0
@@ -105,7 +100,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def test_1d(self):
         This = type(self)
-        self._do_dim(1, diags, This.PREVIOUS_ITERATION_MIN_DIFF_1d, This.PREVIOUS_ITERATION_MAX_DIFF_1d)
+        self._do_dim(1, This.PREVIOUS_ITERATION_MIN_DIFF_1d, This.PREVIOUS_ITERATION_MAX_DIFF_1d)
 
     """ 2d
       refine 10x10 cells in 2d, ppc 100
@@ -118,7 +113,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def test_2d(self):
         This = type(self)
-        self._do_dim(2, diags, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
+        self._do_dim(2, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
 
     def tearDown(self):
         # needed in case exception is raised in test and Simulator

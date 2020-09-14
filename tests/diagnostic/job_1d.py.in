@@ -6,9 +6,9 @@ from tests.simulator import basicSimulatorArgs, makeBasicModel
 from tests.diagnostic import dump_all_diags
 
 out = "phare_outputs/diags_1d/"
-input = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
+simInput = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode" : "truncate"}}}
 
-ph.Simulation(**basicSimulatorArgs(dim = 1, interp = 1, **input))
+ph.Simulation(**basicSimulatorArgs(dim = 1, interp = 1, **simInput))
 model = makeBasicModel()
 ElectronModel(closure="isothermal",Te = 0.12)
 dump_all_diags(model.populations)

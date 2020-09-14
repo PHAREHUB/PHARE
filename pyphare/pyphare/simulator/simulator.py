@@ -15,7 +15,7 @@ def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
 
 
 class Simulator:
-    def __init__(self, simulation):
+    def __init__(self, simulation, auto_dump=True):
         import pyphare.pharein as ph
         assert isinstance(simulation, ph.Simulation)
         self.simulation = simulation
@@ -23,11 +23,17 @@ class Simulator:
         self.cpp_sim  = None   # BE
         self.cpp_dman = None   # DRAGONS
         self.cpp_dw   = None   # i.e. use weakrefs if you have to ref these.
+        self.auto_dump = auto_dump
 
 
     def __del__(self):
         self.reset()
 
+    @staticmethod
+    def startMPI():
+        if "samrai" not in life_cycles:
+            from pybindlibs import cpp
+            life_cycles["samrai"] = cpp.SamraiLifeCycle()
 
     def initialize(self):
         if self.cpp_sim is not None:
@@ -35,8 +41,7 @@ class Simulator:
         try:
             from pybindlibs import cpp
             from pyphare.pharein import populateDict
-            if "samrai" not in life_cycles:
-                life_cycles["samrai"] = cpp.SamraiLifeCycle()
+            Simulator.startMPI()
             populateDict()
             self.cpp_hier = cpp.make_hierarchy()
 
@@ -45,6 +50,7 @@ class Simulator:
             )
 
             self.cpp_sim.initialize()
+            self._auto_dump() # first dump might be before first advance
         except:
             import sys
             print('Exception caught in "Simulator.initialize()": {}'.format(sys.exc_info()[0]))
@@ -55,6 +61,7 @@ class Simulator:
         if dt is None:
             dt = self.timeStep()
         self.cpp_sim.advance(dt)
+        self._auto_dump()
 
     def diagnostics(self):
         self._check_init()
@@ -62,6 +69,17 @@ class Simulator:
             from pybindlibs import cpp
             self.cpp_dman = cpp.make_diagnostic_manager(self.cpp_sim, self.cpp_hier)
         return self.cpp_dman
+
+    def _auto_dump(self):
+        if self.auto_dump and len(self.simulation.diagnostics) > 0:
+            self.dump()
+
+    def dump(self, *args):
+        assert len(args) == 0 or len(args) == 2
+        if len(args) == 0:
+            self.diagnostics().dump(timestamp=self.currentTime(), timestep=self.timeStep())
+        else:
+            self.diagnostics().dump(timestamp=args[0], timestep=args[1])
 
     def data_wrangler(self):
         self._check_init()
