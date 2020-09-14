@@ -241,8 +241,8 @@ class InitializationTest(unittest.TestCase):
                     data1 = pd1.dataset
                     data2 = pd2.dataset
 
-                    slice1 = data1[loc_b1.lower:loc_b1.upper+1]
-                    slice2 = data2[loc_b2.lower:loc_b2.upper+ 1]
+                    slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0]+1]
+                    slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0]+ 1]
 
                     self.assertTrue(np.allclose(slice1, slice2, atol=1e-12))
 

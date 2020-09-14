@@ -114,7 +114,7 @@ def build_hierarchy(**kwargs):
             boxes[level_number].append(refined_box)
 
     # coarse level boxes are arbitrarily divided in 2 patches in the middle
-    middle_cell = round(domain_box.upper / 2)
+    middle_cell = np.round(domain_box.upper / 2)
     lower_box = Box(0, middle_cell)
     upper_box = Box(middle_cell + 1, domain_box.upper)
     boxes[0] = [lower_box, upper_box]
