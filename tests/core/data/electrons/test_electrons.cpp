@@ -189,15 +189,44 @@ using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<I
 
 
 // https://stackoverflow.com/questions/46101569/compile-time-constructor-switch-in-c
-template<int>
-struct with
+// template<int>
+// struct with
+//{
+//};
+
+
+struct oneDlayout
 {
+    oneDlayout()
+        : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+    {
+    }
+
+    GridYee layout;
 };
 
 
+
+class NdLayout
+{
+    constexpr NdLayout() {}
+
+public:
+    static oneDlayout oneDl;
+
+    static constexpr NdLayout create(int dim)
+    {
+        switch (dim)
+        {
+            case 1: return oneDl;
+        }
+    }
+};
+
 struct nDLayout
 {
-    nDLayout(with<1>)
+    // nDLayout(with<1>)
+    nDLayout()
         : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
     // nDLayout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50),
     //         Point<double, dim>{ConstArray<double, dim>(0.)}}
@@ -257,7 +286,8 @@ struct ElectronsTest
     ElectronsTest()
         : // layout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50), Point<double,
           // dim>{ConstArray<double, dim>(0.)}}
-        _nDLayout{with<dim>{}} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+          //_nDLayout{with<dim>{}} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+        _nDLayout{} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
         , ions{createDict()["ions"]}
         , electromag{createDict()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
