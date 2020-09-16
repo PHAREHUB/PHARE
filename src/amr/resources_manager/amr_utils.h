@@ -161,6 +161,7 @@ namespace amr
         int constexpr dimension = GridLayoutT::dimension;
 
         SAMRAI::tbox::Dimension const dim{dimension};
+
         //  We get geometry information from the patch, such as meshSize, and physical origin
         auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
             patch.getPatchGeometry());
@@ -180,12 +181,20 @@ namespace amr
             }
         }
         else
+        /*
+          We assume that this is a temporary patch used by SAMRAI for data transfers
+          Temporary patches are not given a Geometry at this moment so we can't use it.
+          This happens in:
+           SAMRAI::xfer::RefineTimeTransaction::packStream(tbox::MessageStream&stream)
+
+          SEE: https://github.com/LLNL/SAMRAI/issues/147
+        */
         {
-            // in case that the patch does not have a CartesianPatchGeometry
-            // the gridlayout will most likely throw at the construction
-            // so we may throw here instead
-            throw std::runtime_error(
-                "The geometry on the patch is not set, please verify your configuration");
+            for (std::size_t iDim = 0; iDim < dimension; ++iDim)
+            {
+                origin[iDim] = 0;
+                dl[iDim]     = 1;
+            }
         }
 
         SAMRAI::hier::Box domain = patch.getBox();

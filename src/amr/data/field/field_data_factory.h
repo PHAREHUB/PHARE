@@ -45,9 +45,8 @@ namespace amr
         /*** \brief Clone the current FieldDataFactory
          */
         std::shared_ptr<SAMRAI::hier::PatchDataFactory>
-        cloneFactory(SAMRAI::hier::IntVector const& ghost) final
+        cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) final
         {
-            (void)ghost;
             return std::make_shared<FieldDataFactory>(fineBoundaryRepresentsVariable_,
                                                       dataLivesOnPatchBorder_, name_, quantity_);
         }

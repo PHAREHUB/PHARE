@@ -5,13 +5,18 @@ life_cycles = {}
 
 @atexit.register
 def clear_life_cycles():
-    global life_cycles
     life_cycles.clear()
 
 
 def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
     from pybindlibs import cpp
     return getattr(cpp, "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart))(hier)
+
+
+def startMPI():
+    if "samrai" not in life_cycles:
+        from pybindlibs import cpp
+        life_cycles["samrai"] = cpp.SamraiLifeCycle()
 
 
 class Simulator:
@@ -29,11 +34,6 @@ class Simulator:
     def __del__(self):
         self.reset()
 
-    @staticmethod
-    def startMPI():
-        if "samrai" not in life_cycles:
-            from pybindlibs import cpp
-            life_cycles["samrai"] = cpp.SamraiLifeCycle()
 
     def initialize(self):
         if self.cpp_sim is not None:
@@ -41,7 +41,7 @@ class Simulator:
         try:
             from pybindlibs import cpp
             from pyphare.pharein import populateDict
-            Simulator.startMPI()
+            startMPI()
             populateDict()
             self.cpp_hier = cpp.make_hierarchy()
 
@@ -51,6 +51,7 @@ class Simulator:
 
             self.cpp_sim.initialize()
             self._auto_dump() # first dump might be before first advance
+            return self
         except:
             import sys
             print('Exception caught in "Simulator.initialize()": {}'.format(sys.exc_info()[0]))
@@ -62,6 +63,7 @@ class Simulator:
             dt = self.timeStep()
         self.cpp_sim.advance(dt)
         self._auto_dump()
+        return self
 
     def diagnostics(self):
         self._check_init()
@@ -80,6 +82,7 @@ class Simulator:
             self.diagnostics().dump(timestamp=self.currentTime(), timestep=self.timeStep())
         else:
             self.diagnostics().dump(timestamp=args[0], timestep=args[1])
+        return self
 
     def data_wrangler(self):
         self._check_init()
