@@ -450,6 +450,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
+    /*
     std::size_t nbrParticles = 0;
     for (auto& patch : level)
     {
@@ -461,7 +462,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
         }
     }
     std::cout << "t = " << currentTime << ";  nbr Particles = " << nbrParticles << "\n";
-
+*/
 
 
 

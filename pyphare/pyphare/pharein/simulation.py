@@ -297,8 +297,9 @@ def check_diag_options(**kwargs):
             if os.path.exists(diag_dir) and os.path.isfile(diag_dir):
                 raise ValueError ("Error: Simulation diag_options dir exists as a file.")
             try:
-                if not os.path.exists(diag_dir):
-                    os.makedirs(diag_dir, exist_ok=True)
+                if os.path.exists(diag_dir):
+                    raise ValueError("diag directory '{}' already exist".format(diag_dir))
+                os.makedirs(diag_dir, exist_ok=True)
                 if not os.path.exists(diag_dir):
                     raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
             except OSError:
