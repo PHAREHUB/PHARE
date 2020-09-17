@@ -13,8 +13,8 @@ import numpy as np
 Simulation(
     smallest_patch_size=20,
     largest_patch_size=20,
-    time_step_nbr=500,        # number of time steps (not specified if time_step and final_time provided)
-    final_time=0.5,             # simulation final time (not specified if time_step and time_step_nbr provided)
+    time_step_nbr=100,        # number of time steps (not specified if time_step and final_time provided)
+    final_time=0.1,             # simulation final time (not specified if time_step and time_step_nbr provided)
     boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
     cells=40,                # integer or tuple length == dimension
     dl=0.3,                  # mesh size of the root level, float or tuple

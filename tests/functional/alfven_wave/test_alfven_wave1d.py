@@ -9,23 +9,15 @@ from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 import matplotlib.pyplot as plt
 
 
-def main():
-    simulator = Simulator(gv.sim)
-    simulator.initialize()
 
-    times =  np.arange(0,gv.sim.final_time, simulator.timeStep())
-    for it,t in enumerate(times):
-        simulator.diagnostics().dump(timestamp=simulator.currentTime(),
-                                     timestep=simulator.timeStep())
-        simulator.advance()
+def plot(bhier):
+    times = np.sort(np.asarray(list(bhier.time_hier.keys())))
 
+    components  =("B_x", "B_y", "B_z")
 
-    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
-
-    times = np.sort(np.asarray(list(b.time_hier.keys())))
     fig,ax = plt.subplots(figsize=(10,6))
     t=0
-    for il,level in b.levels(t).items():
+    for il,level in bhier.levels(t).items():
         patches = level.patches
         if il == 0:
             marker="+"
@@ -46,6 +38,23 @@ def main():
 
     ax.legend(ncol=4)
     ax.set_title("t = {:05.2f}".format(t))
+    fig.savefig("b.png")
+
+
+
+def main():
+    simulator = Simulator(gv.sim)
+    simulator.initialize()
+
+    times =  np.arange(0,gv.sim.final_time, simulator.timeStep())
+    for it,t in enumerate(times):
+        simulator.advance()
+
+
+    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
+
+    plot(b)
+
 
 
 
