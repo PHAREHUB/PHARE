@@ -8,7 +8,8 @@ import numpy as np
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 import matplotlib.pyplot as plt
 
-
+import matplotlib as mpl
+mpl.use('Agg')
 
 def plot(bhier):
     times = np.sort(np.asarray(list(bhier.time_hier.keys())))
