@@ -4,7 +4,7 @@
 import pyphare.pharein
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics
+from pyphare.pharein import ElectromagDiagnostics,FluidDiagnostics
 from pyphare.pharein import ElectronModel
 import numpy as np
 
@@ -50,7 +50,7 @@ def vx(x):
 
 
 def vy(x):
-    from pyphare.pharein.global_vars import sim
+    from pyphare.pharFluidDiagnosticsein.global_vars import sim
     L = sim.simulation_domain()
     return 0.1*np.cos(2*np.pi*x/L[0])
 
@@ -85,8 +85,6 @@ MaxwellianFluidModel(
 ElectronModel(closure="isothermal", Te=0.12)
 
 
-import pyphare.pharein as ph
-
 
 sim = ph.global_vars.sim
 
@@ -95,7 +93,7 @@ timestamps = np.arange(0, sim.final_time +sim.time_step, 100*sim.time_step)
 
 
 for quantity in ["E", "B"]:
-    ph.ElectromagDiagnostics(
+    ElectromagDiagnostics(
         quantity=quantity,
         write_timestamps=timestamps,
         compute_timestamps=timestamps,
@@ -103,16 +101,10 @@ for quantity in ["E", "B"]:
 
 
 for quantity in ["density", "bulkVelocity"]:
-    ph.FluidDiagnostics(
+    FluidDiagnostics(
         quantity=quantity,
         write_timestamps=timestamps,
         compute_timestamps=timestamps,
         )
 
 pops=["protons",]
-
-
-
-
-
-

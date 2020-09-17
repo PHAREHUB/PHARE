@@ -14,32 +14,34 @@ def plot(bhier):
     times = np.sort(np.asarray(list(bhier.time_hier.keys())))
 
     components  =("B_x", "B_y", "B_z")
+    ylims = ((0,1.5),(-0.25,0.25),(-0.25,0.25))
 
-    fig,ax = plt.subplots(figsize=(10,6))
-    t=0
-    for il,level in bhier.levels(t).items():
-        patches = level.patches
-        if il == 0:
-            marker="+"
-            alpha=1
-            ls='-'
-        else:
-            marker='o'
-            alpha=0.4
-            ls='none'
+    for component,ylim in zip(components,ylims):
+        for it,t in enumerate(times):
+            fig,ax = plt.subplots(figsize=(10,6))
+            for il,level in bhier.levels(t).items():
+                patches = level.patches
+                if il == 0:
+                    marker="+"
+                    alpha=1
+                    ls='-'
+                else:
+                    marker='o'
+                    alpha=0.4
+                    ls='none'
 
-        for ip, patch in enumerate(patches):
-            val   = patch.patch_datas["EM_B_x"].dataset[:]
-            x_val = patch.patch_datas["EM_B_x"].x
-            label="$B_x$ level {} patch {}".format(il,ip)
-            ax.plot(x_val, val, label=label,
-                    marker=marker, alpha=alpha, ls=ls)
-            ax.set_ylim((0, 1.5))
+                for ip, patch in enumerate(patches):
+                    val   = patch.patch_datas["EM_"+component].dataset[:]
+                    x_val = patch.patch_datas["EM_"+component].x
+                    label="${}$ level {} patch {}".format(component,il,ip)
+                    ax.plot(x_val, val, label=label,
+                            marker=marker, alpha=alpha, ls=ls)
+                    ax.set_ylim(ylim)
 
-    ax.legend(ncol=4)
-    ax.set_title("t = {:05.2f}".format(t))
-    fig.savefig("b.png")
-
+            ax.legend(ncol=4)
+            ax.set_title("t = {:05.2f}".format(t))
+            fig.savefig("{}_{:04d}.png".format(component,it))
+            plt.close(fig)
 
 
 def main():
