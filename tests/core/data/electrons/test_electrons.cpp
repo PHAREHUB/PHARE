@@ -15,38 +15,13 @@
 
 using namespace PHARE::core;
 
-static constexpr std::size_t dim         = 1;
-static constexpr std::size_t interpOrder = 1;
+
 
 //_____ only works for dim=1
 double density(double)
 {
     return 2.;
 }
-
-
-//_____ first attempt
-// template<typename... Xyz>
-// double density(Xyz...)
-//{
-//    return 2.;
-//}
-
-
-//_____ second attempt
-// template<typename T>
-// T density(T)
-//{
-//    return 2.;
-//}
-//
-// template<typename T, typename... Args>
-// T density(T, Args... args)
-//{
-//    return density(args...);
-//}
-
-
 
 
 double vx(double /*x*/)
@@ -119,10 +94,12 @@ double ez(double x)
 const double Te = 0.12;
 
 
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
-
+template<int dim>
 PHARE::initializer::PHAREDict createDict()
 {
+    using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
+
+
     PHARE::initializer::PHAREDict dict;
     dict["ions"]["nbrPopulations"]                          = int{1};
     dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
@@ -173,85 +150,84 @@ PHARE::initializer::PHAREDict createDict()
 
 
 
-using GridImplYee = GridLayoutImplYee<dim, interpOrder>;
-using GridYee     = GridLayout<GridImplYee>;
-
-using VecFieldND      = VecField<NdArrayVector<dim>, HybridQuantity>;
-using FieldND         = typename VecFieldND::field_type;
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
-
-using IonPopulationND = IonPopulation<ParticleArray<dim>, VecFieldND, GridYee>;
-using IonsT           = Ions<IonPopulationND, GridYee>;
-using PartPackND      = ParticlesPack<typename IonPopulationND::particle_array_type>;
-using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
-
-
-
-
 // https://stackoverflow.com/questions/46101569/compile-time-constructor-switch-in-c
-// template<int>
-// struct with
-//{
-//};
 
 
-struct oneDlayout
+
+template<int dim, int interp>
+class NDlayout
 {
-    oneDlayout()
-        : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
-    {
-    }
+    NDlayout() {}
 
-    GridYee layout;
-};
-
-
-
-class NdLayout
-{
-    constexpr NdLayout() {}
+    using nDL = GridLayout<GridLayoutImplYee<dim, interp>>;
 
 public:
-    static oneDlayout oneDl;
-
-    static constexpr NdLayout create(int dim)
+    static nDL create()
     {
         switch (dim)
         {
-            case 1: return oneDl;
+            case 1:
+                return {{{0.1}}, {{50}}, {0.}};
+                break;
+                // case 2:
+                //    return {{{0.1, 0.2}}, {{50, 40}}, {0., 0.}};
+                //    break;
+                //    return {std::array<double, dim>(0.1, 0.2), std::array<uint32, dim>(50, 40),
+                // Point<double, dim>(0., 0.)
+                // case 3: return {{{0.1, 0.2, 0.3}}, {{50, 40, 30}}, {0., 0., 0.}};
         }
     }
 };
 
-struct nDLayout
+template<int dim>
+std::initializer_list<std::initializer_list<float>> createNdLayout()
 {
-    // nDLayout(with<1>)
-    nDLayout()
-        : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
-    // nDLayout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50),
-    //         Point<double, dim>{ConstArray<double, dim>(0.)}}
-    // nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
-    {
-    }
+    return {};
+}
 
-    // constexpr nDLayout(with<2>)
-    //    : nDLayout{{{0.1, 0.2}}, {{50, 30}}, {0., 0.}}
-    //{
-    //}
+template<>
+std::initializer_list<std::initializer_list<float>> createNdLayout<1>()
+{
+    return {{0.1}, {50}, {0.}};
+}
 
-    // constexpr nDLayout(std::array<double, dim> mesh, std::array<uint32, dim> numofcells,
-    //                   Point<double, dim> origin)
-    //    : meshSize{mesh}
-    //    , nbrCells{numofcells}
-    //    , origin{origin}
-    //{
-    //}
+template<>
+std::initializer_list<std::initializer_list<float>> createNdLayout<2>()
+{
+    return {{0.1, 0.2}, {50, 40}, {0., 0.}};
+}
 
-    GridYee layout;
-    // std::array<double, dim> meshSize;
-    // std::array<uint32, dim> nbrCells;
-    // Point<double, dim> origin;
-};
+
+
+// struct nDLayout
+//{
+//    // nDLayout(with<1>)
+//    nDLayout()
+//        : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
+//    // nDLayout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50),
+//    //         Point<double, dim>{ConstArray<double, dim>(0.)}}
+//    // nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
+//    {
+//    }
+//
+//    // nDLayout()
+//    //    : nDLayout{{{0.1, 0.2}}, {{50, 30}}, {0., 0.}}
+//    //{
+//    //}
+//
+//    // constexpr nDLayout(std::array<double, dim> mesh, std::array<uint32, dim> numofcells,
+//    //                   Point<double, dim> origin)
+//    //    : meshSize{mesh}
+//    //    , nbrCells{numofcells}
+//    //    , origin{origin}
+//    //{
+//    //}
+//
+//    GridYee layout;
+//    // std::array<double, dim> meshSize;
+//    // std::array<uint32, dim> nbrCells;
+//    // Point<double, dim> origin;
+//};
 
 
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
@@ -260,8 +236,21 @@ struct ElectronsTest
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    nDLayout _nDLayout;
-    GridYee& layout = _nDLayout.layout;
+
+    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+
+    using VecFieldND      = VecField<NdArrayVector<dim>, HybridQuantity>;
+    using FieldND         = typename VecFieldND::field_type;
+    using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
+
+    using IonPopulationND = IonPopulation<ParticleArray<dim>, VecFieldND, GridYee>;
+    using IonsT           = Ions<IonPopulationND, GridYee>;
+    using PartPackND      = ParticlesPack<typename IonPopulationND::particle_array_type>;
+    using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
+
+
+    GridYee layout = NDlayout<dim, interp>::create();
+    // GridYee layout = createNdLayout<dim>();
     IonsT ions;
     Electromag<VecFieldND> electromag;
     VecFieldND J;
@@ -284,12 +273,8 @@ struct ElectronsTest
     FieldND Pe;
 
     ElectronsTest()
-        : // layout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50), Point<double,
-          // dim>{ConstArray<double, dim>(0.)}}
-          //_nDLayout{with<dim>{}} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
-        _nDLayout{} // layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
-        , ions{createDict()["ions"]}
-        , electromag{createDict()["electromag"]}
+        : ions{createDict<dim>()["ions"]}
+        , electromag{createDict<dim>()["electromag"]}
         , J{"J", HybridQuantity::Vector::J}
         , Nibuffer{ions.densityName(), HybridQuantity::Scalar::rho,
                    layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -313,7 +298,7 @@ struct ElectronsTest
         , Jx{"J_x", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
         , Jy{"J_y", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
         , Jz{"J_z", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , electrons{createDict()["electrons"], ions, J}
+        , electrons{createDict<dim>()["electrons"], ions, J}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
     {
         J.setBuffer(Jx.name(), &Jx);
@@ -447,13 +432,14 @@ TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
     auto& electrons = test.electrons;
     auto& layout    = test.layout;
     auto& ions      = test.ions;
+    auto& dim       = test.dim;
 
     electrons.update(layout);
 
     auto& Ne = electrons.density();
     auto& Ni = ions.density();
 
-    if constexpr (dim == 1)
+    if (dim == 1)
     {
         auto psi_X = layout.physicalStartIndex(Ne, Direction::X);
         auto pei_X = layout.physicalEndIndex(Ne, Direction::X);
@@ -463,10 +449,10 @@ TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
             EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
         }
     }
-    else if constexpr (dim == 2)
+    else if (dim == 2)
     {
     }
-    else if constexpr (dim == 3)
+    else if (dim == 3)
     {
     }
 }
@@ -475,16 +461,23 @@ TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
 TYPED_TEST(TElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 {
     TypeParam test;
+    auto& dim       = test.dim;
+    auto& interp    = test.interp;
     auto& electrons = test.electrons;
     auto& layout    = test.layout;
+
+    using VecFieldND = VecField<NdArrayVector<dim>, HybridQuantity>;
+    using FieldND    = typename VecFieldND::field_type;
+    using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
+
 
     electrons.update(layout);
 
     auto& Ne = electrons.density();
 
-    auto check = [&layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
-                           FieldND const& Ne_, auto const& projector) {
-        if constexpr (dim == 1)
+    auto check = [&dim, &layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
+                                 FieldND const& Ne_, auto const& projector) {
+        if (dim == 1)
         {
             auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
             auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
@@ -496,10 +489,10 @@ TYPED_TEST(TElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
                 EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
             }
         }
-        else if constexpr (dim == 2)
+        else if (dim == 2)
         {
         }
-        else if constexpr (dim == 3)
+        else if (dim == 3)
         {
         }
     };
@@ -516,13 +509,14 @@ TYPED_TEST(TElectronsTest, ThatElectronsPressureEqualsNeTe)
     TypeParam test;
     auto& electrons = test.electrons;
     auto& layout    = test.layout;
+    auto& dim       = test.dim;
 
     electrons.update(layout);
 
     auto& Ne_ = electrons.density();
     auto& Pe_ = electrons.pressure();
 
-    if constexpr (dim == 1)
+    if (dim == 1)
     {
         auto psi_X = layout.physicalStartIndex(Ne_, Direction::X);
         auto pei_X = layout.physicalEndIndex(Ne_, Direction::X);
@@ -532,10 +526,10 @@ TYPED_TEST(TElectronsTest, ThatElectronsPressureEqualsNeTe)
             EXPECT_DOUBLE_EQ(Pe_(i), Ne_(i) * Te);
         }
     }
-    else if constexpr (dim == 2)
+    else if (dim == 2)
     {
     }
-    else if constexpr (dim == 3)
+    else if (dim == 3)
     {
     }
 }
