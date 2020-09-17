@@ -40,7 +40,7 @@ public:
 
     template<typename Hierarchy, typename Model>
     Writer(Hierarchy& hier, Model& model, std::string const hifivePath,
-           unsigned _flags = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate)
+           unsigned _flags /* = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate */)
         : flags{_flags}
         , filePath_{hifivePath}
         , modelView_{hier, model}
@@ -53,7 +53,10 @@ public:
     static decltype(auto) make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
-        return std::make_unique<This>(hier, model, filePath);
+        unsigned flags       = HiFile::ReadWrite | HiFile::Create;
+        if (dict.contains("mode") and dict["mode"].template to<std::string>() == "truncate")
+            flags |= HiFile::Truncate;
+        return std::make_unique<This>(hier, model, filePath, flags);
     }
 
 

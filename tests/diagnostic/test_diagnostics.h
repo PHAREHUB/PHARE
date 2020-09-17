@@ -101,7 +101,8 @@ struct Hi5Diagnostic
     using ModelView_t = ModelView<Hierarchy, HybridModel>;
     using Writer_t    = Writer<ModelView_t>;
 
-    Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, std::string out, unsigned flags)
+    Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, std::string out,
+                  unsigned flags = NEW_HI5_FILE)
         : hierarchy_{hierarchy}
         , model_{hybridModel}
         , out_{out}
