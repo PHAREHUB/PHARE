@@ -32,6 +32,28 @@ class FieldData(PatchData):
     Concrete type of PatchData representing a physical quantity
     defined on a grid.
     """
+    def _delta(self, i):
+        return self.origin[i] - self._ghosts_nbr * self.dl[i] + np.arange(self.size[i]) * self.dl[i] + self.offset[i]
+
+    @property
+    def x(self):
+        if self._x is None:
+            self._x = self._delta(0)
+        return self._x
+
+    @property
+    def y(self):
+        if self._y is None:
+            self._y = self._delta(1)
+        return self._y
+
+    @property
+    def z(self):
+        if self._z is None:
+            self._z = self._delta(2)
+        return self._z
+
+
     def __init__(self, layout, field_name, data):
         """
         :param layout: A GridLayout representing the domain on which data is defined
@@ -42,20 +64,22 @@ class FieldData(PatchData):
 
         self.layout = layout
         self.field_name = field_name
-        self.dx = layout.dl[0]
+        self.dl = np.asarray(layout.dl)
 
         centering = layout.centering["X"][field_name]
         self._ghosts_nbr = layout.nbrGhosts(layout.interp_order, centering)
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
         if centering == "primal":
-            self.size = self.ghost_box.size() + 1
-            offset = 0
+            self.size = self.ghost_box.shape() + 1
+            self.offset = 0*self.dl
         else:
-            self.size = self.ghost_box.size()
-            offset = 0.5*self.dx
+            self.size = self.ghost_box.shape()
+            self.offset = 0.5*self.dl
 
-        self.x = self.origin[0] - self._ghosts_nbr * self.dx + np.arange(self.size) * self.dx + offset
+        self._x = None
+        self._y = None
+        self._z = None
         self.dataset = data
 
 
@@ -80,7 +104,6 @@ class ParticleData(PatchData):
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
 
-
 class Patch:
     """
     A patch represents a hyper-rectangular region of space
@@ -95,7 +118,7 @@ class Patch:
         pdata0 = list(patch_datas.values())[0] #0 represents all others
         self.box = pdata0.layout.box
         self.origin = pdata0.layout.origin
-        self.dx = pdata0.layout.dl[0]
+        self.dl = pdata0.layout.dl
         self.patch_datas = patch_datas
 
 
@@ -163,7 +186,7 @@ class PatchHierarchy:
         for ilvl, lvl in self.time_hier[0.].items():
             lvl_offset = ilvl * 0.1
             for patch in lvl.patches:
-                dx = patch.dx
+                dx = patch.dl[0]
                 x0 = patch.box.lower * dx
                 x1 = patch.box.upper * dx
                 xcells = np.arange(x0, x1 + dx, dx)
@@ -258,9 +281,9 @@ def pop_name(basename):
 
 def make_layout(h5_patch_grp, cell_width):
     nbrCells = h5_patch_grp.attrs['nbrCells']
-    origin = float(h5_patch_grp.attrs['origin'])
-    upper = int(h5_patch_grp.attrs['upper'])
-    lower = int(h5_patch_grp.attrs['lower'])
+    origin = h5_patch_grp.attrs['origin']
+    upper = h5_patch_grp.attrs['upper']
+    lower = h5_patch_grp.attrs['lower']
 
     return GridLayout(Box(lower, upper), origin, cell_width)
 
@@ -340,8 +363,9 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     import h5py
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
-    root_cell_width = float(data_file.attrs["cell_width"])
-    domain_box = Box(0, int(data_file.attrs["domain_box"])-1)
+    root_cell_width = np.asarray(data_file.attrs["cell_width"])
+    dims = len(data_file.attrs["domain_box"])
+    domain_box = Box([0 for d in range(dims)], data_file.attrs["domain_box"]-1)
 
     if create_from_all_times(time, hier):
         # first create from first time
@@ -423,7 +447,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
                         assert file_patch_box == hier_patch.box
                         assert abs(origin - hier_patch.origin[0]) < 1e-6
-                        assert abs(lvl_cell_width - hier_patch.dx) < 1e-6
+                        assert abs(lvl_cell_width - hier_patch.dl[0]) < 1e-6
 
                         layout = make_layout(h5_patch_grp, lvl_cell_width)
                         add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
@@ -503,7 +527,7 @@ def isFieldQty(qty):
 
 
 def hierarchy_from_sim(simulator, qty, pop=""):
-    dw = simulator.data_wrangler()    
+    dw = simulator.data_wrangler()
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 

@@ -46,10 +46,6 @@ class Box:
         """returns the length per dimension"""
         return (self.upper - self.lower) + 1
 
-    def size(self):
-        """deprecated, use shape"""
-        # DOTO remove use shape
-        return self.shape()[0]
 
     def cells(self):
         """returns the number of cells in the box"""
@@ -61,6 +57,13 @@ class Box:
 
     def __repr__(self):
         return self.__str__()
+
+    def __getitem__(self, idx):
+        assert 0 <= idx <= 1
+        if idx == 0:
+            return self.lower
+        return self.upper
+
 
     def __contains__(self, item):
         """true if item is completely within self"""

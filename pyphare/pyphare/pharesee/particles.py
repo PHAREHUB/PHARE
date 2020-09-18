@@ -11,9 +11,9 @@ class Particles:
         if "box" in kwargs:
             box = kwargs["box"]
 
-            self.iCells  = np.random.randint(box.lower, high=box.upper+1, size=box.size()*100)
-            self.deltas  = np.random.rand(box.size()*100)
-            self.v       = np.random.randn(box.size()*100, 3)
+            self.iCells  = np.random.randint(box.lower, high=box.upper+1, size=box.shape()*100)
+            self.deltas  = np.random.rand(box.cells()*100)
+            self.v       = np.random.randn(box.cells()*100, 3)
             self.weights = np.zeros_like(self.deltas) + 0.01
             self.charges = np.zeros_like(self.weights) + 1
 
@@ -67,3 +67,16 @@ class Particles:
           charges=split_pyarrays[3],
           v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3)
         )
+
+
+def aggregate(particles_in):
+    assert all([isinstance(particles, Particles) for particles in particles_in])
+
+    from copy import copy
+
+    particles_out = copy(particles_in[0]) # use first, concat rest
+    for particles in particles_in[1:]:
+        particles_out.add(particles)
+
+    assert particles_out.size() == sum([particles.size() for particles in particles_in])
+    return particles_out

@@ -16,32 +16,32 @@ import numpy as np
 
 
 def bx(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
+    x = origin + np.arange(ghost_box.shape() + 1) * dx - 5 * dx
     return np.sin(2 * np.pi / Lx * x)
 
 
 def by(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
+    x = origin + np.arange(ghost_box.shape()) * dx - 5 * dx
     return np.cos(2 * np.pi / Lx * x)
 
 
 def bz(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
+    x = origin + np.arange(ghost_box.shape()) * dx - 5 * dx
     return np.sin(4 * np.pi / Lx * x)
 
 
 def ex(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
+    x = origin + np.arange(ghost_box.shape()) * dx - 5 * dx
     return np.sin(2 * np.pi / Lx * x)
 
 
 def ey(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
+    x = origin + np.arange(ghost_box.shape() + 1) * dx - 5 * dx
     return np.cos(2 * np.pi / Lx * x)
 
 
 def ez(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
+    x = origin + np.arange(ghost_box.shape() + 1) * dx - 5 * dx
     return np.sin(4 * np.pi / Lx * x)
 
 
@@ -97,8 +97,8 @@ def build_hierarchy(**kwargs):
     upper_cell_particles = coarse_particles.select(upper_slct_box)
     lower_cell_particles = coarse_particles.select(lower_slct_box)
 
-    coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.size()))
-    coarse_particles.add(lower_cell_particles.shift_icell(domain_box.size()))
+    coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.shape()))
+    coarse_particles.add(lower_cell_particles.shift_icell(domain_box.shape()))
 
     boxes = {}
     for ilvl, boxes_data in refinement_boxes.items():
@@ -292,6 +292,7 @@ class GeometryTest(unittest.TestCase):
         }
 
         gaboxes = particle_ghost_area_boxes(self.hierarchy)
+        particles = "particles"
 
         # same number of levels
         self.assertEqual(len(expected), len(gaboxes))
@@ -299,9 +300,9 @@ class GeometryTest(unittest.TestCase):
         for ilvl, lvl in enumerate(self.hierarchy.patch_levels):
 
             # same number of PatchDatas
-            self.assertEqual(len(gaboxes[ilvl]), len(expected[ilvl]))
+            self.assertEqual(len(gaboxes[ilvl][particles]), len(expected[ilvl]))
 
-            for act_pdata, exp_pdata in zip(gaboxes[ilvl], expected[ilvl]):
+            for act_pdata, exp_pdata in zip(gaboxes[ilvl][particles], expected[ilvl]):
 
                     self.assertEqual(len(exp_pdata["boxes"]), len(act_pdata["boxes"]))
 
@@ -326,7 +327,9 @@ class GeometryTest(unittest.TestCase):
 
         lvl_gaboxes = level_ghost_boxes(self.hierarchy)
         for ilvl  in range(1, len(self.hierarchy.patch_levels)):
-            for actual, exp in zip(lvl_gaboxes[ilvl], expected[ilvl]):
+            assert len(lvl_gaboxes[ilvl].keys()) == 1 # possibly multiple populations
+            key = list(lvl_gaboxes[ilvl].keys())[0]
+            for actual, exp in zip(lvl_gaboxes[ilvl][key], expected[ilvl]):
 
                 act_boxes = actual["boxes"]
                 exp_boxes = exp["boxes"]
@@ -344,11 +347,15 @@ class GeometryTest(unittest.TestCase):
 
         lvl_gboxes = level_ghost_boxes(self.hierarchy)
 
+        assert len(lvl_gboxes) > 0
         for ilvl, pdatainfos in lvl_gboxes.items():
-            for pdatainfo in pdatainfos:
-                for box in pdatainfo["boxes"]:
-                    for patch in self.hierarchy.patch_levels[ilvl].patches:
-                            self.assertIsNone(patch.box * box)
+            assert len(pdatainfos) > 0
+            for particles_id, gaboxes_list in pdatainfos.items():
+                assert len(gaboxes_list) > 0
+                for pdatainfo in gaboxes_list:
+                    for box in pdatainfo["boxes"]:
+                        for patch in self.hierarchy.patch_levels[ilvl].patches:
+                                self.assertIsNone(patch.box * box)
 
 
 

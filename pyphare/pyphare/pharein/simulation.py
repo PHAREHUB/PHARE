@@ -240,7 +240,7 @@ def check_refinement_boxes(**kwargs):
 
         elif isinstance(boxes[0], Box):
             for box in boxes:
-                for l in boxm.refine(box, kwargs["refinement_ratio"]).length():
+                for l in boxm.refine(box, kwargs["refinement_ratio"]).shape():
                     if l < smallest_patch_size:
                         raise  ValueError("Invalid box incompatible with smallest_patch_size")
 
@@ -322,6 +322,9 @@ def checker(func):
             raise ValueError("Error: invalid arguments - " + " ".join(wrong_kwds))
 
         dl, cells = check_domain(**kwargs)
+
+        kwargs["refinement_ratio"] = 2
+
         kwargs["dl"] = dl
         kwargs["cells"] =  cells
 

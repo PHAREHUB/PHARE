@@ -119,21 +119,21 @@ def populateDict():
         for level,boxes in rb.items():
             level_path = "simulation/AMR/refinement_boxes/"+level+"/"
             add(level_path + 'nbr_boxes/',int(len(boxes.keys())))
-            for box,cells in boxes.items():
-                lower = cells[0]
-                upper = cells[1]
-                box_lower_path_x = box + "/lower/x/"
-                box_upper_path_x = box + "/upper/x/"
+            for box_id, box in boxes.items():
+                lower = box[0]
+                upper = box[1]
+                box_lower_path_x = box_id + "/lower/x/"
+                box_upper_path_x = box_id + "/upper/x/"
                 add(level_path + box_lower_path_x, int(lower[0]))
                 add(level_path + box_upper_path_x, int(upper[0]))
                 if len(lower)>=2:
-                    box_lower_path_y = box + "/lower/y/"
-                    box_upper_path_y = box + "/upper/y/"
+                    box_lower_path_y = box_id + "/lower/y/"
+                    box_upper_path_y = box_id + "/upper/y/"
                     add(level_path+box_lower_path_y, int(lower[1]))
                     add(level_path+box_upper_path_y, int(upper[1]))
                     if (len(lower)==3):
-                        box_lower_path_z = box + "/lower/z/"
-                        box_upper_path_z = box + "/upper/z/"
+                        box_lower_path_z = box_id + "/lower/z/"
+                        box_upper_path_z = box_id + "/upper/z/"
                         add(level_path+box_lower_path_z, int(lower[2]))
                         add(level_path+box_upper_path_z, int(upper[2]))
 
