@@ -174,7 +174,7 @@ class PatchHierarchy:
 
 
 
-    def plot(self, qty, xlim=None, ylim=None, title=None,filename=None):
+    def plot(self, qty, xlim=None, ylim=None, title=None,filename=None, todo=None):
         import matplotlib.pyplot as plt
 
         times = np.sort(np.asarray(list(self.time_hier.keys())))
@@ -201,6 +201,15 @@ class PatchHierarchy:
 
         if filename is not None:
             fig.savefig(filename)
+
+
+
+    def plot(self, fig, axes, todo, filename=None):
+        import matplotlib.pyplot as plt
+
+        for il, level in self.levels(t).items():
+            for ip, patch in enumerate(level.patches):
+                todo(level, patch, fig, axes)
 
 
 

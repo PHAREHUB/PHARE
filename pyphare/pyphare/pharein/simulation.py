@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from ..core import phare_utilities
 from . import global_vars
@@ -290,6 +291,7 @@ def check_diag_options(**kwargs):
     diag_options = kwargs.get("diag_options", None)
     formats = ["phareh5"]
     if diag_options is not None and "format" in diag_options:
+        mode = diag_options["options"].get("mode", "NOT OVERWIRTE")
         if diag_options["format"] not in formats:
             raise ValueError("Error - diag_options format is invalid")
         if "options" in diag_options and "dir" in diag_options["options"]:
@@ -297,12 +299,10 @@ def check_diag_options(**kwargs):
             if os.path.exists(diag_dir) and os.path.isfile(diag_dir):
                 raise ValueError ("Error: Simulation diag_options dir exists as a file.")
             try:
-                if os.path.exists(diag_dir):
-                    raise ValueError("diag directory '{}' already exist".format(diag_dir))
                 os.makedirs(diag_dir, exist_ok=True)
                 if not os.path.exists(diag_dir):
                     raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
-            except OSError:
+            except FileExistsError:
                 raise ValueError ("Creation of the directory %s failed" % diag_dir)
     return diag_options
 

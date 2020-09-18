@@ -1,5 +1,7 @@
 
-from pyphare.simulator.simulator import Simulator
+from pybindlibs import cpp
+
+from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
@@ -11,6 +13,8 @@ from pyphare.core.box import Box
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
+import shutil
+import os
 
 
 @ddt
@@ -26,7 +30,7 @@ class InitializationTest(unittest.TestCase):
 
         from pyphare.pharein import global_vars
         global_vars.sim =None
-
+        startMPI()
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
@@ -164,8 +168,6 @@ class InitializationTest(unittest.TestCase):
                 mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_beam_density.h5", hier=mom_hier)
                 mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_beam_flux.h5", hier=mom_hier)
             return mom_hier
-
-
 
 
 
@@ -400,6 +402,8 @@ class InitializationTest(unittest.TestCase):
             plt.title(r"$\sigma =$ {}".format(noise[inbr]))
             plt.savefig("noise_{}_interp_{}.png".format(nbrpart, interp_order))
             plt.close("all")
+
+
 
         plt.figure()
         plt.plot(nbr_particles, noise/noise[0], label=r"$\sigma/\sigma_0$")

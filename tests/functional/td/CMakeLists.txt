@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.9)
 
-project(test-alfven-wave)
+project(test-td)
 
 if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(GLOB PYFILES "*.py")
@@ -10,6 +10,6 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  add_python3_test(alfven_wave1d alfven_wave1d.py ${CMAKE_CURRENT_BINARY_DIR})
+  add_python3_test(td1d td1d.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()

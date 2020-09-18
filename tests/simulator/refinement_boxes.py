@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from ddt import ddt, data
 from tests.diagnostic import dump_all_diags
 from tests.simulator import NoOverwriteDict, populate_simulation
-from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import Simulator,startMPI
+import shutil
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}
@@ -17,10 +18,12 @@ diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"o
 
 @ddt
 class SimulatorRefineBoxInputs(unittest.TestCase):
-
     def __init__(self, *args, **kwargs):
         super(SimulatorRefineBoxInputs, self).__init__(*args, **kwargs)
         self.simulator = None
+        # so we can delete previous diags only on mpi_rank 0
+        startMPI()
+
 
     def dup(dic):
         dic = NoOverwriteDict(dic)
@@ -51,9 +54,12 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
             self.simulator.reset()
 
 
+
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
+
             try:
+                print("START {}".format(cpp.mpi_rank()))
                 self.simulator = Simulator(populate_simulation(dim, interp, **input))
                 self.simulator.initialize()
 
@@ -62,6 +68,11 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
                 self.simulator.diagnostics().dump(self.simulator.currentTime(), self.simulator.timeStep())
 
                 self.simulator = None
+
+                # delete previous diags / can't truncate
+                if cpp.mpi_rank() == 0 and os.path.exists("phare_outputs"):
+                    shutil.rmtree("phare_outputs")
+                    print("RM")
             except ValueError as e:
                 self.assertTrue(not valid)
 
