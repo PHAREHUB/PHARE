@@ -6,11 +6,14 @@ from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, E
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
+from pyphare.pharesee.particles import aggregate as aggregate_particles
+
 import pyphare.core.box as boxm
-from pyphare.core.box import Box
+from pyphare.core.box import Box, Box1D, Box2D, Box3D
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
+
 
 
 @ddt
@@ -240,8 +243,8 @@ class InitializationTest(unittest.TestCase):
                     data1 = pd1.dataset
                     data2 = pd2.dataset
 
-                    slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0]+1]
-                    slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0]+ 1]
+                    slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1]
+                    slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
 
                     self.assertTrue(np.allclose(slice1, slice2, atol=1e-12))
 
@@ -581,6 +584,59 @@ class InitializationTest(unittest.TestCase):
                     self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
 
 
+
+    def _test_levelghostparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes):
+        print("test_levelghostparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
+
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles")
+        from pyphare.pharein.global_vars import sim
+        assert sim is not None
+
+        def domainParticles_for(ilvl, particles_id):
+            patchDatas = [
+              patch.patch_datas[particles_id]
+                  for patch in datahier.levels()[ilvl].patches
+                      if particles_id in patch.patch_datas
+            ]
+            return aggregate_particles([
+              patchData.dataset.select(patchData.box) for patchData in patchDatas
+            ]) # including patch ghost particles means duplicates
+
+        for ilvl, particle_gaboxes in level_ghost_boxes(datahier).items():
+            assert ilvl > 0 # has no level 0
+
+            for particles_id, gaboxes_list in particle_gaboxes.items():
+                coarse_particles = domainParticles_for(ilvl - 1, particles_id)
+                coarse_split_particles = coarse_particles.split(sim)
+                assert coarse_split_particles.size() == coarse_particles.size() * sim.refined_particle_nbr
+
+                for gabox in gaboxes_list:
+                    gabox_patchData = gabox["pdata"]
+
+                    for ghostBox in gabox["boxes"]:
+                        part1 = gabox_patchData.dataset.select(ghostBox)
+                        part2 = coarse_split_particles.select(ghostBox)
+
+                        idx1 = np.argsort(part1.iCells + part1.deltas)
+                        idx2 = np.argsort(part2.iCells + part2.deltas)
+
+                        np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
+
+                        self.assertTrue(np.allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12))
+                        self.assertTrue(np.allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12))
+                        self.assertTrue(np.allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12))
+                        self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
+
+
+    @data(
+       ({"L0": {"B0": Box1D(10, 20)}}),
+       ({"L0": {"B0": Box1D(10, 100)}, "L1": {"B0": Box1D(40, 60)}}),
+       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+    )
+    def test_levelghostparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
+        dim = len(refinement_boxes["L0"]["B0"].lower)
+        for interp_order in [1, 2, 3]:
+            self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
 
 if __name__ == "__main__":
     unittest.main()

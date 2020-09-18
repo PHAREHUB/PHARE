@@ -111,11 +111,11 @@ def compute_overlaps(patches, domain_box):
                 gb2 = cmp_pd.ghost_box
 
                 # the last patch's box needs to be
-                # shifted by -domain_box.size()
+                # shifted by -domain_box.shape()
                 # indeed for a domain_box (0,64), cell 64
                 # is cell -1, so 64-65;.
 
-                offset = domain_box.size()
+                offset = domain_box.shape()
                 overlap = gb1 * boxm.shift(gb2, -offset)
 
 
@@ -205,14 +205,21 @@ def particle_ghost_area_boxes(hierarchy):
     for ilvl, lvl in hierarchy.levels().items():
         for patch in lvl.patches:
 
-            patch_data = patch.patch_datas["particles"]
-            gbox = patch_data.ghost_box
-            box = patch.box
+            particles_ids = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
 
-            if ilvl not in gaboxes:
-                gaboxes[ilvl] = []
+            for particles_id in particles_ids:
 
-            gaboxes[ilvl] += [{"pdata": patch_data, "boxes": boxm.remove(gbox, box)}]
+                patch_data = patch.patch_datas[particles_id]
+                gbox = patch_data.ghost_box
+                box = patch.box
+
+                if ilvl not in gaboxes:
+                    gaboxes[ilvl] = {}
+
+                if particles_id not in gaboxes[ilvl]:
+                    gaboxes[ilvl] = {particles_id:[]}
+
+                gaboxes[ilvl][particles_id] += [{"pdata": patch_data, "boxes": boxm.remove(gbox, box)}]
 
     return gaboxes
 
@@ -249,32 +256,36 @@ def level_ghost_boxes(hierarchy):
 
             gaboxes_info = gaboxes[ilvl]
 
-            for info in gaboxes_info:
+            for particles_id, info_list in gaboxes_info.items():
+                for info in info_list:
 
-                patch_data = info["pdata"]
-                gaboxes = info["boxes"]
+                    patch_data = info["pdata"]
+                    ghostAreaBoxes = info["boxes"]
 
-                for gabox in gaboxes:
+                    for gabox in ghostAreaBoxes:
 
-                    # now loop on all particle patchData
-                    # keep only parts of the ghost boxes that do
-                    # not intersect other patch data interior
+                        # now loop on all particle patchData
+                        # keep only parts of the ghost boxes that do
+                        # not intersect other patch data interior
 
-                    if True:  # if periodic, always true for now
-                        refined_domain_box = hierarchy.refined_domain_box(ilvl)
-                        patches = get_periodic_list(lvl.patches, refined_domain_box)
+                        if True:  # if periodic, always true for now
+                            refined_domain_box = hierarchy.refined_domain_box(ilvl)
+                            patches = get_periodic_list(lvl.patches, refined_domain_box)
 
-                    for patch in patches:
+                        for patch in patches:
 
-                        if patch.patch_datas["particles"] is not patch_data:
+                            if patch.patch_datas[particles_id] is not patch_data:
 
-                            keep = boxm.remove(gabox, patch.box)
+                                keep = boxm.remove(gabox, patch.box)
 
-                            if ilvl not in lvl_gaboxes:
-                                lvl_gaboxes[ilvl] = []
+                                if ilvl not in lvl_gaboxes:
+                                    lvl_gaboxes[ilvl] = {}
 
-                            if len(keep):
-                                lvl_gaboxes[ilvl] += [{"pdata": patch_data, "boxes": keep}]
+                                if particles_id not in lvl_gaboxes[ilvl]:
+                                    lvl_gaboxes[ilvl] = {particles_id:[]}
+
+                                if len(keep):
+                                    lvl_gaboxes[ilvl][particles_id] += [{"pdata": patch_data, "boxes": keep}]
 
     return lvl_gaboxes
 

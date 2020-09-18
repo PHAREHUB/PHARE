@@ -128,6 +128,8 @@ class DiagnosticsTest(unittest.TestCase):
             dump_all_diags(setup_model().populations)
             self.simulator = Simulator(simulation).initialize().advance()
 
+            refined_particle_nbr = simulation.refined_particle_nbr
+
             for diagInfo in ph.global_vars.sim.diagnostics:
                 # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
                 h5_filename = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
@@ -145,7 +147,7 @@ class DiagnosticsTest(unittest.TestCase):
                         for patch in hier.level(0).patches:
                             for qty_name, pd in patch.patch_datas.items():
                                 splits = pd.dataset.split(ph.global_vars.sim)
-                                self.assertTrue(splits.size() == pd.dataset.size() * 2)
+                                self.assertTrue(splits.size() == pd.dataset.size() * refined_particle_nbr)
                                 print("splits.iCell", splits.iCells)
                                 print("splits.delta", splits.deltas)
                                 print("splits.weight", splits.weights)
