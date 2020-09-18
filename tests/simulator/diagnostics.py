@@ -120,7 +120,7 @@ class DiagnosticsTest(unittest.TestCase):
         for interp in range(1, 4):
             print("_test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
-            local_out = out + str(dim) + "_" + str(interp)
+            local_out = out + str(dim) + "_" + str(interp) + "_mpi_n_" + str(cpp.mpi_size())
             simInput["diag_options"]["options"]["dir"] = local_out
 
             # delete previous diags / can't truncate

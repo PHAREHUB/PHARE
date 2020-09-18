@@ -62,6 +62,11 @@ if (test)
       add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
+
+    function(add_mpi_python3_test N name file directory)
+      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} python3 ${file} WORKING_DIRECTORY ${directory})
+      set_exe_paths_(py3_${name}_mpi_n_${N})
+    endfunction(add_mpi_python3_test)
   else()
     function(add_phare_test binary directory)
       add_no_mpi_phare_test(${binary} ${directory})
@@ -70,6 +75,10 @@ if (test)
     function(add_python3_test name file directory)
       add_no_mpi_python3_test(${name} ${file} ${directory})
     endfunction(add_python3_test)
+
+    function(add_mpi_python3_test N name file directory)
+      # do nothing
+    endfunction(add_mpi_python3_test)
   endif(testMPI)
 
 
