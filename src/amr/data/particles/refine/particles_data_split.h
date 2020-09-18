@@ -1,10 +1,12 @@
 #ifndef PHARE_PARTICLES_DATA_SPLIT_H
 #define PHARE_PARTICLES_DATA_SPLIT_H
 
+
 #include "amr/data/particles/particles_data.h"
 #include "amr/resources_manager/amr_utils.h"
 #include "split.h"
 #include "core/utilities/constants.h"
+#include "phare_core.h"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -26,16 +28,17 @@ namespace amr
     };
 
 
-    template<typename Particle, typename Ratio>
-    Particle toFineGrid(Particle toFine, Ratio const& ratio)
+    template<std::size_t interp, typename Particle>
+    Particle toFineGrid(Particle toFine)
     {
-        constexpr auto dim = Particle::dimension;
+        constexpr auto dim   = Particle::dimension;
+        constexpr auto ratio = core::PHARE_Types<dim, interp>::refinementRatio;
 
         for (size_t iDim = 0; iDim < dim; ++iDim)
         {
-            auto fineDelta     = toFine.delta[iDim] * ratio[iDim];
+            auto fineDelta     = toFine.delta[iDim] * ratio;
             int fineDeltaInt   = static_cast<int>(fineDelta);
-            toFine.iCell[iDim] = toFine.iCell[iDim] * ratio[iDim] + fineDeltaInt;
+            toFine.iCell[iDim] = toFine.iCell[iDim] * ratio + fineDeltaInt;
             toFine.delta[iDim] = fineDelta - fineDeltaInt;
         }
 
@@ -75,7 +78,7 @@ namespace amr
         virtual void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
                             int const destinationComponent, int const sourceComponent,
                             SAMRAI::hier::BoxOverlap const& fineOverlap,
-                            SAMRAI::hier::IntVector const& ratio) const override
+                            SAMRAI::hier::IntVector const& /*ratio*/) const override
         {
             // For the particles we index them as a CellIndex (for the iCell)
             // ie the particles in the iCell live between lower left node of the iCell
@@ -110,8 +113,7 @@ namespace amr
 
 
             // We have a correct data type, we can now perform the refine
-            refine_(*destinationParticlesData, *sourceParticlesData, destinationFieldOverlap, ratio,
-                    *patchGeomDestination, *patchGeomSource);
+            refine_(*destinationParticlesData, *sourceParticlesData, destinationFieldOverlap);
         }
 
     private:
@@ -134,10 +136,7 @@ namespace amr
          */
         void refine_(ParticlesData<ParticleArray>& destParticlesData,
                      ParticlesData<ParticleArray> const& srcParticlesData,
-                     SAMRAI::pdat::CellOverlap const& destFieldOverlap,
-                     SAMRAI::hier::IntVector const& ratio,
-                     SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomDest*/,
-                     SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomSrc*/) const
+                     SAMRAI::pdat::CellOverlap const& destFieldOverlap) const
         {
             // the source PatchData is a possible restriction of a "real" patchdata
             // so that it is the closest from the destination boxes
@@ -183,7 +182,7 @@ namespace amr
                     for (auto const& particle : *sourceParticlesArray)
                     {
                         ParticleArray refinedParticles{nbRefinedPart};
-                        auto particleRefinedPos = toFineGrid(particle, ratio);
+                        auto particleRefinedPos = toFineGrid<interpOrder>(particle);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))
                         {
@@ -238,8 +237,6 @@ namespace amr
             }             // loop on destination box
         }
 
-        // constexpr int maxCellDistanceFromSplit() const { return std::ceil((interpOrder + 1) *
-        // 0.5); }
 
         SAMRAI::hier::Box getSplitBox(SAMRAI::hier::Box const& destinationBox) const
         {
@@ -264,8 +261,8 @@ namespace amr
             return isInBox(toSplitBox, particle);
         }
     };
-} // namespace amr
 
+} // namespace amr
 } // namespace PHARE
 
 

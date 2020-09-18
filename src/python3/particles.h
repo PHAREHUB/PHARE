@@ -70,8 +70,8 @@ template<typename Splitter>
 pyarray_particles_t splitPyArrayParticles(pyarray_particles_crt const& py_particles)
 {
     constexpr auto dim           = Splitter::dimension;
+    constexpr auto interp_order  = Splitter::interp_order;
     constexpr auto nbRefinedPart = Splitter::nbRefinedPart;
-    constexpr auto ratio         = core::ConstArray<std::size_t, dim>(2);
 
     PHARE_DEBUG_DO(assertParticlePyArraySizes<dim>(py_particles));
 
@@ -82,7 +82,7 @@ pyarray_particles_t splitPyArrayParticles(pyarray_particles_crt const& py_partic
     Splitter splitter;
 
     for (std::size_t i = 0; i < particlesInView.size(); i++)
-        splitter(amr::toFineGrid(std::copy(particlesInView[i]), ratio), particlesOutView,
+        splitter(amr::toFineGrid<interp_order>(std::copy(particlesInView[i])), particlesOutView,
                  i * nbRefinedPart);
 
     return particlesOut;
