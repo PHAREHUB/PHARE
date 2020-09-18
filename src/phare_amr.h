@@ -47,4 +47,5 @@ struct PHARE_Types
 
 } // namespace PHARE::amr
 
+
 #endif // PHARE_AMR_INCLUDE_H

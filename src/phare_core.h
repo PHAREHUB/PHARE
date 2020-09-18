@@ -25,6 +25,9 @@ struct PHARE_Types
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
 
+    static std::size_t constexpr refinementRatio = 2;
+
+
     using Array_t      = PHARE::core::NdArrayVector<dimension>;
     using VecField_t   = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
     using Field_t      = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
