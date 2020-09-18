@@ -10,9 +10,12 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  add_python3_test(diagnostics     diagnostics.py         ${CMAKE_CURRENT_BINARY_DIR})
-  add_python3_test(init-particles  test_initialization.py ${CMAKE_CURRENT_BINARY_DIR})
-  add_python3_test(sim-refineboxes refinement_boxes.py    ${CMAKE_CURRENT_BINARY_DIR})
+  add_python3_test(      diagnostics diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  add_mpi_python3_test(3 diagnostics diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
+  add_mpi_python3_test(4 diagnostics diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
+
+  add_python3_test(init-particles  test_initialization.py  ${CMAKE_CURRENT_BINARY_DIR})
+  add_python3_test(sim-refineboxes refinement_boxes.py     ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
 
