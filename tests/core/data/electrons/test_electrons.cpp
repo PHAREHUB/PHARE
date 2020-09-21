@@ -18,80 +18,98 @@ using namespace PHARE::core;
 
 
 //_____ only works for dim=1
-double density(double)
-{
-    return 2.;
-}
+// double density(double)
+// {
+//     return 2.;
+// }
 
 
-double vx(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vy(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vz(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vthx(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vthy(double /*x*/)
-{
-    return 1.;
-}
-
-
-double vthz(double /*x*/)
-{
-    return 1.;
-}
-
-
-double bx(double x)
-{
-    return x /* + 1.*/;
-}
-
-double by(double x)
-{
-    return x /* + 2.*/;
-}
-
-double bz(double x)
-{
-    return x /*+ 3.*/;
-}
-
-double ex(double x)
-{
-    return x /* + 4.*/;
-}
-
-double ey(double x)
-{
-    return x /* + 5.*/;
-}
-
-double ez(double x)
-{
-    return x /* + 6.*/;
-}
+// double vx(double /*x*/)
+// {
+//     return 1.;
+// }
+//
+//
+// double vy(double /*x*/)
+// {
+//     return 1.;
+// }
+//
+//
+// double vz(double /*x*/)
+// {
+//     return 1.;
+// }
+//
+//
+// double vthx(double /*x*/)
+// {
+//     return 1.;
+// }
+//
+//
+// double vthy(double /*x*/)
+// {
+//     return 1.;
+// }
+//
+//
+// double vthz(double /*x*/)
+// {
+//     return 1.;
+// }
+//
+//
+// double bx(double x)
+// {
+//     return x /* + 1.*/;
+// }
+//
+// double by(double x)
+// {
+//     return x /* + 2.*/;
+// }
+//
+// double bz(double x)
+// {
+//     return x /*+ 3.*/;
+// }
+//
+// double ex(double x)
+// {
+//     return x /* + 4.*/;
+// }
+//
+// double ey(double x)
+// {
+//     return x /* + 5.*/;
+// }
+//
+// double ez(double x)
+// {
+//     return x /* + 6.*/;
+// }
 
 
 const double Te = 0.12;
+
+
+
+
+template<std::size_t dim>
+auto makeScalarFunc(float val)
+{
+    if constexpr (dim == 1)
+    {
+        return [val](double) { return val; };
+    }
+    else if constexpr (dim == 2)
+    {
+        return [val](double, double) { return val; };
+    }
+}
+
+
 
 
 template<int dim>
@@ -99,6 +117,19 @@ PHARE::initializer::PHAREDict createDict()
 {
     using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
 
+    auto density = makeScalarFunc<dim>(1.2);
+    auto vx      = makeScalarFunc<dim>(1.2);
+    auto vy      = makeScalarFunc<dim>(1.4);
+    auto vz      = makeScalarFunc<dim>(1.6);
+    auto vthx    = makeScalarFunc<dim>(0.2);
+    auto vthy    = makeScalarFunc<dim>(0.4);
+    auto vthz    = makeScalarFunc<dim>(0.6);
+    auto bx      = makeScalarFunc<dim>(1.2);
+    auto by      = makeScalarFunc<dim>(1.4);
+    auto bz      = makeScalarFunc<dim>(1.6);
+    auto ex      = makeScalarFunc<dim>(0.2);
+    auto ey      = makeScalarFunc<dim>(0.4);
+    auto ez      = makeScalarFunc<dim>(0.6);
 
     PHARE::initializer::PHAREDict dict;
     dict["ions"]["nbrPopulations"]                          = int{1};
@@ -175,37 +206,6 @@ public:
     }
 };
 
-
-
-// struct nDLayout
-//{
-//    // nDLayout(with<1>)
-//    nDLayout()
-//        : layout{{{0.1}}, {{50}}, Point<double, dim>{0.}}
-//    // nDLayout{ConstArray<double, dim>(0.1), ConstArray<uint32, dim>(50),
-//    //         Point<double, dim>{ConstArray<double, dim>(0.)}}
-//    // nDLayout{{{0.1}}, {{50}}, Point<double, 1>{0.}}
-//    {
-//    }
-//
-//    // nDLayout()
-//    //    : nDLayout{{{0.1, 0.2}}, {{50, 30}}, {0., 0.}}
-//    //{
-//    //}
-//
-//    // constexpr nDLayout(std::array<double, dim> mesh, std::array<uint32, dim> numofcells,
-//    //                   Point<double, dim> origin)
-//    //    : meshSize{mesh}
-//    //    , nbrCells{numofcells}
-//    //    , origin{origin}
-//    //{
-//    //}
-//
-//    GridYee layout;
-//    // std::array<double, dim> meshSize;
-//    // std::array<uint32, dim> nbrCells;
-//    // Point<double, dim> origin;
-//};
 
 
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
@@ -333,6 +333,33 @@ struct ElectronsTest
         }
         else if constexpr (dim == 2)
         {
+            auto fill = [this](FieldND& field, auto const& filler) {
+                auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
+                auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
+                auto gsi_Y = this->layout.ghostStartIndex(field, Direction::Y);
+                auto gei_Y = this->layout.ghostEndIndex(field, Direction::Y);
+
+                for (auto ix = gsi_X; ix <= gei_X; ++ix)
+                {
+                    for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
+                    {
+                        auto point = this->layout.fieldNodeCoordinates(
+                            field, Point<double, 2>{0., 0.}, ix, iy);
+                        field(ix, iy) = filler(point[0], point[1]);
+                    }
+                }
+            };
+
+            fill(Vix, [](double x, double y) { return std::cosh(0.2 * x) * std::cosh(0.2 * y); });
+            fill(Viy, [](double x, double y) { return std::cosh(0.3 * x) * std::cosh(0.3 * y); });
+            fill(Viy, [](double x, double y) { return std::cosh(0.4 * x) * std::cosh(0.4 * y); });
+
+            fill(Jx, [](double x, double y) { return std::sinh(0.2 * x) * std::sinh(0.2 * y); });
+            fill(Jy, [](double x, double y) { return std::sinh(0.3 * x) * std::sinh(0.3 * y); });
+            fill(Jy, [](double x, double y) { return std::sinh(0.4 * x) * std::sinh(0.4 * y); });
+
+            fill(Nibuffer,
+                 [](double x, double y) { return std::cosh(0.1 * x) * std::cosh(0.1 * y); });
         }
         else if constexpr (dim == 3)
         {
@@ -380,7 +407,10 @@ struct TElectronsTest : public ::testing::Test
 
 using ElectronsTupleInfos = testing::Types<ElectronsTest<std::pair<DimConst<1>, InterpConst<1>>>,
                                            ElectronsTest<std::pair<DimConst<1>, InterpConst<2>>>,
-                                           ElectronsTest<std::pair<DimConst<1>, InterpConst<3>>>>;
+                                           ElectronsTest<std::pair<DimConst<1>, InterpConst<3>>>,
+                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<1>>>,
+                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<1>>>,
+                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<1>>>>;
 
 TYPED_TEST_SUITE(TElectronsTest, ElectronsTupleInfos);
 
@@ -417,7 +447,7 @@ TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
     auto& Ne = electrons.density();
     auto& Ni = ions.density();
 
-    if (dim == 1)
+    if constexpr (dim == 1)
     {
         auto psi_X = layout.physicalStartIndex(Ne, Direction::X);
         auto pei_X = layout.physicalEndIndex(Ne, Direction::X);
@@ -427,8 +457,20 @@ TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
             EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
         }
     }
-    else if (dim == 2)
+    else if constexpr (dim == 2)
     {
+        auto psi_X = layout.physicalStartIndex(Ne, Direction::X);
+        auto pei_X = layout.physicalEndIndex(Ne, Direction::X);
+        auto psi_Y = layout.physicalStartIndex(Ne, Direction::Y);
+        auto pei_Y = layout.physicalEndIndex(Ne, Direction::Y);
+
+        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        {
+            for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
+            {
+                EXPECT_DOUBLE_EQ(Ni(i, j), Ne(i, j));
+            }
+        }
     }
     else if (dim == 3)
     {
@@ -455,7 +497,7 @@ TYPED_TEST(TElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 
     auto check = [&dim, &layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
                                  FieldND const& Ne_, auto const& projector) {
-        if (dim == 1)
+        if constexpr (dim == 1)
         {
             auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
             auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
@@ -467,8 +509,22 @@ TYPED_TEST(TElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
                 EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
             }
         }
-        else if (dim == 2)
+        else if constexpr (dim == 2)
         {
+            auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
+            auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
+            auto psi_Y = layout.physicalStartIndex(Vicomp, Direction::Y);
+            auto pei_Y = layout.physicalEndIndex(Vicomp, Direction::Y);
+
+            for (std::uint32_t i = psi_X; i < pei_X; ++i)
+            {
+                for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
+                {
+                    auto const JOnV = GridYee::project(Jcomp, {i, j}, projector());
+
+                    EXPECT_DOUBLE_EQ(Vecomp(i, j), Vicomp(i, j) - JOnV / Ne_(i, j));
+                }
+            }
         }
         else if (dim == 3)
         {
@@ -494,7 +550,7 @@ TYPED_TEST(TElectronsTest, ThatElectronsPressureEqualsNeTe)
     auto& Ne_ = electrons.density();
     auto& Pe_ = electrons.pressure();
 
-    if (dim == 1)
+    if constexpr (dim == 1)
     {
         auto psi_X = layout.physicalStartIndex(Ne_, Direction::X);
         auto pei_X = layout.physicalEndIndex(Ne_, Direction::X);
@@ -504,8 +560,20 @@ TYPED_TEST(TElectronsTest, ThatElectronsPressureEqualsNeTe)
             EXPECT_DOUBLE_EQ(Pe_(i), Ne_(i) * Te);
         }
     }
-    else if (dim == 2)
+    else if constexpr (dim == 2)
     {
+        auto psi_X = layout.physicalStartIndex(Ne_, Direction::X);
+        auto pei_X = layout.physicalEndIndex(Ne_, Direction::X);
+        auto psi_Y = layout.physicalStartIndex(Ne_, Direction::Y);
+        auto pei_Y = layout.physicalEndIndex(Ne_, Direction::Y);
+
+        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        {
+            for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
+            {
+                EXPECT_DOUBLE_EQ(Pe_(i, j), Ne_(i, j) * Te);
+            }
+        }
     }
     else if (dim == 3)
     {
