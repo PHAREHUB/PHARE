@@ -164,38 +164,16 @@ class NDlayout
 public:
     static nDL create()
     {
-        switch (dim)
+        if constexpr (dim == 1)
         {
-            case 1:
-                return {{{0.1}}, {{50}}, {0.}};
-                break;
-                // case 2:
-                //    return {{{0.1, 0.2}}, {{50, 40}}, {0., 0.}};
-                //    break;
-                //    return {std::array<double, dim>(0.1, 0.2), std::array<uint32, dim>(50, 40),
-                // Point<double, dim>(0., 0.)
-                // case 3: return {{{0.1, 0.2, 0.3}}, {{50, 40, 30}}, {0., 0., 0.}};
+            return {{{0.1}}, {{50}}, {0.}};
+        }
+        else if constexpr (dim == 2)
+        {
+            return {{{0.1, 0.2}}, {{50, 40}}, {0., 0.}};
         }
     }
 };
-
-template<int dim>
-std::initializer_list<std::initializer_list<float>> createNdLayout()
-{
-    return {};
-}
-
-template<>
-std::initializer_list<std::initializer_list<float>> createNdLayout<1>()
-{
-    return {{0.1}, {50}, {0.}};
-}
-
-template<>
-std::initializer_list<std::initializer_list<float>> createNdLayout<2>()
-{
-    return {{0.1, 0.2}, {50, 40}, {0., 0.}};
-}
 
 
 
