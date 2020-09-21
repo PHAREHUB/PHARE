@@ -66,6 +66,10 @@ if (NOT DEFINED PHARE_EXEC_LEVEL_MAX)
   set(PHARE_EXEC_LEVEL_MAX 10)
 endif()
 
+# -Dbench=OFF
+option(bench "Compile PHARE Benchmarks" OFF)
+
+
 # print options
 function(print_phare_options)
 
@@ -73,6 +77,7 @@ function(print_phare_options)
   message("Build with highfive usage                   : " ${HighFive})
   message("Build with strict flags e.g. Werror         : " ${devMode})
   message("Build test with google test                 : " ${test})
+  message("Build bench with google benchmark           : " ${bench})
   message("Run test with MPI                           : " ${testMPI})
   message("Generate coverage                           : " ${coverage})
   message("Enable cppcheck xml report                  : " ${cppcheck})
