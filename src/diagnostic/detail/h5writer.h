@@ -37,6 +37,7 @@ public:
 
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
+    static constexpr auto READ_WRITE  = HiFile::ReadWrite | HiFile::Create;
 
     template<typename Hierarchy, typename Model>
     Writer(Hierarchy& hier, Model& model, std::string const hifivePath,
@@ -53,8 +54,8 @@ public:
     static decltype(auto) make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
-        unsigned flags       = HiFile::ReadWrite | HiFile::Create;
-        if (dict.contains("mode") and dict["mode"].template to<std::string>() == "truncate")
+        unsigned flags       = READ_WRITE;
+        if (dict.contains("mode") and dict["mode"].template to<std::string>() == "overwrite")
             flags |= HiFile::Truncate;
         return std::make_unique<This>(hier, model, filePath, flags);
     }
@@ -205,6 +206,7 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
     fileAttributes_["origin"]      = modelView_.origin();
 
     initializeDatasets_(diagnostics);
+    flags = READ_WRITE; // don't truncate past first dump
     writeDatasets_(diagnostics);
 
     for (auto* diagnostic : diagnostics)

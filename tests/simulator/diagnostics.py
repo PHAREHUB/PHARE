@@ -12,7 +12,6 @@ import pyphare.pharein as ph
 import unittest
 import os
 import h5py
-import shutil
 import numpy as np
 from ddt import ddt, data
 
@@ -79,7 +78,7 @@ simArgs = {
   "cells":40,
   "dl":0.3,
   "max_nbr_levels":2,
-  "diag_options": {"format": "phareh5", "options": {"dir": out}}
+  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite"}}
 }
 
 def dup(dic):
@@ -120,12 +119,8 @@ class DiagnosticsTest(unittest.TestCase):
         for interp in range(1, 4):
             print("_test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
-            local_out = out + str(dim) + "_" + str(interp)
+            local_out = out + str(dim) + "_" + str(interp) + "_mpi_n_" + str(cpp.mpi_size())
             simInput["diag_options"]["options"]["dir"] = local_out
-
-            # delete previous diags / can't truncate
-            if cpp.mpi_rank() == 0 and os.path.exists(local_out):
-                shutil.rmtree(local_out)
 
             simulation = ph.Simulation(**simInput)
             self.assertTrue(len(simulation.cells) == dim)

@@ -39,7 +39,7 @@ class InitializationTest(unittest.TestCase):
             max_nbr_levels=len(refinement_boxes)+1 if refinement_boxes is not None else 1,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
-                          "options": {"dir": diag_outputs, "mode":"truncate"}}
+                          "options": {"dir": diag_outputs, "mode":"overwrite"}}
         )
         def beam_density(x):
             return np.zeros_like(x)+0.3
