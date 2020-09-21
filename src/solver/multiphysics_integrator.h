@@ -7,6 +7,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <unordered_map>
 
 
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
@@ -34,7 +35,7 @@ namespace solver
 {
     struct LevelDescriptor
     {
-        static const int NOT_SET  = -1;
+        static int const NOT_SET  = -1;
         int modelIndex            = NOT_SET;
         int solverIndex           = NOT_SET;
         int resourcesManagerIndex = NOT_SET;
@@ -213,12 +214,12 @@ namespace solver
 
 
 
-        std::string solverName(int iLevel) const { return getSolver_(iLevel).name(); }
+        std::string solverName(int const iLevel) const { return getSolver_(iLevel).name(); }
 
 
 
 
-        std::string modelName(int iLevel) const { return getModel_(iLevel).name(); }
+        std::string modelName(int const iLevel) const { return getModel_(iLevel).name(); }
 
 
 
@@ -262,19 +263,19 @@ namespace solver
          * - initialization of a new level from scratch (not a regridding)
          *
          */
-        void initializeLevelData(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                 const int levelNumber, const double initDataTime,
-                                 const bool /*canBeRefined*/, const bool /*initialTime*/,
-                                 const std::shared_ptr<SAMRAI::hier::PatchLevel>& oldLevel
+        void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                 int const levelNumber, double const initDataTime,
+                                 bool const /*canBeRefined*/, bool const /*initialTime*/,
+                                 std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
                                  = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
-                                 const bool allocateData = true) override
+                                 bool const allocateData = true) override
         {
             auto& model            = getModel_(levelNumber);
             auto& solver           = getSolver_(levelNumber);
             auto& messenger        = getMessengerWithCoarser_(levelNumber);
             auto& levelInitializer = getLevelInitializer(model.name());
 
-            const bool isRegridding = oldLevel != nullptr;
+            bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
 
@@ -297,18 +298,18 @@ namespace solver
 
 
         void resetHierarchyConfiguration(
-            const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
-            const int /*coarsestLevel*/, const int /*finestLevel*/) override
+            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+            int const /*coarsestLevel*/, int const /*finestLevel*/) override
         {
         }
 
 
 
         void
-        applyGradientDetector(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
-                              const int /*levelNumber*/, const double /*error_data_time*/,
-                              const int /*tag_index*/, const bool /*initialTime*/,
-                              const bool /*usesRichardsonExtrapolationToo*/) override
+        applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                              int const /*levelNumber*/, double const /*error_data_time*/,
+                              int const /*tag_index*/, bool const /*initialTime*/,
+                              bool const /*usesRichardsonExtrapolationToo*/) override
         {
         }
 
@@ -327,15 +328,15 @@ namespace solver
         {
         }
 
-        double getLevelDt(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
-                          const double dtTime, const bool /*initialTime*/) override
+        double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/,
+                          double const dtTime, bool const /*initialTime*/) override
         {
             return dtTime;
         }
 
 
-        double getMaxFinerLevelDt(const int /*finerLevelNumber*/, const double coarseDt,
-                                  const SAMRAI::hier::IntVector& ratio) override
+        double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
+                                  SAMRAI::hier::IntVector const& ratio) override
         {
             return coarseDt / (ratio.max() * ratio.max()) / 2.;
         }
@@ -359,10 +360,10 @@ namespace solver
          * At the last step of the subcycle, the Messenger may also need to perform some actions,
          * like working on its internal data for instance. messenger.lastStep()
          */
-        double advanceLevel(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                            const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                            const double currentTime, const double newTime, const bool firstStep,
-                            const bool lastStep, const bool regridAdvance = false) override
+        double advanceLevel(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                            double const currentTime, double const newTime, bool const firstStep,
+                            bool const lastStep, bool const regridAdvance = false) override
         {
             if (regridAdvance)
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
@@ -376,7 +377,12 @@ namespace solver
 
             if (firstStep)
             {
-                fromCoarser.firstStep(model, *level, hierarchy, currentTime);
+                firstNewLevelTimes_[iLevel] = newTime;
+                if (iLevel > 0)
+                {
+                    fromCoarser.firstNonRootStep(model, *level, hierarchy, currentTime,
+                                                 firstNewLevelTimes_[iLevel - 1]);
+                }
             }
 
 
@@ -399,9 +405,9 @@ namespace solver
 
 
         void
-        standardLevelSynchronization(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                     const int /*coarsestLevel*/, const int finestLevel,
-                                     const double /*syncTime*/,
+        standardLevelSynchronization(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                     int const /*coarsestLevel*/, int const finestLevel,
+                                     double const /*syncTime*/,
                                      const std::vector<double>& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
@@ -414,20 +420,20 @@ namespace solver
 
 
         void
-        synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
-                             const int /*coarsestLevel*/, const int /*finestLevel*/,
-                             const double /*syncTime*/, const bool /*initialTime*/) override
+        synchronizeNewLevels(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                             int const /*coarsestLevel*/, int const /*finestLevel*/,
+                             double const /*syncTime*/, bool const /*initialTime*/) override
         {
         }
 
 
-        void resetTimeDependentData(const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/,
-                                    const double /*newTime*/, const bool /*canBeRefined*/) override
+        void resetTimeDependentData(std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/,
+                                    double const /*newTime*/, bool const /*canBeRefined*/) override
         {
         }
 
         void resetDataToPreadvanceState(
-            const std::shared_ptr<SAMRAI::hier::PatchLevel>& /*level*/) override
+            std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/) override
         {
         }
 
@@ -438,6 +444,7 @@ namespace solver
 
     private:
         int nbrOfLevels_;
+        std::unordered_map<std::size_t, double> firstNewLevelTimes_;
         using IMessengerT       = amr::IMessenger<IPhysicalModel<AMR_Types>>;
         using LevelInitializerT = LevelInitializer<AMR_Types>;
         std::vector<LevelDescriptor> levelDescriptors_;

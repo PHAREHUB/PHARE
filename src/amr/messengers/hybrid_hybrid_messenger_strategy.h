@@ -365,25 +365,20 @@ namespace amr
          * The method is does nothing if the level is the root level because the root level
          * cannot get levelGhost from next coarser (it has none).
          */
-        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                       double time) override
+        void firstNonRootStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& level,
+                              std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                              double time, double newCoarserTime) override
         {
             auto levelNumber = level.getLevelNumber();
-            if (levelNumber != 0)
-            {
-                auto& hybridModel = static_cast<HybridModel&>(model);
-                levelGhostParticlesNew_.fill(levelNumber, time);
 
-                // during firstStep() coarser level and current level are at the same time
-                // so 'time' is also the beforePushCoarseTime_
-                beforePushCoarseTime_ = time;
+            assert(levelNumber > 0);
 
-                auto coarserLevel    = hierarchy->getPatchLevel(levelNumber - 1);
-                auto patch           = *std::begin(*coarserLevel);
-                auto times           = resourcesManager_->getTimes(hybridModel.state.ions, *patch);
-                afterPushCoarseTime_ = times[0];
-            }
+            levelGhostParticlesNew_.fill(levelNumber, time);
+
+            // during firstStep() coarser level and current level are at the same time
+            // so 'time' is also the beforePushCoarseTime_
+            beforePushCoarseTime_ = time;
+            afterPushCoarseTime_  = newCoarserTime;
         }
 
 

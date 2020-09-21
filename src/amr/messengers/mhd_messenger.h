@@ -82,9 +82,9 @@ namespace amr
         }
 
 
-        void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
-                       double /*time*/) final
+        void firstNonRootStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                              const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                              double /*time*/, double /*newCoarserTime*/) final
         {
         }
 
