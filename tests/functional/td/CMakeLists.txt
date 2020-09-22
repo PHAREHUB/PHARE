@@ -10,6 +10,5 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  add_python3_test(td1d td1d.py ${CMAKE_CURRENT_BINARY_DIR})
-
+phare_python3_exec(5, test-td td1d.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()
