@@ -23,11 +23,15 @@ import os
 import time
 mpl.use('Agg')
 
-# configure the simulation
+
 
 
 def config():
+    """ Configure the simulation
 
+    This function defines the Simulation object,
+    user initialization model and diagnostics.
+    """
     Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
@@ -141,7 +145,7 @@ def plot(bhier):
     times = np.sort(np.asarray(list(bhier.time_hier.keys())))
 
     components  =("B_x", "B_y", "B_z")
-    ylims = ((0,1.5),(-0.25,0.25),(-0.25,0.25))
+    ylims = ((-0.2,0.2),(-1.25,1.25),(0.4,0.6))
 
     for component,ylim in zip(components,ylims):
         for it,t in enumerate(times):
@@ -169,10 +173,6 @@ def plot(bhier):
             ax.set_title("t = {:05.2f}".format(t))
             fig.savefig("{}_{:04d}.png".format(component,it))
             plt.close(fig)
-
-
-
-
 
 
 

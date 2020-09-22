@@ -154,11 +154,11 @@ class PatchHierarchy:
                         s = s + "\n"
         return s
 
+    def times(self):
+        return np.sort(np.asarray(list(self.time_hier.keys())))
 
     def plot_patches(self):
-
         import matplotlib.pyplot as plt
-
         fig, ax = plt.subplots(figsize=(10, 3))
         for ilvl, lvl in self.time_hier[0.].items():
             lvl_offset = ilvl * 0.1
@@ -172,9 +172,7 @@ class PatchHierarchy:
 
         fig.savefig("hierarchy.png")
 
-
-
-    def plot(self, qty, xlim=None, ylim=None, title=None,filename=None, todo=None):
+    def plot(self, qty, xlim=None, ylim=None, title=None, filename=None):
         import matplotlib.pyplot as plt
 
         times = np.sort(np.asarray(list(self.time_hier.keys())))
@@ -201,15 +199,6 @@ class PatchHierarchy:
 
         if filename is not None:
             fig.savefig(filename)
-
-
-
-    def plot(self, fig, axes, todo, filename=None):
-        import matplotlib.pyplot as plt
-
-        for il, level in self.levels(t).items():
-            for ip, patch in enumerate(level.patches):
-                todo(level, patch, fig, axes)
 
 
 
