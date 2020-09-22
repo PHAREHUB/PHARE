@@ -15,85 +15,7 @@
 
 using namespace PHARE::core;
 
-
-
-//_____ only works for dim=1
-// double density(double)
-// {
-//     return 2.;
-// }
-
-
-// double vx(double /*x*/)
-// {
-//     return 1.;
-// }
-//
-//
-// double vy(double /*x*/)
-// {
-//     return 1.;
-// }
-//
-//
-// double vz(double /*x*/)
-// {
-//     return 1.;
-// }
-//
-//
-// double vthx(double /*x*/)
-// {
-//     return 1.;
-// }
-//
-//
-// double vthy(double /*x*/)
-// {
-//     return 1.;
-// }
-//
-//
-// double vthz(double /*x*/)
-// {
-//     return 1.;
-// }
-//
-//
-// double bx(double x)
-// {
-//     return x /* + 1.*/;
-// }
-//
-// double by(double x)
-// {
-//     return x /* + 2.*/;
-// }
-//
-// double bz(double x)
-// {
-//     return x /*+ 3.*/;
-// }
-//
-// double ex(double x)
-// {
-//     return x /* + 4.*/;
-// }
-//
-// double ey(double x)
-// {
-//     return x /* + 5.*/;
-// }
-//
-// double ez(double x)
-// {
-//     return x /* + 6.*/;
-// }
-
-
 const double Te = 0.12;
-
-
 
 
 template<std::size_t dim>
@@ -107,9 +29,11 @@ auto makeScalarFunc(float val)
     {
         return [val](double, double) { return val; };
     }
+    else if constexpr (dim == 3)
+    {
+        return [val](double, double, double) { return val; };
+    }
 }
-
-
 
 
 template<int dim>
@@ -117,19 +41,19 @@ PHARE::initializer::PHAREDict createDict()
 {
     using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
 
-    auto density = makeScalarFunc<dim>(1.2);
+    auto density = makeScalarFunc<dim>(1.0);
     auto vx      = makeScalarFunc<dim>(1.2);
     auto vy      = makeScalarFunc<dim>(1.4);
     auto vz      = makeScalarFunc<dim>(1.6);
     auto vthx    = makeScalarFunc<dim>(0.2);
     auto vthy    = makeScalarFunc<dim>(0.4);
     auto vthz    = makeScalarFunc<dim>(0.6);
-    auto bx      = makeScalarFunc<dim>(1.2);
-    auto by      = makeScalarFunc<dim>(1.4);
-    auto bz      = makeScalarFunc<dim>(1.6);
-    auto ex      = makeScalarFunc<dim>(0.2);
-    auto ey      = makeScalarFunc<dim>(0.4);
-    auto ez      = makeScalarFunc<dim>(0.6);
+    auto bx      = makeScalarFunc<dim>(1.1);
+    auto by      = makeScalarFunc<dim>(1.3);
+    auto bz      = makeScalarFunc<dim>(1.5);
+    auto ex      = makeScalarFunc<dim>(0.1);
+    auto ey      = makeScalarFunc<dim>(0.3);
+    auto ez      = makeScalarFunc<dim>(0.5);
 
     PHARE::initializer::PHAREDict dict;
     dict["ions"]["nbrPopulations"]                          = int{1};
@@ -146,7 +70,6 @@ PHARE::initializer::PHAREDict createDict()
 
     dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
         = static_cast<ScalarFunctionT>(vz);
-
 
     dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
         = static_cast<ScalarFunctionT>(vthx);
@@ -180,11 +103,6 @@ PHARE::initializer::PHAREDict createDict()
 }
 
 
-
-// https://stackoverflow.com/questions/46101569/compile-time-constructor-switch-in-c
-
-
-
 template<int dim, int interp>
 class NDlayout
 {
@@ -203,6 +121,10 @@ public:
         {
             return {{{0.1, 0.2}}, {{50, 40}}, {0., 0.}};
         }
+        else if constexpr (dim == 3)
+        {
+            return {{{0.1, 0.2, 0.3}}, {{50, 40, 30}}, {0., 0., 0.}};
+        }
     }
 };
 
@@ -213,7 +135,6 @@ struct ElectronsTest
 {
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
-
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
@@ -228,7 +149,6 @@ struct ElectronsTest
 
 
     GridYee layout = NDlayout<dim, interp>::create();
-    // GridYee layout = createNdLayout<dim>();
     IonsT ions;
     Electromag<VecFieldND> electromag;
     VecFieldND J;
@@ -363,6 +283,51 @@ struct ElectronsTest
         }
         else if constexpr (dim == 3)
         {
+            auto fill = [this](FieldND& field, auto const& filler) {
+                auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
+                auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
+                auto gsi_Y = this->layout.ghostStartIndex(field, Direction::Y);
+                auto gei_Y = this->layout.ghostEndIndex(field, Direction::Y);
+                auto gsi_Z = this->layout.ghostStartIndex(field, Direction::Z);
+                auto gei_Z = this->layout.ghostEndIndex(field, Direction::Z);
+
+                for (auto ix = gsi_X; ix <= gei_X; ++ix)
+                {
+                    for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
+                    {
+                        for (auto iz = gsi_Z; iz <= gei_Z; ++iz)
+                        {
+                            auto point = this->layout.fieldNodeCoordinates(
+                                field, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            field(ix, iy, iz) = filler(point[0], point[1], point[2]);
+                        }
+                    }
+                }
+            };
+
+            fill(Vix, [](double x, double y, double z) {
+                return std::cosh(0.2 * x) * std::cosh(0.2 * y) * std::cosh(0.2 * z);
+            });
+            fill(Viy, [](double x, double y, double z) {
+                return std::cosh(0.3 * x) * std::cosh(0.3 * y) * std::cosh(0.3 * z);
+            });
+            fill(Viy, [](double x, double y, double z) {
+                return std::cosh(0.4 * x) * std::cosh(0.4 * y) * std::cosh(0.4 * z);
+            });
+
+            fill(Jx, [](double x, double y, double z) {
+                return std::sinh(0.2 * x) * std::sinh(0.2 * y) * std::sinh(0.2 * z);
+            });
+            fill(Jy, [](double x, double y, double z) {
+                return std::sinh(0.3 * x) * std::sinh(0.3 * y) * std::sinh(0.3 * z);
+            });
+            fill(Jy, [](double x, double y, double z) {
+                return std::sinh(0.4 * x) * std::sinh(0.4 * y) * std::sinh(0.4 * z);
+            });
+
+            fill(Nibuffer, [](double x, double y, double z) {
+                return std::cosh(0.1 * x) * std::cosh(0.1 * y) * std::cosh(0.1 * z);
+            });
         }
     }
 
@@ -409,8 +374,11 @@ using ElectronsTupleInfos = testing::Types<ElectronsTest<std::pair<DimConst<1>, 
                                            ElectronsTest<std::pair<DimConst<1>, InterpConst<2>>>,
                                            ElectronsTest<std::pair<DimConst<1>, InterpConst<3>>>,
                                            ElectronsTest<std::pair<DimConst<2>, InterpConst<1>>>,
-                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<1>>>,
-                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<1>>>>;
+                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<2>>>,
+                                           ElectronsTest<std::pair<DimConst<2>, InterpConst<3>>>,
+                                           ElectronsTest<std::pair<DimConst<3>, InterpConst<1>>>,
+                                           ElectronsTest<std::pair<DimConst<3>, InterpConst<2>>>,
+                                           ElectronsTest<std::pair<DimConst<3>, InterpConst<3>>>>;
 
 TYPED_TEST_SUITE(TElectronsTest, ElectronsTupleInfos);
 
@@ -472,8 +440,25 @@ TYPED_TEST(TElectronsTest, ThatElectronsDensityEqualIonDensity)
             }
         }
     }
-    else if (dim == 3)
+    else if constexpr (dim == 3)
     {
+        auto psi_X = layout.physicalStartIndex(Ne, Direction::X);
+        auto pei_X = layout.physicalEndIndex(Ne, Direction::X);
+        auto psi_Y = layout.physicalStartIndex(Ne, Direction::Y);
+        auto pei_Y = layout.physicalEndIndex(Ne, Direction::Y);
+        auto psi_Z = layout.physicalStartIndex(Ne, Direction::Z);
+        auto pei_Z = layout.physicalEndIndex(Ne, Direction::Z);
+
+        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        {
+            for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
+            {
+                for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
+                {
+                    EXPECT_DOUBLE_EQ(Ni(i, j, k), Ne(i, j, k));
+                }
+            }
+        }
     }
 }
 
@@ -526,8 +511,27 @@ TYPED_TEST(TElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
                 }
             }
         }
-        else if (dim == 3)
+        else if constexpr (dim == 3)
         {
+            auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
+            auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
+            auto psi_Y = layout.physicalStartIndex(Vicomp, Direction::Y);
+            auto pei_Y = layout.physicalEndIndex(Vicomp, Direction::Y);
+            auto psi_Z = layout.physicalStartIndex(Vicomp, Direction::Z);
+            auto pei_Z = layout.physicalEndIndex(Vicomp, Direction::Z);
+
+            for (std::uint32_t i = psi_X; i < pei_X; ++i)
+            {
+                for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
+                {
+                    for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
+                    {
+                        auto const JOnV = GridYee::project(Jcomp, {i, j, k}, projector());
+
+                        EXPECT_DOUBLE_EQ(Vecomp(i, j, k), Vicomp(i, j, k) - JOnV / Ne_(i, j, k));
+                    }
+                }
+            }
         }
     };
 
@@ -575,8 +579,25 @@ TYPED_TEST(TElectronsTest, ThatElectronsPressureEqualsNeTe)
             }
         }
     }
-    else if (dim == 3)
+    else if constexpr (dim == 3)
     {
+        auto psi_X = layout.physicalStartIndex(Ne_, Direction::X);
+        auto pei_X = layout.physicalEndIndex(Ne_, Direction::X);
+        auto psi_Y = layout.physicalStartIndex(Ne_, Direction::Y);
+        auto pei_Y = layout.physicalEndIndex(Ne_, Direction::Y);
+        auto psi_Z = layout.physicalStartIndex(Ne_, Direction::Z);
+        auto pei_Z = layout.physicalEndIndex(Ne_, Direction::Z);
+
+        for (std::uint32_t i = psi_X; i < pei_X; ++i)
+        {
+            for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
+            {
+                for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
+                {
+                    EXPECT_DOUBLE_EQ(Pe_(i, j, k), Ne_(i, j, k) * Te);
+                }
+            }
+        }
     }
 }
 
