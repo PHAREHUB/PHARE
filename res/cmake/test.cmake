@@ -14,14 +14,16 @@
 #    launch python3 file described by name in target directory, does not run when -DtestMPI=ON
 #
 #  phare_exec(level target exe directory)
-#    execute exe identified by target in directory, if PHARE_EXEC_LEVEL >= level
+#    execute exe identified by target in directory
+#      if level >= PHARE_EXEC_LEVEL_MIN AND level <= PHARE_EXEC_LEVEL_MAX
 #
 #  phare_python3_exec(level target file directory)
-#    execute file identified by target in directory, if PHARE_EXEC_LEVEL >= level
+#    execute file identified by target in directory
+#      if level >= PHARE_EXEC_LEVEL_MIN AND level <= PHARE_EXEC_LEVEL_MAX
 #
 
 
-if (test AND ${PHARE_EXEC_LEVEL} GREATER 0) # 0 = no tests
+if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   if (NOT DEFINED PHARE_MPI_PROCS)
     set(PHARE_MPI_PROCS 1)
@@ -101,7 +103,7 @@ if (test AND ${PHARE_EXEC_LEVEL} GREATER 0) # 0 = no tests
   endif()
 
   function(phare_exec level target exe directory)
-    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL})
+    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
       add_test(NAME ${target} COMMAND ${exe} WORKING_DIRECTORY ${directory})
     endif()
   endfunction(phare_exec)
@@ -109,7 +111,7 @@ if (test AND ${PHARE_EXEC_LEVEL} GREATER 0) # 0 = no tests
   #  phare_exec(1 test_id ./binary ${CMAKE_CURRENT_BINARY_DIR})
 
   function(phare_python3_exec level target file directory)
-    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL})
+    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
       add_test(NAME ${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
     endif()
   endfunction(phare_python3_exec)
