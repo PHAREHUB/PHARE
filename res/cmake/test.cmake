@@ -13,8 +13,17 @@
 #   add_no_mpi_python3_test($name $file $directory)
 #    launch python3 file described by name in target directory, does not run when -DtestMPI=ON
 #
+#  phare_exec(level target exe directory)
+#    execute exe identified by target in directory
+#      if level >= PHARE_EXEC_LEVEL_MIN AND level <= PHARE_EXEC_LEVEL_MAX
+#
+#  phare_python3_exec(level target file directory)
+#    execute file identified by target in directory
+#      if level >= PHARE_EXEC_LEVEL_MIN AND level <= PHARE_EXEC_LEVEL_MAX
+#
 
-if (test)
+
+if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   if (NOT DEFINED PHARE_MPI_PROCS)
     set(PHARE_MPI_PROCS 1)
@@ -28,7 +37,7 @@ if (test)
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}")
   endfunction(set_exe_paths_)
 
-  function(add_phare_test_ binary directory)
+  function(add_phare_test_ binary)
     target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
     set_exe_paths_(${binary})
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
@@ -38,7 +47,7 @@ if (test)
   function(add_no_mpi_phare_test binary directory)
     if(NOT testMPI OR (testMPI AND forceSerialTests))
       add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
-      add_phare_test_(${binary} ${directory})
+      add_phare_test_(${binary})
     else()
       # this prevents building targets even when added via "add_executable"
       set_target_properties(${binary} PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
@@ -55,13 +64,14 @@ if (test)
   if(testMPI)
     function(add_phare_test binary directory)
       add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ./${binary} WORKING_DIRECTORY ${directory})
-      add_phare_test_(${binary} ${directory})
+      add_phare_test_(${binary})
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
       add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
+
   else()
     function(add_phare_test binary directory)
       add_no_mpi_phare_test(${binary} ${directory})
@@ -91,6 +101,22 @@ if (test)
     set(GTEST_LIBS gtest gmock)
 
   endif()
+
+  function(phare_exec level target exe directory)
+    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+      add_test(NAME ${target} COMMAND ${exe} WORKING_DIRECTORY ${directory})
+    endif()
+  endfunction(phare_exec)
+  # use
+  #  phare_exec(1 test_id ./binary ${CMAKE_CURRENT_BINARY_DIR})
+
+  function(phare_python3_exec level target file directory)
+    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+      add_test(NAME ${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+    endif()
+  endfunction(phare_python3_exec)
+  # use
+  #  phare_python3_exec(1 test_id lol.py ${CMAKE_CURRENT_BINARY_DIR})
 
   set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIRS} ${PHARE_PROJECT_DIR})
 

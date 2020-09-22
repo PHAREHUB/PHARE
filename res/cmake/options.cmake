@@ -58,6 +58,13 @@ option(withIPO "Use IPO/LTO if system supported" OFF)
 # IPO can cause linking to fail so default off
 # https://cmake.org/cmake/help/latest/module/CheckIPOSupported.html
 
+# Controlling the activation of tests
+if (NOT DEFINED PHARE_EXEC_LEVEL_MIN)
+  set(PHARE_EXEC_LEVEL_MIN 1)
+endif()
+if (NOT DEFINED PHARE_EXEC_LEVEL_MAX)
+  set(PHARE_EXEC_LEVEL_MAX 10)
+endif()
 
 # print options
 function(print_phare_options)
@@ -75,5 +82,10 @@ function(print_phare_options)
   message("build with ubsan support                    : " ${ubsan})
   message("build with asan support                     : " ${asan})
   message("build with ubsan support                    : " ${ubsan})
+
+  if(${devMode})
+    message("PHARE_EXEC_LEVEL_MIN                        : " ${PHARE_EXEC_LEVEL_MIN})
+    message("PHARE_EXEC_LEVEL_MAX                        : " ${PHARE_EXEC_LEVEL_MAX})
+  endif()
 
 endfunction(print_phare_options)
