@@ -113,6 +113,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   function(phare_python3_exec level target file directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
       add_test(NAME ${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+      set_exe_paths_(${target})
     endif()
   endfunction(phare_python3_exec)
   # use

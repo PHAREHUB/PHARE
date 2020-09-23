@@ -4,15 +4,13 @@ import time as timem
 import numpy as np
 
 
-# only one simulator is possible because of statics in SAMRAI anyway
-_simulator = None
 life_cycles = {}
 
 @atexit.register
 def simulator_shutdown():
-    global _simulator
-    if _simulator is not None: # needs to be killed before MPI
-        _simulator.reset()
+    from ._simulator import obj
+    if obj is not None: # needs to be killed before MPI
+        obj.reset()
     life_cycles.clear()
 
 
@@ -37,8 +35,8 @@ class Simulator:
         self.cpp_dman = None   # DRAGONS
         self.cpp_dw   = None   # i.e. use weakrefs if you have to ref these.
         self.auto_dump = auto_dump
-        global _simulator
-        _simulator = self
+        from ._simulator import obj
+        obj = self
 
 
     def __del__(self):

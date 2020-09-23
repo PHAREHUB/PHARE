@@ -10,7 +10,6 @@ from ddt import ddt, data
 from tests.diagnostic import dump_all_diags
 from tests.simulator import NoOverwriteDict, populate_simulation
 from pyphare.simulator.simulator import Simulator,startMPI
-import shutil
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}
@@ -69,10 +68,6 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
 
                 self.simulator = None
 
-                # delete previous diags / can't truncate
-                if cpp.mpi_rank() == 0 and os.path.exists("phare_outputs"):
-                    shutil.rmtree("phare_outputs")
-                    print("RM")
             except ValueError as e:
                 self.assertTrue(not valid)
 

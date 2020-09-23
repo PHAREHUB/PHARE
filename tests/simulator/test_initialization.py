@@ -13,7 +13,6 @@ from pyphare.core.box import Box
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
-import shutil
 import os
 
 
