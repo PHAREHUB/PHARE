@@ -41,8 +41,8 @@ namespace core
         void initializeComponent_(Field& field, GridLayout const& layout,
                                   initializer::InitFunction<dimension> const& init)
         {
-            auto indices      = layout.ghostStartToEndIndices(field, /*plus=*/1);
-            auto const coords = layout.template gridVectors</*ByField=*/true>(
+            auto indices      = layout.ghostStartToEndIndices(field, /*includeEnd=*/true);
+            auto const coords = layout.template indexesToCoordVectors</*WithField=*/true>(
                 indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
                     return gridLayout.fieldNodeCoordinates(field_, gridLayout.origin(), args...);
                 });

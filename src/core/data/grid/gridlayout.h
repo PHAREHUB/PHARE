@@ -187,101 +187,46 @@ namespace core
             return physicalStartToEnd(field.physicalQuantity(), direction);
         }
 
-        static constexpr auto _indice_tuple() // type deduction doesn't get used anywhere
-        {
-            using Param = std::uint32_t;
-            if constexpr (dimension == 1)
-                return std::tuple<Param>{};
-            if constexpr (dimension == 2)
-                return std::tuple<Param, Param>{};
-            if constexpr (dimension == 3)
-                return std::tuple<Param, Param, Param>{};
-        }
-
-        template<typename Centering, typename StartToEnd>
-        auto _StartToEndIndices(Centering const& centering, StartToEnd const&& startToEnd,
-                                std::size_t const plus = 0) const
-        {
-            std::vector<decltype(_indice_tuple())> indices;
-
-            auto const [ix0, ix1] = startToEnd(centering, Direction::X);
-
-            for (auto ix = ix0; ix < ix1 + plus; ++ix)
-            {
-                if constexpr (dimension > 1)
-                {
-                    auto const [iy0, iy1] = startToEnd(centering, Direction::Y);
-
-                    for (auto iy = iy0; iy < iy1 + plus; ++iy)
-                    {
-                        if constexpr (dimension > 2)
-                        {
-                            auto const [iz0, iz1] = startToEnd(centering, Direction::Z);
-
-                            for (auto iz = iz0; iz < iz1 + plus; ++iz)
-                                indices.emplace_back(std::make_tuple(ix, iy, iz));
-                        }
-                        else // 2D
-                        {
-                            indices.emplace_back(std::make_tuple(ix, iy));
-                        }
-                    }
-                }
-                else // 1D
-                {
-                    indices.emplace_back(std::make_tuple(ix));
-                }
-            }
-            return indices;
-        }
 
 
         template<typename Centering>
-        auto physicalStartToEndIndices(Centering const& centering, std::size_t const plus = 0) const
+        auto physicalStartToEndIndices(Centering const& centering,
+                                       bool const includeEnd = false) const
         {
-            return _StartToEndIndices(
+            return StartToEndIndices_(
                 centering,
                 [&](auto const& centering_, auto const direction) {
                     return this->physicalStartToEnd(centering_, direction);
                 },
-                plus);
+                includeEnd);
         }
 
         template<typename Centering>
-        auto ghostStartToEndIndices(Centering const& centering, std::size_t const plus = 0) const
+        auto ghostStartToEndIndices(Centering const& centering, bool const includeEnd = false) const
         {
-            return _StartToEndIndices(
+            return StartToEndIndices_(
                 centering,
                 [&](auto const& centering_, auto const direction) {
                     return this->ghostStartToEnd(centering_, direction);
                 },
-                plus);
+                includeEnd);
         }
 
-        template<bool ByField, typename Centering, typename CoordsFn, typename... Args>
-        auto inline gridCoords([[maybe_unused]] Centering const& centering,
-                               CoordsFn const& coordsFn, Args const&... args) const
+        template<bool WithField, typename Centering, typename CoordsFn, typename... Indexes>
+        auto inline indexesToCoords([[maybe_unused]] Centering const& centering,
+                                    CoordsFn const& coordsFn, Indexes const&... indexes) const
         {
-            if constexpr (ByField)
-                return coordsFn(*this, centering, args...);
+            if constexpr (WithField)
+                return coordsFn(*this, centering, indexes...);
             else
-                return coordsFn(*this, args...);
+                return coordsFn(*this, indexes...);
         }
 
-        static constexpr auto _coord_tuple()
-        {
-            using Param = std::vector<double>;
-            if constexpr (dimension == 1)
-                return std::tuple<Param>{};
-            if constexpr (dimension == 2)
-                return std::tuple<Param, Param>{};
-            if constexpr (dimension == 3)
-                return std::tuple<Param, Param, Param>{};
-        }
 
-        template<bool ByField = false, typename Indices, typename Centering, typename CoordsFn>
-        auto gridVectors(Indices const& indices, Centering const& centering,
-                         CoordsFn const&& coordsFn) const
+
+        template<bool WithField = false, typename Indices, typename Centering, typename CoordsFn>
+        auto indexesToCoordVectors(Indices const& indices, Centering const& centering,
+                                   CoordsFn const&& coordsFn) const
         {
             auto emplace_back = [](auto& vectors, auto const&& point) {
                 std::get<0>(vectors).emplace_back(point[0]);
@@ -291,12 +236,14 @@ namespace core
                     std::get<2>(vectors).emplace_back(point[2]);
             };
 
-            auto xyz = _coord_tuple();
+            auto xyz = tuple_fixed_type<std::vector<double>, dimension>{};
 
             for (const auto& indiceTuple : indices)
                 std::apply(
                     [&](auto const&... args) {
-                        emplace_back(xyz, gridCoords<ByField>(centering, coordsFn, args...));
+                        emplace_back(
+                            xyz, indexesToCoords<WithField>(
+                                     centering, std::forward<CoordsFn const>(coordsFn), args...));
                     },
                     indiceTuple);
 
@@ -1141,6 +1088,48 @@ namespace core
 
 
     private:
+        template<typename Centering, typename StartToEnd>
+        auto StartToEndIndices_(Centering const& centering, StartToEnd const&& startToEnd,
+                                bool const includeEnd = false) const
+        {
+            std::vector<tuple_fixed_type<std::uint32_t, dimension>> indices;
+
+            std::size_t plus = (includeEnd) ? 1 : 0;
+
+            auto const [ix0, ix1] = startToEnd(centering, Direction::X);
+
+            for (auto ix = ix0; ix < ix1 + plus; ++ix)
+            {
+                if constexpr (dimension > 1)
+                {
+                    auto const [iy0, iy1] = startToEnd(centering, Direction::Y);
+
+                    for (auto iy = iy0; iy < iy1 + plus; ++iy)
+                    {
+                        if constexpr (dimension > 2)
+                        {
+                            auto const [iz0, iz1] = startToEnd(centering, Direction::Z);
+
+                            for (auto iz = iz0; iz < iz1 + plus; ++iz)
+                                indices.emplace_back(std::make_tuple(ix, iy, iz));
+                        }
+                        else // 2D
+                        {
+                            indices.emplace_back(std::make_tuple(ix, iy));
+                        }
+                    }
+                }
+                else // 1D
+                {
+                    indices.emplace_back(std::make_tuple(ix));
+                }
+            }
+            return indices;
+        }
+
+
+
+
         /**
          * @brief nextPrimal_ returns the index shift needed to go to the next primal
          * node from a dual node. This depends on whether the dual have more ghost nodes

@@ -15,123 +15,118 @@
 #include "core/utilities/point/point.h"
 
 
-namespace PHARE
-{
-namespace core
-{
-    void maxwellianVelocity(std::array<double, 3> V, std::array<double, 3> Vth,
-                            std::mt19937_64& generator, std::array<double, 3>& partVelocity);
-
-
-    std::array<double, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
-                                         std::array<double, 3> const& vec);
-
-    void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3>, 3>& basis);
-
-
-    /** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
-     * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
-     */
-    template<typename ParticleArray, typename GridLayout>
-    class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
-    {
-    public:
-        static constexpr auto dimension = GridLayout::dimension;
-        using InputFunction             = initializer::InitFunction<dimension>;
-
-        MaxwellianParticleInitializer(InputFunction density,
-                                      std::array<InputFunction, 3> bulkVelocity,
-                                      std::array<InputFunction, 3> thermalVelocity,
-                                      double particleCharge, std::uint32_t nbrParticlesPerCell,
-                                      std::optional<std::size_t> seed = {},
-                                      Basis basis                     = Basis::Cartesian,
-                                      std::array<InputFunction, 3> magneticField
-                                      = {nullptr, nullptr, nullptr})
-            : density_{density}
-            , bulkVelocity_{bulkVelocity}
-            , thermalVelocity_{thermalVelocity}
-            , magneticField_{magneticField}
-            , particleCharge_{particleCharge}
-            , nbrParticlePerCell_{nbrParticlesPerCell}
-            , basis_{basis}
-            , rngSeed_{seed}
-        {
-        }
-
-
-        /**
-         * @brief load particles in a ParticleArray in a domain defined by the given layout
-         */
-        void loadParticles(ParticleArray& particles, GridLayout const& layout) const override;
-
-
-        virtual ~MaxwellianParticleInitializer() = default;
-
-
-        static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
-        {
-            if (!seed.has_value())
-            {
-                std::random_device randSeed;
-                std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
-                                       randSeed(), randSeed(), randSeed(), randSeed()};
-                return std::mt19937_64(seed_seq);
-            }
-            return std::mt19937_64(*seed);
-        }
-
-    private:
-        InputFunction density_;
-        std::array<InputFunction, 3> bulkVelocity_;
-        std::array<InputFunction, 3> thermalVelocity_;
-        std::array<InputFunction, 3> magneticField_;
-
-        double particleCharge_;
-        std::uint32_t nbrParticlePerCell_;
-        Basis basis_;
-        std::optional<std::size_t> rngSeed_;
-    };
-} // namespace core
-} // namespace PHARE
-
-
 namespace PHARE::core
 {
-namespace
-{ // not strictly maxwellian but some what generic
-    class MaxwellianInitFunctions
+void maxwellianVelocity(std::array<double, 3> V, std::array<double, 3> Vth,
+                        std::mt19937_64& generator, std::array<double, 3>& partVelocity);
+
+
+std::array<double, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
+                                     std::array<double, 3> const& vec);
+
+void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3>, 3>& basis);
+
+
+/** @brief a MaxwellianParticleInitializer is a ParticleInitializer that loads particles from a
+ * local Maxwellian distribution given density, bulk velocity and thermal velocity profiles.
+ */
+template<typename ParticleArray, typename GridLayout>
+class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
+{
+public:
+    static constexpr auto dimension = GridLayout::dimension;
+    using InputFunction             = initializer::InitFunction<dimension>;
+
+    MaxwellianParticleInitializer(InputFunction density, std::array<InputFunction, 3> bulkVelocity,
+                                  std::array<InputFunction, 3> thermalVelocity,
+                                  double particleCharge, std::uint32_t nbrParticlesPerCell,
+                                  std::optional<std::size_t> seed = {},
+                                  Basis basis                     = Basis::Cartesian,
+                                  std::array<InputFunction, 3> magneticField
+                                  = {nullptr, nullptr, nullptr})
+        : density_{density}
+        , bulkVelocity_{bulkVelocity}
+        , thermalVelocity_{thermalVelocity}
+        , magneticField_{magneticField}
+        , particleCharge_{particleCharge}
+        , nbrParticlePerCell_{nbrParticlesPerCell}
+        , basis_{basis}
+        , rngSeed_{seed}
     {
-    public:
-        template<typename Function, typename FunctionArray, typename Basis, typename... Args>
-        MaxwellianInitFunctions(Function& density, FunctionArray& bulkVelocity,
-                                FunctionArray& thermalVelocity, FunctionArray& magneticField,
-                                Basis const& basis, Args const&... args)
-            : _n{density(args...)}
+    }
+
+
+    /**
+     * @brief load pacore
+} // namespace PHARErticles in a ParticleArray in a domain defined by the given layout
+     */
+    void loadParticles(ParticleArray& particles, GridLayout const& layout) const override;
+
+
+    virtual ~MaxwellianParticleInitializer() = default;
+
+
+    static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
+    {
+        if (!seed.has_value())
         {
+            std::random_device randSeed;
+            std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
+                                   randSeed(), randSeed(), randSeed(), randSeed()};
+            return std::mt19937_64(seed_seq);
+        }
+        return std::mt19937_64(*seed);
+    }
+
+private:
+    using Particle = typename ParticleArray::value_type;
+    InputFunction density_;
+    std::array<InputFunction, 3> bulkVelocity_;
+    std::array<InputFunction, 3> thermalVelocity_;
+    std::array<InputFunction, 3> magneticField_;
+
+    double particleCharge_;
+    std::uint32_t nbrParticlePerCell_;
+    Basis basis_;
+    std::optional<std::size_t> rngSeed_;
+};
+
+
+class MaxwellianInitFunctions
+{
+public:
+    template<typename Function, typename FunctionArray, typename Basis, typename... Coords>
+    MaxwellianInitFunctions(Function& density, FunctionArray& bulkVelocity,
+                            FunctionArray& thermalVelocity, FunctionArray& magneticField,
+                            Basis const& basis, Coords const&... coords)
+        : _n{density(coords...)}
+    {
+        static_assert(sizeof...(coords) <= 3, "can only provide up to 3 coordinates");
+        for (std::uint32_t i = 0; i < 3; i++)
+        {
+            _V[i]   = bulkVelocity[i](coords...);
+            _Vth[i] = thermalVelocity[i](coords...);
+        }
+        if (basis == Basis::Magnetic)
             for (std::uint32_t i = 0; i < 3; i++)
-            {
-                _V[i]   = bulkVelocity[i](args...);
-                _Vth[i] = thermalVelocity[i](args...);
-            }
-            if (basis == Basis::Magnetic)
-                for (std::uint32_t i = 0; i < 3; i++)
-                    _B[i] = magneticField[i](args...);
-        }
+                _B[i] = magneticField[i](coords...);
+    }
 
-        std::array<double const*, 3> B() const { return ptrs(_B); }
+    std::array<double const*, 3> B() const { return ptrs(_B); }
 
-        auto operator()() const { return std::make_tuple(_n->data(), ptrs(_V), ptrs(_Vth)); }
+    auto operator()() const { return std::make_tuple(_n->data(), ptrs(_V), ptrs(_Vth)); }
 
-    private:
-        std::array<double const*, 3>
-        ptrs(std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> const& v) const
-        {
-            return {v[0]->data(), v[1]->data(), v[2]->data()};
-        }
-        std::shared_ptr<PHARE::core::Span<double>> const _n;
-        std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> _B, _V, _Vth;
-    };
-} // namespace
+private:
+    std::array<double const*, 3>
+    ptrs(std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> const& v) const
+    {
+        return {v[0]->data(), v[1]->data(), v[2]->data()};
+    }
+
+    std::shared_ptr<PHARE::core::Span<double>> const _n;
+    std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> _B, _V, _Vth;
+};
+
 
 
 
@@ -147,6 +142,8 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         if constexpr (dimension == 3)
             return {std::get<0>(indices[i]), std::get<1>(indices[i]), std::get<2>(indices[i])};
     };
+
+
     auto deltas = [](auto& pos, auto& gen) -> std::array<float, dimension> {
         if constexpr (dimension == 1)
             return {pos(gen)};
@@ -156,28 +153,32 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             return {pos(gen), pos(gen), pos(gen)};
     };
 
+
+    // in the following two calls,
+    // primal indexes are given here because that's what cellCenteredCoordinates takes
+
     // indices = std::vector<std::tuple<std::uint32_t, per dim>>
-    auto indices = layout.physicalStartToEndIndices(QtyCentering::primal);
+    auto ndCellIndices = layout.physicalStartToEndIndices(QtyCentering::primal);
 
     // coords = std::tuple<std::vector<double>,  per dim>
-    auto coords = layout.gridVectors(indices, QtyCentering::primal,
-                                     [](auto& gridLayout, auto const&... args) {
-                                         return gridLayout.cellCenteredCoordinates(args...);
-                                     });
+    auto cellCoords = layout.indexesToCoordVectors(
+        ndCellIndices, QtyCentering::primal, [](auto const& gridLayout, auto const&... indexes) {
+            return gridLayout.cellCenteredCoordinates(indexes...);
+        });
 
     auto const fns = std::make_from_tuple<MaxwellianInitFunctions>(std::tuple_cat(
         std::forward_as_tuple(density_, bulkVelocity_, thermalVelocity_, magneticField_, basis_),
-        coords));
+        cellCoords));
 
     auto const [n, V, Vth] = fns();
     auto const cellVolume  = layout.cellVolume();
-    auto generator         = getRNG(rngSeed_);
-    ParticleDeltaDistribution pos;
+    auto randGen           = getRNG(rngSeed_);
+    ParticleDeltaDistribution deltaDistrib;
 
-    for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)
+    for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)
     {
-        auto const cellWeight   = n[cell_idx] * cellVolume / nbrParticlePerCell_;
-        auto const AMRCellIndex = layout.localToAMR(point(cell_idx, indices));
+        auto const cellWeight   = n[flatCellIdx] * cellVolume / nbrParticlePerCell_;
+        auto const AMRCellIndex = layout.localToAMR(point(flatCellIdx, ndCellIndices));
 
         std::array<double, 3> particleVelocity;
         std::array<std::array<double, 3>, 3> basis;
@@ -185,21 +186,21 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         if (basis_ == Basis::Magnetic)
         {
             auto const B = fns.B();
-            localMagneticBasis({B[0][cell_idx], B[1][cell_idx], B[2][cell_idx]}, basis);
+            localMagneticBasis({B[0][flatCellIdx], B[1][flatCellIdx], B[2][flatCellIdx]}, basis);
         }
 
         for (std::uint32_t ipart = 0; ipart < nbrParticlePerCell_; ++ipart)
         {
-            maxwellianVelocity({V[0][cell_idx], V[1][cell_idx], V[2][cell_idx]},
-                               {Vth[0][cell_idx], Vth[1][cell_idx], Vth[2][cell_idx]}, //
-                               generator, particleVelocity);
+            maxwellianVelocity({V[0][flatCellIdx], V[1][flatCellIdx], V[2][flatCellIdx]},
+                               {Vth[0][flatCellIdx], Vth[1][flatCellIdx], Vth[2][flatCellIdx]}, //
+                               randGen, particleVelocity);
 
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(typename ParticleArray::value_type{
-                cellWeight, particleCharge_, AMRCellIndex.template toArray<int>(),
-                deltas(pos, generator), particleVelocity});
+            particles.emplace_back(Particle{cellWeight, particleCharge_,
+                                            AMRCellIndex.template toArray<int>(),
+                                            deltas(deltaDistrib, randGen), particleVelocity});
         }
     }
 }
