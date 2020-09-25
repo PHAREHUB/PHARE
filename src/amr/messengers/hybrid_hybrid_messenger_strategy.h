@@ -181,7 +181,6 @@ namespace amr
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
