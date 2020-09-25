@@ -33,10 +33,12 @@ def check_equal_size(*args):
 
 
 def listify(arg):
+    import numpy as np
+    if isinstance(arg, np.ndarray):
+        return arg
     if none_iterable(arg):
         return [arg]
-    else:
-        return arg
+    return arg
 
 
 def not_in_keywords_list(kwd_list,**kwargs):
