@@ -13,16 +13,17 @@
 #include "phare/phare.h"
 #include "simulator/simulator.h"
 
-#include "python3/particles.h"
-#include "python3/patch_data.h"
-#include "python3/patch_level.h"
-#include "python3/data_wrangler.h"
-
 #include "pybind11/stl.h"
 #include "pybind11/numpy.h"
 #include "pybind11/chrono.h"
 #include "pybind11/complex.h"
 #include "pybind11/functional.h"
+
+#include "python3/pybind_def.h"
+#include "python3/particles.h"
+#include "python3/patch_data.h"
+#include "python3/patch_level.h"
+#include "python3/data_wrangler.h"
 
 namespace py = pybind11;
 
@@ -206,6 +207,12 @@ PYBIND11_MODULE(cpp, m)
     declarePatchData<std::vector<double>, 1>(m, "PatchDataVectorDouble_1D");
     declarePatchData<std::vector<double>, 2>(m, "PatchDataVectorDouble_2D");
     declarePatchData<std::vector<double>, 3>(m, "PatchDataVectorDouble_3D");
+
+    py::class_<core::Span<double>, std::shared_ptr<core::Span<double>>>(m, "Span");
+    py::class_<PyArrayWrapper<double>, std::shared_ptr<PyArrayWrapper<double>>, core::Span<double>>(
+        m, "PyWrapper");
+
+    m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
 }
 
 } // namespace PHARE::pydata

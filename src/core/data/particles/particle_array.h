@@ -29,6 +29,7 @@ public:
     std::size_t size() const { return particles.size(); }
 
     void clear() { return particles.clear(); }
+    void reserve(std::size_t newSize) { return particles.reserve(newSize); }
     void resize(std::size_t newSize) { return particles.resize(newSize); }
 
     auto& operator[](std::size_t i) const { return particles[i]; }

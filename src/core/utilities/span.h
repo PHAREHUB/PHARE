@@ -3,9 +3,9 @@
 #ifndef PHARE_CORE_UTILITIES_SPAN_H
 #define PHARE_CORE_UTILITIES_SPAN_H
 
-#include <cstddef> // for size_t
-#include <numeric> // for accumulate
-#include <vector>  // for vector
+#include <vector>
+#include <cstddef>
+#include <numeric>
 #include "core/utilities/types.h"
 
 namespace PHARE::core
@@ -15,16 +15,43 @@ struct Span
 {
     using value_type = T;
 
-    T& operator[](SIZE i) const { return ptr[i]; }
+    auto& operator[](SIZE i) { return ptr[i]; }
+    auto& operator[](SIZE i) const { return ptr[i]; }
     T const* const& data() const { return ptr; }
     T const* const& begin() const { return ptr; }
     T* end() const { return ptr + s; }
     SIZE const& size() const { return s; }
 
-
     T const* ptr = nullptr;
     SIZE s       = 0;
 };
+
+
+template<typename T, typename SIZE = size_t>
+class VectorSpan : public StackVar<std::vector<T>>, public core::Span<T, SIZE>
+{
+    using Vector = StackVar<std::vector<T>>;
+    using Span_  = Span<T, SIZE>;
+
+public:
+    VectorSpan(std::size_t size, T value)
+        : Vector{std::vector<T>(size, value)}
+        , Span_{Vector::var.data(), Vector::var.size()}
+    {
+    }
+    VectorSpan(std::vector<T>&& vec_)
+        : Vector{std::move(vec_)}
+        , Span_{Vector::var.data(), Vector::var.size()}
+    {
+    }
+    VectorSpan(std::vector<T> const& vec_)
+        : Vector{vec_}
+        , Span_{Vector::var.data(), Vector::var.size()}
+    {
+    }
+};
+
+
 
 template<typename T, typename SIZE = size_t>
 struct SpanSet

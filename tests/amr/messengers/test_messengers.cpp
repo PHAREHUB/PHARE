@@ -11,59 +11,63 @@ using namespace PHARE::amr;
 using namespace PHARE::solver;
 
 template<uint8_t dim>
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
+using InitFunctionT = PHARE::initializer::InitFunction<dim>;
+
 
 namespace func_1d
 {
-double density(double /*x*/)
+using Param  = std::vector<double> const&;
+using Return = std::shared_ptr<PHARE::core::Span<double>>;
+Return density(Param x)
 {
-    return 2.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 2);
 }
 
-double vx(double /*x*/)
+Return vx(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vy(double /*x*/)
+Return vy(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vz(double /*x*/)
+Return vz(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vthx(double /*x*/)
+Return vthx(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vthy(double /*x*/)
+Return vthy(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vthz(double /*x*/)
+Return vthz(Param x)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double bx(double x)
+Return bx(Param x)
 {
-    return x /* + 1.*/;
+    return std::make_shared<VectorSpan<double>>(x);
 }
 
-double by(double x)
+Return by(Param x)
 {
-    return x /* + 2.*/;
+    return std::make_shared<VectorSpan<double>>(x);
 }
 
-double bz(double x)
+Return bz(Param x)
 {
-    return x /*+ 3.*/;
+    return std::make_shared<VectorSpan<double>>(x);
 }
+
 } // namespace func_1d
 
 
@@ -80,55 +84,55 @@ struct DimDict<1>
     {
         using namespace func_1d;
         dict["ions"]["pop0"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["ions"]["pop1"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["electromag"]["magnetic"]["initializer"]["x_component"]
-            = static_cast<ScalarFunctionT<dim>>(bx);
+            = static_cast<InitFunctionT<dim>>(bx);
         dict["electromag"]["magnetic"]["initializer"]["y_component"]
-            = static_cast<ScalarFunctionT<dim>>(by);
+            = static_cast<InitFunctionT<dim>>(by);
         dict["electromag"]["magnetic"]["initializer"]["z_component"]
-            = static_cast<ScalarFunctionT<dim>>(bz);
+            = static_cast<InitFunctionT<dim>>(bz);
 
         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
     }
@@ -137,58 +141,61 @@ struct DimDict<1>
 
 namespace func_2d
 {
-double density(double /*x*/, double)
+using Param  = std::vector<double> const&;
+using Return = std::shared_ptr<PHARE::core::Span<double>>;
+
+Return density(Param x, Param y)
 {
-    return 2.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 2);
 }
 
-
-double vx(double /*x*/, double)
+Return vx(Param x, Param y)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vy(double /*x*/, double)
+Return vy(Param x, Param y)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vz(double /*x*/, double)
+Return vz(Param x, Param y)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vthx(double /*x*/, double)
+Return vthx(Param x, Param y)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-
-double vthy(double /*x*/, double)
+Return vthy(Param x, Param y)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double vthz(double /*x*/, double)
+Return vthz(Param x, Param y)
 {
-    return 1.;
+    return std::make_shared<VectorSpan<double>>(x.size(), 1);
 }
 
-double bx(double x, double)
+Return bx(Param x, Param y)
 {
-    return x /* + 1.*/;
+    return std::make_shared<VectorSpan<double>>(x);
 }
 
-double by(double x, double)
+Return by(Param x, Param y)
 {
-    return x /* + 2.*/;
+    return std::make_shared<VectorSpan<double>>(x);
 }
 
-double bz(double x, double)
+Return bz(Param x, Param y)
 {
-    return x /*+ 3.*/;
+    return std::make_shared<VectorSpan<double>>(x);
 }
 } // namespace func_2d
+
+
 
 template<>
 struct DimDict<2>
@@ -200,53 +207,53 @@ struct DimDict<2>
         dict["simulation"]["algo"]["pusher"]["name"] = std::string{"modified_boris"};
 
         dict["ions"]["pop0"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["ions"]["pop1"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["electromag"]["magnetic"]["initializer"]["x_component"]
-            = static_cast<ScalarFunctionT<dim>>(bx);
+            = static_cast<InitFunctionT<dim>>(bx);
         dict["electromag"]["magnetic"]["initializer"]["y_component"]
-            = static_cast<ScalarFunctionT<dim>>(by);
+            = static_cast<InitFunctionT<dim>>(by);
         dict["electromag"]["magnetic"]["initializer"]["z_component"]
-            = static_cast<ScalarFunctionT<dim>>(bz);
+            = static_cast<InitFunctionT<dim>>(bz);
 
         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
     }
@@ -473,12 +480,25 @@ TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
             auto iStart = layout.physicalStartIndex(field, Direction::X);
             auto iEnd   = layout.physicalEndIndex(field, Direction::X);
 
+            std::vector<double> x;
+            std::vector<std::size_t> ixes;
             for (auto ix = iStart; ix <= iEnd; ++ix)
             {
-                auto origin   = layout.origin();
-                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                auto expected = func(x[0]);
+                x.emplace_back(layout.fieldNodeCoordinates(field, layout.origin(), ix)[0]);
+                ixes.emplace_back(ix);
+            }
+            EXPECT_GT(x.size(), 0);
+            EXPECT_EQ(x.size(), iEnd - iStart + 1);
+            EXPECT_EQ(ixes.size(), iEnd - iStart + 1);
 
+            auto gridPtr = func(x);
+            EXPECT_EQ(gridPtr->size(), x.size());
+            auto& grid = *gridPtr;
+
+            for (std::size_t i = 0; i < grid.size(); i++)
+            {
+                auto ix       = ixes[i];
+                auto expected = grid[i];
                 EXPECT_DOUBLE_EQ(expected, field(ix));
             }
         };
@@ -768,35 +788,48 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
         if constexpr (dimension == 1)
         {
             using namespace func_1d;
+
             auto checkMyField = [&](auto const& field, auto const& func) //
             {
+                auto check = [&](auto const& start, auto const& end) {
+                    auto origin = layout.origin();
+
+                    std::vector<double> x;
+                    std::vector<std::size_t> ixes;
+
+                    for (auto ix = start; ix < end; ++ix)
+                    {
+                        ixes.emplace_back(ix);
+                        x.emplace_back(layout.fieldNodeCoordinates(field, origin, ix)[0]);
+                    }
+
+                    EXPECT_GT(x.size(), 0);
+                    EXPECT_EQ(x.size(), end - start);
+                    EXPECT_EQ(ixes.size(), end - start);
+
+                    auto gridPtr = func(x);
+                    auto& grid   = *gridPtr;
+
+                    EXPECT_EQ(x.size(), grid.size());
+
+                    for (std::size_t i = 0; i < x.size(); i++)
+                    {
+                        auto ix       = ixes[i];
+                        auto expected = grid[i];
+                        std::cout << iPatch << " " << ix << " " << expected << " " << field(ix)
+                                  << " " << expected - field(ix) << "\n";
+                        EXPECT_DOUBLE_EQ(expected, field(ix));
+                        total_eq++;
+                    }
+                };
+
                 auto iGhostStart = layout.ghostStartIndex(field, Direction::X);
                 auto iStart      = layout.physicalStartIndex(field, Direction::X);
                 auto iEnd        = layout.physicalEndIndex(field, Direction::X);
                 auto iGhostEnd   = layout.ghostEndIndex(field, Direction::X);
 
-
-                for (auto ix = iGhostStart; ix < iStart; ++ix)
-                {
-                    auto origin   = layout.origin();
-                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                    auto expected = func(x[0]);
-                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix)
-                              << expected - field(ix) << "\n";
-                    EXPECT_DOUBLE_EQ(expected, field(ix));
-                    total_eq++;
-                }
-
-                for (auto ix = iEnd; ix < iGhostEnd; ++ix)
-                {
-                    auto origin   = layout.origin();
-                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                    auto expected = func(x[0]);
-                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << " "
-                              << expected - field(ix) << "\n";
-                    EXPECT_DOUBLE_EQ(expected, field(ix));
-                    total_eq++;
-                }
+                check(iGhostStart, iStart);
+                check(iEnd, iGhostEnd);
             };
 
             checkMyField(Bx, bx);
@@ -810,35 +843,40 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
             using namespace func_2d;
             auto checkMyField = [&](auto const& field, auto const& func) //
             {
-                auto iXGhostStart = layout.ghostStartIndex(field, Direction::X);
-                auto iXStart      = layout.physicalStartIndex(field, Direction::X);
-                auto iXEnd        = layout.physicalEndIndex(field, Direction::X);
-                auto iXGhostEnd   = layout.ghostEndIndex(field, Direction::X);
+                auto check = [&](auto startX, auto startY, auto endX, auto endY) {
+                    auto origin = layout.origin();
+                    std::vector<double> x, y;
+                    std::vector<std::size_t> ixes, iyes;
+                    for (auto ix = startX; ix < endX; ++ix)
+                        for (auto iy = startY; iy < endY; ++iy)
+                        {
+                            ixes.emplace_back(ix);
+                            iyes.emplace_back(iy);
+                            auto xy = layout.fieldNodeCoordinates(field, origin, ix, iy);
+                            x.emplace_back(xy[0]);
+                            y.emplace_back(xy[1]);
+                        }
 
-                auto iYGhostStart = layout.ghostStartIndex(field, Direction::Y);
-                auto iYStart      = layout.physicalStartIndex(field, Direction::Y);
-                auto iYEnd        = layout.physicalEndIndex(field, Direction::Y);
-                auto iYGhostEnd   = layout.ghostEndIndex(field, Direction::Y);
+                    auto gridPtr = func(x, y);
+                    auto& grid   = *gridPtr;
 
-                for (auto ix = iXGhostStart; ix < iXStart; ++ix)
-                    for (auto iy = iYGhostStart; iy < iYStart; ++iy)
+                    std::size_t cell_idx = 0;
+                    for (std::size_t i = 0; i < ixes.size(); i++)
                     {
-                        auto origin   = layout.origin();
-                        auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
-                        auto expected = func(xy[0], xy[1]);
-                        EXPECT_DOUBLE_EQ(expected, field(ix, iy));
+                        auto expected = grid[cell_idx];
+                        EXPECT_DOUBLE_EQ(expected, field(ixes[cell_idx], iyes[cell_idx]));
+                        cell_idx++;
                         total_eq++;
                     }
+                };
 
-                for (auto ix = iXEnd; ix < iXGhostEnd; ++ix)
-                    for (auto iy = iYEnd; iy < iYGhostEnd; ++iy)
-                    {
-                        auto origin   = layout.origin();
-                        auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
-                        auto expected = func(xy[0], xy[1]);
-                        EXPECT_DOUBLE_EQ(expected, field(ix, iy));
-                        total_eq++;
-                    }
+                auto [iXGhostStart, iXGhostEnd] = layout.ghostStartToEnd(field, Direction::X);
+                auto [iXStart, iXEnd]           = layout.physicalStartToEnd(field, Direction::X);
+                auto [iYGhostStart, iYGhostEnd] = layout.ghostStartToEnd(field, Direction::Y);
+                auto [iYStart, iYEnd]           = layout.physicalStartToEnd(field, Direction::Y);
+
+                check(iXGhostStart, iYGhostStart, iXStart, iYStart);
+                check(iXEnd, iYEnd, iXGhostEnd, iYGhostEnd);
             };
 
             checkMyField(Bx, bx);
