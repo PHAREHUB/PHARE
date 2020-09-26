@@ -602,13 +602,17 @@ class InitializationTest(unittest.TestCase):
               patchData.dataset.select(patchData.box) for patchData in patchDatas
             ]) # including patch ghost particles means duplicates
 
+        self.assertTrue(len(level_ghost_boxes(datahier).items()))
         for ilvl, particle_gaboxes in level_ghost_boxes(datahier).items():
-            assert ilvl > 0 # has no level 0
+            self.assertTrue(ilvl > 0) # has no level 0
 
             for particles_id, gaboxes_list in particle_gaboxes.items():
                 coarse_particles = domainParticles_for(ilvl - 1, particles_id)
+                self.assertTrue(coarse_particles.size() > 0)
+
                 coarse_split_particles = coarse_particles.split(sim)
-                assert coarse_split_particles.size() == coarse_particles.size() * sim.refined_particle_nbr
+                self.assertTrue(coarse_split_particles.size() > 0)
+                self.assertTrue(coarse_split_particles.size() == coarse_particles.size() * sim.refined_particle_nbr)
 
                 for gabox in gaboxes_list:
                     gabox_patchData = gabox["pdata"]
