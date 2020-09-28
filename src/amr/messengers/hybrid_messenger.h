@@ -123,7 +123,7 @@ namespace amr
          * @brief see IMessenger::registerLevel
          */
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                    const int levelNumber,
+                    int const levelNumber,
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                     IPhysicalModel& model, double const initDataTime) final
         {
@@ -149,11 +149,11 @@ namespace amr
          * @brief see IMessenger::firstStep
          * @param model
          */
-        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                       double time) final
+        void firstNonRootStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                              std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                              double time, double newCoarserTime) final
         {
-            strat_->firstStep(model, level, hierarchy, time);
+            strat_->firstNonRootStep(model, level, hierarchy, time, newCoarserTime);
         }
 
 

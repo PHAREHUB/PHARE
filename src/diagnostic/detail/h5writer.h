@@ -323,7 +323,7 @@ void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> c
 
     // sets empty vectors in case current process lacks patch on a level
     std::size_t maxMPILevel = core::mpi::max(maxLocalLevel);
-    for (std::size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
+    for (std::size_t lvl = minLevel; lvl <= maxMPILevel; lvl++)
         if (!lvlPatchIDs.count(lvl))
             lvlPatchIDs.emplace(lvl, std::vector<std::string>());
 
@@ -356,7 +356,8 @@ void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const&
     modelView_.visitHierarchy(writePatch, minLevel, maxLevel);
 
     std::size_t maxMPILevel = core::mpi::max(maxLocalLevel);
-    for (std::size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
+    // sets empty vectors in case current process lacks patch on a level
+    for (std::size_t lvl = minLevel; lvl <= maxMPILevel; lvl++)
         if (!patchAttributes.count(lvl))
             patchAttributes.emplace(lvl, std::vector<std::pair<std::string, Attributes>>{});
 
