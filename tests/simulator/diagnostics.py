@@ -130,29 +130,30 @@ class DiagnosticsTest(unittest.TestCase):
 
             refined_particle_nbr = simulation.refined_particle_nbr
 
+            self.assertTrue(any([diagInfo.quantity.endswith("domain") for diagInfo in ph.global_vars.sim.diagnostics]))
+
             for diagInfo in ph.global_vars.sim.diagnostics:
                 # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
                 h5_filename = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
-                print("h5_filename", h5_filename)
+
+                self.assertTrue(os.path.exists(h5_filename))
 
                 h5_file = h5py.File(h5_filename, "r")
                 self.assertTrue("t0.000000" in h5_file) #    init dump
                 self.assertTrue("t0.001000" in h5_file) # advance dump
 
-                # SEE https://github.com/PHAREHUB/PHARE/issues/275
-                if dim == 1: # REMOVE WHEN PHARESEE SUPPORTS 2D
-                    self.assertTrue(os.path.exists(h5_filename))
-                    hier = hierarchy_from(h5_filename=h5_filename)
-                    if h5_filename.endswith("domain.h5"):
-                        for patch in hier.level(0).patches:
-                            for qty_name, pd in patch.patch_datas.items():
-                                splits = pd.dataset.split(ph.global_vars.sim)
-                                self.assertTrue(splits.size() == pd.dataset.size() * refined_particle_nbr)
-                                print("splits.iCell", splits.iCells)
-                                print("splits.delta", splits.deltas)
-                                print("splits.weight", splits.weights)
-                                print("splits.charge", splits.charges)
-                                print("splits.v", splits.v)
+                hier = hierarchy_from(h5_filename=h5_filename)
+                if not h5_filename.endswith("domain.h5"):
+                    continue
+
+                self.assertTrue(len(hier.level(0).patches))
+                for patch in hier.level(0).patches:
+                    self.assertTrue(len(patch.patch_datas.items()))
+                    for qty_name, pd in patch.patch_datas.items():
+                        splits = pd.dataset.split(ph.global_vars.sim)
+                        self.assertTrue(splits.size() > 0)
+                        self.assertTrue(pd.dataset.size() > 0)
+                        self.assertTrue(splits.size() == pd.dataset.size() * refined_particle_nbr)
 
             self.simulator = None
             ph.global_vars.sim = None
