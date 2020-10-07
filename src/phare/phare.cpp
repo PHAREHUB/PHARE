@@ -3,6 +3,7 @@
 #include "phare/phare.h"
 #include "simulator/simulator.h"
 #include "amr/wrappers/hierarchy.h"
+#include "initializer/python_data_provider.h"
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {

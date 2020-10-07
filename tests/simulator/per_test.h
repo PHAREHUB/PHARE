@@ -2,6 +2,7 @@
 #define PHARE_TEST_SIMULATOR_PER_TEST_H
 
 #include "phare/phare.h"
+#include "initializer/python_data_provider.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

@@ -32,6 +32,7 @@ include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/bench.cmake")
 
 #*******************************************************************************
 # PHARE source code
