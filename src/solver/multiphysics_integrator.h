@@ -375,9 +375,9 @@ namespace solver
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
 
 
+            firstNewLevelTimes_[iLevel] = newTime;
             if (firstStep)
             {
-                firstNewLevelTimes_[iLevel] = newTime;
                 if (iLevel > 0)
                 {
                     fromCoarser.firstNonRootStep(model, *level, hierarchy, currentTime,
