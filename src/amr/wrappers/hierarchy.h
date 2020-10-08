@@ -75,10 +75,10 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid)
         upperCell[0] = grid["nbr_cells"]["x"].template to<int>() - 1;
 
         if constexpr (dimension >= 2)
-            upperCell[1] = grid["nbr_cells"]["y"].template to<int>();
+            upperCell[1] = grid["nbr_cells"]["y"].template to<int>() - 1;
 
         if constexpr (dimension == 3)
-            upperCell[2] = grid["nbr_cells"]["z"].template to<int>();
+            upperCell[2] = grid["nbr_cells"]["z"].template to<int>() - 1;
 
         std::vector<SAMRAI::tbox::DatabaseBox> dbBoxes;
         dbBoxes.push_back(SAMRAI::tbox::DatabaseBox(samraiDim, lowerCell, upperCell));
