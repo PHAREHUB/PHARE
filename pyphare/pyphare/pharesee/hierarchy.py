@@ -6,6 +6,9 @@ import os
 from ..core.gridlayout import GridLayout
 from .particles import Particles
 from ..data.wrangler import DataWrangler
+import matplotlib.pyplot as plt
+import seaborn as sns
+from ..core.phare_utilities import np_array_ify, is_scalar
 
 
 class PatchData:
@@ -32,7 +35,7 @@ class FieldData(PatchData):
     Concrete type of PatchData representing a physical quantity
     defined on a grid.
     """
-    def __init__(self, layout, field_name, data):
+    def __init__(self, layout, field_name, data, **kwargs):
         """
         :param layout: A GridLayout representing the domain on which data is defined
         :param field_name: the name of the field (e.g. "Bx")
@@ -44,7 +47,12 @@ class FieldData(PatchData):
         self.field_name = field_name
         self.dx = layout.dl[0]
 
-        centering = layout.centering["X"][field_name]
+        if field_name in layout.centering["X"]:
+            centering = layout.centering["X"][field_name]
+        elif "centering" in kwargs:
+            centering = kwargs["centering"]
+        else:
+            ValueError("centering not specified and cannot be inferred from field name")
         self._ghosts_nbr = layout.nbrGhosts(layout.interp_order, centering)
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
@@ -93,6 +101,7 @@ class Patch:
         share the same origin, mesh size and box.
         """
         pdata0 = list(patch_datas.values())[0] #0 represents all others
+        self.layout = pdata0.layout
         self.box = pdata0.layout.box
         self.origin = pdata0.layout.origin
         self.dx = pdata0.layout.dl[0]
@@ -113,6 +122,7 @@ class PatchHierarchy:
 
     def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
         self.patch_levels = patch_levels
+        self.dim = len(domain_box.lower)
         self.time_hier = {}
         self.time_hier.update({time:patch_levels})
 
@@ -158,7 +168,6 @@ class PatchHierarchy:
         return np.sort(np.asarray(list(self.time_hier.keys())))
 
     def plot_patches(self):
-        import matplotlib.pyplot as plt
         fig, ax = plt.subplots(figsize=(10, 3))
         for ilvl, lvl in self.time_hier[0.].items():
             lvl_offset = ilvl * 0.1
@@ -172,33 +181,128 @@ class PatchHierarchy:
 
         fig.savefig("hierarchy.png")
 
-    def plot(self, qty, xlim=None, ylim=None, title=None, filename=None):
-        import matplotlib.pyplot as plt
 
-        times = np.sort(np.asarray(list(self.time_hier.keys())))
-        fig, ax = plt.subplots(figsize=(10, 6))
-        t = times[0]
-        for il, level in self.levels(t).items():
-            patches = level.patches
-            if il == 0:
-                marker = "+"
-                alpha = 1
-                ls = '-'
-            else:
-                marker = "o"
-                alpha = 0.4
-                ls = 'none'
-            for ip, patch in enumerate(patches):
+    def plot(self, **kwargs):
+        """
+        plot
+        """
+        usr_lvls = kwargs.get("levels",(0,))
+        qty = kwargs.get("qty",None)
+        time = kwargs.get("time", self.times()[0])
+
+        fig, ax = plt.subplots()
+        for lvl_nbr,level in self.levels(time).items():
+            if lvl_nbr not in usr_lvls:
+                continue
+            for ip, patch in enumerate(level.patches):
+                pdata_nbr = len(patch.patch_datas)
+                if qty is None and pdata_nbr != 1:
+                    pdata_names = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
+                    multiple = "multiple quantities in patch, "
+                    err = multiple + "please specify a quantity in  "+ pdata_names
+                    raise ValueError(err)
+                if qty is None:
+                    qty = list(patch.patch_datas.keys())[0]
+
                 val = patch.patch_datas[qty].dataset[:]
-                x_val = patch.patch_datas[qty].x
-                ax.plot(x_val, val, label=r"Level {} patch {}".format(il, ip), marker=marker, alpha=alpha, ls=ls)
-                if ylim is not None:
-                    ax.set_ylim(ylim)
-        ax.legend(ncol=4)
-        ax.set_title(title)
+                x   = patch.patch_datas[qty].x
+                label = "L{level}P{patch}".format(level=lvl_nbr,patch=ip)
+                ax.plot(x, val, label=label)
 
-        if filename is not None:
+        ax.set_title(kwargs.get("title",""))
+        ax.set_xlabel(kwargs.get("xlabel","x"))
+        ax.set_ylabel(kwargs.get("ylabel", qty))
+        if "xlim" in kwargs:
+            ax.set_xlim(kwargs["xlim"])
+        if "ylim" in kwargs:
+            ax.set_ylim(kwargs["ylim"])
+        ax.legend()
+
+        if "filename" in kwargs:
             fig.savefig(filename)
+
+
+    def dist_plot(self, **kwargs):
+        """
+        plot
+        """
+
+        usr_lvls = kwargs.get("levels",(0,))
+        qty = kwargs.get("qty",None)
+        time = kwargs.get("time", self.times()[0])
+        cpt = 0
+        fig, ax = plt.subplots()
+        for lvl_nbr,level in self.levels(time).items():
+            if lvl_nbr not in usr_lvls:
+                continue
+            for ip, patch in enumerate(level.patches):
+
+                pdata_nbr = len(patch.patch_datas)
+                if qty is None and pdata_nbr != 1:
+                    pdata_names = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
+                    multiple = "multiple quantities in patch, "
+                    err = multiple + "please specify a quantity in  "+ pdata_names
+                    raise ValueError(err)
+                if qty is None:
+                    qty = list(patch.patch_datas.keys())[0]
+
+                tmp = patch.patch_datas[qty].dataset
+
+                # select particles
+                if "select" in kwargs:
+                    selected = kwargs["select"](tmp)
+                else:
+                    selected = tmp
+                if cpt == 0:
+                    final = selected
+                else:
+                    final.add(selected)
+
+                cpt += 1
+
+        axis = kwargs.get("axis",("Vx","Vy"))
+
+        vaxis = {"Vx":0, "Vy":1, "Vz":2}
+        if axis[0] in vaxis:
+            x = final.v[:,vaxis[axis[0]]]
+        elif axis[0] == "x":
+            x = final.x
+        if axis[1] in vaxis:
+            y = final.v[:,vaxis[axis[1]]]
+
+        bins = kwargs.get("bins", (50,50))
+        ax.hist2d(x, y,
+                  bins=kwargs.get("bins", bins),
+                 cmap='jet')
+
+        if kwargs.get("kde",False) is True:
+            sns.kdeplot(x, y, ax=ax, color="w")
+
+
+        ax.set_title(kwargs.get("title",""))
+        ax.set_xlabel(kwargs.get("xlabel", axis[0]))
+        ax.set_ylabel(kwargs.get("ylabel", axis[1]))
+        if "xlim" in kwargs:
+            ax.set_xlim(kwargs["xlim"])
+        if "ylim" in kwargs:
+            ax.set_ylim(kwargs["ylim"])
+        ax.legend()
+
+        if "bulk" in kwargs:
+            if kwargs["bulk"] is True:
+                if axis[0] in vaxis:
+                    ax.axvline(final.v[:,vaxis[axis[0]]].mean(), color="w",ls="--")
+                if axis[1] in vaxis:
+                    ax.axhline(final.v[:,vaxis[axis[1]]].mean(), color="w",ls="--")
+
+
+        if "filename" in kwargs:
+            fig.savefig(filename)
+
+
+
+
+
 
 
 
@@ -280,6 +384,42 @@ def load_one_time(time, hier):
     return time is not None and hier is not None
 
 
+def compute_hier_from(h, compute):
+    """
+    returns a hierarchy resulting from calling 'compute'
+    on each patch of the given hierarchy 'h'
+
+    compute is a function taking a Patch and returning
+    a list of dicts with the following keys:
+
+        "data": ndarray containing the data
+        "name": str, name of the data living on that patch, must be unique
+        "centering": str, ["dual", "primal"]
+
+     caveat: routine only works in 1D so far.
+    """
+    patch_levels = {}
+    for ilvl, lvl in h.patch_levels.items():
+        patches = {}
+        for ip, patch in enumerate(lvl.patches):
+            new_patch_datas = {}
+            layout = patch.layout
+            datas = compute(patch)
+            for data in datas:
+                pd = FieldData(layout, data["name"],
+                               data["data"],
+                               centering=data["centering"])
+                new_patch_datas[data["name"]] = pd
+            if ilvl not in patches:
+                patches[ilvl] = []
+            patches[ilvl].append(Patch(new_patch_datas))
+
+        patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
+
+    return PatchHierarchy(patch_levels, h.domain_box, 2)
+
+
+
 
 
 def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
@@ -298,7 +438,8 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
                               deltas=h5_patch_grp["delta"],
                               v=v,
                               weights=h5_patch_grp["weight"],
-                              charges=h5_patch_grp["charge"])
+                              charges=h5_patch_grp["charge"],
+                              dl=np_array_ify(layout.dl))
 
         pdname = particle_dataset_name(basename)
         if pdname in patch_datas:

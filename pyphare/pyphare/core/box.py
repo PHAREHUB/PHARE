@@ -1,20 +1,8 @@
 import numpy as np
+from .phare_utilities import np_array_ify, is_scalar, is_nd_array
 
 
-def is_scalar(arg):
-    return not isinstance(arg, list) and not is_nd_array(arg)
 
-
-def is_nd_array(arg):
-    return isinstance(arg, np.ndarray)
-
-
-def np_array_ify(arg):
-    if is_scalar(arg):
-        return np.asarray([arg])
-    if not is_nd_array(arg):
-        return np.asarray(arg)
-    return arg
 
 
 class Box:
@@ -28,6 +16,9 @@ class Box:
         assert (lower <= upper).all()
         self.lower = lower
         self.upper = upper
+
+    def dim(self):
+        return len(self.lower.shape)
 
     def __mul__(self, box2):
         """

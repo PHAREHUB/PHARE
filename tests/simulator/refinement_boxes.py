@@ -56,7 +56,6 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
         for interp in range(1, 4):
 
             try:
-                print("START {}".format(cpp.mpi_rank()))
                 self.simulator = Simulator(populate_simulation(dim, interp, **input))
                 self.simulator.initialize()
 

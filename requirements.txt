@@ -3,3 +3,5 @@ mpi4py
 pyyaml
 numpy
 scipy
+matplotlib
+seaborn
