@@ -119,15 +119,21 @@ class FieldNullFilter
 {
 public:
     template<typename Field, typename GridLayout>
-    std::size_t start(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t start(GridLayout const& layout, Field const& field, core::Direction const direction)
     {
         return layout.ghostStartIndex(field, direction);
     }
 
     template<typename Field, typename GridLayout>
-    std::size_t end(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t end(GridLayout const& layout, Field const& field, core::Direction const direction)
     {
         return layout.ghostEndIndex(field, direction);
+    }
+
+    template<typename Field, typename GridLayout>
+    std::size_t size(GridLayout const& layout, Field const& field, core::Direction const direction)
+    {
+        return end(layout, field, direction) - start(layout, field, direction) + 1;
     }
 };
 
@@ -140,13 +146,13 @@ public:
     }
 
     template<typename Field, typename GridLayout>
-    std::size_t start(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t start(GridLayout const& layout, Field const& field, core::Direction const direction)
     {
         return layout.physicalStartIndex(field, direction) - n_;
     }
 
     template<typename Field, typename GridLayout>
-    std::size_t end(GridLayout& layout, Field& field, core::Direction direction)
+    std::size_t end(GridLayout const& layout, Field const& field, core::Direction const direction)
     {
         return layout.physicalEndIndex(field, direction) + n_;
     }

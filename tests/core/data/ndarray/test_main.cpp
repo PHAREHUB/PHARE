@@ -282,6 +282,116 @@ TYPED_TEST(GenericNdArray3D, HasMoveCtor)
 
 
 
+TEST(MaskedView1d, maskOps)
+{
+    constexpr std::size_t dim    = 1;
+    constexpr std::uint32_t size = 20;
+    using Mask                   = NdArrayMask;
+    NdArrayVector<dim> array{size};
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
+
+    array[Mask{0u, size}] = 1;
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), size);
+
+    Mask oneCellOffset2{2u};
+    array[oneCellOffset2] = 2;
+
+    EXPECT_EQ(2, oneCellOffset2.nCells(array));
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), size + oneCellOffset2.nCells(array));
+
+    array[Mask{5u, 6u}] = 2;
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), size + 6);
+
+    EXPECT_EQ(array(0), 1);
+    EXPECT_EQ(array(size - 1), 1);
+    array[Mask{5u}] >> array[Mask{0u}];
+    EXPECT_EQ(array(0), 2);
+    EXPECT_EQ(array(size - 1), 2);
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), size + 8);
+}
+
+TEST(MaskedView2d, maskOps)
+{
+    constexpr std::size_t dim      = 2;
+    constexpr std::uint32_t size   = 20;
+    constexpr std::uint32_t sizeSq = 20 * 20;
+    using Mask                     = NdArrayMask;
+    NdArrayVector<dim> array{size, size};
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
+
+    std::fill(array.begin(), array.end(), 1);
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), sizeSq);
+
+    Mask oneCellOffset2{2u};
+    array[oneCellOffset2] = 2;
+
+    EXPECT_EQ(60, oneCellOffset2.nCells(array));
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0),
+              sizeSq + oneCellOffset2.nCells(array));
+
+    Mask twoCellsOffset5{5u, 6u};
+    array[twoCellsOffset5] = 2;
+
+    EXPECT_EQ((8 * 4 + 4) + (6 * 4 + 4), twoCellsOffset5.nCells(array));
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0),
+              sizeSq + oneCellOffset2.nCells(array) + twoCellsOffset5.nCells(array));
+
+    EXPECT_EQ(array(0, 0), 1);
+    EXPECT_EQ(array(size - 1, size - 1), 1);
+    array[Mask{5u}] >> array[Mask{0u}];
+    EXPECT_EQ(array(0, 0), 2);
+    EXPECT_EQ(array(size - 1, size - 1), 2);
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), sizeSq + oneCellOffset2.nCells(array)
+                                                                  + twoCellsOffset5.nCells(array)
+                                                                  + Mask{0u}.nCells(array));
+}
+
+TEST(MaskedView2d, maskOps2)
+{
+    constexpr std::size_t dim     = 2;
+    constexpr std::uint32_t size0 = 20, size1 = 22;
+    constexpr std::uint32_t sizeSq = size0 * size1;
+    using Mask                     = NdArrayMask;
+    NdArrayVector<dim> array{size0, size1};
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
+
+    std::fill(array.begin(), array.end(), 1);
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), sizeSq);
+
+    Mask oneCellOffset2{2u};
+    array[oneCellOffset2] = 2;
+
+    EXPECT_EQ(14 * 2 + 16 * 2 + 4, oneCellOffset2.nCells(array));
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0),
+              sizeSq + oneCellOffset2.nCells(array));
+
+    Mask twoCellsOffset5{5u, 6u};
+    array[twoCellsOffset5] = 2;
+
+    EXPECT_EQ((8 * 2 + 10 * 2 + 4) + (6 * 2 + 8 * 2 + 4), twoCellsOffset5.nCells(array));
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0),
+              sizeSq + oneCellOffset2.nCells(array) + twoCellsOffset5.nCells(array));
+
+    EXPECT_EQ(array(0, 0), 1);
+    EXPECT_EQ(array(size0 - 1, size1 - 1), 1);
+    array[Mask{5u}] >> array[Mask{0u}];
+    EXPECT_EQ(array(0, 0), 2);
+    EXPECT_EQ(array(size0 - 1, size1 - 1), 2);
+
+    EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), sizeSq + oneCellOffset2.nCells(array)
+                                                                  + twoCellsOffset5.nCells(array)
+                                                                  + Mask{0u}.nCells(array));
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
