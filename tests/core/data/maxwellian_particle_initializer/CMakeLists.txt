@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.9)
 
 project(test-maxwelllian-particle-initializer)
 
-set(SOURCES test_main.cpp)
+set(SOURCES test_maxwellian_particle_initializer.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

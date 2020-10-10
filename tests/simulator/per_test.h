@@ -34,8 +34,8 @@ struct HierarchyMaker
 
 
 template<std::size_t _dim, std::size_t _interp, std::size_t _nbRefinePart>
-struct TestSimulator : public HierarchyMaker<_dim>,
-                       public PHARE::Simulator<_dim, _interp, _nbRefinePart>
+struct SimulatorTestParam : public HierarchyMaker<_dim>,
+                            public PHARE::Simulator<_dim, _interp, _nbRefinePart>
 {
     static constexpr std::size_t dim          = _dim;
     static constexpr std::size_t interp       = _interp;
@@ -61,7 +61,7 @@ struct TestSimulator : public HierarchyMaker<_dim>,
         return PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     }
 
-    TestSimulator(std::string job_py = "job")
+    SimulatorTestParam(std::string job_py = "job")
         : HierarchyMaker<_dim>{dict(job_py)}
         , Simulator{dict(job_py), this->hierarchy}
     {
@@ -83,33 +83,42 @@ struct TestSimulator : public HierarchyMaker<_dim>,
     }
 };
 
-template<typename Simulator>
-struct /*[[deprecated]]*/ SimulatorTest : public ::testing::Test
+template<typename SimulatorParam>
+struct SimulatorTest : public ::testing::Test
 {
 };
 
-// deprecated
-using Simulators
-    = testing::Types<TestSimulator<1, 1, 2>, TestSimulator<1, 2, 2>, TestSimulator<1, 3, 2>>;
+using Simulators = testing::Types<SimulatorTestParam<1, 1, 2>>;
 TYPED_TEST_SUITE(SimulatorTest, Simulators);
 
 
-template<typename Simulator>
+template<typename SimulatorParam>
 struct Simulator1dTest : public ::testing::Test
 {
 };
-using Simulators1d
-    = testing::Types<TestSimulator<1, 1, 2>, TestSimulator<1, 2, 2>, TestSimulator<1, 3, 2>>;
+
+
+using Simulators1d = testing::Types<
+    SimulatorTestParam<1, 1, 2>, SimulatorTestParam<1, 1, 3>, SimulatorTestParam<1, 2, 2>,
+    SimulatorTestParam<1, 2, 3>, SimulatorTestParam<1, 2, 4>, SimulatorTestParam<1, 3, 2>,
+    SimulatorTestParam<1, 3, 3>, SimulatorTestParam<1, 3, 4>, SimulatorTestParam<1, 3, 5>>;
 TYPED_TEST_SUITE(Simulator1dTest, Simulators1d);
 
 
-template<typename Simulator>
+template<typename SimulatorParam>
 struct Simulator2dTest : public ::testing::Test
 {
 };
-using Simulators2d
-    = testing::Types<TestSimulator<2, 1, 8>, TestSimulator<2, 2, 8>, TestSimulator<2, 3, 8>>;
+
+
+using Simulators2d = testing::Types<
+    SimulatorTestParam<2, 1, 4>, SimulatorTestParam<2, 1, 5>, SimulatorTestParam<2, 1, 8>,
+    SimulatorTestParam<2, 1, 9>, SimulatorTestParam<2, 2, 4>, SimulatorTestParam<2, 2, 5>,
+    SimulatorTestParam<2, 2, 8>, SimulatorTestParam<2, 2, 9>, SimulatorTestParam<2, 2, 16>,
+    SimulatorTestParam<2, 3, 4>, SimulatorTestParam<2, 3, 5>, SimulatorTestParam<2, 3, 8>,
+    SimulatorTestParam<2, 3, 25>>;
 TYPED_TEST_SUITE(Simulator2dTest, Simulators2d);
+
 
 
 

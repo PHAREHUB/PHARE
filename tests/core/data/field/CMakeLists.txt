@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.9)
 
 project(test-field)
 
-set(SOURCES test_main.cpp)
+set(SOURCES test_field.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

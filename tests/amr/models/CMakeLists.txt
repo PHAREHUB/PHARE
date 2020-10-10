@@ -5,7 +5,7 @@ project(test-models)
 
 
 set(SOURCES_CPP
-  test_main.cpp
+  test_models.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

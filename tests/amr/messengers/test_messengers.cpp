@@ -1,10 +1,17 @@
 
 
-#include "tests/simulator/per_test.h"
+#include "src/simulator/simulator.h"
+#include "src/simulator/phare_types.h"
+#include "src/phare/phare.h"
 
-#include "test_basichierarchy.h"
+#include "test_messenger_basichierarchy.h"
 #include "test_integrator_strat.h"
-#include "test_tag_strategy.h"
+#include "test_messenger_tag_strategy.h"
+#include "tests/initializer/init_functions.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
@@ -13,62 +20,6 @@ using namespace PHARE::solver;
 template<uint8_t dim>
 using InitFunctionT = PHARE::initializer::InitFunction<dim>;
 
-
-namespace func_1d
-{
-using Param  = std::vector<double> const&;
-using Return = std::shared_ptr<PHARE::core::Span<double>>;
-Return density(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 2);
-}
-
-Return vx(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vy(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vz(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vthx(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vthy(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vthz(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return bx(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x);
-}
-
-Return by(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x);
-}
-
-Return bz(Param x)
-{
-    return std::make_shared<VectorSpan<double>>(x);
-}
-
-} // namespace func_1d
 
 
 template<uint8_t dimension>
@@ -82,7 +33,8 @@ struct DimDict<1>
     static constexpr uint8_t dim = 1;
     static void set(PHARE::initializer::PHAREDict& dict)
     {
-        using namespace func_1d;
+        using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
+
         dict["ions"]["pop0"]["particle_initializer"]["density"]
             = static_cast<InitFunctionT<dim>>(density);
 
@@ -139,62 +91,6 @@ struct DimDict<1>
 };
 
 
-namespace func_2d
-{
-using Param  = std::vector<double> const&;
-using Return = std::shared_ptr<PHARE::core::Span<double>>;
-
-Return density(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 2);
-}
-
-Return vx(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vy(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vz(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vthx(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vthy(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return vthz(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
-}
-
-Return bx(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x);
-}
-
-Return by(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x);
-}
-
-Return bz(Param x, Param y)
-{
-    return std::make_shared<VectorSpan<double>>(x);
-}
-} // namespace func_2d
-
 
 
 template<>
@@ -203,7 +99,7 @@ struct DimDict<2>
     static constexpr uint8_t dim = 2;
     static void set(PHARE::initializer::PHAREDict& dict)
     {
-        using namespace func_2d;
+        using namespace PHARE::initializer::test_fn::func_2d; // density/etc are here
         dict["simulation"]["algo"]["pusher"]["name"] = std::string{"modified_boris"};
 
         dict["ions"]["pop0"]["particle_initializer"]["density"]
@@ -299,7 +195,6 @@ PHARE::initializer::PHAREDict createDict()
 
 namespace test_1d
 {
-using namespace func_1d;
 static constexpr std::size_t dim          = 1;
 static constexpr std::size_t interpOrder  = 1;
 static constexpr std::size_t nbRefinePart = 2;
@@ -458,100 +353,6 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
 //
 // ----------------------------------------------------------------------------
 
-
-// level 0 doesn't match due to periodicity
-
-
-
-
-TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
-{
-    TypeParam sim;
-    auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.hierarchy;
-    using GridLayout  = typename TypeParam::PHARETypes::GridLayout_t;
-
-    auto visit = [&](GridLayout& layout, std::string /*patchID*/, std::size_t /*iLevel*/) {
-        auto& Bx = hybridModel.state.electromag.B.getComponent(Component::X);
-        auto& By = hybridModel.state.electromag.B.getComponent(Component::Y);
-        auto& Bz = hybridModel.state.electromag.B.getComponent(Component::Z);
-
-        auto checkMyField = [&](auto const& field, auto const& func) {
-            auto iStart = layout.physicalStartIndex(field, Direction::X);
-            auto iEnd   = layout.physicalEndIndex(field, Direction::X);
-
-            std::vector<double> x;
-            std::vector<std::size_t> ixes;
-            for (auto ix = iStart; ix <= iEnd; ++ix)
-            {
-                x.emplace_back(layout.fieldNodeCoordinates(field, layout.origin(), ix)[0]);
-                ixes.emplace_back(ix);
-            }
-            EXPECT_GT(x.size(), 0);
-            EXPECT_EQ(x.size(), iEnd - iStart + 1);
-            EXPECT_EQ(ixes.size(), iEnd - iStart + 1);
-
-            auto gridPtr = func(x);
-            EXPECT_EQ(gridPtr->size(), x.size());
-            auto& grid = *gridPtr;
-
-            for (std::size_t i = 0; i < grid.size(); i++)
-            {
-                auto ix       = ixes[i];
-                auto expected = grid[i];
-                EXPECT_DOUBLE_EQ(expected, field(ix));
-            }
-        };
-        checkMyField(Bx, bx);
-        checkMyField(By, by);
-        checkMyField(Bz, bz);
-    };
-
-    PHARE::amr::visitHierarchy<GridLayout>(hierarchy, *hybridModel.resourcesManager, visit, 1,
-                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
-}
-
-
-// This test needs explicit access to the Hierarchy
-//  TODO if/when boundary information is accessible without it, refactor
-TYPED_TEST(SimulatorTest, initializesParticlesOnRefinedLevels)
-{
-    TypeParam sim;
-    auto& hierarchy   = *sim.hierarchy;
-    auto& hybridModel = *sim.getHybridModel();
-    auto& rm          = hybridModel.resourcesManager;
-
-    for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
-    {
-        auto const& level = hierarchy.getPatchLevel(iLevel);
-
-        for (auto& patch : *level)
-        {
-            auto onPatch = rm->setOnPatch(*patch, hybridModel.state.ions);
-            auto& ions   = hybridModel.state.ions;
-
-            for (auto& pop : ions)
-            {
-                // domain particles
-                EXPECT_GT(pop.nbrParticles(), 0);
-                EXPECT_GT(pop.patchGhostParticles().size(), 0);
-
-                // here we expect to have level border particles only for
-                // refined levels and for a patch that has boundaries//
-                // note that here "boundaries" refers to both physical boundaries and
-                // coarse to fine boundaries. So technically a patch could be on a refined
-                // level and have 'boundaries' without having any coarse-to-fine ones but only
-                // physical and the test would fail. However here since we are periodic, there are
-                // no physical boundaries wo we're ok.
-                auto const& boundaries = patch->getPatchGeometry()->getPatchBoundaries();
-                if (iLevel > 0 && boundaries[0].size() > 0)
-                {
-                    EXPECT_GT(pop.levelGhostParticlesOld().size(), 0);
-                }
-            }
-        }
-    }
-}
 
 } // namespace test_1d
 
@@ -787,7 +588,7 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
         if constexpr (dimension == 1)
         {
-            using namespace func_1d;
+            using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
             auto checkMyField = [&](auto const& field, auto const& func) //
             {
@@ -840,7 +641,7 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
         if constexpr (dimension == 2)
         {
-            using namespace func_2d;
+            using namespace PHARE::initializer::test_fn::func_2d;        // density/etc are here
             auto checkMyField = [&](auto const& field, auto const& func) //
             {
                 auto check = [&](auto startX, auto startY, auto endX, auto endY) {

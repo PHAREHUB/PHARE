@@ -17,8 +17,6 @@ using testing::Eq;
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
-using Field1D     = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 struct AWeighterData
 {
@@ -28,21 +26,17 @@ struct AWeighterData
 struct AWeighter : public testing::TestWithParam<AWeighterData>
 {
     void SetUp() override { param = GetParam(); }
-
-
     AWeighterData param;
 };
 
 
 TEST_P(AWeighter, hasSumOfWeightEqualToOne)
 {
-    auto weight = param.weight->weights();
-
+    auto weight        = param.weight->weights();
     double totalWeight = std::accumulate(std::begin(weight), std::end(weight), 0.);
-
-
     EXPECT_THAT(totalWeight, DoubleEq(1.0));
 }
+
 
 AWeighterData createWeighter(std::size_t nbrPoints)
 {
@@ -50,6 +44,7 @@ AWeighterData createWeighter(std::size_t nbrPoints)
     weightData.weight = std::make_shared<CoarsenWeighter>(nbrPoints);
     return weightData;
 }
+
 
 INSTANTIATE_TEST_SUITE_P(TestWithMultipleWeightPointsThat, AWeighter,
                          testing::ValuesIn({createWeighter(2), createWeighter(3), createWeighter(4),

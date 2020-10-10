@@ -56,7 +56,7 @@ struct Setup1DCenteredOnEx
 
         for (auto overwriteInterior : overwritePossibilites)
         {
-            auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap<1>>(
+            auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap>(
                 testReference.param.destinationFieldGeometry->calculateOverlap(
                     *testReference.param.sourceFieldGeometry, srcMask, fillMask, overwriteInterior,
                     transformation));

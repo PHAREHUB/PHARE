@@ -4,8 +4,6 @@ import os, sys
 import pyphare.pharein as ph
 from pyphare.pharein import ElectronModel
 
-print("start test_diagnostics: input_1d_ratio_2.py")
-print("sys.path ", sys.path)
 
 ph.Simulation(
     smallest_patch_size=10,
@@ -44,5 +42,3 @@ ph.MaxwellianFluidModel(
 
 ElectronModel(closure="isothermal",Te = 0.12)
 
-
-print("end test_messengers: input_1d_ratio_2.py")

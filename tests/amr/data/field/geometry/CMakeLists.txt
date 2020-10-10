@@ -5,7 +5,7 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_main.cpp
+  test_field_geometry.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

@@ -10,8 +10,8 @@ set(SOURCES_INC
 
 set(SOURCES_CPP
   test_messengers.cpp
-  test_basichierarchy.h
-  test_tag_strategy.h
+  test_messenger_basichierarchy.h
+  test_messenger_tag_strategy.h
   test_integrator_strat.h
    )
 

@@ -155,7 +155,8 @@ namespace amr
             db->putDouble("start_time", startTime);
             db->putDouble("end_time", endTime);
             db->putInteger("max_integrator_steps", 1000000);
-            // db->putInteger("regrid_interval", 1);
+            db->putIntegerVector("tag_buffer",
+                                 std::vector<int>(hierarchy->getMaxNumberOfLevels(), 10));
 
 
             timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(

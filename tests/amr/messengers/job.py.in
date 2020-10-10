@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os, sys
-print("sys.path ", sys.path)
 import pyphare.pharein as ph
 from pyphare.pharein import ElectronModel
 

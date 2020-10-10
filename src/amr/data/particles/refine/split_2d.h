@@ -213,7 +213,7 @@ struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<9>>
       SplitPattern_2_2_9_Dispatcher
 {
     constexpr Splitter()
-        : SplitPattern_2_1_9_Dispatcher{{weight[0]}, {weight[1], delta[0]}, {weight[2], delta[1]}}
+        : SplitPattern_2_2_9_Dispatcher{{weight[0]}, {weight[1], delta[0]}, {weight[2], delta[1]}}
     {
     }
 
@@ -310,7 +310,7 @@ struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<9>>
       SplitPattern_2_3_9_Dispatcher
 {
     constexpr Splitter()
-        : SplitPattern_2_1_9_Dispatcher{{weight[0]}, {weight[1], delta[0]}, {weight[2], delta[1]}}
+        : SplitPattern_2_3_9_Dispatcher{{weight[0]}, {weight[1], delta[0]}, {weight[2], delta[1]}}
     {
     }
 
