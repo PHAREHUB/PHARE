@@ -99,6 +99,76 @@ TEST(PointInBox, returnFalseIfIsNoBox)
     EXPECT_FALSE(isIn(point, boxes));
 }
 
+
+/*
+
+TEST(HollowBox2d, box2dSetGhosts)
+{
+    constexpr std::size_t square = 10;
+    constexpr std::size_t dim    = 2;
+
+    auto check = [](std::uint32_t ghosts_width) {
+        std::vector<double> data(square * square, 1);
+
+        auto gw = ghosts_width;
+
+        std::array<std::uint32_t, dim> nan{gw, gw};
+        std::array<std::uint32_t, dim> siz{square, square};
+
+        HollowBox<dim> ghosts{siz, nan};
+        ghosts.set(data.data(), 2);
+
+        auto actual_cells = ghosts.cells();
+        auto expect_cells = ((square - (gw * 2)) * gw * 4) + (gw * gw * 4);
+
+        EXPECT_EQ(actual_cells, expect_cells);
+
+        auto actual = std::accumulate(data.begin(), data.end(), 0);
+        auto expect = data.size() + expect_cells;
+
+        EXPECT_EQ(actual, expect);
+    };
+
+    check(2);
+    check(3);
+    check(4);
+}
+
+
+
+TEST(HollowBox2d, growSmaller)
+{
+    constexpr std::size_t square = 10;
+    constexpr std::size_t dim    = 2;
+
+    auto check = [](std::uint32_t ghosts_width) {
+        std::vector<double> data(square * square, 1);
+
+        auto gw = ghosts_width;
+
+        std::array<std::uint32_t, dim> siz{square, square};
+
+        std::array<std::uint32_t, dim> off{gw, gw};
+        HollowBox<dim>{siz, off}.set(data.data(), 2);
+
+        BoxCellValueTransformer<dim> outer{siz, gw - 1};
+
+        outer.set(data.data());
+
+        auto actual = std::accumulate(data.begin(), data.end(), 0);
+        std::for_each(std::begin(off), std::end(off), [](auto& i) { i = i - 1; });
+        auto expect = data.size() + HollowBox<dim>{siz, off}.cells();
+
+        EXPECT_EQ(actual, expect);
+    };
+
+    check(2);
+    check(3);
+    check(4);
+}*/
+
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

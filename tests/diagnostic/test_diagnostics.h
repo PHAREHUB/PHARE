@@ -9,6 +9,8 @@
 #include "diagnostic/detail/types/particle.h"
 #include "diagnostic/detail/types/fluid.h"
 
+#include <functional>
+
 
 using namespace PHARE;
 using namespace PHARE::diagnostic;
@@ -24,8 +26,7 @@ std::array<std::uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Fu
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto get
-        = [&](auto dir) { return static_cast<std::uint32_t>(((ff).*(func))(layout, field, dir)); };
+    auto get = [&](auto dir) { return static_cast<std::uint32_t>(func(ff, layout, field, dir)); };
 
     if constexpr (dim == 1)
         return {get(core::Direction::X)};
@@ -35,9 +36,82 @@ std::array<std::uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Fu
         return {get(core::Direction::X), get(core::Direction::Y), get(core::Direction::Z)};
 }
 
+
+template<std::size_t dim, typename T, typename GridLayout, typename Field>
+void validateFluidGhosts(std::vector<T> const& data, GridLayout const& layout, Field const& field)
+{
+    using Filter = FieldDomainPlusNFilter;
+    auto filter  = Filter{1}; // include one ghost on each side
+
+    auto beg = fieldIndices(filter, std::mem_fn(&Filter::template start<Field, GridLayout>), layout,
+                            field);
+    auto end = fieldIndices(filter, std::mem_fn(&Filter::template end<Field, GridLayout>), layout,
+                            field);
+    auto siz = fieldIndices(FieldNullFilter{},
+                            std::mem_fn(&FieldNullFilter::template size<Field, GridLayout>), layout,
+                            field);
+
+    for (std::size_t d = 0; d < dim; d++)
+    {
+        ASSERT_TRUE(beg[d] > 0);
+        ASSERT_TRUE(end[d] > beg[d]);
+        ASSERT_TRUE(siz[d] > end[d]);
+    }
+
+    core::NdArrayView<dim, float> view{data, siz};
+
+    {
+        std::size_t nans = 0;
+        for (auto const& v : data)
+            if (std::isnan(v))
+                nans++;
+
+        auto phyStartIdx = layout.physicalStartIndex(field.physicalQuantity(), core::Direction::X);
+        core::NdArrayMask mask{0, phyStartIdx - 2};
+        EXPECT_EQ(mask.nCells(field), nans);
+    }
+
+    if constexpr (dim == 1)
+    {
+        EXPECT_FLOAT_EQ(data[beg[0]], data[beg[0] + 1]); // left
+        EXPECT_FLOAT_EQ(data[end[0] - 1], data[end[0]]); // right
+    }
+    else if constexpr (dim == 2)
+    {
+        for (std::size_t j = beg[1] + 1; j < end[1]; j++)
+        {
+            EXPECT_FLOAT_EQ(view(beg[0], j), view(beg[0] + 1, j)); // bottom
+            EXPECT_FLOAT_EQ(view(end[0], j), view(end[0] - 1, j)); // top
+        }
+
+        for (std::size_t i = beg[0] + 1; i < end[0]; i++)
+        {
+            EXPECT_FLOAT_EQ(view(i, beg[1]), view(i, beg[1] + 1)); // left
+            EXPECT_FLOAT_EQ(view(i, end[1]), view(i, end[1] - 1)); // right
+        }
+
+        // bottom left
+        EXPECT_FLOAT_EQ(view(beg[0], beg[1]), view(beg[0] + 1, beg[1] + 1));
+
+        // bottom right
+        EXPECT_FLOAT_EQ(view(beg[0], end[1]), view(beg[0] + 1, end[1] - 1));
+
+        // top left square
+        EXPECT_FLOAT_EQ(view(end[0], beg[1]), view(end[0] - 1, beg[1] + 1));
+
+        // top right square
+        EXPECT_FLOAT_EQ(view(end[0], end[1]), view(end[0] - 1, end[1] - 1));
+    }
+    else if constexpr (dim == 3)
+    {
+        throw std::runtime_error("not implemented");
+    }
+}
+
+
 template<typename GridLayout, typename Field, typename FieldFilter = PHARE::FieldNullFilter>
-void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::string path,
-                FieldFilter ff = FieldFilter{})
+auto checkField(HighFive::File const& file, GridLayout const& layout, Field const& field,
+                std::string const path, FieldFilter const ff = FieldFilter{})
 {
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
@@ -46,17 +120,18 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
     file.getDataSet(path).read(fieldV);
     EXPECT_EQ(fieldV.size(), field.size());
 
-    auto siz = fieldIndices(FieldNullFilter{}, &FieldNullFilter::template end<Field, GridLayout>,
-                            layout, field);
-    for (auto& s : siz) // dim sizes are last index + 1
-        s += 1;
-    std::size_t items = siz[0];
-    for (std::size_t i = 1; i < siz.size(); i++)
-        items *= siz[i];
+    auto siz = fieldIndices(FieldNullFilter{},
+                            std::mem_fn(&FieldNullFilter::template size<Field, GridLayout>), layout,
+                            field);
+
+    std::size_t items
+        = std::accumulate(std::begin(siz), std::end(siz), 1., std::multiplies<std::size_t>());
     EXPECT_EQ(items, field.size());
 
-    auto beg = fieldIndices(ff, &FieldFilter::template start<Field, GridLayout>, layout, field);
-    auto end = fieldIndices(ff, &FieldFilter::template end<Field, GridLayout>, layout, field);
+    auto beg = fieldIndices(ff, std::mem_fn(&FieldFilter::template start<Field, GridLayout>),
+                            layout, field);
+    auto end = fieldIndices(ff, std::mem_fn(&FieldFilter::template end<Field, GridLayout>), layout,
+                            field);
 
     core::NdArrayView<dim, float> view{fieldV, siz};
     if constexpr (dim == 1)
@@ -80,13 +155,28 @@ void checkField(HighFive::File& file, GridLayout& layout, Field& field, std::str
             }
         }
     }
-    else
-        throw std::runtime_error("Unhandled dimension");
+    else if constexpr (dim == 3)
+    {
+        for (std::size_t i = beg[0]; i < end[0]; i++)
+        {
+            for (std::size_t j = beg[1]; j < end[1]; j++)
+            {
+                for (std::size_t k = beg[2]; k < end[2]; k++)
+                {
+                    if (std::isnan(view(i, j, k)) || std::isnan(field(i, j, k)))
+                        throw std::runtime_error("This field should not be NaN");
+                    EXPECT_FLOAT_EQ(view(i, j, k), field(i, j, k));
+                }
+            }
+        }
+    }
+
+    return fieldV; // possibly unused
 }
 
 template<typename GridLayout, typename VecField, typename FieldFilter = PHARE::FieldNullFilter>
-void checkVecField(HighFive::File& file, GridLayout& layout, VecField& vecField, std::string path,
-                   FieldFilter ff = FieldFilter{})
+void checkVecField(HighFive::File const& file, GridLayout const& layout, VecField const& vecField,
+                   std::string const path, FieldFilter const ff = FieldFilter{})
 {
     for (auto& [id, type] : core::Components::componentMap)
     {
@@ -146,19 +236,22 @@ struct Hi5Diagnostic
     ModelView_t const& modelView;
 };
 
-
-
 template<typename Simulator, typename Hi5Diagnostic>
 void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using namespace std::string_literals;
+    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
 
-    using GridLayout  = typename Simulator::PHARETypes::GridLayout_t;
     auto& hybridModel = *sim.getHybridModel();
 
-    auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
+    auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name));
-        checkField(hifile->file(), layout, val, path + name, FieldDomainFilter{});
+        auto&& data = checkField(hifile->file(), layout, field, path + name, FieldDomainFilter{});
+        /*
+          Validate ghost of first border node is equal to border node
+          see fixMomentGhosts() in src/core/data/ions/ions.h
+        */
+        validateFluidGhosts<GridLayout::dimension>(data, layout, field);
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name));

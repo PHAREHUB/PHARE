@@ -6,6 +6,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <cmath>
 
 
 #include "core/hybrid/hybrid_quantities.h"
@@ -14,6 +15,7 @@
 #include "initializer/data_provider.h"
 #include "particle_initializers/particle_initializer_factory.h"
 #include "core/utilities/algorithm.h"
+#include "core/data/ndarray/ndarray_vector.h"
 
 namespace PHARE
 {
@@ -240,56 +242,34 @@ namespace core
      * used by mistake. The ghost node that is closest to domain is used
      * in refinement ratio 2 coarsening and should thus not be NaN. It is set
      * to a copy of the first domain node.
+     *
+     * Directions for start index are superfluous, as all directions are primal for these fields
      */
     template<typename Ions, typename GridLayout>
     void fixMomentGhosts(Ions& ions, GridLayout const& layout)
     {
-        if constexpr (Ions::dimension == 1)
+        using Mask = NdArrayMask;
+
+        for (auto& pop : ions)
         {
-            auto ix0 = layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-            auto ix1 = layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-            auto ix2 = layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-
-            auto set = [](auto& pop, auto start, auto stop) {
-                for (auto i = start; i < stop; ++i)
-                {
-                    pop.density()(i) = NAN;
-                    for (auto& [id, type] : Components::componentMap)
-                        pop.flux().getComponent(type)(i) = NAN;
-                }
-            };
-
-
-            auto copy = [ix0, ix1](auto& pop) {
-                pop.density()(ix0 - 1) = pop.density()(ix0);
-                pop.density()(ix1 + 1) = pop.density()(ix1);
-
-                for (auto& [id, type] : Components::componentMap)
-                {
-                    pop.flux().getComponent(type)(ix0 - 1) = pop.flux().getComponent(type)(ix0);
-                    pop.flux().getComponent(type)(ix1 + 1) = pop.flux().getComponent(type)(ix1);
-                }
-            };
-
-            for (auto& pop : ions)
+            for (auto& [id, type] : Components::componentMap)
             {
-                set(pop, 0u, ix0 - 1); // leftGhostNodes
-                set(pop, ix1 + 1 + 1, ix2 + 1);
-                copy(pop);
+                auto& flux_comp = pop.flux().getComponent(type);
+
+                auto phyStartIdx
+                    = layout.physicalStartIndex(flux_comp.physicalQuantity(), Direction::X);
+
+                flux_comp[Mask{0, phyStartIdx - 2}] = NAN;
+                flux_comp[Mask{phyStartIdx}] >> flux_comp[Mask{phyStartIdx - 1}];
             }
-        }
-        else if constexpr (Ions::dimension == 2)
-        {
-            std::cout << "test2\n";
-        }
-        else if constexpr (Ions::dimension == 3)
-        {
-            std::cout << "test 3\n";
+
+            auto& density    = pop.density();
+            auto phyStartIdx = layout.physicalStartIndex(density.physicalQuantity(), Direction::X);
+
+            density[Mask{0, phyStartIdx - 2}] = NAN;
+            density[Mask{phyStartIdx}] >> density[Mask{phyStartIdx - 1}];
         }
     }
-
-
-
 
 } // namespace core
 } // namespace PHARE
