@@ -86,4 +86,17 @@ class Particles:
           charges=split_pyarrays[3],
           v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3),
           dl = self.dl/2
-          )
+        )
+
+
+def aggregate(particles_in):
+    assert all([isinstance(particles, Particles) for particles in particles_in])
+
+    from copy import copy
+
+    particles_out = copy(particles_in[0]) # use first, concat rest
+    for particles in particles_in[1:]:
+        particles_out.add(particles)
+
+    assert particles_out.size() == sum([particles.size() for particles in particles_in])
+    return particles_out

@@ -153,7 +153,7 @@ def build_hierarchy(**kwargs):
             boxed_patch_datas = {}
             for qty_name, data in datas.items():
                 if qty_name == 'particles':
-                    pdata = ParticleData(layout, data)
+                    pdata = ParticleData(layout, data, "pop_name")
                 else:
                     pdata = FieldData(layout, qty_name, data)
 

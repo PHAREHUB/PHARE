@@ -205,7 +205,9 @@ def particle_ghost_area_boxes(hierarchy):
     for ilvl, lvl in hierarchy.levels().items():
         for patch in lvl.patches:
 
-            patch_data = patch.patch_datas["particles"]
+            particles_ids = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
+
+            patch_data = patch.patch_datas[particles_ids[0]] # ghost boxes are the same for all populations
             gbox = patch_data.ghost_box
             box = patch.box
 
@@ -245,28 +247,34 @@ def level_ghost_boxes(hierarchy):
 
     for ilvl, lvl in hierarchy.levels().items():
 
-        if not is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
+        if is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
+            continue
 
-            gaboxes_info = gaboxes[ilvl]
+        gaboxes_info = gaboxes[ilvl]
 
-            for info in gaboxes_info:
+        for info in gaboxes_info:
 
-                patch_data = info["pdata"]
-                gaboxes = info["boxes"]
+            patch_data = info["pdata"]
+            ghostAreaBoxes = info["boxes"]
 
-                for gabox in gaboxes:
+            for gabox in ghostAreaBoxes:
 
-                    # now loop on all particle patchData
-                    # keep only parts of the ghost boxes that do
-                    # not intersect other patch data interior
+                # now loop on all particle patchData
+                # keep only parts of the ghost boxes that do
+                # not intersect other patch data interior
 
-                    if True:  # if periodic, always true for now
-                        refined_domain_box = hierarchy.refined_domain_box(ilvl)
-                        patches = get_periodic_list(lvl.patches, refined_domain_box)
+                if True:  # if periodic, always true for now
+                    refined_domain_box = hierarchy.refined_domain_box(ilvl)
+                    patches = get_periodic_list(lvl.patches, refined_domain_box)
 
-                    for patch in patches:
+                for patch in patches:
 
-                        if patch.patch_datas["particles"] is not patch_data:
+                    particles_ids = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
+
+                    for particles_id in particles_ids:
+
+                        # if only one patch, all ghosts are level ghosts
+                        if len(patches) == 1 or patch.patch_datas[particles_id] is not patch_data:
 
                             keep = boxm.remove(gabox, patch.box)
 
