@@ -220,15 +220,24 @@ namespace amr
             {
                 auto& algo = refiner.algo;
 
-                // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
-                // the regriding schedule for which oldptr is not nullptr is handled in another
-                // function
                 auto const& level = hierarchy->getPatchLevel(levelNumber);
 
-                auto schedule = algo->createSchedule(
-                    level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-
-                schedule->fillData(initDataTime);
+                if constexpr (Type == RefinerType::LevelBorderParticles)
+                {
+                    std::cout << "regriding adding levelghostparticles on level " << levelNumber
+                              << " " << key << "\n";
+                    auto schedule = algo->createSchedule(
+                        std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
+                        oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    schedule->fillData(initDataTime);
+                }
+                else
+                {
+                    std::cout << "regriding adding " << key << " on level " << levelNumber << " \n";
+                    auto schedule = algo->createSchedule(
+                        level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    schedule->fillData(initDataTime);
+                }
             }
         }
 

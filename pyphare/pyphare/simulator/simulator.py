@@ -1,10 +1,16 @@
 
 import atexit
+import time as timem
+import numpy as np
+
 
 life_cycles = {}
 
 @atexit.register
-def clear_life_cycles():
+def simulator_shutdown():
+    from ._simulator import obj
+    if obj is not None: # needs to be killed before MPI
+        obj.reset()
     life_cycles.clear()
 
 
@@ -29,6 +35,8 @@ class Simulator:
         self.cpp_dman = None   # DRAGONS
         self.cpp_dw   = None   # i.e. use weakrefs if you have to ref these.
         self.auto_dump = auto_dump
+        import pyphare.simulator._simulator as _simulator
+        _simulator.obj = self
 
 
     def __del__(self):
@@ -64,6 +72,27 @@ class Simulator:
         self.cpp_sim.advance(dt)
         self._auto_dump()
         return self
+
+    def times(self):
+        return np.arange(self.cpp_sim.startTime(),
+                         self.cpp_sim.endTime() + self.timeStep(),
+                         self.timeStep())
+
+    def run(self):
+        times = self.times()
+        perf = np.zeros_like(times)
+        for it, t in enumerate(self.times()):
+            tick  = timem.time()
+            self.advance()
+            tock = timem.time()
+            perf[it] = tock-tick
+            print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, perf[it], np.sum(perf)))
+
+        print("mean advance time = {}".format(np.mean(perf)))
+        print("total advance time = {}".format(np.sum(perf)))
+
+        print(perf)
+
 
     def diagnostics(self):
         self._check_init()

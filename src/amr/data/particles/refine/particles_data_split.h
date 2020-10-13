@@ -203,6 +203,8 @@ namespace amr
                             {
                                 if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
                                 {
+                                    /*std::cout << "copying " << refinedParticles.size()
+                                              << " particles into levelGhost\n";*/
                                     std::copy_if(
                                         std::begin(refinedParticles), std::end(refinedParticles),
                                         std::back_inserter(destCoarseBoundaryParticles), isInDest);
@@ -210,7 +212,8 @@ namespace amr
                                 else if constexpr (splitType
                                                    == ParticlesDataSplitType::coarseBoundaryOld)
                                 {
-                                    //
+                                    /*std::cout << "copying " << refinedParticles.size()
+                                              << " particles into levelGhostOld\n";*/
                                     std::copy_if(std::begin(refinedParticles),
                                                  std::end(refinedParticles),
                                                  std::back_inserter(destCoarseBoundaryOldParticles),
@@ -218,6 +221,8 @@ namespace amr
                                 }
                                 else //  splitType is coarseBoundaryNew
                                 {
+                                    /*std::cout << "copying " << refinedParticles.size()
+                                              << " particles into levelGhostNew\n";*/
                                     std::copy_if(std::begin(refinedParticles),
                                                  std::end(refinedParticles),
                                                  std::back_inserter(destCoarseBoundaryNewParticles),
@@ -227,6 +232,8 @@ namespace amr
 
                             else
                             {
+                                /*std::cout << "copying " << refinedParticles.size()
+                                          << " particles into domain\n";*/
                                 std::copy_if(std::begin(refinedParticles),
                                              std::end(refinedParticles),
                                              std::back_inserter(destDomainParticles), isInDest);

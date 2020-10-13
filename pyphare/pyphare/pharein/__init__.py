@@ -115,9 +115,9 @@ def populateDict():
 
 
     def as_paths(rb):
-        add("simulation/AMR/refinement_boxes/nbr_levels/", int(len(rb.keys())))
+        add("simulation/AMR/refinement/boxes/nbr_levels/", int(len(rb.keys())))
         for level,boxes in rb.items():
-            level_path = "simulation/AMR/refinement_boxes/"+level+"/"
+            level_path = "simulation/AMR/refinement/boxes/"+level+"/"
             add(level_path + 'nbr_boxes/',int(len(boxes.keys())))
             for box,cells in boxes.items():
                 lower = cells[0]
@@ -139,8 +139,11 @@ def populateDict():
 
 
 
-    if refinement_boxes is not None:
+    if refinement_boxes is not None and simulation.refinement =="boxes":
         as_paths(refinement_boxes)
+
+    if simulation.refinement == "tagging":
+        add("simulation/AMR/refinement/tagging/method","auto")
 
 
     add("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)

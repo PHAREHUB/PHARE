@@ -278,7 +278,8 @@ namespace solver
             bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
-
+            std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
+                      << "\n";
             if (allocateData)
             {
                 for (auto patch : *level)
@@ -307,10 +308,11 @@ namespace solver
 
         void
         applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                              int const /*levelNumber*/, double const /*error_data_time*/,
+                              int const levelNumber, double const /*error_data_time*/,
                               int const /*tag_index*/, bool const /*initialTime*/,
                               bool const /*usesRichardsonExtrapolationToo*/) override
         {
+            std::cout << "apply gradient detector on level " << levelNumber << "\n";
         }
 
 
@@ -338,7 +340,11 @@ namespace solver
         double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
                                   SAMRAI::hier::IntVector const& ratio) override
         {
-            return coarseDt / (ratio.max() * ratio.max()) / 2.;
+            // whistler waves require the dt ~ dx^2
+            // so dividing the mesh size by ratio means dt
+            // needs to be divided by ratio^2.
+            // we multiply that by a constant < 1 for safety.
+            return coarseDt / (ratio.max() * ratio.max()) * 0.4;
         }
 
 
@@ -369,7 +375,9 @@ namespace solver
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
 
 
-            auto iLevel       = level->getLevelNumber();
+            auto iLevel = level->getLevelNumber();
+            std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
+                      << "\n";
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
@@ -378,11 +386,8 @@ namespace solver
             firstNewLevelTimes_[iLevel] = newTime;
             if (firstStep)
             {
-                if (iLevel > 0)
-                {
-                    fromCoarser.firstNonRootStep(model, *level, hierarchy, currentTime,
-                                                 firstNewLevelTimes_[iLevel - 1]);
-                }
+                fromCoarser.firstStep(model, *level, hierarchy, currentTime,
+                                      firstNewLevelTimes_[iLevel - 1]);
             }
 
 

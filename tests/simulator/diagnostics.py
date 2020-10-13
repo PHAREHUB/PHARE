@@ -103,9 +103,8 @@ class DiagnosticsTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(DiagnosticsTest, self).__init__(*args, **kwargs)
-        self.simulator = None
-        # so we can delete previous diags only on mpi_rank 0
         startMPI()
+        self.simulator = None
 
 
     def _test_dump_diags(self, dim, **simInput):

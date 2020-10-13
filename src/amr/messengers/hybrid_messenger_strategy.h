@@ -94,11 +94,9 @@ namespace amr
 
         virtual std::string coarseModelName() const = 0;
 
-
-        virtual void
-        firstNonRootStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                         std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                         double time, double newCoarserTime)
+        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               double time, double newCoarserTime)
             = 0;
 
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
