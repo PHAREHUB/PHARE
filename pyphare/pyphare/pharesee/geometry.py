@@ -205,9 +205,9 @@ def particle_ghost_area_boxes(hierarchy):
     for ilvl, lvl in hierarchy.levels().items():
         for patch in lvl.patches:
 
-            particles_ids = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
+            pop_names = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
 
-            patch_data = patch.patch_datas[particles_ids[0]] # ghost boxes are the same for all populations
+            patch_data = patch.patch_datas[pop_names[0]] # ghost boxes are the same for all populations
             gbox = patch_data.ghost_box
             box = patch.box
 
@@ -269,12 +269,12 @@ def level_ghost_boxes(hierarchy):
 
                 for patch in patches:
 
-                    particles_ids = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
+                    pop_names = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
 
-                    for particles_id in particles_ids:
+                    for pop_name in pop_names:
 
                         # if only one patch, all ghosts are level ghosts
-                        if len(patches) == 1 or patch.patch_datas[particles_id] is not patch_data:
+                        if len(patches) == 1 or patch.patch_datas[pop_name] is not patch_data:
 
                             keep = boxm.remove(gabox, patch.box)
 

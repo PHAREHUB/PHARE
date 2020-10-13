@@ -596,16 +596,16 @@ class InitializationTest(unittest.TestCase):
 
         def domainParticles_for(ilvl):
             patch0 = datahier.levels()[ilvl].patches[0]
-            particles_ids = [key for key in patch0.patch_datas.keys() if key.endswith("particles")]
-            particlePatchDatas = {k:[] for k in particles_ids}
+            pop_names = [key for key in patch0.patch_datas.keys() if key.endswith("particles")]
+            particlePatchDatas = {k:[] for k in pop_names}
             for patch in datahier.levels()[ilvl].patches:
-                for k, v in patch.patch_datas.items():
-                    particlePatchDatas[k].append(v)
-            return { particles_id :
+                for pop_name, patch_data in patch.patch_datas.items():
+                    particlePatchDatas[pop_name].append(patch_data)
+            return { pop_name :
                 aggregate_particles([
                   patchData.dataset.select(patchData.box) for patchData in patchDatas
                 ]) # including patch ghost particles means duplicates
-                for particles_id, patchDatas in particlePatchDatas.items()
+                for pop_name, patchDatas in particlePatchDatas.items()
             }
 
 
@@ -624,11 +624,11 @@ class InitializationTest(unittest.TestCase):
 
             for gabox in particle_gaboxes:
                 gabox_patchData = gabox["pdata"]
-                particles_id = gabox_patchData.pop_name + "_particles"
+                pop_name = gabox_patchData.pop_name + "_particles"
 
                 for ghostBox in gabox["boxes"]:
                     part1 = gabox_patchData.dataset.select(ghostBox)
-                    part2 = coarse_split_particles[particles_id].select(ghostBox)
+                    part2 = coarse_split_particles[pop_name].select(ghostBox)
 
                     self.assertTrue(part1.size() == part2.size())
 
