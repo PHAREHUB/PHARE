@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.9)
 
 project(test-ions)
 
-set(SOURCES test_main.cpp)
+set(SOURCES test_ions.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

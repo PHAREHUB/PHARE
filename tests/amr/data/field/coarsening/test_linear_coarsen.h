@@ -101,9 +101,7 @@ struct FieldCoarsenTestData
 struct AFieldCoarsenOperator : public testing::TestWithParam<FieldCoarsenTestData>
 {
     void SetUp() override { param = GetParam(); }
-
     FieldCoarsenTestData param;
-
     double absError = 1.e-8;
 };
 

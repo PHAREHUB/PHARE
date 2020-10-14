@@ -68,7 +68,7 @@ namespace amr
                     SAMRAI::hier::IntVector const& ratio) const override
         {
             auto const& destinationFieldOverlap
-                = dynamic_cast<FieldOverlap<dimension> const&>(destinationOverlap);
+                = dynamic_cast<FieldOverlap const&>(destinationOverlap);
 
             auto const& overlapBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 

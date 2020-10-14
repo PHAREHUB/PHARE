@@ -76,7 +76,7 @@ namespace amr
                 destinationBox.push_back(fieldBox);
             }
 
-            return std::make_shared<FieldOverlap<dimension>>(destinationBox, offset);
+            return std::make_shared<FieldOverlap>(destinationBox, offset);
         }
 
 
@@ -336,7 +336,7 @@ namespace amr
                                                          fillBox, overwriteInterior, sourceOffset,
                                                          destinationRestrictBoxes);
 
-            return std::make_shared<FieldOverlap<dimension>>(destinationBox, sourceOffset);
+            return std::make_shared<FieldOverlap>(destinationBox, sourceOffset);
         }
     };
 

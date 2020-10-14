@@ -144,7 +144,7 @@ namespace amr
         {
             // casts throw on failure
             auto& fieldSource  = dynamic_cast<FieldData const&>(source);
-            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
             copy_(fieldSource, fieldOverlap);
         }
@@ -195,7 +195,7 @@ namespace amr
             std::vector<typename FieldImpl::type> buffer;
             buffer.reserve(expectedSize);
 
-            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
             SAMRAI::hier::Transformation const& transformation = fieldOverlap.getTransformation();
             if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
@@ -243,7 +243,7 @@ namespace amr
             std::vector<double> buffer;
             buffer.resize(expectedSize, 0.);
 
-            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
             // We flush a portion of the stream on the buffer.
             stream.unpack(buffer.data(), expectedSize);
@@ -339,7 +339,7 @@ namespace amr
 
 
 
-        void copy_(FieldData const& source, FieldOverlap<dimension> const& overlap)
+        void copy_(FieldData const& source, FieldOverlap const& overlap)
         {
             // Here the first step is to get the transformation from the overlap
             // we transform the box from the source, and from the destination
@@ -409,7 +409,7 @@ namespace amr
 
 
             // throws on failure
-            auto& fieldOverlap = dynamic_cast<FieldOverlap<dimension> const&>(overlap);
+            auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
             if (fieldOverlap.isOverlapEmpty())
             {

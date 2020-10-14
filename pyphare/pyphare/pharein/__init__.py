@@ -5,8 +5,6 @@ import os, sys, subprocess
 
 venv_path = os.environ.get('VIRTUAL_ENV')
 
-print("sys.path ", sys.path)
-
 if venv_path is not None:
     pythonexe = os.path.join(venv_path, "bin/python3")
     arg = "import sys; print(sys.path)"

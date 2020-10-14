@@ -5,15 +5,14 @@ project(test-resource)
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
-  basic_hierarchy.h
+  test_resources_manager_basic_hierarchy.h
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
-  resource_test_1d.h
+  test_resources_manager.h
    )
 
 set(SOURCES_CPP
-  basic_hierarchy.cpp
-  resource_test_1d.cpp
-  test_main.cpp
+  test_resources_manager_basic_hierarchy.cpp
+  test_resources_manager.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

@@ -5,16 +5,14 @@ configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 
 set(SOURCES_INC
-  test_basic_hierarchy.h
+  test_field_refinement_on_hierarchy.h
   test_tag_strategy.h
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
 set(SOURCES_CPP
-  test_basic_hierarchy.cpp
-  test_main.cpp
-  test_tag_strategy.cpp
-   )
+  test_field_refinement_on_hierarchy.cpp
+  test_field_refine.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 

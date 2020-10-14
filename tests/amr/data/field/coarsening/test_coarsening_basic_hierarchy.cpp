@@ -1,4 +1,4 @@
-#include "test_basic_hierarchy.h"
+#include "test_coarsening_basic_hierarchy.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

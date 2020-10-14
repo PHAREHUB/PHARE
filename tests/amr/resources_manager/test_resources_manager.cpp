@@ -1,5 +1,5 @@
 
-#include "resource_test_1d.h"
+#include "test_resources_manager.h"
 #include "core/data/electromag/electromag.h"
 #include "core/data/electrons/electrons.h"
 #include "core/data/grid/gridlayout.h"
@@ -7,6 +7,19 @@
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
 #include "initializer/data_provider.h"
 #include "core/models/hybrid_state.h"
+
+
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <SAMRAI/tbox/SAMRAIManager.h>
+#include <SAMRAI/tbox/SAMRAI_MPI.h>
+
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
 
 
 #include "tests/initializer/init_functions.h"
@@ -223,3 +236,24 @@ typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DO
                          HybridState1DOnly>
     MyTypes;
 INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, aResourceUserCollection, MyTypes);
+
+
+
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+
+    SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
+    SAMRAI::tbox::SAMRAIManager::initialize();
+    SAMRAI::tbox::SAMRAIManager::startup();
+
+
+    int testResult = RUN_ALL_TESTS();
+
+    // Finalize
+    SAMRAI::tbox::SAMRAIManager::shutdown();
+    SAMRAI::tbox::SAMRAIManager::finalize();
+    SAMRAI::tbox::SAMRAI_MPI::finalize();
+
+    return testResult;
+}

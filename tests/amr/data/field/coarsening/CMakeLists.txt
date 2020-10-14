@@ -6,7 +6,7 @@ configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 
 set(SOURCES_INC
-  test_basic_hierarchy.h
+  test_coarsening_basic_hierarchy.h
   test_linear_coarsen.h
   test_tag_strategy.h
   test_weighter_coarsen.h
@@ -14,8 +14,8 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_basic_hierarchy.cpp
-  test_main.cpp
+  test_coarsening_basic_hierarchy.cpp
+  test_coarsening_main.cpp
   test_tag_strategy.cpp
    )
 

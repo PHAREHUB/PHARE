@@ -4,7 +4,7 @@
 #include <memory>
 
 
-#include "basic_hierarchy.h"
+#include "test_resources_manager_basic_hierarchy.h"
 #include "core/data/field/field.h"
 #include "core/data/grid/gridlayout.h"
 #include "core/data/grid/gridlayout_impl.h"

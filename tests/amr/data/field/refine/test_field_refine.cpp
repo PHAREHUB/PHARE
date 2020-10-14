@@ -10,7 +10,7 @@
 #include "amr/data/field/refine/field_refiner.h"
 #include "core/data/grid/gridlayout.h"
 
-#include "test_basic_hierarchy.h"
+#include "test_field_refinement_on_hierarchy.h"
 
 
 #include <functional>
@@ -20,16 +20,14 @@
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
-using Field1D     = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
-
 using testing::Eq;
 
 
 
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimalEven)
 {
-    LinearWeighter uipw{QtyCentering::primal, 2};
+    std::size_t refinementRatio = 2;
+    LinearWeighter uipw{QtyCentering::primal, refinementRatio};
 
     std::array<double, 2> expectedDistances{0, 0.5};
     auto const& actualDistances = uipw.getUniformDistances();
@@ -100,10 +98,25 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForDualOdd)
 
 
 
+template <std::size_t dim, std::size_t interporder>
+using GridYee = GridLayout<GridLayoutImplYee<dim, interporder>>;
+
+template <std::size_t dim>
+using FieldT     = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
 TEST(FieldRefineOperator, CanBeCreated)
 {
-    FieldRefineOperator<GridYee1DO1, Field1D> linearRefine{};
+    FieldRefineOperator<GridYee<1,1>, FieldT<1>> linearRefine11{};
+    FieldRefineOperator<GridYee<1,2>, FieldT<1>> linearRefine12{};
+    FieldRefineOperator<GridYee<1,3>, FieldT<1>> linearRefine13{};
+
+    FieldRefineOperator<GridYee<2,1>, FieldT<2>> linearRefine21{};
+    FieldRefineOperator<GridYee<2,2>, FieldT<2>> linearRefine22{};
+    FieldRefineOperator<GridYee<2,3>, FieldT<2>> linearRefine23{};
+
+    FieldRefineOperator<GridYee<3,1>, FieldT<3>> linearRefine31{};
+    FieldRefineOperator<GridYee<3,2>, FieldT<3>> linearRefine32{};
+    FieldRefineOperator<GridYee<3,3>, FieldT<3>> linearRefine33{};
 }
 
 
@@ -111,14 +124,33 @@ TEST(FieldRefineOperator, CanBeCreated)
 
 TEST(FieldRefine, CanBeCreated)
 {
-    constexpr std::size_t dimension{1};
-    SAMRAI::tbox::Dimension dim{dimension};
-    std::array<QtyCentering, dimension> centering = {{QtyCentering::primal}};
-    SAMRAI::hier::Box destinationGhostBox{dim};
-    SAMRAI::hier::Box sourceGhostBox{dim};
-    SAMRAI::hier::IntVector ratio{dim, 2};
-
-    FieldRefiner<1> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
+    {
+        constexpr std::size_t dimension{1};
+        SAMRAI::tbox::Dimension dim{dimension};
+        std::array<QtyCentering, dimension> centering = {{QtyCentering::primal}};
+        SAMRAI::hier::Box destinationGhostBox{dim};
+        SAMRAI::hier::Box sourceGhostBox{dim};
+        SAMRAI::hier::IntVector ratio{dim, 2};
+        FieldRefiner<1> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
+    }
+    {
+        constexpr std::size_t dimension{2};
+        SAMRAI::tbox::Dimension dim{dimension};
+        std::array<QtyCentering, dimension> centering = {{QtyCentering::primal}};
+        SAMRAI::hier::Box destinationGhostBox{dim};
+        SAMRAI::hier::Box sourceGhostBox{dim};
+        SAMRAI::hier::IntVector ratio{dim, 2};
+        FieldRefiner<2> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
+    }
+    {
+        constexpr std::size_t dimension{3};
+        SAMRAI::tbox::Dimension dim{dimension};
+        std::array<QtyCentering, dimension> centering = {{QtyCentering::primal}};
+        SAMRAI::hier::Box destinationGhostBox{dim};
+        SAMRAI::hier::Box sourceGhostBox{dim};
+        SAMRAI::hier::IntVector ratio{dim, 2};
+        FieldRefiner<3> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
+    }
 }
 
 

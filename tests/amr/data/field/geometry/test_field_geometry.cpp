@@ -18,6 +18,16 @@ using testing::Eq;
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
+// this test checks that the FieldGeometry behaves the same
+// as SAMRAI specific geometries for cases they are equivalent.
+// namely, assuming a yee layout they chek that FieldGeometry
+// associated with Ex is equivalent to the samrai cell geometry, and
+// the the one associated with Ey is equivalent to the Node geometry.
+// Note this is only done in 1D and cannot be done in 2 or 3D since there
+// is no geometry in SAMRAI that can cope with the Yee layout in 2D or 3D.
+
+
+
 using Field1D = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 template<typename GridLayoutT, typename FieldImpl>
@@ -48,7 +58,6 @@ struct FieldGeometryParam
     SAMRAI::hier::Patch& destinationPatch;
     SAMRAI::hier::Patch& sourcePatch;
 
-
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destinationFieldGeometry;
     std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceFieldGeometry;
 
@@ -64,7 +73,6 @@ struct Patches1D
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
 
-
     SAMRAI::hier::Box destinationDomainBox{SAMRAI::hier::Index(dim, 0),
                                            SAMRAI::hier::Index(dim, 10), blockId};
     SAMRAI::hier::Box sourceDomainBox{SAMRAI::hier::Index(dim, 5), SAMRAI::hier::Index(dim, 20),
@@ -73,16 +81,15 @@ struct Patches1D
     std::shared_ptr<SAMRAI::hier::PatchDescriptor> patchDescriptor{
         std::make_shared<SAMRAI::hier::PatchDescriptor>()};
 
-    double dx{0.01};
-    double destinationPatchLower{0.};
-    double destinationPatchUpper{0.1};
+    double dx                    = 0.01;
+    double destinationPatchLower = 0.;
+    double destinationPatchUpper = 0.1;
 
-    double sourcePatchLower{0.05};
-    double sourcePatchUpper{0.2};
-
+    double sourcePatchLower = 0.05;
+    double sourcePatchUpper = 0.2;
 
     // create the patch geometry saying the patch does NOT touch a boundary
-    // in either of the two directions of dim (==1)
+    // in none of the two directions of dim (==1)
     SAMRAI::hier::PatchGeometry::TwoDimBool touchesRegular{dim, false};
 
     std::shared_ptr<SAMRAI::geom::CartesianPatchGeometry> destinationPatchGeometry{
@@ -94,8 +101,6 @@ struct Patches1D
         std::make_shared<SAMRAI::geom::CartesianPatchGeometry>(
             SAMRAI::hier::IntVector::getOne(dim), touchesRegular, blockId, &dx, &sourcePatchLower,
             &sourcePatchUpper)};
-
-
 
     SAMRAI::hier::Patch destinationPatch{destinationDomainBox, patchDescriptor};
     SAMRAI::hier::Patch sourcePatch{sourceDomainBox, patchDescriptor};
@@ -124,8 +129,6 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
 {
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
-
-
     Patches1D patches1d;
 
     auto& destinationPatch = patches1d.destinationPatch;
@@ -134,25 +137,15 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     TypeParam param{"Ex", HybridQuantity::Scalar::Ex, destinationPatch, sourcePatch};
 
     auto& destinationLayout = param.destinationFieldData->gridLayout;
-
-    auto centering = destinationLayout.centering(HybridQuantity::Scalar::Ex);
-
-
-    auto ghosts = SAMRAI::hier::IntVector::getZero(dim);
-
-
-    // TODO: static nbrghost
-
-
-    ghosts[0] = destinationLayout.nbrGhosts(centering[0]);
+    auto centering          = destinationLayout.centering(HybridQuantity::Scalar::Ex);
+    auto ghosts             = SAMRAI::hier::IntVector::getZero(dim);
+    ghosts[0]               = destinationLayout.nbrGhosts(centering[0]);
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destinationCellGeometry
         = std::make_shared<SAMRAI::pdat::CellGeometry>(destinationPatch.getBox(), ghosts);
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> sourceCellGeometry
         = std::make_shared<SAMRAI::pdat::CellGeometry>(sourcePatch.getBox(), ghosts);
-
-
 
     int lower = 6;
     int upper = 11;
@@ -163,14 +156,10 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
         upper = 12;
     }
 
-
-    // TODO : test with also some restrictions
-
     SAMRAI::hier::Box srcMask{SAMRAI::hier::Index{dim, lower}, SAMRAI::hier::Index{dim, upper},
                               blockId};
     SAMRAI::hier::Box fillBox{SAMRAI::hier::Index{dim, lower}, SAMRAI::hier::Index{dim, upper},
                               blockId};
-
 
     SAMRAI::hier::Box restrictBox1{SAMRAI::hier::Index{dim, 7}, SAMRAI::hier::Index{dim, 8},
                                    blockId};
@@ -193,17 +182,15 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
         {
             SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(dim)};
 
-            auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap<1>>(
+            auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap>(
                 param.destinationFieldGeometry->calculateOverlap(
                     *param.sourceFieldGeometry, srcMask, fillBox, overwriteInterior, transformation,
                     restrictBoxes));
 
-            auto cellOverlap
-
-                = std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(
-                    destinationCellGeometry->calculateOverlap(*sourceCellGeometry, srcMask, fillBox,
-                                                              overwriteInterior, transformation,
-                                                              restrictBoxes));
+            auto cellOverlap = std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(
+                destinationCellGeometry->calculateOverlap(*sourceCellGeometry, srcMask, fillBox,
+                                                          overwriteInterior, transformation,
+                                                          restrictBoxes));
 
             EXPECT_THAT(fieldOverlap->isOverlapEmpty(), Eq(cellOverlap->isOverlapEmpty()));
 
@@ -222,7 +209,6 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 {
     SAMRAI::tbox::Dimension dim{1};
     SAMRAI::hier::BlockId blockId{0};
-
 
     Patches1D patch1d;
 
@@ -260,8 +246,6 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     SAMRAI::hier::Box fillBox{SAMRAI::hier::Index{dim, lower}, SAMRAI::hier::Index{dim, upper},
                               blockId};
 
-
-
     SAMRAI::hier::Box restrictBox1{SAMRAI::hier::Index{dim, 7}, SAMRAI::hier::Index{dim, 8},
                                    blockId};
     SAMRAI::hier::Box restrictBox2{SAMRAI::hier::Index{dim, 10}, SAMRAI::hier::Index{dim, 11},
@@ -276,11 +260,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     std::array<SAMRAI::hier::BoxContainer, 2> restrictBoxesList{
         {noRestrictBoxes, someRestrictBoxes}};
 
-
-
     std::array<bool, 2> overwritePossibility{{false, true}};
-
-
 
     for (auto const& restrictBoxes : restrictBoxesList)
     {
@@ -288,7 +268,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
         {
             SAMRAI::hier::Transformation transformation{SAMRAI::hier::IntVector::getZero(dim)};
 
-            auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap<1>>(
+            auto fieldOverlap = std::dynamic_pointer_cast<FieldOverlap>(
                 param.destinationFieldGeometry->calculateOverlap(
                     *param.sourceFieldGeometry, srcMask, fillBox, overwriteInterior, transformation,
                     restrictBoxes));

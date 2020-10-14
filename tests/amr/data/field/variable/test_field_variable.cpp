@@ -10,90 +10,94 @@
 #include "core/data/grid/gridlayout_impl.h"
 #include "core/data/ndarray/ndarray_vector.h"
 
+#include <string>
+#include <map>
 
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-struct FieldVariableTestParam1D
+struct FieldVariableTestParam
 {
 public:
-    FieldVariableTestParam1D() = default;
-    FieldVariableTestParam1D(std::string const& name, HybridQuantity::Scalar quantity)
+    FieldVariableTestParam() = default;
+    FieldVariableTestParam(std::string const& name, HybridQuantity::Scalar quantity)
         : qtyName{name}
         , qty{quantity}
     {
     }
-
     std::string qtyName;
     HybridQuantity::Scalar qty;
 };
 
-struct FieldVariableTest1D : public ::testing::TestWithParam<FieldVariableTestParam1D>
+struct FieldVariableTest : public ::testing::TestWithParam<FieldVariableTestParam>
 {
-    FieldVariableTest1D() = default;
+    FieldVariableTest() = default;
     void SetUp() override { param = GetParam(); }
-    virtual ~FieldVariableTest1D() = default;
+    virtual ~FieldVariableTest() = default;
 
-    FieldVariableTestParam1D param;
+    FieldVariableTestParam param;
 };
 
 
-using TestWithQuantityThatLivesOnPatchBoundary1D = FieldVariableTest1D;
+using TestWithQuantityThatLivesOnPatchBoundary1D = FieldVariableTest;
+
+template <std::size_t dim, std::size_t interporder>
+using FV = FieldVariable<GridLayout<GridLayoutImplYee<dim, interporder>>,
+                         Field<NdArrayVector<dim>, HybridQuantity::Scalar>>;
 
 TEST_P(TestWithQuantityThatLivesOnPatchBoundary1D, ThatActualDataLivesOnPatchBoundary)
 {
-    auto fieldVariable
-        = std::make_shared<FieldVariable<GridLayout<GridLayoutImplYee<1, 1>>,
-                                         Field<NdArrayVector<1>, HybridQuantity::Scalar>>>(
+    auto fieldVariable  = std::make_shared<FV<1,1>>(
             param.qtyName, param.qty);
 
     EXPECT_TRUE(fieldVariable->dataLivesOnPatchBorder());
 }
 
-using TestWithQuantityThatLivesInsidePatchBoundary1D = FieldVariableTest1D;
+using TestWithQuantityThatLivesInsidePatchBoundary1D = FieldVariableTest;
 
 TEST_P(TestWithQuantityThatLivesInsidePatchBoundary1D, ThatActualDataLivesInsidePatchBoundary)
 {
     auto fieldVariable
-        = std::make_shared<FieldVariable<GridLayout<GridLayoutImplYee<1, 1>>,
-                                         Field<NdArrayVector<1>, HybridQuantity::Scalar>>>(
+        = std::make_shared<FV<1,1>>(
             param.qtyName, param.qty);
 
     EXPECT_FALSE(fieldVariable->dataLivesOnPatchBorder());
 }
 
-std::map<std::string, HybridQuantity::Scalar> quantityThatLivesOnPatchBoundary1D
+
+// the definition of which variable lives on or inside patch boundaries
+// depends on the dimension and here is hard-coded for the Yee Layout Implementation
+std::map<std::string, HybridQuantity::Scalar> On1DPatchBoundaryQties
     = {{"Bx", HybridQuantity::Scalar::Bx}, {"Ey", HybridQuantity::Scalar::Ey},
        {"Ez", HybridQuantity::Scalar::Ez}, {"Jy", HybridQuantity::Scalar::Jy},
        {"Jz", HybridQuantity::Scalar::Jz}, {"rho", HybridQuantity::Scalar::rho},
        {"Vx", HybridQuantity::Scalar::Vx}, {"Vy", HybridQuantity::Scalar::Vy},
        {"Vz", HybridQuantity::Scalar::Vz}, {"P", HybridQuantity::Scalar::P}};
 
-std::map<std::string, HybridQuantity::Scalar> quantityThatLivesInsidePatchBoundary1D
+std::map<std::string, HybridQuantity::Scalar> Inside1DPatchBoundaryQties
     = {{"By", HybridQuantity::Scalar::By},
        {"Bz", HybridQuantity::Scalar::Bz},
        {"Ex", HybridQuantity::Scalar::Ex},
        {"Jx", HybridQuantity::Scalar::Jx}};
 
-std::vector<FieldVariableTestParam1D>
+
+std::vector<FieldVariableTestParam>
 createParams(std::map<std::string, HybridQuantity::Scalar> const& qtyMap)
 {
-    std::vector<FieldVariableTestParam1D> params;
-
+    std::vector<FieldVariableTestParam> params;
     for (auto const& qtyPair : qtyMap)
     {
         params.emplace_back(qtyPair.first, qtyPair.second);
     }
-
     return params;
 }
 
 INSTANTIATE_TEST_SUITE_P(FieldVariable, TestWithQuantityThatLivesOnPatchBoundary1D,
-                         ::testing::ValuesIn(createParams(quantityThatLivesOnPatchBoundary1D)));
+                         ::testing::ValuesIn(createParams(On1DPatchBoundaryQties)));
 
 INSTANTIATE_TEST_SUITE_P(FieldVariable, TestWithQuantityThatLivesInsidePatchBoundary1D,
-                         ::testing::ValuesIn(createParams(quantityThatLivesInsidePatchBoundary1D)));
+                         ::testing::ValuesIn(createParams(Inside1DPatchBoundaryQties)));
 
 
 int main(int argc, char** argv)

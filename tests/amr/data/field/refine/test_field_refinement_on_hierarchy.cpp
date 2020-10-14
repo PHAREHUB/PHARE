@@ -1,4 +1,4 @@
-#include "test_basic_hierarchy.h"
+#include "test_field_refinement_on_hierarchy.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

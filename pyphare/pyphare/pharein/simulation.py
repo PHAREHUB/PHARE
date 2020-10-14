@@ -48,7 +48,7 @@ def check_domain(**kwargs):
             phare_utilities.check_iterables(kwargs['cells'], kwargs['dl'])
             phare_utilities.check_equal_size(kwargs['cells'], kwargs['dl'])
         except ValueError:
-            raise ValueError("Error: 'cells' and 'dl' must have the same dimension")
+            raise ValueError("Error: 'cells' and 'dl' must have the same dimension ({} and {})".format(kwargs['cells'], kwargs["dl"]))
 
         dl = phare_utilities.listify(kwargs['dl'])
         cells = phare_utilities.listify(kwargs['cells'])

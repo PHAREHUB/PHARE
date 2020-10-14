@@ -1,8 +1,8 @@
 #include "core/data/particles/particle.h"
 #include "amr/data/particles/particles_data.h"
 #include "amr/data/particles/refine/split.h"
-#include "test_basic_hierarchy.h"
-#include "test_tag_strategy.h"
+#include "test_particledata_refine_basic_hierarchy.h"
+#include "test_particle_data_refine_tag_strategy.h"
 
 
 #include "gmock/gmock.h"
@@ -100,11 +100,11 @@ public:
         }
 
 
-        for (int iCellZ = lowerXYZ[dirZ]; iCellZ <= upperXYZ[dirZ]; ++iCellZ)
+        for (int iCellX = lowerXYZ[dirX]; iCellX <= upperXYZ[dirX]; ++iCellX)
         {
             for (int iCellY = lowerXYZ[dirY]; iCellY <= upperXYZ[dirY]; ++iCellY)
             {
-                for (int iCellX = lowerXYZ[dirX]; iCellX <= upperXYZ[dirX]; ++iCellX)
+                for (int iCellZ = lowerXYZ[dirZ]; iCellZ <= upperXYZ[dirZ]; ++iCellZ)
                 {
                     auto coarseParticles = loadCell<dimension>(iCellX, iCellY, iCellZ);
 

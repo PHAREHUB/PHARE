@@ -2,9 +2,9 @@
 #define PHARE_TEST_BASIC_HIERARCHY_H
 
 
-#include "amr/data/particles/particles_variable.h"
-#include "amr/data/particles/refine/particles_data_split.h"
-#include "amr/data/particles/refine/split.h"
+#include "amr/data/field/field_variable.h"
+#include "amr/data/field/refine/field_refine_operator.h"
+#include "core/data/grid/gridlayout.h"
 #include "test_tag_strategy.h"
 
 
@@ -20,7 +20,6 @@
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 
-#include <map>
 #include <memory>
 #include <string>
 
@@ -32,7 +31,7 @@ using namespace PHARE::amr;
 
 /**
  * @brief  In this class we will create a hierarchy of two levels
- * the raffined level will be determined by the refined box defined
+ * the refined level will be determined by the refined box defined
  * in the input files. The creation of the patch is managed directly
  * by SAMRAI ( thus the use of a GriddingAlgorithm ). To be able to
  * use a GriddingAlgorithm, we have to implement a TagStrategy.
@@ -40,49 +39,59 @@ using namespace PHARE::amr;
  * root level, and finally the refine interpolation between root level
  * and the level 1
  */
-
-template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType splitType,
-         std::size_t refinedParticlesNbr>
+template<typename GridLayoutT, typename FieldT,
+         typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
 class BasicHierarchy
 {
-    using ParticlesVariable_t = ParticlesVariable<ParticleArray<dimension>, interpOrder>;
-
 public:
+    static constexpr std::size_t dimension    = GridLayoutT::dimension;
+    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+
     /**
      * @brief Construct the hierarchy consisting of two levels
      *
      * Only the ratio argument is required, we will use one input file per ratio.
      * Here we do multiple things, first we parse the inputFile to create the inputDatabase
      * that will be used by others SAMRAI's objects (GridGeometry, PatchHierarchy, LoadBalancer,
-     * BoxGenerator, GriddingAlgorithm, StandardTagAndInitialize), they contain information for
-     * each of them.
+     * BoxGenerator, GriddingAlgorithm, StandardTagAndInitialize), they contain information for each
+     * of them.
      *
-     * We then store a view to the VariableDatabase singleton , that we will use to register all
-     * our Variables. For each hybridQuantities we register a variable.
+     * We then store a view to the VariableDatabase singleton , that we will use to register all our
+     * Variables. For each hybridQuantities we register a variable.
      *
      * We instantiate each objects needed by the GriddingAlgorithm, and then instantiate
      * a GriddingAlgorithm with the previous objects
      *
      */
-
-    std::string inputString(int _ratio)
-    {
-        return inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
-               + std::to_string(_ratio) + ".txt";
-    }
-
-
     explicit BasicHierarchy(int _ratio)
         : ratio{SAMRAI::tbox::Dimension{dimension}, _ratio}
         , inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
-              inputString(_ratio))}
-
+              inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
+              + std::to_string(_ratio) + ".txt")}
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
-        , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
-        , specie1_{std::make_shared<ParticlesVariable_t>(
-              "proton1", true,
-              SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
-                                      ghostWidthForParticles<interpOrder>()})}
+        , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()} //
+        /* Ex Ey Ez */
+        , ex_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Ex", PhysicalQuantity::Ex)}
+        , ey_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Ey", PhysicalQuantity::Ey)}
+        , ez_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Ez", PhysicalQuantity::Ez)}
+        // Bx By Bz
+        , bx_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Bx", PhysicalQuantity::Bx)}
+        , by_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("By", PhysicalQuantity::By)}
+        , bz_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Bz", PhysicalQuantity::Bz)}
+        // Jx Jy Jz
+        , jx_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Jx", PhysicalQuantity::Jx)}
+        , jy_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Jy", PhysicalQuantity::Jy)}
+        , jz_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Jz", PhysicalQuantity::Jz)}
+        // Vx Vy Vz
+        , vx_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Vx", PhysicalQuantity::Vx)}
+        , vy_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Vy", PhysicalQuantity::Vy)}
+        , vz_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Vz", PhysicalQuantity::Vz)} //
+                                                                                                //
+        /* rho */
+        , rho_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("Rho", PhysicalQuantity::rho)}
+        //
+        /* P */
+        , p_{std::make_shared<FieldVariable<GridLayoutT, FieldT>>("P", PhysicalQuantity::P)}
 
         , context_{variableDatabase_->getContext("context")}
         , variablesIds_{getVariablesIds_()}
@@ -95,14 +104,11 @@ public:
               dimension_, "ChopAndPackLoadBalancer",
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
-        , refineOperator_{std::make_shared<
-              ParticlesRefineOperator<ParticleArray<dimension>, splitType,
-                                      Splitter<DimConst<dimension>, InterpConst<interpOrder>,
-                                               RefinedParticlesConst<refinedParticlesNbr>>>>()}
+        , refineOperator_{std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()}
 
 
-        , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,
-                                                                splitType)}
+        , tagStrategy_{std::make_shared<TagStrategy<GridLayoutT, FieldT>>(variablesIds_,
+                                                                          refineOperator_)}
         , standardTag_{std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
               "StandardTagAndInitialize", tagStrategy_.get(),
               inputDatabase_->getDatabase("StandardTagAndInitialize"))}
@@ -138,13 +144,11 @@ public:
             }
         }
 
-
         // We have our hierarchy setup, now is time to register the refineOperator
         // that we will use
 
-        auto particlesVariableTypeName = typeid(ParticlesVariable_t).name();
 
-        gridGeometry_->addRefineOperator(particlesVariableTypeName, refineOperator_);
+        // gridGeometry_->addRefineOperator(fieldVariableTypeName, refineOperator_);
     }
 
 
@@ -170,15 +174,33 @@ private:
     {
         std::map<std::string, int> variablesIds;
 
+        SAMRAI::hier::IntVector ghostWidth{dimension_, 5};
 
-        SAMRAI::hier::IntVector ghostWidth{dimension_, ghostWidthForParticles<interpOrder>()};
-
-        variablesIds.try_emplace("proton1", variableDatabase_->registerVariableAndContext(
-                                                specie1_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Ex", variableDatabase_->registerVariableAndContext(ex_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Ey", variableDatabase_->registerVariableAndContext(ey_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Ez", variableDatabase_->registerVariableAndContext(ez_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Bx", variableDatabase_->registerVariableAndContext(bx_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "By", variableDatabase_->registerVariableAndContext(by_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Bz", variableDatabase_->registerVariableAndContext(bz_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Jx", variableDatabase_->registerVariableAndContext(jx_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Jy", variableDatabase_->registerVariableAndContext(jy_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Jz", variableDatabase_->registerVariableAndContext(jz_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "Rho", variableDatabase_->registerVariableAndContext(rho_, context_, ghostWidth));
+        variablesIds.try_emplace(
+            "P", variableDatabase_->registerVariableAndContext(p_, context_, ghostWidth));
 
         return variablesIds;
     }
-
 
     std::shared_ptr<SAMRAI::tbox::Database> inputDatabase_;
     std::shared_ptr<SAMRAI::tbox::Database> patchHierarchyDatabase_;
@@ -187,8 +209,28 @@ private:
 
     SAMRAI::hier::VariableDatabase* variableDatabase_;
 
-    std::shared_ptr<ParticlesVariable_t> specie1_;
+    // Each FieldVariable for each hybridQuantities
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> ex_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> ey_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> ez_;
 
+
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> bx_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> by_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> bz_;
+
+
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> jx_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> jy_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> jz_;
+
+
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> vx_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> vy_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> vz_;
+
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> rho_;
+    std::shared_ptr<FieldVariable<GridLayoutT, FieldT>> p_;
 
 
     std::shared_ptr<SAMRAI::hier::VariableContext> context_;
@@ -202,7 +244,7 @@ private:
 
     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOperator_;
 
-    std::shared_ptr<TagStrategy<dimension>> tagStrategy_;
+    std::shared_ptr<TagStrategy<GridLayoutT, FieldT>> tagStrategy_;
     std::shared_ptr<SAMRAI::mesh::StandardTagAndInitialize> standardTag_;
     std::shared_ptr<SAMRAI::mesh::TileClustering> clustering_;
 

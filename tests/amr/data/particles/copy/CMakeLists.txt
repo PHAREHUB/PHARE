@@ -7,7 +7,7 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_main.cpp
+  test_particledata_copy1d.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
