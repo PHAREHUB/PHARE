@@ -4,6 +4,7 @@ import math
 from .phare_utilities import listify
 from .box import Box
 
+
 yee_centering = {
     'x': {
         'Bx':'primal', 'By':'dual', 'Bz':'dual',
@@ -70,6 +71,9 @@ class GridLayout(object):
                           'Y' : self.yeeCentering.centerY,
                           'Z' : self.yeeCentering.centerZ
                          }
+
+    def dim(self):
+        return self.box.dim()
 
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]
