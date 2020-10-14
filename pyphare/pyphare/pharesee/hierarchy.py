@@ -116,6 +116,12 @@ class PatchLevel:
         self.patches = patches
 
 
+    def level_range(self):
+        name = list(self.patches[0].patch_datas.keys())[0]
+        return min([patch.patch_datas[name].x.min() for patch in self.patches]),\
+     max([patch.patch_datas[name].x.max() for patch in self.patches])
+
+
 class PatchHierarchy:
     """is a collection of patch levels """
 
@@ -190,7 +196,11 @@ class PatchHierarchy:
         qty = kwargs.get("qty",None)
         time = kwargs.get("time", self.times()[0])
 
-        fig, ax = plt.subplots()
+        if "ax" not in kwargs:
+            fig, ax = plt.subplots()
+        else:
+            ax = kwargs["ax"]
+            fig = ax.figure
         for lvl_nbr,level in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
                 continue
@@ -207,7 +217,9 @@ class PatchHierarchy:
                 val = patch.patch_datas[qty].dataset[:]
                 x   = patch.patch_datas[qty].x
                 label = "L{level}P{patch}".format(level=lvl_nbr,patch=ip)
-                ax.plot(x, val, label=label)
+                marker=kwargs.get("marker", "")
+                ls = kwargs.get("ls","--")
+                ax.plot(x, val, label=label, marker=marker, ls=ls)
 
         ax.set_title(kwargs.get("title",""))
         ax.set_xlabel(kwargs.get("xlabel","x"))

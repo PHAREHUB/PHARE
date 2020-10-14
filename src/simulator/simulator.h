@@ -16,7 +16,7 @@ public:
     virtual double endTime()                             = 0;
     virtual double currentTime()                         = 0;
     virtual double timeStep()                            = 0;
-    virtual void advance(double dt)                      = 0;
+    virtual double advance(double dt)                    = 0;
     virtual std::string to_str()                         = 0;
     virtual std::vector<int> const& domainBox() const    = 0;
     virtual std::vector<double> const& cellWidth() const = 0;
@@ -143,14 +143,15 @@ public:
     std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
     std::size_t interporder() const override { return interp_order; }
 
-    void advance(double dt) override
+    double advance(double dt) override
     {
         try
         {
             if (integrator_)
             {
-                integrator_->advance(dt);
+                auto dt_new = integrator_->advance(dt);
                 currentTime_ += dt;
+                return dt_new;
             }
             else
                 throw std::runtime_error("Error - no valid integrator in the simulator");
