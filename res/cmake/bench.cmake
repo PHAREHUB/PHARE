@@ -39,11 +39,14 @@ if (bench)
   endfunction(add_phare_cpp_benchmark_)
 
   function(add_phare_cpp_benchmark exec_level project file directory)
-    add_phare_cpp_benchmark_(${project}_${file} ${file}.cpp ${directory})
+    add_phare_cpp_benchmark_(${exec_level} ${project}_${file} ${file}.cpp ${directory})
     target_link_libraries(${project}_${file} PUBLIC ${GBENCH_LIBS} phare_simulator)
   endfunction(add_phare_cpp_benchmark)
 
+
   add_subdirectory(tools/bench/core/data/particles)
+  add_subdirectory(tools/bench/core/numerics/pusher)
+
   add_subdirectory(tools/bench/hi5)
 
 endif()

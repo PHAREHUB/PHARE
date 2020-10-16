@@ -39,7 +39,7 @@ namespace initializer
          * @brief read overrides the abstract DataProvider::read method. This method basically
          * executes the user python script that fills the dictionnary.
          */
-        virtual void read() override
+        void read() override
         {
             auto module = py::module::import(initModuleName_.c_str());
             module.attr("get_user_inputs")(moduleName_);

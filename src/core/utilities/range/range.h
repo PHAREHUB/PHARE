@@ -48,6 +48,13 @@ namespace core
     {
         return Range<Iterator>{std::forward<Iterator>(begin), std::forward<Iterator>(last)};
     }
+
+    template<typename Container>
+    auto makeRange(Container& container)
+    {
+        return makeRange(std::begin(container), std::end(container));
+    }
+
 } // namespace core
 } // namespace PHARE
 
