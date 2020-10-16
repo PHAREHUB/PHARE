@@ -7,6 +7,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <cstdint>
 #include <unordered_map>
 
 
@@ -27,6 +28,7 @@
 
 #include "core/utilities/algorithm.h"
 
+#include "phare_core.h"
 
 
 namespace PHARE
@@ -78,13 +80,17 @@ namespace solver
     class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                    public SAMRAI::algs::TimeRefinementLevelStrategy
     {
+        using SimFunctorParams = typename core::PHARE_Sim_Types::SimFunctorParams;
+        using SimFunctors      = typename core::PHARE_Sim_Types::SimulationFunctors;
+
     public:
         static constexpr auto dimension = MessengerFactory::dimension;
 
         // model comes with its variables already registered to the manager system
-        MultiPhysicsIntegrator(int nbrOfLevels)
+        MultiPhysicsIntegrator(int nbrOfLevels, SimFunctors const& simFuncs)
             : nbrOfLevels_{nbrOfLevels}
             , levelDescriptors_(nbrOfLevels)
+            , simFuncs_{simFuncs}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -394,6 +400,21 @@ namespace solver
             fromCoarser.prepareStep(model, *level);
 
 
+            // we skip first/last as that's done via regular diag dump mechanism
+            bool fineDumpsActive = simFuncs_.at("pre_advance").count("fine_dump") > 0;
+            bool notCoarestTime  = currentTime != firstNewLevelTimes_[0];
+            bool shouldDump      = fineDumpsActive and !firstStep and iLevel > 0 and notCoarestTime;
+            if (shouldDump)
+            {
+                SimFunctorParams fineDumpParams;
+                fineDumpParams["level_nbr"] = iLevel;
+                fineDumpParams["timestamp"] = currentTime;
+
+                auto const& dump_functor = simFuncs_.at("pre_advance").at("fine_dump");
+                dump_functor(fineDumpParams);
+            }
+
+
             solver.advanceLevel(hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
 
 
@@ -457,6 +478,8 @@ namespace solver
         std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
+
+        SimFunctors const& simFuncs_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)

@@ -56,14 +56,12 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
-    PHARE::SimulatorDiagnostics diags{*simulator, *hierarchy};
-
 
     [[maybe_unused]] auto time = simulator->startTime();
 
     while (simulator->currentTime() < simulator->endTime())
     {
-        diags.dump(simulator->currentTime(), simulator->timeStep());
+        simulator->dump(simulator->currentTime(), simulator->timeStep());
         simulator->advance(simulator->timeStep());
         std::cout << simulator->currentTime() << "\n";
         //    time += simulator.timeStep();

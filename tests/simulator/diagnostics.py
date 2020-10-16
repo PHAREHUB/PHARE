@@ -78,7 +78,7 @@ simArgs = {
   "cells":40,
   "dl":0.3,
   "max_nbr_levels":2,
-  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite"}}
+  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite", "fine_dump_lvl_max": 10}}
 }
 
 def dup(dic):
@@ -96,9 +96,9 @@ class DiagnosticsTest(unittest.TestCase):
       dup({
         "smallest_patch_size": 20,
         "largest_patch_size": 20}),
-      # dup({ # segfaults # https://github.com/PHAREHUB/PHARE/issues/330
-      #   "smallest_patch_size": 40,
-      #   "largest_patch_size": 40})
+      dup({
+        "smallest_patch_size": 40,
+        "largest_patch_size": 40})
     )
 
     def __init__(self, *args, **kwargs):
@@ -107,12 +107,18 @@ class DiagnosticsTest(unittest.TestCase):
         self.simulator = None
 
 
+    def tearDown(self):
+        if self.simulator is not None:
+            self.simulator.reset()
+        self.simulator = None
+
+
     def _test_dump_diags(self, dim, **simInput):
 
         # configure simulation dim sized values
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = [simInput[key] for d in range(dim)]
-        b0 = [[10 for i in range(dim)], [20 for i in range(dim)]]
+        b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
         for interp in range(1, 4):
@@ -134,7 +140,13 @@ class DiagnosticsTest(unittest.TestCase):
 
                 h5_file = h5py.File(h5_filename, "r")
                 self.assertTrue("t0.000000" in h5_file) #    init dump
+
+                self.assertTrue("t0.000100" in h5_file)
+                self.assertTrue("pl1" in h5_file["t0.000100"])
+                self.assertFalse("pl0" in h5_file["t0.000100"])
+
                 self.assertTrue("t0.001000" in h5_file) # advance dump
+
 
                 # SEE https://github.com/PHAREHUB/PHARE/issues/275
                 if dim == 1: # REMOVE WHEN PHARESEE SUPPORTS 2D
@@ -156,18 +168,67 @@ class DiagnosticsTest(unittest.TestCase):
 
 
     @data(*_test_cases)
-    def test_dump_diags_1d(self, simInput):
-        self._test_dump_diags(1, **simInput)
+    def test_dump_diags(self, simInput):
+        for dim in [1, 2]:
+            self._test_dump_diags(dim, **simInput)
+
+    def _test_patch_ghost_on_refined_level_case(self, has_patch_ghost, **simInput):
+        if cpp.mpi_size() > 1: # SKIP
+            return
+
+        for dim in [1, 2]:
+            b0 = [[10 for i in range(dim)], [20 for i in range(dim)]]
+            simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+            for interp in [1, 2, 3]:
+
+                local_out = out + str(dim) + "_" + str(interp) + "_mpi_n_" + str(cpp.mpi_size())
+                simInput["diag_options"]["options"]["dir"] = local_out
+
+                simulation = ph.Simulation(**simInput)
+                dump_all_diags(setup_model().populations)
+                self.simulator = Simulator(simulation).initialize().advance()
+
+                for diagInfo in ph.global_vars.sim.diagnostics:
+                    print("diagInfo.quantity", diagInfo.quantity)
+
+                self.assertTrue(any([diagInfo.quantity.endswith("patchGhost") for diagInfo in ph.global_vars.sim.diagnostics]))
+
+                for diagInfo in ph.global_vars.sim.diagnostics:
+                    if diagInfo.quantity.endswith("patchGhost"):
+                        # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
+                        h5_filename = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
+                        h5_file = h5py.File(h5_filename, "r")
+                        if has_patch_ghost:
+                            self.assertTrue("weight" in h5_file["t0.000000"]["pl1"]["p0#0"])
+                        else:
+                            self.assertFalse("weight" in h5_file["t0.000000"]["pl1"]["p0#0"])
+
+                self.simulator = None
+                ph.global_vars.sim = None
 
 
-    @data(*_test_cases)
-    def test_dump_diags_2d(self, simInput):
-        self._test_dump_diags(2, **simInput)
 
 
-    def tearDown(self):
-        if self.simulator is not None:
-            self.simulator.reset()
+    _no_patch_ghost_on_refined_level_case = (
+      dup({
+        "smallest_patch_size": 40,
+        "largest_patch_size": 40}),
+    )
+    @data(*_no_patch_ghost_on_refined_level_case)
+    def test_no_patch_ghost_on_refined_level_case(self, simInput):
+        self._test_patch_ghost_on_refined_level_case(False, **simInput)
+
+
+
+    _has_patch_ghost_on_refined_level_case = (
+      dup({
+        "smallest_patch_size": 5,
+        "largest_patch_size": 5}),
+    )
+    @data(*_has_patch_ghost_on_refined_level_case)
+    def test_has_patch_ghost_on_refined_level_case(self, simInput):
+        self._test_patch_ghost_on_refined_level_case(True, **simInput)
+
 
 
 if __name__ == "__main__":

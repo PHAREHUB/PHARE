@@ -38,7 +38,8 @@ void registerDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& diags
 class IDiagnosticsManager
 {
 public:
-    virtual void dump(double timeStamp, double timeStep) = 0;
+    virtual void dump(double timeStamp, double timeStep)         = 0;
+    virtual void dump_level(std::size_t level, double timeStamp) = 0;
     inline virtual ~IDiagnosticsManager();
 };
 IDiagnosticsManager::~IDiagnosticsManager() {}
@@ -66,6 +67,7 @@ public:
     }
 
     void dump(double timeStamp, double timeStep) override;
+    void dump_level(std::size_t level, double timeStamp) override;
 
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict& dict);
 
@@ -134,6 +136,14 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& diagInput
 }
 
 
+template<typename Writer>
+void DiagnosticsManager<Writer>::dump_level(std::size_t level, double timeStamp)
+{
+    std::vector<DiagnosticProperties*> activeDiagnostics;
+    for (auto& diag : diagnostics_)
+        activeDiagnostics.emplace_back(&diag);
+    writer_->dump_level(level, activeDiagnostics, timeStamp);
+}
 
 
 template<typename Writer>

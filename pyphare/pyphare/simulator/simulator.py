@@ -32,8 +32,7 @@ class Simulator:
         self.simulation = simulation
         self.cpp_hier = None   # HERE
         self.cpp_sim  = None   # BE
-        self.cpp_dman = None   # DRAGONS
-        self.cpp_dw   = None   # i.e. use weakrefs if you have to ref these.
+        self.cpp_dw   = None   # DRAGONS, i.e. use weakrefs if you have to ref these.
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
         _simulator.obj = self
@@ -98,12 +97,6 @@ class Simulator:
         print(perf)
 
 
-    def diagnostics(self):
-        self._check_init()
-        if self.cpp_dman is None:
-            from pybindlibs import cpp
-            self.cpp_dman = cpp.make_diagnostic_manager(self.cpp_sim, self.cpp_hier)
-        return self.cpp_dman
 
     def _auto_dump(self):
         if self.auto_dump and len(self.simulation.diagnostics) > 0:
@@ -112,9 +105,9 @@ class Simulator:
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
         if len(args) == 0:
-            self.diagnostics().dump(timestamp=self.currentTime(), timestep=self.timeStep())
+            self.cpp_sim.dump(timestamp=self.currentTime(), timestep=self.timeStep())
         else:
-            self.diagnostics().dump(timestamp=args[0], timestep=args[1])
+            self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
         return self
 
     def data_wrangler(self):
@@ -128,7 +121,6 @@ class Simulator:
         if self.cpp_dw is not None:
             self.cpp_dw.kill()
         self.cpp_dw = None
-        self.cpp_dman = None
         self.cpp_sim = None
         self.cpp_hier = None
         if "samrai" in life_cycles:

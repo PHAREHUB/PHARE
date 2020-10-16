@@ -199,9 +199,11 @@ def populateDict():
     else:
         add(diag_path + "filePath", "phare_output")
 
-    if (simulation.diag_options is not None and "options" in simulation.diag_options
-        and "mode" in simulation.diag_options["options"]):
+    if simulation.diag_options is not None and "options" in simulation.diag_options:
+        if "mode" in simulation.diag_options["options"]:
             add(diag_path + "mode", simulation.diag_options["options"]["mode"])
+        if "fine_dump_lvl_max" in simulation.diag_options["options"]:
+            add(diag_path + "fine_dump_lvl_max", simulation.diag_options["options"]["fine_dump_lvl_max"])
 
 
     #### adding electrons
