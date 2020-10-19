@@ -14,8 +14,8 @@ class Box:
         lower, upper = [np_array_ify(arr) for arr in [lower, upper]]
         assert lower.size == upper.size
         assert (lower <= upper).all()
-        self.lower = lower
-        self.upper = upper
+        self.lower = lower.astype(int) # can't slice with floats
+        self.upper = upper.astype(int)
 
     def dim(self):
         return len(self.lower.shape)
@@ -108,14 +108,11 @@ def shift(box, offset):
 
 
 def grow(box, size):
-    # in multiple dim, size could be a tuple
-    # with a number of cell to grow the box in each dir.
-    if size < 0:
+    if is_scalar(size):
+        assert box.dim() == 1 # possible overkill, here to block accidents
+    if (np.asarray(size) < 0).any():
         raise ValueError("size must be >=0")
-    new_box = Box(box.lower, box.upper)
-    new_box.lower = box.lower - size
-    new_box.upper = box.upper + size
-    return new_box
+    return Box(box.lower - size, box.upper + size)
 
 
 def remove(box, to_remove):

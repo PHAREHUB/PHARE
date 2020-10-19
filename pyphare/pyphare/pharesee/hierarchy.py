@@ -35,6 +35,15 @@ class FieldData(PatchData):
     Concrete type of PatchData representing a physical quantity
     defined on a grid.
     """
+    def _mesh_coords(self, i):
+        return self.origin[i] - self._ghosts_nbr * self.dl[i] + np.arange(self.size[i]) * self.dl[i] + self.offset[i]
+
+    @property
+    def x(self):
+        if self._x is None:
+            self._x = self._mesh_coords(0)
+        return self._x
+
     def __init__(self, layout, field_name, data, **kwargs):
         """
         :param layout: A GridLayout representing the domain on which data is defined
@@ -42,28 +51,44 @@ class FieldData(PatchData):
         :param data: the dataset from which data can be accessed
         """
         super().__init__(layout, 'field')
+        self._x = None
 
         self.layout = layout
         self.field_name = field_name
-        self.dx = layout.dl[0]
+        self.dx = layout.dl[0] # dropped in 2d_py_init PR - use dl[0]
+        self.dl = layout.dl
+        self.dim = layout.box.dim()
+        self._ghosts_nbr = np.zeros(self.dim)
 
         if field_name in layout.centering["X"]:
-            centering = layout.centering["X"][field_name]
+            directions = ["X", "Y", "Z"][:self.dim] # drop unused directions
+            centerings = [layout.qtyCentering(field_name, direction) for direction in directions]
         elif "centering" in kwargs:
-            centering = kwargs["centering"]
+            if isinstance(kwargs["centering"], list):
+                centerings = kwargs["centering"]
+                assert len(centerings) == self.dim
+            else:
+                if self.dim != 1:
+                    raise ValeuError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
+                centerings = [kwargs["centering"]]
         else:
             ValueError("centering not specified and cannot be inferred from field name")
-        self._ghosts_nbr = layout.nbrGhosts(layout.interp_order, centering)
+
+        for i, centering in enumerate(centerings):
+            self._ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
 
-        if centering == "primal":
-            self.size = self.ghost_box.size() + 1
-            offset = 0
-        else:
-            self.size = self.ghost_box.size()
-            offset = 0.5*self.dx
+        self.size = np.zeros(self.dim, dtype=int)
+        self.offset = np.zeros(self.dim)
 
-        self.x = self.origin[0] - self._ghosts_nbr * self.dx + np.arange(self.size) * self.dx + offset
+        for i, centering in enumerate(centerings):
+            if centering == "primal":
+                self.size[i] = self.ghost_box.shape()[i] + 1
+            else:
+                self.size[i] = self.ghost_box.shape()[i]
+                self.offset[i] = 0.5*self.dl[i]
+
         self.dataset = data
 
 
@@ -80,9 +105,9 @@ class ParticleData(PatchData):
         super().__init__(layout, 'particles')
         self.dataset = data
         if layout.interp_order == 1:
-            self._ghosts_nbr = 1
+            self._ghosts_nbr = [1] * layout.box.dim()
         elif layout.interp_order == 2 or layout.interp_order == 3:
-            self._ghosts_nbr = 2
+            self._ghosts_nbr = [2] * layout.box.dim()
         else:
             raise RuntimeError("invalid interpolation order {}".format(layout.interp_order))
         self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
@@ -654,7 +679,7 @@ def isFieldQty(qty):
 
 
 def hierarchy_from_sim(simulator, qty, pop=""):
-    dw = simulator.data_wrangler()    
+    dw = simulator.data_wrangler()
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 

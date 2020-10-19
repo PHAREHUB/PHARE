@@ -85,18 +85,25 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPropert
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
+    auto setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
+        auto ghosts              = GridLayout::nDNbrGhosts(field.physicalQuantity());
+        attr[name + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
+        if constexpr (GridLayout::dimension > 1)
+            attr[name + "_ghosts_y"] = static_cast<std::size_t>(ghosts[1]);
+        if constexpr (GridLayout::dimension > 2)
+            attr[name + "_ghosts_z"] = static_cast<std::size_t>(ghosts[2]);
+    };
+
     auto infoDS = [&](auto& field, std::string name, auto& attr) {
-        attr[name]             = field.size();
-        attr[name + "_ghosts"] = static_cast<std::size_t>(
-            GridLayout::nbrGhosts(GridLayout::centering(field.physicalQuantity())[0]));
+        attr[name] = field.size();
+        setGhostNbr(field, attr, name);
     };
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
         for (auto& [id, type] : core::Components::componentMap)
         {
-            attr[name][id]             = vecF.getComponent(type).size();
-            attr[name][id + "_ghosts"] = static_cast<std::size_t>(GridLayout::nbrGhosts(
-                GridLayout::centering(vecF.getComponent(type).physicalQuantity())[0]));
+            attr[name][id] = vecF.getComponent(type).size();
+            setGhostNbr(vecF.getComponent(type), attr[name], id);
         }
     };
 
@@ -130,12 +137,22 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
+    auto writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
+        this->writeGhostsAttr_(file, path,
+                               null ? 0 : attr[key + "_ghosts_x"].template to<std::size_t>(), null);
+        if constexpr (GridLayout::dimension > 1)
+            this->writeGhostsAttr_(
+                file, path, null ? 0 : attr[key + "_ghosts_y"].template to<std::size_t>(), null);
+        if constexpr (GridLayout::dimension > 2)
+            this->writeGhostsAttr_(
+                file, path, null ? 0 : attr[key + "_ghosts_z"].template to<std::size_t>(), null);
+    };
+
     auto initDS = [&](auto& path, auto& attr, std::string key, auto null) {
         auto dsPath = path + key;
         hi5.template createDataSet<float>(file, dsPath,
                                           null ? 0 : attr[key].template to<std::size_t>());
-        this->writeGhostsAttr_(file, dsPath,
-                               null ? 0 : attr[key + "_ghosts"].template to<std::size_t>(), null);
+        writeGhosts(dsPath, attr, key, null);
     };
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap)
@@ -143,9 +160,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
             auto vFPath = path + key + "_" + id;
             hi5.template createDataSet<float>(file, vFPath,
                                               null ? 0 : attr[key][id].template to<std::size_t>());
-            this->writeGhostsAttr_(file, vFPath,
-                                   null ? 0 : attr[key][id + "_ghosts"].template to<std::size_t>(),
-                                   null);
+            writeGhosts(vFPath, attr[key], id, null);
         }
     };
 
