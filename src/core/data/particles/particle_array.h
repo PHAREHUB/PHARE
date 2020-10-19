@@ -26,6 +26,11 @@ public:
     {
     }
 
+    ParticleArray(std::size_t size, Particle_t&& particle)
+        : particles(size, particle)
+    {
+    }
+
     std::size_t size() const { return particles.size(); }
 
     void clear() { return particles.clear(); }
