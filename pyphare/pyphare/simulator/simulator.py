@@ -79,13 +79,16 @@ class Simulator:
                          self.timeStep())
 
     def run(self):
-        times = self.times()
-        perf = np.zeros_like(times)
-        for it, t in enumerate(self.times()):
+        self._check_init()
+        perf = []
+        end_time = self.cpp_sim.endTime()
+        t = 0.
+        while t < end_time:
             tick  = timem.time()
             self.advance()
             tock = timem.time()
             perf[it] = tock-tick
+            t = self.cpp_sim.currenTime()
             print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, perf[it], np.sum(perf)))
 
         print("mean advance time = {}".format(np.mean(perf)))

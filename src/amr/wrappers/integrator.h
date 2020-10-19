@@ -111,7 +111,7 @@ namespace amr
         }
 
 
-        void advance(double dt) { timeRefIntegrator_->advanceHierarchy(dt); }
+        double advance(double dt) { return timeRefIntegrator_->advanceHierarchy(dt); }
 
 
     protected:
