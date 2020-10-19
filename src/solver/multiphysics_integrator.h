@@ -16,6 +16,7 @@
 
 
 #include "amr/messengers/messenger.h"
+#include "amr/tagging/tagger.h"
 
 #include "solver/physical_models/hybrid_model.h"
 #include "solver/physical_models/mhd_model.h"
@@ -37,10 +38,11 @@ namespace solver
 {
     struct LevelDescriptor
     {
-        static int const NOT_SET  = -1;
-        int modelIndex            = NOT_SET;
-        int solverIndex           = NOT_SET;
-        int resourcesManagerIndex = NOT_SET;
+        static int constexpr NOT_SET = -1;
+        int modelIndex               = NOT_SET;
+        int solverIndex              = NOT_SET;
+        int resourcesManagerIndex    = NOT_SET;
+        int taggerIndex              = NOT_SET;
         std::string messengerName;
     };
 
@@ -117,6 +119,21 @@ namespace solver
 
         auto nbrOfLevels() const { return nbrOfLevels_; }
 
+
+        void registerTagger(int coarsestLevel, int finestLevel,
+                            std::unique_ptr<PHARE::amr::Tagger> tagger)
+        {
+            if (!validLevelRange_(coarsestLevel, finestLevel))
+            {
+                throw std::runtime_error("invalid range level");
+            }
+            if (existTaggerOnRange_(coarsestLevel, finestLevel))
+            {
+                throw std::runtime_error(
+                    "error - level range contains levels with a registered tagger");
+            }
+            addTagger_(std::move(tagger), coarsestLevel, finestLevel);
+        }
 
 
 
@@ -296,7 +313,26 @@ namespace solver
                 }
             }
 
-            messenger.registerLevel(hierarchy, levelNumber);
+
+            if (oldLevel != nullptr)
+            {
+                // regriding the current level has broken schedules for which
+                // this level is the source or destination
+                // we therefore need to rebuild them
+                auto finestLvlNbr = hierarchy->getFinestLevelNumber();
+                auto nextFiner    = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
+
+                for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
+                {
+                    messenger.registerLevel(hierarchy, ilvl);
+                }
+            }
+            else
+            {
+                // we're not regriding, just making a new level
+                messenger.registerLevel(hierarchy, levelNumber);
+            }
+
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
@@ -312,13 +348,20 @@ namespace solver
 
 
 
-        void
-        applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                              int const levelNumber, double const /*error_data_time*/,
-                              int const /*tag_index*/, bool const /*initialTime*/,
-                              bool const /*usesRichardsonExtrapolationToo*/) override
+        void applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber, double const /*error_data_time*/,
+                                   int const tag_index, bool const /*initialTime*/,
+                                   bool const /*usesRichardsonExtrapolationToo*/) override
         {
             std::cout << "apply gradient detector on level " << levelNumber << "\n";
+
+            auto level = hierarchy->getPatchLevel(levelNumber);
+            for (auto& patch : *level)
+            {
+                auto& model  = getModel_(levelNumber);
+                auto& tagger = getTagger_(levelNumber);
+                tagger.tag(model, *patch, tag_index);
+            }
         }
 
 
@@ -397,7 +440,7 @@ namespace solver
             }
 
 
-            fromCoarser.prepareStep(model, *level);
+            fromCoarser.prepareStep(model, *level, currentTime);
 
 
             // we skip first/last as that's done via regular diag dump mechanism
@@ -476,6 +519,7 @@ namespace solver
         std::vector<LevelDescriptor> levelDescriptors_;
         std::vector<std::unique_ptr<ISolver<AMR_Types>>> solvers_;
         std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
+        std::vector<std::shared_ptr<PHARE::amr::Tagger>> taggers_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
 
@@ -489,6 +533,21 @@ namespace solver
                 return false;
             }
             return true;
+        }
+
+
+        bool existTaggerOnRange_(int coarsestLevel, int finestLevel)
+        {
+            bool hasTagger = true;
+
+            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+            {
+                if (levelDescriptors_[iLevel].taggerIndex != LevelDescriptor::NOT_SET)
+                {
+                    return hasTagger;
+                }
+            }
+            return !hasTagger;
         }
 
 
@@ -508,6 +567,20 @@ namespace solver
             return !hasModel;
         }
 
+
+        void addTagger_(std::unique_ptr<PHARE::amr::Tagger> tagger, int coarsestLevel,
+                        int finestLevel)
+        {
+            if (core::notIn(tagger, taggers_))
+            {
+                taggers_.push_back(std::move(tagger));
+                int taggerIndex = taggers_.size() - 1;
+                for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+                {
+                    levelDescriptors_[iLevel].taggerIndex = taggerIndex;
+                }
+            }
+        }
 
 
 
@@ -692,6 +765,32 @@ namespace solver
                                          + std::to_string(iLevel));
             return *models_[descriptor.modelIndex];
         }
+
+
+        amr::Tagger const& getTagger(int iLevel) const
+        {
+            auto& descriptor = levelDescriptors_[iLevel];
+            if (taggers_[descriptor.taggerIndex] == nullptr)
+            {
+                throw std::runtime_error("Error - no tagger assigned to level "
+                                         + std::to_string(iLevel));
+            }
+            return *taggers_[descriptor.taggerIndex];
+        }
+
+
+
+        amr::Tagger& getTagger_(int iLevel)
+        {
+            auto& descriptor = levelDescriptors_[iLevel];
+            if (taggers_[descriptor.taggerIndex] == nullptr)
+            {
+                throw std::runtime_error("Error - no tagger assigned to level "
+                                         + std::to_string(iLevel));
+            }
+            return *taggers_[descriptor.taggerIndex];
+        }
+
 
 
 

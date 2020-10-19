@@ -103,7 +103,9 @@ namespace amr
 
 
 
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                 double currentTime)
+            = 0;
 
 
         virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,

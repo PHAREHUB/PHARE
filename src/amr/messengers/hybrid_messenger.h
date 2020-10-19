@@ -172,9 +172,10 @@ namespace amr
         /**
          * @brief prepareStep see IMessenger::prepareStep
          */
-        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                         double currentTime) override
         {
-            strat_->prepareStep(model, level);
+            strat_->prepareStep(model, level, currentTime);
         }
 
 

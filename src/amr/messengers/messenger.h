@@ -190,7 +190,9 @@ namespace amr
          * advanceLevel function. The method sets the Messenger in a state that is ready for the
          * solver to actually use it during advanceLevel.
          */
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                 double currentTime)
+            = 0;
 
 
 

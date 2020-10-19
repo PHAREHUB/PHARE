@@ -172,7 +172,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/amr/messengers)
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
-
+  add_subdirectory(tests/amr/tagging)
 
   add_subdirectory(tests/diagnostic)
 
@@ -181,6 +181,8 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   add_subdirectory(tests/functional/alfven_wave)
   add_subdirectory(tests/functional/td)
+  add_subdirectory(tests/functional/tdtagged)
+
 
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)
