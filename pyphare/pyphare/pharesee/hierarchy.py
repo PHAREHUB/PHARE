@@ -197,7 +197,7 @@ def finest_data(pdata, ilvl, hierarchy):
     x_ = pdata.x
     v_ = pdata.dataset
 
-    if ilvl == finest_level(hierarchy):
+    if ilvl == hierarchy.finest_level():
         return x_,v_
 
     qtyname = pdata.field_name
@@ -398,10 +398,12 @@ class PatchHierarchy:
             ax.set_xlim(kwargs["xlim"])
         if "ylim" in kwargs:
             ax.set_ylim(kwargs["ylim"])
-        ax.legend()
+
+        if kwargs.get("legend", None) is not None:
+            ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(filename)
+            fig.savefig(kwargs["filename"])
 
 
     def dist_plot(self, **kwargs):
@@ -646,7 +648,7 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
             if dataset_name in patch_datas:
                 raise ValueError("error - {} already in patchdata".format(dataset_name))
 
-            patch_datas[dataset_name] = pdata
+            patch_datas[field_qties[dataset_name]] = pdata
 
     return True # valid patch assumed
 

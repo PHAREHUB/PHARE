@@ -239,10 +239,11 @@ import pyphare.pharein.global_vars as global_vars
 def main():
 
     for name,config in zip(("uni", "td"),(config_uni, config_td)):
-        params=[{"vx":0, "diagdir":name + "_vx0"},
-                {"vx":1,"diagdir":name + "_vx1"},
+        params=[{"vx":-1,"diagdir":name + "_vxm2"},
                 {"vx":2,"diagdir":name + "_vx2"}]
         for param in params:
+            if param["vx"] >-1:
+                continue
             print("-----------------------------------")
             print(param)
             print("-----------------------------------")

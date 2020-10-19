@@ -7,6 +7,8 @@
 #include "phare_core.h"
 #include "phare_types.h"
 
+#include "amr/tagging/tagger_factory.h"
+#include <chrono>
 
 
 namespace PHARE
@@ -153,9 +155,15 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
         // since for now it is the only model available
         // same for the solver
         multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
+
         multiphysInteg_->registerAndInitSolver(
             0, maxLevelNumber_ - 1, std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
+
         multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
+
+        // hard coded for now, should get some params later from the dict
+        auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "lohner");
+        multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
 
 
         auto startTime = 0.; // TODO make it runtime

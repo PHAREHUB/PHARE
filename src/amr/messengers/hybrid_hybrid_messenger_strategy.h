@@ -184,6 +184,7 @@ namespace amr
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
+
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
         }
@@ -410,36 +411,41 @@ namespace amr
          */
         void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
+            if (level.getLevelNumber() > 0)
             {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
+                auto& hybridModel = static_cast<HybridModel&>(model);
+                for (auto& patch : level)
                 {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
-
-                    core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-                    core::empty(levelGhostParticlesNew);
-                    core::empty(levelGhostParticles);
-                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
-                              std::back_inserter(levelGhostParticles));
-
-                    if (level.getLevelNumber() == 0)
+                    auto& ions       = hybridModel.state.ions;
+                    auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                    for (auto& pop : ions)
                     {
-                        if (levelGhostParticlesNew.size() != 0)
-                            throw std::runtime_error(
-                                "levelGhostParticlesNew detected in root level : "
-                                + std::to_string(levelGhostParticlesNew.size()));
-                        if (levelGhostParticles.size() != 0)
-                            throw std::runtime_error("levelGhostParticles detected in root level : "
-                                                     + std::to_string(levelGhostParticles.size()));
-                        if (levelGhostParticlesOld.size() != 0)
-                            throw std::runtime_error(
-                                "levelGhostParticlesOld detected in root level : "
-                                + std::to_string(levelGhostParticlesOld.size()));
+                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                        auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                        auto& levelGhostParticles    = pop.levelGhostParticles();
+
+                        core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                        core::empty(levelGhostParticlesNew);
+                        core::empty(levelGhostParticles);
+                        std::copy(std::begin(levelGhostParticlesOld),
+                                  std::end(levelGhostParticlesOld),
+                                  std::back_inserter(levelGhostParticles));
+
+                        if (level.getLevelNumber() == 0)
+                        {
+                            if (levelGhostParticlesNew.size() != 0)
+                                throw std::runtime_error(
+                                    "levelGhostParticlesNew detected in root level : "
+                                    + std::to_string(levelGhostParticlesNew.size()));
+                            if (levelGhostParticles.size() != 0)
+                                throw std::runtime_error(
+                                    "levelGhostParticles detected in root level : "
+                                    + std::to_string(levelGhostParticles.size()));
+                            if (levelGhostParticlesOld.size() != 0)
+                                throw std::runtime_error(
+                                    "levelGhostParticlesOld detected in root level : "
+                                    + std::to_string(levelGhostParticlesOld.size()));
+                        }
                     }
                 }
             }
@@ -447,16 +453,15 @@ namespace amr
 
 
 
-
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
-         * This method copies the current model electromagnetic field and current, defined at t=n.
-         * Since prepareStep() is called just before advancing the level, this operation actually
-         * saves the t=n electromagnetic field and current into the messenger. When the time comes
-         * that the next finer level needs to time interpolate the electromagnetic field and current
-         * at its ghost nodes, this level will have its model EM field  and current at t=n+1 and
-         * thanks to this methods, the t=n field will be in the messenger.
+         * This method copies the current model electromagnetic field and current, defined at
+         * t=n. Since prepareStep() is called just before advancing the level, this operation
+         * actually saves the t=n electromagnetic field and current into the messenger. When the
+         * time comes that the next finer level needs to time interpolate the electromagnetic
+         * field and current at its ghost nodes, this level will have its model EM field  and
+         * current at t=n+1 and thanks to this methods, the t=n field will be in the messenger.
          */
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
@@ -590,12 +595,12 @@ namespace amr
          *
          * @param ghostVec is the collection of VecFieldDescriptor. Each VecFieldDescriptor
          * corresponds to a VecField for which ghosts will be needed.
-         * @param modelVec is VecFieldDescriptor for the model VecField associated with the VecField
-         * for which ghosts are needed. When ghosts are filled, this quantity is taken on the
-         * coarser level and is definer at t_coarse+dt_coarse
+         * @param modelVec is VecFieldDescriptor for the model VecField associated with the
+         * VecField for which ghosts are needed. When ghosts are filled, this quantity is taken
+         * on the coarser level and is definer at t_coarse+dt_coarse
          * @param oldModelVec is the VecFieldDescriptor for the VecField for which ghosts are
-         * needed, at t_coarse. These are typically internal variables of the messenger, like Eold
-         * or Bold.
+         * needed, at t_coarse. These are typically internal variables of the messenger, like
+         * Eold or Bold.
          */
         void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
                            VecFieldDescriptor const& modelVec,

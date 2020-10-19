@@ -40,7 +40,7 @@ public:
 
     GridLayoutT layout;
     ParticleArrayT particles;
-    std::uint32_t nbrParticlesPerCell{1000};
+    std::uint32_t nbrParticlesPerCell{10000};
     std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
 };
 
@@ -68,6 +68,8 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
         auto pos       = positionAsPoint(particle, layout);
         auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
+        if (!((pos[0] > 0.) and (pos[0] < endDomain)))
+            std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << "\n";
         EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
         i++;
     }
