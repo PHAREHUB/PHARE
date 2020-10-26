@@ -74,9 +74,13 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
         for (auto& [id, type] : core::Components::componentMap)
         {
-            attr[name][id]             = vecF.getComponent(type).size();
-            attr[name][id + "_ghosts"] = static_cast<std::size_t>(GridLayout::nbrGhosts(
-                GridLayout::centering(vecF.getComponent(type).physicalQuantity())[0]));
+            attr[name][id] = vecF.getComponent(type).size();
+            auto ghosts    = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
+            attr[name][id + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
+            if constexpr (GridLayout::dimension > 1)
+                attr[name][id + "_ghosts_y"] = static_cast<std::size_t>(ghosts[1]);
+            if constexpr (GridLayout::dimension > 2)
+                attr[name][id + "_ghosts_z"] = static_cast<std::size_t>(ghosts[2]);
         }
     };
 
@@ -105,9 +109,20 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
             auto vFPath = path + "/" + key + "_" + id;
             hi5.template createDataSet<float>(file, vFPath,
                                               null ? 0 : attr[key][id].template to<std::size_t>());
-            this->writeGhostsAttr_(file, vFPath,
-                                   null ? 0 : attr[key][id + "_ghosts"].template to<std::size_t>(),
-                                   null);
+
+            this->writeGhostsAttr_(
+                file, vFPath, null ? 0 : attr[key][id + "_ghosts_x"].template to<std::size_t>(),
+                null);
+
+            if constexpr (GridLayout::dimension > 1)
+                this->writeGhostsAttr_(
+                    file, vFPath, null ? 0 : attr[key][id + "_ghosts_y"].template to<std::size_t>(),
+                    null);
+
+            if constexpr (GridLayout::dimension > 2)
+                this->writeGhostsAttr_(
+                    file, vFPath, null ? 0 : attr[key][id + "_ghosts_z"].template to<std::size_t>(),
+                    null);
         }
     };
 

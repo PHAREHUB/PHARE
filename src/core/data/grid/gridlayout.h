@@ -524,6 +524,16 @@ namespace core
             return nbrGhosts;
         }
 
+        template<typename Quantity>
+        static std::array<std::uint32_t, dimension> nDNbrGhosts(Quantity quantity)
+        {
+            auto centerings = centering(quantity);
+            std::array<std::uint32_t, dimension> ghosts;
+            for (std::size_t i = 0; i < dimension; i++)
+                ghosts[i] = nbrGhosts(centerings[i]);
+            return ghosts;
+        }
+
 
         /**
          * @brief changeCentering changes primal into dual and vice versa.
