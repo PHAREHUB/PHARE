@@ -16,7 +16,9 @@ def simulator_shutdown():
 
 def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
     from pybindlibs import cpp
-    return getattr(cpp, "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart))(hier)
+    make_sim = "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart)
+    print("make_sim", make_sim)
+    return getattr(cpp, make_sim)(hier)
 
 
 def startMPI():
@@ -53,7 +55,7 @@ class Simulator:
             self.cpp_hier = cpp.make_hierarchy()
 
             self.cpp_sim = make_cpp_simulator(
-              self.simulation.dims, self.simulation.interp_order, self.simulation.refined_particle_nbr, self.cpp_hier
+              self.simulation.ndim, self.simulation.interp_order, self.simulation.refined_particle_nbr, self.cpp_hier
             )
 
             self.cpp_sim.initialize()
@@ -144,7 +146,7 @@ class Simulator:
 
     def interp_order(self):
         self._check_init()
-        return self.cpp_sim.interp_order()
+        return self.cpp_sim.interp_order # constexpr static value
 
 
 

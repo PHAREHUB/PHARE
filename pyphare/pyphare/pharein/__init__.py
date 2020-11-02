@@ -72,10 +72,10 @@ def populateDict():
     import pybindlibs.dictator as pp
 
     add = pp.add
-    addInitFunction = getattr(pp, 'addInitFunction{:d}'.format(simulation.dims)+'D')
+    addInitFunction = getattr(pp, 'addInitFunction{:d}'.format(simulation.ndim)+'D')
 
     add("simulation/name", "simulation_test")
-    add("simulation/dimension", simulation.dims)
+    add("simulation/dimension", simulation.ndim)
     add("simulation/boundary_types", simulation.boundary_types[0])
 
     if simulation.smallest_patch_size is not None:
@@ -86,18 +86,18 @@ def populateDict():
 
     add("simulation/grid/layout_type", simulation.layout)
     add("simulation/grid/nbr_cells/x", int(simulation.cells[0]))
-    add("simulation/grid/meshsize/x", float(simulation.dl[0]))
-    add("simulation/grid/origin/x", float(simulation.origin[0]))
+    add("simulation/grid/meshsize/x", simulation.dl[0])
+    add("simulation/grid/origin/x", simulation.origin[0])
 
-    if (simulation.dims>1):
+    if (simulation.ndim>1):
         add("simulation/grid/nbr_cells/y", int(simulation.cells[1]))
-        add("simulation/grid/meshsize/y", float(simulation.dl[1]))
-        add("simulation/grid/origin/y", float(simulation.origin[1]))
+        add("simulation/grid/meshsize/y", simulation.dl[1])
+        add("simulation/grid/origin/y", simulation.origin[1])
 
-        if (simulation.dims >2):
+        if (simulation.ndim >2):
             add("simulation/grid/nbr_cells/z", int(simulation.cells[2]))
-            add("simulation/grid/meshsize/z", float(simulation.dl[2]))
-            add("simulation/grid/origin/z", float(simulation.origin[2]))
+            add("simulation/grid/meshsize/z", simulation.dl[2])
+            add("simulation/grid/origin/z", simulation.origin[2])
 
 
 

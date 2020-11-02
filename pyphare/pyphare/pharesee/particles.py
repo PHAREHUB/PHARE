@@ -11,12 +11,13 @@ class Particles:
         if "box" in kwargs:
             box = kwargs["box"]
 
-            self.iCells  = np.random.randint(box.lower, high=box.upper+1, size=box.size()*100)
-            self.deltas  = np.random.rand(box.size()*100)
-            self.v       = np.random.randn(box.size()*100, 3)
-            self.weights = np.zeros_like(self.deltas) + 0.01
+            self.iCells  = np.random.randint(box.lower, high=box.upper+1, size=(box.cells()*100, box.ndim))
+            self.deltas  = np.random.rand(box.cells()*100, box.ndim)
+            self.v       = np.random.randn(box.cells()*100, 3)
+            self.weights = np.zeros(self.deltas.shape[0]) + 0.01
             self.charges = np.zeros_like(self.weights) + 1
-            self.dl       = np.zeros(box.dim())+0.1
+            self.dl       = np.zeros(box.ndim)+0.1
+            ndim = len(box.lower)
 
         else:
             self.iCells  = kwargs["icells"]
@@ -26,11 +27,36 @@ class Particles:
             self.charges = kwargs["charges"]
             self.dl      = kwargs["dl"]
             self._x = None
+            self._y = None
+            ndim = self.iCells.ndim
+
+        assert len(self.weights.shape) == 1
+        assert len(self.charges.shape) == 1
+
+        assert self.iCells.ndim == self.deltas.ndim
+        assert self.iCells.shape == self.deltas.shape
+
+        # we like to maintain iCells/deltas in reshaped form per ndim
+        needs_reshaping = ndim == 1 and int(len(self.iCells) / self.size()) > 1
+        if needs_reshaping:
+            nICells = len(self.iCells)
+            assert nICells % self.size() == 0 # perfect division
+            ndim = int(nICells / self.size())
+            assert ndim in [1, 2, 3]
+            self.iCells = np.asarray(self.iCells).reshape(int(nICells / ndim), ndim)
+            self.deltas = np.asarray(self.deltas).reshape(int(nICells / ndim), ndim)
+
+        assert self.iCells.shape[0] == self.size()
+        assert self.iCells.ndim == self.deltas.ndim
+        assert self.iCells.shape == self.deltas.shape
+
+        self.ndim = ndim
+
 
     @property
     def x(self):
         if self._x is None:
-            self._x = self.dl*(self.iCells[:] + self.deltas[:])
+            self._x = self.dl[0]*(self.iCells[:,0] + self.deltas[:,0])
         return self._x
 
 
@@ -46,6 +72,7 @@ class Particles:
     def shift_icell(self, offset):
         self.iCells += offset
         self._x = None
+        self._y = None
         return self
 
     def size(self):
@@ -67,10 +94,19 @@ class Particles:
         select particles from the given box
         assumption, box has AMR indexes of the same level as the data that the current instance is created from
         """
+        assert len(box.lower) == self.ndim
+
         if box_type=="cell":
-            idx = np.where((self.iCells >= box.lower[0]) & (self.iCells <= box.upper[0]))[0]
+
+            if self.ndim == 1:
+                idx = np.where((self.iCells >= box.lower) & (self.iCells <= box.upper))[0]
+            else:
+                def isin(p, b):
+                    return p in b
+                idx = np.where(np.apply_along_axis(isin, 1, self.iCells, box))[0]
 
         elif box_type=="pos":
+            assert self.ndim == 1 # unhandled otherwise
             idx = np.where((self.x > box.lower[0]) & (self.x < box.upper[0]))[0]
 
         else:
@@ -84,10 +120,11 @@ class Particles:
                          dl = self.dl)
 
 
+
     def split(self, sim): # REQUIRES C++ PYBIND PHARE LIB
         from pyphare.cpp import split_pyarrays_fn
 
-        split_pyarrays = split_pyarrays_fn(sim.dims, sim.interp_order, sim.refined_particle_nbr)(
+        split_pyarrays = split_pyarrays_fn(sim.ndim, sim.interp_order, sim.refined_particle_nbr)(
           (self.iCells, self.deltas, self.weights, self.charges, self.v)
         )
         return Particles(

@@ -1,14 +1,17 @@
 
+
+import os
+import numpy as np
+
+from .particles import Particles
+
 from ..core import box as boxm
 from ..core.box import Box
-import numpy as np
-import os
 from ..core.gridlayout import GridLayout
-from .particles import Particles
 from ..data.wrangler import DataWrangler
 import matplotlib.pyplot as plt
 import seaborn as sns
-from ..core.phare_utilities import np_array_ify, is_scalar
+from ..core.phare_utilities import np_array_ify, is_scalar, listify
 
 
 class PatchData:
@@ -42,6 +45,23 @@ class FieldData(PatchData):
             self._x = self.layout.yeeCoordsFor(self.field_name, "x")
         return self._x
 
+    @property
+    def y(self):
+        if self._y is None:
+            self._y = self._mesh_coords(1)
+        return self._y
+
+    @property
+    def z(self):
+        if self._z is None:
+            self._z = self._mesh_coords(2)
+        return self._z
+
+    def __str__(self):
+        return "FieldData: (box=({}, {}), key={})".format(self.layout.box, self.layout.box.shape, self.field_name)
+    def __repr__(self):
+        return self.__str__()
+
     def __init__(self, layout, field_name, data, **kwargs):
         """
         :param layout: A GridLayout representing the domain on which data is defined
@@ -50,23 +70,27 @@ class FieldData(PatchData):
         """
         super().__init__(layout, 'field')
         self._x = None
+        self._y = None
+        self._z = None
 
         self.layout = layout
         self.field_name = field_name
+        self.name = field_name
         self.dx = layout.dl[0] # dropped in 2d_py_init PR - use dl[0]
-        self.dl = layout.dl
-        self.dim = layout.box.dim()
-        self.ghosts_nbr = np.zeros(self.dim)
+
+        self.dl = np.asarray(layout.dl)
+        self.ndim = layout.box.ndim
+        self.ghosts_nbr = np.zeros(self.ndim, dtype=int)
 
         if field_name in layout.centering["X"]:
-            directions = ["X", "Y", "Z"][:self.dim] # drop unused directions
+            directions = ["X", "Y", "Z"][:layout.box.ndim] # drop unused directions
             centerings = [layout.qtyCentering(field_name, direction) for direction in directions]
         elif "centering" in kwargs:
             if isinstance(kwargs["centering"], list):
                 centerings = kwargs["centering"]
-                assert len(centerings) == self.dim
+                assert len(centerings) == self.ndim
             else:
-                if self.dim != 1:
+                if self.ndim != 1:
                     raise ValueError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
                 centerings = [kwargs["centering"]]
         else:
@@ -77,14 +101,14 @@ class FieldData(PatchData):
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
 
-        self.size = np.zeros(self.dim, dtype=int)
-        self.offset = np.zeros(self.dim)
+        self.size = np.copy(self.ghost_box.shape)
+        self.offset = np.zeros(self.ndim)
 
         for i, centering in enumerate(centerings):
             if centering == "primal":
-                self.size[i] = self.ghost_box.shape()[i] + 1
+                self.size[i] = self.ghost_box.shape[i] + 1
             else:
-                self.size[i] = self.ghost_box.shape()[i]
+                self.size[i] = self.ghost_box.shape[i]
                 self.offset[i] = 0.5*self.dl[i]
 
         self.dataset = data
@@ -103,14 +127,19 @@ class ParticleData(PatchData):
         super().__init__(layout, 'particles')
         self.dataset = data
         self.pop_name = pop_name
+        self.name = pop_name
+        self.ndim = layout.box.ndim
+
+        self.pop_name = pop_name
         if layout.interp_order == 1:
-            self.ghosts_nbr = [1] * layout.box.dim()
+            self.ghosts_nbr = np.array([1] * layout.box.ndim)
         elif layout.interp_order == 2 or layout.interp_order == 3:
-            self.ghosts_nbr = [2] * layout.box.dim()
+            self.ghosts_nbr = np.array([2] * layout.box.ndim)
         else:
             raise RuntimeError("invalid interpolation order {}".format(layout.interp_order))
-        self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
 
+        self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
+        assert (self.box.lower == self.ghost_box.lower + self.ghosts_nbr).all()
 
 
 class Patch:
@@ -128,8 +157,10 @@ class Patch:
         self.layout = pdata0.layout
         self.box = pdata0.layout.box
         self.origin = pdata0.layout.origin
-        self.dx = pdata0.layout.dl[0]
+        self.dl = pdata0.layout.dl
         self.patch_datas = patch_datas
+
+
 
 
 class PatchLevel:
@@ -154,7 +185,7 @@ class PatchHierarchy:
 
     def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
         self.patch_levels = patch_levels
-        self.dim = len(domain_box.lower)
+        self.ndim = len(domain_box.lower)
         self.time_hier = {}
         self.time_hier.update({time:patch_levels})
 
@@ -189,6 +220,13 @@ class PatchHierarchy:
         assert (level_number >= 0)
         return boxm.refine(self.domain_box, self.refinement_ratio ** level_number)
 
+
+    def level_domain_box(self, level_number):
+        if level_number == 0:
+            return self.domain_box
+        return self.refined_domain_box(level_number)
+
+
     def __str__(self):
         s = "Hierarchy: \n"
         for t, patch_levels in self.time_hier.items():
@@ -210,7 +248,7 @@ class PatchHierarchy:
         for ilvl, lvl in self.time_hier[0.].items():
             lvl_offset = ilvl * 0.1
             for patch in lvl.patches:
-                dx = patch.dx
+                dx = patch.dl[0]
                 x0 = patch.box.lower * dx
                 x1 = patch.box.upper * dx
                 xcells = np.arange(x0, x1 + dx, dx)
@@ -218,6 +256,53 @@ class PatchHierarchy:
                 ax.plot(xcells, y, marker=".")
 
         fig.savefig("hierarchy.png")
+
+
+    def box_to_Rectangle(self, box):
+        from matplotlib.patches import Rectangle
+        return Rectangle(box.lower, *box.shape)
+
+
+
+    def plot_2d_patches(self, ilvl, collections, **kwargs):
+        if isinstance(collections, list) and all([isinstance(el, Box) for el in collections]):
+            collections = [{"boxes" : collections}]
+
+        from matplotlib.collections import PatchCollection
+
+        level_domain_box = self.level_domain_box(ilvl)
+        mi, ma = level_domain_box.lower.min(), level_domain_box.upper.max()
+
+        fig, ax = kwargs.get("subplot", plt.subplots(figsize=(6, 6)))
+
+        for collection in collections:
+            facecolor = collection.get("facecolor", "none")
+            edgecolor = collection.get("edgecolor", 'purple')
+            alpha = collection.get("alpha", 1)
+            rects = [self.box_to_Rectangle(box) for box in collection["boxes"]]
+
+            ax.add_collection(PatchCollection(rects,
+                              facecolor=facecolor,
+                              alpha=alpha,
+                              edgecolor=edgecolor))
+
+        if "title" in kwargs:
+            from textwrap import wrap
+            xfigsize = int(fig.get_size_inches()[0] * 10) # 10 characters per inch
+            ax.set_title("\n".join(wrap(kwargs["title"], xfigsize)))
+
+        major_ticks = np.arange(mi - 5, ma + 5 + 5, 5)
+        ax.set_xticks(major_ticks)
+        ax.set_yticks(major_ticks)
+
+        minor_ticks = np.arange(mi - 5, ma + 5 + 5, 1)
+        ax.set_xticks(minor_ticks, minor=True)
+        ax.set_yticks(minor_ticks, minor=True)
+
+        ax.grid(which='both')
+
+        return fig
+
 
 
     def plot(self, **kwargs):
@@ -399,13 +484,13 @@ def is_pop_fluid_file(basename):
 
 
 
-def make_layout(h5_patch_grp, cell_width):
+def make_layout(h5_patch_grp, cell_width, interp_order):
     nbrCells = h5_patch_grp.attrs['nbrCells']
-    origin = float(h5_patch_grp.attrs['origin'])
-    upper = int(h5_patch_grp.attrs['upper'])
-    lower = int(h5_patch_grp.attrs['lower'])
+    origin = h5_patch_grp.attrs['origin']
+    upper = h5_patch_grp.attrs['upper']
+    lower = h5_patch_grp.attrs['lower']
 
-    return GridLayout(Box(lower, upper), origin, cell_width)
+    return GridLayout(Box(lower, upper), origin, cell_width, interp_order=interp_order)
 
 
 
@@ -523,8 +608,10 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     import h5py
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
-    root_cell_width = float(data_file.attrs["cell_width"])
-    domain_box = Box(0, int(data_file.attrs["domain_box"]))
+
+    root_cell_width = np.asarray(data_file.attrs["cell_width"])
+    interp = data_file.attrs["interpOrder"]
+    domain_box = Box([0] * len(data_file.attrs["domain_box"]), data_file.attrs["domain_box"])
 
     if create_from_all_times(time, hier):
         # first create from first time
@@ -559,7 +646,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
                 if patch_has_datasets(h5_patch_grp):
                     patch_datas = {}
-                    layout = make_layout(h5_patch_grp, lvl_cell_width)
+                    layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
                     add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
 
                     if ilvl not in patches:
@@ -599,16 +686,16 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
                     if patch_has_datasets(h5_patch_grp):
                         hier_patch = patch_levels[ilvl].patches[ipatch]
-                        origin = float(h5_time_grp[plvl_key][pkey].attrs['origin'])
-                        upper = int(h5_time_grp[plvl_key][pkey].attrs['upper'])
-                        lower = int(h5_time_grp[plvl_key][pkey].attrs['lower'])
+                        origin = h5_time_grp[plvl_key][pkey].attrs['origin']
+                        upper = h5_time_grp[plvl_key][pkey].attrs['upper']
+                        lower = h5_time_grp[plvl_key][pkey].attrs['lower']
                         file_patch_box = Box(lower, upper)
 
                         assert file_patch_box == hier_patch.box
-                        assert abs(origin - hier_patch.origin[0]) < 1e-6
-                        assert abs(lvl_cell_width - hier_patch.dx) < 1e-6
+                        assert (abs(origin - hier_patch.origin) < 1e-6).all()
+                        assert (abs(lvl_cell_width - hier_patch.dl) < 1e-6).all()
 
-                        layout = make_layout(h5_patch_grp, lvl_cell_width)
+                        layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
                         add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
 
             return hier
@@ -631,7 +718,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                 h5_patch_grp = h5_time_grp[plvl_key][pkey]
 
                 if patch_has_datasets(h5_patch_grp):
-                    layout = make_layout(h5_patch_grp, lvl_cell_width)
+                    layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
                     patch_datas = {}
                     add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
                     lvl_patches.append(Patch(patch_datas))
@@ -690,8 +777,9 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 
-    root_cell_width = float(simulator.cell_width())
-    domain_box = Box(0, int(simulator.domain_box()))
+    root_cell_width = simulator.cell_width()
+    domain_box = Box([0] * len(root_cell_width) , simulator.domain_box())
+    assert len(domain_box.ndim) == len(simulator.domain_box().ndim)
 
     for ilvl in range(nbr_levels):
 
@@ -705,9 +793,9 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             wpatches = getters[qty]()
             for patch in wpatches:
                 patch_datas = {}
-                lower = int(patch.lower[0])
-                upper = int(patch.upper[0])
-                origin = float(patch.origin)
+                lower = patch.lower
+                upper = patch.upper
+                origin = patch.origin
                 layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order = simulator.interporder())
                 pdata = FieldData(layout, field_qties[qty], patch.data)
                 patch_datas[qty] = pdata
@@ -733,11 +821,10 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for patch in dom_dw_patches:
                 patch_datas= {}
 
-                lower = int(patch.lower[0])
-                upper = int(patch.upper[0])
-                origin = float(patch.origin)
+                lower = patch.lower
+                upper = patch.upper
+                origin = patch.origin
                 layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order=simulator.interp_order())
-
                 v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
 
                 domain_particles = Particles(icells = np.asarray(patch.data.iCell),
@@ -773,10 +860,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                                                      weights=np.asarray(dwpatch.data.weight),
                                                      charges=np.asarray(dwpatch.data.charge))
 
-                        lower = int(dwpatch.lower[0])
-                        upper = int(dwpatch.upper[0])
-
-                        box = Box(lower, upper)
+                        box = Box(dwpatch.lower, dwpatch.upper)
 
                         # now search which of the already created patches has the same box
                         # once found we add the new particles to the ones already present
@@ -827,7 +911,6 @@ def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=N
     if simulator is not None and qty is not None:
         return hierarchy_from_sim(simulator, qty, pop=pop)
 
-    print(h5_filename)
     raise ValueError("can't make hierarchy")
 
 
@@ -857,3 +940,8 @@ def merge_particles(hierarchy):
                 popname = domain_pdata[0].split('_')[0]
                 pdatas[popname+"_particles"] = pdatas[domain_pdata[0]]
                 del pdatas[domain_pdata[0]]
+
+
+def h5_filename_from(diagInfo):
+    # diagInfo.quantity starts with a / , hence   [1:]
+    return (diagInfo.quantity + ".h5").replace('/', '_')[1:]

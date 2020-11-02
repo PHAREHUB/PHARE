@@ -17,7 +17,7 @@ def init(ghost_box, layout, L, qty, fn):
 
     assert layout.impl == "yee"
 
-    ndim = ghost_box.dim()
+    ndim = ghost_box.ndim
 
     dl, origin = layout.dl, layout.origin
     xyz, directions = [], ["x", "y", "z"][: ndim]
@@ -26,7 +26,7 @@ def init(ghost_box, layout, L, qty, fn):
         nbrGhosts = layout.nbrGhosts(primal, layout.interp_order)
         xyz.append(
             origin[dimdex]
-            + np.arange(ghost_box.shape()[dimdex] + primal) * dl[dimdex]
+            + np.arange(ghost_box.shape[dimdex] + primal) * dl[dimdex]
             - nbrGhosts * dl[dimdex]
         )
 
@@ -65,9 +65,10 @@ def Ez(ghost_box, layout, L):
     return init(ghost_box, layout, L, "Ez", lambda i, v : np.sin(4 * np.pi / L[i] * v))
 
 
-def build_refinementboxes(domain_box, **kwargs):
+def build_boxes(domain_box, **kwargs):
 
     refinement_ratio = kwargs["refinement_ratio"]
+    ndim = domain_box.ndim
 
     boxes = {}
     for ilvl, boxes_data in kwargs["refinement_boxes"].items():
@@ -85,21 +86,39 @@ def build_refinementboxes(domain_box, **kwargs):
                 boxes[level_number].append(refined_box)
 
         else:
-            for boxname, lower_upper in boxes_data.items():
-                refinement_box = Box(lower_upper[0][0], lower_upper[1][0])
+            for boxname, box in boxes_data.items():
+                if isinstance(box, Box):
+                    refinement_box = Box(box.lower, box.upper)
+                else:
+                    refinement_box = Box(box[0], box[1])
                 refined_box = boxm.refine(refinement_box, refinement_ratio)
                 boxes[level_number].append(refined_box)
 
     # coarse level boxes are arbitrarily divided in 2 patches in the middle
-    middle_cell = np.round(domain_box.upper / 2)
-    lower_box = Box(0, middle_cell)
-    upper_box = Box(middle_cell + 1, domain_box.upper)
+
+    if ndim == 1:
+        middle_cell = np.round(domain_box.upper / 2)
+        lower_box = Box(0, middle_cell)
+        upper_box = Box(middle_cell + 1, domain_box.upper)
+
+
+    if ndim >= 2:
+        middle_cell = np.round(domain_box.upper / 2)
+        lower_box = Box([0] * ndim, middle_cell - 1)
+        upper_box = Box(middle_cell, domain_box.upper)
+
     boxes[0] = [lower_box, upper_box]
+
+    if ndim >= 2:
+        boxes[0].append(Box([0, middle_cell[1]], [middle_cell[0] - 1, domain_box.upper[1]]))
+        boxes[0].append(Box([middle_cell[0], 0], [domain_box.upper[0], middle_cell[1] - 1]))
 
     return boxes
 
 
 def build_patch_datas(domain_box, boxes, **kwargs):
+    ndim = domain_box.ndim
+
     quantities = kwargs["quantities"]
     origin = kwargs["origin"]
     interp_order = kwargs["interp_order"]
@@ -129,8 +148,8 @@ def build_patch_datas(domain_box, boxes, **kwargs):
         upper_cell_particles = coarse_particles.select(upper_slct_box)
         lower_cell_particles = coarse_particles.select(lower_slct_box)
 
-        coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.shape()))
-        coarse_particles.add(lower_cell_particles.shift_icell(domain_box.shape()))
+        coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.shape))
+        coarse_particles.add(lower_cell_particles.shift_icell(domain_box.shape))
 
     patch_datas = {}
 
@@ -143,7 +162,8 @@ def build_patch_datas(domain_box, boxes, **kwargs):
                 lvl_particles = coarse_particles
             else:
                 level_domain_box = boxm.refine(domain_box, refinement_ratio)
-                lvl_ghost_domain_box = boxm.grow(level_domain_box, domain_layout.particleGhostNbr(interp_order))
+                grow_by = [domain_layout.particleGhostNbr(interp_order)] * ndim
+                lvl_ghost_domain_box = boxm.grow(level_domain_box, grow_by)
                 lvl_particles = Particles(box = lvl_ghost_domain_box)
 
         if ilvl not in patch_datas:
@@ -151,7 +171,7 @@ def build_patch_datas(domain_box, boxes, **kwargs):
 
         for box in lvl_box:
 
-            ghost_box = boxm.grow(box, 5)
+            ghost_box = boxm.grow(box, [5] * ndim)
             origin = box.lower * lvl_cell_width
             layout = GridLayout(box, origin, lvl_cell_width, interp_order)
 
@@ -213,15 +233,18 @@ def build_hierarchy(**kwargs):
      """
     kwargs = build_kwargs(**kwargs)
 
-    nbr_cells = kwargs["nbr_cells"]
+    nbr_cells = np.asarray(kwargs["nbr_cells"])
     origin = kwargs["origin"]
+    dim = len(origin)
+    if dim > 1:
+        assert len(nbr_cells) == dim
     interp_order = kwargs["interp_order"]
     domain_size = kwargs["domain_size"]
     cell_width = kwargs["cell_width"]
     refinement_ratio = kwargs["refinement_ratio"]
 
-    domain_box = boxm.Box(0, nbr_cells - 1)
-    boxes = build_refinementboxes(domain_box, **kwargs)
+    domain_box = boxm.Box([0] * dim, nbr_cells - 1)
+    boxes = build_boxes(domain_box, **kwargs)
     patch_datas = build_patch_datas(domain_box, boxes, **kwargs)
 
     patches = {ilvl: [] for ilvl in list(patch_datas.keys())}

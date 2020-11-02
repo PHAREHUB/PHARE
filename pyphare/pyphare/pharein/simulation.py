@@ -150,9 +150,9 @@ def check_path(**kwargs):
 # ------------------------------------------------------------------------------
 
 
-def check_boundaries(dims, **kwargs):
+def check_boundaries(ndim, **kwargs):
     valid_boundary_types = ("periodic",)
-    boundary_types = kwargs.get('boundary_types', ['periodic'] * dims)
+    boundary_types = kwargs.get('boundary_types', ['periodic'] * ndim)
     phare_utilities.check_iterables(boundary_types)
 
     if phare_utilities.none_iterable(boundary_types):
@@ -166,8 +166,8 @@ def check_boundaries(dims, **kwargs):
             if bc not in valid_boundary_types:
                 raise ValueError("Error: '{}' is not a valid boundary type".format(bc))
 
-    if bc_length != dims:
-        raise ValueError("Error- boundary_types should have length {} and is of length {}".format(dims, bc_length))
+    if bc_length != ndim:
+        raise ValueError("Error- boundary_types should have length {} and is of length {}".format(ndim, bc_length))
 
     return boundary_types
 
@@ -195,14 +195,14 @@ valid_refined_particle_nbr = {
     3: [6, 7, 8, 9, 12, 13, 14, 15, 18, 19, 20, 21, 26, 27, 125]
   }
 } # Default refined_particle_nbr per dim/interp is considered index 0 of list
-def check_refined_particle_nbr(dims, **kwargs):
+def check_refined_particle_nbr(ndim, **kwargs):
 
     interp = kwargs["interp_order"]
-    refined_particle_nbr = kwargs.get("refined_particle_nbr", valid_refined_particle_nbr[dims][interp][0])
+    refined_particle_nbr = kwargs.get("refined_particle_nbr", valid_refined_particle_nbr[ndim][interp][0])
 
-    if refined_particle_nbr not in valid_refined_particle_nbr[dims][interp]:
-        raise ValueError("Invalid split particle number, valid values for dim({}) ".format(dims)
-            + "interp({}) include {}".format(interp, valid_refined_particle_nbr[dims][interp]))
+    if refined_particle_nbr not in valid_refined_particle_nbr[ndim][interp]:
+        raise ValueError("Invalid split particle number, valid values for dim({}) ".format(ndim)
+            + "interp({}) include {}".format(interp, valid_refined_particle_nbr[ndim][interp]))
 
     return refined_particle_nbr
 
@@ -211,8 +211,8 @@ def check_refined_particle_nbr(dims, **kwargs):
 # ------------------------------------------------------------------------------
 
 
-def check_origin(dims, **kwargs):
-    origin = kwargs.get("origin", [0.] * dims)
+def check_origin(ndim, **kwargs):
+    origin = kwargs.get("origin", [0.] * ndim)
     return origin
 
 
@@ -251,7 +251,7 @@ def as_list_per_level(refinement_boxes):
 
     return list_per_level
 
-def check_refinement_boxes(dims, **kwargs):
+def check_refinement_boxes(ndim, **kwargs):
     """
       returns tuple ( { "L0" : [Boxes]}, max_nbr_levels)
     """
@@ -266,7 +266,7 @@ def check_refinement_boxes(dims, **kwargs):
     nesting_buffer = kwargs["nesting_buffer"]
 
     refinement_boxes = as_list_per_level(refinement_boxes)
-    domain_box = Box([0] * dims, np.asarray(kwargs["cells"]) - 1)
+    domain_box = Box([0] * ndim, np.asarray(kwargs["cells"]) - 1)
 
     boxes_per_level = {0: [domain_box]}
 
@@ -287,13 +287,13 @@ def check_refinement_boxes(dims, **kwargs):
         for box in boxes:
             refined_coarser_boxes = boxes_per_level[ilvl]
 
-            if not any([box in boxm.shrink(refined_coarser, [nesting_buffer] * dims) for refined_coarser in refined_coarser_boxes]):
+            if not any([box in boxm.shrink(refined_coarser, [nesting_buffer] * ndim) for refined_coarser in refined_coarser_boxes]):
                 raise ValueError(f"Box({box}) is incompatible with coarser boxes({refined_coarser_boxes}) and nest_buffer({nesting_buffer})")
 
-            if box.dim() != dims:
-                print("box.dim() != dims", box.dim(), dims)
+            if box.ndim != ndim:
+                print("box.ndim != ndim", box.ndim, ndim)
                 raise ValueError(f"Box({box}) has incorrect dimensions for simulation")
-            for l in boxm.refine(box, refinement_ratio).shape():
+            for l in boxm.refine(box, refinement_ratio).shape:
                 if l < smallest_patch_size:
                     raise ValueError("Invalid box incompatible with smallest_patch_size")
 
@@ -418,6 +418,9 @@ def checker(func):
             raise ValueError("Error: invalid arguments - " + " ".join(wrong_kwds))
 
         dl, cells = check_domain(**kwargs)
+
+        kwargs["refinement_ratio"] = 2
+
         kwargs["dl"] = dl
         kwargs["cells"] =  cells
         kwargs["refinement_ratio"] = 2
@@ -433,13 +436,13 @@ def checker(func):
         kwargs["layout"] = check_layout(**kwargs)
         kwargs["path"] = check_path(**kwargs)
 
-        dims = compute_dimension(cells)
+        ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["boundary_types"] = check_boundaries(dims, **kwargs)
-        kwargs["origin"] = check_origin(dims, **kwargs)
+        kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
+        kwargs["origin"] = check_origin(ndim, **kwargs)
 
-        kwargs["refined_particle_nbr"] = check_refined_particle_nbr(dims, **kwargs)
+        kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
         kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5')
         assert kwargs["diag_export_format"] in ["hdf5"] # only hdf5 supported for now
 
@@ -451,7 +454,7 @@ def checker(func):
 
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
-            kwargs["refinement_boxes"], kwargs["max_nbr_levels"] = check_refinement_boxes(dims, **kwargs)
+            kwargs["refinement_boxes"], kwargs["max_nbr_levels"] = check_refinement_boxes(ndim, **kwargs)
         else:
             kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', None)
             assert kwargs["max_nbr_levels"] != None # this needs setting otherwise
@@ -506,7 +509,7 @@ class Simulation(object):
         for k, v in kwargs.items():
             object.__setattr__(self, k, v)
 
-        self.dims = compute_dimension(self.cells)
+        self.ndim = compute_dimension(self.cells)
 
         self.diagnostics = []
         self.model = None

@@ -112,8 +112,8 @@ def defaultPopulationSettings(sim, density_fn, vbulk_fn):
 
 def makeBasicModel(extra_pops={}):
     sim = ph.global_vars.sim
-    _density_fn_periodic = globals()["density_"+str(sim.dims)+"d_periodic"]
-    _fn_periodic = globals()["fn_"+str(sim.dims)+"d_periodic"]
+    _density_fn_periodic = globals()["density_"+str(sim.ndim)+"d_periodic"]
+    _fn_periodic = globals()["fn_"+str(sim.ndim)+"d_periodic"]
 
     pops = {
         "protons": {

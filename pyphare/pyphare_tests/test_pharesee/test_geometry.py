@@ -126,17 +126,16 @@ class GeometryTest(unittest.TestCase):
 
             0: [ Box(-1,-1), Box(33, 33), Box(32, 32), Box(65, 65)],
 
-
             1: [ Box(9, 9), Box(60, 60), Box(63, 63), Box(112, 112)]
         }
 
         gaboxes = ghost_area_boxes(hierarchy, "particles")
+        particles = "particles"
 
         # same number of levels
         self.assertEqual(len(expected), len(gaboxes))
 
         for ilvl, lvl in enumerate(hierarchy.patch_levels):
-
             qtyNbr = len(gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
@@ -199,7 +198,7 @@ class GeometryTest(unittest.TestCase):
             for pdatainfo in lvl_gaboxes[ilvl][key]:
                 for box in pdatainfo["boxes"]:
                     for patch in hierarchy.patch_levels[ilvl].patches:
-                            self.assertIsNone(patch.box * box)
+                        self.assertIsNone(patch.box * box)
 
 
 

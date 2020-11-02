@@ -56,8 +56,13 @@ class GridLayout(object):
 
     def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1):
         self.box = box
-        self.origin = listify(origin)
+
         self.dl = listify(dl)
+        assert len(self.dl) == box.ndim
+
+        self.origin = listify(origin)
+        assert len(self.origin) == box.ndim
+
         self.interp_order = interp_order
         self.impl = "yee"
         self.directions = ['X','Y','Z']
@@ -76,8 +81,9 @@ class GridLayout(object):
                           'Z' : self.yeeCentering.centerZ
                          }
 
-    def dim(self):
-        return self.box.dim()
+    @property
+    def ndim(self):
+        return self.box.ndim
 
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]

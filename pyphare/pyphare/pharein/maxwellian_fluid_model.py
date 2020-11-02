@@ -34,7 +34,7 @@ class MaxwellianFluidModel(object):
         if global_vars.sim.model is not None:
             raise RuntimeError("A model is already created")
 
-        self.dim = global_vars.sim.dims
+        self.dim = global_vars.sim.ndim
         bx = self.defaulter(bx, 1.)
         by = self.defaulter(by, 0.)
         bz = self.defaulter(bz, 0.)

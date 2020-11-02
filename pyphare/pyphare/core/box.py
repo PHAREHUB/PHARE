@@ -12,13 +12,12 @@ class Box:
 
     def __init__(self, lower, upper):
         lower, upper = [np_array_ify(arr) for arr in [lower, upper]]
-        assert lower.size == upper.size
+        assert lower.shape == upper.shape
         assert (lower <= upper).all()
         self.lower = lower.astype(int) # can't slice with floats
         self.upper = upper.astype(int)
+        self.ndim = len(self.lower)
 
-    def dim(self):
-        return len(self.lower)
 
     def __mul__(self, box2):
         """
@@ -33,22 +32,20 @@ class Box:
         if (lower <= upper).all():
             return Box(lower, upper)
 
+
+    @property
     def shape(self):
         """returns the length per dimension"""
         return (self.upper - self.lower) + 1
 
-    def size(self):
-        """deprecated, use shape"""
-        # DOTO remove use shape
-        return self.shape()[0]
 
     def cells(self):
         """returns the number of cells in the box"""
-        return self.shape().prod()
+        return self.shape.prod()
 
 
     def __str__(self):
-        return "[ {lower},{upper} ]".format(lower=self.lower, upper=self.upper)
+        return "Box({},{})".format(self.lower.tolist(), self.upper.tolist())
 
     def __repr__(self):
         return self.__str__()
@@ -59,10 +56,8 @@ class Box:
         if not isinstance(item, Box):
             item = np_array_ify(item)
 
-        dims = len(self.lower)
-
         if is_nd_array(item):
-            assert len(item) == dims
+            assert len(item) == self.ndim
             item = Box(item, item)
 
         return (item.lower >= self.lower).all() and (item.upper <= self.upper).all()
@@ -76,9 +71,10 @@ class Box:
 class nDBox(Box):
     def __init__(self, dim, l, u):
         def _get(self, p):
-            return [p for i in range(dim)]
+            return np.asarray([p] * dim)
 
         super().__init__(_get(dim, l), _get(dim, u))
+
 
 
 class Box1D(nDBox):
@@ -113,14 +109,14 @@ def shift(box, offset):
 
 
 def grow(box, size):
-    if is_scalar(size) and box.dim() > 1:
+    if is_scalar(size) and box.ndim > 1:
         raise ValueError("box.py: grow must use a list for dimension > 1")
     if (np.asarray(size) < 0).any():
         raise ValueError("size must be >=0")
     return Box(box.lower - size, box.upper + size)
 
 def shrink(box, size):
-    if is_scalar(size) and box.dim() > 1:
+    if is_scalar(size) and box.ndim > 1:
         raise ValueError("box.py: shrink must use a list for dimension > 1")
     if (np.asarray(size) < 0).any():
         raise ValueError("size must be >=0")
@@ -144,7 +140,6 @@ def remove(box, to_remove):
             cpy[i] = v
         return cpy
 
-    dims = len(box.lower)
     boxes = {}
 
     if intersection.lower[0] > box.lower[0]:
@@ -152,7 +147,7 @@ def remove(box, to_remove):
     if intersection.upper[0] < box.upper[0]:
         boxes["right"] = Box(copy(box.lower, {0: intersection.upper[0] + 1}), box.upper)
 
-    if dims > 1:
+    if box.ndim > 1:
         minx = intersection.lower[0] if "left" in boxes else box.lower[0]
         maxx = intersection.upper[0] if "right" in boxes else box.upper[0]
         if intersection.lower[1] > box.lower[1]:
@@ -166,7 +161,7 @@ def remove(box, to_remove):
                 copy(box.upper, {0: maxx}),
             )
 
-    if dims > 2:
+    if box.ndim > 2:
         miny = intersection.lower[1] if "down" in boxes else box.lower[1]
         maxy = intersection.upper[1] if "up" in boxes else box.upper[1]
         if intersection.lower[2] > box.lower[2]:

@@ -14,7 +14,7 @@ class TestSimulation(unittest.TestCase):
         self.cells_array = [80, (80, 40), (80, 40, 12)]
         self.dl_array = [0.1, (0.1, 0.2), (0.1, 0.2, 0.3)]
         self.domain_size_array = [100., (100., 80.), (100., 80., 20.)]
-        self.dims = [1, 2] #TODO https://github.com/PHAREHUB/PHARE/issues/232
+        self.ndim = [1, 2] #TODO https://github.com/PHAREHUB/PHARE/issues/232
         self.bcs = ["periodic", ("periodic", "periodic"), ("periodic", "periodic", "periodic")]
         self.layout = "yee"
         self.time_step = 0.001
@@ -25,7 +25,7 @@ class TestSimulation(unittest.TestCase):
     def test_dl(self):
         for cells, domain_size, dim, bc in zip(self.cells_array,
                                                self.domain_size_array,
-                                               self.dims,
+                                               self.ndim,
                                                self.bcs):
 
             j = simulation.Simulation(time_step_nbr=self.time_step_nbr,
@@ -45,7 +45,7 @@ class TestSimulation(unittest.TestCase):
         j = simulation.Simulation(time_step_nbr=1000, boundary_types="periodic",
                                   cells=80, domain_size=10, final_time=1.)
 
-        for d in np.arange(j.dims):
+        for d in np.arange(j.ndim):
             self.assertEqual("periodic", j.boundary_types[d])
 
     def test_assert_boundary_condition(self):
