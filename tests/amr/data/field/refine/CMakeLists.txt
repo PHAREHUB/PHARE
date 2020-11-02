@@ -15,28 +15,35 @@ set(SOURCES_INC
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
-set(SOURCES_CPP
-  test_field_refinement_on_hierarchy.cpp
-  test_field_refine.cpp)
+function(_setup_amr_field_refine_test src_name)
 
-add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
+  add_executable(${src_name} ${SOURCES_INC} ${src_name}.cpp)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  ${GTEST_INCLUDE_DIRS}
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  target_include_directories(${src_name} PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    ${GTEST_INCLUDE_DIRS}
   )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  phare_amr
-  ${GTEST_LIBS})
+  target_link_libraries(${src_name} PRIVATE phare_amr ${GTEST_LIBS})
+
+  target_include_directories(${src_name} PRIVATE
+    $<BUILD_INTERFACE:${SAMRAI_INCLUDE_DIRS}>)
+
+  target_link_libraries(${src_name} PRIVATE ${SAMRAI_LIBRARIES})
+
+endfunction(_setup_amr_field_refine_test)
 
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  $<BUILD_INTERFACE:${SAMRAI_INCLUDE_DIRS}>)
+function(_add_general_amr_field_refine_test src_name)
+  _setup_amr_field_refine_test(${src_name})
+  add_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
+endfunction(_add_general_amr_field_refine_test)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${SAMRAI_LIBRARIES})
+function(_add_serial_amr_field_refine_test src_name)
+  _setup_amr_field_refine_test(${src_name})
+  add_no_mpi_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
+endfunction(_add_serial_amr_field_refine_test)
 
-add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
-
+_add_general_amr_field_refine_test(test_field_refinement_on_hierarchy)
+_add_serial_amr_field_refine_test(test_field_refine)
