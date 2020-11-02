@@ -354,8 +354,8 @@ def is_root_lvl(patch_level):
 
 
 field_qties = {"EM_B_x": "Bx",
-               "EM_B_z": "By",
-               "EM_B_y": "Bz",
+               "EM_B_y": "By",
+               "EM_B_z": "Bz",
                "EM_E_x": "Ex",
                "EM_E_y": "Ey",
                "EM_E_z": "Ez",
