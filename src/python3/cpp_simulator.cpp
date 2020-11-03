@@ -101,11 +101,7 @@ void declare(py::module& m)
     m.def(name.c_str(), [](std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
         return std::shared_ptr<Sim>{std::move(makeSimulator<dim, interp, nbRefinedPart>(hier))};
     });
-    // m.def("make_diagnostic_manager",
-    //       [](std::shared_ptr<Sim> const& sim, std::shared_ptr<PHARE::amr::Hierarchy> const& hier)
-    //       {
-    //           return std::make_shared<SimulatorDiagnostics>(*sim, *hier);
-    //       });
+
 
     using DW = DataWrangler<dim, interp, nbRefinedPart>;
     name     = "DataWrangler" + type_string;
@@ -180,15 +176,6 @@ PYBIND11_MODULE(cpp, m)
     m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {
         return std::shared_ptr<ISimulator>{std::move(PHARE::getSimulator(hier))};
     });
-
-    /*py::class_<SimulatorDiagnostics, std::shared_ptr<SimulatorDiagnostics>>(m,
-                                                                            "IDiagnosticsManager")
-        .def("dump", &SimulatorDiagnostics::dump, py::arg("timestamp"), py::arg("timestep"));
-
-    m.def("make_diagnostic_manager", [](std::shared_ptr<ISimulator> const& sim,
-                                        std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-        return std::make_shared<SimulatorDiagnostics>(*sim, *hier);
-    });*/
 
     m.def("mpi_size", []() {
         int mpi_size;
