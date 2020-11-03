@@ -112,8 +112,12 @@ class DiagnosticsTest(unittest.TestCase):
             self.simulator.reset()
         self.simulator = None
 
+    def ddt_test_id(self):
+        return self._testMethodName.split("_")[-1]
+
 
     def _test_dump_diags(self, dim, **simInput):
+        test_id = self.ddt_test_id()
 
         # configure simulation dim sized values
         for key in ["cells", "dl", "boundary_types"]:
@@ -124,7 +128,7 @@ class DiagnosticsTest(unittest.TestCase):
         for interp in range(1, 4):
             print("_test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
-            local_out = out + str(dim) + "_" + str(interp) + "_mpi_n_" + str(cpp.mpi_size())
+            local_out = f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
             simInput["diag_options"]["options"]["dir"] = local_out
 
             simulation = ph.Simulation(**simInput)
@@ -173,6 +177,7 @@ class DiagnosticsTest(unittest.TestCase):
             self._test_dump_diags(dim, **simInput)
 
     def _test_patch_ghost_on_refined_level_case(self, has_patch_ghost, **simInput):
+        test_id = self.ddt_test_id()
         if cpp.mpi_size() > 1: # SKIP
             return
 
@@ -181,7 +186,7 @@ class DiagnosticsTest(unittest.TestCase):
             simInput["refinement_boxes"] = {"L0": {"B0": b0}}
             for interp in [1, 2, 3]:
 
-                local_out = out + str(dim) + "_" + str(interp) + "_mpi_n_" + str(cpp.mpi_size())
+                local_out = f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
                 simInput["diag_options"]["options"]["dir"] = local_out
 
                 simulation = ph.Simulation(**simInput)
