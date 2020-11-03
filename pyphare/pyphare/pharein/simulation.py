@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 from ..core import phare_utilities
 from . import global_vars
@@ -187,6 +188,11 @@ valid_refined_particle_nbr = {
     1: [4, 5, 8, 9],
     2: [4, 5, 8, 9, 16],
     3: [4, 5, 8, 9, 25]
+  },
+  3: { # see https://github.com/PHAREHUB/PHARE/issues/232
+    1: [6, 12],
+    2: [6, 12],
+    3: [6, 12]
   }
 } # Default refined_particle_nbr per dim/interp is considered index 0 of list
 def check_refined_particle_nbr(dims, **kwargs):
@@ -211,19 +217,37 @@ def check_origin(dims, **kwargs):
 
 # ------------------------------------------------------------------------------
 
-def check_refinement_boxes(**kwargs):
+def check_refinement_boxes(dims, **kwargs):
+
     refinement_boxes = kwargs.get("refinement_boxes", None)
 
     if refinement_boxes is None:
         return refinement_boxes
 
+    refinement_ratio = kwargs["refinement_ratio"]
     smallest_patch_size = kwargs.get("smallest_patch_size")
+
+    coarsest_cells = np.asarray(kwargs["cells"])
+    cells_per_level = {0: coarsest_cells}
+
+    for ilvl, boxes in refinement_boxes.items():
+        assert ilvl[0] == "L"
+        lvl_idx = int(ilvl[1:])
+        if lvl_idx not in cells_per_level:
+            raise ValueError(f"Invalid refinement specified, a level {lvl_idx} is missing")
+        cells_per_level[lvl_idx + 1] = cells_per_level[lvl_idx] * refinement_ratio
+
+    def check_cells(ilvl, point):
+        cells = cells_per_level[ilvl]
+        for coord in point:
+            for cell in cells:
+                if coord > cell:
+                    raise ValueError(f"Point({point}) outside total number of cells({cells})")
 
     for ilvl, boxes in refinement_boxes.items():
 
-        assert ilvl[0] == "L"
-
-        refined_level_number = int(ilvl[1:])+1
+        lvl_idx = int(ilvl[1:])
+        refined_level_number = lvl_idx+1
         if (kwargs["max_nbr_levels"]) <= refined_level_number:
             err_msg = "Error - refinement boxes to create level {} invalid with 'max_nbr_levels'= {}"
             raise ValueError(err_msg.format(refined_level_number, kwargs["max_nbr_levels"]))
@@ -235,14 +259,22 @@ def check_refinement_boxes(**kwargs):
         tmp_boxes = []
         if isinstance(boxes[0], (tuple,list)):
             for points in boxes:
+                for point in points:
+                    if len(point) != dims:
+                        raise ValueError("Refinement box dimension mismatch")
+                    check_cells(lvl_idx, point)
                 tmp_boxes.append(Box(points[0], points[1]))
             boxes = tmp_boxes
 
         elif isinstance(boxes[0], Box):
             for box in boxes:
+                if box.dim != dims:
+                    raise ValueError(f"Box({box}) has incorrect dimensions for simulation")
+                check_cells(lvl_idx, box.lower)
+                check_cells(lvl_idx, box.upper)
                 for l in boxm.refine(box, kwargs["refinement_ratio"]).length():
                     if l < smallest_patch_size:
-                        raise  ValueError("Invalid box incompatible with smallest_patch_size")
+                        raise ValueError("Invalid box incompatible with smallest_patch_size")
 
 
     return refinement_boxes
@@ -332,6 +364,7 @@ def checker(func):
         dl, cells = check_domain(**kwargs)
         kwargs["dl"] = dl
         kwargs["cells"] =  cells
+        kwargs["refinement_ratio"] = 2
 
         time_step_nbr, time_step = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
@@ -358,9 +391,10 @@ def checker(func):
         kwargs["largest_patch_size"] = largest
 
         kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
+
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
-            kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
+            kwargs["refinement_boxes"] = check_refinement_boxes(dims, **kwargs)
         else:
             kwargs["refinement_boxes"] = None
 

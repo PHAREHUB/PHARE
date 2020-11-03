@@ -67,15 +67,14 @@ def fn_2d_periodic(sim, x, y):
     zy = np.sin(ky * 2 * np.pi / ymax * yy)
     return zx * zy
 
-# def fn_3d_periodic(sim, x, y, z):
-#     xmax, ymax, zmax = sim.simulation_domain()
-#     xx, yy, zz = meshify(x, y, z)
-#     kx, ky, kz = 3, 6, 3
-#     zx = np.cos(kx * 2 * np.pi / xmax * xx)
-#     zy = np.sin(ky * 2 * np.pi / ymax * yy)
-#     zz = np.sin(kz * 2 * np.pi / zmax * zz)
-#     r = zx * zy * zz
-#     return r
+def fn_3d_periodic(sim, x, y, z):
+    xmax, ymax, zmax = sim.simulation_domain()
+    xx, yy, zz = meshify(x, y, z)
+    kx, ky, kz = 3, 6, 3
+    zx = np.cos(kx * 2 * np.pi / xmax * xx)
+    zy = np.sin(ky * 2 * np.pi / ymax * yy)
+    zz = np.sin(kz * 2 * np.pi / zmax * zz)
+    return zx * zy * zz
 
 
 def density_1d_periodic(sim, x):
@@ -89,12 +88,13 @@ def density_2d_periodic(sim, x, y):
     xx, yy = meshify(x, y)
     return np.exp(-(xx-0.5*xmax)**2)*np.exp(-(yy-ymax/2.)**2) + background_particles
 
-# def density_3d_periodic(sim, x, y, z):
-#     xmax, ymax, zmax = sim.simulation_domain()
-#     background_particles = 0.3  # avoids 0 density
-#     xx, yy, zz = meshify(x, y, z)
-#     r = np.exp(-(xx-0.5*xmax)**2)*np.exp(-(yy-ymax/2.)**2)*np.exp(-(zz-zmax/2.)**2) + background_particles
-#     return r
+
+def density_3d_periodic(sim, x, y, z):
+    xmax, ymax, zmax = sim.simulation_domain()
+    background_particles = 0.3  # avoids 0 density
+    xx, yy, zz = meshify(x, y, z)
+    r = np.exp(-(xx-0.5*xmax)**2)*np.exp(-(yy-ymax/2.)**2)*np.exp(-(zz-zmax/2.)**2) + background_particles
+    return r
 
 
 def defaultPopulationSettings(sim, density_fn, vbulk_fn):

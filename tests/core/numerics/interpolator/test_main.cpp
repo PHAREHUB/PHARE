@@ -749,6 +749,72 @@ using My2dTypes = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Inter
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_2d, My2dTypes);
 
 
+
+/*********************************************************************************************/
+template<typename Interpolator>
+struct ACollectionOfParticles_3d : public ::testing::Test
+{
+    static constexpr std::size_t dim  = 3;
+    static constexpr std::uint32_t nx = 15, ny = 15, nz = 15;
+    static constexpr int start = 0, end = 5;
+
+    ACollectionOfParticles_3d()
+        : rho{"field", HybridQuantity::Scalar::rho, nx, ny, nz}
+        , vx{"v_x", HybridQuantity::Scalar::Vx, nx, ny, nz}
+        , vy{"v_y", HybridQuantity::Scalar::Vy, nx, ny, nz}
+        , vz{"v_z", HybridQuantity::Scalar::Vz, nx, ny, nz}
+        , v{"v", HybridQuantity::Vector::V}
+    {
+        v.setBuffer("v_x", &vx);
+        v.setBuffer("v_y", &vy);
+        v.setBuffer("v_z", &vz);
+
+        double weight = [](auto const& meshSize) {
+            return std::accumulate(meshSize.begin(), meshSize.end(), 1.0,
+                                   std::multiplies<double>());
+        }(layout.meshSize());
+
+        for (int i = start; i < end; i++)
+            for (int j = start; j < end; j++)
+                for (int k = start; k < end; k++)
+                {
+                    auto& part  = particles.emplace_back();
+                    part.iCell  = {i, j, k};
+                    part.delta  = ConstArray<float, dim>(.5);
+                    part.weight = weight;
+                    part.v[0]   = +2.;
+                    part.v[1]   = -1.;
+                    part.v[2]   = +1.;
+                }
+
+        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+    }
+
+    GridLayout<GridLayoutImplYee<dim, Interpolator::interp_order>> layout{
+        ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
+
+    ParticleArray<dim> particles;
+    Field<NdArrayVector<dim>, typename HybridQuantity::Scalar> rho, vx, vy, vz;
+    VecField<NdArrayVector<dim>, HybridQuantity> v;
+    Interpolator interpolator;
+};
+TYPED_TEST_SUITE_P(ACollectionOfParticles_3d);
+
+
+TYPED_TEST_P(ACollectionOfParticles_3d, DepositCorrectlyTheirWeight_3d)
+{
+    EXPECT_DOUBLE_EQ(this->rho(7, 7, 7), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(7, 7, 7), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(7, 7, 7), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(7, 7, 7), 1.0);
+}
+REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_3d, DepositCorrectlyTheirWeight_3d);
+
+
+using My3dTypes = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
+INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_3d, My3dTypes);
+/*********************************************************************************************/
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

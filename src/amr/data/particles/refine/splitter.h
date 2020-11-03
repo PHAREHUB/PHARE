@@ -116,6 +116,10 @@ struct BlackDispatcher : SplitPattern<dim, core::RefinedParticlesConst<1>>
 };
 
 template<typename dim>
+struct PinkDispatcher
+{
+};
+template<typename dim>
 struct PurpleDispatcher
 {
 };
@@ -124,7 +128,11 @@ struct BrownDispatcher
 {
 };
 template<typename dim>
-struct PinkDispatcher
+struct LimeDispatcher
+{
+};
+template<typename dim>
+struct WhiteDispatcher
 {
 };
 

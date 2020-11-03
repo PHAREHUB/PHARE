@@ -41,7 +41,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
 
     invalid1D = [
         dup({"max_nbr_levels": 1, "refinement_boxes": {"L0": {"B0": [(10,), (50,)]}}}),
-        #dup({"cells": [55], "refinement_boxes": {"L0": {"B0": [(5,), (65,)]}}}),
+        dup({"cells": [55], "refinement_boxes": {"L0": {"B0": [(5,), (65,)]}}}),
         dup({"smallest_patch_size": 100, "largest_patch_size": 64,}),
         dup({"refined_particle_nbr": 1}),
     ]

@@ -331,12 +331,6 @@ REGISTER_TYPED_TEST_SUITE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefine
 
 
 
-
-// std::size_t constexpr dimension   = 1;
-// std::size_t constexpr interpOrder = 1;
-// int constexpr refinedParticlesNbr = 2;
-
-// dimension , ratio , interpOrder, refinedParticlesNbr
 template<std::size_t dim, std::size_t babies = 2>
 using ParticlesDataSplitDescriptorsNDr2o1ref2C2F
     = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::coarseBoundary>;
@@ -406,7 +400,14 @@ typedef ::testing::Types<
     ParticlesDataSplitDescriptorsNDr2o3ref2Int<2, 4>,
     ParticlesDataSplitDescriptorsNDr2o1ref3Int<2, 4>,
     ParticlesDataSplitDescriptorsNDr2o2ref3Int<2, 4>,
-    ParticlesDataSplitDescriptorsNDr2o3ref3Int<2, 4>>
+    ParticlesDataSplitDescriptorsNDr2o3ref3Int<2, 4>,
+
+    ParticlesDataSplitDescriptorsNDr2o1ref2Int<3, 6>,
+    ParticlesDataSplitDescriptorsNDr2o2ref2Int<3, 6>,
+    ParticlesDataSplitDescriptorsNDr2o3ref2Int<3, 6>,
+    ParticlesDataSplitDescriptorsNDr2o1ref3Int<3, 6>,
+    ParticlesDataSplitDescriptorsNDr2o2ref3Int<3, 6>,
+    ParticlesDataSplitDescriptorsNDr2o3ref3Int<3, 6>>
     ParticlesInteriorDataDescriptorsRange;
 
 
