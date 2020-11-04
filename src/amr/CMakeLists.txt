@@ -42,6 +42,7 @@ set( SOURCES_INC
      types/amr_types.h
      wrappers/hierarchy.h
      wrappers/integrator.h
+     tagging/tagger.h
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
