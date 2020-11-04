@@ -188,6 +188,11 @@ valid_refined_particle_nbr = {
     1: [4, 5, 8, 9],
     2: [4, 5, 8, 9, 16],
     3: [4, 5, 8, 9, 25]
+  },
+  3: {
+    1: [6, 7, 8, 9, 12, 13, 14, 15, 18, 19, 20, 21, 26, 27],
+    2: [6, 7, 8, 9, 12, 13, 14, 15, 18, 19, 20, 21, 26, 27, 64],
+    3: [6, 7, 8, 9, 12, 13, 14, 15, 18, 19, 20, 21, 26, 27, 125]
   }
 } # Default refined_particle_nbr per dim/interp is considered index 0 of list
 def check_refined_particle_nbr(dims, **kwargs):
@@ -200,6 +205,7 @@ def check_refined_particle_nbr(dims, **kwargs):
             + "interp({}) include {}".format(interp, valid_refined_particle_nbr[dims][interp]))
 
     return refined_particle_nbr
+
 
 
 # ------------------------------------------------------------------------------
@@ -473,7 +479,7 @@ class Simulation(object):
     cells                : number of cells nx or (nx, ny) or (nx, ny, nz) in 1, 2 and 3D.
     final_time           : final simulation time. Must be set if 'time_step' is not
     time_step            : simulation time step. Must be specified if 'final_time' is not
-    interp_order         : order of the particle/mesh interpolation. Either 1, 2, 3 or 4 (default=1)
+    interp_order         : order of the particle/mesh interpolation. Either 1, 2 or 3 (default=1)
     layout               : layout of the physical quantities on the mesh (default = "yee")
     origin               : origin of the physical domain, (default (0,0,0) in 3D)
     refined_particle_nbr : number of refined particles for particle splitting ( TODO default hard-coded to 2)
