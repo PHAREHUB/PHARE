@@ -58,9 +58,6 @@ public:
             }
         }
 
-
-
-
         if (levelNumber == 0)
         {
             auto level = hierarchy->getPatchLevel(levelNumber);
@@ -75,15 +72,16 @@ public:
                     auto& layout = fieldData->gridLayout;
                     auto& field  = fieldData->field;
 
-                    // here we are 1D
-
-                    std::uint32_t iStartX = layout.ghostStartIndex(field, Direction::X);
-                    std::uint32_t iEndX   = layout.ghostEndIndex(field, Direction::X);
-
-                    for (std::uint32_t ix = iStartX; ix <= iEndX; ++ix)
+                    if constexpr (dim == 1)
                     {
-                        auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
-                        field(ix)     = affineFill(position);
+                        std::uint32_t iStartX = layout.ghostStartIndex(field, Direction::X);
+                        std::uint32_t iEndX   = layout.ghostEndIndex(field, Direction::X);
+
+                        for (std::uint32_t ix = iStartX; ix <= iEndX; ++ix)
+                        {
+                            auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
+                            field(ix)     = affineFill(position);
+                        }
                     }
                 }
             }
@@ -104,11 +102,20 @@ public:
         // do nothing
     }
 
-    static double affineFill(Point<double, 1> position)
+    static double affineFill(Point<double, GridLayoutT::dimension> position)
     {
-        double a = 0.5;
-        double b = 2.0;
-        return a * position[dirX] + b;
+        static auto constexpr dim = GridLayoutT::dimension;
+
+        // parameter for linear function ax + by + cz + d
+        double a = 0.2;
+        double b = 0.4;
+        double c = 0.6;
+        double d = 0.8;
+
+        if constexpr (dim == 1)
+        {
+            return a * position[dirX] + b;
+        }
     }
 
 
@@ -117,6 +124,7 @@ private:
     std::map<std::string, int> dataToAllocate_;
     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp_;
     SAMRAI::xfer::RefineAlgorithm algorithm_;
+    static auto constexpr dim = GridLayoutT::dimension;
 };
 
 #endif
