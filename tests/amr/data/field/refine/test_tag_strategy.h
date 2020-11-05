@@ -83,6 +83,8 @@ public:
                             field(ix)     = affineFill(position);
                         }
                     }
+                    if constexpr (dim == 2) {}
+                    if constexpr (dim == 3) {}
                 }
             }
         }
@@ -116,6 +118,8 @@ public:
         {
             return a * position[dirX] + b;
         }
+        if constexpr (dim == 2) {}
+        if constexpr (dim == 3) {}
     }
 
 

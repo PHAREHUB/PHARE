@@ -38,7 +38,6 @@ protected:
 
 
 // https://stackoverflow.com/questions/56115790/gtest-parametrized-tests-for-different-types
-
 using LinearFieldRefineTupleInfos = testing::Types<std::pair<DimConst<1>, InterpConst<1>>>;
 
 
@@ -78,18 +77,56 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
 
             if constexpr (dim == 1)
             {
-                std::uint32_t iStartX = layout.ghostStartIndex(field, Direction::X);
-                std::uint32_t iEndX   = layout.ghostEndIndex(field, Direction::X);
+                std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
+                std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
 
-                for (std::uint32_t ix = iStartX; ix <= iEndX; ++ix)
+                for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
                 {
                     auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
 
                     EXPECT_DOUBLE_EQ(field(ix), affineFill(position));
                 }
             }
-            if constexpr (dim == 2) {}
-            if constexpr (dim == 3) {}
+            if constexpr (dim == 2)
+            {
+                std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
+                std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
+                std::uint32_t gsi_Y = layout.ghostStartIndex(field, Direction::Y);
+                std::uint32_t gei_Y = layout.ghostEndIndex(field, Direction::Y);
+
+                for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
+                {
+                    for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
+                    {
+                        auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
+
+                        EXPECT_DOUBLE_EQ(field(ix, iy), affineFill(position));
+                    }
+                }
+            }
+            if constexpr (dim == 3)
+            {
+                std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
+                std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
+                std::uint32_t gsi_Y = layout.ghostStartIndex(field, Direction::Y);
+                std::uint32_t gei_Y = layout.ghostEndIndex(field, Direction::Y);
+                std::uint32_t gsi_Z = layout.ghostStartIndex(field, Direction::Z);
+                std::uint32_t gei_Z = layout.ghostEndIndex(field, Direction::Z);
+
+                for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
+                {
+                    for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
+                    {
+                        for (std::uint32_t iz = gsi_Z; iz <= gei_Z; ++iz)
+                        {
+                            auto position
+                                = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy, iz);
+
+                            EXPECT_DOUBLE_EQ(field(ix, iy, iz), affineFill(position));
+                        }
+                    }
+                }
+            }
         }
     }
 }
