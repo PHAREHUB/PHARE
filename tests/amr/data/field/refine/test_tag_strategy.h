@@ -74,17 +74,54 @@ public:
 
                     if constexpr (dim == 1)
                     {
-                        std::uint32_t iStartX = layout.ghostStartIndex(field, Direction::X);
-                        std::uint32_t iEndX   = layout.ghostEndIndex(field, Direction::X);
+                        std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
+                        std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
 
-                        for (std::uint32_t ix = iStartX; ix <= iEndX; ++ix)
+                        for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
                         {
                             auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
                             field(ix)     = affineFill(position);
                         }
                     }
-                    if constexpr (dim == 2) {}
-                    if constexpr (dim == 3) {}
+                    if constexpr (dim == 2)
+                    {
+                        std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
+                        std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
+                        std::uint32_t gsi_Y = layout.ghostStartIndex(field, Direction::Y);
+                        std::uint32_t gei_Y = layout.ghostEndIndex(field, Direction::Y);
+
+                        for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
+                        {
+                            for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
+                            {
+                                auto position
+                                    = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
+                                field(ix, iy) = affineFill(position);
+                            }
+                        }
+                    }
+                    if constexpr (dim == 3)
+                    {
+                        std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
+                        std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
+                        std::uint32_t gsi_Y = layout.ghostStartIndex(field, Direction::Y);
+                        std::uint32_t gei_Y = layout.ghostEndIndex(field, Direction::Y);
+                        std::uint32_t gsi_Z = layout.ghostStartIndex(field, Direction::Z);
+                        std::uint32_t gei_Z = layout.ghostEndIndex(field, Direction::Z);
+
+                        for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
+                        {
+                            for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
+                            {
+                                for (std::uint32_t iz = gsi_Z; iz <= gei_Z; ++iz)
+                                {
+                                    auto position = layout.fieldNodeCoordinates(
+                                        field, layout.origin(), ix, iy, iz);
+                                    field(ix, iy, iz) = affineFill(position);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -116,10 +153,16 @@ public:
 
         if constexpr (dim == 1)
         {
-            return a * position[dirX] + b;
+            return a * position[dirX] + d;
         }
-        if constexpr (dim == 2) {}
-        if constexpr (dim == 3) {}
+        if constexpr (dim == 2)
+        {
+            return a * position[dirX] + b * position[dirY] + d;
+        }
+        if constexpr (dim == 3)
+        {
+            return a * position[dirX] + b * position[dirY] + c * position[dirZ] + d;
+        }
     }
 
 

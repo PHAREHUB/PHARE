@@ -37,8 +37,9 @@ protected:
 };
 
 
-// https://stackoverflow.com/questions/56115790/gtest-parametrized-tests-for-different-types
-using LinearFieldRefineTupleInfos = testing::Types<std::pair<DimConst<1>, InterpConst<1>>>;
+using LinearFieldRefineTupleInfos
+    = testing::Types<std::pair<DimConst<1>, InterpConst<1>>, std::pair<DimConst<2>, InterpConst<1>>,
+                     std::pair<DimConst<1>, InterpConst<1>>>;
 
 
 TYPED_TEST_SUITE(ALinearFieldRefineTest, LinearFieldRefineTupleInfos);
@@ -61,7 +62,7 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
     // where a, b, c & d are given in TagStrategy::affineFill implementation
     auto& affineFill = TagStrategy<GridYee, FieldND>::affineFill;
 
-    // test coarse operation
+    // test coarse operation ????????????????????????????????????????
     auto level = hierarchy.getPatchLevel(1);
 
     for (auto& patch : *level)
