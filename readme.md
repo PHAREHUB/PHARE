@@ -1,6 +1,8 @@
 
 [![License: GPL v3](https://img.shields.io/badge/PHARE-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![CPP17](https://img.shields.io/badge/Language-C++17-blue.svg)]()
+[![LGTM Total alerts](https://img.shields.io/lgtm/alerts/g/PHAREHUB/PHARE.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/PHAREHUB/PHARE/alerts/)
+[![codefactor](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)
 
 ![](https://user-images.githubusercontent.com/3200931/95620089-f13ebb80-0a6f-11eb-9af3-a1db08004bcc.png)
 
