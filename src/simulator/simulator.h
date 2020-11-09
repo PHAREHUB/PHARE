@@ -30,6 +30,36 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class Simulator : public ISimulator
 {
 public:
+    std::string to_str() override;
+
+    void initialize();
+
+    double startTime() override { return 0.; }
+
+    double endTime() override { return finalTime_; }
+
+    double timeStep() override { return dt_; }
+
+    double currentTime() override { return currentTime_; }
+
+    std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
+
+    std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
+
+    std::size_t interporder() const override { return interp_order; }
+
+    double advance(double dt) override;
+
+    auto& getHybridModel() { return hybridModel_; }
+
+    auto& getMHDModel() { return mhdModel_; }
+
+    auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+
+    Simulator(PHARE::initializer::PHAREDict dict,
+              std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
+
+
     static constexpr std::size_t dimension     = _dimension;
     static constexpr std::size_t interp_order  = _interp_order;
     static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
@@ -47,146 +77,14 @@ public:
     using MessengerFactory       = typename PHARETypes::MessengerFactory;
     using MultiPhysicsIntegrator = typename PHARETypes::MultiPhysicsIntegrator;
 
-
-    Simulator(PHARE::initializer::PHAREDict dict,
-              std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
-        : hierarchy_{hierarchy}
-        , modelNames_{"HybridModel"}
-        , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
-        , messengerFactory_{descriptors_}
-        , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
-        , dt_{dict["simulation"]["time_step"].template to<double>()}
-        , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
-        , finalTime_{dt_ * timeStepNbr_}
-        , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(
-              dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>())}
-    {
-        if (find_model("HybridModel"))
-        {
-            hybridModel_ = std::make_shared<HybridModel>(
-                dict["simulation"],
-                std::make_shared<typename HybridModel::resources_manager_type>());
-
-
-            hybridModel_->resourcesManager->registerResources(hybridModel_->state);
-
-            // we register the hybrid model for all possible levels in the hierarchy
-            // since for now it is the only model available
-            // same for the solver
-            multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
-            multiphysInteg_->registerAndInitSolver(
-                0, maxLevelNumber_ - 1, std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
-            multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
-
-
-            auto startTime = 0.; // TODO make it runtime
-            auto endTime   = 0.; // TODO make it runtime
-
-
-            integrator_ = std::make_unique<PHARE::amr::DimIntegrator<dimension>>(
-                dict, hierarchy, multiphysInteg_, multiphysInteg_, startTime, endTime);
-        }
-        else
-            throw std::runtime_error("unsupported model");
-    }
-
-
-    std::string to_str() override
-    {
-        std::stringstream ss;
-        ss << "PHARE SIMULATOR\n";
-        ss << "------------------------------------\n";
-        ss << "interpolation order  : " << interp_order << "\n";
-        ss << "dimension            : " << dimension << "\n";
-        ss << "time step            : " << dt_ << "\n";
-        ss << "number of time steps : " << timeStepNbr_ << "\n";
-        ss << core::to_str(hybridModel_->state);
-        return ss.str();
-    }
-
-
-
-    void initialize() override
-    {
-        try
-        {
-            if (isInitialized)
-                std::runtime_error("cannot initialize  - simulator already isInitialized");
-
-            if (integrator_ != nullptr)
-                integrator_->initialize();
-            else
-                throw std::runtime_error("Error - Simulator has no integrator");
-        }
-        catch (const std::runtime_error& e)
-        {
-            std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-            std::rethrow_exception(std::current_exception());
-        }
-        catch (...)
-        {
-            std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-            std::rethrow_exception(std::current_exception());
-        }
-        isInitialized = true;
-    }
-
-
-
-    double startTime() override { return 0.; }
-
-    double endTime() override { return finalTime_; }
-    double timeStep() override { return dt_; }
-    double currentTime() override { return currentTime_; }
-
-    std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
-    std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
-    std::size_t interporder() const override { return interp_order; }
-
-    double advance(double dt) override
-    {
-        try
-        {
-            if (integrator_)
-            {
-                auto dt_new = integrator_->advance(dt);
-                currentTime_ += dt;
-                return dt_new;
-            }
-            else
-                throw std::runtime_error("Error - no valid integrator in the simulator");
-        }
-        catch (const std::runtime_error& e)
-        {
-            std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-            std::rethrow_exception(std::current_exception());
-        }
-        catch (...)
-        {
-            std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-            std::rethrow_exception(std::current_exception());
-        }
-    }
-
-
-    auto& getHybridModel() { return hybridModel_; }
-
-
-    auto& getMHDModel() { return mhdModel_; }
-
-
-    auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+    using Integrator = PHARE::amr::Integrator<dimension>;
 
 
 private:
-    auto find_model(std::string name)
-    {
-        return std::find(std::begin(modelNames_), std::end(modelNames_), name)
-               != std::end(modelNames_);
-    }
+    auto find_model(std::string name);
 
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
-    std::unique_ptr<PHARE::amr::Integrator> integrator_;
+    std::unique_ptr<Integrator> integrator_;
 
     std::vector<std::string> modelNames_;
     std::vector<PHARE::amr::MessengerDescriptor> descriptors_;
@@ -194,7 +92,6 @@ private:
 
     float x_lo_[dimension];
     float x_up_[dimension];
-
     int maxLevelNumber_;
     double dt_;
     int timeStepNbr_    = 0;
@@ -209,6 +106,137 @@ private:
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
 };
 
+
+//-----------------------------------------------------------------------------
+//                           Definitions
+//-----------------------------------------------------------------------------
+
+
+
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
+    PHARE::initializer::PHAREDict dict, std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
+    : hierarchy_{hierarchy}
+    , modelNames_{"HybridModel"}
+    , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
+    , messengerFactory_{descriptors_}
+    , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
+    , dt_{dict["simulation"]["time_step"].template to<double>()}
+    , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
+    , finalTime_{dt_ * timeStepNbr_}
+    , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(
+          dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>())}
+{
+    if (find_model("HybridModel"))
+    {
+        hybridModel_ = std::make_shared<HybridModel>(
+            dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
+
+
+        hybridModel_->resourcesManager->registerResources(hybridModel_->state);
+
+        // we register the hybrid model for all possible levels in the hierarchy
+        // since for now it is the only model available
+        // same for the solver
+        multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
+        multiphysInteg_->registerAndInitSolver(
+            0, maxLevelNumber_ - 1, std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
+        multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
+
+
+        auto startTime = 0.; // TODO make it runtime
+        auto endTime   = 0.; // TODO make it runtime
+
+
+        integrator_ = std::make_unique<Integrator>(dict, hierarchy, multiphysInteg_,
+                                                   multiphysInteg_, startTime, endTime);
+    }
+    else
+        throw std::runtime_error("unsupported model");
+}
+
+
+
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+std::string Simulator<_dimension, _interp_order, _nbRefinedPart>::to_str()
+{
+    std::stringstream ss;
+    ss << "PHARE SIMULATOR\n";
+    ss << "------------------------------------\n";
+    ss << "interpolation order  : " << interp_order << "\n";
+    ss << "dimension            : " << dimension << "\n";
+    ss << "time step            : " << dt_ << "\n";
+    ss << "number of time steps : " << timeStepNbr_ << "\n";
+    ss << core::to_str(hybridModel_->state);
+    return ss.str();
+}
+
+
+
+
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
+{
+    try
+    {
+        if (isInitialized)
+            std::runtime_error("cannot initialize  - simulator already isInitialized");
+
+        if (integrator_ != nullptr)
+            integrator_->initialize();
+        else
+            throw std::runtime_error("Error - Simulator has no integrator");
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
+        std::rethrow_exception(std::current_exception());
+    }
+    catch (...)
+    {
+        std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
+        std::rethrow_exception(std::current_exception());
+    }
+    isInitialized = true;
+}
+
+
+
+
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
+{
+    try
+    {
+        if (integrator_)
+        {
+            auto dt_new = integrator_->advance(dt);
+            currentTime_ += dt;
+            return dt_new;
+        }
+        else
+            throw std::runtime_error("Error - no valid integrator in the simulator");
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
+        std::rethrow_exception(std::current_exception());
+    }
+    catch (...)
+    {
+        std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
+        std::rethrow_exception(std::current_exception());
+    }
+}
+
+
+
+
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+auto Simulator<_dimension, _interp_order, _nbRefinedPart>::find_model(std::string name)
+{
+    return std::find(std::begin(modelNames_), std::end(modelNames_), name) != std::end(modelNames_);
+}
 
 
 
@@ -244,40 +272,6 @@ struct SimulatorMaker
     }
 };
 
-
-template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
-class SimulatorCaster
-{
-public:
-    using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart>;
-
-    SimulatorCaster(std::shared_ptr<ISimulator> const& _simulator)
-        : simulator{_simulator}
-    {
-    }
-
-    template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-    Simulator_t* operator()(std::size_t userDim, std::size_t userInterpOrder,
-                            std::size_t userNbRefinedPart, Dimension dimension_fn,
-                            InterpOrder interp_order_fn, NbRefinedPart nbRefinedPart_fn)
-    {
-        if (userDim == dimension_fn() and userInterpOrder == interp_order_fn()
-            and userNbRefinedPart == nbRefinedPart_fn())
-        {
-            std::size_t constexpr d  = dimension_fn();
-            std::size_t constexpr io = interp_order_fn();
-            std::size_t constexpr nb = nbRefinedPart_fn();
-
-            // extra if constexpr as cast is templated and not generic interface
-            if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
-                return dynamic_cast<Simulator_t*>(simulator.get());
-        }
-        return nullptr;
-    }
-
-private:
-    std::shared_ptr<ISimulator> const& simulator;
-};
 
 std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
 
