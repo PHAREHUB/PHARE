@@ -97,13 +97,14 @@ class ParticleData(PatchData):
     """
     Concrete type of PatchData representing particles in a region
     """
-    def __init__(self, layout, data):
+    def __init__(self, layout, data, pop_name):
         """
         :param layout: A GridLayout object representing the domain in which particles are
         :param data: dataset containing particles
         """
         super().__init__(layout, 'particles')
         self.dataset = data
+        self.pop_name = pop_name
         if layout.interp_order == 1:
             self._ghosts_nbr = [1] * layout.box.dim()
         elif layout.interp_order == 2 or layout.interp_order == 3:
@@ -391,9 +392,6 @@ def is_pop_fluid_file(basename):
     return (is_particle_file(basename) is False) and "pop" in basename
 
 
-def pop_name(basename):
-    return basename.strip(".h5").split("_")[-2]
-
 
 def make_layout(h5_patch_grp, cell_width):
     nbrCells = h5_patch_grp.attrs['nbrCells']
@@ -458,6 +456,9 @@ def compute_hier_from(h, compute):
 
 
 
+def pop_name(basename):
+    return basename.strip(".h5").split("_")[-2]
+
 
 def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
     """
@@ -482,7 +483,7 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
         if pdname in patch_datas:
             raise ValueError("error - {} already in patchdata".format(pdname))
 
-        patch_datas[pdname] = ParticleData(layout, particles)
+        patch_datas[pdname] = ParticleData(layout, particles, pop_name(basename))
 
     else:
         for dataset_name in h5_patch_grp.keys():
@@ -739,7 +740,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                                              weights = np.asarray(patch.data.weight),
                                              charges = np.asarray(patch.data.charge))
 
-                patch_datas[pop +"_particles"] = ParticleData(layout, domain_particles)
+                patch_datas[pop +"_particles"] = ParticleData(layout, domain_particles, pop)
                 patches[ilvl].append(Patch(patch_datas))
 
 

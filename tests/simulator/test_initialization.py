@@ -8,8 +8,9 @@ from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, E
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
+from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
-from pyphare.core.box import Box
+from pyphare.core.box import Box, Box1D
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
@@ -580,6 +581,80 @@ class InitializationTest(unittest.TestCase):
                     self.assertTrue(np.allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12))
                     self.assertTrue(np.allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12))
                     self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
+
+
+
+
+
+    def _test_levelghostparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes):
+        print("test_levelghostparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
+
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", cells=30)
+        from pyphare.pharein.global_vars import sim
+        assert sim is not None
+        assert len(sim.cells) == dim
+
+        def domainParticles_for(ilvl):
+            patch0 = datahier.levels()[ilvl].patches[0]
+            pop_names = [key for key in patch0.patch_datas.keys() if key.endswith("particles")]
+            particlePatchDatas = {k:[] for k in pop_names}
+            for patch in datahier.levels()[ilvl].patches:
+                for pop_name, patch_data in patch.patch_datas.items():
+                    particlePatchDatas[pop_name].append(patch_data)
+            return { pop_name :
+                aggregate_particles([
+                  patchData.dataset.select(patchData.box) for patchData in patchDatas
+                ]) # including patch ghost particles means duplicates
+                for pop_name, patchDatas in particlePatchDatas.items()
+            }
+
+
+        self.assertTrue(len(level_ghost_boxes(datahier).items()))
+        for ilvl, particle_gaboxes in level_ghost_boxes(datahier).items():
+            self.assertTrue(ilvl > 0) # has no level 0
+            coarse_particles = domainParticles_for(ilvl - 1)
+
+            self.assertTrue(all([particles.size() > 0 for k, particles in coarse_particles.items()]))
+
+            coarse_split_particles = {k: particles.split(sim) for k, particles in coarse_particles.items()}
+
+            for k, particles in coarse_particles.items():
+                self.assertTrue(coarse_split_particles[k].size() > 0)
+                self.assertTrue(coarse_split_particles[k].size() == particles.size() * sim.refined_particle_nbr)
+
+            for gabox in particle_gaboxes:
+                gabox_patchData = gabox["pdata"]
+                pop_name = gabox_patchData.pop_name + "_particles"
+
+                for ghostBox in gabox["boxes"]:
+                    part1 = gabox_patchData.dataset.select(ghostBox)
+                    part2 = coarse_split_particles[pop_name].select(ghostBox)
+
+                    self.assertTrue(part1.size() == part2.size())
+
+                    idx1 = np.argsort(part1.iCells + part1.deltas)
+                    idx2 = np.argsort(part2.iCells + part2.deltas)
+
+                    self.assertTrue(len(idx1) == len(idx2))
+
+                    np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
+
+                    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
+
+                    np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
+                    np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
+                    np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+
+    @data(
+       ({"L0": {"B0": Box1D(10, 14)}}),
+       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(15, 35)}}),
+       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+    )
+    def test_levelghostparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
+        dim = len(refinement_boxes["L0"]["B0"].lower)
+        for interp_order in [1, 2, 3]:
+            self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
+
 
 
 

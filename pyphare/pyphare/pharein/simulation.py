@@ -240,7 +240,7 @@ def check_refinement_boxes(**kwargs):
 
         elif isinstance(boxes[0], Box):
             for box in boxes:
-                for l in boxm.refine(box, kwargs["refinement_ratio"]).length():
+                for l in boxm.refine(box, kwargs["refinement_ratio"]).shape():
                     if l < smallest_patch_size:
                         raise  ValueError("Invalid box incompatible with smallest_patch_size")
 
@@ -338,6 +338,7 @@ def checker(func):
         kwargs["time_step"] = time_step
 
         kwargs["interp_order"] = check_interp_order(**kwargs)
+        kwargs["refinement_ratio"] = 2
 
         kwargs["particle_pusher"] = check_pusher(**kwargs)
         kwargs["layout"] = check_layout(**kwargs)

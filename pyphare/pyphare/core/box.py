@@ -53,6 +53,13 @@ class Box:
     def __repr__(self):
         return self.__str__()
 
+    # only 0 or 1 are valid
+    def __getitem__(self, idx):
+        assert 0 <= idx <= 1
+        if idx == 0:
+            return self.lower
+        return self.upper
+
     def __contains__(self, item):
         """true if item is completely within self"""
         if not isinstance(item, Box):
