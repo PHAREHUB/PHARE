@@ -1,3 +1,8 @@
+
+
+#include <memory>
+#include <cstdint>
+
 #include "amr/data/particles/particles_data.h"
 #include "amr/data/particles/particles_data_factory.h"
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
@@ -11,23 +16,30 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+
+#include "core/utilities/types.h"
+
 using testing::Eq;
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-struct AParticlesData1D : public testing::Test
+
+template<std::size_t dim>
+struct AParticlesData
 {
-    SAMRAI::tbox::Dimension dimension{1};
+    static constexpr auto dimension = dim;
+
+    SAMRAI::tbox::Dimension amr_dimension{dim};
     SAMRAI::hier::BlockId blockId{0};
 
-    SAMRAI::hier::Box destDomain{SAMRAI::hier::Index{dimension, 0},
-                                 SAMRAI::hier::Index{dimension, 5}, blockId};
+    SAMRAI::hier::Box destDomain{SAMRAI::hier::Index{amr_dimension, 0},
+                                 SAMRAI::hier::Index{amr_dimension, 5}, blockId};
 
-    SAMRAI::hier::Box sourceDomain{SAMRAI::hier::Index{dimension, 10},
-                                   SAMRAI::hier::Index{dimension, 15}, blockId};
+    SAMRAI::hier::Box sourceDomain{SAMRAI::hier::Index{amr_dimension, 10},
+                                   SAMRAI::hier::Index{amr_dimension, 15}, blockId};
 
-    SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
+    SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(amr_dimension)};
 
     std::shared_ptr<SAMRAI::hier::PatchDescriptor> patchDescriptor{
         std::make_shared<SAMRAI::hier::PatchDescriptor>()};
@@ -35,8 +47,8 @@ struct AParticlesData1D : public testing::Test
     SAMRAI::hier::Patch destPatch{destDomain, patchDescriptor};
     SAMRAI::hier::Patch sourcePatch{sourceDomain, patchDescriptor};
 
-    ParticlesData<ParticleArray<1>> destData{destDomain, ghost};
-    ParticlesData<ParticleArray<1>> sourceData{sourceDomain, ghost};
+    ParticlesData<ParticleArray<dim>> destData{destDomain, ghost};
+    ParticlesData<ParticleArray<dim>> sourceData{sourceDomain, ghost};
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destGeom{
         std::make_shared<SAMRAI::pdat::CellGeometry>(destPatch.getBox(), ghost)};
@@ -50,7 +62,7 @@ struct AParticlesData1D : public testing::Test
 
     bool overwriteInterior{true};
 
-    SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(dimension)};
+    SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(amr_dimension)};
 
     SAMRAI::hier::Transformation transformation{destDomain.lower() - sourceDomain.upper()
                                                 - oneIndex};
@@ -61,10 +73,10 @@ struct AParticlesData1D : public testing::Test
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
 
-    Particle<1> particle;
+    Particle<dim> particle;
 
 
-    AParticlesData1D()
+    AParticlesData()
     {
         particle.weight = 1.0;
         particle.charge = 1.0;
@@ -73,11 +85,26 @@ struct AParticlesData1D : public testing::Test
 };
 
 
-
-
-TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
+template<typename ParticlesData>
+struct StreamPackTest : public ::testing::Test
 {
-    particle.iCell = {{15}};
+};
+
+using ParticlesDatas = testing::Types<AParticlesData<1>, AParticlesData<2>, AParticlesData<3>>;
+TYPED_TEST_SUITE(StreamPackTest, ParticlesDatas);
+
+TYPED_TEST(StreamPackTest, PreserveVelocityWhenPackStreamWithPeriodics)
+{
+    using ParticlesData = TypeParam;
+    constexpr auto dim  = ParticlesData::dimension;
+
+    ParticlesData param;
+    auto& particle    = param.particle;
+    auto& sourceData  = param.sourceData;
+    auto& cellOverlap = param.cellOverlap;
+    auto& destData    = param.destData;
+
+    particle.iCell = ConstArray<int, dim>(15);
     sourceData.domainParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
@@ -97,9 +124,18 @@ TEST_F(AParticlesData1D, PreserveVelocityWhenPackStreamWithPeriodics)
 
 
 
-TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
+TYPED_TEST(StreamPackTest, ShiftTheiCellWhenPackStreamWithPeriodics)
 {
-    particle.iCell = {{15}};
+    using ParticlesData = TypeParam;
+    constexpr auto dim  = ParticlesData::dimension;
+
+    ParticlesData param;
+    auto& particle    = param.particle;
+    auto& sourceData  = param.sourceData;
+    auto& cellOverlap = param.cellOverlap;
+    auto& destData    = param.destData;
+
+    particle.iCell = ConstArray<int, dim>(15);
 
     sourceData.domainParticles.push_back(particle);
 
@@ -115,7 +151,7 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
 
     // patch0 start at 0 , patch1 start at 10
     // with periodics condition, we have 0 equivalent to 15
-    std::array<int, 1> expectediCell{-1};
+    auto expectediCell = ConstArray<int, dim>(-1);
 
 
     ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
@@ -124,10 +160,18 @@ TEST_F(AParticlesData1D, ShiftTheiCellWhenPackStreamWithPeriodics)
 
 
 
-
-TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
+TYPED_TEST(StreamPackTest, PackInTheCorrectBufferWithPeriodics)
 {
-    particle.iCell = {{16}};
+    using ParticlesData = TypeParam;
+    constexpr auto dim  = ParticlesData::dimension;
+
+    ParticlesData param;
+    auto& particle    = param.particle;
+    auto& sourceData  = param.sourceData;
+    auto& cellOverlap = param.cellOverlap;
+    auto& destData    = param.destData;
+
+    particle.iCell = ConstArray<int, dim>(16);
 
     sourceData.patchGhostParticles.push_back(particle);
 
@@ -141,7 +185,7 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    std::array<int, 1> expectediCell{0};
+    auto expectediCell = ConstArray<int, dim>(0);
 
     ASSERT_THAT(destData.domainParticles.size(), Eq(1));
     ASSERT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
@@ -149,10 +193,19 @@ TEST_F(AParticlesData1D, PackInTheCorrectBufferWithPeriodics)
 
 
 
-
-TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromGhostSrcToDomainDest)
+TYPED_TEST(StreamPackTest,
+           PreserveParticleAttributesWhenPackingWithPeriodicsFromGhostSrcToDomainDest)
 {
-    particle.iCell = {{16}};
+    using ParticlesData = TypeParam;
+    constexpr auto dim  = ParticlesData::dimension;
+
+    ParticlesData param;
+    auto& particle    = param.particle;
+    auto& sourceData  = param.sourceData;
+    auto& cellOverlap = param.cellOverlap;
+    auto& destData    = param.destData;
+
+    particle.iCell = ConstArray<int, dim>(16);
 
     sourceData.domainParticles.push_back(particle);
 
@@ -166,9 +219,10 @@ TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromG
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
+    auto expectediCell = ConstArray<int, dim>(0);
 
     EXPECT_THAT(destData.domainParticles[0].v, Eq(particle.v));
-    EXPECT_THAT(destData.domainParticles[0].iCell[0], Eq(0));
+    EXPECT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
     EXPECT_THAT(destData.domainParticles[0].delta, Eq(particle.delta));
     EXPECT_THAT(destData.domainParticles[0].weight, Eq(particle.weight));
     EXPECT_THAT(destData.domainParticles[0].charge, Eq(particle.charge));
@@ -182,10 +236,19 @@ TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromG
 
 
 
-
-TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromDomainSrcToGhostDest)
+TYPED_TEST(StreamPackTest,
+           PreserveParticleAttributesWhenPackingWithPeriodicsFromDomainSrcToGhostDest)
 {
-    particle.iCell = {{15}};
+    using ParticlesData = TypeParam;
+    constexpr auto dim  = ParticlesData::dimension;
+
+    ParticlesData param;
+    auto& particle    = param.particle;
+    auto& sourceData  = param.sourceData;
+    auto& cellOverlap = param.cellOverlap;
+    auto& destData    = param.destData;
+
+    particle.iCell = ConstArray<int, dim>(15);
 
     sourceData.domainParticles.push_back(particle);
 
@@ -199,8 +262,10 @@ TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromD
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
+    auto expectediCell = ConstArray<int, dim>(-1);
+
     EXPECT_THAT(destData.patchGhostParticles[0].v, Eq(particle.v));
-    EXPECT_THAT(destData.patchGhostParticles[0].iCell[0], Eq(-1));
+    EXPECT_THAT(destData.patchGhostParticles[0].iCell, Eq(expectediCell));
     EXPECT_THAT(destData.patchGhostParticles[0].delta, Eq(particle.delta));
     EXPECT_THAT(destData.patchGhostParticles[0].weight, Eq(particle.weight));
     EXPECT_THAT(destData.patchGhostParticles[0].charge, Eq(particle.charge));
@@ -211,7 +276,6 @@ TEST_F(AParticlesData1D, PreserveParticleAttributesWhenPackingWithPeriodicsFromD
     EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].By, particle.By);
     EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bz, particle.Bz);
 }
-
 
 
 
