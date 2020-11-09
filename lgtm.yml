@@ -1,12 +1,8 @@
 path_classifiers:
-  tag:
-    exclude: subprojects
-  docs:
-  - README.md
-  - LICENSE.txt
-  test: tests/**/*.cpp
-queries:
-  exclude: subprojects
+  test:
+    - "tests"
+  library:
+    - "subprojects"
 extraction:
   cpp:
     prepare:
