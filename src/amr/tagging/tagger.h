@@ -10,7 +10,11 @@ class Tagger
 {
 public:
     virtual void tag() = 0;
+    virtual ~Tagger()  = 0;
 };
+
+Tagger::~Tagger() {}
+
 } // namespace PHARE::amr
 
 #endif

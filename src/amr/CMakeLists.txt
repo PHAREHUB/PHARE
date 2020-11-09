@@ -43,6 +43,8 @@ set( SOURCES_INC
      wrappers/hierarchy.h
      wrappers/integrator.h
      tagging/tagger.h
+     tagging/hybrid_tagger.h
+     tagging/tagger_factory.h
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

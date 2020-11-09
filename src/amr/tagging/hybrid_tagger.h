@@ -10,39 +10,39 @@
 
 namespace PHARE::amr
 {
-
 class HybridTaggerStrategy
 {
 public:
-    virtual void tag() =0;
+    virtual void tag()              = 0;
+    virtual ~HybridTaggerStrategy() = 0;
 };
 
-class ScaledAvgHybridTaggerStrategy: public HybridTaggerStrategy
+
+HybridTaggerStrategy::~HybridTaggerStrategy() {}
+
+
+class ScaledAvgHybridTaggerStrategy : public HybridTaggerStrategy
 {
 public:
     void tag() override;
 };
 
 
-void
-ScaledAvgHybridTaggerStrategy::tag()
-{
-
-}
+void ScaledAvgHybridTaggerStrategy::tag() {}
 
 
 class HybridTagger : public Tagger
 {
 public:
     HybridTagger(std::unique_ptr<HybridTaggerStrategy> strat)
-        :strat_{std::move(strat)}
-    {}
+        : strat_{std::move(strat)}
+    {
+    }
 
     void tag() override;
 
 private:
     std::unique_ptr<HybridTaggerStrategy> strat_;
-
 };
 
 
