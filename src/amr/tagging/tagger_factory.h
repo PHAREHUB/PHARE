@@ -17,12 +17,12 @@ public:
 };
 
 
-std::unique_ptr<Tagger>
-TaggerFactory::make(std::string modelName, std::string methodName)
+std::unique_ptr<Tagger> TaggerFactory::make(std::string modelName, std::string methodName)
 {
     if (modelName == "hybridModel")
     {
-        return std::make_unique<HybridTagger>(std::make_unique<ScaledAvgHybridTaggerStrategy>());
+        return /*std::make_unique<HybridTagger>(std::make_unique<ScaledAvgHybridTaggerStrategy>())*/
+            nullptr;
     }
     return nullptr;
 }

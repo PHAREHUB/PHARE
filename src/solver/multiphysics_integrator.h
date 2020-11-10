@@ -35,10 +35,11 @@ namespace solver
 {
     struct LevelDescriptor
     {
-        static int const NOT_SET  = -1;
-        int modelIndex            = NOT_SET;
-        int solverIndex           = NOT_SET;
-        int resourcesManagerIndex = NOT_SET;
+        static int constexpr NOT_SET = -1;
+        int modelIndex               = NOT_SET;
+        int solverIndex              = NOT_SET;
+        int resourcesManagerIndex    = NOT_SET;
+        int taggerIndex              = NOT_SET;
         std::string messengerName;
     };
 
@@ -306,13 +307,23 @@ namespace solver
 
 
 
-        void
-        applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                              int const levelNumber, double const /*error_data_time*/,
-                              int const /*tag_index*/, bool const /*initialTime*/,
-                              bool const /*usesRichardsonExtrapolationToo*/) override
+        void applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber, double const /*error_data_time*/,
+                                   int const tag_index, bool const /*initialTime*/,
+                                   bool const /*usesRichardsonExtrapolationToo*/) override
         {
             std::cout << "apply gradient detector on level " << levelNumber << "\n";
+
+            auto level = hierarchy->getPatchLevel(levelNumber);
+            for (auto& patch : *level)
+            {
+                auto& model = getModel_(levelNumber);
+                // auto& tagger = getTagger(levelNumber);
+
+                // auto tags = patch->getPatchData(tag_index);
+                // auto layout = PHARE::amr::layoutFromPatch(*patch);
+                // tagger.tag(model, patch, tag_index);
+            }
         }
 
 
