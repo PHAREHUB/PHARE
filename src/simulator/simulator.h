@@ -32,7 +32,7 @@ class Simulator : public ISimulator
 public:
     std::string to_str() override;
 
-    void initialize();
+    void initialize() override;
 
     double startTime() override { return 0.; }
 
