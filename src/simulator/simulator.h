@@ -11,16 +11,20 @@ namespace PHARE
 class ISimulator
 {
 public:
-    virtual void initialize()                            = 0;
-    virtual double startTime()                           = 0;
-    virtual double endTime()                             = 0;
-    virtual double currentTime()                         = 0;
-    virtual double timeStep()                            = 0;
-    virtual double advance(double dt)                    = 0;
-    virtual std::string to_str()                         = 0;
+    virtual double startTime()   = 0;
+    virtual double endTime()     = 0;
+    virtual double currentTime() = 0;
+    virtual double timeStep()    = 0;
+
+    virtual void initialize()         = 0;
+    virtual double advance(double dt) = 0;
+
     virtual std::vector<int> const& domainBox() const    = 0;
     virtual std::vector<double> const& cellWidth() const = 0;
     virtual std::size_t interporder() const              = 0;
+
+    virtual std::string to_str() = 0;
+
     virtual ~ISimulator() {}
 };
 
@@ -30,31 +34,23 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class Simulator : public ISimulator
 {
 public:
-    std::string to_str() override;
-
-    void initialize() override;
-
     double startTime() override { return 0.; }
-
     double endTime() override { return finalTime_; }
-
     double timeStep() override { return dt_; }
-
     double currentTime() override { return currentTime_; }
 
-    std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
-
-    std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
-
-    std::size_t interporder() const override { return interp_order; }
-
+    void initialize() override;
     double advance(double dt) override;
 
+    std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
+    std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
+    std::size_t interporder() const override { return interp_order; }
+
     auto& getHybridModel() { return hybridModel_; }
-
     auto& getMHDModel() { return mhdModel_; }
-
     auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+
+    std::string to_str() override;
 
     Simulator(PHARE::initializer::PHAREDict dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
