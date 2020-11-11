@@ -96,7 +96,8 @@ public:
                             {
                                 auto position
                                     = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
-                                field(ix, iy) = affineFill(position);
+                                auto affineVal = affineFill(position);
+                                field(ix, iy)  = affineFill(position);
                             }
                         }
                     }
@@ -146,10 +147,10 @@ public:
         static auto constexpr dim = GridLayoutT::dimension;
 
         // parameter for linear function ax + by + cz + d
-        double a = 0.2;
-        double b = 0.4;
-        double c = 0.6;
-        double d = 0.8;
+        double a = 1.0;
+        double b = 10.0;
+        double c = 100.0;
+        double d = 1000.0;
 
         if constexpr (dim == 1)
         {

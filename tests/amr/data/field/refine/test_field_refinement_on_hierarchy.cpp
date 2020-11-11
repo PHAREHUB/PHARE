@@ -62,7 +62,6 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
     // where a, b, c & d are given in TagStrategy::affineFill implementation
     auto& affineFill = TagStrategy<GridYee, FieldND>::affineFill;
 
-    // test coarse operation ????????????????????????????????????????
     auto level = hierarchy.getPatchLevel(1);
 
     for (auto& patch : *level)
@@ -100,6 +99,8 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
                     for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
                     {
                         auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
+                        auto fieldVal = field(ix, iy);
+                        auto affineVal = affineFill(position);
 
                         EXPECT_DOUBLE_EQ(field(ix, iy), affineFill(position));
                     }

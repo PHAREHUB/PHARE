@@ -1,8 +1,8 @@
 CartesianGridGeometry
 {
-    domain_boxes = [ (0, 0) , (64, 32) ]
+    domain_boxes = [ (0, 0) , (15, 7) ]
     x_lo = 0.0, 0.0
-    x_up = 1.0, 0.8
+    x_up = 8.0, 8.0
     periodic_dimension = 1, 1
 }
 Main
@@ -11,7 +11,7 @@ Main
 }
 PatchHierarchy
 {
-    max_levels  =   4
+    max_levels  =   3
     // vector of coarse ratio with dim dimension
     ratio_to_coarser
     {
@@ -19,12 +19,12 @@ PatchHierarchy
     }
     largest_patch_size
     {
-        level_0 =   64, 32
+        level_0 =   32, 16
         // All finer level will use same values in as level_0
     }
     smallest_patch_size
     {
-        level_0 =   12, 8
+        level_0 =   2, 2
         // All finer level will use same values in as level_0
      }
 }
@@ -42,7 +42,7 @@ StandardTagAndInitialize
             tagging_method = "REFINE_BOXES"
             level_0
             {
-                boxes = [ (2, 2) , (16, 16)] , [ (32, 8), (48, 24)]
+                boxes = [ (1, 1) , (6, 6) ] , [ (8, 1), (14, 6) ]
             }
         }
     }
