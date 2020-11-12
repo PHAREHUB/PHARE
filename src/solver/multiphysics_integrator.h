@@ -402,8 +402,8 @@ namespace solver
 
             // we skip first/last as that's done via regular diag dump mechanism
             bool fineDumpsActive = simFuncs_.at("pre_advance").count("fine_dump") > 0;
-            bool notCoarestTime  = currentTime != firstNewLevelTimes_[0];
-            bool shouldDump      = fineDumpsActive and !firstStep and iLevel > 0 and notCoarestTime;
+            bool notCoarsestTime = currentTime != firstNewLevelTimes_[0];
+            bool shouldDump = fineDumpsActive and !firstStep and iLevel > 0 and notCoarsestTime;
             if (shouldDump)
             {
                 SimFunctorParams fineDumpParams;

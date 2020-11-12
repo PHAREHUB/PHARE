@@ -150,12 +150,22 @@ class InitializationTest(unittest.TestCase):
             b_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_B.h5")
             return b_hier
 
+        is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
+
+        if is_particle_type:
+            particle_hier = None
 
         if qty == "particles":
             particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_domain.h5")
-            particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_patchGhost.h5", hier=particle_hier)
             particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_levelGhost.h5", hier=particle_hier)
+
+        if is_particle_type:
+            particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_patchGhost.h5", hier=particle_hier)
+
+        if qty == "particles":
             merge_particles(particle_hier)
+
+        if is_particle_type:
             return particle_hier
 
         if qty == "moments":
@@ -655,6 +665,58 @@ class InitializationTest(unittest.TestCase):
         for interp_order in [1, 2, 3]:
             self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
 
+
+    def ddt_test_id(self):
+        return self._testMethodName.split("_")[-1]
+
+    def _test_patch_ghost_on_refined_level_case(self, has_patch_ghost, **kwargs):
+        import pyphare.pharein as ph
+        from pybindlibs import cpp
+        from pyphare.simulator.simulator import startMPI
+
+        startMPI()
+
+        out = "phare_outputs"
+
+        test_id = self.ddt_test_id()
+
+        for dim in [1]:
+            for interp in [1, 2, 3]:
+
+                b0 = [[10 for i in range(dim)], [20 for i in range(dim)]]
+                refinement_boxes = {"L0": {"B0": b0}}
+
+                local_out = f"{out}/dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
+                kwargs["diag_outputs"] = local_out
+
+                datahier = self.getHierarchy(interp, refinement_boxes, "particles_patch_ghost", **kwargs)
+
+                self.assertTrue(any([diagInfo.quantity.endswith("patchGhost") for diagInfo in ph.global_vars.sim.diagnostics]))
+
+                key = "protons_particles"
+                self.assertTrue((1 in datahier.levels()) == has_patch_ghost)
+
+
+    _no_patch_ghost_on_refined_level_case = (
+      {
+        "cells": 40,
+        "smallest_patch_size": 40,
+        "largest_patch_size": 40},
+    )
+    @data(*_no_patch_ghost_on_refined_level_case)
+    def test_no_patch_ghost_on_refined_level_case(self, simInput):
+        self._test_patch_ghost_on_refined_level_case(False, **simInput)
+
+
+    _has_patch_ghost_on_refined_level_case = (
+      {
+        "cells": 40,
+        "smallest_patch_size": 5,
+        "largest_patch_size": 5},
+    )
+    @data(*_has_patch_ghost_on_refined_level_case)
+    def test_has_patch_ghost_on_refined_level_case(self, simInput):
+        self._test_patch_ghost_on_refined_level_case(True, **simInput)
 
 
 
