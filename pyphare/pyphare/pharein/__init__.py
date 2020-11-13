@@ -1,6 +1,4 @@
 
-
-import numpy as np
 import os, sys, subprocess
 
 venv_path = os.environ.get('VIRTUAL_ENV')
@@ -14,6 +12,8 @@ if venv_path is not None:
     s = s.split(",")[1:]
     pythonpath = [ss.strip() for ss in s]
     sys.path = sys.path + pythonpath
+
+import numpy as np
 
 
 

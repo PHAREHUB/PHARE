@@ -291,7 +291,7 @@ TEST(MaskedView1d, maskOps)
 
     EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
 
-    array[Mask{0u, size}] = 1;
+    array[Mask{0u, size - 1}] = 1;
 
     EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), size);
 
