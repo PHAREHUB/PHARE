@@ -4,6 +4,7 @@ import math
 from .phare_utilities import listify
 from .box import Box
 
+
 yee_centering = {
     'x': {
         'Bx':'primal', 'By':'dual', 'Bz':'dual',
@@ -37,8 +38,8 @@ yee_centering_lower = {
 
 def yee_element_is_primal(key, direction = 'x'):
     if key in yee_centering_lower[direction]:
-        return yee_centering_lower[direction][key] is 'primal'
-    return yee_centering[direction][key] is 'primal'
+        return yee_centering_lower[direction][key] == 'primal'
+    return yee_centering[direction][key] == 'primal'
 
 
 class YeeCentering(object):
@@ -70,6 +71,9 @@ class GridLayout(object):
                           'Y' : self.yeeCentering.centerY,
                           'Z' : self.yeeCentering.centerZ
                          }
+
+    def dim(self):
+        return self.box.dim()
 
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]

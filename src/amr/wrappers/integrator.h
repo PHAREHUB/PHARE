@@ -29,62 +29,73 @@ namespace amr
     std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
     getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
     {
-        if (!amr.contains("refinement_boxes"))
-            return nullptr;
-
-        auto& refDict       = amr["refinement_boxes"];
+        auto& refinement    = amr[std::string{"refinement"}];
         auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
-
-        std::shared_ptr<SAMRAI::tbox::MemoryDatabase> refinementBoxesDatabase
-            = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
-
-        // user refinement boxes are always defined at t=0
-        auto at0db = refinementBoxesDatabase->putDatabase("at_0");
-        at0db->putInteger("cycle", 0);
-        auto tag0db = at0db->putDatabase("tag_0");
-        tag0db->putString("tagging_method", "REFINE_BOXES");
-
-
-        for (int levelNumber = 0; levelNumber < maxLevelNumber; ++levelNumber)
+        if (refinement.contains("boxes"))
         {
-            // not all levels are necessarily specified for refinement
-            // cppdict will throw when trying to access key L{i} with i = levelNumber
-            std::string levelString{"L" + std::to_string(levelNumber)};
-            if (refDict.contains(levelString))
+            auto& refDict = refinement["boxes"];
+
+            std::shared_ptr<SAMRAI::tbox::MemoryDatabase> refinementBoxesDatabase
+                = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
+
+            // user refinement boxes are always defined at t=0
+            // auto at0db = refinementBoxesDatabase->putDatabase("at_0");
+            // at0db->putInteger("cycle", 0);
+            // auto tag0db = at0db->putDatabase("tag_0");
+            std::cout << "tagging method is set to REFINE_BOXES\n";
+            refinementBoxesDatabase->putString("tagging_method", "REFINE_BOXES");
+
+
+            for (int levelNumber = 0; levelNumber < maxLevelNumber; ++levelNumber)
             {
-                auto& levelDict = refDict[levelString];
-                auto samraiDim  = SAMRAI::tbox::Dimension{dimension};
-                auto nbrBoxes   = levelDict["nbr_boxes"].template to<int>();
-                auto levelDB    = tag0db->putDatabase("level_" + std::to_string(levelNumber));
-
-                std::vector<SAMRAI::tbox::DatabaseBox> dbBoxes;
-                for (int iBox = 0; iBox < nbrBoxes; ++iBox)
+                // not all levels are necessarily specified for refinement
+                // cppdict will throw when trying to access key L{i} with i = levelNumber
+                std::string levelString{"L" + std::to_string(levelNumber)};
+                if (refDict.contains(levelString))
                 {
-                    int lower[dimension];
-                    int upper[dimension];
-                    auto& boxDict = levelDict["B" + std::to_string(iBox)];
+                    auto& levelDict = refDict[levelString];
+                    auto samraiDim  = SAMRAI::tbox::Dimension{dimension};
+                    auto nbrBoxes   = levelDict["nbr_boxes"].template to<int>();
+                    auto levelDB    = refinementBoxesDatabase->putDatabase(
+                        "level_" + std::to_string(levelNumber));
 
-                    lower[0] = boxDict["lower"]["x"].template to<int>();
-                    upper[0] = boxDict["upper"]["x"].template to<int>();
-
-                    if constexpr (dimension >= 2)
+                    std::vector<SAMRAI::tbox::DatabaseBox> dbBoxes;
+                    for (int iBox = 0; iBox < nbrBoxes; ++iBox)
                     {
-                        lower[1] = boxDict["lower"]["y"].template to<int>();
-                        upper[1] = boxDict["upper"]["y"].template to<int>();
-                    }
+                        int lower[dimension];
+                        int upper[dimension];
+                        auto& boxDict = levelDict["B" + std::to_string(iBox)];
 
-                    if constexpr (dimension == 3)
-                    {
-                        lower[2] = boxDict["lower"]["z"].template to<int>();
-                        upper[2] = boxDict["upper"]["z"].template to<int>();
-                    }
+                        lower[0] = boxDict["lower"]["x"].template to<int>();
+                        upper[0] = boxDict["upper"]["x"].template to<int>();
 
-                    dbBoxes.push_back(SAMRAI::tbox::DatabaseBox(samraiDim, lower, upper));
+                        if constexpr (dimension >= 2)
+                        {
+                            lower[1] = boxDict["lower"]["y"].template to<int>();
+                            upper[1] = boxDict["upper"]["y"].template to<int>();
+                        }
+
+                        if constexpr (dimension == 3)
+                        {
+                            lower[2] = boxDict["lower"]["z"].template to<int>();
+                            upper[2] = boxDict["upper"]["z"].template to<int>();
+                        }
+
+                        dbBoxes.push_back(SAMRAI::tbox::DatabaseBox(samraiDim, lower, upper));
+                    }
+                    levelDB->putDatabaseBoxVector("boxes", dbBoxes);
                 }
-                levelDB->putDatabaseBoxVector("boxes", dbBoxes);
-            }
-        } // end loop on levels
-        return refinementBoxesDatabase;
+            } // end loop on levels
+            return refinementBoxesDatabase;
+        }
+        else if (refinement.contains("tagging"))
+        {
+            std::shared_ptr<SAMRAI::tbox::MemoryDatabase> tagDB
+                = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
+            tagDB->putString("tagging_method", "GRADIENT_DETECTOR");
+            return tagDB;
+        }
+        return nullptr;
     }
 
 
@@ -100,7 +111,7 @@ namespace amr
         }
 
 
-        void advance(double dt) { timeRefIntegrator_->advanceHierarchy(dt); }
+        double advance(double dt) { return timeRefIntegrator_->advanceHierarchy(dt); }
 
 
     protected:
@@ -113,7 +124,7 @@ namespace amr
     class DimIntegrator : public Integrator
     {
     public:
-        static constexpr size_t dimension = _dimension;
+        static constexpr std::size_t dimension = _dimension;
 
         DimIntegrator(
             PHARE::initializer::PHAREDict dict,
@@ -144,7 +155,8 @@ namespace amr
             db->putDouble("start_time", startTime);
             db->putDouble("end_time", endTime);
             db->putInteger("max_integrator_steps", 1000000);
-            db->putInteger("regrid_interval", 1);
+            db->putIntegerVector("tag_buffer",
+                                 std::vector<int>(hierarchy->getMaxNumberOfLevels(), 10));
 
 
             timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(

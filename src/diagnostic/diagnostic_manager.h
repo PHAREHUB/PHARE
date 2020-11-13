@@ -21,7 +21,7 @@ void registerDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& diags
 
     for (auto& diagType : diagTypes)
     {
-        size_t diagBlockID = 0;
+        std::size_t diagBlockID = 0;
         while (diagsParams.contains(diagType)
                && diagsParams[diagType].contains(diagType + std::to_string(diagBlockID)))
         {

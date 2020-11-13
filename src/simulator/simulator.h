@@ -4,38 +4,35 @@
 
 #include "include.h"
 #include "phare_types.h"
-#include "amr/wrappers/hierarchy.h"
-#include "amr/wrappers/integrator.h"
-
-
+#include <chrono>
 
 namespace PHARE
 {
 class ISimulator
 {
 public:
-    virtual void initialize()             = 0;
-    virtual double startTime()            = 0;
-    virtual double endTime()              = 0;
-    virtual double currentTime()          = 0;
-    virtual double timeStep()             = 0;
-    virtual void advance(double dt)       = 0;
-    virtual std::string to_str()          = 0;
-    virtual std::string domainBox() const = 0;
-    virtual std::string cellWidth() const = 0;
+    virtual void initialize()                            = 0;
+    virtual double startTime()                           = 0;
+    virtual double endTime()                             = 0;
+    virtual double currentTime()                         = 0;
+    virtual double timeStep()                            = 0;
+    virtual double advance(double dt)                    = 0;
+    virtual std::string to_str()                         = 0;
+    virtual std::vector<int> const& domainBox() const    = 0;
+    virtual std::vector<double> const& cellWidth() const = 0;
+    virtual std::size_t interporder() const              = 0;
     virtual ~ISimulator() {}
 };
 
 
 
-
-template<std::size_t _dimension, std::size_t _interp_order, size_t _nbRefinedPart>
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 class Simulator : public ISimulator
 {
 public:
-    static constexpr size_t dimension     = _dimension;
-    static constexpr size_t interp_order  = _interp_order;
-    static constexpr size_t nbRefinedPart = _nbRefinedPart;
+    static constexpr std::size_t dimension     = _dimension;
+    static constexpr std::size_t interp_order  = _interp_order;
+    static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
 
     using SAMRAITypes = PHARE::amr::SAMRAI_Types;
     using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
@@ -94,8 +91,6 @@ public:
     }
 
 
-
-
     std::string to_str() override
     {
         std::stringstream ss;
@@ -144,17 +139,19 @@ public:
     double timeStep() override { return dt_; }
     double currentTime() override { return currentTime_; }
 
-    std::string domainBox() const override { return hierarchy_->domainBox(); }
-    std::string cellWidth() const override { return hierarchy_->cellWidth(); }
+    std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
+    std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
+    std::size_t interporder() const override { return interp_order; }
 
-    void advance(double dt) override
+    double advance(double dt) override
     {
         try
         {
             if (integrator_)
             {
-                integrator_->advance(dt);
+                auto dt_new = integrator_->advance(dt);
                 currentTime_ += dt;
+                return dt_new;
             }
             else
                 throw std::runtime_error("Error - no valid integrator in the simulator");
@@ -226,7 +223,7 @@ struct SimulatorMaker
 
     template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
     std::unique_ptr<ISimulator> operator()(std::size_t userDim, std::size_t userInterpOrder,
-                                           size_t userNbRefinedPart, Dimension dimension,
+                                           std::size_t userNbRefinedPart, Dimension dimension,
                                            InterpOrder interp_order, NbRefinedPart nbRefinedPart)
     {
         if (userDim == dimension() and userInterpOrder == interp_order()
@@ -248,7 +245,109 @@ struct SimulatorMaker
 };
 
 
+template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
+class SimulatorCaster
+{
+public:
+    using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart>;
+
+    SimulatorCaster(std::shared_ptr<ISimulator> const& _simulator)
+        : simulator{_simulator}
+    {
+    }
+
+    template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+    Simulator_t* operator()(std::size_t userDim, std::size_t userInterpOrder,
+                            std::size_t userNbRefinedPart, Dimension dimension_fn,
+                            InterpOrder interp_order_fn, NbRefinedPart nbRefinedPart_fn)
+    {
+        if (userDim == dimension_fn() and userInterpOrder == interp_order_fn()
+            and userNbRefinedPart == nbRefinedPart_fn())
+        {
+            std::size_t constexpr d  = dimension_fn();
+            std::size_t constexpr io = interp_order_fn();
+            std::size_t constexpr nb = nbRefinedPart_fn();
+
+            // extra if constexpr as cast is templated and not generic interface
+            if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
+                return dynamic_cast<Simulator_t*>(simulator.get());
+        }
+        return nullptr;
+    }
+
+private:
+    std::shared_ptr<ISimulator> const& simulator;
+};
+
 std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
+
+
+template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>
+std::unique_ptr<Simulator<dim, interp, nbRefinedPart>>
+makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
+{
+    return std::make_unique<Simulator<dim, interp, nbRefinedPart>>(
+        initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
+}
+
+
+
+struct SimulatorDiagnostics
+{
+    SimulatorDiagnostics(PHARE::ISimulator& simulator, PHARE::amr::Hierarchy& hierarchy)
+    {
+        auto dict  = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+        this->dMan = PHARE::core::makeAtRuntime<Maker>(
+            dict["simulation"]["dimension"].template to<int>(),
+            dict["simulation"]["interp_order"].template to<int>(),
+            dict["simulation"]["refined_particle_nbr"].template to<int>(),
+            Maker{simulator, hierarchy});
+        if (!this->dMan)
+            throw std::runtime_error("Runtime diagnostic deduction failed");
+    }
+
+    struct Maker
+    {
+        Maker(PHARE::ISimulator& _simulator, PHARE::amr::Hierarchy& _hierarchy)
+            : hierarchy{_hierarchy}
+            , simulator{_simulator}
+        {
+        }
+
+
+        template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
+        std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager>
+        operator()(std::size_t userDim, std::size_t userInterpOrder, std::size_t userNbRefinedPart,
+                   Dimension dimension, InterpOrder interp_order, NbRefinedPart nbRefinedPart)
+        {
+            auto& dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+            if (dict["simulation"].contains("diagnostics"))
+            {
+                if (userDim == dimension() and userInterpOrder == interp_order()
+                    and userNbRefinedPart == nbRefinedPart())
+                {
+                    constexpr std::size_t d  = dimension();
+                    constexpr std::size_t io = interp_order();
+                    constexpr std::size_t nb = nbRefinedPart();
+
+                    auto& cast_simulator = dynamic_cast<PHARE::Simulator<d, io, nb>&>(simulator);
+
+                    return PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
+                        hierarchy, *cast_simulator.getHybridModel(),
+                        dict["simulation"]["diagnostics"]);
+                }
+            }
+            return nullptr;
+        }
+
+        PHARE::amr::Hierarchy& hierarchy;
+        PHARE::ISimulator& simulator;
+    };
+
+    void dump(double timestamp, double timestep) { dMan->dump(timestamp, timestep); }
+
+    std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
+};
 
 
 } // namespace PHARE

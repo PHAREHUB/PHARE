@@ -37,10 +37,11 @@ public:
 
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
+    static constexpr auto READ_WRITE  = HiFile::ReadWrite | HiFile::Create;
 
     template<typename Hierarchy, typename Model>
     Writer(Hierarchy& hier, Model& model, std::string const hifivePath,
-           unsigned _flags = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate)
+           unsigned _flags /* = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate */)
         : flags{_flags}
         , filePath_{hifivePath}
         , modelView_{hier, model}
@@ -53,7 +54,10 @@ public:
     static decltype(auto) make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
-        return std::make_unique<This>(hier, model, filePath);
+        unsigned flags       = READ_WRITE;
+        if (dict.contains("mode") and dict["mode"].template to<std::string>() == "overwrite")
+            flags |= HiFile::Truncate;
+        return std::make_unique<This>(hier, model, filePath, flags);
     }
 
 
@@ -89,7 +93,7 @@ public:
     }
 
     template<typename Type>
-    static void createDataSet(HiFile& h5, std::string const& path, size_t size)
+    static void createDataSet(HiFile& h5, std::string const& path, std::size_t size)
     {
         if constexpr (std::is_same_v<Type, double>) // force doubles for floats for storage
             This::createDatasetsPerMPI<float>(h5, path, size);
@@ -115,7 +119,7 @@ public:
     template<typename Dict>
     static void writeAttributeDict(HiFile& h5, Dict dict, std::string path)
     {
-        dict.visit([&](const std::string& key, const auto& val) {
+        dict.visit([&](std::string const& key, const auto& val) {
             writeAttributesPerMPI(h5, path, key, val);
         });
     }
@@ -134,7 +138,7 @@ public:
 
     auto& modelView() { return modelView_; }
 
-    size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
+    std::size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
     unsigned flags;
 
 
@@ -157,7 +161,7 @@ private:
     }
 
     template<typename Type>
-    static void createDatasetsPerMPI(HiFile& h5, std::string path, size_t dataSetSize);
+    static void createDatasetsPerMPI(HiFile& h5, std::string path, std::size_t dataSetSize);
 
 
     void initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
@@ -202,6 +206,7 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
     fileAttributes_["origin"]      = modelView_.origin();
 
     initializeDatasets_(diagnostics);
+    flags = READ_WRITE; // don't truncate past first dump
     writeDatasets_(diagnostics);
 
     for (auto* diagnostic : diagnostics)
@@ -218,12 +223,12 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
  */
 template<typename ModelView>
 template<typename Type>
-void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, size_t dataSetSize)
+void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, std::size_t dataSetSize)
 {
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     auto sizes = core::mpi::collect(dataSetSize, mpi_size);
-    auto paths = core::mpi::collectStrings(path, mpi_size);
+    auto paths = core::mpi::collect(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
         if (sizes[i] == 0)
@@ -248,20 +253,33 @@ template<typename Data>
 void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
                                               Data const& data)
 {
-    auto doAttribute = [&](auto node, auto& _key, auto& value) {
-        node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value)).write(value);
+    constexpr bool data_is_vector = core::is_std_vector_v<Data>;
+
+    auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
+        if constexpr (data_is_vector)
+            node.template createAttribute<typename Data::value_type>(
+                    _key, HighFive::DataSpace(value.size()))
+                .write(value.data());
+        else
+            node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
+                .write(value);
     };
 
-    int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto values = core::mpi::collect(data, mpi_size);
-    auto paths  = core::mpi::collectStrings(path, mpi_size);
+    int mpi_size = core::mpi::size();
+    auto values  = [&]() {
+        if constexpr (data_is_vector)
+            return core::mpi::collect_raw(data, mpi_size);
+        else
+            return core::mpi::collect(data, mpi_size);
+    }();
+    auto paths = core::mpi::collect(path, mpi_size);
 
     for (int i = 0; i < mpi_size; i++)
     {
-        std::string keyPath = paths[i] == "null" ? "" : paths[i];
+        std::string const keyPath = paths[i] == "null" ? "" : paths[i];
         if (keyPath.empty())
             continue;
+
         if (h5.exist(keyPath) && h5.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
         {
             if (!h5.getDataSet(keyPath).hasAttribute(key))
@@ -281,14 +299,14 @@ void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std:
 template<typename ModelView>
 void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnostics)
 {
-    size_t maxLocalLevel = 0;
-    std::unordered_map<size_t, std::vector<std::string>> lvlPatchIDs;
+    std::size_t maxLocalLevel = 0;
+    std::unordered_map<std::size_t, std::vector<std::string>> lvlPatchIDs;
     Attributes patchAttributes; // stores dataset info/size for synced MPI creation
 
     for (auto* diag : diagnostics)
         writers.at(diag->type)->createFiles(*diag);
 
-    auto collectPatchAttributes = [&](GridLayout&, std::string patchID, size_t iLevel) {
+    auto collectPatchAttributes = [&](GridLayout&, std::string patchID, std::size_t iLevel) {
         if (!lvlPatchIDs.count(iLevel))
             lvlPatchIDs.emplace(iLevel, std::vector<std::string>());
 
@@ -304,8 +322,8 @@ void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> c
     modelView_.visitHierarchy(collectPatchAttributes, minLevel, maxLevel);
 
     // sets empty vectors in case current process lacks patch on a level
-    size_t maxMPILevel = core::mpi::max(maxLocalLevel);
-    for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
+    std::size_t maxMPILevel = core::mpi::max(maxLocalLevel);
+    for (std::size_t lvl = minLevel; lvl <= maxMPILevel; lvl++)
         if (!lvlPatchIDs.count(lvl))
             lvlPatchIDs.emplace(lvl, std::vector<std::string>());
 
@@ -321,10 +339,11 @@ void Writer<ModelView>::initializeDatasets_(std::vector<DiagnosticProperties*> c
 template<typename ModelView>
 void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const& diagnostics)
 {
-    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>> patchAttributes;
+    std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>
+        patchAttributes;
 
-    size_t maxLocalLevel = 0;
-    auto writePatch      = [&](GridLayout& gridLayout, std::string patchID, size_t iLevel) {
+    std::size_t maxLocalLevel = 0;
+    auto writePatch = [&](GridLayout& gridLayout, std::string patchID, std::size_t iLevel) {
         if (!patchAttributes.count(iLevel))
             patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
         patchPath_ = getPatchPathAddTimestamp(iLevel, patchID);
@@ -336,8 +355,9 @@ void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const&
 
     modelView_.visitHierarchy(writePatch, minLevel, maxLevel);
 
-    size_t maxMPILevel = core::mpi::max(maxLocalLevel);
-    for (size_t lvl = maxLocalLevel; lvl <= maxMPILevel; lvl++)
+    std::size_t maxMPILevel = core::mpi::max(maxLocalLevel);
+    // sets empty vectors in case current process lacks patch on a level
+    for (std::size_t lvl = minLevel; lvl <= maxMPILevel; lvl++)
         if (!patchAttributes.count(lvl))
             patchAttributes.emplace(lvl, std::vector<std::pair<std::string, Attributes>>{});
 

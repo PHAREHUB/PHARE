@@ -43,8 +43,8 @@ namespace amr
          */
         template<typename Descriptor, typename ResourcesManager>
         void add(Descriptor const& descriptor,
-                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, std::string key,
-                 std::shared_ptr<ResourcesManager> const& rm)
+                 std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                 std::string const key, std::shared_ptr<ResourcesManager> const& rm)
         {
             auto const [it, success]
                 = refiners_.insert({key, makeRefiner(descriptor, rm, refineOp)});
@@ -63,12 +63,12 @@ namespace amr
          * are only for ghost nodes, which is only for VecField E and B.
          */
         template<typename ResourcesManager>
-        void add(VecFieldDescriptor const& ghostDescriptor,
-                 VecFieldDescriptor const& modelDescriptor,
-                 VecFieldDescriptor const& oldModelDescriptor,
-                 std::shared_ptr<ResourcesManager> const& rm,
-                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp, std::string key)
+        void
+        add(VecFieldDescriptor const& ghostDescriptor, VecFieldDescriptor const& modelDescriptor,
+            VecFieldDescriptor const& oldModelDescriptor,
+            std::shared_ptr<ResourcesManager> const& rm,
+            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
         {
             auto const [it, success]
                 = refiners_.insert({key, makeRefiner(ghostDescriptor, modelDescriptor,
@@ -90,7 +90,7 @@ namespace amr
          *
          */
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+                           std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
         {
             for (auto& [_, refiner] : refiners_)
             {
@@ -184,7 +184,7 @@ namespace amr
          * The method registerLevel must have been called before for the given levelNumber otherwise
          * no schedule will be found
          */
-        void fill(int levelNumber, double initDataTime) const
+        void fill(int const levelNumber, double const initDataTime) const
         {
             for (auto& [key, communicator] : refiners_)
             {
@@ -220,15 +220,24 @@ namespace amr
             {
                 auto& algo = refiner.algo;
 
-                // here 'nullptr' is for 'oldlevel' which is always nullptr in this function
-                // the regriding schedule for which oldptr is not nullptr is handled in another
-                // function
                 auto const& level = hierarchy->getPatchLevel(levelNumber);
 
-                auto schedule = algo->createSchedule(
-                    level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-
-                schedule->fillData(initDataTime);
+                if constexpr (Type == RefinerType::LevelBorderParticles)
+                {
+                    std::cout << "regriding adding levelghostparticles on level " << levelNumber
+                              << " " << key << "\n";
+                    auto schedule = algo->createSchedule(
+                        std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
+                        oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    schedule->fillData(initDataTime);
+                }
+                else
+                {
+                    std::cout << "regriding adding " << key << " on level " << levelNumber << " \n";
+                    auto schedule = algo->createSchedule(
+                        level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    schedule->fillData(initDataTime);
+                }
             }
         }
 
@@ -286,7 +295,7 @@ namespace amr
     public:
         template<typename Descriptor, typename ResourcesManager>
         void add(Descriptor const& descriptor,
-                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp, std::string key,
+                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> const& coarsenOp, std::string key,
                  std::shared_ptr<ResourcesManager> const& rm)
         {
             synchronizers_.insert(
@@ -298,7 +307,7 @@ namespace amr
 
         template<typename ResourcesManager>
         void add(VecFieldDescriptor const& descriptor, std::shared_ptr<ResourcesManager> const& rm,
-                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp, std::string key)
+                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> const& coarsenOp, std::string key)
         {
             auto const [it, success] = synchronizers_.insert(
                 {key, makeSynchronizer<ResourcesManager, dimension>(descriptor, rm, coarsenOp)});
@@ -310,7 +319,7 @@ namespace amr
 
 
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           std::shared_ptr<SAMRAI::hier::PatchLevel>& level)
+                           std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
         {
             for (auto& [_, synchronizer] : synchronizers_)
             {

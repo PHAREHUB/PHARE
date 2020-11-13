@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.9)
 project(phare_amr)
 
 set( SOURCES_INC
@@ -45,16 +45,14 @@ set( SOURCES_INC
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
-     data/particles/refine/split.cpp
      resources_manager/amr_utils.cpp
-     messengers/messenger.cpp
      data/field/coarsening/field_coarsen.cpp
-     resources_manager/resources_manager.cpp
      messengers/messenger_factory.cpp
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
 
 target_link_libraries(${PROJECT_NAME} PUBLIC

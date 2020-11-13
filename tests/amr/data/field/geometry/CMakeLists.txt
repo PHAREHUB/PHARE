@@ -1,11 +1,11 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 project(test-field-geometry)
 
 set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_main.cpp
+  test_field_geometry.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

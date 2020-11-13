@@ -1,6 +1,6 @@
 
 from ..core import phare_utilities
-from . import globals
+from . import global_vars
 
 # ------------------------------------------------------------------------------
 
@@ -55,10 +55,10 @@ class Diagnostics(object):
 
         self.__extent = None
 
-        if globals.sim is None:
+        if global_vars.sim is None:
             raise RuntimeError("A simulation must be created before adding diagnostics")
 
-        globals.sim.add_diagnostics(self)
+        global_vars.sim.add_diagnostics(self)
 
 
     def extent(self):
@@ -74,7 +74,7 @@ class ElectromagDiagnostics(Diagnostics):
 
     def __init__(self, **kwargs):
         super(ElectromagDiagnostics, self).__init__(ElectromagDiagnostics.type \
-                                                    + str(globals.sim.count_diagnostics(ElectromagDiagnostics.type))
+                                                    + str(global_vars.sim.count_diagnostics(ElectromagDiagnostics.type))
                                                     , **kwargs)
 
 
@@ -98,7 +98,7 @@ class ElectromagDiagnostics(Diagnostics):
 # ------------------------------------------------------------------------------
 
 def population_in_model(population):
-    return population in [p for p in globals.sim.model.populations] + ["all","ions"]
+    return population in [p for p in global_vars.sim.model.populations] + ["all","ions"]
 
 
 
@@ -110,7 +110,7 @@ class FluidDiagnostics (Diagnostics):
 
     def __init__(self, **kwargs):
         super(FluidDiagnostics, self).__init__(FluidDiagnostics.type \
-                                               + str(globals.sim.count_diagnostics(FluidDiagnostics.type)),
+                                               + str(global_vars.sim.count_diagnostics(FluidDiagnostics.type)),
                                                **kwargs)
         if 'quantity' not in kwargs:
             raise ValueError("Error: missing quantity parameter")
@@ -158,7 +158,7 @@ class ParticleDiagnostics(Diagnostics):
 
     def __init__(self, **kwargs):
         super(ParticleDiagnostics, self).__init__(ParticleDiagnostics.type \
-                                                  + str(globals.sim.count_diagnostics(ParticleDiagnostics.type)),
+                                                  + str(global_vars.sim.count_diagnostics(ParticleDiagnostics.type)),
                                                   **kwargs)
 
         if 'quantity' not in kwargs:

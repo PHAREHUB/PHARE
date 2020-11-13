@@ -1,4 +1,7 @@
+bin
+build
 subprojects
 __pycache__
 *.pyc
 *checkpoint.ipynb*
+Testing

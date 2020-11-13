@@ -1,3 +1,5 @@
+import numpy as np
+
 def all_iterables(*args):
     """
     return true if all arguments are either lists or tuples
@@ -33,10 +35,30 @@ def check_equal_size(*args):
 
 
 def listify(arg):
+    import numpy as np
+    if isinstance(arg, np.ndarray):
+        return arg
     if none_iterable(arg):
         return [arg]
-    else:
-        return arg
+    return arg
+
+
+def is_scalar(arg):
+    return not isinstance(arg, list) and not is_nd_array(arg)
+
+
+def is_nd_array(arg):
+    return isinstance(arg, np.ndarray)
+
+
+def np_array_ify(arg):
+    if is_scalar(arg):
+        return np.asarray([arg])
+    if not is_nd_array(arg):
+        return np.asarray(arg)
+    return arg
+
+
 
 
 def not_in_keywords_list(kwd_list,**kwargs):

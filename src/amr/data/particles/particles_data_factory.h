@@ -15,10 +15,10 @@ namespace PHARE
 {
 namespace amr
 {
-    template<std::size_t dim>
     /**
      * @brief The ParticlesDataFactory class
      */
+    template<typename ParticleArray>
     class ParticlesDataFactory : public SAMRAI::hier::PatchDataFactory
 
     {
@@ -33,39 +33,39 @@ namespace amr
         {
         }
 
-        virtual std::shared_ptr<SAMRAI::hier::PatchDataFactory>
+        std::shared_ptr<SAMRAI::hier::PatchDataFactory>
         cloneFactory(SAMRAI::hier::IntVector const&) final
         {
             return std::make_shared<ParticlesDataFactory>(d_ghosts,
                                                           fineBoundaryRepresentsVariable_);
         }
 
-        virtual std::shared_ptr<SAMRAI::hier::PatchData>
+        std::shared_ptr<SAMRAI::hier::PatchData>
         allocate(const SAMRAI::hier::Patch& patch) const final
         {
-            return std::make_shared<ParticlesData<dim>>(patch.getBox(), d_ghosts);
+            return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts);
         }
 
-        virtual std::shared_ptr<SAMRAI::hier::BoxGeometry>
+        std::shared_ptr<SAMRAI::hier::BoxGeometry>
         getBoxGeometry(const SAMRAI::hier::Box& box) const final
         {
             return std::make_shared<SAMRAI::pdat::CellGeometry>(box, d_ghosts);
         }
 
-        virtual size_t getSizeOfMemory([[maybe_unused]] const SAMRAI::hier::Box& box) const final
+        std::size_t getSizeOfMemory([[maybe_unused]] const SAMRAI::hier::Box& box) const final
         {
             throw std::runtime_error("cannot compute size from box");
         }
 
-        virtual bool fineBoundaryRepresentsVariable() const final
+        bool fineBoundaryRepresentsVariable() const final
         {
             return fineBoundaryRepresentsVariable_;
         }
 
-        virtual bool dataLivesOnPatchBorder() const final { return true; }
+        bool dataLivesOnPatchBorder() const final { return true; }
 
-        virtual bool validCopyTo(std::shared_ptr<SAMRAI::hier::PatchDataFactory> const&
-                                     destinationPatchDataFactory) const final
+        bool validCopyTo(std::shared_ptr<SAMRAI::hier::PatchDataFactory> const&
+                             destinationPatchDataFactory) const final
         {
             auto casted
                 = std::dynamic_pointer_cast<ParticlesDataFactory>(destinationPatchDataFactory);

@@ -7,6 +7,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <unordered_map>
 
 
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
@@ -34,7 +35,7 @@ namespace solver
 {
     struct LevelDescriptor
     {
-        static const int NOT_SET  = -1;
+        static int const NOT_SET  = -1;
         int modelIndex            = NOT_SET;
         int solverIndex           = NOT_SET;
         int resourcesManagerIndex = NOT_SET;
@@ -213,12 +214,12 @@ namespace solver
 
 
 
-        std::string solverName(int iLevel) const { return getSolver_(iLevel).name(); }
+        std::string solverName(int const iLevel) const { return getSolver_(iLevel).name(); }
 
 
 
 
-        std::string modelName(int iLevel) const { return getModel_(iLevel).name(); }
+        std::string modelName(int const iLevel) const { return getModel_(iLevel).name(); }
 
 
 
@@ -262,23 +263,23 @@ namespace solver
          * - initialization of a new level from scratch (not a regridding)
          *
          */
-        virtual void
-        initializeLevelData(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                            const int levelNumber, const double initDataTime,
-                            const bool canBeRefined, const bool initialTime,
-                            const std::shared_ptr<SAMRAI::hier::PatchLevel>& oldLevel
-                            = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
-                            const bool allocateData = true) override
+        void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                 int const levelNumber, double const initDataTime,
+                                 bool const /*canBeRefined*/, bool const /*initialTime*/,
+                                 std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
+                                 = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
+                                 bool const allocateData = true) override
         {
             auto& model            = getModel_(levelNumber);
             auto& solver           = getSolver_(levelNumber);
             auto& messenger        = getMessengerWithCoarser_(levelNumber);
             auto& levelInitializer = getLevelInitializer(model.name());
 
-            const bool isRegridding = oldLevel != nullptr;
+            bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
-
+            std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
+                      << "\n";
             if (allocateData)
             {
                 for (auto patch : *level)
@@ -297,19 +298,21 @@ namespace solver
 
 
 
-        virtual void
-        resetHierarchyConfiguration(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                    const int coarsestLevel, const int finestLevel) override
+        void resetHierarchyConfiguration(
+            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+            int const /*coarsestLevel*/, int const /*finestLevel*/) override
         {
         }
 
 
 
-        void applyGradientDetector(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                   const int levelNumber, const double error_data_time,
-                                   const int tag_index, const bool initialTime,
-                                   const bool usesRichardsonExtrapolationToo) override
+        void
+        applyGradientDetector(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                              int const levelNumber, double const /*error_data_time*/,
+                              int const /*tag_index*/, bool const /*initialTime*/,
+                              bool const /*usesRichardsonExtrapolationToo*/) override
         {
+            std::cout << "apply gradient detector on level " << levelNumber << "\n";
         }
 
 
@@ -321,22 +324,27 @@ namespace solver
 
 
 
-        virtual void initializeLevelIntegrator(
-            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& griddingAlg) override
+        void initializeLevelIntegrator(
+            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& /*griddingAlg*/)
+            override
         {
         }
 
-        virtual double getLevelDt(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                                  const double dtTime, const bool initialTime) override
+        double getLevelDt(std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/,
+                          double const dtTime, bool const /*initialTime*/) override
         {
             return dtTime;
         }
 
 
-        virtual double getMaxFinerLevelDt(const int finerLevelNumber, const double coarseDt,
-                                          const SAMRAI::hier::IntVector& ratio) override
+        double getMaxFinerLevelDt(int const /*finerLevelNumber*/, double const coarseDt,
+                                  SAMRAI::hier::IntVector const& ratio) override
         {
-            return coarseDt / (ratio.max() * ratio.max()) / 2.;
+            // whistler waves require the dt ~ dx^2
+            // so dividing the mesh size by ratio means dt
+            // needs to be divided by ratio^2.
+            // we multiply that by a constant < 1 for safety.
+            return coarseDt / (ratio.max() * ratio.max()) * 0.4;
         }
 
 
@@ -358,25 +366,28 @@ namespace solver
          * At the last step of the subcycle, the Messenger may also need to perform some actions,
          * like working on its internal data for instance. messenger.lastStep()
          */
-        virtual double advanceLevel(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                                    const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                    const double currentTime, const double newTime,
-                                    const bool firstStep, const bool lastStep,
-                                    const bool regridAdvance = false) override
+        double advanceLevel(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                            double const currentTime, double const newTime, bool const firstStep,
+                            bool const lastStep, bool const regridAdvance = false) override
         {
             if (regridAdvance)
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
 
 
-            auto iLevel       = level->getLevelNumber();
+            auto iLevel = level->getLevelNumber();
+            std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
+                      << "\n";
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
 
 
+            firstNewLevelTimes_[iLevel] = newTime;
             if (firstStep)
             {
-                fromCoarser.firstStep(model, *level, hierarchy, currentTime);
+                fromCoarser.firstStep(model, *level, hierarchy, currentTime,
+                                      firstNewLevelTimes_[iLevel - 1]);
             }
 
 
@@ -398,11 +409,11 @@ namespace solver
 
 
 
-        virtual void
-        standardLevelSynchronization(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                                     const int coarsestLevel, const int finestLevel,
-                                     const double syncTime,
-                                     const std::vector<double>& oldTimes) override
+        void
+        standardLevelSynchronization(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                     int const /*coarsestLevel*/, int const finestLevel,
+                                     double const /*syncTime*/,
+                                     const std::vector<double>& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
             auto& toCoarser = getMessengerWithCoarser_(finestLevel);
@@ -413,31 +424,32 @@ namespace solver
 
 
 
-        virtual void
-        synchronizeNewLevels(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                             const int coarsestLevel, const int finestLevel, const double syncTime,
-                             const bool initialTime) override
+        void
+        synchronizeNewLevels(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                             int const /*coarsestLevel*/, int const /*finestLevel*/,
+                             double const /*syncTime*/, bool const /*initialTime*/) override
         {
         }
 
 
-        virtual void resetTimeDependentData(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level,
-                                            const double newTime, const bool canBeRefined) override
+        void resetTimeDependentData(std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/,
+                                    double const /*newTime*/, bool const /*canBeRefined*/) override
         {
         }
 
-        virtual void
-        resetDataToPreadvanceState(const std::shared_ptr<SAMRAI::hier::PatchLevel>& level) override
+        void resetDataToPreadvanceState(
+            std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*level*/) override
         {
         }
 
-        virtual bool usingRefinedTimestepping() const override { return true; }
+        bool usingRefinedTimestepping() const override { return true; }
 
 
 
 
     private:
         int nbrOfLevels_;
+        std::unordered_map<std::size_t, double> firstNewLevelTimes_;
         using IMessengerT       = amr::IMessenger<IPhysicalModel<AMR_Types>>;
         using LevelInitializerT = LevelInitializer<AMR_Types>;
         std::vector<LevelDescriptor> levelDescriptors_;

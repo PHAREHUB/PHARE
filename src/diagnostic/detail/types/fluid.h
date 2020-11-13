@@ -1,7 +1,10 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_H
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_H
 
+#include "diagnostic/detail/h5file.h"
 #include "diagnostic/detail/h5typewriter.h"
+
+#include "core/data/vecfield/vecfield_component.h"
 
 namespace PHARE::diagnostic::h5
 {
@@ -37,17 +40,17 @@ public:
 
     void createFiles(DiagnosticProperties& diagnostic) override;
 
-    void getDataSetInfo(DiagnosticProperties& diagnostic, size_t iLevel, std::string const& patchID,
-                        Attributes& patchAttributes) override;
+    void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
+                        std::string const& patchID, Attributes& patchAttributes) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
-                      std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-                      Attributes& patchAttributes, size_t maxLevel) override;
+                      std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
+                      Attributes& patchAttributes, std::size_t maxLevel) override;
 
-    void
-    writeAttributes(DiagnosticProperties&, Attributes&,
-                    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>&,
-                    size_t maxLevel) override;
+    void writeAttributes(
+        DiagnosticProperties&, Attributes&,
+        std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
+        std::size_t maxLevel) override;
 
     void finalize(DiagnosticProperties& diagnostic) override;
 
@@ -72,7 +75,7 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties
 
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticProperties& diagnostic,
-                                                               size_t iLevel,
+                                                               std::size_t iLevel,
                                                                std::string const& patchID,
                                                                Attributes& patchAttributes)
 {
@@ -82,18 +85,25 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPropert
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
+    auto setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
+        auto ghosts              = GridLayout::nDNbrGhosts(field.physicalQuantity());
+        attr[name + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
+        if constexpr (GridLayout::dimension > 1)
+            attr[name + "_ghosts_y"] = static_cast<std::size_t>(ghosts[1]);
+        if constexpr (GridLayout::dimension > 2)
+            attr[name + "_ghosts_z"] = static_cast<std::size_t>(ghosts[2]);
+    };
+
     auto infoDS = [&](auto& field, std::string name, auto& attr) {
-        attr[name]             = field.size();
-        attr[name + "_ghosts"] = static_cast<size_t>(
-            GridLayout::nbrGhosts(GridLayout::centering(field.physicalQuantity())[0]));
+        attr[name] = field.size();
+        setGhostNbr(field, attr, name);
     };
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
         for (auto& [id, type] : core::Components::componentMap)
         {
-            attr[name][id]             = vecF.getComponent(type).size();
-            attr[name][id + "_ghosts"] = static_cast<size_t>(GridLayout::nbrGhosts(
-                GridLayout::centering(vecF.getComponent(type).physicalQuantity())[0]));
+            attr[name][id] = vecF.getComponent(type).size();
+            setGhostNbr(vecF.getComponent(type), attr[name], id);
         }
     };
 
@@ -118,8 +128,8 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(DiagnosticPropert
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
     DiagnosticProperties& diagnostic,
-    std::unordered_map<size_t, std::vector<std::string>> const& patchIDs,
-    Attributes& patchAttributes, size_t maxLevel)
+    std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
+    Attributes& patchAttributes, std::size_t maxLevel)
 {
     auto& hi5  = this->hi5_;
     auto& ions = hi5.modelView().getIons();
@@ -127,20 +137,30 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
+    auto writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
+        this->writeGhostsAttr_(file, path,
+                               null ? 0 : attr[key + "_ghosts_x"].template to<std::size_t>(), null);
+        if constexpr (GridLayout::dimension > 1)
+            this->writeGhostsAttr_(
+                file, path, null ? 0 : attr[key + "_ghosts_y"].template to<std::size_t>(), null);
+        if constexpr (GridLayout::dimension > 2)
+            this->writeGhostsAttr_(
+                file, path, null ? 0 : attr[key + "_ghosts_z"].template to<std::size_t>(), null);
+    };
+
     auto initDS = [&](auto& path, auto& attr, std::string key, auto null) {
         auto dsPath = path + key;
-        hi5.template createDataSet<float>(file, dsPath, null ? 0 : attr[key].template to<size_t>());
-        this->writeGhostsAttr_(file, dsPath, null ? 0 : attr[key + "_ghosts"].template to<size_t>(),
-                               null);
+        hi5.template createDataSet<float>(file, dsPath,
+                                          null ? 0 : attr[key].template to<std::size_t>());
+        writeGhosts(dsPath, attr, key, null);
     };
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap)
         {
             auto vFPath = path + key + "_" + id;
             hi5.template createDataSet<float>(file, vFPath,
-                                              null ? 0 : attr[key][id].template to<size_t>());
-            this->writeGhostsAttr_(
-                file, vFPath, null ? 0 : attr[key][id + "_ghosts"].template to<size_t>(), null);
+                                              null ? 0 : attr[key][id].template to<std::size_t>());
+            writeGhosts(vFPath, attr[key], id, null);
         }
     };
 
@@ -203,11 +223,12 @@ void FluidDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& diag
 template<typename HighFiveDiagnostic>
 void FluidDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
     DiagnosticProperties& diagnostic, Attributes& fileAttributes,
-    std::unordered_map<size_t, std::vector<std::pair<std::string, Attributes>>>& patchAttributes,
-    size_t maxLevel)
+    std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&
+        patchAttributes,
+    std::size_t maxLevel)
 {
-    writeAttributes_(fileData.at(diagnostic.quantity)->file(), diagnostic, fileAttributes,
-                     patchAttributes, maxLevel);
+    writeAttributes_(fileData.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
+                     maxLevel);
 }
 
 template<typename HighFiveDiagnostic>

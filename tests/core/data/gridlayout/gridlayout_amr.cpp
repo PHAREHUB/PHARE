@@ -21,7 +21,7 @@ auto badLayout()
 {
     auto nbrCells = 50;
     return GridLayout<GridLayoutImplYee<1, 1>>{
-        {0.1}, {static_cast<uint32>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells}}};
+        {0.1}, {static_cast<std::uint32_t>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells}}};
 }
 
 
@@ -29,7 +29,7 @@ auto goodLayout()
 {
     auto nbrCells = 50;
     return GridLayout<GridLayoutImplYee<1, 1>>{
-        {0.1}, {static_cast<uint32>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells - 1}}};
+        {0.1}, {static_cast<std::uint32_t>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells - 1}}};
 }
 
 

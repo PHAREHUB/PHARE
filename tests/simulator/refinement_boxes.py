@@ -8,15 +8,22 @@ import unittest, os, pyphare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
 from tests.diagnostic import dump_all_diags
-from tests.simulator import create_simulator
+from tests.simulator import NoOverwriteDict, populate_simulation
+from pyphare.simulator.simulator import Simulator,startMPI
 
 out = "phare_outputs/valid/refinement_boxes/"
-diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
+diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}
 
 
 @ddt
 class SimulatorRefineBoxInputs(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(SimulatorRefineBoxInputs, self).__init__(*args, **kwargs)
+        self.simulator = None
+
+
     def dup(dic):
+        dic = NoOverwriteDict(dic)
         dic.update(diags.copy())
         dic.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
         return dic
@@ -28,37 +35,36 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
       to collective calls not being handled properly.
     """
     valid1D = [
-        dup({"refinement_boxes": {"L0": {"B0": [(10,), (14,)]}}}),
-        dup({"refinement_boxes": {"L0": {"B0": [(5,), (55,)]}}}),
+        dup({"cells":[65], "refinement_boxes": {"L0": {"B0": [(10,), (14,)]}}}),
+        dup({"cells":[65], "refinement_boxes": {"L0": {"B0": [(5,), (55,)]}}}),
     ]
 
     invalid1D = [
         dup({"max_nbr_levels": 1, "refinement_boxes": {"L0": {"B0": [(10,), (50,)]}}}),
-        dup({"cells": 55, "refinement_boxes": {"L0": {"B0": [(5,), (65,)]}}}),
+        #dup({"cells": [55], "refinement_boxes": {"L0": {"B0": [(5,), (65,)]}}}),
         dup({"smallest_patch_size": 100, "largest_patch_size": 64,}),
         dup({"refined_particle_nbr": 1}),
     ]
 
     def tearDown(self):
-        for k in ["dman", "sim", "hier"]:
-            if hasattr(self, k):
-                v = getattr(self, k)
-                del v  # blocks segfault on test failure, could be None
-        cpp.reset()
+        if self.simulator is not None:
+            self.simulator.reset()
+
 
 
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
+
             try:
-                self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
+                self.simulator = Simulator(populate_simulation(dim, interp, **input))
+                self.simulator.initialize()
+
                 self.assertTrue(valid)
-                self.dman.dump(self.sim.currentTime(), self.sim.timeStep())
-                del (
-                    self.dman,
-                    self.sim,
-                    self.hier,
-                )
-                cpp.reset()
+
+                self.simulator.diagnostics().dump(self.simulator.currentTime(), self.simulator.timeStep())
+
+                self.simulator = None
+
             except ValueError as e:
                 self.assertTrue(not valid)
 

@@ -1,7 +1,7 @@
 import os
 
 from ..core import phare_utilities
-from . import globals
+from . import global_vars
 from ..core import box as boxm
 from ..core.box import Box
 
@@ -48,7 +48,7 @@ def check_domain(**kwargs):
             phare_utilities.check_iterables(kwargs['cells'], kwargs['dl'])
             phare_utilities.check_equal_size(kwargs['cells'], kwargs['dl'])
         except ValueError:
-            raise ValueError("Error: 'cells' and 'dl' must have the same dimension")
+            raise ValueError("Error: 'cells' and 'dl' must have the same dimension ({} and {})".format(kwargs['cells'], kwargs["dl"]))
 
         dl = phare_utilities.listify(kwargs['dl'])
         cells = phare_utilities.listify(kwargs['cells'])
@@ -158,8 +158,7 @@ def check_boundaries(dims, **kwargs):
         bc_length = 1
         if boundary_types not in valid_boundary_types:
             raise ValueError("Error: '{}' is not a valid boundary type".format(boundary_types))
-        else:
-            boundary_types = phare_utilities.listify(boundary_types)
+        boundary_types = phare_utilities.listify(boundary_types)
     else:
         bc_length = len(boundary_types)
         for bc in boundary_types:
@@ -234,14 +233,14 @@ def check_refinement_boxes(**kwargs):
             raise ValueError("Error - missing refinement boxes")
 
         tmp_boxes = []
-        if isinstance(boxes[0], tuple) or isinstance(boxes[0],list):
+        if isinstance(boxes[0], (tuple,list)):
             for points in boxes:
                 tmp_boxes.append(Box(points[0], points[1]))
             boxes = tmp_boxes
 
         elif isinstance(boxes[0], Box):
             for box in boxes:
-                for l in boxm.refine(box, kwargs["refinement_ratio"]).length():
+                for l in boxm.refine(box, kwargs["refinement_ratio"]).shape():
                     if l < smallest_patch_size:
                         raise  ValueError("Invalid box incompatible with smallest_patch_size")
 
@@ -298,13 +297,21 @@ def check_diag_options(**kwargs):
             if os.path.exists(diag_dir) and os.path.isfile(diag_dir):
                 raise ValueError ("Error: Simulation diag_options dir exists as a file.")
             try:
-                if not os.path.exists(diag_dir):
-                    os.makedirs(diag_dir, exist_ok=True)
+                os.makedirs(diag_dir, exist_ok=True)
                 if not os.path.exists(diag_dir):
                     raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
-            except OSError:
+            except FileExistsError:
                 raise ValueError ("Creation of the directory %s failed" % diag_dir)
     return diag_options
+
+
+
+
+
+def check_refinement(**kwargs):
+    return kwargs.get("refinement", "boxes")
+
+
 
 
 
@@ -315,7 +322,7 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path',
-                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes',
+                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes','refinement',
                              'smallest_patch_size', 'largest_patch_size', "diag_options" ]
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
@@ -331,6 +338,7 @@ def checker(func):
         kwargs["time_step"] = time_step
 
         kwargs["interp_order"] = check_interp_order(**kwargs)
+        kwargs["refinement_ratio"] = 2
 
         kwargs["particle_pusher"] = check_pusher(**kwargs)
         kwargs["layout"] = check_layout(**kwargs)
@@ -343,14 +351,19 @@ def checker(func):
         kwargs["origin"] = check_origin(dims, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(dims, **kwargs)
-        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5') #TODO add checker with valid formats
+        kwargs["diag_export_format"] = kwargs.get('diag_export_format', 'hdf5')
+        assert kwargs["diag_export_format"] in ["hdf5"] # only hdf5 supported for now
 
         largest, smallest = check_patch_size(**kwargs)
         kwargs["smallest_patch_size"] = smallest
         kwargs["largest_patch_size"] = largest
 
         kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
-        kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
+        kwargs["refinement"] = check_refinement(**kwargs)
+        if kwargs["refinement"] == "boxes":
+            kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
+        else:
+            kwargs["refinement_boxes"] = None
 
         return func(simulation_object, **kwargs)
 
@@ -392,11 +405,10 @@ class Simulation(object):
     @checker
     def __init__(self, **kwargs):
 
-        if globals.sim is not None:
+        if global_vars.sim is not None:
             raise RuntimeError("simulation is already created")
-        else:
-            globals.sim = self
-            # raise RuntimeError("simulation is already lol")
+
+        global_vars.sim = self
 
         for k, v in kwargs.items():
             object.__setattr__(self, k, v)
@@ -421,8 +433,7 @@ class Simulation(object):
         if len(extent) == 2:
             # 1D case
             return extent[0] >= domain[0] and extent[1] <= domain[1]
-        else:
-            raise NotImplementedError("Error: 2D and 3D not implemented yet")
+        raise NotImplementedError("Error: 2D and 3D not implemented yet")
 
 
 

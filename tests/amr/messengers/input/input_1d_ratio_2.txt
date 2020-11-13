@@ -55,4 +55,5 @@ TimeRefinementIntegrator
     end_time    =   1.0
     max_integrator_steps    =   20
     regrid_interval = 1
+    tag_buffer = 10,10
 }

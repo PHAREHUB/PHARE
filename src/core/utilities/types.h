@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <array>
+#include <algorithm>
 #include <cinttypes>
 #include <cmath>
 #include <numeric>
@@ -11,16 +12,17 @@
 
 #include "cppdict/include/dict.hpp"
 
+#if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
+#define PHARE_DEBUG_DO(...) __VA_ARGS__
+#else
+#define PHARE_DEBUG_DO(...)
+#endif
+
 
 namespace PHARE
 {
 namespace core
 {
-    using uint32 = std::uint32_t;
-    using uint64 = std::uint64_t;
-    using int32  = std::int32_t;
-    using int64  = std::int64_t;
-
     enum class Basis { Magnetic, Cartesian };
 
 
@@ -76,12 +78,12 @@ namespace core
     template<typename T>
     inline constexpr auto is_std_vector_v = is_std_vector<T>::value;
 
-    template<typename T, size_t size>
+    template<typename T, std::size_t size>
     struct is_std_array : std::false_type
     {
     };
 
-    template<typename T, size_t size>
+    template<typename T, std::size_t size>
     struct is_std_array<std::array<T, size>, size> : std::true_type
     {
     };
@@ -97,14 +99,14 @@ namespace core
         std::apply([&](auto&... args) { (func(args), ...); }, tuple);
     }
 
-    template<typename Type, size_t Size> // std::array::fill is only constexpr in C++20 ffs
+    template<typename Type, std::size_t Size> // std::array::fill is only constexpr in C++20 ffs
     constexpr void fill(Type value, std::array<Type, Size>& array)
     {
-        for (size_t i = 0; i < Size; i++)
+        for (std::size_t i = 0; i < Size; i++)
             array[i] = value;
     }
 
-    template<size_t Constant>
+    template<std::size_t Constant>
     class StrongIntegralConstant
     {
     public:
@@ -114,21 +116,21 @@ namespace core
         static constexpr std::integral_constant<std::size_t, Constant> constant{};
     };
 
-    template<size_t Constant>
+    template<std::size_t Constant>
     class DimConst : public StrongIntegralConstant<Constant>
     {
     };
-    template<size_t Constant>
+    template<std::size_t Constant>
     class InterpConst : public StrongIntegralConstant<Constant>
     {
     };
-    template<size_t Constant>
+    template<std::size_t Constant>
     class RefinedParticlesConst : public StrongIntegralConstant<Constant>
     {
     };
 
-    template<size_t To_Size, size_t From_Size, typename Type>
-    constexpr decltype(auto) sized_array(std::array<Type, From_Size> const& from)
+    template<std::size_t To_Size, std::size_t From_Size, typename Type>
+    constexpr std::array<Type, To_Size> sized_array(std::array<Type, From_Size> const& from)
     {
         static_assert(To_Size <= From_Size, "invalid sized_array Size template, too large");
 
@@ -137,23 +139,66 @@ namespace core
 
         std::array<Type, To_Size> to{};
 
-        for (size_t i = 0; i < to.size(); i++)
+        for (std::size_t i = 0; i < to.size(); i++)
             to[i] = from[i];
 
         return to;
     }
 
 
-    template<size_t To_Size, typename... Args>
-    constexpr decltype(auto) as_sized_array(Args&&... args)
+    template<std::size_t To_Size, typename... Args>
+    constexpr auto as_sized_array(Args&&... args)
     {
         auto arr = std::array{std::forward<decltype(args)>(args)...};
 
         return sized_array<To_Size>(arr);
     }
 
+    template<typename Type, std::size_t size>
+    constexpr std::array<Type, size> ConstArray(Type val = 0)
+    {
+        std::array<Type, size> arr{};
+        for (uint8_t i = 0; i < size; i++)
+            arr[i] = val;
+        return arr;
+    }
+
+    template<typename Type>
+    std::vector<Type> displacementFrom(std::vector<Type> const& input)
+    {
+        std::vector<Type> displs(input.size());
+        Type off = 0;
+        for (Type i = 0; i < static_cast<Type>(input.size()); i++)
+        {
+            displs[i] = off;
+            off += input[i];
+        }
+        return displs;
+    }
+
+    template<typename T>
+    struct StackVar
+    {
+        using value_type = T;
+
+        T var;
+    };
+
+
+    template<typename T, std::size_t... Is>
+    constexpr auto gft_helper(std::index_sequence<Is...> const &&)
+        -> decltype(std::make_tuple((Is, std::declval<T>())...));
+
+    template<typename T, std::size_t N>
+    constexpr auto get_fixed_tuple() -> decltype(gft_helper<T>(std::make_index_sequence<N>{}));
+    template<typename T, std::size_t N>
+
+    using tuple_fixed_type = decltype(get_fixed_tuple<T, N>());
+
+
 
 } // namespace core
 } // namespace PHARE
+
 
 #endif // TYPES_H

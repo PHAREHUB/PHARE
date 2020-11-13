@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 
-import pyphare.pharein.globals as globals
+import pyphare.pharein.global_vars as global_vars
 
 from pyphare.core  import phare_utilities
 from pyphare.pharein import simulation
@@ -20,7 +20,7 @@ class TestSimulation(unittest.TestCase):
         self.time_step = 0.001
         self.time_step_nbr = 1000
         self.final_time = 1.
-        globals.sim = None
+        global_vars.sim = None
 
     def test_dl(self):
         for cells, domain_size, dim, bc in zip(self.cells_array,
@@ -39,7 +39,7 @@ class TestSimulation(unittest.TestCase):
             for d in np.arange(dim):
                 self.assertEqual(j.dl[d], domain_size[d]/float(cells[d]))
 
-            globals.sim = None
+            global_vars.sim = None
 
     def test_boundary_conditions(self):
         j = simulation.Simulation(time_step_nbr=1000, boundary_types="periodic",

@@ -19,33 +19,29 @@ namespace core
         using ParticleInitializerT      = ParticleInitializer<ParticleArray, GridLayout>;
         static constexpr auto dimension = GridLayout::dimension;
 
+
     public:
-        static std::unique_ptr<ParticleInitializerT> create(PHARE::initializer::PHAREDict& dict)
+        static std::unique_ptr<ParticleInitializerT> create(initializer::PHAREDict& dict)
         {
+            using FunctionType = initializer::InitFunction<dimension>;
+
             auto initializerName = dict["name"].template to<std::string>();
 
             if (initializerName == "maxwellian")
             {
-                auto& density
-                    = dict["density"].template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& density = dict["density"].template to<FunctionType>();
 
-                auto& bulkVelx = dict["bulk_velocity_x"]
-                                     .template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& bulkVelx = dict["bulk_velocity_x"].template to<FunctionType>();
 
-                auto& bulkVely = dict["bulk_velocity_y"]
-                                     .template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& bulkVely = dict["bulk_velocity_y"].template to<FunctionType>();
 
-                auto& bulkVelz = dict["bulk_velocity_z"]
-                                     .template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& bulkVelz = dict["bulk_velocity_z"].template to<FunctionType>();
 
-                auto& vthx = dict["thermal_velocity_x"]
-                                 .template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& vthx = dict["thermal_velocity_x"].template to<FunctionType>();
 
-                auto& vthy = dict["thermal_velocity_y"]
-                                 .template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& vthy = dict["thermal_velocity_y"].template to<FunctionType>();
 
-                auto& vthz = dict["thermal_velocity_z"]
-                                 .template to<PHARE::initializer::ScalarFunction<dimension>>();
+                auto& vthz = dict["thermal_velocity_z"].template to<FunctionType>();
 
                 auto charge = dict["charge"].template to<double>();
 
@@ -53,15 +49,13 @@ namespace core
 
                 auto basisName = dict["basis"].template to<std::string>();
 
-                std::array<PHARE::initializer::ScalarFunction<dimension>, 3> v
-                    = {bulkVelx, bulkVely, bulkVelz};
+                std::array<FunctionType, 3> v = {bulkVelx, bulkVely, bulkVelz};
 
-                std::array<PHARE::initializer::ScalarFunction<dimension>, 3> vth
-                    = {vthx, vthy, vthz};
+                std::array<FunctionType, 3> vth = {vthx, vthy, vthz};
 
-                std::optional<size_t> seed;
+                std::optional<std::size_t> seed;
                 if (dict.contains("init") && dict["init"].contains("seed"))
-                    seed = dict["init"]["seed"].template to<std::optional<size_t>>();
+                    seed = dict["init"]["seed"].template to<std::optional<std::size_t>>();
 
                 if (basisName == "cartesian")
                 {
@@ -72,16 +66,9 @@ namespace core
                 else if (basisName == "magnetic")
                 {
                     [[maybe_unused]] Basis basis = Basis::Magnetic;
-                    [[maybe_unused]] auto& bx
-                        = dict["magnetic_x"]
-                              .template to<PHARE::initializer::ScalarFunction<dimension>>();
-                    [[maybe_unused]] auto& by
-                        = dict["magnetic_x"]
-                              .template to<PHARE::initializer::ScalarFunction<dimension>>();
-                    [[maybe_unused]] auto& bz
-                        = dict["magnetic_x"]
-                              .template to<PHARE::initializer::ScalarFunction<dimension>>();
-
+                    [[maybe_unused]] auto& bx    = dict["magnetic_x"].template to<FunctionType>();
+                    [[maybe_unused]] auto& by    = dict["magnetic_x"].template to<FunctionType>();
+                    [[maybe_unused]] auto& bz    = dict["magnetic_x"].template to<FunctionType>();
 
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
@@ -96,6 +83,5 @@ namespace core
 } // namespace core
 
 } // namespace PHARE
-
 
 #endif

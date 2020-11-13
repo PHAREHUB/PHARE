@@ -24,8 +24,9 @@ namespace solver
     class MHDModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using patch_t = typename AMR_Types::patch_t;
-        using level_t = typename AMR_Types::level_t;
+        using patch_t   = typename AMR_Types::patch_t;
+        using level_t   = typename AMR_Types::level_t;
+        using Interface = IPhysicalModel<AMR_Types>;
 
         static const std::string model_name;
         static constexpr auto dimension = GridLayoutT::dimension;
@@ -38,7 +39,7 @@ namespace solver
         {
         }
 
-        virtual void initialize(level_t& level) override {}
+        virtual void initialize(level_t& /*level*/) override {}
 
 
         virtual void allocate(patch_t& patch, double const allocateTime) override
@@ -50,7 +51,7 @@ namespace solver
 
 
         virtual void
-        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override
+        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
         {
         }
 

@@ -1,70 +1,25 @@
 
 
-#include "tests/simulator/per_test.h"
+#include "src/simulator/simulator.h"
+#include "src/simulator/phare_types.h"
+#include "src/phare/phare.h"
 
-#include "test_basichierarchy.h"
+#include "test_messenger_basichierarchy.h"
 #include "test_integrator_strat.h"
-#include "test_tag_strategy.h"
+#include "test_messenger_tag_strategy.h"
+#include "tests/initializer/init_functions.h"
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
 using namespace PHARE::solver;
 
 template<uint8_t dim>
-using ScalarFunctionT = PHARE::initializer::ScalarFunction<dim>;
+using InitFunctionT = PHARE::initializer::InitFunction<dim>;
 
-namespace func_1d
-{
-double density(double x)
-{
-    return /*x * +*/ 2.;
-}
-
-double vx(double /*x*/)
-{
-    return 1.;
-}
-
-double vy(double /*x*/)
-{
-    return 1.;
-}
-
-double vz(double /*x*/)
-{
-    return 1.;
-}
-
-double vthx(double /*x*/)
-{
-    return 1.;
-}
-
-double vthy(double /*x*/)
-{
-    return 1.;
-}
-
-double vthz(double /*x*/)
-{
-    return 1.;
-}
-
-double bx(double x)
-{
-    return x /* + 1.*/;
-}
-
-double by(double x)
-{
-    return x /* + 2.*/;
-}
-
-double bz(double x)
-{
-    return x /*+ 3.*/;
-}
-} // namespace func_1d
 
 
 template<uint8_t dimension>
@@ -78,117 +33,65 @@ struct DimDict<1>
     static constexpr uint8_t dim = 1;
     static void set(PHARE::initializer::PHAREDict& dict)
     {
-        using namespace func_1d;
+        using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
+
         dict["ions"]["pop0"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["ions"]["pop1"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["electromag"]["magnetic"]["initializer"]["x_component"]
-            = static_cast<ScalarFunctionT<dim>>(bx);
+            = static_cast<InitFunctionT<dim>>(bx);
         dict["electromag"]["magnetic"]["initializer"]["y_component"]
-            = static_cast<ScalarFunctionT<dim>>(by);
+            = static_cast<InitFunctionT<dim>>(by);
         dict["electromag"]["magnetic"]["initializer"]["z_component"]
-            = static_cast<ScalarFunctionT<dim>>(bz);
+            = static_cast<InitFunctionT<dim>>(bz);
 
         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
     }
 };
 
 
-namespace func_2d
-{
-double density(double x, double)
-{
-    return /*x * +*/ 2.;
-}
 
-
-double vx(double /*x*/, double)
-{
-    return 1.;
-}
-
-double vy(double /*x*/, double)
-{
-    return 1.;
-}
-
-double vz(double /*x*/, double)
-{
-    return 1.;
-}
-
-double vthx(double /*x*/, double)
-{
-    return 1.;
-}
-
-
-double vthy(double /*x*/, double)
-{
-    return 1.;
-}
-
-double vthz(double /*x*/, double)
-{
-    return 1.;
-}
-
-double bx(double x, double)
-{
-    return x /* + 1.*/;
-}
-
-double by(double x, double)
-{
-    return x /* + 2.*/;
-}
-
-double bz(double x, double)
-{
-    return x /*+ 3.*/;
-}
-} // namespace func_2d
 
 template<>
 struct DimDict<2>
@@ -196,57 +99,57 @@ struct DimDict<2>
     static constexpr uint8_t dim = 2;
     static void set(PHARE::initializer::PHAREDict& dict)
     {
-        using namespace func_2d;
+        using namespace PHARE::initializer::test_fn::func_2d; // density/etc are here
         dict["simulation"]["algo"]["pusher"]["name"] = std::string{"modified_boris"};
 
         dict["ions"]["pop0"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["ions"]["pop1"]["particle_initializer"]["density"]
-            = static_cast<ScalarFunctionT<dim>>(density);
+            = static_cast<InitFunctionT<dim>>(density);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vx);
+            = static_cast<InitFunctionT<dim>>(vx);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vy);
+            = static_cast<InitFunctionT<dim>>(vy);
 
         dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vz);
+            = static_cast<InitFunctionT<dim>>(vz);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-            = static_cast<ScalarFunctionT<dim>>(vthx);
+            = static_cast<InitFunctionT<dim>>(vthx);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-            = static_cast<ScalarFunctionT<dim>>(vthy);
+            = static_cast<InitFunctionT<dim>>(vthy);
 
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-            = static_cast<ScalarFunctionT<dim>>(vthz);
+            = static_cast<InitFunctionT<dim>>(vthz);
 
         dict["electromag"]["magnetic"]["initializer"]["x_component"]
-            = static_cast<ScalarFunctionT<dim>>(bx);
+            = static_cast<InitFunctionT<dim>>(bx);
         dict["electromag"]["magnetic"]["initializer"]["y_component"]
-            = static_cast<ScalarFunctionT<dim>>(by);
+            = static_cast<InitFunctionT<dim>>(by);
         dict["electromag"]["magnetic"]["initializer"]["z_component"]
-            = static_cast<ScalarFunctionT<dim>>(bz);
+            = static_cast<InitFunctionT<dim>>(bz);
 
         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
     }
@@ -292,7 +195,6 @@ PHARE::initializer::PHAREDict createDict()
 
 namespace test_1d
 {
-using namespace func_1d;
 static constexpr std::size_t dim          = 1;
 static constexpr std::size_t interpOrder  = 1;
 static constexpr std::size_t nbRefinePart = 2;
@@ -350,7 +252,8 @@ public:
     HybridMessengers()
     {
         auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
-        auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();
+        auto resourcesManagerMHD
+            = std::make_shared<ResourcesManager<typename Phare_Types::GridLayout_t>>();
 
         auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid);
         auto mhdModel    = std::make_unique<MHDModelT>(resourcesManagerMHD);
@@ -451,91 +354,6 @@ TEST_F(HybridMessengers, areNamedByTheirStrategyName)
 // ----------------------------------------------------------------------------
 
 
-// level 0 doesn't match due to periodicity
-
-
-
-
-TYPED_TEST(SimulatorTest, initializesFieldsOnRefinedLevels)
-{
-    TypeParam sim;
-    auto& hybridModel = *sim.getHybridModel();
-    auto& hierarchy   = *sim.hierarchy;
-    using GridLayout  = typename TypeParam::PHARETypes::GridLayout_t;
-
-    auto visit = [&](GridLayout& layout, std::string patchID, size_t iLevel) {
-        auto& Ex = hybridModel.state.electromag.E.getComponent(Component::X);
-        auto& Ey = hybridModel.state.electromag.E.getComponent(Component::Y);
-        auto& Ez = hybridModel.state.electromag.E.getComponent(Component::Z);
-        auto& Bx = hybridModel.state.electromag.B.getComponent(Component::X);
-        auto& By = hybridModel.state.electromag.B.getComponent(Component::Y);
-        auto& Bz = hybridModel.state.electromag.B.getComponent(Component::Z);
-
-        auto checkMyField = [&](auto const& field, auto const& func) {
-            auto iStart = layout.physicalStartIndex(field, Direction::X);
-            auto iEnd   = layout.physicalEndIndex(field, Direction::X);
-
-            for (auto ix = iStart; ix <= iEnd; ++ix)
-            {
-                auto origin   = layout.origin();
-                auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                auto expected = func(x[0]);
-
-                EXPECT_DOUBLE_EQ(expected, field(ix));
-            }
-        };
-        checkMyField(Bx, bx);
-        checkMyField(By, by);
-        checkMyField(Bz, bz);
-    };
-
-    PHARE::amr::visitHierarchy<GridLayout>(hierarchy, *hybridModel.resourcesManager, visit, 1,
-                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
-    // sim.visitHierarchy(visit, 1, sim.getNumberOfLevels(), hybridModel);
-}
-
-
-// This test needs explicit access to the Hierarchy
-//  TODO if/when boundary information is accessible without it, refactor
-TYPED_TEST(SimulatorTest, initializesParticlesOnRefinedLevels)
-{
-    TypeParam sim;
-    auto& hierarchy   = *sim.hierarchy;
-    auto& hybridModel = *sim.getHybridModel();
-    auto& rm          = hybridModel.resourcesManager;
-
-    for (auto iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
-    {
-        auto const& level = hierarchy.getPatchLevel(iLevel);
-
-        for (auto& patch : *level)
-        {
-            auto onPatch = rm->setOnPatch(*patch, hybridModel.state.ions);
-            auto& ions   = hybridModel.state.ions;
-
-            for (auto& pop : ions)
-            {
-                // domain particles
-                EXPECT_GT(pop.nbrParticles(), 0);
-                EXPECT_GT(pop.patchGhostParticles().size(), 0);
-
-                // here we expect to have level border particles only for
-                // refined levels and for a patch that has boundaries//
-                // note that here "boundaries" refers to both physical boundaries and
-                // coarse to fine boundaries. So technically a patch could be on a refined
-                // level and have 'boundaries' without having any coarse-to-fine ones but only
-                // physical and the test would fail. However here since we are periodic, there are
-                // no physical boundaries wo we're ok.
-                auto const& boundaries = patch->getPatchGeometry()->getPatchBoundaries();
-                if (iLevel > 0 && boundaries[0].size() > 0)
-                {
-                    EXPECT_GT(pop.levelGhostParticlesOld().size(), 0);
-                }
-            }
-        }
-    }
-}
-
 } // namespace test_1d
 
 #if 0
@@ -622,7 +440,7 @@ TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 }
 #endif
 
-template<uint8_t dimension, size_t nbRefinePart>
+template<uint8_t dimension, std::size_t nbRefinePart>
 struct AfullHybridBasicHierarchy
 {
     static constexpr std::size_t interpOrder = 1;
@@ -636,8 +454,8 @@ struct AfullHybridBasicHierarchy
     int const firstHybLevel{0};
     int const ratio{2};
 
-    using HybridHybridT = HybridHybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>,
-                                                        typename Phare_Types::RefinementParams>;
+    using HybridHybridT
+        = HybridHybridMessengerStrategy<HybridModelT, typename Phare_Types::RefinementParams>;
 
     SAMRAI::tbox::SAMRAI_MPI mpi{MPI_COMM_WORLD};
 
@@ -650,12 +468,11 @@ struct AfullHybridBasicHierarchy
         std::make_shared<HybridModelT>(dict, resourcesManagerHybrid)};
 
 
-    std::unique_ptr<HybridMessengerStrategy<HybridModelT, IPhysicalModel<SAMRAI_Types>>>
-        hybhybStrat{std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
+    std::unique_ptr<HybridMessengerStrategy<HybridModelT>> hybhybStrat{
+        std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel)};
 
-    std::shared_ptr<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>> messenger{
-        std::make_shared<HybridMessenger<HybridModelT, IPhysicalModel<SAMRAI_Types>>>(
-            std::move(hybhybStrat))};
+    std::shared_ptr<HybridMessenger<HybridModelT>> messenger{
+        std::make_shared<HybridMessenger<HybridModelT>>(std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
 
@@ -686,7 +503,7 @@ struct AfullHybridBasicHierarchy
 };
 
 
-template<uint8_t dimension, size_t nbRefinePart> // keeps the test "this"
+template<uint8_t dimension, std::size_t nbRefinePart> // keeps the test "this"
 void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldGhosts()
 {
     if (mpi.getSize() > 1)
@@ -730,8 +547,8 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
 
 
-    size_t total_eq = 0;
-    size_t iPatch   = 0;
+    std::size_t total_eq = 0;
+    std::size_t iPatch   = 0;
     for (auto patch : *level1)
     {
         auto exOldId = hybridModel->resourcesManager->getID("HybridModel-HybridModel_EM_old_E_x");
@@ -771,36 +588,49 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
         if constexpr (dimension == 1)
         {
-            using namespace func_1d;
+            using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
+
             auto checkMyField = [&](auto const& field, auto const& func) //
             {
+                auto check = [&](auto const& start, auto const& end) {
+                    auto origin = layout.origin();
+
+                    std::vector<double> x;
+                    std::vector<std::size_t> ixes;
+
+                    for (auto ix = start; ix < end; ++ix)
+                    {
+                        ixes.emplace_back(ix);
+                        x.emplace_back(layout.fieldNodeCoordinates(field, origin, ix)[0]);
+                    }
+
+                    EXPECT_GT(x.size(), 0);
+                    EXPECT_EQ(x.size(), end - start);
+                    EXPECT_EQ(ixes.size(), end - start);
+
+                    auto gridPtr = func(x);
+                    auto& grid   = *gridPtr;
+
+                    EXPECT_EQ(x.size(), grid.size());
+
+                    for (std::size_t i = 0; i < x.size(); i++)
+                    {
+                        auto ix       = ixes[i];
+                        auto expected = grid[i];
+                        std::cout << iPatch << " " << ix << " " << expected << " " << field(ix)
+                                  << " " << expected - field(ix) << "\n";
+                        EXPECT_DOUBLE_EQ(expected, field(ix));
+                        total_eq++;
+                    }
+                };
+
                 auto iGhostStart = layout.ghostStartIndex(field, Direction::X);
                 auto iStart      = layout.physicalStartIndex(field, Direction::X);
                 auto iEnd        = layout.physicalEndIndex(field, Direction::X);
                 auto iGhostEnd   = layout.ghostEndIndex(field, Direction::X);
 
-
-                for (auto ix = iGhostStart; ix < iStart; ++ix)
-                {
-                    auto origin   = layout.origin();
-                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                    auto expected = func(x[0]);
-                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix)
-                              << expected - field(ix) << "\n";
-                    EXPECT_DOUBLE_EQ(expected, field(ix));
-                    total_eq++;
-                }
-
-                for (auto ix = iEnd; ix < iGhostEnd; ++ix)
-                {
-                    auto origin   = layout.origin();
-                    auto x        = layout.fieldNodeCoordinates(field, origin, ix);
-                    auto expected = func(x[0]);
-                    std::cout << iPatch << " " << ix << " " << expected << " " << field(ix) << " "
-                              << expected - field(ix) << "\n";
-                    EXPECT_DOUBLE_EQ(expected, field(ix));
-                    total_eq++;
-                }
+                check(iGhostStart, iStart);
+                check(iEnd, iGhostEnd);
             };
 
             checkMyField(Bx, bx);
@@ -811,38 +641,43 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
         if constexpr (dimension == 2)
         {
-            using namespace func_2d;
+            using namespace PHARE::initializer::test_fn::func_2d;        // density/etc are here
             auto checkMyField = [&](auto const& field, auto const& func) //
             {
-                auto iXGhostStart = layout.ghostStartIndex(field, Direction::X);
-                auto iXStart      = layout.physicalStartIndex(field, Direction::X);
-                auto iXEnd        = layout.physicalEndIndex(field, Direction::X);
-                auto iXGhostEnd   = layout.ghostEndIndex(field, Direction::X);
+                auto check = [&](auto startX, auto startY, auto endX, auto endY) {
+                    auto origin = layout.origin();
+                    std::vector<double> x, y;
+                    std::vector<std::size_t> ixes, iyes;
+                    for (auto ix = startX; ix < endX; ++ix)
+                        for (auto iy = startY; iy < endY; ++iy)
+                        {
+                            ixes.emplace_back(ix);
+                            iyes.emplace_back(iy);
+                            auto xy = layout.fieldNodeCoordinates(field, origin, ix, iy);
+                            x.emplace_back(xy[0]);
+                            y.emplace_back(xy[1]);
+                        }
 
-                auto iYGhostStart = layout.ghostStartIndex(field, Direction::Y);
-                auto iYStart      = layout.physicalStartIndex(field, Direction::Y);
-                auto iYEnd        = layout.physicalEndIndex(field, Direction::Y);
-                auto iYGhostEnd   = layout.ghostEndIndex(field, Direction::Y);
+                    auto gridPtr = func(x, y);
+                    auto& grid   = *gridPtr;
 
-                for (auto ix = iXGhostStart; ix < iXStart; ++ix)
-                    for (auto iy = iYGhostStart; iy < iYStart; ++iy)
+                    std::size_t cell_idx = 0;
+                    for (std::size_t i = 0; i < ixes.size(); i++)
                     {
-                        auto origin   = layout.origin();
-                        auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
-                        auto expected = func(xy[0], xy[1]);
-                        EXPECT_DOUBLE_EQ(expected, field(ix, iy));
+                        auto expected = grid[cell_idx];
+                        EXPECT_DOUBLE_EQ(expected, field(ixes[cell_idx], iyes[cell_idx]));
+                        cell_idx++;
                         total_eq++;
                     }
+                };
 
-                for (auto ix = iXEnd; ix < iXGhostEnd; ++ix)
-                    for (auto iy = iYEnd; iy < iYGhostEnd; ++iy)
-                    {
-                        auto origin   = layout.origin();
-                        auto xy       = layout.fieldNodeCoordinates(field, origin, ix, iy);
-                        auto expected = func(xy[0], xy[1]);
-                        EXPECT_DOUBLE_EQ(expected, field(ix, iy));
-                        total_eq++;
-                    }
+                auto [iXGhostStart, iXGhostEnd] = layout.ghostStartToEnd(field, Direction::X);
+                auto [iXStart, iXEnd]           = layout.physicalStartToEnd(field, Direction::X);
+                auto [iYGhostStart, iYGhostEnd] = layout.ghostStartToEnd(field, Direction::Y);
+                auto [iYStart, iYEnd]           = layout.physicalStartToEnd(field, Direction::Y);
+
+                check(iXGhostStart, iYGhostStart, iXStart, iYStart);
+                check(iXEnd, iYEnd, iXGhostEnd, iYGhostEnd);
             };
 
             checkMyField(Bx, bx);

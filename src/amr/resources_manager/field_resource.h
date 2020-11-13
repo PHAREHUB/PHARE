@@ -11,7 +11,7 @@ namespace amr
     /** @brief tells SAMRAI which kind of variable, patchdata are used for a Field Resource
      * also says the type of the actual data buffer
      */
-    template<typename GridLayoutT, typename ResourcesUser>
+    template<typename ResourcesUser, typename GridLayoutT>
     struct UserFieldType
     {
         using patch_data_type   = FieldData<GridLayoutT, typename ResourcesUser::field_type>;

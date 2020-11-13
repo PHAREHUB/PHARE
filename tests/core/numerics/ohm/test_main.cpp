@@ -20,8 +20,8 @@ struct FieldMock
 {
     static auto constexpr dimension = dim;
     double data;
-    double& operator()([[maybe_unused]] uint32 i) { return data; }
-    double const& operator()([[maybe_unused]] uint32 i) const { return data; }
+    double& operator()([[maybe_unused]] std::uint32_t i) { return data; }
+    double const& operator()([[maybe_unused]] std::uint32_t i) const { return data; }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
 };
 

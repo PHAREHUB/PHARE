@@ -62,7 +62,7 @@ namespace core
     }
 
 
-    template<typename DimConstant, typename InterpConstant, size_t... ValidNbrParticles>
+    template<typename DimConstant, typename InterpConstant, std::size_t... ValidNbrParticles>
     using SimulatorOption = std::tuple<DimConstant, InterpConstant,
                                        std::integral_constant<std::size_t, ValidNbrParticles>...>;
 
@@ -99,7 +99,7 @@ namespace core
     template<typename Maker, typename Pointer, typename Dimension, typename InterpOrder,
              typename... NbRefinedParts>
     void _makeAtRuntime(Maker& maker, Pointer& p, std::size_t userDim, std::size_t userInterpOrder,
-                        size_t userNbRefinedPart,
+                        std::size_t userNbRefinedPart,
                         std::tuple<Dimension, InterpOrder, NbRefinedParts...> const&)
     {
         core::apply(std::tuple<NbRefinedParts...>{}, [&](auto const& nbRefinedPart) {
@@ -110,11 +110,11 @@ namespace core
     }
 
     template<typename Maker>
-    auto makeAtRuntime(std::size_t dim, std::size_t interpOrder, size_t nbRefinedPart,
+    auto makeAtRuntime(std::size_t dim, std::size_t interpOrder, std::size_t nbRefinedPart,
                        Maker&& maker)
     {
         using Ptr_t = decltype(maker(dim, interpOrder, nbRefinedPart, 1, 1, 1));
-        Ptr_t p{};
+        Ptr_t p     = nullptr;
 
         core::apply(possibleSimulators(), [&](auto const& simType) {
             _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, simType);

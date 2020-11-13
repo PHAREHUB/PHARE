@@ -22,7 +22,7 @@ namespace amr
     using core::dirX;
     using core::dirY;
     using core::dirZ;
-    using core::uint32;
+
     /**
      * @brief offsetIsZero_ returns true of the transformation has zero offset
      */
@@ -161,6 +161,7 @@ namespace amr
         int constexpr dimension = GridLayoutT::dimension;
 
         SAMRAI::tbox::Dimension const dim{dimension};
+
         //  We get geometry information from the patch, such as meshSize, and physical origin
         auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
             patch.getPatchGeometry());
@@ -180,21 +181,29 @@ namespace amr
             }
         }
         else
+        /*
+          We assume that this is a temporary patch used by SAMRAI for data transfers
+          Temporary patches are not given a Geometry at this moment so we can't use it.
+          This happens in:
+           SAMRAI::xfer::RefineTimeTransaction::packStream(tbox::MessageStream&stream)
+
+          SEE: https://github.com/LLNL/SAMRAI/issues/147
+        */
         {
-            // in case that the patch does not have a CartesianPatchGeometry
-            // the gridlayout will most likely throw at the construction
-            // so we may throw here instead
-            throw std::runtime_error(
-                "The geometry on the patch is not set, please verify your configuration");
+            for (std::size_t iDim = 0; iDim < dimension; ++iDim)
+            {
+                origin[iDim] = 0;
+                dl[iDim]     = 1;
+            }
         }
 
         SAMRAI::hier::Box domain = patch.getBox();
 
-        std::array<uint32, dimension> nbrCell;
+        std::array<std::uint32_t, dimension> nbrCell;
 
         for (std::size_t iDim = 0; iDim < dimension; ++iDim)
         {
-            nbrCell[iDim] = static_cast<uint32>(domain.numberCells(iDim));
+            nbrCell[iDim] = static_cast<std::uint32_t>(domain.numberCells(iDim));
         }
 
         return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
@@ -210,7 +219,7 @@ namespace amr
             GridLayout layout = layoutFromPatch<GridLayout>(*patch);
             std::stringstream patchID;
             patchID << patch->getGlobalId();
-            action(layout, patchID.str(), static_cast<size_t>(level.getLevelNumber()));
+            action(layout, patchID.str(), static_cast<std::size_t>(level.getLevelNumber()));
         }
     }
 

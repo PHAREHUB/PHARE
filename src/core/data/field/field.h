@@ -31,7 +31,7 @@ namespace core
         using impl_type              = NdArrayImpl;
         using type                   = typename NdArrayImpl::type;
         using physical_quantity_type = PhysicalQuantity;
-        static constexpr std::size_t dimension{NdArrayImpl::dimension};
+        using NdArrayImpl::dimension;
 
 
         Field()                    = delete;
@@ -50,7 +50,7 @@ namespace core
         }
 
         template<std::size_t dim>
-        Field(std::string name, PhysicalQuantity qty, std::array<uint32_t, dim> const& dims)
+        Field(std::string name, PhysicalQuantity qty, std::array<std::uint32_t, dim> const& dims)
             : NdArrayImpl{dims}
             , name_{std::move(name)}
             , qty_{qty}

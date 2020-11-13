@@ -1,18 +1,17 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 
 project(test-particles-data-refine)
 
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
-  test_basic_hierarchy.h
-  test_tag_strategy.h
+  test_particledata_refine_basic_hierarchy.h
+  test_particle_data_refine_tag_strategy.h
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 
 set(SOURCES_CPP
-  test_main.cpp
-  test_tag_strategy.cpp
+  test_particle_data_refine.cpp
   test_split.cpp
    )
 

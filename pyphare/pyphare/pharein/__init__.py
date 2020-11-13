@@ -1,9 +1,9 @@
 
 
+import numpy as np
 import os, sys, subprocess
 
 venv_path = os.environ.get('VIRTUAL_ENV')
-
 
 if venv_path is not None:
     pythonexe = os.path.join(venv_path, "bin/python3")
@@ -25,22 +25,54 @@ from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagno
 from .simulation import Simulation
 
 
-
-
-
-
 def getSimulation():
-    from .globals import sim
+    from .global_vars import sim
     return sim
+
+
+def is_ndarray(x):
+    return isinstance(x, np.ndarray)
+
+
+def is_scalar(x):
+    return not is_ndarray(x) and not isinstance(x, list)
+
+
+# Wrap calls to user init functions to turn C++ vectors to ndarrays,
+#  and returned ndarrays to C++ span
+class fn_wrapper:
+
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __call__(self, *xyz):
+        args = []
+
+        for i, arg in enumerate(xyz):
+            args.append(np.asarray(arg))
+
+        ret = self.fn(*args)
+
+        if isinstance(ret, list):
+            ret = np.asarray(ret)
+
+        if is_scalar(ret):
+            ret = np.full(len(args[-1]), ret)
+
+        from pybindlibs import cpp
+        # convert numpy array to C++ SubSpan
+        # couples vector init functions to C++
+        return cpp.makePyArrayWrapper(ret)
+
 
 
 def populateDict():
 
-    from .globals import sim as simulation
+    from .global_vars import sim as simulation
     import pybindlibs.dictator as pp
 
     add = pp.add
-    addScalarFunction = getattr(pp, 'addScalarFunction{:d}'.format(simulation.dims)+'D')
+    addInitFunction = getattr(pp, 'addInitFunction{:d}'.format(simulation.dims)+'D')
 
     add("simulation/name", "simulation_test")
     add("simulation/dimension", simulation.dims)
@@ -81,9 +113,9 @@ def populateDict():
 
 
     def as_paths(rb):
-        add("simulation/AMR/refinement_boxes/nbr_levels/", int(len(rb.keys())))
+        add("simulation/AMR/refinement/boxes/nbr_levels/", int(len(rb.keys())))
         for level,boxes in rb.items():
-            level_path = "simulation/AMR/refinement_boxes/"+level+"/"
+            level_path = "simulation/AMR/refinement/boxes/"+level+"/"
             add(level_path + 'nbr_boxes/',int(len(boxes.keys())))
             for box,cells in boxes.items():
                 lower = cells[0]
@@ -95,8 +127,8 @@ def populateDict():
                 if len(lower)>=2:
                     box_lower_path_y = box + "/lower/y/"
                     box_upper_path_y = box + "/upper/y/"
-                    add(level_path+box_lower_path_y,int(lower[1]))
-                    add(level_path+box_upper_path_y,int(upper[1]))
+                    add(level_path+box_lower_path_y, int(lower[1]))
+                    add(level_path+box_upper_path_y, int(upper[1]))
                     if (len(lower)==3):
                         box_lower_path_z = box + "/lower/z/"
                         box_upper_path_z = box + "/upper/z/"
@@ -105,8 +137,11 @@ def populateDict():
 
 
 
-    if refinement_boxes is not None:
+    if refinement_boxes is not None and simulation.refinement =="boxes":
         as_paths(refinement_boxes)
+
+    if simulation.refinement == "tagging":
+        add("simulation/AMR/refinement/tagging/method","auto")
 
 
     add("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
@@ -125,13 +160,14 @@ def populateDict():
         add(pop_path+"{:d}/name".format(pop_index), pop)
         add(pop_path+"{:d}/mass".format(pop_index), float(d["mass"]))
         add(partinit_path+"name", "maxwellian")
-        addScalarFunction(partinit_path+"density", d["density"])
-        addScalarFunction(partinit_path+"bulk_velocity_x", d["vx"])
-        addScalarFunction(partinit_path+"bulk_velocity_y", d["vy"])
-        addScalarFunction(partinit_path+"bulk_velocity_z", d["vz"])
-        addScalarFunction(partinit_path+"thermal_velocity_x",d["vthx"])
-        addScalarFunction(partinit_path+"thermal_velocity_y",d["vthy"])
-        addScalarFunction(partinit_path+"thermal_velocity_z",d["vthz"])
+
+        addInitFunction(partinit_path+"density", fn_wrapper(d["density"]))
+        addInitFunction(partinit_path+"bulk_velocity_x", fn_wrapper(d["vx"]))
+        addInitFunction(partinit_path+"bulk_velocity_y", fn_wrapper(d["vy"]))
+        addInitFunction(partinit_path+"bulk_velocity_z", fn_wrapper(d["vz"]))
+        addInitFunction(partinit_path+"thermal_velocity_x",fn_wrapper(d["vthx"]))
+        addInitFunction(partinit_path+"thermal_velocity_y",fn_wrapper(d["vthy"]))
+        addInitFunction(partinit_path+"thermal_velocity_z",fn_wrapper(d["vthz"]))
         add(partinit_path+"nbr_part_per_cell", int(d["nbrParticlesPerCell"]))
         add(partinit_path+"charge", float(d["charge"]))
         add(partinit_path+"basis", "cartesian")
@@ -144,9 +180,9 @@ def populateDict():
 
     add("simulation/electromag/magnetic/name", "B")
     maginit_path = "simulation/electromag/magnetic/initializer/"
-    addScalarFunction(maginit_path+"x_component", modelDict["bx"])
-    addScalarFunction(maginit_path+"y_component", modelDict["by"])
-    addScalarFunction(maginit_path+"z_component", modelDict["bz"])
+    addInitFunction(maginit_path+"x_component", fn_wrapper(modelDict["bx"]))
+    addInitFunction(maginit_path+"y_component", fn_wrapper(modelDict["by"]))
+    addInitFunction(maginit_path+"z_component", fn_wrapper(modelDict["bz"]))
 
     diag_path = "simulation/diagnostics/"
     for diag in simulation.diagnostics:
@@ -163,6 +199,9 @@ def populateDict():
     else:
         add(diag_path + "filePath", "phare_output")
 
+    if (simulation.diag_options is not None and "options" in simulation.diag_options
+        and "mode" in simulation.diag_options["options"]):
+            add(diag_path + "mode", simulation.diag_options["options"]["mode"])
 
 
     #### adding electrons
@@ -171,4 +210,3 @@ def populateDict():
     else:
         for item in simulation.electrons.dict_path():
             add("simulation/"+item[0], item[1])
-

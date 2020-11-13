@@ -7,14 +7,12 @@ from pybindlibs import cpp
 import os, sys, unittest, yaml
 import numpy as np
 import pyphare.pharein as ph
-from tests.diagnostic import dump_all_diags
-from tests.simulator import create_simulator, cpp_splitter_type
-from pyphare.data.wrangler import DataWrangler
+from pyphare.simulator.simulator import Simulator
+from tests.simulator import NoOverwriteDict
+from tests.simulator import populate_simulation
+from pyphare.cpp import splitter_type
 
 from tests.simulator.config import project_root
-
-out = "phare_outputs/refined_particle_nbr"
-diags = {"diag_options": {"format": "phareh5", "options": {"dir": out}}}
 
 
 class SimulatorRefinedParticleNbr(unittest.TestCase):
@@ -47,12 +45,12 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         yaml_delta = [float(s) for s in str(yaml_n_particles["delta"]).split(" ")]
         yaml_weight = [float(s) for s in str(yaml_n_particles["weight"]).split(" ")]
 
-        splitter_t = cpp_splitter_type(dim, interp, refined_particle_nbr)
+        splitter_t = splitter_type(dim, interp, refined_particle_nbr)
         np.testing.assert_allclose(yaml_delta, splitter_t.delta)
         np.testing.assert_allclose(yaml_weight, splitter_t.weight)
 
 
-    def _do_dim(self, dim, input, min_diff, max_diff):
+    def _do_dim(self, dim, min_diff, max_diff):
         from pyphare.pharein.simulation import valid_refined_particle_nbr
 
         for interp in range(1, 4):
@@ -62,12 +60,13 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
                 self._check_deltas_and_weights(dim, interp, refined_particle_nbr)
 
-                input["refined_particle_nbr"] = refined_particle_nbr
-                self.dman, self.sim, self.hier = create_simulator(dim, interp, **input)
-                self.dw = DataWrangler(self.sim, self.hier)
+                simInput = NoOverwriteDict({"refined_particle_nbr": refined_particle_nbr})
+                self.simulator = Simulator(populate_simulation(dim, interp, **simInput))
+                self.simulator.initialize()
+                dw = self.simulator.data_wrangler()
                 max_per_pop = 0
                 leaving_particles = 0
-                for pop, particles in self.dw.getPatchLevel(1).getParticles().items():
+                for pop, particles in dw.getPatchLevel(1).getParticles().items():
                     per_pop = 0
                     for key, patches in particles.items():
                         for patch in patches:
@@ -85,13 +84,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
                     prev_max_diff = prev_min_diff * dim * max_diff
                     self.assertTrue(max_per_pop < prev_max_diff)
                 prev_split_particle_max = max_per_pop
-                del (
-                    self.dw,
-                    self.dman,
-                    self.sim,
-                    self.hier,
-                )
-                cpp.reset()
+                self.simulator = None
 
     """ 1d
       refine 10 cells in 1d, ppc 100
@@ -107,7 +100,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def test_1d(self):
         This = type(self)
-        self._do_dim(1, diags, This.PREVIOUS_ITERATION_MIN_DIFF_1d, This.PREVIOUS_ITERATION_MAX_DIFF_1d)
+        self._do_dim(1, This.PREVIOUS_ITERATION_MIN_DIFF_1d, This.PREVIOUS_ITERATION_MAX_DIFF_1d)
 
     """ 2d
       refine 10x10 cells in 2d, ppc 100
@@ -120,14 +113,14 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def test_2d(self):
         This = type(self)
-        self._do_dim(2, diags, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
+        self._do_dim(2, This.PREVIOUS_ITERATION_MIN_DIFF_2d, This.PREVIOUS_ITERATION_MAX_DIFF_2d)
 
     def tearDown(self):
-        for k in ["dw", "dman", "sim", "hier"]:
-            if hasattr(self, k):
-                v = getattr(self, k)
-                del v  # blocks segfault on test failure, could be None
-        cpp.reset()
+        # needed in case exception is raised in test and Simulator
+        # not reset properly
+        if self.simulator is not None:
+            self.simulator.reset()
+
 
 
 if __name__ == "__main__":

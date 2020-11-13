@@ -28,6 +28,7 @@ namespace solver
     public:
         using type_list
             = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
+        using Interface = IPhysicalModel<AMR_Types>;
         using amr_types = AMR_Types;
         using patch_t   = typename AMR_Types::patch_t;
         using level_t   = typename AMR_Types::level_t;
@@ -37,9 +38,9 @@ namespace solver
         using vecfield_type             = typename Electromag::vecfield_type;
         using field_type                = typename vecfield_type::field_type;
         using ions_type                 = Ions;
+        using particle_array_type       = typename Ions::particle_array_type;
         using resources_manager_type    = amr::ResourcesManager<gridlayout_type>;
         static constexpr auto dimension = GridLayoutT::dimension;
-        using particle_array_type       = typename Ions::particle_array_type;
         using ParticleInitializerFactory
             = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 

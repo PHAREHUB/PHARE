@@ -55,14 +55,16 @@ namespace amr
      * - syncIonMOments()
      *
      */
-    template<typename HybridModel, typename IPhysicalModel>
-    class HybridMessenger : public IMessenger<IPhysicalModel>
+    template<typename HybridModel>
+    class HybridMessenger : public IMessenger<typename HybridModel::Interface>
     {
     private:
-        using IonsT     = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IonsT          = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IPhysicalModel = typename HybridModel::Interface;
 
-        using stratT = HybridMessengerStrategy<HybridModel, IPhysicalModel>;
+
+        using stratT = HybridMessengerStrategy<HybridModel>;
 
     public:
         explicit HybridMessenger(std::unique_ptr<stratT> strat)
@@ -81,7 +83,7 @@ namespace amr
          * @brief see IMessenger::allocate. Allocate calls the abstract HybridMessengerStrategy to
          * perform the allocation of its internal resources
          */
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
             strat_->allocate(patch, allocateTime);
         }
@@ -97,8 +99,8 @@ namespace amr
          * @param fromCoarserInfo see IMessenger
          * @param fromFinerInfo see IMessenger
          */
-        virtual void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
-                                        std::unique_ptr<IMessengerInfo> fromFinerInfo) override
+        void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
+                                std::unique_ptr<IMessengerInfo> fromFinerInfo) override
         {
             strat_->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
         }
@@ -109,8 +111,8 @@ namespace amr
         /**
          * @brief see IMessenger::registerLevel
          */
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                   int const levelNumber) override
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           int const levelNumber) override
         {
             strat_->registerLevel(hierarchy, levelNumber);
         }
@@ -120,10 +122,10 @@ namespace amr
         /**
          * @brief see IMessenger::registerLevel
          */
-        virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
-                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                            IPhysicalModel& model, double const initDataTime) final
+        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                    int const levelNumber,
+                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                    IPhysicalModel& model, double const initDataTime) final
         {
             strat_->regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
         }
@@ -136,8 +138,8 @@ namespace amr
          * @param levelNumber
          * @param initDataTime
          */
-        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) override
+        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       double const initDataTime) override
         {
             strat_->initLevel(model, level, initDataTime);
         }
@@ -147,11 +149,11 @@ namespace amr
          * @brief see IMessenger::firstStep
          * @param model
          */
-        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                               double time) final
+        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy, double time,
+                       double newCoarserTime) final
         {
-            strat_->firstStep(model, level, hierarchy, time);
+            strat_->firstStep(model, level, hierarchy, time, newCoarserTime);
         }
 
 
@@ -160,7 +162,7 @@ namespace amr
          * @brief see IMessenger::lastStep
          * @param model
          */
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
+        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
             strat_->lastStep(model, level);
         }
@@ -170,25 +172,22 @@ namespace amr
         /**
          * @brief prepareStep see IMessenger::prepareStep
          */
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final
+        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
             strat_->prepareStep(model, level);
         }
 
 
 
-        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                                    double const initDataTime) final
+        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                            double const initDataTime) override
         {
             strat_->fillRootGhosts(model, level, initDataTime);
         }
 
 
 
-        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
-        {
-            strat_->synchronize(level);
-        }
+        void synchronize(SAMRAI::hier::PatchLevel& level) override { strat_->synchronize(level); }
 
 
 
@@ -196,7 +195,7 @@ namespace amr
          * @brief IMessenger::fineModelName
          * @return
          */
-        virtual std::string fineModelName() const override { return strat_->fineModelName(); }
+        std::string fineModelName() const override { return strat_->fineModelName(); }
 
 
 
@@ -205,7 +204,7 @@ namespace amr
          * @brief see IMessenger::coarseModelName
          * @return
          */
-        virtual std::string coarseModelName() const override { return strat_->coarseModelName(); }
+        std::string coarseModelName() const override { return strat_->coarseModelName(); }
 
 
 
@@ -213,7 +212,7 @@ namespace amr
         /**
          * @brief see IMessenger::emptyInfoFromCoarser
          */
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {
             return strat_->emptyInfoFromCoarser();
         }
@@ -223,7 +222,7 @@ namespace amr
         /**
          * @brief see IMessenger::emptyInfoFromFiner
          */
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
         {
             return strat_->emptyInfoFromFiner();
         }
@@ -234,7 +233,7 @@ namespace amr
          * @brief returns the name of the concrete IMessenger, which in the case of a
          * HybridMessenger is just the name of its strategy.
          */
-        virtual std::string name() override
+        std::string name() override
         {
             if (strat_ != nullptr)
             {

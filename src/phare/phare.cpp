@@ -1,7 +1,9 @@
 
 
-#include "include.h"
+#include "phare/phare.h"
+#include "simulator/simulator.h"
 #include "amr/wrappers/hierarchy.h"
+#include "initializer/python_data_provider.h"
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
@@ -54,10 +56,10 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
-    RuntimeDiagnosticInterface diags{*simulator, *hierarchy};
+    PHARE::SimulatorDiagnostics diags{*simulator, *hierarchy};
 
 
-    auto time = simulator->startTime();
+    [[maybe_unused]] auto time = simulator->startTime();
 
     while (simulator->currentTime() < simulator->endTime())
     {

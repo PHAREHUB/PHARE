@@ -12,11 +12,12 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename MHDModel, typename HybridModel, typename IPhysicalModel>
-    class MHDHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel, IPhysicalModel>
+    template<typename MHDModel, typename HybridModel>
+    class MHDHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
     {
-        using IonsT     = decltype(std::declval<HybridModel>().state.ions);
-        using VecFieldT = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IonsT          = decltype(std::declval<HybridModel>().state.ions);
+        using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
+        using IPhysicalModel = typename HybridModel::Interface;
 
     public:
         static const std::string stratName;
@@ -25,7 +26,7 @@ namespace amr
             std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager,
             std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager,
             int const firstLevel)
-            : HybridMessengerStrategy<HybridModel, IPhysicalModel>{stratName}
+            : HybridMessengerStrategy<HybridModel>{stratName}
             , mhdResourcesManager_{std::move(mhdResourcesManager)}
             , hybridResourcesManager_{std::move(hybridResourcesManager)}
             , firstLevel_{firstLevel}
@@ -36,7 +37,7 @@ namespace amr
         /**
          * @brief allocate allocate the internal resources to the hybrid and MHD resourcesManagers
          */
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
             // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
             // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
@@ -45,24 +46,24 @@ namespace amr
 
 
 
-        virtual void
-        registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
-                           [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
+        void registerQuantities(
+            std::unique_ptr<IMessengerInfo> /*fromCoarserInfo*/,
+            [[maybe_unused]] std::unique_ptr<IMessengerInfo> /*fromFinerInfo*/) override
         {
         }
 
 
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                   int const levelNumber) override
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                           int const /*levelNumber*/) override
         {
         }
 
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
+        std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
         {
             return std::make_unique<HybridMessengerInfo>();
         }
@@ -70,10 +71,10 @@ namespace amr
 
 
 
-        virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
-                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                            IPhysicalModel& model, double const initDataTime) override
+        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                    const int /*levelNumber*/,
+                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
+                    IPhysicalModel& /*model*/, double const /*initDataTime*/) override
         {
             //
         }
@@ -81,65 +82,64 @@ namespace amr
 
 
 
-        virtual std::string fineModelName() const override { return HybridModel::model_name; }
+        std::string fineModelName() const override { return HybridModel::model_name; }
 
-        virtual std::string coarseModelName() const override { return MHDModel::model_name; }
+        std::string coarseModelName() const override { return MHDModel::model_name; }
 
 
 
-        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime) override
+        void initLevel(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                       double const /*initDataTime*/) override
         {
         }
 
         virtual ~MHDHybridMessengerStrategy() = default;
 
 
-        virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber,
-                                        double const fillTime) override
+        void fillMagneticGhosts(VecFieldT& /*B*/, int const /*levelNumber*/,
+                                double const /*fillTime*/) override
         {
         }
-        virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber,
-                                        double const fillTime) override
-        {
-        }
-
-        virtual void fillCurrentGhosts(VecFieldT& J, int const levelNumber,
-                                       double const fillTime) override
+        void fillElectricGhosts(VecFieldT& /*E*/, int const /*levelNumber*/,
+                                double const /*fillTime*/) override
         {
         }
 
-
-        virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                           double const fillTime) override
-        {
-        }
-        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double const currentTime, double const fillTime) override
+        void fillCurrentGhosts(VecFieldT& /*J*/, int const /*levelNumber*/,
+                               double const /*fillTime*/) override
         {
         }
 
 
-
-        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
-                               double time) override
+        void fillIonGhostParticles(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                                   double const /*fillTime*/) override
         {
         }
-
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override {}
-
-
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
-
-        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                                    double const initDataTime) final
+        void fillIonMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                                 double const /*currentTime*/, double const /*fillTime*/) override
         {
         }
 
 
+        void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                       double /*time*/, double /*newCoarserTime*/) override
+        {
+        }
 
-        virtual void synchronize(SAMRAI::hier::PatchLevel& level) final
+        void lastStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) override {}
+
+
+        void prepareStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) final {}
+
+        void fillRootGhosts(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                            double const /*initDataTime*/) final
+        {
+        }
+
+
+
+        void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
         {
             // call coarsning schedules...
         }
@@ -156,8 +156,8 @@ namespace amr
         Electromag EM_old_{stratName + "_EM_old"};
     };
 
-    template<typename MHDModel, typename HybridModel, typename IPhysicalModel>
-    const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel, IPhysicalModel>::stratName
+    template<typename MHDModel, typename HybridModel>
+    const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
         = "MHDModel-HybridModel";
 
 

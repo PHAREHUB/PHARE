@@ -14,6 +14,7 @@
 
 #include <cmath>
 #include <vector>
+#include <utility>
 
 
 
@@ -26,14 +27,14 @@ namespace amr
     {
     private:
         std::array<std::size_t, dimension>
-        nbrFinePoints_(std::array<core::QtyCentering, dimension> centering,
+        nbrFinePoints_(std::array<core::QtyCentering, dimension> const& centering,
                        SAMRAI::hier::IntVector const& ratio) const
         {
             std::array<std::size_t, dimension> nbrPoints;
 
             for (auto iDir = 0u; iDir < dimension; ++iDir)
             {
-                if (centering[iDir] == core::QtyCentering::primal && ratio(iDir) % 2 == 0)
+                if (centering[iDir] == core::QtyCentering::primal and ratio(iDir) % 2 == 0)
                 {
                     nbrPoints[iDir] = static_cast<std::size_t>(ratio(iDir)) + 1;
                 }
@@ -47,18 +48,16 @@ namespace amr
 
 
     public:
-        FieldCoarsenIndexesAndWeights(std::array<core::QtyCentering, dimension> centering,
+        FieldCoarsenIndexesAndWeights(std::array<core::QtyCentering, dimension> const& centering,
                                       SAMRAI::hier::IntVector const& ratio)
             : ratio_{ratio}
             , weighters_{make_weighters(nbrFinePoints_(centering, ratio),
                                         std::make_index_sequence<dimension>{})}
         {
-            std::array<bool, dimension> evenRatio;
             std::array<int, dimension> halfRatio;
 
             for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
             {
-                evenRatio[iDir] = ratio(iDir) % 2 == 0;
                 halfRatio[iDir] = ratio(iDir) / 2;
             }
 

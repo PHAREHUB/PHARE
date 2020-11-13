@@ -16,7 +16,7 @@ struct GridLayoutFieldCenteringParam
 {
     GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::vector<std::array<uint32, GridLayoutImpl::dimension>> iCellForCentering;
+    std::vector<std::array<std::uint32_t, GridLayoutImpl::dimension>> iCellForCentering;
     std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
     std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
 
@@ -93,16 +93,16 @@ auto createFieldCenteringParam()
         {"Vz", HybridQuantity::Scalar::Vz}, {"P", HybridQuantity::Scalar::P}};
 
 
-    // constexpr uint32 numberOfQuantities{14};
+    // constexpr std::uint32_t numberOfQuantities{14};
 
     while (!summary.eof())
     {
         std::string quantity;
 
-        std::array<uint32, GridLayoutImpl::dimension> nbCell;
+        std::array<std::uint32_t, GridLayoutImpl::dimension> nbCell;
         std::array<double, GridLayoutImpl::dimension> dl;
-        std::array<uint32, GridLayoutImpl::dimension> iStart;
-        std::array<uint32, GridLayoutImpl::dimension> iEnd;
+        std::array<std::uint32_t, GridLayoutImpl::dimension> iStart;
+        std::array<std::uint32_t, GridLayoutImpl::dimension> iEnd;
         std::array<double, GridLayoutImpl::dimension> origin;
 
         summary >> quantity;
@@ -132,7 +132,7 @@ auto createFieldCenteringParam()
     while (!value.eof())
     {
         std::string quantity;
-        std::array<uint32, GridLayoutImpl::dimension> icell;
+        std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
         std::array<double, GridLayoutImpl::dimension> realPosition;
 
         value >> quantity;

@@ -1,10 +1,12 @@
 #ifndef PHARE_PARTICLES_DATA_SPLIT_H
 #define PHARE_PARTICLES_DATA_SPLIT_H
 
+
 #include "amr/data/particles/particles_data.h"
 #include "amr/resources_manager/amr_utils.h"
 #include "split.h"
 #include "core/utilities/constants.h"
+#include "phare_core.h"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -18,9 +20,6 @@ namespace PHARE
 {
 namespace amr
 {
-    using core::int32;
-    using core::uint32;
-
     enum class ParticlesDataSplitType {
         coarseBoundary,
         interior,
@@ -29,12 +28,31 @@ namespace amr
     };
 
 
-    template<ParticlesDataSplitType splitType, typename Splitter>
+    template<std::size_t interp, typename Particle>
+    Particle toFineGrid(Particle toFine)
+    {
+        constexpr auto dim   = Particle::dimension;
+        constexpr auto ratio = core::PHARE_Types<dim, interp>::refinementRatio;
+
+        for (size_t iDim = 0; iDim < dim; ++iDim)
+        {
+            auto fineDelta     = toFine.delta[iDim] * ratio;
+            int fineDeltaInt   = static_cast<int>(fineDelta);
+            toFine.iCell[iDim] = toFine.iCell[iDim] * ratio + fineDeltaInt;
+            toFine.delta[iDim] = fineDelta - fineDeltaInt;
+        }
+
+        return toFine;
+    }
+
+
+    template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
     public:
-        static constexpr size_t dim         = Splitter::dimension;
-        static constexpr size_t interpOrder = Splitter::interp_order;
+        static constexpr auto dim           = Splitter::dimension;
+        static constexpr auto interpOrder   = Splitter::interp_order;
+        static constexpr auto nbRefinedPart = Splitter::nbRefinedPart;
 
         ParticlesRefineOperator()
             : SAMRAI::hier::RefineOperator{"ParticlesDataSplit_" + splitName_(splitType)}
@@ -60,7 +78,7 @@ namespace amr
         virtual void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
                             int const destinationComponent, int const sourceComponent,
                             SAMRAI::hier::BoxOverlap const& fineOverlap,
-                            SAMRAI::hier::IntVector const& ratio) const override
+                            SAMRAI::hier::IntVector const& /*ratio*/) const override
         {
             // For the particles we index them as a CellIndex (for the iCell)
             // ie the particles in the iCell live between lower left node of the iCell
@@ -70,11 +88,12 @@ namespace amr
 
 
             // We then need to get our ParticlesData from the patch
-            auto destinationParticlesData = std::dynamic_pointer_cast<ParticlesData<dim>>(
+            auto destinationParticlesData = std::dynamic_pointer_cast<ParticlesData<ParticleArray>>(
                 destination.getPatchData(destinationComponent));
 
-            auto const sourceParticlesData = std::dynamic_pointer_cast<ParticlesData<dim>>(
-                source.getPatchData(sourceComponent));
+            auto const sourceParticlesData
+                = std::dynamic_pointer_cast<ParticlesData<ParticleArray>>(
+                    source.getPatchData(sourceComponent));
 
             // Finnaly we need the cartesion geometry of both patch.
             auto patchGeomDestination
@@ -94,8 +113,7 @@ namespace amr
 
 
             // We have a correct data type, we can now perform the refine
-            refine_(*destinationParticlesData, *sourceParticlesData, destinationFieldOverlap, ratio,
-                    *patchGeomDestination, *patchGeomSource);
+            refine_(*destinationParticlesData, *sourceParticlesData, destinationFieldOverlap);
         }
 
     private:
@@ -116,12 +134,9 @@ namespace amr
          * an overlap , a ratio and the geometry of both patches, perform the
          * splitting of coarse particules onto the destination patch
          */
-        void refine_(ParticlesData<dim>& destParticlesData,
-                     ParticlesData<dim> const& srcParticlesData,
-                     SAMRAI::pdat::CellOverlap const& destFieldOverlap,
-                     SAMRAI::hier::IntVector const& ratio,
-                     SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomDest*/,
-                     SAMRAI::geom::CartesianPatchGeometry const& /*patchGeomSrc*/) const
+        void refine_(ParticlesData<ParticleArray>& destParticlesData,
+                     ParticlesData<ParticleArray> const& srcParticlesData,
+                     SAMRAI::pdat::CellOverlap const& destFieldOverlap) const
         {
             // the source PatchData is a possible restriction of a "real" patchdata
             // so that it is the closest from the destination boxes
@@ -166,19 +181,8 @@ namespace amr
                 {
                     for (auto const& particle : *sourceParticlesArray)
                     {
-                        std::vector<core::Particle<dim>> refinedParticles;
-                        auto particleRefinedPos{particle};
-
-                        for (auto iDim = 0u; iDim < dim; ++iDim)
-                        {
-                            particleRefinedPos.iCell[iDim]
-                                = particle.iCell[iDim] * ratio[iDim]
-                                  + static_cast<int>(particle.delta[iDim] * ratio[iDim]);
-                            particleRefinedPos.delta[iDim]
-                                = particle.delta[iDim] * ratio[iDim]
-                                  - static_cast<int>(particle.delta[iDim] * ratio[iDim]);
-                        }
-
+                        ParticleArray refinedParticles{nbRefinedPart};
+                        auto particleRefinedPos = toFineGrid<interpOrder>(particle);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))
                         {
@@ -199,6 +203,8 @@ namespace amr
                             {
                                 if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
                                 {
+                                    /*std::cout << "copying " << refinedParticles.size()
+                                              << " particles into levelGhost\n";*/
                                     std::copy_if(
                                         std::begin(refinedParticles), std::end(refinedParticles),
                                         std::back_inserter(destCoarseBoundaryParticles), isInDest);
@@ -206,7 +212,8 @@ namespace amr
                                 else if constexpr (splitType
                                                    == ParticlesDataSplitType::coarseBoundaryOld)
                                 {
-                                    //
+                                    /*std::cout << "copying " << refinedParticles.size()
+                                              << " particles into levelGhostOld\n";*/
                                     std::copy_if(std::begin(refinedParticles),
                                                  std::end(refinedParticles),
                                                  std::back_inserter(destCoarseBoundaryOldParticles),
@@ -214,6 +221,8 @@ namespace amr
                                 }
                                 else //  splitType is coarseBoundaryNew
                                 {
+                                    /*std::cout << "copying " << refinedParticles.size()
+                                              << " particles into levelGhostNew\n";*/
                                     std::copy_if(std::begin(refinedParticles),
                                                  std::end(refinedParticles),
                                                  std::back_inserter(destCoarseBoundaryNewParticles),
@@ -223,6 +232,8 @@ namespace amr
 
                             else
                             {
+                                /*std::cout << "copying " << refinedParticles.size()
+                                          << " particles into domain\n";*/
                                 std::copy_if(std::begin(refinedParticles),
                                              std::end(refinedParticles),
                                              std::back_inserter(destDomainParticles), isInDest);
@@ -233,8 +244,6 @@ namespace amr
             }             // loop on destination box
         }
 
-        // constexpr int maxCellDistanceFromSplit() const { return std::ceil((interpOrder + 1) *
-        // 0.5); }
 
         SAMRAI::hier::Box getSplitBox(SAMRAI::hier::Box const& destinationBox) const
         {
@@ -259,24 +268,26 @@ namespace amr
             return isInBox(toSplitBox, particle);
         }
     };
-} // namespace amr
 
+} // namespace amr
 } // namespace PHARE
 
 
 namespace PHARE::amr
 {
-template<typename Splitter>
+template<typename ParticleArray, typename Splitter>
 struct RefinementParams
 {
     using InteriorParticleRefineOp
-        = ParticlesRefineOperator<ParticlesDataSplitType::interior, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::interior, Splitter>;
 
     using CoarseToFineRefineOpOld
-        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryOld, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::coarseBoundaryOld,
+                                  Splitter>;
 
     using CoarseToFineRefineOpNew
-        = ParticlesRefineOperator<ParticlesDataSplitType::coarseBoundaryNew, Splitter>;
+        = ParticlesRefineOperator<ParticleArray, ParticlesDataSplitType::coarseBoundaryNew,
+                                  Splitter>;
 };
 
 } // namespace PHARE::amr

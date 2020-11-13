@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 
 project(test-multiphysics-integrator)
 
@@ -6,7 +6,7 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_main.cpp
+  test_multiphysics_integrator.cpp
    )
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

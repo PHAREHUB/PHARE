@@ -1,8 +1,8 @@
 #include "core/data/particles/particle.h"
 #include "amr/data/particles/particles_data.h"
 #include "amr/data/particles/refine/split.h"
-#include "test_basic_hierarchy.h"
-#include "test_tag_strategy.h"
+#include "test_particledata_refine_basic_hierarchy.h"
+#include "test_particle_data_refine_tag_strategy.h"
 
 
 #include "gmock/gmock.h"
@@ -20,14 +20,14 @@
 using testing::DoubleNear;
 using testing::Eq;
 
-template<std::size_t dimension_, int ratio_, std::size_t interpOrder_, int refineParticlesNbr_,
+template<std::size_t dimension_, std::size_t interpOrder_, std::size_t refineParticlesNbr_,
          ParticlesDataSplitType SplitType_>
 struct ParticlesDataSplitTestDescriptors
 {
+    std::size_t constexpr static ratio                = 2;
     std::size_t constexpr static dimension            = dimension_;
-    int constexpr static ratio                        = ratio_;
     std::size_t constexpr static interpOrder          = interpOrder_;
-    int constexpr static refineParticlesNbr           = refineParticlesNbr_;
+    std::size_t constexpr static refineParticlesNbr   = refineParticlesNbr_;
     static constexpr ParticlesDataSplitType SplitType = SplitType_;
 };
 
@@ -78,9 +78,9 @@ public:
 
 
 
-    std::vector<Particle<dimension>> getRefinedL0Particles()
+    ParticleArray<dimension> getRefinedL0Particles()
     {
-        std::vector<Particle<dimension>> refinedParticles;
+        ParticleArray<dimension> refinedParticles;
 
         Splitter split;
 
@@ -89,26 +89,41 @@ public:
 
         auto domainBox  = domainBoxes.front();
         auto ghostWidth = static_cast<int>(ghostWidthForParticles<interpOrder>());
-        auto lowerCell  = domainBox.lower()[0] - ghostWidth;
-        auto upperCell  = domainBox.upper()[0] + ghostWidth;
 
+        auto lowerXYZ = boxBoundsLower<dimension>(domainBox);
+        auto upperXYZ = boxBoundsUpper<dimension>(domainBox);
 
-        for (int iCell = lowerCell; iCell <= upperCell; ++iCell)
+        for (std::size_t i = 0; i < dimension; i++)
         {
-            auto coarseParticles = loadCell<dimension>(iCell);
+            lowerXYZ[i] -= ghostWidth;
+            upperXYZ[i] += ghostWidth;
+        }
 
-            for (auto const& part : coarseParticles)
+
+        for (int iCellX = lowerXYZ[dirX]; iCellX <= upperXYZ[dirX]; ++iCellX)
+        {
+            for (int iCellY = lowerXYZ[dirY]; iCellY <= upperXYZ[dirY]; ++iCellY)
             {
-                auto coarseOnRefinedGrid{part};
-
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
+                for (int iCellZ = lowerXYZ[dirZ]; iCellZ <= upperXYZ[dirZ]; ++iCellZ)
                 {
-                    auto delta                      = static_cast<int>(part.delta[iDim] * ratio);
-                    coarseOnRefinedGrid.iCell[iDim] = part.iCell[iDim] * ratio + delta;
-                    coarseOnRefinedGrid.delta[iDim] = part.delta[iDim] * ratio - delta;
-                }
+                    auto coarseParticles = loadCell<dimension>(iCellX, iCellY, iCellZ);
 
-                split(coarseOnRefinedGrid, refinedParticles);
+                    for (auto const& part : coarseParticles)
+                    {
+                        auto coarseOnRefinedGrid{part};
+
+                        for (auto iDim = 0u; iDim < dimension; ++iDim)
+                        {
+                            auto delta = static_cast<int>(part.delta[iDim] * ratio);
+                            coarseOnRefinedGrid.iCell[iDim] = part.iCell[iDim] * ratio + delta;
+                            coarseOnRefinedGrid.delta[iDim] = part.delta[iDim] * ratio - delta;
+                        }
+
+                        refinedParticles.resize(refinedParticles.size() + refineParticlesNbr);
+                        split(coarseOnRefinedGrid, refinedParticles,
+                              refinedParticles.size() - refineParticlesNbr);
+                    }
+                }
             }
         }
 
@@ -124,15 +139,16 @@ class levelOneCoarseBoundaries : public aSimpleBasicHierarchyWithTwoLevels<Type>
 public:
     using BaseType                         = aSimpleBasicHierarchyWithTwoLevels<Type>;
     static constexpr std::size_t dimension = BaseType::dimension;
+    using ParticlesData_t                  = ParticlesData<ParticleArray<dimension>>;
 
-    std::vector<Particle<dimension>>
-    filterLevelGhostParticles(std::vector<Particle<dimension>> const& refinedParticles,
+    ParticleArray<dimension>
+    filterLevelGhostParticles(ParticleArray<dimension> const& refinedParticles,
                               std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        std::vector<Particle<dimension>> levelGhosts;
+        ParticleArray<dimension> levelGhosts;
 
         auto pData    = patch->getPatchData(this->dataID);
-        auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
+        auto partData = std::dynamic_pointer_cast<ParticlesData_t>(pData);
 
         auto myBox      = partData->getBox();
         auto myGhostBox = partData->getGhostBox();
@@ -145,7 +161,6 @@ public:
                          return isInBox(myGhostBox, part) && !isInBox(myBox, part);
                      });
 
-
         return levelGhosts;
     }
 
@@ -155,7 +170,7 @@ public:
     auto& getLevelGhosts(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
         auto pDat    = patch->getPatchData(this->dataID);
-        auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData_t>(pDat);
 
         return partDat->levelGhostParticles;
     }
@@ -226,15 +241,16 @@ class levelOneInterior : public aSimpleBasicHierarchyWithTwoLevels<Type>
 public:
     using BaseType                         = aSimpleBasicHierarchyWithTwoLevels<Type>;
     static constexpr std::size_t dimension = BaseType::dimension;
+    using ParticlesData_t                  = ParticlesData<ParticleArray<dimension>>;
 
-    std::vector<Particle<dimension>>
-    filterInteriorParticles(std::vector<Particle<dimension>> const& refinedParticles,
+    ParticleArray<dimension>
+    filterInteriorParticles(ParticleArray<dimension> const& refinedParticles,
                             std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
-        std::vector<Particle<dimension>> interiors;
+        ParticleArray<dimension> interiors;
 
         auto pData    = patch->getPatchData(this->dataID);
-        auto partData = std::dynamic_pointer_cast<ParticlesData<dimension>>(pData);
+        auto partData = std::dynamic_pointer_cast<ParticlesData_t>(pData);
 
         auto myBox = partData->getBox();
 
@@ -251,7 +267,7 @@ public:
     auto& getInterior(std::shared_ptr<SAMRAI::hier::Patch> const& patch)
     {
         auto pDat    = patch->getPatchData(this->dataID);
-        auto partDat = std::dynamic_pointer_cast<ParticlesData<dimension>>(pDat);
+        auto partDat = std::dynamic_pointer_cast<ParticlesData_t>(pDat);
 
         return partDat->domainParticles;
     }
@@ -261,23 +277,6 @@ public:
 
 
 TYPED_TEST_SUITE_P(levelOneInterior);
-
-
-
-/*
-using ::testing::get;
-MATCHER_P2(PositionNearEq, epsilon, dimension, "")
-{
-    bool nearEq = true;
-
-    for (std::size_t iDir = dirX; iDir < dimension; ++iDir)
-    {
-        nearEq = nearEq && ((get<0>(arg)[iDir] - get<1>(arg)[iDir]) <= epsilon);
-    }
-
-    return nearEq;
-}
-*/
 
 
 
@@ -333,59 +332,82 @@ REGISTER_TYPED_TEST_SUITE_P(levelOneCoarseBoundaries, areCorrectlyFilledByRefine
 
 
 
-// std::size_t constexpr dimension = 1;
-// int constexpr ratio               = 2;
+// std::size_t constexpr dimension   = 1;
 // std::size_t constexpr interpOrder = 1;
 // int constexpr refinedParticlesNbr = 2;
 
 // dimension , ratio , interpOrder, refinedParticlesNbr
-using ParticlesDataSplitDescriptors1Dr2o1ref2C2F
-    = ParticlesDataSplitTestDescriptors<1, 2, 1, 2, ParticlesDataSplitType::coarseBoundary>;
-using ParticlesDataSplitDescriptors1Dr2o2ref2C2F
-    = ParticlesDataSplitTestDescriptors<1, 2, 2, 2, ParticlesDataSplitType::coarseBoundary>;
-using ParticlesDataSplitDescriptors1Dr2o3ref2C2F
-    = ParticlesDataSplitTestDescriptors<1, 2, 3, 2, ParticlesDataSplitType::coarseBoundary>;
+template<std::size_t dim, std::size_t babies = 2>
+using ParticlesDataSplitDescriptorsNDr2o1ref2C2F
+    = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::coarseBoundary>;
 
-using ParticlesDataSplitDescriptors1Dr2o1ref3C2F
-    = ParticlesDataSplitTestDescriptors<1, 2, 1, 3, ParticlesDataSplitType::coarseBoundary>;
-using ParticlesDataSplitDescriptors1Dr2o2ref3C2F
-    = ParticlesDataSplitTestDescriptors<1, 2, 2, 3, ParticlesDataSplitType::coarseBoundary>;
-using ParticlesDataSplitDescriptors1Dr2o3ref3C2F
-    = ParticlesDataSplitTestDescriptors<1, 2, 3, 3, ParticlesDataSplitType::coarseBoundary>;
+template<std::size_t dim, std::size_t babies = 2>
+using ParticlesDataSplitDescriptorsNDr2o2ref2C2F
+    = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::coarseBoundary>;
 
+template<std::size_t dim, std::size_t babies = 2>
+using ParticlesDataSplitDescriptorsNDr2o3ref2C2F
+    = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::coarseBoundary>;
 
-using ParticlesDataSplitDescriptors1Dr2o1ref2Int
-    = ParticlesDataSplitTestDescriptors<1, 2, 1, 2, ParticlesDataSplitType::interior>;
-using ParticlesDataSplitDescriptors1Dr2o2ref2Int
-    = ParticlesDataSplitTestDescriptors<1, 2, 2, 2, ParticlesDataSplitType::interior>;
-using ParticlesDataSplitDescriptors1Dr2o3ref2Int
-    = ParticlesDataSplitTestDescriptors<1, 2, 3, 2, ParticlesDataSplitType::interior>;
-using ParticlesDataSplitDescriptors1Dr2o1ref3Int
-    = ParticlesDataSplitTestDescriptors<1, 2, 1, 3, ParticlesDataSplitType::interior>;
-using ParticlesDataSplitDescriptors1Dr2o2ref3Int
-    = ParticlesDataSplitTestDescriptors<1, 2, 2, 3, ParticlesDataSplitType::interior>;
-using ParticlesDataSplitDescriptors1Dr2o3ref3Int
-    = ParticlesDataSplitTestDescriptors<1, 2, 3, 3, ParticlesDataSplitType::interior>;
+template<std::size_t dim, std::size_t babies = 3>
+using ParticlesDataSplitDescriptorsNDr2o1ref3C2F
+    = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::coarseBoundary>;
 
+template<std::size_t dim, std::size_t babies = 3>
+using ParticlesDataSplitDescriptorsNDr2o2ref3C2F
+    = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::coarseBoundary>;
 
-
+template<std::size_t dim, std::size_t babies = 3>
+using ParticlesDataSplitDescriptorsNDr2o3ref3C2F
+    = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::coarseBoundary>;
 
 typedef ::testing::Types<
-    ParticlesDataSplitDescriptors1Dr2o1ref2C2F, ParticlesDataSplitDescriptors1Dr2o2ref2C2F,
-    ParticlesDataSplitDescriptors1Dr2o3ref2C2F, ParticlesDataSplitDescriptors1Dr2o1ref3C2F,
-    ParticlesDataSplitDescriptors1Dr2o2ref3C2F, ParticlesDataSplitDescriptors1Dr2o3ref3C2F>
+    ParticlesDataSplitDescriptorsNDr2o1ref2C2F<1>, ParticlesDataSplitDescriptorsNDr2o2ref2C2F<1>,
+    ParticlesDataSplitDescriptorsNDr2o3ref2C2F<1>, ParticlesDataSplitDescriptorsNDr2o1ref3C2F<1>,
+    ParticlesDataSplitDescriptorsNDr2o2ref3C2F<1>, ParticlesDataSplitDescriptorsNDr2o3ref3C2F<1>,
+    ParticlesDataSplitDescriptorsNDr2o1ref2C2F<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o2ref2C2F<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o3ref2C2F<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o1ref3C2F<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o2ref3C2F<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o3ref3C2F<2, 4>>
     ParticlesCoarseToFineDataDescriptorsRange;
 
+template<std::size_t dim, std::size_t babies = 2>
+using ParticlesDataSplitDescriptorsNDr2o1ref2Int
+    = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::interior>;
+
+template<std::size_t dim, std::size_t babies = 2>
+using ParticlesDataSplitDescriptorsNDr2o2ref2Int
+    = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::interior>;
+
+template<std::size_t dim, std::size_t babies = 2>
+using ParticlesDataSplitDescriptorsNDr2o3ref2Int
+    = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::interior>;
+
+template<std::size_t dim, std::size_t babies = 3>
+using ParticlesDataSplitDescriptorsNDr2o1ref3Int
+    = ParticlesDataSplitTestDescriptors<dim, 1, babies, ParticlesDataSplitType::interior>;
+
+template<std::size_t dim, std::size_t babies = 3>
+using ParticlesDataSplitDescriptorsNDr2o2ref3Int
+    = ParticlesDataSplitTestDescriptors<dim, 2, babies, ParticlesDataSplitType::interior>;
+
+template<std::size_t dim, std::size_t babies = 3>
+using ParticlesDataSplitDescriptorsNDr2o3ref3Int
+    = ParticlesDataSplitTestDescriptors<dim, 3, babies, ParticlesDataSplitType::interior>;
 
 typedef ::testing::Types<
-    ParticlesDataSplitDescriptors1Dr2o1ref2Int, ParticlesDataSplitDescriptors1Dr2o2ref2Int,
-    ParticlesDataSplitDescriptors1Dr2o3ref2Int, ParticlesDataSplitDescriptors1Dr2o1ref3Int,
-    ParticlesDataSplitDescriptors1Dr2o2ref3Int, ParticlesDataSplitDescriptors1Dr2o3ref3Int>
+    ParticlesDataSplitDescriptorsNDr2o1ref2Int<1>, ParticlesDataSplitDescriptorsNDr2o2ref2Int<1>,
+    ParticlesDataSplitDescriptorsNDr2o3ref2Int<1>, ParticlesDataSplitDescriptorsNDr2o1ref3Int<1>,
+    ParticlesDataSplitDescriptorsNDr2o2ref3Int<1>, ParticlesDataSplitDescriptorsNDr2o3ref3Int<1>,
+    ParticlesDataSplitDescriptorsNDr2o1ref2Int<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o2ref2Int<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o3ref2Int<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o1ref3Int<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o2ref3Int<2, 4>,
+    ParticlesDataSplitDescriptorsNDr2o3ref3Int<2, 4>>
     ParticlesInteriorDataDescriptorsRange;
-
-
-// typedef ::testing::Types<ParticlesDataSplitDescriptors1Dr2o1ref2C2F> TestTest;
-
 
 
 
@@ -401,7 +423,7 @@ INSTANTIATE_TYPED_TEST_SUITE_P(TestInterior, levelOneInterior,
 
 namespace
 {
-template<size_t dimension, size_t interpOrder, size_t refineParticlesNbr>
+template<std::size_t dimension, std::size_t interpOrder, std::size_t refineParticlesNbr>
 using Splitter
     = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>, PHARE::core::InterpConst<interpOrder>,
                            RefinedParticlesConst<refineParticlesNbr>>;

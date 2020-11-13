@@ -6,7 +6,7 @@ namespace PHARE
 {
 namespace core
 {
-    constexpr uint32 NBR_COMPO{3};
+    constexpr std::uint32_t NBR_COMPO{3};
 
     constexpr std::size_t dirX{0};
     constexpr std::size_t dirY{1};

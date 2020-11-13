@@ -29,6 +29,9 @@
 #include "core/data/vecfield/vecfield.h"
 #include "core/data/grid/gridlayout_utils.h"
 
+
+#include <iomanip>
+
 namespace PHARE::solver
 {
 // -----------------------------------------------------------------------------
@@ -47,7 +50,7 @@ private:
     using ResourcesManager = typename HybridModel::resources_manager_type;
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
-    using HybridMessenger  = amr::HybridMessenger<HybridModel, IPhysicalModel_t>;
+    using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
 
     Electromag electromagPred_{"EMPred"};
@@ -92,32 +95,31 @@ public:
 
     virtual void advanceLevel(std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber,
                               IPhysicalModel_t& model, IMessenger& fromCoarserMessenger,
-                              const double currentTime, const double newTime) override;
+                              double const currentTime, double const newTime) override;
 
 
 
 private:
-    using Messenger = amr::HybridMessenger<HybridModel, IPhysicalModel_t>;
+    using Messenger = amr::HybridMessenger<HybridModel>;
 
 
     void predictor1_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                     const double currentTime, const double newTime);
+                     double const currentTime, double const newTime);
 
 
     void predictor2_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                     const double currentTime, const double newTime);
+                     double const currentTime, double const newTime);
 
 
     void corrector_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                    const double currentTime, const double newTime);
+                    double const currentTime, double const newTime);
 
 
-    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                  const double currentTime, const double newTime);
+    void average_(level_t& level, HybridModel& model);
 
 
     void moveIons_(level_t& level, Ions& ions, Electromag& electromag, ResourcesManager& rm,
-                   Messenger& fromCoarser, const double currentTime, const double newTime,
+                   Messenger& fromCoarser, double const currentTime, double const newTime,
                    core::UpdaterMode mode);
 
 
@@ -181,21 +183,20 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
                                                      int const levelNumber, IPhysicalModel_t& model,
                                                      IMessenger& fromCoarserMessenger,
-                                                     const double currentTime, const double newTime)
+                                                     double const currentTime, double const newTime)
 {
     auto& hybridModel      = dynamic_cast<HybridModel&>(model);
     auto& hybridState      = hybridModel.state;
     auto& fromCoarser      = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
     auto& resourcesManager = *hybridModel.resourcesManager;
     auto level             = hierarchy->getPatchLevel(levelNumber);
-    auto dt                = newTime - currentTime;
 
 
 
     predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
 
-    average_(*level, hybridModel, fromCoarser, currentTime, newTime);
+    average_(*level, hybridModel);
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::moments_only);
@@ -203,7 +204,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
 
-    average_(*level, hybridModel, fromCoarser, currentTime, newTime);
+    average_(*level, hybridModel);
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::particles_and_moments);
@@ -376,7 +377,6 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
-    auto& electromag       = hybridState.electromag;
     auto levelNumber       = level.getLevelNumber();
 
     {
@@ -424,29 +424,24 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model,
-                                                 Messenger& fromCoarser, double const currentTime,
-                                                 double const newTime)
+void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model)
 {
     auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
-    auto dt                = newTime - currentTime;
-    auto& electromag       = hybridState.electromag;
-    {
-        auto& Epred = electromagPred_.E;
-        auto& Bpred = electromagPred_.B;
-        auto& Bavg  = electromagAvg_.B;
-        auto& Eavg  = electromagAvg_.E;
-        auto& B     = hybridState.electromag.B;
-        auto& E     = hybridState.electromag.E;
 
-        for (auto& patch : level)
-        {
-            auto _ = resourcesManager->setOnPatch(*patch, electromagAvg_, electromagPred_,
-                                                  hybridState.electromag);
-            PHARE::core::average(B, Bpred, Bavg);
-            PHARE::core::average(E, Epred, Eavg);
-        }
+    auto& Epred = electromagPred_.E;
+    auto& Bpred = electromagPred_.B;
+    auto& Bavg  = electromagAvg_.B;
+    auto& Eavg  = electromagAvg_.E;
+    auto& B     = hybridState.electromag.B;
+    auto& E     = hybridState.electromag.E;
+
+    for (auto& patch : level)
+    {
+        auto _ = resourcesManager->setOnPatch(*patch, electromagAvg_, electromagPred_,
+                                              hybridState.electromag);
+        PHARE::core::average(B, Bpred, Bavg);
+        PHARE::core::average(E, Epred, Eavg);
     }
 }
 
@@ -458,18 +453,31 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
-    std::size_t nbrParticles = 0;
+    std::size_t nbrDomainParticles        = 0;
+    std::size_t nbrPatchGhostParticles    = 0;
+    std::size_t nbrLevelGhostNewParticles = 0;
+    std::size_t nbrLevelGhostOldParticles = 0;
+    std::size_t nbrLevelGhostParticles    = 0;
     for (auto& patch : level)
     {
         auto _ = rm.setOnPatch(*patch, ions);
 
         for (auto& pop : ions)
         {
-            nbrParticles += pop.domainParticles().size();
+            nbrDomainParticles += pop.domainParticles().size();
+            nbrPatchGhostParticles += pop.patchGhostParticles().size();
+            nbrLevelGhostNewParticles += pop.levelGhostParticlesNew().size();
+            nbrLevelGhostOldParticles += pop.levelGhostParticlesOld().size();
+            nbrLevelGhostParticles += pop.levelGhostParticles().size();
+            nbrPatchGhostParticles += pop.patchGhostParticles().size();
         }
     }
-    std::cout << "t = " << currentTime << ";  nbr Particles = " << nbrParticles << "\n";
-
+    std::cout << "level = " << level.getLevelNumber() << std::setprecision(6)
+              << " t = " << currentTime << ";  nbrDomParticles = " << nbrDomainParticles
+              << "; LevelGhostNew = " << nbrLevelGhostNewParticles
+              << "; LevelGhostOld = " << nbrLevelGhostOldParticles
+              << "; LevelGhost = " << nbrLevelGhostParticles
+              << "; patchGhost = " << nbrPatchGhostParticles << "\n";
 
 
 

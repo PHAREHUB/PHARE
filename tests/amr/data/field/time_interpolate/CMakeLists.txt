@@ -1,14 +1,9 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 
 project(test-field-data-time-interpolate)
+set(SOURCES_INC)
 
-
-set(SOURCES_INC
-   )
-
-set(SOURCES_CPP
-  test_main.cpp
-   )
+set(SOURCES_CPP test_field_data_time_interpolate.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 

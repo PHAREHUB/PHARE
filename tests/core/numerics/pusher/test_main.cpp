@@ -71,9 +71,8 @@ class Interpolator
 {
 public:
     template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const& em, GridLayout& layout)
+    void operator()(PartIterator begin, PartIterator end, Electromag const&, GridLayout&)
     {
-        (void)em;
         for (auto currPart = begin; currPart != end; ++currPart)
         {
             currPart->Ex = 0.01;
@@ -112,7 +111,7 @@ struct DummyLayout
     static constexpr std::size_t dimension = dimension_;
 };
 
-template<size_t dim>
+template<std::size_t dim>
 class APusher : public ::testing::Test
 {
 public:
@@ -135,7 +134,7 @@ public:
         particlesIn[0].iCell.fill(5);
         particlesIn[0].delta.fill(0.0);
         dxyz.fill(0.05);
-        for (size_t i = 0; i < dim; i++)
+        for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
         pusher->setMeshAndTimeStep(dxyz, dt);
     }

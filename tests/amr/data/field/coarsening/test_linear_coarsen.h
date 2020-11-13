@@ -101,9 +101,7 @@ struct FieldCoarsenTestData
 struct AFieldCoarsenOperator : public testing::TestWithParam<FieldCoarsenTestData>
 {
     void SetUp() override { param = GetParam(); }
-
     FieldCoarsenTestData param;
-
     double absError = 1.e-8;
 };
 
@@ -195,7 +193,7 @@ std::vector<FieldCoarsenTestData> createParam()
         auto& expectedEyCoarseValue = *param.expectedEyCoarseValue;
 
 
-        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.exFineNbrCell); ++ix)
+        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.exFineNbrCell); ++ix)
         {
             double value;
             exFine >> value;
@@ -210,14 +208,14 @@ std::vector<FieldCoarsenTestData> createParam()
             break;
         }
 
-        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.eyFineNbrCell); ++ix)
+        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.eyFineNbrCell); ++ix)
         {
             double value;
             eyFine >> value;
             eyFineValue(ix) = value;
         }
 
-        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.exCoarseNbrCell); ++ix)
+        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.exCoarseNbrCell); ++ix)
         {
             double value;
 
@@ -227,7 +225,7 @@ std::vector<FieldCoarsenTestData> createParam()
             exCoarseAfterCoarsening >> value;
             expectedExCoarseValue(ix) = value;
         }
-        for (uint32_t ix = 0; ix < static_cast<uint32_t>(param.eyCoarseNbrCell); ++ix)
+        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.eyCoarseNbrCell); ++ix)
         {
             double value;
 

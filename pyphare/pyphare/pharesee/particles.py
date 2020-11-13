@@ -16,6 +16,7 @@ class Particles:
             self.v       = np.random.randn(box.size()*100, 3)
             self.weights = np.zeros_like(self.deltas) + 0.01
             self.charges = np.zeros_like(self.weights) + 1
+            self.dl       = np.zeros(box.dim())+0.1
 
         else:
             self.iCells  = kwargs["icells"]
@@ -23,10 +24,18 @@ class Particles:
             self.v       = kwargs["v"]
             self.weights = kwargs["weights"]
             self.charges = kwargs["charges"]
+            self.dl      = kwargs["dl"]
+            self._x = None
 
+    @property
+    def x(self):
+        if self._x is None:
+            self._x = self.dl*(self.iCells[:] + self.deltas[:])
+        return self._x
 
 
     def add(self, particles):
+        assert(np.allclose(particles.dl, self.dl, atol=1e-6))
         self.iCells   = np.concatenate((self.iCells, particles.iCells))
         self.deltas   = np.concatenate((self.deltas, particles.deltas))
         self.v        = np.concatenate((self.v, particles.v))
@@ -36,16 +45,58 @@ class Particles:
 
     def shift_icell(self, offset):
         self.iCells += offset
+        self._x = None
         return self
 
-    def select(self, box):
+    def size(self):
+          return len(self.weights)
+
+    def select(self, box, box_type="cell"):
         """
         select particles from the given box
         assumption, box has AMR indexes of the same level as the data that the current instance is created from
         """
-        idx = np.where((self.iCells >= box.lower) & (self.iCells <= box.upper))[0]
+        if box_type=="cell":
+            idx = np.where((self.iCells >= box.lower[0]) & (self.iCells <= box.upper[0]))[0]
+
+        elif box_type=="pos":
+            idx = np.where((self.x > box.lower[0]) & (self.x < box.upper[0]))[0]
+
+        else:
+            raise ValueError("unsupported box type ({})".format(box_type))
+
         return Particles(icells=self.iCells[idx],
                          deltas=self.deltas[idx],
                          v = self.v[idx,:],
                          weights=self.weights[idx],
-                         charges=self.charges[idx])
+                         charges=self.charges[idx],
+                         dl = self.dl)
+
+
+    def split(self, sim): # REQUIRES C++ PYBIND PHARE LIB
+        from pyphare.cpp import split_pyarrays_fn
+
+        split_pyarrays = split_pyarrays_fn(sim.dims, sim.interp_order, sim.refined_particle_nbr)(
+          (self.iCells, self.deltas, self.weights, self.charges, self.v)
+        )
+        return Particles(
+          icells=split_pyarrays[0],
+          deltas=split_pyarrays[1],
+          weights=split_pyarrays[2],
+          charges=split_pyarrays[3],
+          v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3),
+          dl = self.dl/2
+        )
+
+
+def aggregate(particles_in):
+    assert all([isinstance(particles, Particles) for particles in particles_in])
+
+    from copy import copy
+
+    particles_out = copy(particles_in[0]) # use first, concat rest
+    for particles in particles_in[1:]:
+        particles_out.add(particles)
+
+    assert particles_out.size() == sum([particles.size() for particles in particles_in])
+    return particles_out

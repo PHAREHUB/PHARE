@@ -1,91 +1,52 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 
 project(PHARE VERSION 0.1)
-
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON) # (-fPIC) typically required for shared libraries with dependencies. e.g. pybind modules
-
-if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
 endif()
 
-set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
+  cmake_policy(SET CMP0074 NEW)
+endif()
+if (POLICY CMP0069) # allow LTO if available, requires cmake 3.9 (released August 2017)
+  cmake_policy(SET CMP0069 NEW)
+endif()
 
-option(HighFive "Build with highfive usage" ON)
-option(test "Build test with google test" ON)
-option(testMPI "Run tests in parallel with mpiriun" OFF) # -n = PHARE_MPI_PROCS or 2 if unset
-option(coverage "Generate coverage" OFF)
-option(documentation "Add doxygen target to generate documentation" OFF)
-option(cppcheck "Enable cppcheck xml report" OFF)
-option(asan "build with asan support" OFF)
-option(ubsan "build with ubsan support" OFF)
-option(msan "build with msan support" OFF)
-option(devMode "Build with Werror/etc" OFF)
-option(forceSerialTest "force the test to be serial under MPI mode" OFF)
-
-find_program(Git git)
+# Enables -fPIC  typically required for shared libraries with dependencies. e.g. pybind modules
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
+find_program(Git git)
+find_package(PythonInterp  3.0 REQUIRED)
 
-find_package (PythonInterp  3.0 REQUIRED)
-
-set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
-
-set(SUBPROJECTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects)
+set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-
-#* variables/functions
-include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
-include("${PHARE_PROJECT_DIR}/res/cmake/mkn.kul.cmake")
-
-#* Cppcheck option
-include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
-
-#* SAMRAI build option
-include("${PHARE_PROJECT_DIR}/res/cmake/samrai.cmake")
-
-#* pybind
-include("${PHARE_PROJECT_DIR}/res/cmake/pybind.cmake")
-
-#* HighFive
-include("${PHARE_PROJECT_DIR}/res/cmake/highfive.cmake")
 
 include_directories(${PHARE_PROJECT_DIR}/src)
 
-#* coverage and Test option
+include("${PHARE_PROJECT_DIR}/res/cmake/options.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/bench.cmake")
 
 #*******************************************************************************
-#* Build the different libs and executables
-#*******************************************************************************
-
-
+# PHARE source code
 add_subdirectory(src/core)
+add_subdirectory(src/initializer)
+add_subdirectory(src/amr)
 add_subdirectory(src/solver)
 add_subdirectory(src/diagnostic)
-add_subdirectory(src/initializer)
-add_subdirectory(src/phare)
-add_subdirectory(src/amr)
 add_subdirectory(src/simulator)
 add_subdirectory(src/python3)
+add_subdirectory(src/phare)
+#*******************************************************************************
 
 #* Documentation option
 include("${PHARE_PROJECT_DIR}/res/cmake/doc.cmake")
 
-message("PHARE CMAKE OPTION LIST ")
-message("Build test with google test                 : " ${test})
-message("Run test with MPI                           : " ${testMPI})
-message("Generate coverage                           : " ${coverage})
-message("Enable cppcheck xml report                  : " ${cppcheck})
-message("build with asan support                     : " ${asan})
-message("build with ubsan support                    : " ${ubsan})
-message("build with msan support                     : " ${msan})
-message("Add doxygen target to generate documentation: " ${documentation})
-message("Build with highfive usage                   : " ${HighFive})
-message("Build with Werror/etc                       : " ${devMode})
-message("force the test to be serial under MPI mode  : " ${forceSerialTest})
+print_phare_options()

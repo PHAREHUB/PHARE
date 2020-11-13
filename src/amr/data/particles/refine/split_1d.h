@@ -6,10 +6,16 @@ Splitting reference material can be found @
 #ifndef PHARE_SPLIT_1D_H
 #define PHARE_SPLIT_1D_H
 
+#include <array>
+#include "core/utilities/point/point.h"
+#include "core/utilities/types.h"
+#include "splitter.h"
+
 namespace PHARE::amr
 {
 using namespace PHARE::core;
 
+/**************************************************************************/
 template<>
 struct PinkDispatcher<DimConst<1>> : SplitPattern<DimConst<1>, RefinedParticlesConst<2>>
 {

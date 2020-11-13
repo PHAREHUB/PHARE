@@ -1,16 +1,9 @@
-cmake_minimum_required (VERSION 3.3)
+cmake_minimum_required (VERSION 3.9)
 
 project(test-field-variable)
 
-# configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
-set(SOURCES_INC
-  # ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
-   )
-
-set(SOURCES_CPP
-  test_main.cpp
-   )
+set(SOURCES_CPP test_field_variable.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 

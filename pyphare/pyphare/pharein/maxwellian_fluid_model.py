@@ -1,19 +1,19 @@
 
+
 from ..core import phare_utilities
-from . import globals
+from . import global_vars
+
 
 class MaxwellianFluidModel(object):
 
     def defaulter(self, input, value):
         if input is not None:
             import inspect
-            argspec = inspect.getargspec(input)
-            has_args_but_not_kwargs = argspec.varargs != None and argspec.keywords == None
-            sig = inspect.signature(input)
-            params = sig.parameters
+            params = list(inspect.signature(input).parameters.values())
+            assert len(params)
             param_per_dim = len(params) == self.dim
-            param_is_varargs = len(params) == 1 and has_args_but_not_kwargs
-            assert param_per_dim or param_is_varargs
+            has_vargs = params[0].kind == inspect.Parameter.VAR_POSITIONAL
+            assert param_per_dim or has_vargs
             return input
         if self.dim == 1:
             return lambda x:value + x*0
@@ -28,13 +28,13 @@ class MaxwellianFluidModel(object):
                        bz = None,
                        **kwargs):
 
-        if globals.sim is None:
+        if global_vars.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
 
-        if globals.sim.model is not None:
+        if global_vars.sim.model is not None:
             raise RuntimeError("A model is already created")
 
-        self.dim = globals.sim.dims
+        self.dim = global_vars.sim.dims
         bx = self.defaulter(bx, 1.)
         by = self.defaulter(by, 0.)
         bz = self.defaulter(bz, 0.)
@@ -52,9 +52,9 @@ class MaxwellianFluidModel(object):
         for population in self.populations:
             self.add_population(population, **kwargs[population])
 
-        self.validate(globals.sim)
+        self.validate(global_vars.sim)
 
-        globals.sim.set_model(self)
+        global_vars.sim.set_model(self)
 
 
 # ------------------------------------------------------------------------------
@@ -158,7 +158,6 @@ class MaxwellianFluidModel(object):
             for pop_index, pop in enumerate(self.populations):
                 for v in ["vth", "v"]:
                     valid &= periodic_function_check(v, model_dict[pop])
-            for em in ["b"]:
-                valid &= periodic_function_check(em, model_dict)
+            valid &= periodic_function_check("b", model_dict)
             if not valid:
                 print("Warning: Simulation is periodic but some functions are not")

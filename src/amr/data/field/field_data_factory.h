@@ -45,9 +45,8 @@ namespace amr
         /*** \brief Clone the current FieldDataFactory
          */
         std::shared_ptr<SAMRAI::hier::PatchDataFactory>
-        cloneFactory(SAMRAI::hier::IntVector const& ghost) final
+        cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) final
         {
-            (void)ghost;
             return std::make_shared<FieldDataFactory>(fineBoundaryRepresentsVariable_,
                                                       dataLivesOnPatchBorder_, name_, quantity_);
         }
@@ -86,7 +85,7 @@ namespace amr
             // it can use it to get the final box representation.
 
             std::array<double, dimension> dl;
-            std::array<uint32, dimension> nbCell;
+            std::array<std::uint32_t, dimension> nbCell;
             core::Point<double, dimension> origin;
 
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)
@@ -114,7 +113,7 @@ namespace amr
             //       alignedMemory(nx*ny*nz*sizeof(double)) + alignedMemory(baseSize)
 
             std::array<double, dimension> dl;
-            std::array<uint32, dimension> nbCell;
+            std::array<std::uint32_t, dimension> nbCell;
             core::Point<double, dimension> origin;
 
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)
@@ -171,8 +170,8 @@ namespace amr
 
 
     private:
-        bool const fineBoundaryRepresentsVariable_;
-        bool const dataLivesOnPatchBorder_;
+        bool const fineBoundaryRepresentsVariable_ = false;
+        bool const dataLivesOnPatchBorder_         = false;
         PhysicalQuantity const quantity_;
         std::string name_;
     };

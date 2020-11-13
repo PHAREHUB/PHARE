@@ -74,29 +74,30 @@ namespace core
         static constexpr QtyCentering primal = QtyCentering::primal;
         static constexpr QtyCentering dual   = QtyCentering::dual;
 
-        static constexpr uint32 idirX = static_cast<uint32>(Direction::X);
-        static constexpr uint32 idirY = static_cast<uint32>(Direction::Y);
-        static constexpr uint32 idirZ = static_cast<uint32>(Direction::Z);
+        static constexpr std::uint32_t idirX = static_cast<std::uint32_t>(Direction::X);
+        static constexpr std::uint32_t idirY = static_cast<std::uint32_t>(Direction::Y);
+        static constexpr std::uint32_t idirZ = static_cast<std::uint32_t>(Direction::Z);
 
-        static constexpr uint32 iBx = static_cast<uint32>(HybridQuantity::Scalar::Bx);
-        static constexpr uint32 iBy = static_cast<uint32>(HybridQuantity::Scalar::By);
-        static constexpr uint32 iBz = static_cast<uint32>(HybridQuantity::Scalar::Bz);
+        static constexpr std::uint32_t iBx = static_cast<std::uint32_t>(HybridQuantity::Scalar::Bx);
+        static constexpr std::uint32_t iBy = static_cast<std::uint32_t>(HybridQuantity::Scalar::By);
+        static constexpr std::uint32_t iBz = static_cast<std::uint32_t>(HybridQuantity::Scalar::Bz);
 
-        static constexpr uint32 iEx = static_cast<uint32>(HybridQuantity::Scalar::Ex);
-        static constexpr uint32 iEy = static_cast<uint32>(HybridQuantity::Scalar::Ey);
-        static constexpr uint32 iEz = static_cast<uint32>(HybridQuantity::Scalar::Ez);
+        static constexpr std::uint32_t iEx = static_cast<std::uint32_t>(HybridQuantity::Scalar::Ex);
+        static constexpr std::uint32_t iEy = static_cast<std::uint32_t>(HybridQuantity::Scalar::Ey);
+        static constexpr std::uint32_t iEz = static_cast<std::uint32_t>(HybridQuantity::Scalar::Ez);
 
-        static constexpr uint32 iJx = static_cast<uint32>(HybridQuantity::Scalar::Jx);
-        static constexpr uint32 iJy = static_cast<uint32>(HybridQuantity::Scalar::Jy);
-        static constexpr uint32 iJz = static_cast<uint32>(HybridQuantity::Scalar::Jz);
+        static constexpr std::uint32_t iJx = static_cast<std::uint32_t>(HybridQuantity::Scalar::Jx);
+        static constexpr std::uint32_t iJy = static_cast<std::uint32_t>(HybridQuantity::Scalar::Jy);
+        static constexpr std::uint32_t iJz = static_cast<std::uint32_t>(HybridQuantity::Scalar::Jz);
 
-        static constexpr uint32 irho = static_cast<uint32>(HybridQuantity::Scalar::rho);
+        static constexpr std::uint32_t irho
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::rho);
 
-        static constexpr uint32 iVx = static_cast<uint32>(HybridQuantity::Scalar::Vx);
-        static constexpr uint32 iVy = static_cast<uint32>(HybridQuantity::Scalar::Vy);
-        static constexpr uint32 iVz = static_cast<uint32>(HybridQuantity::Scalar::Vz);
+        static constexpr std::uint32_t iVx = static_cast<std::uint32_t>(HybridQuantity::Scalar::Vx);
+        static constexpr std::uint32_t iVy = static_cast<std::uint32_t>(HybridQuantity::Scalar::Vy);
+        static constexpr std::uint32_t iVz = static_cast<std::uint32_t>(HybridQuantity::Scalar::Vz);
 
-        static constexpr uint32 iP = static_cast<uint32>(HybridQuantity::Scalar::P);
+        static constexpr std::uint32_t iP = static_cast<std::uint32_t>(HybridQuantity::Scalar::P);
     };
 } // namespace core
 } // namespace PHARE

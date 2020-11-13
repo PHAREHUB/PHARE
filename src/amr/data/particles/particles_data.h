@@ -26,9 +26,11 @@ namespace amr
         return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
     }
 
-    template<std::size_t dim>
-    inline bool isInBox(SAMRAI::hier::Box const& box, core::Particle<dim> const& particle)
+    template<typename Particle>
+    inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
     {
+        constexpr auto dim = Particle::dimension;
+
         auto const& iCell = particle.iCell;
 
         auto const& lower = box.lower();
@@ -85,12 +87,16 @@ namespace amr
      * particle refinement from a coarser level
      *
      */
-    template<std::size_t dim>
     /**
      * @brief The ParticlesData class
      */
+    template<typename ParticleArray>
     class ParticlesData : public SAMRAI::hier::PatchData
     {
+        using Particle_t          = typename ParticleArray::Particle_t;
+        static constexpr auto dim = ParticleArray::dimension;
+
+
     public:
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)
@@ -129,7 +135,7 @@ namespace amr
          * the source PatchData was not a ParticleData like we are, we'd give ourselves
          * to its copy2 function, assuming it can copy its source content into us.
          */
-        virtual void copy(SAMRAI::hier::PatchData const& source) override
+        void copy(SAMRAI::hier::PatchData const& source) override
         {
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
@@ -152,7 +158,7 @@ namespace amr
          * given to be copied into another kind of PatchData. Here we chose that
          * copy2 throws unconditiionnally.
          */
-        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const override
+        void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination) const override
         {
             throw std::runtime_error("Cannot cast");
         }
@@ -163,8 +169,8 @@ namespace amr
          * the copy must account for the intersection with the boxes within the overlap
          * The copy is done between the source patch data and myself
          */
-        virtual void copy(SAMRAI::hier::PatchData const& source,
-                          SAMRAI::hier::BoxOverlap const& overlap) override
+        void copy(SAMRAI::hier::PatchData const& source,
+                  SAMRAI::hier::BoxOverlap const& overlap) override
         {
             // casts throw on failure
             auto& pSource  = dynamic_cast<ParticlesData const&>(source);
@@ -209,7 +215,6 @@ namespace amr
                     {
                         std::runtime_error("Error - multiblock hierarchies not handled");
                     }
-
                 } // end loop over boxes
             }     // end no rotate
             else
@@ -219,27 +224,24 @@ namespace amr
         }
 
 
-        virtual void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
-                           [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const override
+        void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
+                   [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             throw std::runtime_error("Cannot cast");
         }
 
 
 
-        virtual bool canEstimateStreamSizeFromBox() const final { return false; }
+        bool canEstimateStreamSizeFromBox() const override { return false; }
 
 
 
 
-        virtual size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
+        std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const override
         {
-            SAMRAI::pdat::CellOverlap const* pOverlap{
-                dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
+            auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            std::size_t numberParticles = countNumberParticlesIn_(*pOverlap);
-            auto size                   = numberParticles * sizeof(core::Particle<dim>);
-            return size;
+            return countNumberParticlesIn_(pOverlap) * sizeof(Particle_t);
         }
 
 
@@ -261,28 +263,25 @@ namespace amr
          * Note that step 2 could be done upon reception of the pack, we chose to do it before.
          *
          */
-        virtual void packStream(SAMRAI::tbox::MessageStream& stream,
-                                SAMRAI::hier::BoxOverlap const& overlap) const override
+        void packStream(SAMRAI::tbox::MessageStream& stream,
+                        SAMRAI::hier::BoxOverlap const& overlap) const override
         {
-            SAMRAI::pdat::CellOverlap const* pOverlap{
-                dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap)};
+            auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            TBOX_ASSERT(pOverlap != nullptr);
+            std::vector<Particle_t> specie;
 
-            std::vector<core::Particle<dim>> specie;
-
-            if (pOverlap->isOverlapEmpty())
+            if (pOverlap.isOverlapEmpty())
             {
                 constexpr std::size_t zero = 0;
                 stream << zero;
             }
             else
             {
-                SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+                SAMRAI::hier::Transformation const& transformation = pOverlap.getTransformation();
                 if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
                 {
                     SAMRAI::hier::BoxContainer const& boxContainer
-                        = pOverlap->getDestinationBoxContainer();
+                        = pOverlap.getDestinationBoxContainer();
 
                     auto const& sourceGhostBox = getGhostBox();
 
@@ -331,25 +330,23 @@ namespace amr
          * AMRToLocal() to get the proper shift to apply to them
          *
          */
-        virtual void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                                  SAMRAI::hier::BoxOverlap const& overlap) override
+        void unpackStream(SAMRAI::tbox::MessageStream& stream,
+                          SAMRAI::hier::BoxOverlap const& overlap) override
         {
-            SAMRAI::pdat::CellOverlap const* pOverlap
-                = dynamic_cast<SAMRAI::pdat::CellOverlap const*>(&overlap);
-            TBOX_ASSERT(pOverlap != nullptr);
+            auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            if (!pOverlap->isOverlapEmpty())
+            if (!pOverlap.isOverlapEmpty())
             {
                 // unpack particles into a particle array
-                size_t numberParticles = 0;
+                std::size_t numberParticles = 0;
                 stream >> numberParticles;
-                std::vector<core::Particle<dim>> particleArray(numberParticles);
+                std::vector<Particle_t> particleArray(numberParticles);
                 stream.unpack(particleArray.data(), numberParticles);
 
                 // ok now our goal is to put the particles we have just unpacked
                 // into the particleData and in the proper particleArray : interior or ghost
 
-                SAMRAI::hier::Transformation const& transformation = pOverlap->getTransformation();
+                SAMRAI::hier::Transformation const& transformation = pOverlap.getTransformation();
                 if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
                 {
                     // we loop over all boxes in the overlap
@@ -357,7 +354,7 @@ namespace amr
                     // with our ghostBox. This is where unpacked particles should go.
 
                     SAMRAI::hier::BoxContainer const& overlapBoxes
-                        = pOverlap->getDestinationBoxContainer();
+                        = pOverlap.getDestinationBoxContainer();
 
                     auto myBox      = getBox();
                     auto myGhostBox = getGhostBox();
@@ -391,22 +388,22 @@ namespace amr
 
 
 
-        core::ParticlesPack<core::ParticleArray<dim>>* getPointer() { return &pack; }
+        core::ParticlesPack<ParticleArray>* getPointer() { return &pack; }
 
 
 
         // Core interface
         // these particles arrays are public because core module is free to use
         // them easily
-        core::ParticleArray<dim> domainParticles;
-        core::ParticleArray<dim> patchGhostParticles;
+        ParticleArray domainParticles;
+        ParticleArray patchGhostParticles;
 
-        core::ParticleArray<dim> levelGhostParticles;
+        ParticleArray levelGhostParticles;
 
-        core::ParticleArray<dim> levelGhostParticlesOld;
-        core::ParticleArray<dim> levelGhostParticlesNew;
+        ParticleArray levelGhostParticlesOld;
+        ParticleArray levelGhostParticlesNew;
 
-        core::ParticlesPack<core::ParticleArray<dim>> pack;
+        core::ParticlesPack<ParticleArray> pack;
 
 
 
@@ -574,8 +571,7 @@ namespace amr
 
 
 
-        void pack_(std::vector<core::Particle<dim>>& buffer,
-                   SAMRAI::hier::Box const& intersectionBox,
+        void pack_(std::vector<Particle_t>& buffer, SAMRAI::hier::Box const& intersectionBox,
                    [[maybe_unused]] SAMRAI::hier::Box const& sourceBox,
                    SAMRAI::hier::Transformation const& transformation) const
         {

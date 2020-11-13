@@ -1,3 +1,7 @@
+import numpy as np
+from .phare_utilities import np_array_ify, is_scalar, is_nd_array
+
+
 
 
 
@@ -7,9 +11,14 @@ class Box:
     """
 
     def __init__(self, lower, upper):
-        assert lower <= upper
-        self.lower = lower
-        self.upper = upper
+        lower, upper = [np_array_ify(arr) for arr in [lower, upper]]
+        assert lower.size == upper.size
+        assert (lower <= upper).all()
+        self.lower = lower.astype(int) # can't slice with floats
+        self.upper = upper.astype(int)
+
+    def dim(self):
+        return len(self.lower.shape)
 
     def __mul__(self, box2):
         """
@@ -18,41 +27,79 @@ class Box:
         """
         box1 = self
 
-        lower, upper = max(box1.lower, box2.lower), min(box1.upper, box2.upper)
-        if lower <= upper:
+        lower, upper = np.maximum(box1.lower, box2.lower), np.minimum(
+            box1.upper, box2.upper
+        )
+        if (lower <= upper).all():
             return Box(lower, upper)
 
-
-
-
+    def shape(self):
+        """returns the length per dimension"""
+        return (self.upper - self.lower) + 1
 
     def size(self):
-        """returns the number of cells in the box"""
-        # later should return that number in each direction
-        return self.upper - self.lower + 1
+        """deprecated, use shape"""
+        # DOTO remove use shape
+        return self.shape()[0]
 
+    def cells(self):
+        """returns the number of cells in the box"""
+        return self.shape().prod()
 
 
     def __str__(self):
         return "[ {lower},{upper} ]".format(lower=self.lower, upper=self.upper)
 
-
     def __repr__(self):
         return self.__str__()
 
+    # only 0 or 1 are valid
+    def __getitem__(self, idx):
+        assert 0 <= idx <= 1
+        if idx == 0:
+            return self.lower
+        return self.upper
 
     def __contains__(self, item):
-        if isinstance(item, int):
-            cell = item
-            return (cell >= self.lower) and (cell <= self.upper)
+        """true if item is completely within self"""
+        if not isinstance(item, Box):
+            item = np_array_ify(item)
 
-        if isinstance(item, Box):
-            box = item
+        dims = len(self.lower)
 
-            return box.lower >= self.lower and box.upper <= self.upper
+        if is_nd_array(item):
+            assert len(item) == dims
+            item = Box(item, item)
+
+        return (item.lower >= self.lower).all() and (item.upper <= self.upper).all()
+
 
     def __eq__(self, other):
-        return self.lower == other.lower and self.upper == other.upper
+        return (self.lower == other.lower).all() and (self.upper == other.upper).all()
+
+
+
+class nDBox(Box):
+    def __init__(self, dim, l, u):
+        def _get(self, p):
+            return [p for i in range(dim)]
+
+        super().__init__(_get(dim, l), _get(dim, u))
+
+
+class Box1D(nDBox):
+    def __init__(self, l, u):
+        super().__init__(1, l, u)
+
+
+class Box2D(nDBox):
+    def __init__(self, l, u):
+        super().__init__(2, l, u)
+
+
+class Box3D(nDBox):
+    def __init__(self, l, u):
+        super().__init__(3, l, u)
 
 
 def refine(box, ratio):
@@ -60,7 +107,7 @@ def refine(box, ratio):
     # upper = 21 because cell 10 is split into 20,21
     # box [2,10] becomes [6,32] with ratio 3. cell 10 becomes cells 30,31,32
     # thus upper is former upper*ratio + ratio - 1
-    return Box(box.lower * ratio, box.upper * ratio + ratio  -1)
+    return Box(box.lower * ratio, box.upper * ratio + ratio - 1)
 
 
 def shift(box, offset):
@@ -68,14 +115,11 @@ def shift(box, offset):
 
 
 def grow(box, size):
-    # in multiple dim, size could be a tuple
-    # with a number of cell to grow the box in each dir.
-    if size < 0:
+    if is_scalar(size):
+        assert box.dim() == 1 # possible overkill, here to block accidents
+    if (np.asarray(size) < 0).any():
         raise ValueError("size must be >=0")
-    new_box = Box(box.lower, box.upper)
-    new_box.lower = box.lower - size
-    new_box.upper = box.upper + size
-    return new_box
+    return Box(box.lower - size, box.upper + size)
 
 
 def remove(box, to_remove):
@@ -87,38 +131,51 @@ def remove(box, to_remove):
     intersection = box * to_remove
 
     if intersection is None:
-        return [box, ]
+        return [box]
 
+    def copy(arr, replace):
+        cpy = np.copy(arr)
+        for i, v in replace.items():
+            cpy[i] = v
+        return cpy
 
-    if to_remove in box and box.lower < to_remove.lower and box.upper > to_remove.upper:
-        #   |----------------|    box
-        #        |-----|          remove
-        return [Box(box.lower, intersection.lower - 1), Box(intersection.upper + 1, box.upper)]
+    dims = len(box.lower)
+    boxes = {}
 
-    if box in to_remove:
-        #    |--------------|     box
-        #  |-------------------|  remove
-        return []
+    if intersection.lower[0] > box.lower[0]:
+        boxes["left"] = Box(box.lower, copy(box.upper, {0: intersection.lower[0] - 1}))
+    if intersection.upper[0] < box.upper[0]:
+        boxes["right"] = Box(copy(box.lower, {0: intersection.upper[0] + 1}), box.upper)
 
-    if box.lower in intersection and box.upper > to_remove.upper:
-        #       |---------------| box
-        #  |-----------|          remove
-        return [Box(intersection.upper + 1, box.upper), ]
+    if dims > 1:
+        minx = intersection.lower[0] if "left" in boxes else box.lower[0]
+        maxx = intersection.upper[0] if "right" in boxes else box.upper[0]
+        if intersection.lower[1] > box.lower[1]:
+            boxes["down"] = Box(
+                copy(box.lower, {0: minx}),
+                copy(box.upper, {0: maxx, 1: intersection.lower[1] - 1}),
+            )
+        if intersection.upper[1] < box.upper[1]:
+            boxes["up"] = Box(
+                copy(box.lower, {0: minx, 1: intersection.upper[1] + 1}),
+                copy(box.upper, {0: maxx}),
+            )
 
-    if box.upper in to_remove and box.lower < to_remove.lower:
-        #  |---------------|      box
-        #            |----------| remove
-        return [Box(box.lower, intersection.lower - 1), ]
+    if dims > 2:
+        miny = intersection.lower[1] if "down" in boxes else box.lower[1]
+        maxy = intersection.upper[1] if "up" in boxes else box.upper[1]
+        if intersection.lower[2] > box.lower[2]:
+            boxes["back"] = Box(copy(box.lower, {0: minx, 1: miny}),
+                copy(intersection.lower - 1, {0: maxx, 1: maxy}),
+            )
+        if intersection.upper[2] < box.upper[2]:
+            boxes["front"] = Box(
+                copy(intersection.upper + 1, {0: minx, 1: miny}),
+                copy(box.upper, {0: maxx, 1: maxy}),
+            )
 
-
+    return list(boxes.values())
 
 
 def amr_to_local(box, ref_box):
     return Box(box.lower - ref_box.lower, box.upper - ref_box.lower)
-
-
-
-
-
-
-

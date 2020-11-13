@@ -12,8 +12,8 @@ namespace PHARE
 {
 namespace core
 {
-    template<uint32 lhs, uint32 rhs>
-    constexpr uint32 max()
+    template<std::uint32_t lhs, std::uint32_t rhs>
+    constexpr std::uint32_t max()
     {
         if constexpr (lhs < rhs)
         {
