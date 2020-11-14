@@ -77,8 +77,12 @@ PhD, PostDoc, [contact us](mailto:nicolas.aunai@lpp.polytechnique.fr).
 
 
 
-Acknowledgments
----------------
+## Publications
+
+- Smets R., Aunai, N., Ciardi, A., Drouin M., Campos-Pinto M., Deegan P., A new method to dispatch split particles in Particle-In-Cell codes, Computer Physics Communications, https://doi.org/10.1016/j.cpc.2020.107666
+
+## Acknowledgments
+
 
 The project PHARE is supported by:
 
