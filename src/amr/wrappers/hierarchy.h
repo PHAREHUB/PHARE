@@ -1,6 +1,7 @@
 #ifndef PHARE_AMR_HIERARCHY_H
 #define PHARE_AMR_HIERARCHY_H
 
+#include <algorithm>
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -59,6 +60,13 @@ private:
 template<std::size_t _dimension>
 class DimHierarchy : public Hierarchy
 {
+    auto shapeToBox(std::array<int, _dimension> const domainBoxShape)
+    {
+        auto box = domainBoxShape;
+        std::for_each(std::begin(box), std::end(box), [](auto& v) { v--; });
+        return box;
+    }
+
 public:
     static constexpr std::size_t dimension = _dimension;
 
@@ -163,13 +171,14 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid);
 
 template<std::size_t _dimension>
 DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict dict)
-    : Hierarchy(std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
-                    SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
-                    griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
-                patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
-                parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells"),
-                parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
-                parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"))
+    : Hierarchy(
+        std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
+            SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
+            griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
+        patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
+        shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
+        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
+        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"))
 {
 }
 
@@ -325,8 +334,6 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
 
     return hierDB;
 }
-
-
 
 
 } // namespace PHARE::amr

@@ -518,7 +518,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
     root_cell_width = float(data_file.attrs["cell_width"])
-    domain_box = Box(0, int(data_file.attrs["domain_box"])-1)
+    domain_box = Box(0, int(data_file.attrs["domain_box"]))
 
     if create_from_all_times(time, hier):
         # first create from first time
@@ -685,7 +685,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     patch_levels = {}
 
     root_cell_width = float(simulator.cell_width())
-    domain_box = Box(0, int(simulator.domain_box())-1)
+    domain_box = Box(0, int(simulator.domain_box()))
 
     for ilvl in range(nbr_levels):
 
