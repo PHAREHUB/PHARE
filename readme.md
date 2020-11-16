@@ -60,7 +60,7 @@ Build with CMake and specific [SAMRAI](https://github.com/llnl/samrai):
 
 All contributions are welcome, although the code is still at an early phase of
 its development. If you are interested in participating to the project for an internship,
-PhD, PostDoc, [contact us](mailto:nicolas.aunai@lpp.polytechnique.fr).
+PhD, PostDoc, [contact us](mailto:phare@lpp.polytechnique.fr).
 
 
 ### Active core team
