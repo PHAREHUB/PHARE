@@ -17,6 +17,14 @@
 #include "core/utilities/meta/meta_utilities.h"
 #include "core/utilities/algorithm.h"
 
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <functional>
+#include <unordered_map>
+
+#include "cppdict/include/dict.hpp"
+
 namespace PHARE::core
 {
 template<std::size_t dimension_, std::size_t interp_order_>
@@ -49,6 +57,14 @@ struct PHARE_Types
 
     using ParticleInitializerFactory
         = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+};
+
+struct PHARE_Sim_Types
+{
+    using SimFunctorParams = cppdict::Dict<int, unsigned int, double, std::size_t>;
+    using SimFunctor       = std::function<void(SimFunctorParams const& /*params*/)>;
+    using SimulationFunctors // code place id -> function_id -> function
+        = std::unordered_map<std::string, std::unordered_map<std::string, SimFunctor>>;
 };
 
 } // namespace PHARE::core

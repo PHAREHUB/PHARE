@@ -61,7 +61,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
 
                 self.assertTrue(valid)
 
-                self.simulator.diagnostics().dump(self.simulator.currentTime(), self.simulator.timeStep())
+                self.simulator.dump(self.simulator.currentTime(), self.simulator.timeStep())
 
                 self.simulator = None
 

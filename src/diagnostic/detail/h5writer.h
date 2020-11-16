@@ -61,7 +61,9 @@ public:
     }
 
 
-    void dump(std::vector<DiagnosticProperties*> const&, double current_timestamp);
+    void dump(std::vector<DiagnosticProperties*> const&, double current_timestamp) override;
+    void dump_level(std::size_t level, std::vector<DiagnosticProperties*> const& diagnostics,
+                    double timestamp) override;
 
     template<typename String>
     auto getDiagnosticWriterForType(String& type)
@@ -211,6 +213,23 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
 
     for (auto* diagnostic : diagnostics)
         writers.at(diagnostic->type)->finalize(*diagnostic);
+}
+
+template<typename ModelView>
+void Writer<ModelView>::dump_level(std::size_t level,
+                                   std::vector<DiagnosticProperties*> const& diagnostics,
+                                   double timestamp)
+{
+    std::size_t _minLevel = this->minLevel;
+    std::size_t _maxLevel = this->maxLevel;
+
+    this->minLevel = level;
+    this->maxLevel = level;
+
+    this->dump(diagnostics, timestamp);
+
+    this->minLevel = _minLevel;
+    this->maxLevel = _maxLevel;
 }
 
 

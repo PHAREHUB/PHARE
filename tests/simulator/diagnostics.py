@@ -78,7 +78,7 @@ simArgs = {
   "cells":40,
   "dl":0.3,
   "max_nbr_levels":2,
-  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite"}}
+  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite", "fine_dump_lvl_max": 10}}
 }
 
 def dup(dic):
@@ -96,9 +96,9 @@ class DiagnosticsTest(unittest.TestCase):
       dup({
         "smallest_patch_size": 20,
         "largest_patch_size": 20}),
-      # dup({ # segfaults # https://github.com/PHAREHUB/PHARE/issues/330
-      #   "smallest_patch_size": 40,
-      #   "largest_patch_size": 40})
+      dup({
+        "smallest_patch_size": 40,
+        "largest_patch_size": 40})
     )
 
     def __init__(self, *args, **kwargs):
@@ -107,18 +107,28 @@ class DiagnosticsTest(unittest.TestCase):
         self.simulator = None
 
 
+    def tearDown(self):
+        if self.simulator is not None:
+            self.simulator.reset()
+        self.simulator = None
+
+    def ddt_test_id(self):
+        return self._testMethodName.split("_")[-1]
+
+
     def _test_dump_diags(self, dim, **simInput):
+        test_id = self.ddt_test_id()
 
         # configure simulation dim sized values
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = [simInput[key] for d in range(dim)]
-        b0 = [[10 for i in range(dim)], [20 for i in range(dim)]]
+        b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
         for interp in range(1, 4):
             print("_test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
-            local_out = out + str(dim) + "_" + str(interp) + "_mpi_n_" + str(cpp.mpi_size())
+            local_out = f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
             simInput["diag_options"]["options"]["dir"] = local_out
 
             simulation = ph.Simulation(**simInput)
@@ -134,7 +144,13 @@ class DiagnosticsTest(unittest.TestCase):
 
                 h5_file = h5py.File(h5_filename, "r")
                 self.assertTrue("t0.000000" in h5_file) #    init dump
+
+                self.assertTrue("t0.000100" in h5_file)
+                self.assertTrue("pl1" in h5_file["t0.000100"])
+                self.assertFalse("pl0" in h5_file["t0.000100"])
+
                 self.assertTrue("t0.001000" in h5_file) # advance dump
+
 
                 # SEE https://github.com/PHAREHUB/PHARE/issues/275
                 if dim == 1: # REMOVE WHEN PHARESEE SUPPORTS 2D
@@ -153,21 +169,6 @@ class DiagnosticsTest(unittest.TestCase):
 
             self.simulator = None
             ph.global_vars.sim = None
-
-
-    @data(*_test_cases)
-    def test_dump_diags_1d(self, simInput):
-        self._test_dump_diags(1, **simInput)
-
-
-    @data(*_test_cases)
-    def test_dump_diags_2d(self, simInput):
-        self._test_dump_diags(2, **simInput)
-
-
-    def tearDown(self):
-        if self.simulator is not None:
-            self.simulator.reset()
 
 
 if __name__ == "__main__":

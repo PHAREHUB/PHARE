@@ -3,8 +3,11 @@
 #define PHARE_SIMULATOR_SIMULATOR_H
 
 #include "include.h"
+
+#include "phare_core.h"
 #include "phare_types.h"
-#include <chrono>
+
+
 
 namespace PHARE
 {
@@ -26,9 +29,8 @@ public:
     virtual std::string to_str() = 0;
 
     virtual ~ISimulator() {}
+    virtual void dump(double timestamp, double timestep) {} // overriding optional
 };
-
-
 
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 class Simulator : public ISimulator
@@ -52,6 +54,8 @@ public:
 
     std::string to_str() override;
 
+    void dump(double timestamp, double timestep) override { dMan->dump(timestamp, timestep); }
+
     Simulator(PHARE::initializer::PHAREDict dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
 
@@ -72,6 +76,9 @@ public:
 
     using MessengerFactory       = typename PHARETypes::MessengerFactory;
     using MultiPhysicsIntegrator = typename PHARETypes::MultiPhysicsIntegrator;
+
+    using SimFunctorParams = typename core::PHARE_Sim_Types::SimFunctorParams;
+    using SimFunctors      = typename core::PHARE_Sim_Types::SimulationFunctors;
 
     using Integrator = PHARE::amr::Integrator<dimension>;
 
@@ -99,6 +106,15 @@ private:
     std::shared_ptr<HybridModel> hybridModel_;
     std::shared_ptr<MHDModel> mhdModel_;
 
+    std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
+
+    SimFunctors functors_;
+
+    SimFunctors functors_setup(PHARE::initializer::PHAREDict const& dict)
+    {
+        return {{"pre_advance", {/*empty vector*/}}};
+    }
+
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
 };
 
@@ -120,8 +136,9 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , dt_{dict["simulation"]["time_step"].template to<double>()}
     , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
     , finalTime_{dt_ * timeStepNbr_}
+    , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(
-          dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>())}
+          dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>(), functors_)}
 {
     if (find_model("HybridModel"))
     {
@@ -146,6 +163,30 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
 
         integrator_ = std::make_unique<Integrator>(dict, hierarchy, multiphysInteg_,
                                                    multiphysInteg_, startTime, endTime);
+
+        if (dict["simulation"].contains("diagnostics"))
+        {
+            auto& diagDict = dict["simulation"]["diagnostics"];
+
+            dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
+                *hierarchy_, *hybridModel_, diagDict);
+
+            if (diagDict.contains("fine_dump_lvl_max"))
+            {
+                auto fine_dump_lvl_max = diagDict["fine_dump_lvl_max"].template to<int>();
+
+                if (fine_dump_lvl_max > 0)
+                {
+                    functors_["pre_advance"]["fine_dump"] = [&](SimFunctorParams const& params) {
+                        std::size_t level_nbr = params["level_nbr"].template to<int>();
+                        auto timestamp        = params["timestamp"].template to<double>();
+
+                        if (static_cast<std::size_t>(fine_dump_lvl_max) >= level_nbr)
+                            this->dMan->dump_level(level_nbr, timestamp);
+                    };
+                }
+            }
+        }
     }
     else
         throw std::runtime_error("unsupported model");
@@ -281,64 +322,6 @@ makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
 }
 
 
-
-struct SimulatorDiagnostics
-{
-    SimulatorDiagnostics(PHARE::ISimulator& simulator, PHARE::amr::Hierarchy& hierarchy)
-    {
-        auto dict  = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-        this->dMan = PHARE::core::makeAtRuntime<Maker>(
-            dict["simulation"]["dimension"].template to<int>(),
-            dict["simulation"]["interp_order"].template to<int>(),
-            dict["simulation"]["refined_particle_nbr"].template to<int>(),
-            Maker{simulator, hierarchy});
-        if (!this->dMan)
-            throw std::runtime_error("Runtime diagnostic deduction failed");
-    }
-
-    struct Maker
-    {
-        Maker(PHARE::ISimulator& _simulator, PHARE::amr::Hierarchy& _hierarchy)
-            : hierarchy{_hierarchy}
-            , simulator{_simulator}
-        {
-        }
-
-
-        template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-        std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager>
-        operator()(std::size_t userDim, std::size_t userInterpOrder, std::size_t userNbRefinedPart,
-                   Dimension dimension, InterpOrder interp_order, NbRefinedPart nbRefinedPart)
-        {
-            auto& dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-            if (dict["simulation"].contains("diagnostics"))
-            {
-                if (userDim == dimension() and userInterpOrder == interp_order()
-                    and userNbRefinedPart == nbRefinedPart())
-                {
-                    constexpr std::size_t d  = dimension();
-                    constexpr std::size_t io = interp_order();
-                    constexpr std::size_t nb = nbRefinedPart();
-
-                    auto& cast_simulator = dynamic_cast<PHARE::Simulator<d, io, nb>&>(simulator);
-
-                    return PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
-                        hierarchy, *cast_simulator.getHybridModel(),
-                        dict["simulation"]["diagnostics"]);
-                }
-            }
-            return nullptr;
-        }
-
-        PHARE::amr::Hierarchy& hierarchy;
-        PHARE::ISimulator& simulator;
-    };
-
-    void dump(double timestamp, double timestep) { dMan->dump(timestamp, timestep); }
-
-    std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
-};
-
-
 } // namespace PHARE
-#endif
+
+#endif /*PHARE_SIMULATOR_SIMULATOR_H*/
