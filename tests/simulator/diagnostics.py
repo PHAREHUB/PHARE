@@ -77,7 +77,6 @@ simArgs = {
   "boundary_types":"periodic",
   "cells":40,
   "dl":0.3,
-  "max_nbr_levels":2,
   "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite", "fine_dump_lvl_max": 10}}
 }
 

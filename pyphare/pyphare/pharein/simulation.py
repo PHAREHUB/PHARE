@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 from ..core import phare_utilities
 from . import global_vars
@@ -211,41 +212,87 @@ def check_origin(dims, **kwargs):
 
 # ------------------------------------------------------------------------------
 
-def check_refinement_boxes(**kwargs):
+
+def as_list_per_level(refinement_boxes):
+    """
+      accepts various formats of boxes.
+      returns {"L0" : [Box(),Box()]}
+    """
+
+    list_per_level = {}
+
+    for level_key, boxes in refinement_boxes.items():
+
+        if isinstance(level_key, str):
+            assert level_key[0] == "L"
+        else:
+            level_key = "L"+str(level_key)
+
+        if isinstance(boxes, list) and all([isinstance(box, Box) for box in boxes]):
+          list_per_level[level_key] = boxes
+
+        elif isinstance(boxes, dict):
+            list_per_level[level_key] = []
+
+            if all([isinstance(val, Box) for key,val in boxes.items()]):
+                for box_id, box in boxes.items():
+                    list_per_level[level_key] += [box]
+
+            elif all([isinstance(val, (tuple,list)) for key,val in boxes.items()]):
+                for box_id, box_coords in boxes.items():
+                    box_coords = [list(box_coord) for box_coord in box_coords]
+                    list_per_level[level_key] += [Box(box_coords[0], box_coords[1])]
+
+    return list_per_level
+
+def check_refinement_boxes(dims, **kwargs):
+    """
+      returns tuple ( { "L0" : [Boxes]}, max_nbr_levels)
+    """
+
     refinement_boxes = kwargs.get("refinement_boxes", None)
 
-    if refinement_boxes is None:
-        return refinement_boxes
+    if refinement_boxes is None or len(refinement_boxes) == 0: # SAMRAI errors if empty dict
+        return None, 1 # default max level number to 1 if no boxes
 
     smallest_patch_size = kwargs.get("smallest_patch_size")
+    refinement_ratio = kwargs["refinement_ratio"]
+    nesting_buffer = kwargs["nesting_buffer"]
 
-    for ilvl, boxes in refinement_boxes.items():
+    refinement_boxes = as_list_per_level(refinement_boxes)
+    domain_box = Box([0] * dims, np.asarray(kwargs["cells"]) - 1)
 
-        assert ilvl[0] == "L"
+    boxes_per_level = {0: [domain_box]}
 
-        refined_level_number = int(ilvl[1:])+1
-        if (kwargs["max_nbr_levels"]) <= refined_level_number:
-            err_msg = "Error - refinement boxes to create level {} invalid with 'max_nbr_levels'= {}"
-            raise ValueError(err_msg.format(refined_level_number, kwargs["max_nbr_levels"]))
+    for level_key, boxes in refinement_boxes.items():
 
-        boxes = list(boxes.values())
+        ilvl = int(level_key[1:])
+        refined_level_number = ilvl+1
+        boxes_per_level[refined_level_number] = [boxm.refine(box, refinement_ratio) for box in boxes]
+
         if len(boxes) == 0:
             raise ValueError("Error - missing refinement boxes")
 
-        tmp_boxes = []
-        if isinstance(boxes[0], (tuple,list)):
-            for points in boxes:
-                tmp_boxes.append(Box(points[0], points[1]))
-            boxes = tmp_boxes
+        for box_idx, ref_box in enumerate(boxes):
+            for cmp_box in boxes[box_idx + 1:]:
+                if ref_box * cmp_box != None:
+                    raise ValueError(f"Error: Box({ref_box}) overlaps with Box({cmp_box})")
 
-        elif isinstance(boxes[0], Box):
-            for box in boxes:
-                for l in boxm.refine(box, kwargs["refinement_ratio"]).shape():
-                    if l < smallest_patch_size:
-                        raise  ValueError("Invalid box incompatible with smallest_patch_size")
+        for box in boxes:
+            refined_coarser_boxes = boxes_per_level[ilvl]
 
+            if not any([box in boxm.shrink(refined_coarser, [nesting_buffer] * dims) for refined_coarser in refined_coarser_boxes]):
+                raise ValueError(f"Box({box}) is incompatible with coarser boxes({refined_coarser_boxes}) and nest_buffer({nesting_buffer})")
 
-    return refinement_boxes
+            if box.dim() != dims:
+                print("box.dim() != dims", box.dim(), dims)
+                raise ValueError(f"Box({box}) has incorrect dimensions for simulation")
+            for l in boxm.refine(box, refinement_ratio).shape():
+                if l < smallest_patch_size:
+                    raise ValueError("Invalid box incompatible with smallest_patch_size")
+
+    return refinement_boxes, len(refinement_boxes.items()) + 1
+
 
 # ------------------------------------------------------------------------------
 
@@ -313,6 +360,39 @@ def check_refinement(**kwargs):
 
 
 
+def check_nesting_buffer(**kwargs):
+    nesting_buffer = kwargs.get('nesting_buffer', 0)
+
+    if nesting_buffer < 0:
+        raise ValueError(f"Error: nesting_buffer({nesting_buffer}) cannot be negative")
+
+    smallest_patch_size = kwargs["smallest_patch_size"]
+    largest_patch_size = kwargs["largest_patch_size"]
+
+    if nesting_buffer > smallest_patch_size / 2:
+        raise ValueError(f"Error: nesting_buffer({nesting_buffer})"
+                          + f"cannot be larger than half the smallest_patch_size ({smallest_patch_size})")
+
+    cells = np.asarray(kwargs["cells"])
+
+    if largest_patch_size != None and (nesting_buffer > cells - kwargs["largest_patch_size"]).any():
+      raise ValueError(f"Error: nesting_buffer({nesting_buffer})"
+                        + f"incompatible with number of domain cells ({cells}) and largest_patch_size({largest_patch_size})")
+
+    elif (nesting_buffer > cells).any():
+            raise ValueError(f"Error: nesting_buffer({nesting_buffer}) incompatible with number of domain cells ({cells})")
+
+    return nesting_buffer
+
+
+
+def check_optional_keywords(**kwargs):
+    extra = []
+
+    if check_refinement(**kwargs) != "boxes":
+        extra += ['max_nbr_levels']
+
+    return extra
 
 
 # ------------------------------------------------------------------------------
@@ -321,9 +401,11 @@ def checker(func):
     def wrapper(simulation_object, **kwargs):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
-                             'boundary_types', 'refined_particle_nbr', 'path',
-                             'diag_export_format', 'max_nbr_levels', 'refinement_boxes','refinement',
+                             'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
+                             'diag_export_format', 'refinement_boxes', 'refinement',
                              'smallest_patch_size', 'largest_patch_size', "diag_options" ]
+
+        accepted_keywords += check_optional_keywords(**kwargs)
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
         if len(wrong_kwds) > 0:
@@ -332,6 +414,7 @@ def checker(func):
         dl, cells = check_domain(**kwargs)
         kwargs["dl"] = dl
         kwargs["cells"] =  cells
+        kwargs["refinement_ratio"] = 2
 
         time_step_nbr, time_step = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
@@ -358,11 +441,14 @@ def checker(func):
         kwargs["smallest_patch_size"] = smallest
         kwargs["largest_patch_size"] = largest
 
-        kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', 1)
+        kwargs["nesting_buffer"] = check_nesting_buffer(**kwargs)
+
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
-            kwargs["refinement_boxes"] = check_refinement_boxes(**kwargs)
+            kwargs["refinement_boxes"], kwargs["max_nbr_levels"] = check_refinement_boxes(dims, **kwargs)
         else:
+            kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', None)
+            assert kwargs["max_nbr_levels"] != None # this needs setting otherwise
             kwargs["refinement_boxes"] = None
 
         return func(simulation_object, **kwargs)
@@ -395,10 +481,11 @@ class Simulation(object):
     path                 : path for outputs (default : './')
     boundary_types       : type of boundary conditions (default is "periodic" for each direction)
     diag_export_format   : format of the output diagnostics (default= "phareh5")
-    max_nbr_levels       : [default=1] max number of levels in the hierarchy
+    nesting_buffer       : [default=0] minimum gap in coarse cells from border between coarse and refined patch
     refinement_boxes     : [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
     smallest_patch_size  :
     largest_patch_size   :
+    max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
 
     """
 

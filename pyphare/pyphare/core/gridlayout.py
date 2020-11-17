@@ -55,7 +55,7 @@ class GridLayout(object):
         self.origin = listify(origin)
         self.dl = listify(dl)
         self.interp_order = interp_order
-
+        self.impl = "yee"
         self.directions = ['X','Y','Z']
 
         self.hybridQuantities = ['Bx','By','Bz',

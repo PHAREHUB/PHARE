@@ -95,7 +95,7 @@ class BoxTesT(unittest.TestCase):
            )
     @unpack
     def test_grow(self, box, size, expected):
-        self.assertEqual(boxm.grow(box, size), expected)
+        self.assertEqual(boxm.grow(box, [size] * box.dim()), expected)
 
 
 
@@ -105,7 +105,7 @@ class BoxTesT(unittest.TestCase):
     )
     def test_grow_neg_size_raises(self, box):
         with self.assertRaises(ValueError):
-            boxm.grow(box, -1)
+            boxm.grow(box, [-1] * box.dim())
 
 
 

@@ -36,7 +36,7 @@ class FieldData(PatchData):
     defined on a grid.
     """
     def _mesh_coords(self, i):
-        return self.origin[i] - self._ghosts_nbr * self.dl[i] + np.arange(self.size[i]) * self.dl[i] + self.offset[i]
+        return self.origin[i] - self.ghosts_nbr * self.dl[i] + np.arange(self.size[i]) * self.dl[i] + self.offset[i]
 
     @property
     def x(self):
@@ -58,7 +58,7 @@ class FieldData(PatchData):
         self.dx = layout.dl[0] # dropped in 2d_py_init PR - use dl[0]
         self.dl = layout.dl
         self.dim = layout.box.dim()
-        self._ghosts_nbr = np.zeros(self.dim)
+        self.ghosts_nbr = np.zeros(self.dim)
 
         if field_name in layout.centering["X"]:
             directions = ["X", "Y", "Z"][:self.dim] # drop unused directions
@@ -75,9 +75,9 @@ class FieldData(PatchData):
             ValueError("centering not specified and cannot be inferred from field name")
 
         for i, centering in enumerate(centerings):
-            self._ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+            self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
 
-        self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
+        self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
 
         self.size = np.zeros(self.dim, dtype=int)
         self.offset = np.zeros(self.dim)
@@ -106,12 +106,12 @@ class ParticleData(PatchData):
         self.dataset = data
         self.pop_name = pop_name
         if layout.interp_order == 1:
-            self._ghosts_nbr = [1] * layout.box.dim()
+            self.ghosts_nbr = [1] * layout.box.dim()
         elif layout.interp_order == 2 or layout.interp_order == 3:
-            self._ghosts_nbr = [2] * layout.box.dim()
+            self.ghosts_nbr = [2] * layout.box.dim()
         else:
             raise RuntimeError("invalid interpolation order {}".format(layout.interp_order))
-        self.ghost_box = boxm.grow(layout.box, self._ghosts_nbr)
+        self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
 
 
 

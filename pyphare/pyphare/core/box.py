@@ -18,7 +18,7 @@ class Box:
         self.upper = upper.astype(int)
 
     def dim(self):
-        return len(self.lower.shape)
+        return len(self.lower)
 
     def __mul__(self, box2):
         """
@@ -53,12 +53,6 @@ class Box:
     def __repr__(self):
         return self.__str__()
 
-    # only 0 or 1 are valid
-    def __getitem__(self, idx):
-        assert 0 <= idx <= 1
-        if idx == 0:
-            return self.lower
-        return self.upper
 
     def __contains__(self, item):
         """true if item is completely within self"""
@@ -75,7 +69,7 @@ class Box:
 
 
     def __eq__(self, other):
-        return (self.lower == other.lower).all() and (self.upper == other.upper).all()
+        return isinstance(other, Box) and (self.lower == other.lower).all() and (self.upper == other.upper).all()
 
 
 
@@ -115,11 +109,18 @@ def shift(box, offset):
 
 
 def grow(box, size):
-    if is_scalar(size):
-        assert box.dim() == 1 # possible overkill, here to block accidents
+    if is_scalar(size) and box.dim() > 1:
+        raise ValueError("box.py: grow must use a list for dimension > 1")
     if (np.asarray(size) < 0).any():
         raise ValueError("size must be >=0")
     return Box(box.lower - size, box.upper + size)
+
+def shrink(box, size):
+    if is_scalar(size) and box.dim() > 1:
+        raise ValueError("box.py: shrink must use a list for dimension > 1")
+    if (np.asarray(size) < 0).any():
+        raise ValueError("size must be >=0")
+    return Box(box.lower + size, box.upper - size)
 
 
 def remove(box, to_remove):

@@ -1,209 +1,48 @@
 import unittest
 
-from ddt import ddt, data
+from ddt import ddt, data, unpack
 import pyphare.core.box as boxm
 from pyphare.core.box import Box
+from pyphare.core.phare_utilities import listify
 from pyphare.pharesee.particles import Particles
 from pyphare.pharesee.hierarchy import FieldData
 from pyphare.pharesee.hierarchy import ParticleData
 from pyphare.pharesee.hierarchy import PatchHierarchy
 from pyphare.pharesee.hierarchy import Patch, PatchLevel
-from pyphare.pharesee.geometry import particle_ghost_area_boxes
+from pyphare.pharesee.geometry import get_periodic_list, ghost_area_boxes
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
-from pyphare.core.gridlayout import GridLayout
+
+from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 
 import numpy as np
 
-
-def bx(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
-    return np.sin(2 * np.pi / Lx * x)
-
-
-def by(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
-    return np.cos(2 * np.pi / Lx * x)
-
-
-def bz(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
-    return np.sin(4 * np.pi / Lx * x)
-
-
-def ex(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size()) * dx - 5 * dx
-    return np.sin(2 * np.pi / Lx * x)
-
-
-def ey(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
-    return np.cos(2 * np.pi / Lx * x)
-
-
-def ez(ghost_box, dx, Lx, origin):
-    x = origin + np.arange(ghost_box.size() + 1) * dx - 5 * dx
-    return np.sin(4 * np.pi / Lx * x)
-
-
-def build_hierarchy(**kwargs):
-    """accepted keywords:
-     - simulation : a simulation Object
-
-     or
-
-     - nbr_cells
-     - origin
-     - interp_order
-     - domain_size
-     - cell_width
-     - refinement_ratio
-     - refinement_boxes
-     """
-    if "simulation" in kwargs:
-        for k in kwargs:
-            if k != "simulation":
-                print("warning: 'simulation' given, {} discarded".format(k))
-
-        sim = kwargs["simulation"]
-        nbr_cells = sim.cells[0]
-        origin = sim.origin[0]
-        interp_order = sim.interp_order
-        domain_size = sim.simulation_domain()[0]
-        cell_width = sim.dl[0]
-        refinement_ratio = 2
-        refinement_boxes = sim.refinement_boxes
-
-    else:
-        nbr_cells = kwargs["nbr_cells"]
-        origin = kwargs["origin"]
-        interp_order = kwargs["interp_order"]
-        domain_size = kwargs["domain_size"]
-        cell_width = kwargs["cell_width"]
-        refinement_ratio = kwargs.get("refinement_ratio", 1)
-        refinement_boxes = kwargs.get("refinement_boxes", {})
-
-    domain_box = boxm.Box(0, nbr_cells - 1)
-    domain_layout = GridLayout(domain_box, origin, cell_width, interp_order)
-
-    coarse_particles = Particles(box=domain_box)
-
-    # copy domain particles and put them in ghost cells
-    particle_ghost_nbr = domain_layout.particleGhostNbr(interp_order)
-    box_extend = particle_ghost_nbr - 1
-
-    upper_slct_box = Box(domain_box.upper - box_extend, domain_box.upper)
-    lower_slct_box = Box(domain_box.lower, domain_box.lower + box_extend)
-
-    upper_cell_particles = coarse_particles.select(upper_slct_box)
-    lower_cell_particles = coarse_particles.select(lower_slct_box)
-
-    coarse_particles.add(upper_cell_particles.shift_icell(-domain_box.size()))
-    coarse_particles.add(lower_cell_particles.shift_icell(domain_box.size()))
-
-    boxes = {}
-    for ilvl, boxes_data in refinement_boxes.items():
-
-        level_number = int(ilvl.strip("L")) + 1
-
-        if level_number not in boxes:
-            boxes[level_number] = []
-
-        for boxname, lower_upper in boxes_data.items():
-            refinement_box = Box(lower_upper[0][0], lower_upper[1][0])
-            refined_box = boxm.refine(refinement_box, refinement_ratio)
-            boxes[level_number].append(refined_box)
-
-    # coarse level boxes are arbitrarily divided in 2 patches in the middle
-    middle_cell = np.round(domain_box.upper / 2)
-    lower_box = Box(0, middle_cell)
-    upper_box = Box(middle_cell + 1, domain_box.upper)
-    boxes[0] = [lower_box, upper_box]
-
-    patch_datas = {}
-
-    for ilvl, lvl_box in boxes.items():
-
-        lvl_cell_width = cell_width / (refinement_ratio ** ilvl)
-
-        if ilvl == 0:
-            lvl_particles = coarse_particles
-        else:
-            level_domain_box = boxm.refine(domain_box, refinement_ratio)
-            lvl_ghost_domain_box = boxm.grow(level_domain_box, domain_layout.particleGhostNbr(interp_order))
-            lvl_particles = Particles(box = lvl_ghost_domain_box)
-
-        if ilvl not in patch_datas:
-            patch_datas[ilvl] = []
-
-        for box in lvl_box:
-
-            ghost_box = boxm.grow(box, 5)
-            origin = box.lower * lvl_cell_width
-            layout = GridLayout(box, origin, lvl_cell_width, interp_order)
-
-            datas = {"Bx": bx(ghost_box, lvl_cell_width, domain_size, origin),
-                     "By": by(ghost_box, lvl_cell_width, domain_size, origin),
-                     "Bz": bz(ghost_box, lvl_cell_width, domain_size, origin),
-                     "Ex": ex(ghost_box, lvl_cell_width, domain_size, origin),
-                     "Ey": ey(ghost_box, lvl_cell_width, domain_size, origin),
-                     "Ez": ez(ghost_box, lvl_cell_width, domain_size, origin),
-                     "particles": lvl_particles.select(ghost_box)
-                     }
-
-            boxed_patch_datas = {}
-            for qty_name, data in datas.items():
-                if qty_name == 'particles':
-                    pdata = ParticleData(layout, data, "pop_name")
-                else:
-                    pdata = FieldData(layout, qty_name, data)
-
-                boxed_patch_datas[qty_name] = pdata
-
-            patch_datas[ilvl].append(boxed_patch_datas)
-
-    patches = {ilvl: [] for ilvl in list(patch_datas.keys())}
-    for ilvl, lvl_patch_datas in patch_datas.items():
-
-
-        for patch_datas in lvl_patch_datas:
-            patches[ilvl].append(Patch(patch_datas))
-
-    patch_levels = {}
-    for ilvl, lvl_patches in patches.items():
-        patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
-
-    sorted_levels_numbers = sorted(patch_levels)
-    patch_levels = {ilvl: patch_levels[ilvl] for ilvl in sorted_levels_numbers}
-    return PatchHierarchy(patch_levels, domain_box, refinement_ratio)
-
-
-
+from pyphare_tests.test_pharesee import build_hierarchy
 
 @ddt
 class GeometryTest(unittest.TestCase):
 
-    def setUp(self):
+    def setup_hierarchy(self, dim, interp_order, nbr_cells, refinement_boxes, **kwargs):
+        domain_size = np.asarray([1.0] * dim)
+        return build_hierarchy(
+            nbr_cells=nbr_cells,
+            origin=np.asarray([0.0] * dim),
+            interp_order=interp_order,
+            domain_size=domain_size,
+            cell_width=domain_size / nbr_cells,
+            refinement_boxes=refinement_boxes,
+            **kwargs
+        )
 
-        nbr_cells = 65
-        origin = 0.
-        interp_order = 1
-        domain_size = 1.
-        cell_width = domain_size / nbr_cells
-        refinement_ratio = 2
+    # used for tests without ddt hierarchy overrides
+    def basic_hierarchy(self):
+        dim, interp_order, nbr_cells = (1, 1, 65)
         refinement_boxes = {"L0": {"B0": [(5,), (29,)], "B1": [(32,), (55,)]}}
-
-        self.hierarchy = build_hierarchy(nbr_cells=nbr_cells,
-                               origin=origin,
-                               interp_order=interp_order,
-                               domain_size=domain_size,
-                               cell_width=cell_width,
-                               refinement_ratio=refinement_ratio,
-                               refinement_boxes=refinement_boxes)
-
-
+        return self.setup_hierarchy(dim, interp_order, nbr_cells, refinement_boxes)
 
 
     def test_overlaps(self):
+        hierarchy = self.basic_hierarchy()
+
         expected = {0 :
                         # Middle overlap, for all quantities
                         [  {"box":Box(28, 38),'offset':(0,0)},
@@ -247,9 +86,9 @@ class GeometryTest(unittest.TestCase):
         }
 
 
-        overlaps = hierarchy_overlaps(self.hierarchy)
+        overlaps = hierarchy_overlaps(hierarchy)
 
-        for ilvl, lvl in enumerate(self.hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.patch_levels):
             self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
 
             for exp, actual in zip(expected[ilvl], overlaps[ilvl]):
@@ -266,53 +105,53 @@ class GeometryTest(unittest.TestCase):
 
 
     def test_touch_border(self):
+        hierarchy = self.basic_hierarchy()
 
-        self.assertFalse(touch_domain_border(Box(10,20), self.hierarchy.domain_box, "upper"))
-        self.assertFalse(touch_domain_border(Box(10, 20), self.hierarchy.domain_box, "lower"))
-        self.assertTrue(touch_domain_border(Box(0, 20), self.hierarchy.domain_box, "lower"))
-        self.assertTrue(touch_domain_border(Box(-5, 20), self.hierarchy.domain_box, "lower"))
-        self.assertTrue(touch_domain_border(Box(-5, 70), self.hierarchy.domain_box, "lower"))
-        self.assertTrue(touch_domain_border(Box(-5, 70), self.hierarchy.domain_box, "upper"))
-        self.assertTrue(touch_domain_border(Box(40, 70), self.hierarchy.domain_box, "upper"))
-        self.assertTrue(touch_domain_border(Box(40, 64), self.hierarchy.domain_box, "upper"))
+        self.assertFalse(touch_domain_border(Box(10,20), hierarchy.domain_box, "upper"))
+        self.assertFalse(touch_domain_border(Box(10, 20), hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(0, 20), hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(-5, 20), hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(-5, 70), hierarchy.domain_box, "lower"))
+        self.assertTrue(touch_domain_border(Box(-5, 70), hierarchy.domain_box, "upper"))
+        self.assertTrue(touch_domain_border(Box(40, 70), hierarchy.domain_box, "upper"))
+        self.assertTrue(touch_domain_border(Box(40, 64), hierarchy.domain_box, "upper"))
 
 
 
 
     def test_particle_ghost_area_boxes(self):
+        hierarchy = self.basic_hierarchy()
 
         expected = {
 
-            0: [ {"boxes":[Box(33, 33), Box(-1,-1)]},
-                 {"boxes": [Box(32, 32), Box(65, 65)]} ],
+            0: [ Box(-1,-1), Box(33, 33), Box(32, 32), Box(65, 65)],
 
 
-            1: [ {"boxes": [Box(9, 9), Box(60, 60)]},
-                 {"boxes": [Box(63, 63), Box(112, 112)]} ]
+            1: [ Box(9, 9), Box(60, 60), Box(63, 63), Box(112, 112)]
         }
 
-        gaboxes = particle_ghost_area_boxes(self.hierarchy)
+        gaboxes = ghost_area_boxes(hierarchy, "particles")
 
         # same number of levels
         self.assertEqual(len(expected), len(gaboxes))
 
-        for ilvl, lvl in enumerate(self.hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.patch_levels):
 
-            # same number of PatchDatas
-            self.assertEqual(len(gaboxes[ilvl]), len(expected[ilvl]))
+            qtyNbr = len(gaboxes[ilvl].keys())
+            self.assertEqual(qtyNbr, 1)
 
-            for act_pdata, exp_pdata in zip(gaboxes[ilvl], expected[ilvl]):
+            key = list(gaboxes[ilvl].keys())[0]
 
-                    self.assertEqual(len(exp_pdata["boxes"]), len(act_pdata["boxes"]))
+            level_ghost_area_boxes = sum( # aggregate to single list
+                [actual["boxes"] for actual in gaboxes[ilvl][key]], []
+            )
 
-                    for exp_box in exp_pdata["boxes"]:
-                        self.assertTrue(exp_box in act_pdata["boxes"])
-
-
+            self.assertEqual(expected[ilvl], level_ghost_area_boxes)
 
 
 
     def test_level_ghost_boxes(self):
+        hierarchy = self.basic_hierarchy()
 
         expected = {
 
@@ -324,9 +163,15 @@ class GeometryTest(unittest.TestCase):
             ]
         }
 
-        lvl_gaboxes = level_ghost_boxes(self.hierarchy)
-        for ilvl  in range(1, len(self.hierarchy.patch_levels)):
-            for actual, exp in zip(lvl_gaboxes[ilvl], expected[ilvl]):
+        lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
+        for ilvl  in range(1, len(hierarchy.patch_levels)):
+
+            qtyNbr = len(lvl_gaboxes[ilvl].keys())
+            self.assertEqual(qtyNbr, 1)
+
+            key = list(lvl_gaboxes[ilvl].keys())[0]
+
+            for actual, exp in zip(lvl_gaboxes[ilvl][key], expected[ilvl]):
 
                 act_boxes = actual["boxes"]
                 exp_boxes = exp["boxes"]
@@ -339,22 +184,191 @@ class GeometryTest(unittest.TestCase):
 
 
 
-
     def test_level_ghost_boxes_do_not_overlap_patch_interiors(self):
+        hierarchy = self.basic_hierarchy()
 
-        lvl_gboxes = level_ghost_boxes(self.hierarchy)
+        lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
 
-        for ilvl, pdatainfos in lvl_gboxes.items():
-            for pdatainfo in pdatainfos:
+        for ilvl  in range(1, len(hierarchy.patch_levels)):
+
+            qtyNbr = len(lvl_gaboxes[ilvl].keys())
+            self.assertEqual(qtyNbr, 1)
+
+            key = list(lvl_gaboxes[ilvl].keys())[0]
+
+            for pdatainfo in lvl_gaboxes[ilvl][key]:
                 for box in pdatainfo["boxes"]:
-                    for patch in self.hierarchy.patch_levels[ilvl].patches:
+                    for patch in hierarchy.patch_levels[ilvl].patches:
                             self.assertIsNone(patch.box * box)
 
 
 
+    @data(
+        (
+            {
+                "L0": [
+                    Box(0, 4),
+                    Box(15, 19),
+                ]
+            },
+            {
+                1: [
+                    {"box": Box(-5, 5),'offset': (0, -40)},
+                    {"box": Box(35, 45),'offset': (40, 0)},
+                ]
+            },
+        ),
+        (
+            {
+                "L0": [
+                    Box(1, 5),
+                    Box(14, 18),
+                ]
+            },
+            {
+                1: [
+                    {"box": Box(-3, 3),'offset': (0, -40)},
+                    {"box": Box(37, 43),'offset': (40, 0)},
+                ]
+            },
+        ),
+    )
+    @unpack
+    def test_periodic_overlaps(self, refinement_boxes, expected):
+        dim, interp_order, nbr_cells = (1, 1, 20)
+        hierarchy = self.setup_hierarchy(dim, interp_order, nbr_cells, refinement_boxes, quantities="Bx")
+
+        overlaps = hierarchy_overlaps(hierarchy)
+        for ilvl, lvl in enumerate(hierarchy.patch_levels):
+            if ilvl not in expected:
+                continue
+            self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
+            for exp, actual in zip(expected[ilvl], overlaps[ilvl]):
+                self.assertEqual(actual["box"], exp["box"])
+                self.assertEqual(actual["offset"], exp["offset"])
 
 
 
+    @data(
+        (
+            {
+                "L0": [
+                    Box(0, 4),
+                    Box(15, 19),
+                ]
+            },
+            {
+                1: [
+                    Box(-10, -1),
+                    Box(0, 9),
+                    Box(30, 39),
+                    Box(40, 49),
+                ]
+            },
+        ),
+        (
+            {
+                "L0": [
+                    Box(1, 5),
+                    Box(14, 18),
+                ]
+            },
+            {
+                1: [
+                   Box(-12, -3),
+                   Box(2, 11),
+                   Box(28, 37),
+                   Box(42, 51),
+                ]
+            },
+        ),
+    )
+    @unpack
+    def test_periodic_list(self, refinement_boxes, expected):
+        dim, interp_order, nbr_cells = (1, 1, 20)
+        hierarchy = self.setup_hierarchy(dim, interp_order, nbr_cells, refinement_boxes, quantities="Bx")
+
+        for ilvl in range(1, len(hierarchy.patch_levels)):
+            refined_domain_box = hierarchy.refined_domain_box(ilvl)
+
+            n_ghosts = hierarchy.patch_levels[ilvl].patches[0].patch_datas["Bx"].ghosts_nbr
+            patches = get_periodic_list(hierarchy.patch_levels[ilvl].patches, refined_domain_box, n_ghosts)
+
+            periodic_boxes = [patch.box for patch in patches]
+
+            for ref_box_i, ref_box in enumerate(periodic_boxes):
+                for cmp_box in periodic_boxes[ref_box_i + 1:]:
+                    self.assertTrue(ref_box * cmp_box == None)
+
+            self.assertEqual(expected[ilvl], periodic_boxes)
+
+
+
+    @data(
+        (
+            {
+                "L0": [
+                    Box(0, 4),
+                    Box(15, 19),
+                ]
+            },
+            {
+                1: [
+                    Box(10, 14),
+                    Box(25, 29),
+                ]
+            },
+        ),
+        (
+            {
+                "L0": [
+                    Box(1, 5),
+                    Box(14, 18),
+                ]
+            },
+            {
+                1: [
+                   Box(-2, 1),
+                   Box(12, 16),
+                   Box(23, 27),
+                   Box(38, 41),
+                ]
+            },
+        ),
+        (
+            {
+                "L0": [
+                    Box(5, 9),
+                    Box(10, 14),
+                ]
+            },
+            {
+                1: [
+
+                    Box(5, 9),
+                    Box(30, 34),
+                ]
+            },
+        ),
+    )
+    @unpack
+    def test_level_ghostboxes(self, refinement_boxes, expected):
+        dim, interp_order, nbr_cells = (1, 1, 20)
+        hierarchy = self.setup_hierarchy(dim, interp_order, nbr_cells, refinement_boxes, quantities="Bx")
+
+        lvl_gaboxes = level_ghost_boxes(hierarchy, "Bx")
+        for ilvl in range(1, len(hierarchy.patch_levels)):
+
+            qtyNbr = len(lvl_gaboxes[ilvl].keys())
+            self.assertEqual(qtyNbr, 1)
+
+            key = list(lvl_gaboxes[ilvl].keys())[0]
+
+            ghost_area_boxes = sum( # aggregate to single list
+                [actual["boxes"] for actual in lvl_gaboxes[ilvl][key]], []
+            )
+
+            self.assertEqual(expected[ilvl], ghost_area_boxes)
 
 
 

@@ -108,6 +108,7 @@ def populateDict():
 
 
     add("simulation/AMR/max_nbr_levels", int(simulation.max_nbr_levels))
+    add("simulation/AMR/nesting_buffer", int(simulation.nesting_buffer))
     refinement_boxes = simulation.refinement_boxes
 
 
@@ -116,22 +117,23 @@ def populateDict():
         add("simulation/AMR/refinement/boxes/nbr_levels/", int(len(rb.keys())))
         for level,boxes in rb.items():
             level_path = "simulation/AMR/refinement/boxes/"+level+"/"
-            add(level_path + 'nbr_boxes/',int(len(boxes.keys())))
-            for box,cells in boxes.items():
-                lower = cells[0]
-                upper = cells[1]
-                box_lower_path_x = box + "/lower/x/"
-                box_upper_path_x = box + "/upper/x/"
+            add(level_path + 'nbr_boxes/',int(len(boxes)))
+            for box_i, box in enumerate(boxes):
+                box_id = "B" + str(box_i)
+                lower = box.lower
+                upper = box.upper
+                box_lower_path_x = box_id + "/lower/x/"
+                box_upper_path_x = box_id + "/upper/x/"
                 add(level_path + box_lower_path_x, int(lower[0]))
                 add(level_path + box_upper_path_x, int(upper[0]))
                 if len(lower)>=2:
-                    box_lower_path_y = box + "/lower/y/"
-                    box_upper_path_y = box + "/upper/y/"
+                    box_lower_path_y = box_id + "/lower/y/"
+                    box_upper_path_y = box_id + "/upper/y/"
                     add(level_path+box_lower_path_y, int(lower[1]))
                     add(level_path+box_upper_path_y, int(upper[1]))
                     if (len(lower)==3):
-                        box_lower_path_z = box + "/lower/z/"
-                        box_upper_path_z = box + "/upper/z/"
+                        box_lower_path_z = box_id + "/lower/z/"
+                        box_upper_path_z = box_id + "/upper/z/"
                         add(level_path+box_lower_path_z, int(lower[2]))
                         add(level_path+box_upper_path_z, int(upper[2]))
 

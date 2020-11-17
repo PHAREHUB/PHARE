@@ -295,6 +295,9 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
     auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
     hierDB->putInteger("max_levels", maxLevelNumber);
 
+    std::vector<int> nesting_buffer(maxLevelNumber, amr["nesting_buffer"].template to<int>());
+    hierDB->putIntegerVector("proper_nesting_buffer", nesting_buffer);
+
     auto ratioToCoarserDB = hierDB->putDatabase("ratio_to_coarser");
 
     int smallestPatchSize = 0, largestPatchSize = 0;
