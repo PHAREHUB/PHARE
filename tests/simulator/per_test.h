@@ -34,7 +34,7 @@ struct HierarchyMaker
 
 
 template<std::size_t _dim, std::size_t _interp, std::size_t _nbRefinePart>
-struct SimulatorTestParam : public HierarchyMaker<_dim>,
+struct SimulatorTestParam : private HierarchyMaker<_dim>,
                             public PHARE::Simulator<_dim, _interp, _nbRefinePart>
 {
     static constexpr std::size_t dim          = _dim;
@@ -46,6 +46,7 @@ struct SimulatorTestParam : public HierarchyMaker<_dim>,
     using Hierarchy   = PHARE::amr::Hierarchy;
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;
+    using HierarchyMaker<dim>::hierarchy;
 
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
 
