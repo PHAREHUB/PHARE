@@ -2,6 +2,7 @@
 from ..core import box as boxm
 from .hierarchy import FieldData, is_root_lvl
 
+from pyphare.core.phare_utilities import listify
 
 
 def toFieldBox(box, patch_data):
@@ -157,7 +158,7 @@ def hierarchy_overlaps(hierarchy):
 
 
 
-def get_periodic_list(patches, domain_box):
+def get_periodic_list(patches, domain_box, n_ghosts):
     """
     given a list of patches and a domain box the function
     returns a list of patches sorted by origin where the
@@ -169,15 +170,17 @@ def get_periodic_list(patches, domain_box):
 
     sorted_patches = sorted(patches, key=lambda p: p.origin)
 
-    if touch_domain_border(sorted_patches[-1].box, domain_box, "upper"):
-        last_patch = copy(sorted_patches[-1])
-        shift_patch(last_patch, -domain_box.upper)
-        sorted_patches.insert(0, last_patch)
+    # copy before check as the list is modified in-place
+    last_patch = copy(sorted_patches[-1])
+    first_patch = copy(sorted_patches[0])
 
-    if touch_domain_border(sorted_patches[0].box, domain_box, "lower"):
-        first_patch = copy(sorted_patches[0])
-        shift_patch(first_patch, domain_box.upper)
+    if touch_domain_border(boxm.grow(sorted_patches[0].box, n_ghosts), domain_box, "lower"):
+        shift_patch(first_patch, domain_box.shape())
         sorted_patches.append(first_patch)
+
+    if touch_domain_border(boxm.grow(sorted_patches[-1].box, n_ghosts), domain_box, "upper"):
+        shift_patch(last_patch, -domain_box.shape())
+        sorted_patches.insert(0, last_patch)
 
     return sorted_patches
 
@@ -186,7 +189,7 @@ def get_periodic_list(patches, domain_box):
 
 
 
-def particle_ghost_area_boxes(hierarchy):
+def ghost_area_boxes(hierarchy, quantities):
     """
     this function returns boxes representing ghost cell boxes for all levels
     a ghost cell box is a box containing cells of contiguous AMR index not
@@ -205,44 +208,47 @@ def particle_ghost_area_boxes(hierarchy):
     for ilvl, lvl in hierarchy.levels().items():
         for patch in lvl.patches:
 
-            pop_names = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
+            for pd_key, pd in patch.patch_datas.items():
 
-            patch_data = patch.patch_datas[pop_names[0]] # ghost boxes are the same for all populations
-            gbox = patch_data.ghost_box
-            box = patch.box
+                skip = not any([pd_key.endswith(qty) for qty in quantities])
 
-            if ilvl not in gaboxes:
-                gaboxes[ilvl] = []
+                if skip:
+                    continue
 
-            gaboxes[ilvl] += [{"pdata": patch_data, "boxes": boxm.remove(gbox, box)}]
+                patch_data = patch.patch_datas[pd_key]
+                gbox = patch_data.ghost_box
+                box = patch.box
+
+                if ilvl not in gaboxes:
+                    gaboxes[ilvl] = []
+
+                if pd_key not in gaboxes[ilvl]:
+                    gaboxes[ilvl] = {pd_key:[]}
+
+                gaboxes[ilvl][pd_key] += [{"pdata": patch_data, "boxes": boxm.remove(gbox, box)}]
 
     return gaboxes
 
 
 
 
-def level_ghost_boxes(hierarchy):
+def level_ghost_boxes(hierarchy, quantities):
     """
     this function returns boxes representing level ghost cell boxes for all levels
-
     A level ghost cell box is a ghost cell box that does not overlap any cell contained
     in a patchData interior
-
-
     patchdata1           : o o o o o - - - - - - - - - - - - o o o o o
     patchdata2           :                               o o o o o - - - - - - - - -
     lvl ghost cell boxes :                                   ^---^
-
     returns a dictionnary which keys are level_number and value is a list of dict with :
-
      keys:value :
         - pdata : patch_data for which level ghost cell boxes are detected
         - boxes : level ghost cell boxes
-
     return : {level_number : [{"pdata":patch_data1, "boxes":lvl_ghost_boxes},
                               {"pdata":patch_data2, "boxes":lvl_ghost_boxes}, ...]}
     """
-    gaboxes = particle_ghost_area_boxes(hierarchy)
+    quantities = listify(quantities)
+    gaboxes = ghost_area_boxes(hierarchy, quantities)
     lvl_gaboxes = {}
 
     for ilvl, lvl in hierarchy.levels().items():
@@ -250,39 +256,45 @@ def level_ghost_boxes(hierarchy):
         if is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
             continue
 
-        gaboxes_info = gaboxes[ilvl]
+        for pd_key, info_list in gaboxes[ilvl].items():
 
-        for info in gaboxes_info:
+            if True:  # if periodic, always true for now
+                refined_domain_box = hierarchy.refined_domain_box(ilvl)
+                n_ghosts = lvl.patches[0].patch_datas[pd_key].ghosts_nbr
+                patches = get_periodic_list(lvl.patches, refined_domain_box, n_ghosts)
 
-            patch_data = info["pdata"]
-            ghostAreaBoxes = info["boxes"]
+            for info in info_list:
 
-            for gabox in ghostAreaBoxes:
+                patch_data, ghostAreaBoxes = info["pdata"], info["boxes"]
 
-                # now loop on all particle patchData
-                # keep only parts of the ghost boxes that do
-                # not intersect other patch data interior
+                check_patches = [p for p in patches if p.patch_datas[pd_key] is not patch_data]
 
-                if True:  # if periodic, always true for now
-                    refined_domain_box = hierarchy.refined_domain_box(ilvl)
-                    patches = get_periodic_list(lvl.patches, refined_domain_box)
+                for gabox in ghostAreaBoxes:
 
-                for patch in patches:
+                    if len(check_patches) == 0:
+                        assert len(patches) == 1 # only valid case
+                        check_patches = patches
 
-                    pop_names = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
+                    remaining = boxm.remove(gabox, check_patches[0].box)
 
-                    for pop_name in pop_names:
+                    for patch in check_patches[1:]:
+                        tmp = remaining
+                        remove = []
+                        for i, rem in enumerate(remaining):
+                            if rem * patch.box is not None:
+                                tmp += boxm.remove(rem, patch.box)
+                                remove.append(i)
+                        for rm in remove:
+                            del tmp[rm]
+                        remaining = tmp
 
-                        # if only one patch, all ghosts are level ghosts
-                        if len(patches) == 1 or patch.patch_datas[pop_name] is not patch_data:
+                    if ilvl not in lvl_gaboxes:
+                        lvl_gaboxes[ilvl] = {}
 
-                            keep = boxm.remove(gabox, patch.box)
+                    if pd_key not in lvl_gaboxes[ilvl]:
+                        lvl_gaboxes[ilvl] = {pd_key:[]}
 
-                            if ilvl not in lvl_gaboxes:
-                                lvl_gaboxes[ilvl] = []
-
-                            if len(keep):
-                                lvl_gaboxes[ilvl] += [{"pdata": patch_data, "boxes": keep}]
+                    if len(remaining):
+                        lvl_gaboxes[ilvl][pd_key] += [{"pdata": patch_data, "boxes": remaining}]
 
     return lvl_gaboxes
-

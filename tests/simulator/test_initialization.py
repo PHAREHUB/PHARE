@@ -7,7 +7,7 @@ from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation
-from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
+from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box1D
@@ -39,7 +39,6 @@ class InitializationTest(unittest.TestCase):
             cells=cells,
             dl=dl,
             interp_order=interp_order,
-            max_nbr_levels=len(refinement_boxes)+1 if refinement_boxes is not None else 1,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
                           "options": {"dir": diag_outputs, "mode":"overwrite"}}
@@ -618,9 +617,10 @@ class InitializationTest(unittest.TestCase):
                 for pop_name, patchDatas in particlePatchDatas.items()
             }
 
+        particle_level_ghost_boxes_per_level = level_ghost_boxes(datahier, "particles")
 
-        self.assertTrue(len(level_ghost_boxes(datahier).items()))
-        for ilvl, particle_gaboxes in level_ghost_boxes(datahier).items():
+        self.assertTrue(len(particle_level_ghost_boxes_per_level.items()) > 0)
+        for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
             self.assertTrue(ilvl > 0) # has no level 0
             coarse_particles = domainParticles_for(ilvl - 1)
 
@@ -632,28 +632,28 @@ class InitializationTest(unittest.TestCase):
                 self.assertTrue(coarse_split_particles[k].size() > 0)
                 self.assertTrue(coarse_split_particles[k].size() == particles.size() * sim.refined_particle_nbr)
 
-            for gabox in particle_gaboxes:
-                gabox_patchData = gabox["pdata"]
-                pop_name = gabox_patchData.pop_name + "_particles"
+            for pop_name, gaboxes in particle_gaboxes.items():
+                for gabox in gaboxes:
+                    gabox_patchData = gabox["pdata"]
 
-                for ghostBox in gabox["boxes"]:
-                    part1 = gabox_patchData.dataset.select(ghostBox)
-                    part2 = coarse_split_particles[pop_name].select(ghostBox)
+                    for ghostBox in gabox["boxes"]:
+                        part1 = gabox_patchData.dataset.select(ghostBox)
+                        part2 = coarse_split_particles[pop_name].select(ghostBox)
 
-                    self.assertTrue(part1.size() == part2.size())
+                        self.assertTrue(part1.size() == part2.size())
 
-                    idx1 = np.argsort(part1.iCells + part1.deltas)
-                    idx2 = np.argsort(part2.iCells + part2.deltas)
+                        idx1 = np.argsort(part1.iCells + part1.deltas)
+                        idx2 = np.argsort(part2.iCells + part2.deltas)
 
-                    self.assertTrue(len(idx1) == len(idx2))
+                        self.assertTrue(len(idx1) == len(idx2))
 
-                    np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
+                        np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
 
-                    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
+                        np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
 
-                    np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-                    np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-                    np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
     @data(
        ({"L0": {"B0": Box1D(10, 14)}}),
@@ -683,7 +683,7 @@ class InitializationTest(unittest.TestCase):
         for dim in [1]:
             for interp in [1, 2, 3]:
 
-                b0 = [[10 for i in range(dim)], [20 for i in range(dim)]]
+                b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
                 refinement_boxes = {"L0": {"B0": b0}}
 
                 local_out = f"{out}/dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
@@ -700,8 +700,8 @@ class InitializationTest(unittest.TestCase):
     _no_patch_ghost_on_refined_level_case = (
       {
         "cells": 40,
-        "smallest_patch_size": 40,
-        "largest_patch_size": 40},
+        "smallest_patch_size": 20,
+        "largest_patch_size": 20},
     )
     @data(*_no_patch_ghost_on_refined_level_case)
     def test_no_patch_ghost_on_refined_level_case(self, simInput):
