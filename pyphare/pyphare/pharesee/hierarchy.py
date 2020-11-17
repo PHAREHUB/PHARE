@@ -145,7 +145,7 @@ class PatchLevel:
     def level_range(self):
         name = list(self.patches[0].patch_datas.keys())[0]
         return min([patch.patch_datas[name].x.min() for patch in self.patches]),\
-     max([patch.patch_datas[name].x.max() for patch in self.patches])
+                max([patch.patch_datas[name].x.max() for patch in self.patches])
 
 
 class PatchHierarchy:
