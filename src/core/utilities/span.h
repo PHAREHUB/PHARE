@@ -28,7 +28,7 @@ struct Span
 
 
 template<typename T, typename SIZE = size_t>
-class VectorSpan : public StackVar<std::vector<T>>, public core::Span<T, SIZE>
+class VectorSpan : private StackVar<std::vector<T>>, public core::Span<T, SIZE>
 {
     using Vector = StackVar<std::vector<T>>;
     using Span_  = Span<T, SIZE>;
