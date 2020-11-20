@@ -592,6 +592,61 @@ class InitializationTest(unittest.TestCase):
                     self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
 
 
+    def _domainParticles_for(self, datahier, ilvl):
+        patch0 = datahier.levels()[ilvl].patches[0]
+        pop_names = [key for key in patch0.patch_datas.keys() if key.endswith("particles")]
+        particlePatchDatas = {k:[] for k in pop_names}
+        for patch in datahier.levels()[ilvl].patches:
+            for pop_name, patch_data in patch.patch_datas.items():
+                particlePatchDatas[pop_name].append(patch_data)
+        return { pop_name :
+            aggregate_particles([
+              patchData.dataset.select(patchData.box) for patchData in patchDatas
+            ]) # including patch ghost particles means duplicates
+            for pop_name, patchDatas in particlePatchDatas.items()
+        }
+
+    def _test_domainparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes):
+        print("test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
+
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", cells=30)
+        from pyphare.pharein.global_vars import sim
+        assert sim is not None and len(sim.cells) == dim
+
+        levels = datahier.levels()
+        self.assertTrue(len(levels) > 1)
+
+        for ilvl in range(1, len(levels)):
+            self.assertTrue(ilvl > 0) # skip level 0
+            level = levels[ilvl]
+            coarse_particles = self._domainParticles_for(datahier, ilvl - 1)
+
+            self.assertTrue(all([particles.size() > 0 for k, particles in coarse_particles.items()]))
+
+            coarse_split_particles = {k: particles.split(sim) for k, particles in coarse_particles.items()}
+
+            for k, particles in coarse_particles.items():
+                self.assertTrue(coarse_split_particles[k].size() > 0)
+                self.assertTrue(coarse_split_particles[k].size() == particles.size() * sim.refined_particle_nbr)
+
+            for patch in level.patches:
+                for pop_name in [key for key in patch.patch_datas.keys() if key.endswith("particles")]:
+                    part1 = patch.patch_datas[pop_name].dataset.select(patch.box) # drop ghosts
+                    part2 = coarse_split_particles[pop_name].select(patch.box)
+                    self.assertEqual(part1, part2)
+
+
+    @data(
+       ({"L0": {"B0": Box1D(10, 14)}}),
+       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(15, 35)}}),
+       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+    )
+    def test_domainparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
+        dim = len(refinement_boxes["L0"]["B0"].lower)
+        for interp_order in [1, 2, 3]:
+            self._test_domainparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
+
+
 
 
 
@@ -600,29 +655,15 @@ class InitializationTest(unittest.TestCase):
 
         datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", cells=30)
         from pyphare.pharein.global_vars import sim
-        assert sim is not None
-        assert len(sim.cells) == dim
 
-        def domainParticles_for(ilvl):
-            patch0 = datahier.levels()[ilvl].patches[0]
-            pop_names = [key for key in patch0.patch_datas.keys() if key.endswith("particles")]
-            particlePatchDatas = {k:[] for k in pop_names}
-            for patch in datahier.levels()[ilvl].patches:
-                for pop_name, patch_data in patch.patch_datas.items():
-                    particlePatchDatas[pop_name].append(patch_data)
-            return { pop_name :
-                aggregate_particles([
-                  patchData.dataset.select(patchData.box) for patchData in patchDatas
-                ]) # including patch ghost particles means duplicates
-                for pop_name, patchDatas in particlePatchDatas.items()
-            }
+        assert sim is not None and len(sim.cells) == dim
 
         particle_level_ghost_boxes_per_level = level_ghost_boxes(datahier, "particles")
 
         self.assertTrue(len(particle_level_ghost_boxes_per_level.items()) > 0)
         for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
             self.assertTrue(ilvl > 0) # has no level 0
-            coarse_particles = domainParticles_for(ilvl - 1)
+            coarse_particles = self._domainParticles_for(datahier, ilvl - 1)
 
             self.assertTrue(all([particles.size() > 0 for k, particles in coarse_particles.items()]))
 
@@ -635,25 +676,11 @@ class InitializationTest(unittest.TestCase):
             for pop_name, gaboxes in particle_gaboxes.items():
                 for gabox in gaboxes:
                     gabox_patchData = gabox["pdata"]
-
                     for ghostBox in gabox["boxes"]:
                         part1 = gabox_patchData.dataset.select(ghostBox)
                         part2 = coarse_split_particles[pop_name].select(ghostBox)
+                        self.assertEqual(part1, part2)
 
-                        self.assertTrue(part1.size() == part2.size())
-
-                        idx1 = np.argsort(part1.iCells + part1.deltas)
-                        idx2 = np.argsort(part2.iCells + part2.deltas)
-
-                        self.assertTrue(len(idx1) == len(idx2))
-
-                        np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
-
-                        np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
-
-                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
     @data(
        ({"L0": {"B0": Box1D(10, 14)}}),
