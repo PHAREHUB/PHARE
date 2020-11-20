@@ -91,12 +91,14 @@ public:
     bool needsWrite(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextWrite = nextWrite_[diag.type + diag.quantity];
+        assert(nextWrite < diag.writeTimestamps.size());
         return timeStamp + timeStep > diag.writeTimestamps[nextWrite];
     }
 
     bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextCompute = nextCompute_[diag.type + diag.quantity];
+        assert(nextCompute < diag.computeTimestamps.size());
         return timeStamp + timeStep > diag.computeTimestamps[nextCompute];
     }
 
@@ -129,6 +131,7 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& diagInput
     diagProps.type            = diagInputs["type"].template to<std::string>();
     diagProps.quantity        = diagInputs["quantity"].template to<std::string>();
     diagProps.writeTimestamps = diagInputs["write_timestamps"].template to<std::vector<double>>();
+
     diagProps.computeTimestamps
         = diagInputs["compute_timestamps"].template to<std::vector<double>>();
 

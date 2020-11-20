@@ -1,14 +1,14 @@
 #ifndef PHARE_TEST_LINEAR_COARSEN_H
 #define PHARE_TEST_LINEAR_COARSEN_H
 
-
+#include "amr/data/field/coarsening/field_coarsen_operator.h"
 #include "amr/data/field/coarsening/field_coarsen_index_weight.h"
 #include "core/data/grid/gridlayout.h"
 #include "core/data/grid/gridlayout_impl.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-
+#include <cassert>
 
 using testing::DoubleEq;
 using testing::DoubleNear;
@@ -17,308 +17,333 @@ using testing::Eq;
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-using GridYee1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
-using Field1D     = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
 
-
-/** @brief This structure will contain data for one function to be coarse.
- *  We get the fine and coarse data an the expected after coarse field
- *  for two centering : primal and dual
- */
-struct FieldCoarsenTestData
+struct Files
 {
-    static constexpr int dimension{1};
+    std::ifstream xFine, yFine, zFine;
+    std::ifstream xCoarse, yCoarse, zCoarse;
+    std::ifstream xCoarseAfterCoarsening, yCoarseAfterCoarsening, zCoarseAfterCoarsening;
 
-    std::array<double, dimension> meshSizeCoarse{0.2};
-    std::array<double, dimension> meshSizeFine{0.1};
-
-    std::array<int, 2> coarseIndexesX{{5, 45}};
-    std::array<int, 2> fineIndexesX{18, 28};
-
-
-    Point<double, dimension> coarseOrigin{meshSizeCoarse[dirX] * coarseIndexesX[0]};
-    Point<double, dimension> fineOrigin{meshSizeFine[dirX] * fineIndexesX[0]};
-
-    int ghostWidth{5};
-
-    std::array<std::uint32_t, dimension> nbrCellCoarse{40};
-    int exCoarseNbrCell{40 + ghostWidth * 2};
-    int eyCoarseNbrCell{41 + ghostWidth * 2};
-
-    std::array<std::uint32_t, dimension> nbrCellFine{20};
-    int exFineNbrCell{20 + ghostWidth * 2};
-    int eyFineNbrCell{21 + ghostWidth * 2};
-
-
-    std::shared_ptr<GridYee1DO1> coarseLayout;
-    std::shared_ptr<GridYee1DO1> fineLayout;
-
-    std::shared_ptr<Field1D> exFineValue;
-    std::shared_ptr<Field1D> eyFineValue;
-
-    std::shared_ptr<Field1D> exCoarseValue;
-    std::shared_ptr<Field1D> eyCoarseValue;
-
-    std::shared_ptr<Field1D> expectedExCoarseValue;
-    std::shared_ptr<Field1D> expectedEyCoarseValue;
-
-    HybridQuantity::Scalar exQuantity{HybridQuantity::Scalar::Ex};
-    HybridQuantity::Scalar eyQuantity{HybridQuantity::Scalar::Ey};
-
-    void init()
+    static Files init(std::string em, std::string dimStr)
     {
-        coarseLayout = std::make_shared<GridYee1DO1>(meshSizeCoarse, nbrCellCoarse, coarseOrigin);
-
-
-        exCoarseValue
-            = std::make_shared<Field1D>("Ex", exQuantity, coarseLayout->allocSize(exQuantity));
-
-        expectedExCoarseValue
-            = std::make_shared<Field1D>("Ex", exQuantity, coarseLayout->allocSize(exQuantity));
-
-        eyCoarseValue
-            = std::make_shared<Field1D>("Ey", eyQuantity, coarseLayout->allocSize(eyQuantity));
-
-        expectedEyCoarseValue
-            = std::make_shared<Field1D>("Ey", eyQuantity, coarseLayout->allocSize(eyQuantity));
-
-
-
-
-        fineLayout = std::make_shared<GridYee1DO1>(meshSizeFine, nbrCellFine, fineOrigin);
-
-        exFineValue
-            = std::make_shared<Field1D>("Ex", exQuantity, fineLayout->allocSize(exQuantity));
-
-        eyFineValue
-            = std::make_shared<Field1D>("Ey", eyQuantity, fineLayout->allocSize(eyQuantity));
+        return {std::ifstream{(em + "x_fine_original" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "y_fine_original" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "z_fine_original" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "x_coarse_original" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "y_coarse_original" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "z_coarse_original" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "x_coarse_linear_coarsed_" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "y_coarse_linear_coarsed_" + dimStr + "d.txt").c_str()},
+                std::ifstream{(em + "z_coarse_linear_coarsed_" + dimStr + "d.txt").c_str()}};
     }
-};
 
-
-
-
-struct AFieldCoarsenOperator : public testing::TestWithParam<FieldCoarsenTestData>
-{
-    void SetUp() override { param = GetParam(); }
-    FieldCoarsenTestData param;
-    double absError = 1.e-8;
-};
-
-
-
-
-TEST_P(AFieldCoarsenOperator, doTheExpectedCoarseningForEx)
-{
-    auto& layout = param.coarseLayout;
-
-    auto iStartX = layout->ghostStartIndex(param.exQuantity, Direction::X);
-    auto iEndX   = layout->ghostEndIndex(param.exQuantity, Direction::X);
-
-    auto const& exCoarseValue         = *param.exCoarseValue;
-    auto const& expectedExCoarseValue = *param.expectedExCoarseValue;
-
-
-    for (auto ix = iStartX; ix <= iEndX; ++ix)
+    bool ok() const
     {
-        EXPECT_THAT(exCoarseValue(ix), DoubleNear(expectedExCoarseValue(ix), absError));
-    }
-}
+        bool eofFlags = xFine.eof() || yFine.eof() || zFine.eof() || xCoarse.eof() || yCoarse.eof()
+                        || zCoarse.eof() || xCoarseAfterCoarsening.eof()
+                        || yCoarseAfterCoarsening.eof() || zCoarseAfterCoarsening.eof();
 
-
-
-
-TEST_P(AFieldCoarsenOperator, doTheExpectedCoarseningForEy)
-{
-    auto& layout = param.coarseLayout;
-
-    auto iStartX = layout->ghostStartIndex(param.eyQuantity, Direction::X);
-    auto iEndX   = layout->ghostEndIndex(param.eyQuantity, Direction::X);
-
-    auto const& eyCoarseValue         = *param.eyCoarseValue;
-    auto const& expectedEyCoarseValue = *param.expectedEyCoarseValue;
-
-
-    for (auto ix = iStartX; ix <= iEndX; ++ix)
-    {
-        EXPECT_THAT(eyCoarseValue(ix), DoubleNear(expectedEyCoarseValue(ix), absError));
-    }
-}
-
-
-
-
-std::vector<FieldCoarsenTestData> createParam()
-{
-    std::vector<FieldCoarsenTestData> coarsenData;
-
-    std::ifstream exFine{"dual_fine_original1d.txt"};
-    std::ifstream eyFine{"primal_fine_original1d.txt"};
-
-    std::ifstream exCoarse{"dual_coarse_original1d.txt"};
-    std::ifstream eyCoarse{"primal_coarse_original1d.txt"};
-
-    std::ifstream exCoarseAfterCoarsening{"dual_coarse_linear_coarsed_1d.txt"};
-    std::ifstream eyCoarseAfterCoarsening{"primal_coarse_linear_coarsed_1d.txt"};
-
-
-    auto canContinue = [&exFine, &eyFine, &exCoarse, &eyCoarse, &exCoarseAfterCoarsening,
-                        &eyCoarseAfterCoarsening]() {
-        //
-        bool eofFlags = exFine.eof() || eyFine.eof() || exCoarse.eof() || eyCoarse.eof()
-                        || exCoarseAfterCoarsening.eof() || eyCoarseAfterCoarsening.eof();
-
-        bool badFlags = exFine.bad() || eyFine.bad() || exCoarse.bad() || eyCoarse.bad()
-                        || exCoarseAfterCoarsening.bad() || eyCoarseAfterCoarsening.bad();
+        bool badFlags = xFine.bad() || yFine.bad() || zFine.bad() || xCoarse.bad() || yCoarse.bad()
+                        || zCoarse.bad() || xCoarseAfterCoarsening.bad()
+                        || yCoarseAfterCoarsening.bad() || zCoarseAfterCoarsening.bad();
 
         return !eofFlags && !badFlags;
+    }
+};
+
+template<std::size_t dim>
+struct EMData
+{
+    using Field_t  = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using FieldPtr = std::shared_ptr<Field_t>;
+
+    std::string em_key;
+
+    HybridQuantity::Scalar xQuantity, yQuantity, zQuantity;
+
+    std::array<FieldPtr, 3> fineValues{};
+    std::array<FieldPtr, 3> coarseValues{};
+    std::array<FieldPtr, 3> expectedCoarseValues{};
+
+    static EMData<dim> get(std::string key)
+    {
+        assert(key == "E" or key == "B");
+        if (key == "E")
+            return {"E", HybridQuantity::Scalar::Ex, HybridQuantity::Scalar::Ey,
+                    HybridQuantity::Scalar::Ez};
+        return {"B", HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By,
+                HybridQuantity::Scalar::Bz};
+    }
+};
+
+
+
+/** @brief This structure will contain data for one function to be coarsened.
+ *  We get the fine and coarse data and the expected after coarse field
+ *  for two centering : primal and dual
+ */
+template<std::size_t dimension_>
+struct FieldCoarsenTestData
+{
+    static constexpr auto dimension  = dimension_;
+    static constexpr auto interp     = 1;
+    static constexpr double absError = 1.e-8;
+
+    using GridYee_t = GridLayout<GridLayoutImplYee<dimension, interp>>;
+    using Field_t   = Field<NdArrayVector<dimension>, HybridQuantity::Scalar>;
+
+    EMData<dimension> em;
+
+    std::array<double, dimension> meshSizeCoarse{ConstArray<double, dimension>(0.2)};
+    std::array<double, dimension> meshSizeFine{ConstArray<double, dimension>(0.1)};
+
+    std::array<int, 2> coarseIndexesX{{0, 39}};
+    std::array<int, 2> fineIndexesX{18, 37};
+
+
+    Point<double, dimension> coarseOrigin{
+        ConstArray<double, dimension>(meshSizeCoarse[dirX] * coarseIndexesX[0])};
+    Point<double, dimension> fineOrigin{
+        ConstArray<double, dimension>(meshSizeFine[dirX] * fineIndexesX[0])};
+
+    std::array<std::uint32_t, dimension> nbrCellCoarse{ConstArray<std::uint32_t, dimension>(40)};
+    std::array<std::uint32_t, dimension> nbrCellFine{ConstArray<std::uint32_t, dimension>(20)};
+
+    std::shared_ptr<GridYee_t> coarseLayout{};
+    std::shared_ptr<GridYee_t> fineLayout{};
+
+
+    template<typename GridLayout, typename Quantity>
+    auto make_field(std::string qty_key, GridLayout const& layout, Quantity const& qty)
+    {
+        return std::make_shared<Field_t>(qty_key, qty, layout->allocSize(qty));
+    }
+
+    auto& init()
+    {
+        if constexpr (dimension == 2)
+            assert(nbrCellCoarse[0] == nbrCellCoarse[1]);
+
+        coarseLayout = std::make_shared<GridYee_t>(meshSizeCoarse, nbrCellCoarse, coarseOrigin);
+        fineLayout   = std::make_shared<GridYee_t>(meshSizeFine, nbrCellFine, fineOrigin);
+
+        em.expectedCoarseValues[0] = make_field(em.em_key + "x", coarseLayout, em.xQuantity);
+        em.expectedCoarseValues[1] = make_field(em.em_key + "y", coarseLayout, em.yQuantity);
+        em.expectedCoarseValues[2] = make_field(em.em_key + "z", coarseLayout, em.zQuantity);
+
+        em.coarseValues[0] = make_field(em.em_key + "x", coarseLayout, em.xQuantity);
+        em.coarseValues[1] = make_field(em.em_key + "y", coarseLayout, em.yQuantity);
+        em.coarseValues[2] = make_field(em.em_key + "z", coarseLayout, em.zQuantity);
+
+        em.fineValues[0] = make_field(em.em_key + "x", fineLayout, em.xQuantity);
+        em.fineValues[1] = make_field(em.em_key + "y", fineLayout, em.yQuantity);
+        em.fineValues[2] = make_field(em.em_key + "z", fineLayout, em.zQuantity);
+
+        return *this;
+    }
+};
+
+template<std::size_t dimension>
+void load(FieldCoarsenTestData<dimension>& param, Files& file_data)
+{
+    auto load = [](auto& value, auto const& nCells, auto& file) {
+        if constexpr (dimension == 1)
+        {
+            for (std::uint32_t ix = 0; ix < nCells[0]; ++ix)
+                file >> value(ix);
+        }
+        else if constexpr (dimension == 2)
+        {
+            for (std::uint32_t ix = 0; ix < nCells[0]; ++ix)
+                for (std::uint32_t iy = 0; iy < nCells[1]; ++iy)
+                    file >> value(ix, iy);
+        }
+        else if constexpr (dimension == 3)
+        {
+            for (std::uint32_t ix = 0; ix < nCells[0]; ++ix)
+                for (std::uint32_t iy = 0; iy < nCells[1]; ++iy)
+                    for (std::uint32_t iz = 0; iz < nCells[2]; ++iz)
+                        file >> value(ix, iy, iz);
+        }
     };
 
+    auto& em = param.em;
 
-    while (canContinue())
-    {
-        coarsenData.emplace_back();
+    auto fineXNCells = param.fineLayout->allocSize(em.xQuantity);
+    auto fineYNCells = param.fineLayout->allocSize(em.yQuantity);
+    auto fineZNCells = param.fineLayout->allocSize(em.zQuantity);
 
-        auto& param = coarsenData.back();
+    load(*em.fineValues[0], fineXNCells, file_data.xFine);
+    load(*em.fineValues[1], fineYNCells, file_data.yFine);
+    load(*em.fineValues[2], fineZNCells, file_data.zFine);
 
-        param.init();
+    auto coarseXNCells = param.coarseLayout->allocSize(em.xQuantity);
+    auto coarseYNCells = param.coarseLayout->allocSize(em.yQuantity);
+    auto coarseZNCells = param.coarseLayout->allocSize(em.zQuantity);
 
-        auto& exFineValue = *param.exFineValue;
-        auto& eyFineValue = *param.eyFineValue;
+    load(*em.coarseValues[0], coarseXNCells, file_data.xCoarse);
+    load(*em.coarseValues[1], coarseYNCells, file_data.yCoarse);
+    load(*em.coarseValues[2], coarseZNCells, file_data.zCoarse);
 
-        auto& exCoarseValue = *param.exCoarseValue;
-        auto& eyCoarseValue = *param.eyCoarseValue;
+    load(*em.expectedCoarseValues[0], coarseXNCells, file_data.xCoarseAfterCoarsening);
+    load(*em.expectedCoarseValues[1], coarseYNCells, file_data.yCoarseAfterCoarsening);
+    load(*em.expectedCoarseValues[2], coarseZNCells, file_data.zCoarseAfterCoarsening);
 
-        auto& expectedExCoarseValue = *param.expectedExCoarseValue;
-        auto& expectedEyCoarseValue = *param.expectedEyCoarseValue;
+    // finally apply the coarsening
+    SAMRAI::tbox::Dimension dim{dimension};
 
+    // Here we only need the lower index so we don't have to set the upper of this boxes
+    SAMRAI::hier::Box fineBoxX{dim}, fineBoxY{dim}, fineBoxZ{dim};
+    SAMRAI::hier::Box coarseBoxX{dim}, coarseBoxY{dim}, coarseBoxZ{dim};
 
-        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.exFineNbrCell); ++ix)
+    auto centeringX = param.coarseLayout->centering(em.xQuantity);
+    auto centeringY = param.coarseLayout->centering(em.yQuantity);
+    auto centeringZ = param.coarseLayout->centering(em.zQuantity);
+
+    auto setLower = [](auto& hierBox, auto& layout, auto& index, auto& centering) {
+        hierBox.setLower(dirX, index - static_cast<int>(layout->nbrGhosts(centering[dirX])));
+
+        if constexpr (dimension > 1)
+            hierBox.setLower(dirY, index - static_cast<int>(layout->nbrGhosts(centering[dirY])));
+
+        if constexpr (dimension > 2)
+            hierBox.setLower(dirZ, index - static_cast<int>(layout->nbrGhosts(centering[dirZ])));
+    };
+
+    setLower(fineBoxX, param.fineLayout, param.fineIndexesX[0], centeringX);
+    setLower(fineBoxY, param.fineLayout, param.fineIndexesX[0], centeringY);
+    setLower(fineBoxZ, param.fineLayout, param.fineIndexesX[0], centeringZ);
+
+    setLower(coarseBoxX, param.coarseLayout, param.coarseIndexesX[0], centeringX);
+    setLower(coarseBoxY, param.coarseLayout, param.coarseIndexesX[0], centeringY);
+    setLower(coarseBoxZ, param.coarseLayout, param.coarseIndexesX[0], centeringZ);
+
+    SAMRAI::hier::IntVector ratio{dim, 2};
+
+    auto coarsen = [&em, &ratio](auto idx, auto& fineBox, auto& coarseBox, auto& centering) {
+        FieldCoarsener<dimension> coarseIt{centering, fineBox, coarseBox, ratio};
+
+        auto primals(ConstArray<int, dimension>());
+        for (std::size_t i = 0; i < dimension; i++)
+            primals[i] = centering[i] == QtyCentering::primal;
+
+        if constexpr (dimension == 1)
         {
-            double value;
-            exFine >> value;
-            exFineValue(ix) = value;
+            for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
+                coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
+                         Point<int, dimension>{coarseX});
         }
-
-
-        // did we encounter error during reading (including reaching end of file)
-        if (!canContinue())
+        else if constexpr (dimension == 2)
         {
-            coarsenData.pop_back();
-            break;
+            for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
+                for (int coarseY = 10; coarseY < 15 + primals[1]; ++coarseY)
+                    coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
+                             Point<int, dimension>{coarseX, coarseY});
         }
-
-        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.eyFineNbrCell); ++ix)
+        else if constexpr (dimension == 3)
         {
-            double value;
-            eyFine >> value;
-            eyFineValue(ix) = value;
+            for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
+                for (int coarseY = 10; coarseY < 15 + primals[1]; ++coarseY)
+                    for (int coarseZ = 10; coarseZ < 15 + primals[2]; ++coarseZ)
+                        coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
+                                 Point<int, dimension>{coarseX, coarseY, coarseZ});
         }
+    };
 
-        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.exCoarseNbrCell); ++ix)
-        {
-            double value;
-
-            exCoarse >> value;
-            exCoarseValue(ix) = value;
-
-            exCoarseAfterCoarsening >> value;
-            expectedExCoarseValue(ix) = value;
-        }
-        for (std::uint32_t ix = 0; ix < static_cast<std::uint32_t>(param.eyCoarseNbrCell); ++ix)
-        {
-            double value;
-
-            eyCoarse >> value;
-            eyCoarseValue(ix) = value;
-
-            eyCoarseAfterCoarsening >> value;
-            expectedEyCoarseValue(ix) = value;
-        }
+    coarsen(0, fineBoxX, coarseBoxX, centeringX);
+    coarsen(1, fineBoxY, coarseBoxY, centeringY);
+    coarsen(2, fineBoxZ, coarseBoxZ, centeringZ);
+}
 
 
+template<std::size_t dimension>
+std::vector<FieldCoarsenTestData<dimension>> createParam()
+{
+    std::vector<FieldCoarsenTestData<dimension>> coarsenData;
 
-        // finally apply the coarsening
+    std::string const dimStr = std::to_string(dimension);
 
-        constexpr int dimension{1};
-        SAMRAI::tbox::Dimension dim{dimension};
+    std::array<std::pair<std::string, Files>, 2> files{
+        {{"E", Files::init("E", dimStr)}, {"B", Files::init("B", dimStr)}}};
 
-
-        // Here we only need the lower index
-        // so we don't have to set the upper
-        // of this boxes
-        SAMRAI::hier::Box fineBoxEx{dim};
-        SAMRAI::hier::Box coarseBoxEx{dim};
-
-        SAMRAI::hier::Box fineBoxEy{dim};
-        SAMRAI::hier::Box coarseBoxEy{dim};
-
-
-        auto centeringEx = param.coarseLayout->centering(param.exQuantity);
-
-        auto centeringEy = param.coarseLayout->centering(param.eyQuantity);
-
-
-        fineBoxEx.setLower(dirX,
-                           param.fineIndexesX[0]
-                               - static_cast<int>(param.fineLayout->nbrGhosts(centeringEx[dirX])));
-        coarseBoxEx.setLower(
-            dirX, param.coarseIndexesX[0]
-                      - static_cast<int>(param.coarseLayout->nbrGhosts(centeringEx[dirX])));
-
-
-
-        fineBoxEy.setLower(dirX,
-                           param.fineIndexesX[0]
-                               - static_cast<int>(param.fineLayout->nbrGhosts(centeringEy[dirX])));
-        coarseBoxEy.setLower(
-            dirX, param.coarseIndexesX[0]
-                      - static_cast<int>(param.coarseLayout->nbrGhosts(centeringEy[dirX])));
-
-
-        SAMRAI::hier::IntVector ratio{dim, 2};
-
-
-        FieldCoarsener<dimension> coarseItEx{centeringEx, fineBoxEx, coarseBoxEx, ratio};
-
-        FieldCoarsener<dimension> coarseItEy{centeringEy, fineBoxEy, coarseBoxEy, ratio};
-
-
-
-        std::vector<int> coarseIndexesEx;
-        std::vector<int> coarseIndexesEy;
-
-        // see python value for coarseIndex
-        for (int index = 10; index < 15; ++index)
-        {
-            coarseIndexesEx.push_back(index);
-        }
-        for (int index = 10; index < 16; ++index)
-        {
-            coarseIndexesEy.push_back(index);
-        }
-
-
-        for (auto coarseIndex : coarseIndexesEx)
-        {
-            coarseItEx(*param.exFineValue, *param.exCoarseValue,
-                       Point<int, dimension>{coarseIndex});
-        }
-        for (auto coarseIndex : coarseIndexesEy)
-        {
-            coarseItEy(*param.eyFineValue, *param.eyCoarseValue,
-                       Point<int, dimension>{coarseIndex});
-        }
-    }
+    for (auto& [em_key, file_data] : files)
+        while (file_data.ok())
+            load(coarsenData
+                     .emplace_back(FieldCoarsenTestData<dimension>{EMData<dimension>::get(em_key)})
+                     .init(),
+                 file_data);
 
     return coarsenData;
 }
 
 
+template<typename FieldCoarsenTestDataParam>
+struct FieldCoarsenOperatorTest : public ::testing::Test
+{
+    static constexpr auto dimension  = FieldCoarsenTestDataParam::dimension;
+    static constexpr double absError = 1.e-8;
+};
 
-INSTANTIATE_TEST_SUITE_P(TestWithMultipleFunctionThat, AFieldCoarsenOperator,
-                         testing::ValuesIn(createParam()));
+using FieldCoarsenOperators
+    = testing::Types<FieldCoarsenTestData<1>,
+                     FieldCoarsenTestData<2> /* , FieldCoarsenTestData<3>*/>;
+TYPED_TEST_SUITE(FieldCoarsenOperatorTest, FieldCoarsenOperators);
 
 
+TYPED_TEST(FieldCoarsenOperatorTest, doTheExpectedCoarseningForEB)
+{
+    using FieldCoarsenTestData_t = TypeParam;
+    constexpr auto dim           = FieldCoarsenTestData_t::dimension;
+    constexpr auto absError      = FieldCoarsenTestData_t::absError;
+
+    auto params = createParam<dim>();
+    ASSERT_TRUE(params.size() > 0);
+
+    auto check = [](auto& em, auto& layout, auto idx, auto& qty) {
+        auto const& coarseValue         = *em.coarseValues[idx];
+        auto const& expectedCoarseValue = *em.expectedCoarseValues[idx];
+
+        auto iStartX = layout->ghostStartIndex(qty, Direction::X);
+        auto iEndX   = layout->ghostEndIndex(qty, Direction::X);
+
+        if constexpr (dim == 1)
+        {
+            for (auto ix = iStartX; ix <= iEndX; ++ix)
+                EXPECT_THAT(coarseValue(ix), DoubleNear(expectedCoarseValue(ix), absError));
+        }
+        else
+        {
+            auto iStartY = layout->ghostStartIndex(qty, Direction::Y);
+            auto iEndY   = layout->ghostEndIndex(qty, Direction::Y);
+
+            if constexpr (dim == 2)
+            {
+                for (auto ix = iStartX; ix <= iEndX; ++ix)
+                    for (auto iy = iStartY; iy <= iEndY; ++iy)
+                        EXPECT_THAT(coarseValue(ix, iy),
+                                    DoubleNear(expectedCoarseValue(ix, iy), absError));
+            }
+            else if constexpr (dim == 3)
+            {
+                throw std::runtime_error("Unsupported dimension"); // uncomment/test below
+                // auto iStartZ = layout->ghostStartIndex(qty, Direction::Z);
+                // auto iEndZ   = layout->ghostEndIndex(qty, Direction::Z);
+
+                // for (auto ix = iStartX; ix <= iEndX; ++ix)
+                //     for (auto iy = iStartY; iy <= iEndY; ++iy)
+                //         for (auto iz = iStartZ; iz <= iEndZ; ++iz)
+                //             EXPECT_THAT(coarseValue(ix, iy, iz),
+                //                         DoubleNear(expectedCoarseValue(ix, iy, iz), absError));
+            }
+        }
+    };
+
+    for (auto& param : params)
+    {
+        check(param.em, param.coarseLayout, 0, param.em.xQuantity);
+        check(param.em, param.coarseLayout, 1, param.em.yQuantity);
+        check(param.em, param.coarseLayout, 2, param.em.zQuantity);
+    }
+}
 
 #endif

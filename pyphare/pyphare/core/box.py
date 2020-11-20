@@ -104,6 +104,10 @@ def refine(box, ratio):
     return Box(box.lower * ratio, box.upper * ratio + ratio - 1)
 
 
+def coarsen(box, ratio):
+    return Box(box.lower / ratio, ((box.upper + 1) / ratio) - 1)
+
+
 def shift(box, offset):
     return Box(box.lower + offset, box.upper + offset)
 

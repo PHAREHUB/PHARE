@@ -2,159 +2,190 @@
 # This scripts aims at generate some signal on two levels (cos, sin, other functions)
 # and then to perform a coarsening on a given region
 
-
-import numpy as np
-import sys
 import os
+import sys
+import numpy as np
 
-def sin(x,domainSize):
-    return np.sin((2*np.pi/domainSize)*x);
+from pyphare.core.box import Box
+import pyphare.core.box as boxm
+from pyphare.core import gridlayout
+from pyphare.core.gridlayout import directions
 
-def cos(x, domainSize):
-    return np.cos((2*np.pi/domainSize)*x)
+def exec_fn(xyz, fn):
+    ndim = len(xyz)
 
-functionList = [cos,sin]
+    if ndim == 2:
+        xx, yy = np.meshgrid(*xyz, indexing="ij")
+        return fn(0, xx) * fn(1, yy)
 
-def test_coarsen_field_1d_yee_linear(path):
+    if ndim == 3:
+        xx, yy, zz = np.meshgrid(*xyz, indexing="ij")
+        return fn(0, xx) * fn(1, yy) * fn(2, zz)
 
-    nbrCellXCoarse = 40
-    # dualAllocSizeCoarse = 42
-    # primalAllocSizeCoarse = 43
-    meshSizeCoarse = 0.2
-
-    nbrCellXFine = 20
-    # dualAllocSizeFine = 22
-    # primalAllocSizeFine = 23
-    meshSizeFine = 0.1
-
-
-    domainSize = nbrCellXCoarse * meshSizeCoarse
-
-    coarseXStartIndex = 5
-    coarseXEndIndex = coarseXStartIndex + nbrCellXCoarse
-
-    # in coarse index space, the fine path start at 9
-    # the ratio is two, so the fine path start index
-    # in fine index space is 18
-
-    fineXStartIndex  =  18
-    fineXEndIndex = fineXStartIndex + nbrCellXFine
-
-    ghostWidth = 5
-    ratio = 2
-
-    #
-    # for dual it is: extend the box of ghostWidth element in left and right
-    # for primal it is : extend the box of ghostWidth element in left and right, and add 1 to the right
-    #
-    x_dual_fine = meshSizeFine * np.arange(fineXStartIndex-ghostWidth, fineXEndIndex+ghostWidth) + meshSizeFine/2.
-    x_primal_fine = meshSizeFine * np.arange(fineXStartIndex-ghostWidth, fineXEndIndex+ghostWidth+1  )
-
-    x_dual_coarse = meshSizeCoarse * np.arange(coarseXStartIndex-ghostWidth, coarseXEndIndex+ghostWidth  ) + meshSizeCoarse/2.
-    x_primal_coarse = meshSizeCoarse * np.arange(coarseXStartIndex-ghostWidth, coarseXEndIndex+ghostWidth + 1  )
+    return fn(0, xyz[0])
 
 
-    isFirstFunction = True
-
-    value_dual_fine_Data = []
-    value_primal_fine_Data = []
-
-    value_dual_coarse_Data = []
-    value_primal_coarse_Data = []
+def sin(xyz, L):
+    return exec_fn(xyz, lambda i, v: np.sin((2 * np.pi / L[i]) * v))
 
 
-    coarsed_dual_corse_data = []
-    coarsed_primal_coarse_data = []
-
-    for function in functionList:
-        value_dual_fine = function(x_dual_fine,domainSize)
-        value_primal_fine = function(x_primal_fine,domainSize)
-
-        value_dual_coarse = function(x_dual_coarse,domainSize)
-        value_primal_coarse = function(x_primal_coarse,domainSize)
-
-        value_dual_after_coarse = np.copy(value_dual_coarse)
-        value_primal_after_coarse = np.copy(value_primal_coarse)
-
-        # let's set an arbitrary portion of the overlap
-        coarseIndexDual = np.arange(10, 15 )
-        coarseIndexPrimal = np.arange(10,16)
+def cos(xyz, L):
+    return exec_fn(xyz, lambda i, v: np.cos((2 * np.pi / L[i]) * v))
 
 
-        for index in coarseIndexDual:
-            # coarse index to fine index
-            fineIndex = index*ratio
-
-            fineIndex -= (fineXStartIndex - ghostWidth) # AMRToLocal
-
-            coarseLocalIndex = index - (coarseXStartIndex - ghostWidth)
-
-            value_dual_after_coarse[coarseLocalIndex] = value_dual_fine[fineIndex] * 0.5 \
-                                                      + value_dual_fine[fineIndex+1] * 0.5
-
-        for index in coarseIndexPrimal:
-            # coarse index to fine index
-            fineIndex = index*ratio
-
-            fineIndex -= (fineXStartIndex - ghostWidth) # AMRToLocal
-            coarseLocalIndex = index - (coarseXStartIndex - ghostWidth)
-
-            value_primal_after_coarse[coarseLocalIndex] = value_primal_fine[fineIndex-1] * 0.25 \
-                                                          + value_primal_fine[fineIndex] * 0.5 \
-                                                          + value_primal_fine[ fineIndex+1 ] * 0.25
+functionList = [cos, sin]
+ratio = 2
 
 
-        if (isFirstFunction):
-            value_dual_fine_Data = np.copy(value_dual_fine)
-            value_primal_fine_Data = np.copy(value_primal_fine)
+def dump(ndim, path, quantity):
 
-            value_dual_coarse_Data =  np.copy(value_dual_coarse)
-            value_primal_coarse_Data =  np.copy(value_primal_coarse)
+    origin = [0] * ndim
 
-            coarsed_dual_corse_data = np.copy(value_dual_after_coarse)
-            coarsed_primal_coarse_data = np.copy(value_primal_after_coarse)
+    coarseLayout = gridlayout.GridLayout(
+        Box([0] * ndim, [39] * ndim), origin=origin, dl=[0.2] * ndim
+    )
+    fineLayout = gridlayout.GridLayout(
+        Box([18] * ndim, [37] * ndim), origin=origin, dl=[0.1] * ndim
+    )
 
-            isFirstFunction = False
+    domainSize = coarseLayout.box.shape() * coarseLayout.dl
 
+    coarseCoords, fineCoords, is_primal = [], [], []
+
+    for direction in directions[:ndim]:
+        coarseCoords += [coarseLayout.yeeCoordsFor(quantity, direction)]
+        fineCoords += [fineLayout.yeeCoordsFor(quantity, direction)]
+        is_primal += [gridlayout.yee_element_is_primal(quantity, direction)]
+
+    lower = [10] * ndim
+    upper = [15 + primal for primal in is_primal]
+    coarseBox = Box(lower, np.asarray(upper) - 1)
+
+    for fn_idx, function in enumerate(functionList):
+        fine = function(fineCoords, domainSize)
+        coarse = function(coarseCoords, domainSize)
+        afterCoarse = np.copy(coarse)
+
+        coarsen(quantity, coarseLayout, fineLayout, coarseBox, fine, afterCoarse)
+
+        if fn_idx == 0:
+            fineData = np.copy(fine)
+            coarseData = np.copy(coarse)
+            afterCoarseData = np.copy(afterCoarse)
         else:
-            value_dual_fine_Data = np.vstack((value_dual_fine_Data,value_dual_fine))
-            value_primal_fine_Data = np.vstack((value_primal_fine_Data,value_primal_fine))
+            fineData = np.vstack((fineData, fine))
+            coarseData = np.vstack((coarseData, coarse))
+            afterCoarseData = np.vstack((afterCoarseData, afterCoarse))
 
-            value_dual_coarse_Data =  np.vstack((value_dual_coarse_Data,value_dual_coarse))
-            value_primal_coarse_Data =  np.vstack((value_primal_coarse_Data,value_primal_coarse))
+    file_datas = {
+        f"{quantity}_fine_original{ndim}d.txt": fineData,
+        f"{quantity}_coarse_original{ndim}d.txt": coarseData,
+        f"{quantity}_coarse_linear_coarsed_{ndim}d.txt": afterCoarseData,
+    }
 
-            coarsed_dual_corse_data = np.vstack((coarsed_dual_corse_data, value_dual_after_coarse))
-            coarsed_primal_coarse_data = np.vstack((coarsed_primal_coarse_data, value_primal_after_coarse))
+    for filename, data in file_datas.items():
+        np.savetxt(os.path.join(path, filename), data, delimiter=" ")
 
-
-    filename_dual_fine = "dual_fine_original1d.txt"
-    filename_primal_fine = "primal_fine_original1d.txt"
-
-    filename_dual_coarse = "dual_coarse_original1d.txt"
-    filename_primal_coarse = "primal_coarse_original1d.txt"
-
-    filename_dual_coarse_coarsed = "dual_coarse_linear_coarsed_1d.txt"
-    filename_primal_coarse_coarsed = "primal_coarse_linear_coarsed_1d.txt"
-
-
-    np.savetxt(os.path.join(path, filename_dual_fine),value_dual_fine_Data, delimiter=" " )
-    np.savetxt(os.path.join(path, filename_primal_fine),value_primal_fine_Data, delimiter=" " )
-
-    np.savetxt(os.path.join(path, filename_dual_coarse),value_dual_coarse_Data, delimiter=" " )
-    np.savetxt(os.path.join(path, filename_primal_coarse),value_primal_coarse_Data, delimiter=" " )
-
-    np.savetxt(os.path.join(path, filename_dual_coarse_coarsed), coarsed_dual_corse_data, delimiter=" ");
-    np.savetxt(os.path.join(path, filename_primal_coarse_coarsed), coarsed_primal_coarse_data, delimiter=" ")
 
 
 def main(path="./"):
 
     if len(sys.argv) > 1:
-        path=sys.argv[1]
+        path = sys.argv[1]
 
-    test_coarsen_field_1d_yee_linear(path)
+    for ndim in [1, 2]:
+        for EM in ["E", "B"]:
+            for qty in ["x", "y", "z"]:
+                dump(ndim, path, EM + qty)
 
 
-if __name__ == '__main__':
+
+def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
+    ndim = coarseLayout.box.dim()
+    ratio = 2
+
+    nGhosts = coarseLayout.nbrGhostFor(qty)
+    coarseStartIndex = coarseLayout.physicalStartIndices(qty)
+    fineOffset = fineLayout.box.lower - boxm.refine(coarseLayout.box, 2).lower
+
+    is_primal = []
+    for direction in directions[:ndim]:
+        is_primal += [gridlayout.yee_element_is_primal(qty, direction)]
+
+    def indices(dim):
+        return np.arange(coarseBox.lower[dim], coarseBox.upper[dim] + 1)
+
+    def fineLocal(index, dim):
+        fineIndex = index * ratio  # coarse index to fine index
+        return fineLayout.AMRIndexToLocal(dim, fineIndex)
+
+    def coarseLocal(index, dim):
+        return coarseLayout.AMRIndexToLocal(dim, index)
+
+    if ndim == 1:
+        for index in indices(0):
+            fineIndex = fineLocal(index, 0)
+            coarseLocalIndex = coarseLocal(index, 0)
+            if is_primal[0]:
+                coarseData[coarseLocalIndex] = (
+                    fineData[fineIndex - 1] * .25 + fineData[fineIndex] * .5 + fineData[fineIndex + 1] * .25
+                )
+            else:
+                coarseData[coarseLocalIndex] = (
+                    fineData[fineIndex] * .5 + fineData[fineIndex + 1] * .5
+                )
+
+    if ndim == 2:
+        for indexX in indices(0):
+            fineIndexX = fineLocal(indexX, 0)
+            coarseLocalIndexX = coarseLocal(indexX, 0)
+
+            for indexY in indices(1):
+                fineIndexY = fineLocal(indexY, 1)
+                coarseLocalIndexY = coarseLocal(indexY, 1)
+                left, middle, right = 0, 0, 0
+                if all(is_primal):
+                    left += fineData[fineIndexX - 1][fineIndexY - 1]  * .25
+                    left += fineData[fineIndexX - 1][fineIndexY]      * .5
+                    left += fineData[fineIndexX - 1][fineIndexY + 1]  * .25
+                    middle += fineData[fineIndexX][fineIndexY - 1]    * .25
+                    middle += fineData[fineIndexX][fineIndexY]        * .5
+                    middle += fineData[fineIndexX][fineIndexY + 1]    * .25
+                    right += fineData[fineIndexX + 1][fineIndexY - 1] * .25
+                    right += fineData[fineIndexX + 1][fineIndexY]     * .5
+                    right += fineData[fineIndexX + 1][fineIndexY + 1] * .25
+                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
+                        left * .25 + middle * .5 + right * .25
+                    )
+
+                if is_primal[0] and not is_primal[1]:
+                    left += fineData[fineIndexX - 1][fineIndexY]      * .5
+                    left += fineData[fineIndexX - 1][fineIndexY + 1]  * .5
+                    middle += fineData[fineIndexX][fineIndexY]        * .5
+                    middle += fineData[fineIndexX][fineIndexY + 1]    * .5
+                    right += fineData[fineIndexX + 1][fineIndexY]     * .5
+                    right += fineData[fineIndexX + 1][fineIndexY + 1] * .5
+                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
+                        left * .25 + middle * .5 + right * .25
+                    )
+
+                if not is_primal[0] and is_primal[1]:
+                    left += fineData[fineIndexX][fineIndexY - 1]      * .25
+                    left += fineData[fineIndexX][fineIndexY]          * .5
+                    left += fineData[fineIndexX][fineIndexY + 1]      * .25
+                    right += fineData[fineIndexX + 1][fineIndexY - 1] * .25
+                    right += fineData[fineIndexX + 1][fineIndexY]     * .5
+                    right += fineData[fineIndexX + 1][fineIndexY + 1] * .25
+                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = (left * .5 + right * .5)
+
+                if not any(is_primal):
+                    left += fineData[fineIndexX][fineIndexY]          * .5
+                    left += fineData[fineIndexX][fineIndexY + 1]      * .5
+                    right += fineData[fineIndexX + 1][fineIndexY]     * .5
+                    right += fineData[fineIndexX + 1][fineIndexY + 1] * .5
+                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = (left * .5 + right * .5)
+
+
+
+if __name__ == "__main__":
     main()
-
