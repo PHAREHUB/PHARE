@@ -630,26 +630,10 @@ class InitializationTest(unittest.TestCase):
                 self.assertTrue(coarse_split_particles[k].size() == particles.size() * sim.refined_particle_nbr)
 
             for patch in level.patches:
-                pop_names = [key for key in patch.patch_datas.keys() if key.endswith("particles")]
-                assert len(pop_names) == 1
-                pop_name = pop_names[0]
-                part1 = patch.patch_datas[pop_name].dataset.select(patch.box) # drop ghosts
-                part2 = coarse_split_particles[pop_name].select(patch.box)
-
-                self.assertTrue(part1.size() == part2.size())
-
-                idx1 = np.argsort(part1.iCells + part1.deltas)
-                idx2 = np.argsort(part2.iCells + part2.deltas)
-
-                self.assertTrue(len(idx1) == len(idx2))
-
-                np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
-
-                np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
-
-                np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-                np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-                np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+                for pop_name in [key for key in patch.patch_datas.keys() if key.endswith("particles")]:
+                    part1 = patch.patch_datas[pop_name].dataset.select(patch.box) # drop ghosts
+                    part2 = coarse_split_particles[pop_name].select(patch.box)
+                    self.assertEqual(part1, part2)
 
 
     @data(
@@ -692,25 +676,11 @@ class InitializationTest(unittest.TestCase):
             for pop_name, gaboxes in particle_gaboxes.items():
                 for gabox in gaboxes:
                     gabox_patchData = gabox["pdata"]
-
                     for ghostBox in gabox["boxes"]:
                         part1 = gabox_patchData.dataset.select(ghostBox)
                         part2 = coarse_split_particles[pop_name].select(ghostBox)
+                        self.assertEqual(part1, part2)
 
-                        self.assertTrue(part1.size() == part2.size())
-
-                        idx1 = np.argsort(part1.iCells + part1.deltas)
-                        idx2 = np.argsort(part2.iCells + part2.deltas)
-
-                        self.assertTrue(len(idx1) == len(idx2))
-
-                        np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
-
-                        np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
-
-                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
     @data(
        ({"L0": {"B0": Box1D(10, 14)}}),

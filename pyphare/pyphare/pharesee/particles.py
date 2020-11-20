@@ -51,6 +51,17 @@ class Particles:
     def size(self):
           return len(self.weights)
 
+
+    def __eq__(self, that):
+        if isinstance(that, Particles):
+            try:
+                all_assert(self, that)
+                return True
+            except AssertionError as ex:
+                return False
+        return False
+
+
     def select(self, box, box_type="cell"):
         """
         select particles from the given box
@@ -87,6 +98,24 @@ class Particles:
           v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3),
           dl = self.dl/2
         )
+
+
+def all_assert(part1, part2):
+    np.testing.assert_equal(part1.size(), part2.size())
+
+    idx1 = np.argsort(part1.iCells + part1.deltas)
+    idx2 = np.argsort(part2.iCells + part2.deltas)
+
+    np.testing.assert_equal(len(idx1), len(idx2))
+
+    np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
+
+    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
+
+    np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
+    np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
+    np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+
 
 
 def aggregate(particles_in):
