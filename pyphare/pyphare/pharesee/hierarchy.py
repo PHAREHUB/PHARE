@@ -69,7 +69,7 @@ class FieldData(PatchData):
                 assert len(centerings) == self.dim
             else:
                 if self.dim != 1:
-                    raise ValeuError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
+                    raise ValueError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
                 centerings = [kwargs["centering"]]
         else:
             ValueError("centering not specified and cannot be inferred from field name")
@@ -254,10 +254,12 @@ class PatchHierarchy:
             ax.set_xlim(kwargs["xlim"])
         if "ylim" in kwargs:
             ax.set_ylim(kwargs["ylim"])
-        ax.legend()
+
+        if kwargs.get("legend", None) is not None:
+            ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(filename)
+            fig.savefig(kwargs["filename"])
 
 
     def dist_plot(self, **kwargs):

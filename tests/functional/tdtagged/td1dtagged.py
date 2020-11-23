@@ -35,10 +35,10 @@ def config():
     Simulation(
         smallest_patch_size=10,
         largest_patch_size=20,
-        time_step_nbr=200,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=2.5,             # simulation final time (not specified if time_step and time_step_nbr provided)
+        time_step_nbr=100,        # number of time steps (not specified if time_step and final_time provided)
+        final_time=25,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
-        cells=80,                # integer or tuple length == dimension
+        cells=500,                # integer or tuple length == dimension
         dl=1,                  # mesh size of the root level, float or tuple
         max_nbr_levels=3,          # (default=1) max nbr of levels in the AMR hierarchy
         nesting_buffer=2,
@@ -111,7 +111,7 @@ def config():
 
     MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "init": {"seed": 1337}}
+        protons={"charge": 1, "density": density, **vvv}
     )
 
     ElectronModel(closure="isothermal", Te=0.12)
@@ -120,7 +120,7 @@ def config():
 
     sim = ph.global_vars.sim
 
-    timestamps = np.arange(0, sim.final_time +sim.time_step, 5*sim.time_step)
+    timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
 
 
 
