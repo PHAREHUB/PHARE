@@ -10,7 +10,10 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-latest]
 
     steps:
     - name: Cache
@@ -28,8 +31,12 @@ jobs:
     - uses: actions/setup-python@v2
 
     - name: Install openmpi
-      run: sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
-
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
+        else
+          brew install open-mpi hdf5-mpi ccache
+        fi
     - name: Install python deps
       run: |
         python -m pip install --upgrade pip
@@ -52,5 +59,7 @@ jobs:
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
       shell: bash
       run: ctest -C $BUILD_TYPE
