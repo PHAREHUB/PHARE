@@ -1,0 +1,56 @@
+name: CMake
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Debug
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Cache
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
+        restore-keys: ${{ runner.os }}-ccache-
+
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - uses: actions/setup-python@v2
+
+    - name: Install openmpi
+      run: sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
+
+    - name: Install python deps
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE
+
+    - name: Test
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: ctest -C $BUILD_TYPE
