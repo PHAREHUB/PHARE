@@ -428,7 +428,7 @@ class InitializationTest(unittest.TestCase):
         plt.legend()
         plt.savefig("noise_nppc_minus_theory_interp_{}.png".format(interp_order))
         plt.close("all")
-        self.assertGreater(2e-2, noiseMinusTheory[1:].mean())
+        self.assertGreater(3e-2, noiseMinusTheory[1:].mean())
 
 
 
