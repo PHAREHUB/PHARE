@@ -37,6 +37,8 @@ jobs:
           sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
         else
           brew install open-mpi hdf5-mpi ccache
+          mkdir -p ~/.ccache
+          ccache --set-config=cache_dir=~/.ccache
         fi
     - name: Install python deps
       run: |
