@@ -296,7 +296,24 @@ namespace solver
                 }
             }
 
-            messenger.registerLevel(hierarchy, levelNumber);
+            if (oldLevel != nullptr)
+            {
+                // regriding the current level has broken schedules for which
+                // this level is the source or destination
+                // we therefore need to rebuild them
+                auto finestLvlNbr = hierarchy->getFinestLevelNumber();
+                auto nextFiner    = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
+
+                for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
+                {
+                    messenger.registerLevel(hierarchy, ilvl);
+                }
+            }
+            else
+            {
+                // we're not regriding, just making a new level
+                messenger.registerLevel(hierarchy, levelNumber);
+            }
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
@@ -397,7 +414,7 @@ namespace solver
             }
 
 
-            fromCoarser.prepareStep(model, *level);
+            fromCoarser.prepareStep(model, *level, currentTime);
 
 
             // we skip first/last as that's done via regular diag dump mechanism

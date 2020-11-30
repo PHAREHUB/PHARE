@@ -439,13 +439,16 @@ namespace amr
          * at its ghost nodes, this level will have its model EM field  and current at t=n+1 and
          * thanks to this methods, the t=n field will be in the messenger.
          */
-        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                         double currentTime) override
         {
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, hybridModel.state.electromag, hybridModel.state.J, EM_old_, Jold_);
+                resourcesManager_->setTime(EM_old_, *patch, currentTime);
+                resourcesManager_->setTime(Jold_, *patch, currentTime);
 
                 auto& EM = hybridModel.state.electromag;
                 auto& J  = hybridModel.state.J;

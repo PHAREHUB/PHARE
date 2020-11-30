@@ -519,7 +519,7 @@ void AfullHybridBasicHierarchy<dimension, nbRefinePart>::fillsRefinedLevelFieldG
 
 
     // this prepareStep copies the current model EM into messenger EM
-    messenger->prepareStep(*hybridModel, *level0);
+    messenger->prepareStep(*hybridModel, *level0, 0);
 
 
     // here we set the level 0 at t=1, this simulates the advanceLevel
