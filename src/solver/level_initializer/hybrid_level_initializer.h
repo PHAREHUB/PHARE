@@ -69,7 +69,7 @@ namespace solver
                 else
                 {
                     messenger.initLevel(model, level, initDataTime);
-                    messenger.prepareStep(model, level);
+                    messenger.prepareStep(model, level, initDataTime);
                 }
             }
 
