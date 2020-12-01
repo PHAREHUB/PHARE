@@ -270,7 +270,7 @@ namespace core
         auto hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index,
                              ComponentTag) const
         {
-            auto const nu = 0.001; // TODO : nu should comme from input file
+            auto const nu = 0.01; // TODO : nu should comme from input file
 
             if constexpr (ComponentTag::component == Component::X)
             {
@@ -314,7 +314,7 @@ namespace core
                 Ex(ix) = ideal1D_(Ve, B, {ix}, ComponentTag<Component::X>{})
                          + 0 * pressure_(n, Pe, {ix}, ComponentTag<Component::X>{})
                          + 0 * resistive_(J, {ix}, ComponentTag<Component::X>{})
-                         + 0 * hyperresistive_(J, {ix}, ComponentTag<Component::X>{});
+                         + 1 * hyperresistive_(J, {ix}, ComponentTag<Component::X>{});
             }
 
             ix0 = this->layout_->physicalStartIndex(Ey, Direction::X);
@@ -325,7 +325,7 @@ namespace core
                 Ey(ix) = ideal1D_(Ve, B, {ix}, ComponentTag<Component::Y>{})
                          + 0 * pressure_(n, Pe, {ix}, ComponentTag<Component::Y>{})
                          + 0 * resistive_(J, {ix}, ComponentTag<Component::Y>{})
-                         + 0 * hyperresistive_(J, {ix}, ComponentTag<Component::Y>{});
+                         + 1 * hyperresistive_(J, {ix}, ComponentTag<Component::Y>{});
             }
 
             ix0 = this->layout_->physicalStartIndex(Ez, Direction::X);
@@ -336,7 +336,7 @@ namespace core
                 Ez(ix) = ideal1D_(Ve, B, {ix}, ComponentTag<Component::Z>{})
                          + 0 * pressure_(n, Pe, {ix}, ComponentTag<Component::Z>{})
                          + 0 * resistive_(J, {ix}, ComponentTag<Component::Z>{})
-                         + 0 * hyperresistive_(J, {ix}, ComponentTag<Component::Z>{});
+                         + 1 * hyperresistive_(J, {ix}, ComponentTag<Component::Z>{});
             }
         }
 

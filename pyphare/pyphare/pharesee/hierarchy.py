@@ -148,6 +148,48 @@ class PatchLevel:
                 max([patch.patch_datas[name].x.max() for patch in self.patches])
 
 
+
+def finest_data(pdata, ilvl, hierarchy):
+    """
+    given a FieldData, a levelnumber and a hierarchy
+    this function returns the coordinates and values
+    of the field at locations where no value exist on the
+    next finer level in the hierachy.
+    """
+    # although a priori doable for particles
+    # this just works for fields for now
+
+    assert pdata.quantity == 'field'
+    assert hierarchy.dim == 1
+
+    lvl = hierarchy.patch_levels[ilvl]
+    x_ = pdata.x
+    v_ = pdata.dataset
+
+    if ilvl == finest_level(hierarchy):
+        return x_,v_
+
+    qtyname = pdata.field_name
+    inner = x_ != x_
+
+    # iteratively fill the mask with true where current patch coordinates
+    # are within limits of the next refined level patchdatas
+    for ipatch, finer_patch in enumerate(hierarchy.patch_levels[ilvl+1].patches):
+        pdat = finer_patch.patch_datas[qtyname]
+        xmin,xmax = [pdat.x[ix] for ix in (4,-4)]
+        inner  = inner | ((x_ > xmin) & (x_ < xmax))
+
+    # now take the complement of the mas
+    # i.e. data that has coordinates not existing on
+    # next finer level
+    x = x_[~inner]
+    v = v_[~inner]
+
+    return x, v
+
+
+
+
 class PatchHierarchy:
     """is a collection of patch levels """
 
@@ -165,6 +207,9 @@ class PatchHierarchy:
 
         if data_files is not None:
             self.data_files.update(data_files)
+
+    def finest_level(self):
+        return len(self.patch_levels)-1
 
 
     def level(self, level_number, time=0.):
@@ -199,7 +244,8 @@ class PatchHierarchy:
     def times(self):
         return np.sort(np.asarray(list(self.time_hier.keys())))
 
-    def plot_patches(self):
+
+    def plot_patches(self, save=False):
         fig, ax = plt.subplots(figsize=(10, 3))
         for ilvl, lvl in self.time_hier[0.].items():
             lvl_offset = ilvl * 0.1
@@ -211,7 +257,8 @@ class PatchHierarchy:
                 y = lvl_offset + np.zeros_like(xcells)
                 ax.plot(xcells, y, marker=".")
 
-        fig.savefig("hierarchy.png")
+        if save:
+            fig.savefig("hierarchy.png")
 
 
     def plot(self, **kwargs):
@@ -264,7 +311,6 @@ class PatchHierarchy:
         """
         plot
         """
-
         usr_lvls = kwargs.get("levels",(0,))
         qty = kwargs.get("qty",None)
         time = kwargs.get("time", self.times()[0])
@@ -335,7 +381,7 @@ class PatchHierarchy:
 
 
         if "filename" in kwargs:
-            fig.savefig(filename)
+            fig.savefig(kwargs["filename"])
 
 
 

@@ -33,16 +33,16 @@ def config():
     user initialization model and diagnostics.
     """
     Simulation(
-        smallest_patch_size=10,
+        smallest_patch_size=20,
         largest_patch_size=20,
         time_step_nbr=2000,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=25.,             # simulation final time (not specified if time_step and time_step_nbr provided)
+        final_time=20.,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
-        cells=80,                # integer or tuple length == dimension
-        dl=0.3,                  # mesh size of the root level, float or tuple
-        refinement_boxes={"L0": {"B0": [(10, ), (40, )]},
-                          "L1":{"B0":[(30,),(60,)]}},
-        diag_options={"format": "phareh5", "options": {"dir": "phare_outputs","mode":"overwrite"}}
+        cells=500,                # integer or tuple length == dimension
+        dl=1.,                  # mesh size of the root level, float or tuple
+        refinement_boxes={"L0": {"B0": [(80, ), (180, )]},
+                          "L1":{"B0":[(200,),(300,)]}},
+        diag_options={"format": "phareh5", "options": {"dir": "td_noflow","mode":"overwrite"}}
     )
 
 
@@ -110,7 +110,7 @@ def config():
 
     MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "init": {"seed": 1337}}
+        protons={"charge": 1, "density": density, **vvv}
     )
 
     ElectronModel(closure="isothermal", Te=0.12)
@@ -119,7 +119,7 @@ def config():
 
     sim = ph.global_vars.sim
 
-    timestamps = np.arange(0, sim.final_time +sim.time_step, 5*sim.time_step)
+    timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
 
 
 
@@ -183,9 +183,9 @@ def main():
     simulator.run()
 
 
-    if cpp.mpi_rank() == 0:
-        b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
-        plot(b)
+    #if cpp.mpi_rank() == 0:
+    #    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
+    #    plot(b)
 
 if __name__=="__main__":
     main()

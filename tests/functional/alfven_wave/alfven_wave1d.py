@@ -31,7 +31,7 @@ def config():
         cells=40,                # integer or tuple length == dimension
         dl=0.3,                  # mesh size of the root level, float or tuple
         refinement_boxes={"L0": {"B0": [(10, ), (20, )]}},
-        diag_options={"format": "phareh5", "options": {"dir": "phare_outputs","mode":"overwrite"}}
+        diag_options={"format": "phareh5", "options": {"dir": "alfven_norefine","mode":"overwrite"}}
     )
 
 
@@ -165,9 +165,9 @@ def main():
     simulator.run()
 
 
-    if cpp.mpi_rank() == 0:
-        b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
-        plot(b)
-
+    #if cpp.mpi_rank() == 0:
+    #    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
+    #    plot(b)
+    #
 if __name__=="__main__":
     main()

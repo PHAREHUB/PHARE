@@ -400,7 +400,7 @@ namespace solver
 
             auto iLevel = level->getLevelNumber();
             std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
-                      << "\n";
+                      << " from t = " << currentTime << "to t = " << newTime << "\n";
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
