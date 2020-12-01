@@ -432,14 +432,17 @@ namespace solver
 
         void
         standardLevelSynchronization(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                     int const /*coarsestLevel*/, int const finestLevel,
+                                     int const coarsestLevel, int const finestLevel,
                                      double const /*syncTime*/,
                                      const std::vector<double>& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
-            auto& toCoarser = getMessengerWithCoarser_(finestLevel);
-            auto level      = hierarchy->getPatchLevel(finestLevel);
-            toCoarser.synchronize(*level);
+            for (auto ilvl = finestLevel; ilvl > coarsestLevel; --ilvl)
+            {
+                auto& toCoarser = getMessengerWithCoarser_(ilvl);
+                auto level      = hierarchy->getPatchLevel(ilvl);
+                toCoarser.synchronize(*level);
+            }
         }
 
 
