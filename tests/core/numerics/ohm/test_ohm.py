@@ -47,22 +47,7 @@ def test_ohm_yee1D(path):
 
     tv = TestVariables()
     eta = 1.0
-    nu = 0.001
-
-    Vx = np.zeros(layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Vy = np.zeros(layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Vz = np.zeros(layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]), dtype=np.float64)
-
-    Bx = np.zeros(layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    By = np.zeros(layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Bz = np.zeros(layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]), dtype=np.float64)
-
-    n = np.zeros(layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    P = np.zeros(layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]), dtype=np.float64)
-
-    Jx = np.zeros(layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Jy = np.zeros(layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    Jz = np.zeros(layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]), dtype=np.float64)
+    nu = 0.01
 
     idealx = np.zeros(layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]), dtype=np.float64)
     idealy = np.zeros(layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]), dtype=np.float64)
@@ -79,10 +64,6 @@ def test_ohm_yee1D(path):
     viscousx = np.zeros(layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]), dtype=np.float64)
     viscousy = np.zeros(layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]), dtype=np.float64)
     viscousz = np.zeros(layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]), dtype=np.float64)
-
-    ExNew = np.zeros(layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    EyNew = np.zeros(layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]), dtype=np.float64)
-    EzNew = np.zeros(layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]), dtype=np.float64)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])
@@ -135,9 +116,9 @@ def test_ohm_yee1D(path):
     viscousy[psi_p_X:pei_p_X+1] = -nu*(Jy[psi_p_X-1:pei_p_X]-2.0*Jy[psi_p_X:pei_p_X+1]+Jy[psi_p_X+1:pei_p_X+2])/(tv.meshSize[0]*tv.meshSize[0])
     viscousz[psi_p_X:pei_p_X+1] = -nu*(Jz[psi_p_X-1:pei_p_X]-2.0*Jz[psi_p_X:pei_p_X+1]+Jz[psi_p_X+1:pei_p_X+2])/(tv.meshSize[0]*tv.meshSize[0])
 
-    ExNew = idealx+pressx+resistx+viscousx
-    EyNew = idealy+pressy+resisty+viscousy
-    EzNew = idealz+pressz+resistz+viscousz
+    ExNew = idealx+0*pressx+0*resistx+viscousx
+    EyNew = idealy+0*pressy+0*resisty+viscousy
+    EzNew = idealz+0*pressz+0*resistz+viscousz
 
     filename_ohmx = "ohmx_yee_1D_order1.txt"
     filename_ohmy = "ohmy_yee_1D_order1.txt"
@@ -155,33 +136,7 @@ def test_ohm_yee2D(path):
 
     tv = TestVariables()
     eta = 1.0
-    nu = 0.001
-
-    Vx = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Vy = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Vz = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1])], dtype=np.float64)
-
-    Bx = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    By = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Bz = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1])], dtype=np.float64)
-
-    n = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                  layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    P = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                  layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1])], dtype=np.float64)
-
-    Jx = np.zeros([layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.JxCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Jy = np.zeros([layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.JyCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    Jz = np.zeros([layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.JzCentering[1], tv.nbrCells[1])], dtype=np.float64)
+    nu = 0.01
 
     idealx = np.zeros([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
                        layout.allocSize(tv.interpOrder, tv.ExCentering[1], tv.nbrCells[1])], dtype=np.float64)
@@ -210,13 +165,6 @@ def test_ohm_yee2D(path):
                          layout.allocSize(tv.interpOrder, tv.EyCentering[1], tv.nbrCells[1])], dtype=np.float64)
     viscousz = np.zeros([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
                          layout.allocSize(tv.interpOrder, tv.EzCentering[1], tv.nbrCells[1])], dtype=np.float64)
-
-    ExNew = np.zeros([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
-                      layout.allocSize(tv.interpOrder, tv.ExCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    EyNew = np.zeros([layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]),
-                      layout.allocSize(tv.interpOrder, tv.EyCentering[1], tv.nbrCells[1])], dtype=np.float64)
-    EzNew = np.zeros([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
-                      layout.allocSize(tv.interpOrder, tv.EzCentering[1], tv.nbrCells[1])], dtype=np.float64)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])
@@ -363,44 +311,8 @@ def test_ohm_yee3D(path):
 
     tv = TestVariables()
     eta = 1.0
-    nu = 0.001
+    nu = 0.01
 
-    Vx = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Vy = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Vz = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.MomentsCentering[2], tv.nbrCells[2])], dtype=np.float64)
-
-    Bx = np.zeros([layout.allocSize(tv.interpOrder, tv.BxCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.BxCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.BxCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    By = np.zeros([layout.allocSize(tv.interpOrder, tv.ByCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.ByCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.ByCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Bz = np.zeros([layout.allocSize(tv.interpOrder, tv.BzCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.BzCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.BzCentering[2], tv.nbrCells[2])], dtype=np.float64)
-
-    n = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                  layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1]),
-                  layout.allocSize(tv.interpOrder, tv.MomentsCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    P = np.zeros([layout.allocSize(tv.interpOrder, tv.MomentsCentering[0], tv.nbrCells[0]),
-                  layout.allocSize(tv.interpOrder, tv.MomentsCentering[1], tv.nbrCells[1]),
-                  layout.allocSize(tv.interpOrder, tv.MomentsCentering[2], tv.nbrCells[2])], dtype=np.float64)
-
-    Jx = np.zeros([layout.allocSize(tv.interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.JxCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.JxCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Jy = np.zeros([layout.allocSize(tv.interpOrder, tv.JyCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.JyCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.JyCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    Jz = np.zeros([layout.allocSize(tv.interpOrder, tv.JzCentering[0], tv.nbrCells[0]),
-                   layout.allocSize(tv.interpOrder, tv.JzCentering[1], tv.nbrCells[1]),
-                   layout.allocSize(tv.interpOrder, tv.JzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
     idealx = np.zeros([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
                        layout.allocSize(tv.interpOrder, tv.ExCentering[1], tv.nbrCells[1]),
@@ -442,15 +354,6 @@ def test_ohm_yee3D(path):
                          layout.allocSize(tv.interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
                          layout.allocSize(tv.interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
-    ExNew = np.zeros([layout.allocSize(tv.interpOrder, tv.ExCentering[0], tv.nbrCells[0]),
-                      layout.allocSize(tv.interpOrder, tv.ExCentering[1], tv.nbrCells[1]),
-                      layout.allocSize(tv.interpOrder, tv.ExCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    EyNew = np.zeros([layout.allocSize(tv.interpOrder, tv.EyCentering[0], tv.nbrCells[0]),
-                      layout.allocSize(tv.interpOrder, tv.EyCentering[1], tv.nbrCells[1]),
-                      layout.allocSize(tv.interpOrder, tv.EyCentering[2], tv.nbrCells[2])], dtype=np.float64)
-    EzNew = np.zeros([layout.allocSize(tv.interpOrder, tv.EzCentering[0], tv.nbrCells[0]),
-                      layout.allocSize(tv.interpOrder, tv.EzCentering[1], tv.nbrCells[1]),
-                      layout.allocSize(tv.interpOrder, tv.EzCentering[2], tv.nbrCells[2])], dtype=np.float64)
 
     psi_p_X = layout.physicalStartIndex(tv.interpOrder, 'primal')
     pei_p_X = layout.physicalEndIndex(  tv.interpOrder, 'primal', tv.nbrCells[0])

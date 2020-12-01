@@ -55,6 +55,9 @@ namespace solver
         {
         }
 
+        auto setOnPatch(patch_t& patch) { return resourcesManager->setOnPatch(patch, *this); }
+
+
         virtual ~MHDModel() override = default;
 
         core::MHDState<VecFieldT> state;

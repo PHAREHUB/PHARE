@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
@@ -18,7 +19,6 @@ mpl.use('Agg')
 
 
 
-
 def config():
     """ Configure the simulation
 
@@ -26,16 +26,17 @@ def config():
     user initialization model and diagnostics.
     """
     Simulation(
-        smallest_patch_size=20,
+        smallest_patch_size=10,
         largest_patch_size=20,
         time_step_nbr=2000,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=20.,             # simulation final time (not specified if time_step and time_step_nbr provided)
+        final_time=20,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
-        cells=500,                # integer or tuple length == dimension
-        dl=1.,                  # mesh size of the root level, float or tuple
-        refinement_boxes={"L0": {"B0": [(80, ), (180, )]},
-                          "L1":{"B0":[(200,),(300,)]}},
-        diag_options={"format": "phareh5", "options": {"dir": "td_noflow","mode":"overwrite"}}
+        cells=400,                # integer or tuple length == dimension
+        dl=0.5,                  # mesh size of the root level, float or tuple
+        max_nbr_levels=3,          # (default=1) max nbr of levels in the AMR hierarchy
+        nesting_buffer=2,
+        refinement = "tagging",
+        diag_options={"format": "phareh5", "options": {"dir": "refine_dx05_lvl3","mode":"overwrite"}}
     )
 
 
@@ -73,7 +74,7 @@ def config():
 
 
     def vx(x):
-        return 0.
+        return 1.
 
 
     def vy(x):
@@ -132,11 +133,13 @@ def config():
             )
 
 
+
 def main():
     config()
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
+
 
 
 if __name__=="__main__":
