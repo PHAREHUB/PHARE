@@ -453,11 +453,12 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
-    std::size_t nbrDomainParticles        = 0;
-    std::size_t nbrPatchGhostParticles    = 0;
-    std::size_t nbrLevelGhostNewParticles = 0;
-    std::size_t nbrLevelGhostOldParticles = 0;
-    std::size_t nbrLevelGhostParticles    = 0;
+    std::size_t nbrDomainParticles            = 0;
+    std::size_t nbrPatchGhostParticles        = 0;
+    std::size_t nbrLevelGhostNewParticles     = 0;
+    std::size_t nbrLevelGhostOldParticles     = 0;
+    std::size_t nbrLevelGhostParticles        = 0;
+    static std::size_t rootNbrDomainParticles = 0;
     for (auto& patch : level)
     {
         auto _ = rm.setOnPatch(*patch, ions);
@@ -470,14 +471,18 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
             nbrLevelGhostOldParticles += pop.levelGhostParticlesOld().size();
             nbrLevelGhostParticles += pop.levelGhostParticles().size();
             nbrPatchGhostParticles += pop.patchGhostParticles().size();
+            if (rootNbrDomainParticles > 0 and rootNbrDomainParticles > nbrDomainParticles)
+            {
+                std::runtime_error("Error - root nbr domain particle not conserved");
+            }
+            if (nbrLevelGhostOldParticles < nbrLevelGhostParticles
+                and nbrLevelGhostOldParticles > 0)
+                throw std::runtime_error("Error - there are less old level ghost particles ("
+                                         + std::to_string(nbrLevelGhostOldParticles)
+                                         + ") than pushable ("
+                                         + std::to_string(nbrLevelGhostParticles) + ")");
         }
     }
-    std::cout << "level = " << level.getLevelNumber() << std::setprecision(6)
-              << " t = " << currentTime << ";  nbrDomParticles = " << nbrDomainParticles
-              << "; LevelGhostNew = " << nbrLevelGhostNewParticles
-              << "; LevelGhostOld = " << nbrLevelGhostOldParticles
-              << "; LevelGhost = " << nbrLevelGhostParticles
-              << "; patchGhost = " << nbrPatchGhostParticles << "\n";
 
 
 

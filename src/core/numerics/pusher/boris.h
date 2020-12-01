@@ -121,7 +121,11 @@ namespace core
                 float delta
                     = partIn.delta[iDim] + static_cast<float>(halfDtOverDl_[iDim] * partIn.v[iDim]);
 
-                float iCell         = std::floor(delta);
+                float iCell = std::floor(delta);
+                if (std::abs(delta) > 2)
+                {
+                    throw std::runtime_error("Error, particle moves more than 1 cell, delta >2");
+                }
                 partOut.delta[iDim] = delta - iCell;
                 partOut.iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);
             }

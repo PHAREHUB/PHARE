@@ -333,8 +333,6 @@ namespace amr
                                          + std::to_string(afterPushTime) + " on level "
                                          + std::to_string(level.getLevelNumber()));
             }
-
-
             for (auto patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
@@ -350,16 +348,18 @@ namespace amr
                     interpolate_(std::begin(patchGhosts), std::end(patchGhosts), density, flux,
                                  layout);
 
+                    if (level.getLevelNumber() > 0) // no levelGhost on root level
+                    {
+                        // then grab levelGhostParticlesOld and levelGhostParticlesNew
+                        // and project them with alpha and (1-alpha) coefs, respectively
+                        auto& levelGhostOld = pop.levelGhostParticlesOld();
+                        interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density,
+                                     flux, layout, 1. - alpha);
 
-                    // then grab levelGhostParticlesOld and levelGhostParticlesNew
-                    // and project them with alpha and (1-alpha) coefs, respectively
-                    auto& levelGhostOld = pop.levelGhostParticlesOld();
-                    interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density, flux,
-                                 layout, 1. - alpha);
-
-                    auto& levelGhostNew = pop.levelGhostParticlesNew();
-                    interpolate_(std::begin(levelGhostNew), std::end(levelGhostNew), density, flux,
-                                 layout, alpha);
+                        auto& levelGhostNew = pop.levelGhostParticlesNew();
+                        interpolate_(std::begin(levelGhostNew), std::end(levelGhostNew), density,
+                                     flux, layout, alpha);
+                    }
                 }
             }
         }
@@ -382,12 +382,14 @@ namespace amr
                        double const newCoarserTime) override
         {
             auto levelNumber = level.getLevelNumber();
+            if (newCoarserTime < prevCoarserTime)
+                throw std::runtime_error(
+                    "Error : prevCoarserTime (" + std::to_string(prevCoarserTime)
+                    + ") should be < newCoarserTime (" + std::to_string(prevCoarserTime) + ")");
 
             // root level has no levelghost particles
             if (levelNumber != 0)
             {
-                std::cout << "level " << level.getLevelNumber()
-                          << " FIRST STEP : filling levelghostNew from next coarser\n";
                 levelGhostParticlesNew_.fill(levelNumber, currentTime);
 
                 // during firstStep() coarser level and current level are at the same time
@@ -419,20 +421,26 @@ namespace amr
                     auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
                     auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    std::cout
-                        << "level " << level.getLevelNumber()
-                        << " : LAST STEP : copying new into old levelghost, emptying new, empty "
-                           "pushable, "
-                           "copying old into "
-                           "pushable\n";
                     core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
                     core::empty(levelGhostParticlesNew);
                     core::empty(levelGhostParticles);
                     std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
                               std::back_inserter(levelGhostParticles));
-                    std::cout << "new : " << levelGhostParticlesNew.size() << " "
-                              << " old : " << levelGhostParticlesOld.size() << " "
-                              << "pushable : " << levelGhostParticles.size() << "\n";
+
+                    if (level.getLevelNumber() == 0)
+                    {
+                        if (levelGhostParticlesNew.size() != 0)
+                            throw std::runtime_error(
+                                "levelGhostParticlesNew detected in root level : "
+                                + std::to_string(levelGhostParticlesNew.size()));
+                        if (levelGhostParticles.size() != 0)
+                            throw std::runtime_error("levelGhostParticles detected in root level : "
+                                                     + std::to_string(levelGhostParticles.size()));
+                        if (levelGhostParticlesOld.size() != 0)
+                            throw std::runtime_error(
+                                "levelGhostParticlesOld detected in root level : "
+                                + std::to_string(levelGhostParticlesOld.size()));
+                    }
                 }
             }
         }
@@ -726,7 +734,7 @@ namespace amr
 
         std::shared_ptr<SAMRAI::hier::CoarsenOperator> fieldCoarseningOp_{
             std::make_shared<FieldCoarsenOperator<GridLayoutT, FieldT>>()};
-    };
+    }; // namespace amr
 
     template<typename HybridModel, typename RefinementParams>
     const std::string HybridHybridMessengerStrategy<HybridModel, RefinementParams>::stratName
