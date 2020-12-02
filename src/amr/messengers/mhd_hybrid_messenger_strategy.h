@@ -123,7 +123,8 @@ namespace amr
 
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                        const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
-                       double /*time*/, double /*newCoarserTime*/) override
+                       double const /*currentTime*/, double const /*prevCoarserTime*/,
+                       double const /*newCoarserTime*/) override
         {
         }
 

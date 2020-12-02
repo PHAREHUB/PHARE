@@ -406,10 +406,13 @@ namespace solver
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
 
 
-            firstNewLevelTimes_[iLevel] = newTime;
+            firstNewLevelTimes_[iLevel]     = newTime;
+            firstCurrentLevelTimes_[iLevel] = currentTime;
+
             if (firstStep)
             {
                 fromCoarser.firstStep(model, *level, hierarchy, currentTime,
+                                      firstCurrentLevelTimes_[iLevel - 1],
                                       firstNewLevelTimes_[iLevel - 1]);
             }
 
@@ -491,6 +494,7 @@ namespace solver
     private:
         int nbrOfLevels_;
         std::unordered_map<std::size_t, double> firstNewLevelTimes_;
+        std::unordered_map<std::size_t, double> firstCurrentLevelTimes_;
         using IMessengerT       = amr::IMessenger<IPhysicalModel<AMR_Types>>;
         using LevelInitializerT = LevelInitializer<AMR_Types>;
         std::vector<LevelDescriptor> levelDescriptors_;
