@@ -96,7 +96,8 @@ namespace amr
 
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                               double time, double newCoarserTime)
+                               double const currentTime, double const prevCoarserTime,
+                               double const newCoarserTime)
             = 0;
 
         virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;

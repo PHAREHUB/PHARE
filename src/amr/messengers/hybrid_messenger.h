@@ -150,10 +150,12 @@ namespace amr
          * @param model
          */
         void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy, double time,
-                       double newCoarserTime) final
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                       double const currentTime, double const prevCoarserTime,
+                       double const newCoarserTime) final
         {
-            strat_->firstStep(model, level, hierarchy, time, newCoarserTime);
+            strat_->firstStep(model, level, hierarchy, currentTime, prevCoarserTime,
+                              newCoarserTime);
         }
 
 

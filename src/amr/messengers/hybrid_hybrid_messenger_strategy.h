@@ -26,6 +26,7 @@
 #include <iterator>
 #include <optional>
 #include <utility>
+#include <iomanip>
 
 
 namespace PHARE
@@ -322,7 +323,16 @@ namespace amr
         void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                  double const beforePushTime, double const afterPushTime) override
         {
-            auto alpha = timeInterpCoef_(beforePushTime, afterPushTime);
+            auto alpha = timeInterpCoef_(beforePushTime, afterPushTime, level.getLevelNumber());
+            if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
+            {
+                std::cout << std::setprecision(12) << alpha << "\n";
+                throw std::runtime_error("ion moment ghost time interp coef invalid : alpha: "
+                                         + std::to_string(alpha) + " beforePushTime "
+                                         + std::to_string(beforePushTime) + " afterPushTime "
+                                         + std::to_string(afterPushTime) + " on level "
+                                         + std::to_string(level.getLevelNumber()));
+            }
 
 
             for (auto patch : level)
@@ -368,7 +378,8 @@ namespace amr
          */
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& level,
                        std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                       double time, double newCoarserTime) override
+                       double const currentTime, double const prevCoarserTime,
+                       double const newCoarserTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
@@ -377,12 +388,12 @@ namespace amr
             {
                 std::cout << "level " << level.getLevelNumber()
                           << " FIRST STEP : filling levelghostNew from next coarser\n";
-                levelGhostParticlesNew_.fill(levelNumber, time);
+                levelGhostParticlesNew_.fill(levelNumber, currentTime);
 
                 // during firstStep() coarser level and current level are at the same time
                 // so 'time' is also the beforePushCoarseTime_
-                beforePushCoarseTime_ = time;
-                afterPushCoarseTime_  = newCoarserTime;
+                beforePushCoarseTime_[levelNumber] = prevCoarserTime;
+                afterPushCoarseTime_[levelNumber]  = newCoarserTime;
             }
         }
 
@@ -629,10 +640,11 @@ namespace amr
 
 
 
-        double timeInterpCoef_(double const beforePushTime, double const afterPushTime)
+        double timeInterpCoef_(double const beforePushTime, double const afterPushTime,
+                               std::size_t levelNumber)
         {
             return (afterPushTime - beforePushTime)
-                   / (afterPushCoarseTime_ - beforePushCoarseTime_);
+                   / (afterPushCoarseTime_[levelNumber] - beforePushCoarseTime_[levelNumber]);
         }
 
 
@@ -650,8 +662,8 @@ namespace amr
 
 
         int const firstLevel_;
-        double beforePushCoarseTime_;
-        double afterPushCoarseTime_;
+        std::unordered_map<std::size_t, double> beforePushCoarseTime_;
+        std::unordered_map<std::size_t, double> afterPushCoarseTime_;
 
         core::Interpolator<dimension, interpOrder> interpolate_;
 
