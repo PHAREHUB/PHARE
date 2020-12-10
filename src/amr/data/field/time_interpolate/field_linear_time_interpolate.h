@@ -97,12 +97,12 @@ namespace amr
 
             if constexpr (dim == 1)
             {
-                auto const iDestStart = localDestBox.lower(dirX);
-                auto const iDestEnd   = localDestBox.upper(dirX);
+                auto const iDestStartX = localDestBox.lower(dirX);
+                auto const iDestEndX   = localDestBox.upper(dirX);
 
-                auto const iSrcStart = localSrcBox.lower(dirX);
+                auto const iSrcStartX = localSrcBox.lower(dirX);
 
-                for (auto ix = iDestStart, ixSrc = iSrcStart; ix <= iDestEnd; ++ix, ++ixSrc)
+                for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
                 {
                     fieldDest(ix) = (1. - alpha) * fieldSrcOld(ixSrc) + alpha * fieldSrcNew(ixSrc);
                 }
@@ -128,22 +128,23 @@ namespace amr
             }
             else if constexpr (dim == 3)
             {
-                auto const iStartX = localDestBox.lower(dirX);
-                auto const iEndX   = localDestBox.upper(dirX);
-                auto const iStartY = localDestBox.lower(dirY);
-                auto const iEndY   = localDestBox.upper(dirY);
-                auto const iStartZ = localDestBox.lower(dirZ);
-                auto const iEndZ   = localDestBox.upper(dirZ);
+                auto const iDestStartX = localDestBox.lower(dirX);
+                auto const iDestEndX   = localDestBox.upper(dirX);
+                auto const iDestStartY = localDestBox.lower(dirY);
+                auto const iDestEndY   = localDestBox.upper(dirY);
+                auto const iDestStartZ = localDestBox.lower(dirZ);
+                auto const iDestEndZ   = localDestBox.upper(dirZ);
 
                 auto const iSrcStartX = localSrcBox.lower(dirX);
                 auto const iSrcStartY = localSrcBox.lower(dirY);
                 auto const iSrcStartZ = localSrcBox.lower(dirZ);
 
-                for (auto ix = iStartX, ixSrc = iSrcStartX; ix <= iEndX; ++ix, ++ixSrc)
+                for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
                 {
-                    for (auto iy = iStartY, iySrc = iSrcStartY; iy <= iEndY; ++iy, ++ixSrc)
+                    for (auto iy = iDestStartY, iySrc = iSrcStartY; iy <= iDestEndY; ++iy, ++iySrc)
                     {
-                        for (auto iz = iStartZ, izSrc = iSrcStartZ; iz <= iEndZ; ++iz, ++izSrc)
+                        for (auto iz = iDestStartZ, izSrc = iSrcStartZ; iz <= iDestEndZ;
+                             ++iz, ++izSrc)
                         {
                             fieldDest(ix, iy, iz) = (1. - alpha) * fieldSrcOld(ixSrc, iySrc, izSrc)
                                                     + alpha * fieldSrcNew(ixSrc, iySrc, izSrc);
