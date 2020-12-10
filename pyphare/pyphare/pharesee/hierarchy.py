@@ -505,9 +505,9 @@ field_qties = {"EM_B_x": "Bx",
                "EM_E_x": "Ex",
                "EM_E_y": "Ey",
                "EM_E_z": "Ez",
-               "flux_x": "Vx",
-               "flux_y": "Vy",
-               "flux_z": "Vz",
+               "flux_x": "Fx",
+               "flux_y": "Fy",
+               "flux_z": "Fz",
                "bulkVelocity_x": "Vx",
                "bulkVelocity_y": "Vy",
                "bulkVelocity_z": "Vz",
@@ -641,14 +641,16 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
             pdata = FieldData(layout, field_qties[dataset_name], dataset)
 
+            pdata_name = field_qties[dataset_name]
+
             if is_pop_fluid_file(basename):
-                dataset_name = pop_name(basename) + "_" + dataset_name
+                pdata_name = pop_name(basename) + "_" + pdata_name
 
 
             if dataset_name in patch_datas:
                 raise ValueError("error - {} already in patchdata".format(dataset_name))
 
-            patch_datas[field_qties[dataset_name]] = pdata
+            patch_datas[pdata_name] = pdata
 
     return True # valid patch assumed
 

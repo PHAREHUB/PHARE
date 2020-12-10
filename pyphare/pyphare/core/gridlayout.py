@@ -15,6 +15,7 @@ yee_centering = {
         'Ex':'dual', 'Ey':'primal', 'Ez':'primal',
         'Jx':'dual', 'Jy':'primal', 'Jz':'primal',
         'rho':'primal', 'Vx':'primal','Vy':'primal',
+        "Fx":"primal","Fy":"primal","Fz":"primal",
         'Vz':'primal','P':'primal'
     },
     'y' : {
@@ -22,13 +23,14 @@ yee_centering = {
         'Ex':'primal', 'Ey':'dual', 'Ez':'primal',
         'Jx':'primal', 'Jy':'dual', 'Jz':'primal',
         'rho':'primal', 'Vx':'primal','Vy':'primal',
-        'Vz':'primal','P':'primal'
+        'Vz':'primal','P':'primal', "Fx":"primal","Fy":"primal","Fz":"primal"
     },
     'z' : {
         'Bx':'dual', 'By':'dual', 'Bz':'primal',
         'Ex':'primal', 'Ey':'primal', 'Ez':'dual',
         'Jx':'primal', 'Jy':'primal', 'Jz':'dual',
         'rho':'primal', 'Vx':'primal','Vy':'primal',
+        "Fx":"primal","Fy":"primal","Fz":"primal",
         'Vz':'primal', 'P':'primal'
     }
 }

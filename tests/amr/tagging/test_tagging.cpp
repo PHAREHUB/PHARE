@@ -23,7 +23,7 @@ using namespace PHARE::amr;
 TEST(test_tagger, fromFactory)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
-    auto hybridTagger = TaggerFactory<phare_types>::make("HybridModel", "scaledAvg");
+    auto hybridTagger = TaggerFactory<phare_types>::make("HybridModel", "avg");
     EXPECT_TRUE(hybridTagger != nullptr);
 
     auto badTagger = TaggerFactory<phare_types>::make("invalidModel", "scaledAvg");

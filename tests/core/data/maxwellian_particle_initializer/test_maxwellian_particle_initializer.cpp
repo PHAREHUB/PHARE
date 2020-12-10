@@ -69,7 +69,7 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
         auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
         if (!((pos[0] > 0.) and (pos[0] < endDomain)))
-            std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << "\n";
+            std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << ")\n";
         EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
         i++;
     }
