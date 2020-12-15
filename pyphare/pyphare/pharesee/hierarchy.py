@@ -171,9 +171,15 @@ class PatchHierarchy:
         return self.time_hier[time][level_number]
 
 
-
     def levels(self, time=0.):
         return self.time_hier[time]
+
+
+    def levelNbr(self, time):
+        return len(self.levels(time).items())
+
+    def levelNbrs(self, time):
+        return list(self.time_hier[time].keys())
 
 
     def refined_domain_box(self, level_number):

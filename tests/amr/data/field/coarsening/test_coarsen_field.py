@@ -112,18 +112,17 @@ def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
     for direction in directions[:ndim]:
         is_primal += [gridlayout.yee_element_is_primal(qty, direction)]
 
-    def indices(dim):
+    def coarse_indices(dim):
         return np.arange(coarseBox.lower[dim], coarseBox.upper[dim] + 1)
 
-    def fineLocal(index, dim):
-        fineIndex = index * ratio  # coarse index to fine index
-        return fineLayout.AMRIndexToLocal(dim, fineIndex)
+    def fineLocal(coarse_index, dim):
+        return fineLayout.AMRIndexToLocal(dim, coarse_index * ratio)
 
     def coarseLocal(index, dim):
         return coarseLayout.AMRIndexToLocal(dim, index)
 
     if ndim == 1:
-        for index in indices(0):
+        for index in coarse_indices(0):
             fineIndex = fineLocal(index, 0)
             coarseLocalIndex = coarseLocal(index, 0)
             if is_primal[0]:
@@ -136,11 +135,11 @@ def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
                 )
 
     if ndim == 2:
-        for indexX in indices(0):
+        for indexX in coarse_indices(0):
             fineIndexX = fineLocal(indexX, 0)
             coarseLocalIndexX = coarseLocal(indexX, 0)
 
-            for indexY in indices(1):
+            for indexY in coarse_indices(1):
                 fineIndexY = fineLocal(indexY, 1)
                 coarseLocalIndexY = coarseLocal(indexY, 1)
                 left, middle, right = 0, 0, 0

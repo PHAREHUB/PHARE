@@ -25,8 +25,8 @@ class AdvanceTest(unittest.TestCase):
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
                      smallest_patch_size=5, largest_patch_size=5,
-                     cells= 120,
-                     dl=0.1, extra_diag_options={}, advances=1):
+                     cells= 120, time_step=0.001,
+                     dl=0.1, extra_diag_options={}, time_step_nbr=1):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -36,8 +36,8 @@ class AdvanceTest(unittest.TestCase):
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
-            time_step_nbr=30000,
-            final_time=30.,
+            time_step_nbr=time_step_nbr,
+            time_step=time_step,
             boundary_types="periodic",
             cells=cells,
             dl=dl,
@@ -57,8 +57,7 @@ class AdvanceTest(unittest.TestCase):
             return 0.
 
         def by(x):
-            from pyphare.pharein.global_vars import sim
-            L = sim.simulation_domain()[0]
+            L = global_vars.sim.simulation_domain()[0]
             v1=-1
             v2=1.
             return v1 + (v2-v1)*(S(x,L*0.25,1) -S(x, L*0.75, 1))
@@ -97,35 +96,32 @@ class AdvanceTest(unittest.TestCase):
                                       "density": density,
                                       "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
                                       "vthx": vthx, "vthy": vthy, "vthz": vthz,
-                                      "nbr_part_per_cell": nbr_part_per_cell,
-                                      "init": {"seed": 1337}})
+                                      "nbr_part_per_cell": nbr_part_per_cell})
 
         ElectronModel(closure="isothermal", Te=0.12)
 
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(advances+1),
-                compute_timestamps=np.zeros(advances+1)
+                write_timestamps=np.zeros(time_step_nbr+1),
+                compute_timestamps=np.zeros(time_step_nbr+1)
             )
 
         for quantity in ["density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(advances+1),
-                compute_timestamps=np.zeros(advances+1)
+                write_timestamps=np.zeros(time_step_nbr+1),
+                compute_timestamps=np.zeros(time_step_nbr+1)
             )
 
         for pop in ["protons"]:
             for quantity in ["density", "flux"]:
                 FluidDiagnostics(quantity=quantity,
-                                 write_timestamps=np.zeros(advances+1),
-                                 compute_timestamps=np.zeros(advances+1),
+                                 write_timestamps=np.zeros(time_step_nbr+1),
+                                 compute_timestamps=np.zeros(time_step_nbr+1),
                                  population_name=pop)
 
-        simulator = Simulator(global_vars.sim).initialize()
-        for i in range(advances):
-            simulator.advance()
+        Simulator(global_vars.sim).initialize().run()
 
         eb_hier = None
         if qty in ["e", "eb"]:
@@ -149,51 +145,53 @@ class AdvanceTest(unittest.TestCase):
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(dim, interp_order))
 
         from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
+        from pyphare.pharein import global_vars
 
-        advances = 3
-        stepDiff = .1
-        nSubcycles = 10
-        coarsestTimeStep = 0.001
-        levelNumbers = [i for i in range(len(refinement_boxes.keys()) + 1)]
-
-        lvlSteps = [coarsestTimeStep * (stepDiff ** (ilvl)) for ilvl in levelNumbers]
-        finestTimeStep = lvlSteps[-1]
-        secondFinestTimeStep = lvlSteps[-2] # this test makes no sense with only 1 level
-        totalSteps = nSubcycles ** levelNumbers[-1] * advances
-        uniqTimes = set([0])
+        time_step_nbr=3
 
         diag_outputs=f"phare_outputs_subcycle_coarsening_{self.ddt_test_id()}"
         datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", cells=30,
-                                      diag_outputs=diag_outputs,
+                                      diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
-                                      advances=advances, smallest_patch_size=5, largest_patch_size=30)
+                                      time_step_nbr=time_step_nbr, smallest_patch_size=5,
+                                      largest_patch_size=30)
 
-        times = datahier.times()
-        for step in range(1, totalSteps + 1):
+        levelNumbers = list(range(global_vars.sim.max_nbr_levels))
+        lvlSteps = global_vars.sim.level_time_steps
+        assert len(lvlSteps) > 1  # this test makes no sense with only 1 level
+
+        finestTimeStep = lvlSteps[-1]
+        secondFinestTimeStep = lvlSteps[-2]
+
+        finest_level_step_nbr = global_vars.sim.level_step_nbr[-1]
+        uniqTimes = set([0])
+
+        for step in range(1, finest_level_step_nbr + 1):
             checkTime = float("{:.6f}".format(finestTimeStep * step))
-            self.assertIn(checkTime, times)
+            self.assertIn(checkTime, datahier.times())
             uniqTimes.add(checkTime)
 
         self.assertEqual(len(uniqTimes), len(datahier.time_hier.items()))
 
-        syncSteps = nSubcycles ** levelNumbers[-2] * advances # ignore most fine subcycles
+        syncSteps = global_vars.sim.level_step_nbr[-2] # ignore finest subcycles
 
         # FIX THIS AFTER NO MORE REGRIDS
         #  SEE: https://github.com/PHAREHUB/PHARE/issues/400
-        assert syncSteps % advances == 0 # perfect division
-        startStep = int(syncSteps / advances) + 1 # skip coarsest step due to issue 400
+        assert syncSteps % time_step_nbr == 0 # perfect division
+        startStep = int(syncSteps / time_step_nbr) + 1 # skip first coarsest step due to issue 400
+
         for step in range(startStep, syncSteps + 1):
             checkTime = float("{:.6f}".format(secondFinestTimeStep * step))
             self.assertIn(checkTime, datahier.times())
-            nLevels = len(datahier.time_hier[checkTime].items())
+            nLevels = datahier.levelNbr(checkTime)
             self.assertGreaterEqual(nLevels, 2)
-            levelNbrs = list(datahier.time_hier[checkTime].keys())
+            levelNbrs = datahier.levelNbrs(checkTime)
             finestLevelNbr = max(levelNbrs)
             coarsestLevelNbr = min(levelNbrs)
 
             for coarseLevelNbr in range(coarsestLevelNbr, finestLevelNbr):
-                coarsePatches = datahier.time_hier[checkTime][coarseLevelNbr].patches
-                finePatches = datahier.time_hier[checkTime][coarseLevelNbr + 1].patches
+                coarsePatches = datahier.level(coarseLevelNbr, checkTime).patches
+                finePatches = datahier.level(coarseLevelNbr + 1, checkTime).patches
 
                 for coarsePatch in coarsePatches:
                     for finePatch in finePatches:

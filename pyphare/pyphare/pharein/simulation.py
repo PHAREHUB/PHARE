@@ -506,6 +506,18 @@ class Simulation(object):
         self.model = None
         self.electrons = None
 
+        # hard coded in C++ MultiPhysicsIntegrator::getMaxFinerLevelDt
+        self.nSubcycles = 10
+        self.stepDiff = 1/self.nSubcycles
+
+        levelNumbers = list(range(self.max_nbr_levels))
+        self.level_time_steps = [
+          self.time_step * (self.stepDiff ** (ilvl)) for ilvl in levelNumbers
+        ]
+        self.level_step_nbr = [
+          self.nSubcycles ** levelNumbers[ilvl] * self.time_step_nbr for ilvl in levelNumbers
+        ]
+
     def final_time(self):
         return self.time_step * self.time_step_nbr
 
@@ -521,7 +533,6 @@ class Simulation(object):
             # 1D case
             return extent[0] >= domain[0] and extent[1] <= domain[1]
         raise NotImplementedError("Error: 2D and 3D not implemented yet")
-
 
 
 
