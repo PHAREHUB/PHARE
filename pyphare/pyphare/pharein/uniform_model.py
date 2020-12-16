@@ -74,9 +74,6 @@ class UniformModel(object):
         beta        : beta of the species, float (default = 1)
         anisotropy  : Pperp/Ppara of the species, float (default = 1)
         """
-
-        idx = str(self.nbr_populations())
-
         new_population = {name: {
                           "charge": charge,
                           "mass": mass,

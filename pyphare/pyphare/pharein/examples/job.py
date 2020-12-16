@@ -7,8 +7,6 @@ from pyphare.pharein import ElectronModel
 from pyphare.pharein import ElectromagDiagnostics
 from pyphare.pharein import FluidDiagnostics
 from pyphare.pharein import getSimulation
-from pyphare.pharein import ParticleDiagnostics
-
 
 
 #------------------------------------

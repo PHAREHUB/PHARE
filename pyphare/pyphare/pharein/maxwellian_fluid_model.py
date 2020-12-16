@@ -114,8 +114,6 @@ class MaxwellianFluidModel(object):
         vthy   = self.defaulter(vthy, 1.)
         vthz   = self.defaulter(vthz, 1.)
 
-        idx = str(self.nbr_populations())
-
         new_population = {name: {
                           "charge": charge,
                           "mass": mass,

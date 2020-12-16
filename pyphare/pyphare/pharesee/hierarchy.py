@@ -490,12 +490,12 @@ def is_pop_fluid_file(basename):
 
 
 
+
 def make_layout(h5_patch_grp, cell_width, interp_order):
     nbrCells = h5_patch_grp.attrs['nbrCells']
     origin = h5_patch_grp.attrs['origin']
     upper = h5_patch_grp.attrs['upper']
     lower = h5_patch_grp.attrs['lower']
-
     return GridLayout(Box(lower, upper), origin, cell_width, interp_order=interp_order)
 
 
