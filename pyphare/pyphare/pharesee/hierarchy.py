@@ -193,7 +193,6 @@ def finest_data(pdata, ilvl, hierarchy):
     assert pdata.quantity == 'field'
     assert hierarchy.dim == 1
 
-    lvl = hierarchy.patch_levels[ilvl]
     x_ = pdata.x
     v_ = pdata.dataset
 
@@ -201,7 +200,7 @@ def finest_data(pdata, ilvl, hierarchy):
         return x_,v_
 
     qtyname = pdata.field_name
-    inner = x_ != x_
+    inner = x_ != x_ #lgtm [py/comparison-of-identical-expressions]
 
     # iteratively fill the mask with true where current patch coordinates
     # are within limits of the next refined level patchdatas
@@ -377,7 +376,7 @@ class PatchHierarchy:
             for ip, patch in enumerate(level.patches):
                 pdata_nbr = len(patch.patch_datas)
                 if qty is None and pdata_nbr != 1:
-                    pdata_names = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
+                    pdata_nrefinementames = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
                     multiple = "multiple quantities in patch, "
                     err = multiple + "please specify a quantity in  "+ pdata_names
                     raise ValueError(err)

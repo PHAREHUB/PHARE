@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
 
-from pybindlibs import cpp
 
-import pyphare.pharein as ph
+import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics,FluidDiagnostics
+from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
-import numpy as np
-
-from pyphare.pharesee.hierarchy import hierarchy_from
 
 
 import matplotlib.pyplot as plt
-
-
 import matplotlib as mpl
-import shutil
-import os
-import time
+import numpy as np
 mpl.use('Agg')
+
 
 
 

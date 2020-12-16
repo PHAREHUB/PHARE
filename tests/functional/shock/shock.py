@@ -1,26 +1,17 @@
 #!/usr/bin/env python3
 
-from pybindlibs import cpp
-
-import pyphare.pharein as ph
+import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics,FluidDiagnostics
+from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
-import numpy as np
-
-from pyphare.pharesee.hierarchy import hierarchy_from
 
 
 import matplotlib.pyplot as plt
-
-
 import matplotlib as mpl
-import shutil
-import os
-import time
+import numpy as np
 mpl.use('Agg')
 
 
@@ -68,28 +59,21 @@ def config():
         L = sim.simulation_domain()[0]
         v1=0.125
         v2=4.0
-        return v1 + (v2-v1)*(S(x,L*0.2,1) -S(x, L*0.8, 1))
-
+        return v1 + (v2-v1)*(S(x , L * s0.2, 1) -S(x, L * 0.8, 1))
 
     def bz(x):
         return 0.
 
-
-    def b2(x):
-        return bx(x)**2 + by(x)**2 + bz(x)**2
-
-
     def T(x):
-        K = 1
-        return 0.1#/density(x)*(K - b2(x)*0.5)
+        return 0.1
 
 
     def vx(x):
         from pyphare.pharein.global_vars import sim
         L = sim.simulation_domain()[0]
-        v1=0.
-        v2=0.
-        return v1 + (v2-v1)*(S(x,L*0.25,1) -S(x, L*0.75, 1))
+        v1 = 0.
+        v2 = 0.
+        return v1 + (v2-v1) * (S(x, L*0.25, 1) -S(x, L * 0.75, 1))
 
 
     def vy(x):

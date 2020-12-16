@@ -1,26 +1,16 @@
 #!/usr/bin/env python3
 
-from pybindlibs import cpp
-
-import pyphare.pharein as ph
+import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein import ElectromagDiagnostics,FluidDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
+
 import numpy as np
-
-from pyphare.pharesee.hierarchy import hierarchy_from
-
-
 import matplotlib.pyplot as plt
-
-
 import matplotlib as mpl
-import shutil
-import os
-import time
 mpl.use('Agg')
 
 
@@ -234,8 +224,6 @@ def config_td(**kwargs):
 
 
 
-
-import pyphare.pharein.global_vars as global_vars
 def main():
 
     for name,config in zip(("uni", "td"),(config_uni, config_td)):
@@ -251,7 +239,7 @@ def main():
             simulator = Simulator(gv.sim)
             simulator.initialize()
             simulator.run()
-            global_vars.sim = None
+            gv.sim = None
 
 
 if __name__=="__main__":

@@ -56,26 +56,6 @@ void LohnerHybridTaggerStrategy<HybridModel>::tag(HybridModel& model, gridlayout
 */
             auto lohner = std::abs((Byavgp2 - Byavg) - (Byavgp1 - Byavg)) / (1 + std::abs(Byavg));
 
-            /*
-                        auto derp       = std::abs(By(ix + idx) - By(ix));
-                        derm            = std::abs(By(ix) - By(ix - idx));
-                        der2            = std::abs(By(ix + idx) - 2 * By(ix) + By(ix - idx));
-                        der2p           = std::abs(By(ix + idx) + 2 * By(ix) + By(ix - idx));
-                        auto Byavg      = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) +
-               By(ix + 2)); denom           = 1 + derp + derm + epsilon * der2p; double lohner_y =
-               (Byavg > 0.01) ? der2 / denom : 0; lohner_y        = der2 / denom;
-
-                        derp            = std::abs(Bz(ix + idx) - Bz(ix));
-                        derm            = std::abs(Bz(ix) - Bz(ix - idx));
-                        der2            = std::abs(Bz(ix + idx) - 2 * Bz(ix) + Bz(ix - idx));
-                        der2p           = std::abs(Bz(ix + idx) + 2 * Bz(ix) + Bz(ix - idx));
-                        auto Bzavg      = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) +
-               Bz(ix + 2)); denom           = 1 + derp + derm + epsilon * der2p; double lohner_z =
-               (Bzavg > 0.01) ? der2 / denom : 0; lohner_z        = der2 / denom;
-            auto lohner
-                = std::sqrt(lohner_x * lohner_x + lohner_y * lohner_y + lohner_z * lohner_z);
-
-            */
             if (lohner > threshold)
             {
                 tags[iCell] = 1;
