@@ -149,43 +149,6 @@ Hierarchy::Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
 
 
 template<typename Type, std::size_t dimension>
-void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type* arr);
-
-template<typename Type, std::size_t dimension>
-auto parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key);
-
-template<std::size_t dimension>
-void getDomainCoords(PHARE::initializer::PHAREDict& grid, float lower[dimension],
-                     float upper[dimension]);
-
-
-template<std::size_t dimension>
-auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr);
-
-
-template<std::size_t dimension>
-auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid);
-
-
-
-
-template<std::size_t _dimension>
-DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict dict)
-    : Hierarchy(
-        std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
-            SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
-            griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
-        patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
-        shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
-        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
-        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"))
-{
-}
-
-
-
-
-template<typename Type, std::size_t dimension>
 void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type* arr)
 {
     arr[0] = grid[key]["x"].template to<Type>();
@@ -259,7 +222,6 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid)
     db->putIntegerArray("periodic_dimension", periodicity, dimension);
     return db;
 }
-
 
 
 /*
@@ -336,6 +298,21 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
     }
 
     return hierDB;
+}
+
+
+
+template<std::size_t _dimension>
+DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict dict)
+    : Hierarchy(
+        std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
+            SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
+            griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
+        patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
+        shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
+        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
+        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"))
+{
 }
 
 
