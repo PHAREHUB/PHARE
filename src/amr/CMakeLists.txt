@@ -46,8 +46,7 @@ set( SOURCES_INC
      tagging/tagger_factory.h
      tagging/hybrid_tagger.h
      tagging/hybrid_tagger_strategy.h
-     tagging/scaledavg_hybrid_tagger_strategy.h
-     tagging/lohner_hybrid_tagger_strategy.h
+     tagging/default_hybrid_tagger_strategy.h
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

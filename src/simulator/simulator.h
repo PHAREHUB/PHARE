@@ -162,7 +162,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
         multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
 
         // hard coded for now, should get some params later from the dict
-        auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "lohner");
+        auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
         multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
 
 

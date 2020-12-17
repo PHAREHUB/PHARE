@@ -23,10 +23,10 @@ using namespace PHARE::amr;
 TEST(test_tagger, fromFactory)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
-    auto hybridTagger = TaggerFactory<phare_types>::make("HybridModel", "avg");
+    auto hybridTagger = TaggerFactory<phare_types>::make("HybridModel", "default");
     EXPECT_TRUE(hybridTagger != nullptr);
 
-    auto badTagger = TaggerFactory<phare_types>::make("invalidModel", "scaledAvg");
+    auto badTagger = TaggerFactory<phare_types>::make("invalidModel", "invalidStrat");
     EXPECT_TRUE(badTagger == nullptr);
 }
 
@@ -177,7 +177,7 @@ struct TestTagger : public ::testing::Test
 
 TEST_F(TestTagger, scaledAvg)
 {
-    auto strat = ScaledAvgHybridTaggerStrategy<SinglePatchHybridModel>();
+    auto strat = DefaultHybridTaggerStrategy<SinglePatchHybridModel>();
     strat.tag(model, layout, tags.data());
     {
         auto start

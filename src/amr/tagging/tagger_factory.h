@@ -8,8 +8,7 @@
 #include "tagger.h"
 #include "hybrid_tagger.h"
 #include "hybrid_tagger_strategy.h"
-#include "scaledavg_hybrid_tagger_strategy.h"
-#include "lohner_hybrid_tagger_strategy.h"
+#include "default_hybrid_tagger_strategy.h"
 
 namespace PHARE::amr
 {
@@ -28,14 +27,10 @@ std::unique_ptr<Tagger> TaggerFactory<PHARE_T>::make(std::string modelName, std:
     {
         using HybridModel = typename PHARE_T::HybridModel_t;
         using HT          = HybridTagger<HybridModel>;
-        if (methodName == "avg")
+
+        if (methodName == "default")
         {
-            using HTS = ScaledAvgHybridTaggerStrategy<HybridModel>;
-            return std::make_unique<HT>(std::make_unique<HTS>());
-        }
-        if (methodName == "lohner")
-        {
-            using HTS = LohnerHybridTaggerStrategy<HybridModel>;
+            using HTS = DefaultHybridTaggerStrategy<HybridModel>;
             return std::make_unique<HT>(std::make_unique<HTS>());
         }
     }

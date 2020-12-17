@@ -134,42 +134,6 @@ def config():
 
 
 
-
-def plot(bhier):
-    times = np.sort(np.asarray(list(bhier.time_hier.keys())))
-
-    components  =("B_y", "B_z")
-    ylims = ((-1.25, 1.25),(0.,1.0))
-
-    for component,ylim in zip(components,ylims):
-        for it,t in enumerate(times):
-            fig,ax = plt.subplots(figsize=(10,6))
-            for il,level in bhier.levels(t).items():
-                patches = level.patches
-                if il == 0:
-                    marker="+"
-                    alpha=1
-                    ls='-'
-                else:
-                    marker='o'
-                    alpha=0.4
-                    ls='none'
-
-                for ip, patch in enumerate(patches):
-                    val   = patch.patch_datas["EM_"+component].dataset[:]
-                    x_val = patch.patch_datas["EM_"+component].x
-                    label="${}$ level {} patch {}".format(component,il,ip)
-                    ax.plot(x_val, val, label=label,
-                            marker=marker, alpha=alpha, ls=ls)
-                    ax.set_ylim(ylim)
-
-            ax.legend(ncol=4)
-            ax.set_title("t = {:05.2f}".format(t))
-            fig.savefig("{}_{:04d}.png".format(component,it))
-            plt.close(fig)
-
-
-
 def main():
     config()
     simulator = Simulator(gv.sim)
@@ -177,9 +141,6 @@ def main():
     simulator.run()
 
 
-    #if cpp.mpi_rank() == 0:
-    #    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
-    #    plot(b)
 
 if __name__=="__main__":
     main()
