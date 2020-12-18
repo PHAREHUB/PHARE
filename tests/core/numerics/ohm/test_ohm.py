@@ -20,7 +20,7 @@ class TestVariables (object) :
 
         """
 
-        self.nbrCells = (50, 30, 40)
+        self.nbrCells = (50, 40, 30)
         self.meshSize = (0.1, 0.2, 0.3)
         self.interpOrder = 1
         self.BxCentering = ('primal', 'dual', 'dual')
@@ -96,18 +96,18 @@ def test_ohm_yee1D(path):
     x_primal = tv.meshSize[0]*np.arange(layout.allocSize(tv.interpOrder, 'primal', tv.nbrCells[0])) - tv.meshSize[0] * nbrGhost_p
     x_dual   = tv.meshSize[0]*np.arange(layout.allocSize(tv.interpOrder, 'dual'  , tv.nbrCells[0])) - tv.meshSize[0] * nbrGhost_d + tv.meshSize[0]*0.5
 
-    # analytical profiles ov density, velocity...
-    Vx = np.cosh(0.2*x_primal)
-    Vy = np.cosh(0.4*x_primal)
-    Vz = np.cosh(0.3*x_primal)
-    Bx = np.tanh(0.2*x_primal)
-    By = np.tanh(3.0*x_dual)
-    Bz = np.tanh(1.2*x_dual)
-    n  = np.sinh(0.5*x_primal)
-    P  = np.sinh(0.8*x_primal)
-    Jx = np.sinh(0.1*x_dual)
-    Jy = np.sinh(0.3*x_primal)
-    Jz = np.sinh(0.2*x_primal)
+    # analytical profiles of density, velocity...
+    n  = np.cosh(0.5*x_primal)
+    Vx = np.sinh(0.2*x_primal)
+    Vy = np.sinh(0.3*x_primal)
+    Vz = np.sinh(0.4*x_primal)
+    P  = np.cosh(0.5*x_primal)
+    Bx = np.cosh(0.2*x_primal)
+    By = np.cosh(0.3*x_dual)
+    Bz = np.cosh(0.4*x_dual)
+    Jx = np.tanh(0.2*x_dual)
+    Jy = np.tanh(0.3*x_primal)
+    Jz = np.tanh(0.4*x_primal)
 
     # ideal term
     idealx[psi_d_X:pei_d_X+1] = 0.5*(Vz[psi_p_X:pei_p_X]+Vz[psi_p_X+1:pei_p_X+1])*By[psi_d_X:pei_d_X+1]\
@@ -135,9 +135,9 @@ def test_ohm_yee1D(path):
     viscousy[psi_p_X:pei_p_X+1] = -nu*(Jy[psi_p_X-1:pei_p_X]-2.0*Jy[psi_p_X:pei_p_X+1]+Jy[psi_p_X+1:pei_p_X+2])/(tv.meshSize[0]*tv.meshSize[0])
     viscousz[psi_p_X:pei_p_X+1] = -nu*(Jz[psi_p_X-1:pei_p_X]-2.0*Jz[psi_p_X:pei_p_X+1]+Jz[psi_p_X+1:pei_p_X+2])/(tv.meshSize[0]*tv.meshSize[0])
 
-    ExNew = idealx+0*pressx+0*resistx+0*viscousx
-    EyNew = idealy+0*pressy+0*resisty+0*viscousy
-    EzNew = idealz+0*pressz+0*resistz+0*viscousz
+    ExNew = idealx+pressx+resistx+viscousx
+    EyNew = idealy+pressy+resisty+viscousy
+    EzNew = idealz+pressz+resistz+viscousz
 
     filename_ohmx = "ohmx_yee_1D_order1.txt"
     filename_ohmy = "ohmy_yee_1D_order1.txt"
@@ -237,28 +237,28 @@ def test_ohm_yee2D(path):
     y_dual   = tv.meshSize[1]*np.arange(layout.allocSize(tv.interpOrder, 'dual'  , tv.nbrCells[1])) - tv.meshSize[1] * nbrGhost_d + tv.meshSize[1]*0.5
 
     # analytical profiles of density, velocity...
-    Vx = np.tensordot(np.cosh(0.2*x_primal),
+    n  = np.tensordot(np.cosh(0.5*x_primal),
+                      np.cosh(0.5*y_primal), axes=0)
+    Vx = np.tensordot(np.sinh(0.2*x_primal),
                       np.sinh(0.2*y_primal), axes=0)
-    Vy = np.tensordot(np.cosh(0.4*x_primal),
-                      np.sinh(0.4*y_primal), axes=0)
-    Vz = np.tensordot(np.cosh(0.3*x_primal),
+    Vy = np.tensordot(np.sinh(0.3*x_primal),
                       np.sinh(0.3*y_primal), axes=0)
-    Bx = np.tensordot(np.tanh(0.2*x_primal),
-                      np.sinh(0.2*y_dual), axes=0)
-    By = np.tensordot(np.tanh(0.4*x_dual),
+    Vz = np.tensordot(np.sinh(0.4*x_primal),
                       np.sinh(0.4*y_primal), axes=0)
-    Bz = np.tensordot(np.tanh(0.3*x_dual),
-                      np.sinh(0.3*y_dual), axes=0)
-    n  = np.tensordot(np.exp(-0.1*x_primal),
-                      np.exp(-0.1*y_primal), axes=0)
-    P  = np.tensordot(np.exp(-0.2*x_primal),
-                      np.exp(-0.2*y_primal), axes=0)
-    Jx = np.tensordot(np.sinh(0.1*x_dual),
-                      np.sinh(0.1*y_primal), axes=0)
-    Jy = np.tensordot(np.sinh(0.3*x_primal),
-                      np.sinh(0.3*y_dual), axes=0)
-    Jz = np.tensordot(np.sinh(0.2*x_primal),
-                      np.sinh(0.2*y_primal), axes=0)
+    P  = np.tensordot(np.cosh(0.5*x_primal),
+                      np.cosh(0.5*y_primal), axes=0)
+    Bx = np.tensordot(np.cosh(0.2*x_primal),
+                      np.cosh(0.2*y_dual), axes=0)
+    By = np.tensordot(np.cosh(0.3*x_dual),
+                      np.cosh(0.3*y_primal), axes=0)
+    Bz = np.tensordot(np.cosh(0.4*x_dual),
+                      np.cosh(0.4*y_dual), axes=0)
+    Jx = np.tensordot(np.tanh(0.2*x_dual),
+                      np.tanh(0.2*y_primal), axes=0)
+    Jy = np.tensordot(np.tanh(0.3*x_primal),
+                      np.tanh(0.3*y_dual), axes=0)
+    Jz = np.tensordot(np.tanh(0.4*x_primal),
+                      np.tanh(0.4*y_primal), axes=0)
 
     # ideal term
     idealx[psi_d_X  :pei_d_X+1, psi_p_Y  :pei_p_Y+1] = \
@@ -477,39 +477,39 @@ def test_ohm_yee3D(path):
     z_dual   = tv.meshSize[2]*np.arange(layout.allocSize(tv.interpOrder, 'dual'  , tv.nbrCells[2])) - tv.meshSize[2] * nbrGhost_d + tv.meshSize[2]*0.5
 
     # analytical profiles of density, velocity...
-    Vx = np.tensordot(np.cosh(0.2*x_primal),
+    n  = np.tensordot(np.cosh(0.5*x_primal),
+                      np.tensordot(np.cosh(0.5*y_primal),
+                                   np.cosh(0.5*z_primal), axes=0), axes=0)
+    Vx = np.tensordot(np.sinh(0.2*x_primal),
                       np.tensordot(np.sinh(0.2*y_primal),
-                                   np.tanh(0.2*z_primal), axes=0), axes=0)
-    Vy = np.tensordot(np.cosh(0.4*x_primal),
-                      np.tensordot(np.sinh(0.4*y_primal),
-                                   np.tanh(0.4*z_primal), axes=0), axes=0)
-    Vz = np.tensordot(np.cosh(0.3*x_primal),
+                                   np.sinh(0.2*z_primal), axes=0), axes=0)
+    Vy = np.tensordot(np.sinh(0.3*x_primal),
                       np.tensordot(np.sinh(0.3*y_primal),
-                                   np.tanh(0.3*z_primal), axes=0), axes=0)
-    Bx = np.tensordot(np.tanh(0.2*x_primal),
-                      np.tensordot(np.sinh(0.2*y_dual),
-                                   np.cosh(0.2*z_dual), axes=0), axes=0)
-    By = np.tensordot(np.tanh(0.4*x_dual),
+                                   np.sinh(0.3*z_primal), axes=0), axes=0)
+    Vz = np.tensordot(np.sinh(0.4*x_primal),
                       np.tensordot(np.sinh(0.4*y_primal),
-                                   np.cosh(0.4*z_dual), axes=0), axes=0)
-    Bz = np.tensordot(np.tanh(0.3*x_dual),
-                      np.tensordot(np.sinh(0.3*y_dual),
-                                   np.cosh(0.3*z_primal), axes=0), axes=0)
-    n  = np.tensordot(np.exp(-0.1*x_primal),
-                      np.tensordot(np.exp(-0.1*y_primal),
-                                   np.exp(-0.1*z_primal), axes=0), axes=0)
-    P  = np.tensordot(np.exp(-0.2*x_primal),
-                      np.tensordot(np.exp(-0.2*y_primal),
-                                   np.exp(-0.2*z_primal), axes=0), axes=0)
-    Jx = np.tensordot(np.sinh(0.1*x_dual),
-                      np.tensordot(np.sinh(0.1*y_primal),
-                                   np.tanh(0.1*z_primal), axes=0), axes=0)
-    Jy = np.tensordot(np.sinh(0.3*x_primal),
-                      np.tensordot(np.sinh(0.3*y_dual),
+                                   np.sinh(0.4*z_primal), axes=0), axes=0)
+    P  = np.tensordot(np.cosh(0.5*x_primal),
+                      np.tensordot(np.cosh(0.5*y_primal),
+                                   np.cosh(0.5*z_primal), axes=0), axes=0)
+    Bx = np.tensordot(np.cosh(0.2*x_primal),
+                      np.tensordot(np.cosh(0.2*y_dual),
+                                   np.cosh(0.2*z_dual), axes=0), axes=0)
+    By = np.tensordot(np.cosh(0.3*x_dual),
+                      np.tensordot(np.cosh(0.3*y_primal),
+                                   np.cosh(0.3*z_dual), axes=0), axes=0)
+    Bz = np.tensordot(np.cosh(0.4*x_dual),
+                      np.tensordot(np.cosh(0.4*y_dual),
+                                   np.cosh(0.4*z_primal), axes=0), axes=0)
+    Jx = np.tensordot(np.tanh(0.2*x_dual),
+                      np.tensordot(np.tanh(0.2*y_primal),
+                                   np.tanh(0.2*z_primal), axes=0), axes=0)
+    Jy = np.tensordot(np.tanh(0.3*x_primal),
+                      np.tensordot(np.tanh(0.3*y_dual),
                                    np.tanh(0.3*z_primal), axes=0), axes=0)
-    Jz = np.tensordot(np.sinh(0.2*x_primal),
-                      np.tensordot(np.sinh(0.2*y_primal),
-                                   np.tanh(0.2*z_dual), axes=0), axes=0)
+    Jz = np.tensordot(np.tanh(0.4*x_primal),
+                      np.tensordot(np.tanh(0.4*y_primal),
+                                   np.tanh(0.4*z_dual), axes=0), axes=0)
 
     # ideal term
     idealx[psi_d_X  :pei_d_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1] = \
