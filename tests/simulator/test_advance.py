@@ -212,7 +212,7 @@ class AdvanceTest(unittest.TestCase):
 
                                     coarseOffset = coarseBox.lower - coarse_pd.layout.box.lower
                                     dataBox_lower = coarseOffset + nGhosts
-                                    dataBox = Box(dataBox_lower, dataBox_lower + coarseBox.shape() - 1)
+                                    dataBox = Box(dataBox_lower, dataBox_lower + coarseBox.shape - 1)
 
                                     afterCoarse = np.copy(coarse_pdDataset)
                                     afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = 0
@@ -230,7 +230,7 @@ class AdvanceTest(unittest.TestCase):
        ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(12, 38)}, "L2": {"B0": Box1D(30, 52)} }),
     )
     def test_field_coarsening_via_subcycles(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].dim()
+        dim = refinement_boxes["L0"]["B0"].ndim
         self._test_field_coarsening_via_subcycles(dim, interp_order=1, refinement_boxes=refinement_boxes)
 
 
