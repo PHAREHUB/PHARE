@@ -190,8 +190,8 @@ def populateDict():
     for diag in simulation.diagnostics:
         type_path = diag_path + diag.type + '/'
         name_path = type_path + diag.name
-        add(name_path + "/" + 'type/' , diag.type)
-        add(name_path + "/" + 'quantity/' , diag.quantity)
+        add(name_path + "/" + 'type' , diag.type)
+        add(name_path + "/" + 'quantity' , diag.quantity)
         pp.add_array_as_vector(name_path + "/" + "write_timestamps", diag.write_timestamps)
         pp.add_array_as_vector(name_path + "/" + "compute_timestamps", diag.compute_timestamps)
 

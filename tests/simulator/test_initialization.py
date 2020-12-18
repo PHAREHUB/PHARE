@@ -16,24 +16,29 @@ import unittest
 from ddt import ddt, data, unpack
 
 
+
+
 @ddt
 class InitializationTest(unittest.TestCase):
+
+    def ddt_test_id(self):
+        return self._testMethodName.split("_")[-1]
 
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
                      density = lambda x: 0.3 + 1./np.cosh((x-6)/4.)**2,
-                     beam = False,
+                     beam = False, time_step_nbr=30000,
                      smallest_patch_size=10, largest_patch_size=10,
                      cells= 120,
                      dl=0.1):
 
         from pyphare.pharein import global_vars
-        global_vars.sim =None
+        global_vars.sim = None
         startMPI()
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
-            time_step_nbr=30000,
+            time_step_nbr=time_step_nbr,
             final_time=30.,
             boundary_types="periodic",
             cells=cells,
@@ -43,6 +48,7 @@ class InitializationTest(unittest.TestCase):
             diag_options={"format": "phareh5",
                           "options": {"dir": diag_outputs, "mode":"overwrite"}}
         )
+
         def beam_density(x):
             return np.zeros_like(x)+0.3
 
@@ -55,6 +61,7 @@ class InitializationTest(unittest.TestCase):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             return 0.1*np.sin(2*np.pi*x/L[0])
+
 
         def bx(x):
             return 1.
@@ -115,39 +122,40 @@ class InitializationTest(unittest.TestCase):
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(1),
-                compute_timestamps=np.zeros(1)
+                write_timestamps=np.zeros(time_step_nbr+1),
+                compute_timestamps=np.zeros(time_step_nbr+1)
             )
-
-
 
         for quantity in ["density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(1),
-                compute_timestamps=np.zeros(1)
+                write_timestamps=np.zeros(time_step_nbr+1),
+                compute_timestamps=np.zeros(time_step_nbr+1)
             )
 
         poplist = ["protons", "beam"] if beam else ["protons"]
         for pop in poplist:
             for quantity in ["density", "flux"]:
                 FluidDiagnostics(quantity=quantity,
-                                 write_timestamps=np.zeros(1),
-                                 compute_timestamps=np.zeros(1),
+                                 write_timestamps=np.zeros(time_step_nbr+1),
+                                 compute_timestamps=np.zeros(time_step_nbr+1),
                                  population_name=pop)
 
             for quantity in ['domain', 'levelGhost', 'patchGhost']:
                 ParticleDiagnostics(quantity=quantity,
-                                    compute_timestamps=np.zeros(1),
-                                    write_timestamps=np.zeros(1),
+                                    compute_timestamps=np.zeros(time_step_nbr+1),
+                                    write_timestamps=np.zeros(time_step_nbr+1),
                                     population_name=pop)
 
-        simulator = Simulator(global_vars.sim)
-        simulator.initialize()
+        simulator = Simulator(global_vars.sim).initialize()
 
-        if qty == "b":
-            b_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_B.h5")
-            return b_hier
+        eb_hier = None
+        if qty in ["e", "eb"]:
+            eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_E.h5", hier=eb_hier)
+        if qty in ["b", "eb"]:
+            eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_B.h5", hier=eb_hier)
+        if qty in ["e", "b", "eb"]:
+            return eb_hier
 
         is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
 
@@ -688,13 +696,11 @@ class InitializationTest(unittest.TestCase):
        ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
     )
     def test_levelghostparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
-        dim = len(refinement_boxes["L0"]["B0"].lower)
+        dim = refinement_boxes["L0"]["B0"].dim()
         for interp_order in [1, 2, 3]:
             self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
 
 
-    def ddt_test_id(self):
-        return self._testMethodName.split("_")[-1]
 
     def _test_patch_ghost_on_refined_level_case(self, has_patch_ghost, **kwargs):
         import pyphare.pharein as ph
@@ -744,6 +750,7 @@ class InitializationTest(unittest.TestCase):
     @data(*_has_patch_ghost_on_refined_level_case)
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
         self._test_patch_ghost_on_refined_level_case(True, **simInput)
+
 
 
 

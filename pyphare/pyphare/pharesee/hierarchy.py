@@ -35,13 +35,11 @@ class FieldData(PatchData):
     Concrete type of PatchData representing a physical quantity
     defined on a grid.
     """
-    def _mesh_coords(self, i):
-        return self.origin[i] - self.ghosts_nbr * self.dl[i] + np.arange(self.size[i]) * self.dl[i] + self.offset[i]
 
     @property
     def x(self):
         if self._x is None:
-            self._x = self._mesh_coords(0)
+            self._x = self.layout.yeeCoordsFor(self.field_name, "x")
         return self._x
 
     def __init__(self, layout, field_name, data, **kwargs):
@@ -141,6 +139,8 @@ class PatchLevel:
         self.level_number = lvl_nbr
         self.patches = patches
 
+    def __iter__(self):
+        return self.patches.__iter__()
 
     def level_range(self):
         name = list(self.patches[0].patch_datas.keys())[0]
@@ -171,9 +171,15 @@ class PatchHierarchy:
         return self.time_hier[time][level_number]
 
 
-
     def levels(self, time=0.):
         return self.time_hier[time]
+
+
+    def levelNbr(self, time):
+        return len(self.levels(time).items())
+
+    def levelNbrs(self, time):
+        return list(self.time_hier[time].keys())
 
 
     def refined_domain_box(self, level_number):

@@ -97,10 +97,11 @@ private:
     float x_up_[dimension];
     int maxLevelNumber_;
     double dt_;
-    int timeStepNbr_    = 0;
-    double finalTime_   = 0;
-    double currentTime_ = 0;
-    bool isInitialized  = false;
+    int timeStepNbr_           = 0;
+    double finalTime_          = 0;
+    double currentTime_        = 0;
+    bool isInitialized         = false;
+    std::size_t fineDumpLvlMax = 0;
 
     // physical models that can be used
     std::shared_ptr<HybridModel> hybridModel_;
@@ -176,12 +177,13 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
                 auto fine_dump_lvl_max = diagDict["fine_dump_lvl_max"].template to<int>();
 
                 if (fine_dump_lvl_max > 0)
-                {
+                { // copy for later
+                    this->fineDumpLvlMax = static_cast<std::size_t>(fine_dump_lvl_max);
                     functors_["pre_advance"]["fine_dump"] = [&](SimFunctorParams const& params) {
                         std::size_t level_nbr = params["level_nbr"].template to<int>();
                         auto timestamp        = params["timestamp"].template to<double>();
 
-                        if (static_cast<std::size_t>(fine_dump_lvl_max) >= level_nbr)
+                        if (this->fineDumpLvlMax >= level_nbr)
                             this->dMan->dump_level(level_nbr, timestamp);
                     };
                 }

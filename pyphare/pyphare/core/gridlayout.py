@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
 import math
+import numpy as np
+
 from .phare_utilities import listify
 from .box import Box
 
+directions = ["x", "y", "z"]
+direction_to_dim = {direction: idx for idx, direction in enumerate(directions)}
 
 yee_centering = {
     'x': {
@@ -82,7 +86,7 @@ class GridLayout(object):
     def particleGhostNbr(self, interp_order):
         return 1 if interp_order == 1 else 2
 
-    def nbrGhosts(self,interpOrder, centering):
+    def nbrGhosts(self, interpOrder, centering):
         minNbrGhost = 5
         if centering == 'primal':
             if interpOrder == 1:
@@ -93,7 +97,7 @@ class GridLayout(object):
             return max(math.floor( (interpOrder +1)/2 ), minNbrGhost)
 
 
-    def nbrGhostsPrimal(self,interpOrder):
+    def nbrGhostsPrimal(self, interpOrder):
         minNbrGhost = 5
         if interpOrder == 1:
             return max(math.floor( (interpOrder+1)/2 ), minNbrGhost)
@@ -102,7 +106,7 @@ class GridLayout(object):
 
 
 
-    def isDual(self,centering):
+    def isDual(self, centering):
         if centering == 'dual':
             return 1
         else:
@@ -115,11 +119,11 @@ class GridLayout(object):
 
     def ghostEndIndex(self, interpOrder, centering, nbrCells):
         index = self.physicalEndIndex(interpOrder, centering, nbrCells) \
-        + self.nbrGhosts(interpOrder, centering)
+              + self.nbrGhosts(interpOrder, centering)
         return index
 
 
-    def physicalStartIndex(self,interpOrder, centering):
+    def physicalStartIndex(self, interpOrder, centering):
         index = self.ghostStartIndex() + self.nbrGhosts(interpOrder, centering)
         return index
 
@@ -127,14 +131,40 @@ class GridLayout(object):
 
     def physicalEndIndex(self, interpOrder, centering, nbrCells):
         index = self.physicalStartIndex(interpOrder, centering) \
-        + nbrCells - self.isDual(centering)
+                + nbrCells - self.isDual(centering)
         return index
 
 
 
+    def physicalStartIndices(self, qty):
+        assert qty in self.hybridQuantities
+        indices = np.zeros(self.box.dim())
+        for i, direction in enumerate(directions[:self.box.dim()]):
+            centering = yee_centering[direction][qty]
+            indices[i] = self.physicalStartIndex(self.interp_order, centering)
+        return indices
+
+
+    def physicalEndIndices(self, qty):
+        assert qty in self.hybridQuantities
+        indices = np.zeros(self.box.dim())
+        for i, direction in enumerate(directions[:self.box.dim()]):
+            centering = yee_centering[direction][qty]
+            indices[i] = self.physicalEndIndex(self.interp_order, centering, self.box.shape()[i])
+        return indices
+
+
+    def nbrGhostFor(self, qty):
+        assert qty in self.hybridQuantities
+        nGhosts = np.zeros(self.box.dim())
+        for i, direction in enumerate(directions[:self.box.dim()]):
+            centering = yee_centering[direction][qty]
+            nGhosts[i] = self.nbrGhosts(self.interp_order, centering)
+        return nGhosts
+
 
     # ---- Start / End   primal methods ------
-    def physicalStartPrimal(self,interpOrder):
+    def physicalStartPrimal(self, interpOrder):
         index = self.ghostStartIndex() + self.nbrGhostsPrimal(interpOrder)
         return index
 
@@ -162,6 +192,11 @@ class GridLayout(object):
         return size
 
 
+    def AMRIndexToLocal(self, dim, index):
+        dualStart = self.physicalStartIndex(self.interp_order, "dual")
+        return index - self.box.lower[dim] + dualStart
+
+
     # ---- Yee coordinate methods -------------------------
     # knode : a primal or dual node index
     #
@@ -182,6 +217,28 @@ class GridLayout(object):
         x = ( (knode - iStart) + halfCell )*ds + origin
 
         return x
+
+
+    def yeeCoordsFor(self, qty, direction):
+
+        assert qty in self.hybridQuantities and direction in direction_to_dim
+
+        centering = yee_centering[direction][qty]
+        nbrGhosts = self.nbrGhosts(self.interp_order, centering)
+
+        offset = 0
+        dim = direction_to_dim[direction]
+        size = self.box.shape()[dim] + (nbrGhosts * 2)
+
+        if centering == 'dual':
+            offset = 0.5*self.dl[dim]
+        else:
+            size += 1
+
+        return self.origin[dim] - nbrGhosts * self.dl[dim] + np.arange(size) * self.dl[dim] + offset
+
+
+
 
 
     # ---- Get coordinate methods -------------------------
@@ -212,18 +269,13 @@ class GridLayout(object):
     # Use case:
     #   changeCentering( qtyCentering(qty, direct), 1 )
     #
-    def changeCentering(self, centering, derivOrder ):
-
-    #    print( "Inputs\n   centering : %s\n   derivOrder : %d" % (centering, derivOrder) )
+    def changeCentering(self, centering, derivOrder = 0):
 
         newCentering = centering
 
-        # if derivOrder is odd the centering
-        # is changed
-        if derivOrder%2 != 0:
+        # if derivOrder is odd the centering is changed
+        if derivOrder % 2 != 0:
             newCentering = self.swapCentering( centering )
-
-    #    print( "   output : %s" % newCentering )
 
         return newCentering
 
@@ -238,5 +290,4 @@ class GridLayout(object):
             newCentering = 'dual'
 
         return newCentering
-
 

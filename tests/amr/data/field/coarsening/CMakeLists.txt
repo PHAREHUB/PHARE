@@ -4,20 +4,18 @@ project(test-field-data-coarsen)
 
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
+if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+  file(GLOB PYFILES "*.py")
+  file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
 set(SOURCES_INC
-  test_coarsening_basic_hierarchy.h
   test_linear_coarsen.h
-  test_tag_strategy.h
   test_weighter_coarsen.h
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
-   )
+  )
 
-set(SOURCES_CPP
-  test_coarsening_basic_hierarchy.cpp
-  test_coarsening_main.cpp
-  test_tag_strategy.cpp
-   )
+set(SOURCES_CPP test_coarsening_main.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
@@ -37,6 +35,6 @@ add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(TARGET ${PROJECT_NAME}
                    POST_BUILD
-                   COMMAND PYTHONPATH=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_coarsen_field.py ${CMAKE_CURRENT_BINARY_DIR})
+                   COMMAND "PYTHONPATH=${CMAKE_BINARY_DIR}:${PHARE_PYTHONPATH}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_coarsen_field.py ${CMAKE_CURRENT_BINARY_DIR})
 
 

@@ -373,6 +373,25 @@ namespace solver
 
 
 
+        void dump_(int iLevel)
+        {
+            // we skip first/last as that's done via regular diag dump mechanism
+            bool fineDumpsActive = simFuncs_.at("pre_advance").count("fine_dump") > 0;
+            bool notCoarsestTime = subcycleEndTimes_[iLevel] != subcycleEndTimes_[0];
+            bool shouldDump      = fineDumpsActive and notCoarsestTime and iLevel > 0;
+
+            if (shouldDump)
+            {
+                auto const& dump_functor = simFuncs_.at("pre_advance").at("fine_dump");
+                SimFunctorParams fineDumpParams;
+                fineDumpParams["level_nbr"] = iLevel;
+                fineDumpParams["timestamp"] = subcycleEndTimes_[iLevel];
+
+                dump_functor(fineDumpParams);
+            }
+        }
+
+
         /**
          * @brief advanceLevel is derived from the abstract method of TimeRefinementLevelStrategy
          *
@@ -389,6 +408,7 @@ namespace solver
          * At the last step of the subcycle, the Messenger may also need to perform some actions,
          * like working on its internal data for instance. messenger.lastStep()
          */
+
         double advanceLevel(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
                             std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                             double const currentTime, double const newTime, bool const firstStep,
@@ -406,43 +426,29 @@ namespace solver
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
 
 
-            firstNewLevelTimes_[iLevel]     = newTime;
-            firstCurrentLevelTimes_[iLevel] = currentTime;
+            subcycleStartTimes_[iLevel] = currentTime;
+            subcycleEndTimes_[iLevel]   = newTime;
 
             if (firstStep)
             {
                 fromCoarser.firstStep(model, *level, hierarchy, currentTime,
-                                      firstCurrentLevelTimes_[iLevel - 1],
-                                      firstNewLevelTimes_[iLevel - 1]);
+                                      subcycleStartTimes_[iLevel - 1],
+                                      subcycleEndTimes_[iLevel - 1]);
             }
-
 
             fromCoarser.prepareStep(model, *level, currentTime);
 
-
-            // we skip first/last as that's done via regular diag dump mechanism
-            bool fineDumpsActive = simFuncs_.at("pre_advance").count("fine_dump") > 0;
-            bool notCoarsestTime = currentTime != firstNewLevelTimes_[0];
-            bool shouldDump = fineDumpsActive and !firstStep and iLevel > 0 and notCoarsestTime;
-            if (shouldDump)
-            {
-                SimFunctorParams fineDumpParams;
-                fineDumpParams["level_nbr"] = iLevel;
-                fineDumpParams["timestamp"] = currentTime;
-
-                auto const& dump_functor = simFuncs_.at("pre_advance").at("fine_dump");
-                dump_functor(fineDumpParams);
-            }
-
-
             solver.advanceLevel(hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
-
 
             if (lastStep)
             {
                 fromCoarser.lastStep(model, *level);
             }
 
+            if (iLevel == hierarchy->getFinestLevelNumber())
+            {
+                dump_(iLevel);
+            }
 
             return newTime;
         }
@@ -462,6 +468,9 @@ namespace solver
                 auto& toCoarser = getMessengerWithCoarser_(ilvl);
                 auto level      = hierarchy->getPatchLevel(ilvl);
                 toCoarser.synchronize(*level);
+
+                // advancing all but the finest includes synchronization of the finer
+                dump_(ilvl - 1);
             }
         }
 
@@ -493,8 +502,8 @@ namespace solver
 
     private:
         int nbrOfLevels_;
-        std::unordered_map<std::size_t, double> firstNewLevelTimes_;
-        std::unordered_map<std::size_t, double> firstCurrentLevelTimes_;
+        std::unordered_map<std::size_t, double> subcycleEndTimes_;
+        std::unordered_map<std::size_t, double> subcycleStartTimes_;
         using IMessengerT       = amr::IMessenger<IPhysicalModel<AMR_Types>>;
         using LevelInitializerT = LevelInitializer<AMR_Types>;
         std::vector<LevelDescriptor> levelDescriptors_;

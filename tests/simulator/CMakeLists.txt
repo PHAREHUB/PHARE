@@ -14,7 +14,8 @@ if(HighFive)
   add_mpi_python3_test(3 diagnostics diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
   add_mpi_python3_test(4 diagnostics diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
 
-  add_python3_test(init-particles  test_initialization.py  ${CMAKE_CURRENT_BINARY_DIR})
+  add_python3_test(initialization  test_initialization.py  ${CMAKE_CURRENT_BINARY_DIR})
+  add_python3_test(advancement     test_advance.py         ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(sim-refineboxes refinement_boxes.py     ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
