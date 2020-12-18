@@ -42,7 +42,7 @@ Simulation(
 
 
 
-# in the following we usethe MaxwellianFluidModel
+# in the following we use the MaxwellianFluidModel
 
 import numpy as np
 
@@ -71,7 +71,7 @@ ElectromagDiagnostics(
     diag_type="E",                  # available : ("E", "B")
     write_every=10,
     compute_every=5,
-    start_teration=0,
+    start_iteration=0,
     last_iteration=990,
     path = 'ElectromagDiagnostics1'   # where output files will be written, [default: name]
 )

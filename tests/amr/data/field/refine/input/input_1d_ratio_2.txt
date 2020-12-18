@@ -43,6 +43,11 @@ StandardTagAndInitialize
             level_0
             {
                 boxes = [ (4) , (15)] , [ (30), (50)]
+                // these refinement box(es) are such that the refined patches
+                // should NOT have any ghost beyond the coarest level
+                // domain boundaries, because periodicity would apply and
+                // ghost nodes would NOT have the value expected from the
+                // linear function
             }
         }
     }
