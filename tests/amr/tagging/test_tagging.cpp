@@ -150,6 +150,7 @@ struct TestTagger : public ::testing::Test
     GridLayoutT layout;
     Field Bx, By, Bz;
     Field Ex, Ey, Ez;
+
     SinglePatchHybridModel model;
     std::vector<int> tags;
 
@@ -174,7 +175,7 @@ struct TestTagger : public ::testing::Test
     }
 };
 
-
+/*
 TEST_F(TestTagger, scaledAvg)
 {
     auto strat = DefaultHybridTaggerStrategy<SinglePatchHybridModel>();
@@ -209,7 +210,7 @@ TEST_F(TestTagger, scaledAvg)
         }
     }
 }
-
+*/
 
 
 

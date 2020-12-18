@@ -26,7 +26,7 @@ class AdvanceTest(unittest.TestCase):
                      diag_outputs="phare_outputs",
                      smallest_patch_size=5, largest_patch_size=5,
                      cells= 120, time_step=0.001,
-                     dl=0.1, extra_diag_options={}, time_step_nbr=1):
+                     dl=0.2, extra_diag_options={}, time_step_nbr=1):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -201,7 +201,7 @@ class AdvanceTest(unittest.TestCase):
                         if lvlOverlap is not None:
                             for EM in ["E", "B"]:
                                 for xyz in ["x", "y", "z"]:
-                                    qty = f"EM_{EM}_{xyz}"
+                                    qty = f"{EM}{xyz}"
                                     coarse_pd = coarsePatch.patch_datas[qty]
                                     fine_pd  = finePatch.patch_datas[qty]
                                     coarseBox = boxm.coarsen(lvlOverlap, 2)

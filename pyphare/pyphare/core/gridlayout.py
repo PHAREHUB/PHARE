@@ -16,7 +16,7 @@ yee_centering = {
         'Jx':'dual', 'Jy':'primal', 'Jz':'primal',
         'rho':'primal', 'Vx':'primal','Vy':'primal',
         "Fx":"primal","Fy":"primal","Fz":"primal",
-        'Vz':'primal','P':'primal'
+        'Vz':'primal','P':'primal', "Fx":"primal","Fy":"primal","Fz":"primal"
     },
     'y' : {
         'Bx':'dual', 'By':'primal', 'Bz':'dual',
@@ -31,7 +31,7 @@ yee_centering = {
         'Jx':'primal', 'Jy':'primal', 'Jz':'dual',
         'rho':'primal', 'Vx':'primal','Vy':'primal',
         "Fx":"primal","Fy":"primal","Fz":"primal",
-        'Vz':'primal', 'P':'primal'
+        'Vz':'primal', 'P':'primal', "Fx":"primal","Fy":"primal","Fz":"primal"
     }
 }
 yee_centering_lower = {
@@ -73,7 +73,7 @@ class GridLayout(object):
                                  'Ex','Ey','Ez',
                                  'Jx','Jy','Jz',
                                  'rho','Vx','Vy',
-                                 'Vz','P']
+                                 'Vz','P', 'Fx', 'Fy', 'Fz']
 
 
         self.yeeCentering = YeeCentering()

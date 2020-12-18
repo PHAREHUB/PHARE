@@ -69,7 +69,11 @@ def main(path='./'):
     gl = gridlayout.GridLayout()
 
     directions = gl.directions
-    quantities = gl.hybridQuantities
+    quantities = ['Bx','By','Bz',
+                  'Ex','Ey','Ez',
+                  'Jx','Jy','Jz',
+                  'rho','Vx','Vy',
+                  'Vz','P']
 
 
     nbrCellXList=[40, 40, 40]

@@ -28,15 +28,15 @@ def config():
     Simulation(
         smallest_patch_size=10,
         largest_patch_size=20,
-        time_step_nbr=100,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=25,             # simulation final time (not specified if time_step and time_step_nbr provided)
+        time_step_nbr=2000,        # number of time steps (not specified if time_step and final_time provided)
+        final_time=20,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
-        cells=500,                # integer or tuple length == dimension
-        dl=1,                  # mesh size of the root level, float or tuple
+        cells=400,                # integer or tuple length == dimension
+        dl=0.5,                  # mesh size of the root level, float or tuple
         max_nbr_levels=3,          # (default=1) max nbr of levels in the AMR hierarchy
         nesting_buffer=2,
         refinement = "tagging",
-        diag_options={"format": "phareh5", "options": {"dir": "phare_outputs","mode":"overwrite"}}
+        diag_options={"format": "phareh5", "options": {"dir": "refine_dx05_lvl3","mode":"overwrite"}}
     )
 
 
@@ -74,7 +74,7 @@ def config():
 
 
     def vx(x):
-        return 0.
+        return 1.
 
 
     def vy(x):
