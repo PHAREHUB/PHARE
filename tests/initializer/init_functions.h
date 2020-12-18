@@ -61,6 +61,22 @@ Return bz(Param x)
     return std::make_shared<core::VectorSpan<double>>(x);
 }
 
+Return ex(Param x)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
+
+Return ey(Param x)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
+
+Return ez(Param x)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
+
+
 } // namespace PHARE::initializer::test_fn::func_1d
 
 
@@ -119,6 +135,45 @@ Return bz(Param x, Param y)
     return std::make_shared<core::VectorSpan<double>>(x);
 }
 
+Return ex(Param x, Param y)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
+
+Return ey(Param x, Param y)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
+
+Return ez(Param x, Param y)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
+
 } // namespace PHARE::initializer::test_fn::func_2d
+
+
+template<std::size_t dim>
+auto makeSharedPtr()
+{
+    using Param = std::vector<double> const&;
+
+    if constexpr (dim == 1)
+    {
+        return [](Param x) { return std::make_shared<PHARE::core::VectorSpan<double>>(x); };
+    }
+    else if constexpr (dim == 2)
+    {
+        return
+            [](Param x, Param y) { return std::make_shared<PHARE::core::VectorSpan<double>>(x); };
+    }
+    else if constexpr (dim == 3)
+    {
+        return [](Param x, Param y, Param z) {
+            return std::make_shared<PHARE::core::VectorSpan<double>>(x);
+        };
+    }
+}
+
 
 #endif // PHARE_TEST_INITIALIZER_INIT_FUNCTIONS_H

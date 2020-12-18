@@ -69,10 +69,10 @@ class FieldData(PatchData):
                 assert len(centerings) == self.dim
             else:
                 if self.dim != 1:
-                    raise ValeuError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
+                    raise ValueError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
                 centerings = [kwargs["centering"]]
         else:
-            ValueError("centering not specified and cannot be inferred from field name")
+            raise ValueError("centering not specified and cannot be inferred from field name")
 
         for i, centering in enumerate(centerings):
             self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
