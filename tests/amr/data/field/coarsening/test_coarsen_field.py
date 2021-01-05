@@ -48,7 +48,7 @@ def dump(ndim, path, quantity):
         Box([18] * ndim, [37] * ndim), origin=origin, dl=[0.1] * ndim
     )
 
-    domainSize = coarseLayout.box.shape() * coarseLayout.dl
+    domainSize = coarseLayout.box.shape * coarseLayout.dl
 
     coarseCoords, fineCoords, is_primal = [], [], []
 
@@ -101,7 +101,7 @@ def main(path="./"):
 
 
 def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
-    ndim = coarseLayout.box.dim()
+    ndim = coarseLayout.box.ndim
     ratio = 2
 
     nGhosts = coarseLayout.nbrGhostFor(qty)

@@ -696,7 +696,7 @@ class InitializationTest(unittest.TestCase):
        ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
     )
     def test_levelghostparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].dim()
+        dim = refinement_boxes["L0"]["B0"].ndim
         for interp_order in [1, 2, 3]:
             self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
 

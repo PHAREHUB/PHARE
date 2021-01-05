@@ -59,6 +59,7 @@ class BoxTesT(unittest.TestCase):
           # no inter
           (Box1D(10, 11), Box1D(14, 15), None),
           (Box2D(10, 11), Box2D(14, 15), None),
+          (Box2D( 5, 24), Box2D(23, 44), Box2D(23, 24)),
           (Box3D(10, 11), Box3D(14, 15), None),
           )
     @unpack
@@ -89,13 +90,13 @@ class BoxTesT(unittest.TestCase):
     @data( (Box(10, 20),  5 , Box( 5, 25)),
            (Box(-5, 20),  10, Box(-15, 30)),
            (Box(-5, -5),  2,  Box(-7,-3)),
-           (Box([10, 10], [20, 20]),  5, Box([  5,   5], [25, 25])),
-           (Box([-5, -5], [20, 20]), 10, Box([-15, -15], [30, 30])),
-           (Box([-5, -5], [-5, -5]),  2, Box([ -7,  -7], [-3, -3])),
+           (Box([10, 10], [20, 20]),  [5, 5], Box([  5,   5], [25, 25])),
+           (Box([-5, -5], [20, 20]), [10, 10], Box([-15, -15], [30, 30])),
+           (Box([-5, -5], [-5, -5]),  [2, 2], Box([ -7,  -7], [-3, -3])),
            )
     @unpack
     def test_grow(self, box, size, expected):
-        self.assertEqual(boxm.grow(box, [size] * box.dim()), expected)
+        self.assertEqual(boxm.grow(box, [size] * box.ndim), expected)
 
 
 
@@ -105,7 +106,7 @@ class BoxTesT(unittest.TestCase):
     )
     def test_grow_neg_size_raises(self, box):
         with self.assertRaises(ValueError):
-            boxm.grow(box, [-1] * box.dim())
+            boxm.grow(box, [-1] * box.ndim)
 
 
 

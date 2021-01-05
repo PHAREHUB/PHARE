@@ -56,8 +56,13 @@ class GridLayout(object):
 
     def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1):
         self.box = box
-        self.origin = listify(origin)
+
         self.dl = listify(dl)
+        assert len(self.dl) == box.ndim
+
+        self.origin = listify(origin)
+        assert len(self.origin) == box.ndim
+
         self.interp_order = interp_order
         self.impl = "yee"
         self.directions = ['X','Y','Z']
@@ -76,8 +81,9 @@ class GridLayout(object):
                           'Z' : self.yeeCentering.centerZ
                          }
 
-    def dim(self):
-        return self.box.dim()
+    @property
+    def ndim(self):
+        return self.box.ndim
 
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]
@@ -138,8 +144,8 @@ class GridLayout(object):
 
     def physicalStartIndices(self, qty):
         assert qty in self.hybridQuantities
-        indices = np.zeros(self.box.dim())
-        for i, direction in enumerate(directions[:self.box.dim()]):
+        indices = np.zeros(self.box.ndim)
+        for i, direction in enumerate(directions[:self.box.ndim]):
             centering = yee_centering[direction][qty]
             indices[i] = self.physicalStartIndex(self.interp_order, centering)
         return indices
@@ -147,17 +153,17 @@ class GridLayout(object):
 
     def physicalEndIndices(self, qty):
         assert qty in self.hybridQuantities
-        indices = np.zeros(self.box.dim())
-        for i, direction in enumerate(directions[:self.box.dim()]):
+        indices = np.zeros(self.box.ndim)
+        for i, direction in enumerate(directions[:self.box.ndim]):
             centering = yee_centering[direction][qty]
-            indices[i] = self.physicalEndIndex(self.interp_order, centering, self.box.shape()[i])
+            indices[i] = self.physicalEndIndex(self.interp_order, centering, self.box.shape[i])
         return indices
 
 
     def nbrGhostFor(self, qty):
         assert qty in self.hybridQuantities
-        nGhosts = np.zeros(self.box.dim())
-        for i, direction in enumerate(directions[:self.box.dim()]):
+        nGhosts = np.zeros(self.box.ndim)
+        for i, direction in enumerate(directions[:self.box.ndim]):
             centering = yee_centering[direction][qty]
             nGhosts[i] = self.nbrGhosts(self.interp_order, centering)
         return nGhosts
@@ -228,7 +234,7 @@ class GridLayout(object):
 
         offset = 0
         dim = direction_to_dim[direction]
-        size = self.box.shape()[dim] + (nbrGhosts * 2)
+        size = self.box.shape[dim] + (nbrGhosts * 2)
 
         if centering == 'dual':
             offset = 0.5*self.dl[dim]
