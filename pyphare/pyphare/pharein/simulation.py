@@ -287,7 +287,12 @@ def check_refinement_boxes(ndim, **kwargs):
         for box in boxes:
             refined_coarser_boxes = boxes_per_level[ilvl]
 
-            if not any([box in boxm.shrink(refined_coarser, [nesting_buffer] * ndim) for refined_coarser in refined_coarser_boxes]):
+            coarse_nCell = 0
+            for refined_coarser in refined_coarser_boxes:
+                intersection = box * boxm.shrink(refined_coarser, [nesting_buffer] * ndim)
+                coarse_nCell += 0 if intersection is None else intersection.nCells()
+
+            if coarse_nCell != box.nCells():
                 raise ValueError(f"Box({box}) is incompatible with coarser boxes({refined_coarser_boxes}) and nest_buffer({nesting_buffer})")
 
             if box.ndim != ndim:

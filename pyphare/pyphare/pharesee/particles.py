@@ -11,9 +11,9 @@ class Particles:
         if "box" in kwargs:
             box = kwargs["box"]
 
-            self.iCells  = np.random.randint(box.lower, high=box.upper+1, size=(box.cells()*100, box.ndim))
-            self.deltas  = np.random.rand(box.cells()*100, box.ndim)
-            self.v       = np.random.randn(box.cells()*100, 3)
+            self.iCells  = np.random.randint(box.lower, high=box.upper+1, size=(box.nCells()*100, box.ndim))
+            self.deltas  = np.random.rand(box.nCells()*100, box.ndim)
+            self.v       = np.random.randn(box.nCells()*100, 3)
             self.weights = np.zeros(self.deltas.shape[0]) + 0.01
             self.charges = np.zeros_like(self.weights) + 1
             self.dl       = np.zeros(box.ndim)+0.1
