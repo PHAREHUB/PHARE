@@ -38,17 +38,6 @@ def diagnostics_checker(func):
     return wrapper
 
 
-# ------------------------------------------------------------------------------
-def validate_timestamps(clazz, **kwargs):
-    sim = global_vars.sim
-
-    for key in ["write_timestamps", "compute_timestamps"]:
-        n_timestamps = len(kwargs[key])
-        if n_timestamps < sim.time_step_nbr:
-
-            raise ValueError(f"Error: len({clazz}.{key}({n_timestamps})) cannot be less than " +
-                             f"len(simulation.time_step_nbr({sim.time_step_nbr}))")
-
 
 # ------------------------------------------------------------------------------
 
@@ -62,7 +51,6 @@ class Diagnostics(object):
 
         self.path = kwargs['path']
 
-        validate_timestamps(self.__class__.__name__, **kwargs)
         self.write_timestamps = kwargs['write_timestamps'] #[0, 1, 2]
         self.compute_timestamps = kwargs['compute_timestamps']
 

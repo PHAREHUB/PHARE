@@ -98,8 +98,6 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
 
                 self.assertTrue(valid)
 
-                self.simulator.dump(self.simulator.currentTime(), self.simulator.timeStep())
-
                 self.simulator = None
 
             except ValueError as e:

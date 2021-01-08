@@ -5,8 +5,9 @@ def dump_all_diags(pops=[]):
 
     sim = ph.global_vars.sim
 
-    timestamps = np.arange(0, sim.time_step+sim.time_step_nbr)*sim.time_step
 
+    timestamps = np.arange(0, sim.final_time + sim.time_step, sim.time_step)
+    print("timestamps", timestamps)
 
     for quantity in ["density", "bulkVelocity"]:
         ph.FluidDiagnostics(

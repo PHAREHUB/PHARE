@@ -91,15 +91,17 @@ public:
     bool needsWrite(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextWrite = nextWrite_[diag.type + diag.quantity];
-        assert(nextWrite < diag.writeTimestamps.size());
-        return timeStamp + timeStep > diag.writeTimestamps[nextWrite];
+
+        return nextWrite < diag.writeTimestamps.size()
+               and timeStamp - diag.writeTimestamps[nextWrite] < timeStep;
     }
 
     bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextCompute = nextCompute_[diag.type + diag.quantity];
-        assert(nextCompute < diag.computeTimestamps.size());
-        return timeStamp + timeStep > diag.computeTimestamps[nextCompute];
+
+        return nextCompute < diag.computeTimestamps.size()
+               and timeStamp - diag.computeTimestamps[nextCompute] < timeStep;
     }
 
     Writer& writer() { return *writer_.get(); }
