@@ -54,6 +54,8 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
         dup({"cells":[65], "refinement_boxes": {"L0": [Box(5, 25)], "L1": [Box(15, 49)]}}),
 
         dup({"cells":[65], "refinement_boxes": None, "smallest_patch_size": 20, "largest_patch_size": 20, "nesting_buffer": 10}),
+        # finer box is within set of coarser boxes
+        dup({"cells":[65], "refinement_boxes": {"L0": [Box(5, 9), Box(10, 15)], "L1": [Box(11, 29)]}}),
 
     ]
 
@@ -77,6 +79,8 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
         # too large nesting buffer
         dup({"cells":[65], "refinement_boxes": {"L0": [Box(5, 25)], "L1": [Box(11, 49)]}, "nesting_buffer": 33}),
         dup({"cells":[65], "refinement_boxes": None, "largest_patch_size": 20, "nesting_buffer": 46}),
+        # finer box is not within set of coarser boxes
+        dup({"cells":[65], "refinement_boxes": {"L0": [Box(5, 9), Box(11, 15)], "L1": [Box(11, 29)]}}),
     ]
 
     def tearDown(self):
