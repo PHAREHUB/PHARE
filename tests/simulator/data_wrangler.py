@@ -5,7 +5,7 @@
 
 from pybindlibs import cpp
 from tests.simulator import populate_simulation
-import unittest, numpy as np
+import numpy as np
 from pyphare.simulator.simulator import Simulator
 import unittest
 

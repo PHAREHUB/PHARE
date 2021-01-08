@@ -1,8 +1,8 @@
 
 
+from pyphare.core import gridlayout
 
 class DataWrangler:
-    is_primal = {"bx": True, "by": False, "bz": False, "ex": False, "ey": True, "ez": True}
 
     def __init__(self, simulator):
         from .. import pharein as ph
@@ -51,14 +51,14 @@ class DataWrangler:
         }
 
     def extract_is_primal_key_from(self, em_xyz):
-        """ extract "ex" from "EM_E_x"  """
-        return "".join(em_xyz.lower().split("_"))[2:]
+        """ extract "Ex" from "EM_E_x"  """
+        return "".join(em_xyz.split("_"))[2:]
 
     def lvl0EM(self):
         return {
             em: {
                 em_xyz: self.cpp.sync_merge(
-                    data, DataWrangler.is_primal[self.extract_is_primal_key_from(em_xyz)]
+                    data, gridlayout.yee_element_is_primal(self.extract_is_primal_key_from(em_xyz))
                 )
                 for em_xyz, data in xyz_map.items()
             }
