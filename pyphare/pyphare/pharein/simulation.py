@@ -413,7 +413,7 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
-                             'diag_export_format', 'refinement_boxes', 'refinement',
+                             'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
                              'smallest_patch_size', 'largest_patch_size', "diag_options" ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -429,6 +429,8 @@ def checker(func):
         kwargs["dl"] = dl
         kwargs["cells"] =  cells
         kwargs["refinement_ratio"] = 2
+
+        kwargs["init_time"] = kwargs.get('init_time', 0)
 
         time_step_nbr, time_step = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
@@ -500,6 +502,7 @@ class Simulation(object):
     smallest_patch_size  :
     largest_patch_size   :
     max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
+    init_time            : unused for now, will be time for restarts someday
 
     """
 
