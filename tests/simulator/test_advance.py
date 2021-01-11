@@ -26,7 +26,7 @@ class AdvanceTest(unittest.TestCase):
                      diag_outputs="phare_outputs",
                      smallest_patch_size=5, largest_patch_size=5,
                      cells= 120, time_step=0.001,
-                     dl=0.2, extra_diag_options={}, time_step_nbr=1):
+                     dl=0.3, extra_diag_options={}, time_step_nbr=1):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -160,6 +160,7 @@ class AdvanceTest(unittest.TestCase):
 
         levelNumbers = list(range(global_vars.sim.max_nbr_levels))
         lvlSteps = global_vars.sim.level_time_steps
+        print("LEVELSTEPS === ", lvlSteps)
         assert len(lvlSteps) > 1  # this test makes no sense with only 1 level
 
         finestTimeStep = lvlSteps[-1]

@@ -525,7 +525,7 @@ class Simulation(object):
         self.electrons = None
 
         # hard coded in C++ MultiPhysicsIntegrator::getMaxFinerLevelDt
-        self.nSubcycles = 10
+        self.nSubcycles = 4
         self.stepDiff = 1/self.nSubcycles
 
         levelNumbers = list(range(self.max_nbr_levels))

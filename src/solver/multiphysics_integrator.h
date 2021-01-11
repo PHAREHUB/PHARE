@@ -391,7 +391,7 @@ namespace solver
             // so dividing the mesh size by ratio means dt
             // needs to be divided by ratio^2.
             // we multiply that by a constant < 1 for safety.
-            return coarseDt / (ratio.max() * ratio.max()) * 0.4;
+            return coarseDt / (ratio.max() * ratio.max()) /** 0.4*/;
         }
 
 
@@ -552,16 +552,14 @@ namespace solver
 
         bool existTaggerOnRange_(int coarsestLevel, int finestLevel)
         {
-            bool hasTagger = true;
-
             for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
             {
                 if (levelDescriptors_[iLevel].taggerIndex != LevelDescriptor::NOT_SET)
                 {
-                    return hasTagger;
+                    return true;
                 }
             }
-            return !hasTagger;
+            return false;
         }
 
 

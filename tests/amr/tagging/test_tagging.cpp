@@ -175,7 +175,7 @@ struct TestTagger : public ::testing::Test
     }
 };
 
-/*
+/* TODOmaybe find a way to test the tagging?
 TEST_F(TestTagger, scaledAvg)
 {
     auto strat = DefaultHybridTaggerStrategy<SinglePatchHybridModel>();
