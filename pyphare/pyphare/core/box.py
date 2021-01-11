@@ -39,7 +39,7 @@ class Box:
         return (self.upper - self.lower) + 1
 
 
-    def cells(self):
+    def nCells(self):
         """returns the number of cells in the box"""
         return self.shape.prod()
 

@@ -209,11 +209,11 @@ class BoxTesT(unittest.TestCase):
 
         expectedCells, remainingCells = 0, 0
         for exp, keep in zip(expected, remaining):
-            expectedCells += exp.cells()
-            remainingCells += keep.cells()
+            expectedCells += exp.nCells()
+            remainingCells += keep.nCells()
 
         self.assertTrue(expectedCells == remainingCells)
-        self.assertTrue(box.cells() == remainingCells + (box * to_remove).cells())
+        self.assertTrue(box.nCells() == remainingCells + (box * to_remove).nCells())
 
 
     @data( (Box(10, 20), 10, True),
