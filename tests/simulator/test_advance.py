@@ -100,7 +100,7 @@ class AdvanceTest(unittest.TestCase):
 
         ElectronModel(closure="isothermal", Te=0.12)
 
-        timestamps = np.arange(0, global_vars.sim.final_time() + global_vars.sim.time_step, global_vars.sim.time_step)
+        timestamps = np.arange(0, global_vars.sim.final_time + global_vars.sim.time_step, global_vars.sim.time_step)
 
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(

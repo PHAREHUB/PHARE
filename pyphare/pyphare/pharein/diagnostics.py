@@ -49,7 +49,7 @@ def validate_timestamps(clazz, **kwargs):
         for timestamp in timestamps:
             if timestamp < sim.init_time:
                 raise ValueError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({sim.init_time}))")
-            if timestamp > sim.final_time():
+            if timestamp > sim.final_time:
                 raise ValueError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
 
         for i, timestamp in enumerate(timestamps[1:]):

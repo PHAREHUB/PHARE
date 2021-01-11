@@ -106,7 +106,7 @@ def check_time(**kwargs):
         raise ValueError("Error: Specify either 'final_time' and 'time_step' or 'time_step_nbr' and 'time_step'" + \
                          " or 'final_time' and 'time_step_nbr'")
 
-    return time_step_nbr, time_step
+    return time_step_nbr, time_step, kwargs.get('final_time', time_step * time_step_nbr)
 
 
 # ------------------------------------------------------------------------------
@@ -432,9 +432,10 @@ def checker(func):
 
         kwargs["init_time"] = kwargs.get('init_time', 0)
 
-        time_step_nbr, time_step = check_time(**kwargs)
+        time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
         kwargs["time_step"] = time_step
+        kwargs["final_time"] = final_time
 
         kwargs["interp_order"] = check_interp_order(**kwargs)
         kwargs["refinement_ratio"] = 2

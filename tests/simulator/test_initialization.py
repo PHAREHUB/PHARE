@@ -27,7 +27,7 @@ class InitializationTest(unittest.TestCase):
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
                      density = lambda x: 0.3 + 1./np.cosh((x-6)/4.)**2,
-                     beam = False, time_step_nbr=30000,
+                     beam = False, time_step_nbr=1,
                      smallest_patch_size=10, largest_patch_size=10,
                      cells= 120,
                      dl=0.1):
@@ -122,29 +122,29 @@ class InitializationTest(unittest.TestCase):
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr+1),
-                compute_timestamps=np.zeros(time_step_nbr+1)
+                write_timestamps=np.zeros(time_step_nbr),
+                compute_timestamps=np.zeros(time_step_nbr)
             )
 
         for quantity in ["density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr+1),
-                compute_timestamps=np.zeros(time_step_nbr+1)
+                write_timestamps=np.zeros(time_step_nbr),
+                compute_timestamps=np.zeros(time_step_nbr)
             )
 
         poplist = ["protons", "beam"] if beam else ["protons"]
         for pop in poplist:
             for quantity in ["density", "flux"]:
                 FluidDiagnostics(quantity=quantity,
-                                 write_timestamps=np.zeros(time_step_nbr+1),
-                                 compute_timestamps=np.zeros(time_step_nbr+1),
+                                 write_timestamps=np.zeros(time_step_nbr),
+                                 compute_timestamps=np.zeros(time_step_nbr),
                                  population_name=pop)
 
             for quantity in ['domain', 'levelGhost', 'patchGhost']:
                 ParticleDiagnostics(quantity=quantity,
-                                    compute_timestamps=np.zeros(time_step_nbr+1),
-                                    write_timestamps=np.zeros(time_step_nbr+1),
+                                    compute_timestamps=np.zeros(time_step_nbr),
+                                    write_timestamps=np.zeros(time_step_nbr),
                                     population_name=pop)
 
         simulator = Simulator(global_vars.sim).initialize()
