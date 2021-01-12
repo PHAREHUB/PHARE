@@ -100,25 +100,27 @@ class AdvanceTest(unittest.TestCase):
 
         ElectronModel(closure="isothermal", Te=0.12)
 
+        timestamps = np.arange(0, global_vars.sim.final_time + global_vars.sim.time_step, global_vars.sim.time_step)
+
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr+1),
-                compute_timestamps=np.zeros(time_step_nbr+1)
+                write_timestamps=timestamps,
+                compute_timestamps=timestamps
             )
 
         for quantity in ["density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr+1),
-                compute_timestamps=np.zeros(time_step_nbr+1)
+                write_timestamps=timestamps,
+                compute_timestamps=timestamps
             )
 
         for pop in ["protons"]:
             for quantity in ["density", "flux"]:
                 FluidDiagnostics(quantity=quantity,
-                                 write_timestamps=np.zeros(time_step_nbr+1),
-                                 compute_timestamps=np.zeros(time_step_nbr+1),
+                                 write_timestamps=timestamps,
+                                 compute_timestamps=timestamps,
                                  population_name=pop)
 
         Simulator(global_vars.sim).initialize().run()

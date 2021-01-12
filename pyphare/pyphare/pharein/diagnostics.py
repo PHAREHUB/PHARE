@@ -38,16 +38,27 @@ def diagnostics_checker(func):
     return wrapper
 
 
+
 # ------------------------------------------------------------------------------
 def validate_timestamps(clazz, **kwargs):
     sim = global_vars.sim
 
     for key in ["write_timestamps", "compute_timestamps"]:
-        n_timestamps = len(kwargs[key])
-        if n_timestamps < sim.time_step_nbr:
+        timestamps = kwargs[key]
 
-            raise ValueError(f"Error: len({clazz}.{key}({n_timestamps})) cannot be less than " +
-                             f"len(simulation.time_step_nbr({sim.time_step_nbr}))")
+        for timestamp in timestamps:
+            if timestamp < sim.init_time:
+                raise ValueError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({sim.init_time}))")
+            if timestamp > sim.final_time:
+                raise ValueError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
+
+        for i, timestamp in enumerate(timestamps[1:]):
+            if timestamps[i] >= timestamps[i + 1]:
+                raise ValueError(f"Error: {clazz}.{key} not in ascending order)")
+            if timestamps[i + 1] - timestamps[i] < sim.time_step:
+                raise ValueError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step)")
+
+
 
 
 # ------------------------------------------------------------------------------

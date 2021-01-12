@@ -106,7 +106,7 @@ def check_time(**kwargs):
         raise ValueError("Error: Specify either 'final_time' and 'time_step' or 'time_step_nbr' and 'time_step'" + \
                          " or 'final_time' and 'time_step_nbr'")
 
-    return time_step_nbr, time_step
+    return time_step_nbr, time_step, kwargs.get('final_time', time_step * time_step_nbr)
 
 
 # ------------------------------------------------------------------------------
@@ -413,7 +413,7 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
-                             'diag_export_format', 'refinement_boxes', 'refinement',
+                             'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
                              'smallest_patch_size', 'largest_patch_size', "diag_options" ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -430,9 +430,12 @@ def checker(func):
         kwargs["cells"] =  cells
         kwargs["refinement_ratio"] = 2
 
-        time_step_nbr, time_step = check_time(**kwargs)
+        kwargs["init_time"] = kwargs.get('init_time', 0)
+
+        time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
         kwargs["time_step"] = time_step
+        kwargs["final_time"] = final_time
 
         kwargs["interp_order"] = check_interp_order(**kwargs)
         kwargs["refinement_ratio"] = 2
@@ -500,6 +503,7 @@ class Simulation(object):
     smallest_patch_size  :
     largest_patch_size   :
     max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
+    init_time            : unused for now, will be time for restarts someday
 
     """
 
