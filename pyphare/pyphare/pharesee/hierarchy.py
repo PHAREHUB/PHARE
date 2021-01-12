@@ -187,7 +187,7 @@ class PatchHierarchy:
         self.patch_levels = patch_levels
         self.ndim = len(domain_box.lower)
         self.time_hier = {}
-        self.time_hier.update({time:patch_levels})
+        self.time_hier.update({self.format_timestamp(time):patch_levels})
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
@@ -198,19 +198,19 @@ class PatchHierarchy:
             self.data_files.update(data_files)
 
 
-    def level(self, level_number, time=0.):
-        return self.time_hier[time][level_number]
-
-
     def levels(self, time=0.):
-        return self.time_hier[time]
+        return self.time_hier[self.format_timestamp(time)]
+
+
+    def level(self, level_number, time=.0):
+        return self.levels(time)[level_number]
 
 
     def levelNbr(self, time):
         return len(self.levels(time).items())
 
     def levelNbrs(self, time):
-        return list(self.time_hier[time].keys())
+        return list(self.levels(time).keys())
 
 
     def refined_domain_box(self, level_number):
@@ -219,6 +219,12 @@ class PatchHierarchy:
         """
         assert (level_number >= 0)
         return boxm.refine(self.domain_box, self.refinement_ratio ** level_number)
+
+
+    def format_timestamp(self, timestamp):
+        if isinstance(timestamp, str):
+            return timestamp
+        return "{:.10f}".format(timestamp)
 
 
     def level_domain_box(self, level_number):
@@ -245,7 +251,7 @@ class PatchHierarchy:
 
     def plot_patches(self):
         fig, ax = plt.subplots(figsize=(10, 3))
-        for ilvl, lvl in self.time_hier[0.].items():
+        for ilvl, lvl in self.levels(0.).items():
             lvl_offset = ilvl * 0.1
             for patch in lvl.patches:
                 dx = patch.dl[0]
@@ -628,7 +634,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     if create_from_one_time(time, hier):
         if not silent:
             print("creating hierarchy from time {}".format(time))
-        t = float(time.strip("t"))
+        t = time.strip("t")
 
         h5_time_grp = data_file[time]
         patch_levels = {}
@@ -664,7 +670,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         if not silent:
             print("loading data at time {} into existing hierarchy".format(time))
         h5_time_grp = data_file[time]
-        t = float(time.strip("t"))
+        t = time.strip("t")
 
         if t in hier.time_hier:
             if not silent:
@@ -675,7 +681,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
             # as patchDatas in the appropriate patches
             # and levels, if data compatible with hierarchy
 
-            patch_levels = hier.levels(t)
+            patch_levels = hier.time_hier[t]
 
             for plvl_key in h5_time_grp.keys():
                 ilvl = int(plvl_key[2:])

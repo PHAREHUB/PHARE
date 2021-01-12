@@ -221,7 +221,8 @@ struct Hi5Diagnostic
     auto particles(std::string&& type) { return dict("particle", type); }
     auto fluid(std::string&& type) { return dict("fluid", type); }
 
-    std::string getPatchPath(int level, std::string patch, std::string timestamp = "0.000000")
+    // timestamp is constant precision of 10 places
+    std::string getPatchPath(int level, std::string patch, std::string timestamp = "0.0000000000")
     {
         return Writer_t::getFullPatchPath(timestamp, level, patch);
     }
