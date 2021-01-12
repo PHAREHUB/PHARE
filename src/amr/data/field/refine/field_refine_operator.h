@@ -58,7 +58,7 @@ namespace amr
         /**
          * @brief Given a  set of box on a  fine patch, compute the interpolation from
          * a coarser patch that is underneath the fine box.
-         * Since we get our boxes from a FieldOverlap, we know that there are in correct
+         * Since we get our boxes from a FieldOverlap, we know that they are in correct
          * Field Indexes
          *
          */
@@ -78,8 +78,8 @@ namespace amr
             auto const& sourceLayout      = FieldDataT::getLayout(source, sourceId);
 
 
-            // We assume that quantity are the same
-            // note that an assertion will be raised
+            // We assume that quantity are all the same.
+            // Note that an assertion will be raised
             // in refineIt operator
             auto const& qty = destinationField.physicalQuantity();
 
