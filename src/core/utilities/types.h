@@ -184,6 +184,15 @@ namespace core
         T var;
     };
 
+    template<typename T>
+    std::string to_string_with_precision(T const& a_value, std::size_t const len)
+    {
+        std::ostringstream out;
+        out.precision(len);
+        out << std::fixed << a_value;
+        return out.str();
+    }
+
 
     template<typename T, std::size_t... Is>
     constexpr auto gft_helper(std::index_sequence<Is...> const &&)

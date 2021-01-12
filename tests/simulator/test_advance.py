@@ -169,7 +169,7 @@ class AdvanceTest(unittest.TestCase):
         uniqTimes = set([0])
 
         for step in range(1, finest_level_step_nbr + 1):
-            checkTime = float("{:.6f}".format(finestTimeStep * step))
+            checkTime = datahier.format_timestamp(finestTimeStep * step)
             self.assertIn(checkTime, datahier.times())
             uniqTimes.add(checkTime)
 
@@ -183,7 +183,7 @@ class AdvanceTest(unittest.TestCase):
         startStep = int(syncSteps / time_step_nbr) + 1 # skip first coarsest step due to issue 400
 
         for step in range(startStep, syncSteps + 1):
-            checkTime = float("{:.6f}".format(secondFinestTimeStep * step))
+            checkTime = datahier.format_timestamp(secondFinestTimeStep * step)
             self.assertIn(checkTime, datahier.times())
             nLevels = datahier.levelNbr(checkTime)
             self.assertGreaterEqual(nLevels, 2)

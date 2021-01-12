@@ -14,6 +14,7 @@
 
 #include "core/data/vecfield/vecfield_component.h"
 #include "core/utilities/mpi_utils.h"
+#include "core/utilities/types.h"
 
 
 namespace PHARE::diagnostic::h5
@@ -30,6 +31,8 @@ class ParticlesDiagnosticWriter;
 template<typename ModelView>
 class Writer : public PHARE::diagnostic::IWriter
 {
+    static constexpr std::size_t timestamp_precision = 10;
+
 public:
     using This       = Writer<ModelView>;
     using GridLayout = typename ModelView::GridLayout;
@@ -185,7 +188,8 @@ private:
     // used by friends start
     std::string getPatchPathAddTimestamp(int iLevel, std::string globalCoords)
     {
-        return getFullPatchPath(std::to_string(timestamp_), iLevel, globalCoords);
+        return getFullPatchPath(core::to_string_with_precision(timestamp_, timestamp_precision),
+                                iLevel, globalCoords);
     }
 
 
