@@ -99,10 +99,6 @@ def fromNoise():
     sim = ph.global_vars.sim
 
     timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
-    print(any(timestamps[1:]-timestamps[:-1]< 0.001))
-    print(sim.time_step)
-    print((timestamps[1:]-timestamps[:-1]).min())
-    exit()
 
     for quantity in ["E", "B"]:
         ElectromagDiagnostics(
