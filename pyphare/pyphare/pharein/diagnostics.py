@@ -38,7 +38,7 @@ def diagnostics_checker(func):
     return wrapper
 
 
-
+import numpy as np
 # ------------------------------------------------------------------------------
 def validate_timestamps(clazz, **kwargs):
     sim = global_vars.sim
@@ -46,17 +46,15 @@ def validate_timestamps(clazz, **kwargs):
     for key in ["write_timestamps", "compute_timestamps"]:
         timestamps = kwargs[key]
 
-        for timestamp in timestamps:
-            if timestamp < sim.init_time:
-                raise ValueError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({sim.init_time}))")
-            if timestamp > sim.final_time:
-                raise ValueError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
+        if np.any(timestamps < sim.init_time):
+                raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({sim.init_time}))")
+        if np.any(timestamps > sim.final_time):
+                raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
+        if not np.all(np.diff(timestamps) >= 0):
+            raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
+        if not np.all(np.abs(timestamps / sim.time_step - np.rint(timestamps/sim.time_step) < 1e-10)):
+            raise RuntimeError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step)")
 
-        for i, timestamp in enumerate(timestamps[1:]):
-            if timestamps[i] >= timestamps[i + 1]:
-                raise ValueError(f"Error: {clazz}.{key} not in ascending order)")
-            if timestamps[i + 1] - timestamps[i] < sim.time_step:
-                raise ValueError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step)")
 
 
 
