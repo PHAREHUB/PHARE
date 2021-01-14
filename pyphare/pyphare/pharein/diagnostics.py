@@ -55,10 +55,6 @@ def validate_timestamps(clazz, **kwargs):
         if not np.all(np.abs(timestamps / sim.time_step - np.rint(timestamps/sim.time_step) < 1e-10)):
             raise ValueError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step)")
 
-
-
-
-
 # ------------------------------------------------------------------------------
 
 
