@@ -80,6 +80,7 @@ class Simulator:
                          self.timeStep())
 
     def run(self):
+        from pybindlibs import cpp
         self._check_init()
         perf = []
         end_time = self.cpp_sim.endTime()
@@ -91,7 +92,8 @@ class Simulator:
             ticktock = tock-tick
             perf.append(ticktock)
             t = self.cpp_sim.currentTime()
-            print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
+            if cpp.mpi_rank() == 0:
+                print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
 
         print("mean advance time = {}".format(np.mean(perf)))
         print("total advance time = {}".format(np.sum(perf)))
