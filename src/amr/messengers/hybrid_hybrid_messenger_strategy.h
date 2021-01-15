@@ -184,6 +184,7 @@ namespace amr
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
+
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
         }
@@ -333,8 +334,6 @@ namespace amr
                                          + std::to_string(afterPushTime) + " on level "
                                          + std::to_string(level.getLevelNumber()));
             }
-
-
             for (auto patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
@@ -350,16 +349,18 @@ namespace amr
                     interpolate_(std::begin(patchGhosts), std::end(patchGhosts), density, flux,
                                  layout);
 
+                    if (level.getLevelNumber() > 0) // no levelGhost on root level
+                    {
+                        // then grab levelGhostParticlesOld and levelGhostParticlesNew
+                        // and project them with alpha and (1-alpha) coefs, respectively
+                        auto& levelGhostOld = pop.levelGhostParticlesOld();
+                        interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density,
+                                     flux, layout, 1. - alpha);
 
-                    // then grab levelGhostParticlesOld and levelGhostParticlesNew
-                    // and project them with alpha and (1-alpha) coefs, respectively
-                    auto& levelGhostOld = pop.levelGhostParticlesOld();
-                    interpolate_(std::begin(levelGhostOld), std::end(levelGhostOld), density, flux,
-                                 layout, 1. - alpha);
-
-                    auto& levelGhostNew = pop.levelGhostParticlesNew();
-                    interpolate_(std::begin(levelGhostNew), std::end(levelGhostNew), density, flux,
-                                 layout, alpha);
+                        auto& levelGhostNew = pop.levelGhostParticlesNew();
+                        interpolate_(std::begin(levelGhostNew), std::end(levelGhostNew), density,
+                                     flux, layout, alpha);
+                    }
                 }
             }
         }
@@ -382,12 +383,14 @@ namespace amr
                        double const newCoarserTime) override
         {
             auto levelNumber = level.getLevelNumber();
+            if (newCoarserTime < prevCoarserTime)
+                throw std::runtime_error(
+                    "Error : prevCoarserTime (" + std::to_string(prevCoarserTime)
+                    + ") should be < newCoarserTime (" + std::to_string(prevCoarserTime) + ")");
 
             // root level has no levelghost particles
             if (levelNumber != 0)
             {
-                std::cout << "level " << level.getLevelNumber()
-                          << " FIRST STEP : filling levelghostNew from next coarser\n";
                 levelGhostParticlesNew_.fill(levelNumber, currentTime);
 
                 // during firstStep() coarser level and current level are at the same time
@@ -408,47 +411,57 @@ namespace amr
          */
         void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
+            if (level.getLevelNumber() > 0)
             {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
+                auto& hybridModel = static_cast<HybridModel&>(model);
+                for (auto& patch : level)
                 {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
+                    auto& ions       = hybridModel.state.ions;
+                    auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                    for (auto& pop : ions)
+                    {
+                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                        auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                        auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    std::cout
-                        << "level " << level.getLevelNumber()
-                        << " : LAST STEP : copying new into old levelghost, emptying new, empty "
-                           "pushable, "
-                           "copying old into "
-                           "pushable\n";
-                    core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-                    core::empty(levelGhostParticlesNew);
-                    core::empty(levelGhostParticles);
-                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
-                              std::back_inserter(levelGhostParticles));
-                    std::cout << "new : " << levelGhostParticlesNew.size() << " "
-                              << " old : " << levelGhostParticlesOld.size() << " "
-                              << "pushable : " << levelGhostParticles.size() << "\n";
+                        core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                        core::empty(levelGhostParticlesNew);
+                        core::empty(levelGhostParticles);
+                        std::copy(std::begin(levelGhostParticlesOld),
+                                  std::end(levelGhostParticlesOld),
+                                  std::back_inserter(levelGhostParticles));
+
+                        if (level.getLevelNumber() == 0)
+                        {
+                            if (levelGhostParticlesNew.size() != 0)
+                                throw std::runtime_error(
+                                    "levelGhostParticlesNew detected in root level : "
+                                    + std::to_string(levelGhostParticlesNew.size()));
+                            if (levelGhostParticles.size() != 0)
+                                throw std::runtime_error(
+                                    "levelGhostParticles detected in root level : "
+                                    + std::to_string(levelGhostParticles.size()));
+                            if (levelGhostParticlesOld.size() != 0)
+                                throw std::runtime_error(
+                                    "levelGhostParticlesOld detected in root level : "
+                                    + std::to_string(levelGhostParticlesOld.size()));
+                        }
+                    }
                 }
             }
         }
 
 
 
-
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
-         * This method copies the current model electromagnetic field and current, defined at t=n.
-         * Since prepareStep() is called just before advancing the level, this operation actually
-         * saves the t=n electromagnetic field and current into the messenger. When the time comes
-         * that the next finer level needs to time interpolate the electromagnetic field and current
-         * at its ghost nodes, this level will have its model EM field  and current at t=n+1 and
-         * thanks to this methods, the t=n field will be in the messenger.
+         * This method copies the current model electromagnetic field and current, defined at
+         * t=n. Since prepareStep() is called just before advancing the level, this operation
+         * actually saves the t=n electromagnetic field and current into the messenger. When the
+         * time comes that the next finer level needs to time interpolate the electromagnetic
+         * field and current at its ghost nodes, this level will have its model EM field  and
+         * current at t=n+1 and thanks to this methods, the t=n field will be in the messenger.
          */
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
@@ -582,12 +595,12 @@ namespace amr
          *
          * @param ghostVec is the collection of VecFieldDescriptor. Each VecFieldDescriptor
          * corresponds to a VecField for which ghosts will be needed.
-         * @param modelVec is VecFieldDescriptor for the model VecField associated with the VecField
-         * for which ghosts are needed. When ghosts are filled, this quantity is taken on the
-         * coarser level and is definer at t_coarse+dt_coarse
+         * @param modelVec is VecFieldDescriptor for the model VecField associated with the
+         * VecField for which ghosts are needed. When ghosts are filled, this quantity is taken
+         * on the coarser level and is definer at t_coarse+dt_coarse
          * @param oldModelVec is the VecFieldDescriptor for the VecField for which ghosts are
-         * needed, at t_coarse. These are typically internal variables of the messenger, like Eold
-         * or Bold.
+         * needed, at t_coarse. These are typically internal variables of the messenger, like
+         * Eold or Bold.
          */
         void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
                            VecFieldDescriptor const& modelVec,

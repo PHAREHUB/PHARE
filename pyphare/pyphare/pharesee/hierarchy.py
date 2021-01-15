@@ -179,6 +179,47 @@ class PatchLevel:
                 max([patch.patch_datas[name].x.max() for patch in self.patches])
 
 
+
+def finest_data(pdata, ilvl, hierarchy):
+    """
+    given a FieldData, a levelnumber and a hierarchy
+    this function returns the coordinates and values
+    of the field at locations where no value exist on the
+    next finer level in the hierachy.
+    """
+    # although a priori doable for particles
+    # this just works for fields for now
+
+    assert pdata.quantity == 'field'
+    assert hierarchy.dim == 1
+
+    x_ = pdata.x
+    v_ = pdata.dataset
+
+    if ilvl == hierarchy.finest_level():
+        return x_,v_
+
+    qtyname = pdata.field_name
+    inner = x_ != x_ #lgtm [py/comparison-of-identical-expressions]
+
+    # iteratively fill the mask with true where current patch coordinates
+    # are within limits of the next refined level patchdatas
+    for ipatch, finer_patch in enumerate(hierarchy.patch_levels[ilvl+1].patches):
+        pdat = finer_patch.patch_datas[qtyname]
+        xmin,xmax = [pdat.x[ix] for ix in (4,-4)]
+        inner  = inner | ((x_ > xmin) & (x_ < xmax))
+
+    # now take the complement of the mas
+    # i.e. data that has coordinates not existing on
+    # next finer level
+    x = x_[~inner]
+    v = v_[~inner]
+
+    return x, v
+
+
+
+
 class PatchHierarchy:
     """is a collection of patch levels """
 
@@ -196,6 +237,9 @@ class PatchHierarchy:
 
         if data_files is not None:
             self.data_files.update(data_files)
+
+    def finest_level(self):
+        return len(self.patch_levels)-1
 
 
     def levels(self, time=0.):
@@ -249,7 +293,8 @@ class PatchHierarchy:
     def times(self):
         return np.sort(np.asarray(list(self.time_hier.keys())))
 
-    def plot_patches(self):
+
+    def plot_patches(self, save=False):
         fig, ax = plt.subplots(figsize=(10, 3))
         for ilvl, lvl in self.levels(0.).items():
             lvl_offset = ilvl * 0.1
@@ -261,7 +306,8 @@ class PatchHierarchy:
                 y = lvl_offset + np.zeros_like(xcells)
                 ax.plot(xcells, y, marker=".")
 
-        fig.savefig("hierarchy.png")
+        if save:
+            fig.savefig("hierarchy.png")
 
 
     def box_to_Rectangle(self, box):
@@ -330,7 +376,7 @@ class PatchHierarchy:
             for ip, patch in enumerate(level.patches):
                 pdata_nbr = len(patch.patch_datas)
                 if qty is None and pdata_nbr != 1:
-                    pdata_names = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
+                    pdata_nrefinementames = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
                     multiple = "multiple quantities in patch, "
                     err = multiple + "please specify a quantity in  "+ pdata_names
                     raise ValueError(err)
@@ -351,17 +397,18 @@ class PatchHierarchy:
             ax.set_xlim(kwargs["xlim"])
         if "ylim" in kwargs:
             ax.set_ylim(kwargs["ylim"])
-        ax.legend()
+
+        if kwargs.get("legend", None) is not None:
+            ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(filename)
+            fig.savefig(kwargs["filename"])
 
 
     def dist_plot(self, **kwargs):
         """
         plot
         """
-
         usr_lvls = kwargs.get("levels",(0,))
         qty = kwargs.get("qty",None)
         time = kwargs.get("time", self.times()[0])
@@ -432,7 +479,7 @@ class PatchHierarchy:
 
 
         if "filename" in kwargs:
-            fig.savefig(filename)
+            fig.savefig(kwargs["filename"])
 
 
 
@@ -457,9 +504,9 @@ field_qties = {"EM_B_x": "Bx",
                "EM_E_x": "Ex",
                "EM_E_y": "Ey",
                "EM_E_z": "Ez",
-               "flux_x": "Vx",
-               "flux_y": "Vy",
-               "flux_z": "Vz",
+               "flux_x": "Fx",
+               "flux_y": "Fy",
+               "flux_z": "Fz",
                "bulkVelocity_x": "Vx",
                "bulkVelocity_y": "Vy",
                "bulkVelocity_z": "Vz",
@@ -593,14 +640,16 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
             pdata = FieldData(layout, field_qties[dataset_name], dataset)
 
+            pdata_name = field_qties[dataset_name]
+
             if is_pop_fluid_file(basename):
-                dataset_name = pop_name(basename) + "_" + dataset_name
+                pdata_name = pop_name(basename) + "_" + pdata_name
 
 
             if dataset_name in patch_datas:
                 raise ValueError("error - {} already in patchdata".format(dataset_name))
 
-            patch_datas[dataset_name] = pdata
+            patch_datas[pdata_name] = pdata
 
     return True # valid patch assumed
 

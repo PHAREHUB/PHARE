@@ -42,6 +42,11 @@ set( SOURCES_INC
      types/amr_types.h
      wrappers/hierarchy.h
      wrappers/integrator.h
+     tagging/tagger.h
+     tagging/tagger_factory.h
+     tagging/hybrid_tagger.h
+     tagging/hybrid_tagger_strategy.h
+     tagging/default_hybrid_tagger_strategy.h
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

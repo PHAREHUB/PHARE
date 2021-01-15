@@ -470,14 +470,15 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
             nbrLevelGhostOldParticles += pop.levelGhostParticlesOld().size();
             nbrLevelGhostParticles += pop.levelGhostParticles().size();
             nbrPatchGhostParticles += pop.patchGhostParticles().size();
+
+            if (nbrLevelGhostOldParticles < nbrLevelGhostParticles
+                and nbrLevelGhostOldParticles > 0)
+                throw std::runtime_error("Error - there are less old level ghost particles ("
+                                         + std::to_string(nbrLevelGhostOldParticles)
+                                         + ") than pushable ("
+                                         + std::to_string(nbrLevelGhostParticles) + ")");
         }
     }
-    std::cout << "level = " << level.getLevelNumber() << std::setprecision(6)
-              << " t = " << currentTime << ";  nbrDomParticles = " << nbrDomainParticles
-              << "; LevelGhostNew = " << nbrLevelGhostNewParticles
-              << "; LevelGhostOld = " << nbrLevelGhostOldParticles
-              << "; LevelGhost = " << nbrLevelGhostParticles
-              << "; patchGhost = " << nbrPatchGhostParticles << "\n";
 
 
 

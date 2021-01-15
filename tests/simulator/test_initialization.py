@@ -201,16 +201,16 @@ class InitializationTest(unittest.TestCase):
             print("checking level {}".format(ilvl))
             for ip, patch in enumerate(level.patches):
 
-                xbx   = patch.patch_datas["EM_B_x"].x[:]
-                bx  = patch.patch_datas["EM_B_x"].dataset[:]
+                xbx   = patch.patch_datas["Bx"].x[:]
+                bx  = patch.patch_datas["Bx"].dataset[:]
                 np.testing.assert_allclose(bx, bx_fn(xbx), atol=3e-5)
 
-                xby   = patch.patch_datas["EM_B_y"].x[:]
-                by  = patch.patch_datas["EM_B_y"].dataset[:]
+                xby   = patch.patch_datas["By"].x[:]
+                by  = patch.patch_datas["By"].dataset[:]
                 np.testing.assert_allclose(by, by_fn(xby), atol=3e-5)
 
-                xbz   = patch.patch_datas["EM_B_z"].x[:]
-                bz  = patch.patch_datas["EM_B_z"].dataset[:]
+                xbz   = patch.patch_datas["Bz"].x[:]
+                bz  = patch.patch_datas["Bz"].dataset[:]
                 np.testing.assert_allclose(bz, bz_fn(xbz), atol=3e-5)
 
 
@@ -291,18 +291,18 @@ class InitializationTest(unittest.TestCase):
             for ip,patch in enumerate(level.patches):
                 print("patch {}".format(ip))
 
-                layout    = patch.patch_datas["protons_flux_x"].layout
-                centering = layout.centering["X"][patch.patch_datas["protons_flux_x"].field_name]
+                layout    = patch.patch_datas["protons_Fx"].layout
+                centering = layout.centering["X"][patch.patch_datas["protons_Fx"].field_name]
                 nbrGhosts = layout.nbrGhosts(interp_order, centering)
 
-                x   = patch.patch_datas["protons_flux_x"].x[nbrGhosts:-nbrGhosts]
-                fpx = patch.patch_datas["protons_flux_x"].dataset[nbrGhosts:-nbrGhosts]
-                fpy = patch.patch_datas["protons_flux_y"].dataset[nbrGhosts:-nbrGhosts]
-                fpz = patch.patch_datas["protons_flux_z"].dataset[nbrGhosts:-nbrGhosts]
-                fbx = patch.patch_datas["protons_flux_x"].dataset[nbrGhosts:-nbrGhosts]
-                fby = patch.patch_datas["protons_flux_y"].dataset[nbrGhosts:-nbrGhosts]
-                fbz = patch.patch_datas["protons_flux_z"].dataset[nbrGhosts:-nbrGhosts]
-                ni  = patch.patch_datas["density"].dataset[nbrGhosts:-nbrGhosts]
+                x   = patch.patch_datas["protons_Fx"].x[nbrGhosts:-nbrGhosts]
+                fpx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
+                fpy = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
+                fpz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
+                fbx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
+                fby = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
+                fbz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
+                ni  = patch.patch_datas["rho"].dataset[nbrGhosts:-nbrGhosts]
 
                 vxact = (fpx + fbx)/ni
                 vyact = (fpy + fby)/ni
@@ -339,13 +339,13 @@ class InitializationTest(unittest.TestCase):
             for ip,patch in enumerate(level.patches):
                 print("patch {}".format(ip))
 
-                ion_density     = patch.patch_datas["density"].dataset[:]
-                proton_density  = patch.patch_datas["protons_density"].dataset[:]
-                beam_density    = patch.patch_datas["beam_density"].dataset[:]
-                x               = patch.patch_datas["density"].x
+                ion_density     = patch.patch_datas["rho"].dataset[:]
+                proton_density  = patch.patch_datas["protons_rho"].dataset[:]
+                beam_density    = patch.patch_datas["beam_rho"].dataset[:]
+                x               = patch.patch_datas["rho"].x
 
-                layout    = patch.patch_datas["density"].layout
-                centering = layout.centering["X"][patch.patch_datas["density"].field_name]
+                layout    = patch.patch_datas["rho"].layout
+                centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
                 nbrGhosts = layout.nbrGhosts(interp_order, centering)
 
                 protons_expected = proton_density_fn(x[nbrGhosts:-nbrGhosts])
@@ -398,11 +398,11 @@ class InitializationTest(unittest.TestCase):
             density_fn = protons["density"]
 
             patch       =  hier.level(0).patches[0]
-            ion_density = patch.patch_datas["density"].dataset[:]
-            x           = patch.patch_datas["density"].x
+            ion_density = patch.patch_datas["rho"].dataset[:]
+            x           = patch.patch_datas["rho"].x
 
-            layout = patch.patch_datas["density"].layout
-            centering = layout.centering["X"][patch.patch_datas["density"].field_name]
+            layout = patch.patch_datas["rho"].layout
+            centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
             nbrGhosts = layout.nbrGhosts(interp_order, centering)
 
             expected = density_fn(x[nbrGhosts:-nbrGhosts])
