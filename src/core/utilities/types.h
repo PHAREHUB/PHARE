@@ -190,6 +190,10 @@ namespace core
         std::ostringstream out;
         out.precision(len);
         out << std::fixed << a_value;
+        auto str = out.str();
+        // last digit may be non 0 because of rounding
+        // and we know at that decimal it should be so we force it
+        str.replace(str.end() - 1, str.end(), 1, '0');
         return out.str();
     }
 
