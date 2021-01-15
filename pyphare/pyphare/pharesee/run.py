@@ -40,7 +40,7 @@ class Run:
         self.path = path
 
     def _get_hierarchy(self, time, filename):
-        t = "t{:.6f}".format(time)
+        t = "t{:.10f}".format(time)
         return hierarchy_from(h5_filename=os.path.join(self.path, filename), time=t)
 
     def GetB(self, time):
