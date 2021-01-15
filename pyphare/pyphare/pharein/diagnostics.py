@@ -9,8 +9,8 @@ from . import global_vars
 def diagnostics_checker(func):
     def wrapper(diagnostics_object, name, **kwargs):
 
-        accepted_keywords = ['write_timestamps',
-                             'path', 'compute_timestamps']
+        #accepted_keywords = ['write_timestamps',
+        #                     'path', 'compute_timestamps']
 
         mandatory_keywords = ['write_timestamps', 'quantity']
 

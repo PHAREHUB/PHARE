@@ -135,8 +135,7 @@ def compute_overlaps(patches, domain_box):
 
             # for two patches, compare patch_datas of the same quantity
             for ref_pdname, ref_pd in refPatch.patch_datas.items():
-                cmp_pd = cmpPatch.patch_datas[ref_pdname]
-                cmp_pdname = ref_pdname
+                cmp_pd = cmpPatch.patch_datas[ref_pdname]                
 
                 gb1 = ref_pd.ghost_box
                 gb2 = cmp_pd.ghost_box
@@ -351,7 +350,8 @@ def level_ghost_boxes(hierarchy, quantities):
 
         for pd_key, info_list in gaboxes[ilvl].items():
 
-            if True:  # if periodic, always true for now
+            # if periodic, always true for now
+            if True:  #lgtm [py/constant-conditional-expression]
                 refined_domain_box = hierarchy.refined_domain_box(ilvl)
                 n_ghosts = lvl.patches[0].patch_datas[pd_key].ghosts_nbr
                 patches = get_periodic_list(lvl.patches, refined_domain_box, n_ghosts)

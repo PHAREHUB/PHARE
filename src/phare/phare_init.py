@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 
-import pyphare.pharein
+import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics
 from pyphare.pharein import ElectronModel
 import numpy as np
 
@@ -85,7 +84,7 @@ MaxwellianFluidModel(
 ElectronModel(closure="isothermal", Te=0.12)
 
 
-import pyphare.pharein as ph
+
 
 
 sim = ph.global_vars.sim

@@ -29,7 +29,7 @@ def startMPI():
 
 class Simulator:
     def __init__(self, simulation, auto_dump=True):
-        import pyphare.pharein as ph
+        import pyphare.pharein as ph #lgtm [py/import-and-import-from]
         assert isinstance(simulation, ph.Simulation)
         self.simulation = simulation
         self.cpp_hier = None   # HERE

@@ -67,7 +67,6 @@ class Run:
 
     def GetJ(self, time):
         B = self.GetB(time)
-        dim = B.dim
         return compute_hier_from(B, _compute_current)
 
 

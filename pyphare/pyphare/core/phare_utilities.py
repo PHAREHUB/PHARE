@@ -35,7 +35,6 @@ def check_equal_size(*args):
 
 
 def listify(arg):
-    import numpy as np
     if isinstance(arg, np.ndarray):
         return arg
     if none_iterable(arg):
