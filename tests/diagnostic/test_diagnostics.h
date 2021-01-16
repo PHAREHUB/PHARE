@@ -246,7 +246,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
         auto&& data = checkField(hifile->file(), layout, field, path + name, FieldDomainFilter{});
         /*
           Validate ghost of first border node is equal to border node
@@ -255,7 +255,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         validateFluidGhosts<GridLayout::dimension>(data, layout, field);
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
         checkVecField(hifile->file(), layout, val, path + name, FieldDomainFilter{});
     };
 
@@ -270,7 +270,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         checkF(layout, path, "/ions"s, "/density"s, ions.density());
 
         std::string tree{"/ions"}, var{"/bulkVelocity"};
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var), hi5.flags_);
         checkVecField(hifile->file(), layout, ions.velocity(), path + var, FieldDomainFilter{});
     };
 
@@ -288,7 +288,7 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree), hi5.flags_);
         checkVecField(hifile->file(), layout, val, path + tree);
     };
 
@@ -347,7 +347,7 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
     };
 
     auto checkFile = [&](auto& path, auto tree, auto& particles) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree));
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree), hi5.flags_);
         checkParticles(hifile->file(), particles, path + "/");
     };
 
@@ -372,7 +372,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     constexpr auto dimension = Simulator::dimension;
 
     auto& hybridModel = *sim.getHybridModel();
-    auto hifile       = hi5.writer.makeFile(hi5.writer.fileString("/EM_B"));
+    auto hifile       = hi5.writer.makeFile(hi5.writer.fileString("/EM_B"), hi5.flags_);
 
     auto _check_equal = [](auto& group, auto expected, auto key) {
         std::vector<typename decltype(expected)::value_type> attr;

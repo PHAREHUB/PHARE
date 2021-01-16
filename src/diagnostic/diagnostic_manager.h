@@ -7,6 +7,7 @@
 #include "diagnostic_props.h"
 
 #include <utility>
+#include <cmath>
 
 namespace PHARE::diagnostic
 {
@@ -93,7 +94,7 @@ public:
         auto nextWrite = nextWrite_[diag.type + diag.quantity];
 
         return nextWrite < diag.writeTimestamps.size()
-               and timeStamp - diag.writeTimestamps[nextWrite] < timeStep;
+               and std::abs(diag.writeTimestamps[nextWrite] - timeStamp) < timeStep;
     }
 
     bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
@@ -101,7 +102,7 @@ public:
         auto nextCompute = nextCompute_[diag.type + diag.quantity];
 
         return nextCompute < diag.computeTimestamps.size()
-               and timeStamp - diag.computeTimestamps[nextCompute] < timeStep;
+               and std::abs(diag.computeTimestamps[nextCompute] - timeStamp) < timeStep;
     }
 
     Writer& writer() { return *writer_.get(); }

@@ -82,13 +82,15 @@ public:
         return fileStr + ".h5";
     }
 
-    auto makeFile(std::string const filename)
+    auto makeFile(std::string const filename, unsigned file_flag)
     {
-        return std::make_unique<HighFiveFile>(filePath_ + "/" + filename, flags);
+        return std::make_unique<HighFiveFile>(filePath_ + "/" + filename, file_flag);
     }
+
     auto makeFile(DiagnosticProperties const& diagnostic)
     {
-        return makeFile(fileString(diagnostic.quantity));
+        return makeFile(fileString(diagnostic.quantity),
+                        file_flags[diagnostic.type + diagnostic.quantity]);
     }
 
 
@@ -154,6 +156,8 @@ private:
     ModelView modelView_;
     Attributes fileAttributes_;
 
+    std::unordered_map<std::string, unsigned> file_flags;
+
     std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> writers{
         {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
         {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
@@ -211,12 +215,19 @@ void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnosti
     fileAttributes_["cell_width"]  = modelView_.cellWidth();
     fileAttributes_["origin"]      = modelView_.origin();
 
+    for (auto* diagnostic : diagnostics)
+        if (!file_flags.count(diagnostic->type + diagnostic->quantity))
+            file_flags[diagnostic->type + diagnostic->quantity] = this->flags;
+
     initializeDatasets_(diagnostics);
-    flags = READ_WRITE; // don't truncate past first dump
     writeDatasets_(diagnostics);
 
     for (auto* diagnostic : diagnostics)
+    {
         writers.at(diagnostic->type)->finalize(*diagnostic);
+        // don't truncate past first dump
+        file_flags[diagnostic->type + diagnostic->quantity] = READ_WRITE;
+    }
 }
 
 template<typename ModelView>
