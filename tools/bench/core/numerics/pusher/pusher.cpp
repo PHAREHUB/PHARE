@@ -78,7 +78,7 @@ void push(benchmark::State& state)
     emFields.E.setBuffer("EM_E_z", &ez);
 
     BorisPusher_t pusher;
-    pusher.setMeshAndTimeStep(layout.meshSize(), .1);
+    pusher.setMeshAndTimeStep(layout.meshSize(), .001);
 
     while (state.KeepRunning())
     {
