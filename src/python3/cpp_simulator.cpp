@@ -7,6 +7,7 @@
 
 #include "mpi.h"
 
+#include "core/utilities/mpi_utils.h"
 #include "core/data/particles/particle.h"
 #include "core/utilities/meta/meta_utilities.h"
 #include "amr/wrappers/hierarchy.h"
@@ -177,16 +178,8 @@ PYBIND11_MODULE(cpp, m)
         return std::shared_ptr<ISimulator>{std::move(PHARE::getSimulator(hier))};
     });
 
-    m.def("mpi_size", []() {
-        int mpi_size;
-        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-        return mpi_size;
-    });
-    m.def("mpi_rank", []() {
-        int mpi_rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-        return mpi_rank;
-    });
+    m.def("mpi_size", []() { return core::mpi::size(); });
+    m.def("mpi_rank", []() { return core::mpi::rank(); });
 
     declareDim<1>(m);
     declareDim<2>(m);

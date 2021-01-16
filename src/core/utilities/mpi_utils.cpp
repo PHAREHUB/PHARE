@@ -9,6 +9,12 @@ int size()
     return mpi_size;
 }
 
+int rank()
+{
+    int mpi_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    return mpi_rank;
+}
 
 std::size_t max(std::size_t const local, int mpi_size)
 {

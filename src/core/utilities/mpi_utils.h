@@ -26,6 +26,8 @@ std::size_t max(std::size_t const local, int mpi_size = 0);
 
 int size();
 
+int rank();
+
 template<typename Data, typename GatherFunc>
 void _gather(GatherFunc const&& gather)
 {
@@ -61,7 +63,6 @@ void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
             recvcount,      //   int          recvcount,
             mpi_type,       //   MPI_Datatype recvtype,
             MPI_COMM_WORLD  //   MPI_Comm     comm
-
         );
     });
 }

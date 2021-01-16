@@ -1,6 +1,7 @@
 #ifndef DIAGNOSTIC_MODEL_VIEW_H
 #define DIAGNOSTIC_MODEL_VIEW_H
 
+#include "core/utilities/mpi_utils.h"
 #include "solver/physical_models/hybrid_model.h"
 
 namespace PHARE::diagnostic
@@ -73,6 +74,7 @@ public:
         dict["nbrCells"] = core::Point<std::uint32_t, dimension>{grid.nbrCells()}.toVector();
         dict["lower"]    = grid.AMRBox().lower.toVector();
         dict["upper"]    = grid.AMRBox().upper.toVector();
+        dict["mpi_rank"] = static_cast<std::size_t>(core::mpi::rank());
         return dict;
     }
 
@@ -84,6 +86,7 @@ public:
         dict["nbrCells"] = std::vector<std::uint32_t>{};
         dict["lower"]    = std::vector<int>{};
         dict["upper"]    = std::vector<int>{};
+        dict["mpi_rank"] = std::size_t{0};
         return dict;
     }
 
