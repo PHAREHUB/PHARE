@@ -244,7 +244,8 @@ class AdvanceTest(unittest.TestCase):
         dim = refinement_boxes["L0"]["B0"].ndim
 
         time_step     = .001
-        time_step_nbr = 10
+        # time_step_nbr chosen to force diagnostics dumping double imprecision cadence calculations accuracy testing
+        time_step_nbr = 101
         final_time    = time_step * time_step_nbr
 
         for trailing in [0, 1]: # 1 = skip init dumps
