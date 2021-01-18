@@ -92,23 +92,27 @@ public:
     bool needsWrite(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextWrite = nextWrite_[diag.type + diag.quantity];
-
         return nextWrite < diag.writeTimestamps.size()
-               and std::abs(diag.writeTimestamps[nextWrite] - timeStamp) < timeStep;
+               and needsAction(diag.writeTimestamps[nextWrite], timeStamp, timeStep);
     }
 
     bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextCompute = nextCompute_[diag.type + diag.quantity];
-
         return nextCompute < diag.computeTimestamps.size()
-               and std::abs(diag.computeTimestamps[nextCompute] - timeStamp) < timeStep;
+               and needsAction(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
     }
 
     Writer& writer() { return *writer_.get(); }
 
 protected:
     std::vector<DiagnosticProperties> diagnostics_;
+
+    bool needsAction(double nextTime, double timeStamp, double timeStep)
+    {
+        // casting to float to truncate double to avoid trailing imprecision
+        return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
+    }
 
 private:
     std::unique_ptr<Writer> writer_;
