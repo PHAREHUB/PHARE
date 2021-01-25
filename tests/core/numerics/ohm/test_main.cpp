@@ -13,6 +13,9 @@
 #include "core/numerics/ohm/ohm.h"
 #include "core/utilities/index/index.h"
 
+#include "phare_core.h"
+
+
 using namespace PHARE::core;
 
 
@@ -40,6 +43,19 @@ public:
         }
     }
 };
+
+
+
+
+PHARE::initializer::PHAREDict createDict()
+{
+    PHARE::initializer::PHAREDict dict;
+
+    dict["resistivity"]       = 1.0;
+    dict["hyper_resistivity"] = 0.01;
+
+    return dict;
+}
 
 
 
@@ -91,6 +107,7 @@ struct OhmTest : public ::testing::Test
         , B{"B", HybridQuantity::Vector::B}
         , J{"J", HybridQuantity::Vector::J}
         , Enew{"Enew", HybridQuantity::Vector::E}
+        , ohm{createDict()}
     {
         V.setBuffer("V_x", &Vx);
         V.setBuffer("V_y", &Vy);
@@ -303,7 +320,8 @@ TYPED_TEST_SUITE(OhmTest, OhmTupleInfos);
 
 
 
-TYPED_TEST(OhmTest, ThatOhmHasCtor)
+
+TYPED_TEST(OhmTest, ThatOhmHasCtorWithDict)
 {
     TypeParam pair;
     auto constexpr dim    = pair.first();
@@ -311,8 +329,9 @@ TYPED_TEST(OhmTest, ThatOhmHasCtor)
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
-    Ohm<GridYee> ohm;
+    Ohm<GridYee> ohm(createDict());
 }
+
 
 
 

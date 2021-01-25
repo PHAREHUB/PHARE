@@ -15,6 +15,8 @@
 #include "core/data/grid/gridlayout_utils.h"
 #include "core/numerics/ohm/ohm.h"
 #include "core/numerics/ampere/ampere.h"
+#include "initializer/data_provider.h"
+
 
 namespace PHARE
 {
@@ -42,6 +44,10 @@ namespace solver
         inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
 
     public:
+        explicit HybridLevelInitializer(PHARE::initializer::PHAREDict const& dict)
+            : ohm_{dict["algo"]["ohm"]}
+        {
+        }
         virtual void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
                                 std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,

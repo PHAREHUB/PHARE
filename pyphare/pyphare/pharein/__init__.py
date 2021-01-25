@@ -147,6 +147,9 @@ def populateDict():
 
 
     add("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
+    add("simulation/algo/ohm/resistivity", simulation.resistivity)
+    add("simulation/algo/ohm/hyper_resistivity", simulation.hyper_resistivity)
+
 
     init_model = simulation.model
     modelDict  = init_model.model_dict
@@ -214,3 +217,5 @@ def populateDict():
     else:
         for item in simulation.electrons.dict_path():
             add("simulation/"+item[0], item[1])
+
+

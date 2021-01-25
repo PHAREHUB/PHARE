@@ -406,6 +406,25 @@ def check_optional_keywords(**kwargs):
     return extra
 
 
+
+def check_resistivity(**kwargs):
+    resistivity = kwargs.get("resistivity", 0.0)
+    if resistivity < 0.0:
+            raise ValueError(f"Error: resistivity should not be negative")
+
+    return resistivity
+
+
+
+def check_hyper_resistivity(**kwargs):
+    hyper_resistivity = kwargs.get("hyper_resistivity", 0.0001)
+    if hyper_resistivity < 0.0:
+            raise ValueError(f"Error: hyper_resistivity should not be negative")
+
+    return hyper_resistivity
+
+
+
 # ------------------------------------------------------------------------------
 
 def checker(func):
@@ -414,7 +433,8 @@ def checker(func):
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
-                             'smallest_patch_size', 'largest_patch_size', "diag_options" ]
+                             'smallest_patch_size', 'largest_patch_size', "diag_options",
+                             'resistivity', 'hyper_resistivity' ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -467,6 +487,10 @@ def checker(func):
             kwargs["max_nbr_levels"] = kwargs.get('max_nbr_levels', None)
             assert kwargs["max_nbr_levels"] != None # this needs setting otherwise
             kwargs["refinement_boxes"] = None
+
+        kwargs["resistivity"] = check_resistivity(**kwargs)
+
+        kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
 
         return func(simulation_object, **kwargs)
 
@@ -551,6 +575,8 @@ class Simulation(object):
             # 1D case
             return extent[0] >= domain[0] and extent[1] <= domain[1]
         raise NotImplementedError("Error: 2D and 3D not implemented yet")
+
+
 
 
 
