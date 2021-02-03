@@ -55,7 +55,8 @@ jobs:
         if [ "$RUNNER_OS" == "Linux" ]; then
           sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
         else
-          brew install open-mpi hdf5-mpi ccache gfortran
+          brew reinstall gcc
+          brew install open-mpi hdf5-mpi ccache
           echo "/usr/local/opt/ccache/libexec" >> $GITHUB_PATH
         fi
 
