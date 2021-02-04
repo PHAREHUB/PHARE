@@ -8,3 +8,5 @@ Testing
 .idea
 *.png
 *.jpg
+data*
+

@@ -8,7 +8,6 @@ from .particles import Particles
 from ..core import box as boxm
 from ..core.box import Box
 from ..core.gridlayout import GridLayout
-from ..data.wrangler import DataWrangler
 import matplotlib.pyplot as plt
 from ..core.phare_utilities import np_array_ify, is_scalar, listify, refinement_ratio
 
@@ -440,7 +439,6 @@ class PatchHierarchy:
             for ip, patch in enumerate(level.patches):
                 pdata_nbr = len(patch.patch_datas)
                 if qty is None and pdata_nbr != 1:
-                    pdata_nrefinementames = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
                     multiple = "multiple quantities in patch, "
                     err = multiple + "please specify a quantity in  "+ pdata_names
                     raise ValueError(err)
@@ -641,7 +639,6 @@ def is_pop_fluid_file(basename):
 
 
 def make_layout(h5_patch_grp, cell_width, interp_order):
-    nbrCells = h5_patch_grp.attrs['nbrCells']
     origin = h5_patch_grp.attrs['origin']
     upper = h5_patch_grp.attrs['upper']
     lower = h5_patch_grp.attrs['lower']
