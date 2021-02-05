@@ -56,7 +56,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   function(add_no_mpi_python3_test name file directory)
     if(NOT testMPI OR (testMPI AND forceSerialTests))
-      add_test(NAME py3_${name} COMMAND python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endif()
   endfunction(add_no_mpi_python3_test)
@@ -68,7 +68,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
-      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
 

@@ -2,16 +2,16 @@
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 
-from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation
-from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
+from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
-from pyphare.core.box import Box, Box1D
+from pyphare.core.box import Box, Box1D, Box2D, Box3D, nDBox
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
@@ -25,71 +25,85 @@ class InitializationTest(unittest.TestCase):
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
 
+    def _density(*xyz):
+        x = xyz[0]
+        return 0.3 + 1./np.cosh((x-6)/4.)**2
+
+
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
-                     density = lambda x: 0.3 + 1./np.cosh((x-6)/4.)**2,
+                     density = _density,
                      beam = False, time_step_nbr=1,
-                     smallest_patch_size=10, largest_patch_size=10,
-                     cells= 120,
-                     dl=0.1):
+                     smallest_patch_size=5, largest_patch_size=10,
+                     cells=120,
+                     dl=0.1, dims=1):
 
         from pyphare.pharein import global_vars
-        global_vars.sim = None
-        startMPI()
+        global_vars.sim =None
+
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
             final_time=30.,
-            boundary_types="periodic",
-            cells=cells,
-            dl=dl,
+            boundary_types=["periodic"] * dims,
+            cells=[cells] * dims,
+            dl=[dl] * dims,
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
                           "options": {"dir": diag_outputs, "mode":"overwrite"}}
         )
 
-        def beam_density(x):
-            return np.zeros_like(x)+0.3
 
-        def by(x):
-            from pyphare.pharein.global_vars import sim
-            L = sim.simulation_domain()
-            return 0.1*np.cos(2*np.pi*x/L[0])
-
-        def bz(x):
-            from pyphare.pharein.global_vars import sim
-            L = sim.simulation_domain()
-            return 0.1*np.sin(2*np.pi*x/L[0])
+        def beam_density(*xyz):
+            return np.zeros_like(xyz[0])+0.3
 
 
-        def bx(x):
+        def bx(*xyz):
             return 1.
 
-        def vx(x):
+        def by(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
-            return 0.1*np.cos(2*np.pi*x/L[0]) + 0.2
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vy(x):
+        def bz(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
-            return 0.1*np.cos(2*np.pi*x/L[0])
+            _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vz(x):
+        def vx(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
-            return 0.1*np.sin(2*np.pi*x/L[0])
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vthx(x):
-            return 0.01 + np.zeros_like(x)
+        def vy(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vthy(x):
-            return 0.01 + np.zeros_like(x)
+        def vz(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vthz(x):
-            return 0.01 + np.zeros_like(x)
+        def vth(*xyz):
+            return 0.01 + np.zeros_like(xyz[0])
+
+        def vthx(*xyz):
+            return vth(*xyz)
+
+        def vthy(*xyz):
+            return vth(*xyz)
+
+        def vthz(*xyz):
+            return vth(*xyz)
 
         if beam:
             MaxwellianFluidModel(bx=bx, by=by, bz=bz,
@@ -188,97 +202,223 @@ class InitializationTest(unittest.TestCase):
 
 
 
-    @data(1,2,3)
-    def test_B_is_as_provided_by_user(self, interp_order):
-        print("test_B_is_as_provided_by_user : interp_order : {}".format(interp_order))
-        hier = self.getHierarchy(interp_order, {"L0": {"B0": [(10, ), (20, )]}}, "b")
+    def _test_B_is_as_provided_by_user(self, dim, interp_order):
+
+        print("test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(dim, interp_order))
+        hier = self.getHierarchy(interp_order, refinement_boxes=None, qty="b", dims=dim,
+                                  diag_outputs="phare_outputs/test_b/{}/{}".format(dim, interp_order))
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
+
         bx_fn = model.model_dict["bx"]
         by_fn = model.model_dict["by"]
         bz_fn = model.model_dict["bz"]
         for ilvl, level in hier.levels().items():
+            self.assertTrue(ilvl == 0) # only level 0 is expected perfect precision
             print("checking level {}".format(ilvl))
             for ip, patch in enumerate(level.patches):
 
-                xbx   = patch.patch_datas["Bx"].x[:]
-                bx  = patch.patch_datas["Bx"].dataset[:]
-                np.testing.assert_allclose(bx, bx_fn(xbx), atol=3e-5)
+                bx_pd = patch.patch_datas["Bx"]
+                by_pd = patch.patch_datas["By"]
+                bz_pd = patch.patch_datas["Bz"]
 
-                xby   = patch.patch_datas["By"].x[:]
-                by  = patch.patch_datas["By"].dataset[:]
-                np.testing.assert_allclose(by, by_fn(xby), atol=3e-5)
+                bx  = bx_pd.dataset[:]
+                by  = by_pd.dataset[:]
+                bz  = bz_pd.dataset[:]
 
-                xbz   = patch.patch_datas["Bz"].x[:]
-                bz  = patch.patch_datas["Bz"].dataset[:]
-                np.testing.assert_allclose(bz, bz_fn(xbz), atol=3e-5)
+                xbx   = bx_pd.x[:]
+                xby   = by_pd.x[:]
+                xbz   = bz_pd.x[:]
+
+                if dim == 1:
+                    np.testing.assert_allclose(bx, bx_fn(xbx), atol=1e-16)
+                    np.testing.assert_allclose(by, by_fn(xby), atol=1e-16)
+                    np.testing.assert_allclose(bz, bz_fn(xbz), atol=1e-16)
+
+                if dim >= 2:
+                    ybx   = bx_pd.y[:]
+                    yby   = by_pd.y[:]
+                    ybz   = bz_pd.y[:]
+
+                if dim == 2:
+                    xbx, ybx = [a.flatten() for a in np.meshgrid(xbx, ybx, indexing="ij")]
+                    xby, yby = [a.flatten() for a in np.meshgrid(xby, yby, indexing="ij")]
+                    xbz, ybz = [a.flatten() for a in np.meshgrid(xbz, ybz, indexing="ij")]
+
+                    np.testing.assert_allclose(bx, bx_fn(xbx, ybx), atol=1e-16)
+                    np.testing.assert_allclose(by, by_fn(xby, yby), atol=1e-16)
+                    np.testing.assert_allclose(bz, bz_fn(xbz, ybz), atol=1e-16)
+
+                if dim == 3:
+                    raise ValueError("Unsupported dimension")
+
+    def test_B_is_as_provided_by_user(self):
+        dimensions = [1, 2]
+        interp_orders = [1, 2, 3]
+        for dim in dimensions:
+            for interp_order in interp_orders:
+                self._test_B_is_as_provided_by_user(dim, interp_order)
 
 
 
+    # ADD 2d
+    @data((1, {"L0": {"B0": [(10, ), (20, )]}}),
+          (2, {"L0": {"B0": [(10, ), (20, )]}}),
+          (3, {"L0": {"B0": [(10, ), (20, )]}}),
+          (1, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          (2, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          (3, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}))
+    @unpack
+    def test_overlaped_fields_are_equal(self, interp_order, refinement_boxes):
+        print("test_overlaped_fields_are_equal")
+        hier = self.getHierarchy(interp_order, refinement_boxes, "b")
+
+        overlaps = hierarchy_overlaps(hier)
+        check=0
+        for ilvl, lvl in hier.levels().items():
+
+            for overlap in overlaps[ilvl]:
+                pd1, pd2 = overlap["pdatas"]
+                box      = overlap["box"]
+                offsets  = overlap["offset"]
+
+                self.assertEqual(pd1.quantity, pd2.quantity)
+
+                if pd1.quantity == 'field':
+                    check+=1
+
+                    # we need to transform the AMR overlap box, which is thus
+                    # (because AMR) common to both pd1 and pd2 into local index
+                    # boxes that will allow to slice the data
+
+                    # the patchData ghost box that serves as a reference box
+                    # to transfrom AMR to local indexes first needs to be
+                    # shifted by the overlap offset associated to it
+                    # this is because the overlap box has been calculated from
+                    # the intersection of possibly shifted patch data ghost boxes
+
+                    loc_b1 = boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0]))
+                    loc_b2 = boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1]))
+
+                    data1 = pd1.dataset
+                    data2 = pd2.dataset
+
+                    slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1]
+                    slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
+
+                    self.assertTrue(np.allclose(slice1, slice2, atol=1e-12))
+
+        self.assertTrue(check>0)
 
 
-    @data(1, 2, 3)
-    def test_bulkvel_is_as_provided_by_user(self, interp_order):
+
+    def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order):
         print("test_density_is_as_provided_by_user : interp_order : {}".format(interp_order))
-        hier = self.getHierarchy(interp_order,
-                                 {"L0": {"B0": [(10, ), (20, )]}},
-                                 "moments",
-                                 nbr_part_per_cell=10000, beam=True)
+        hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}},
+                                 "moments", nbr_part_per_cell=100, beam=True, dims=dim,  # ppc needs to be 10000?
+                                  diag_outputs="phare_outputs/test_bulkV/{}/{}".format(dim, interp_order))
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
-        # protons and beam have same bulk vel here so take
-        # only proton func.
+        # protons and beam have same bulk vel here so take only proton func.
         vx_fn = model.model_dict["protons"]["vx"]
         vy_fn = model.model_dict["protons"]["vy"]
         vz_fn = model.model_dict["protons"]["vz"]
         nprot = model.model_dict["protons"]["density"]
         nbeam = model.model_dict["beam"]["density"]
 
-
         for ilvl, level in hier.levels().items():
             print("checking density on level {}".format(ilvl))
-            for ip,patch in enumerate(level.patches):
+            for ip, patch in enumerate(level.patches):
                 print("patch {}".format(ip))
 
                 layout    = patch.patch_datas["protons_Fx"].layout
                 centering = layout.centering["X"][patch.patch_datas["protons_Fx"].field_name]
                 nbrGhosts = layout.nbrGhosts(interp_order, centering)
 
-                x   = patch.patch_datas["protons_Fx"].x[nbrGhosts:-nbrGhosts]
-                fpx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
-                fpy = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
-                fpz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
-                fbx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
-                fby = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
-                fbz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
-                ni  = patch.patch_datas["rho"].dataset[nbrGhosts:-nbrGhosts]
+                if dim == 1:
+                    x   = patch.patch_datas["protons_Fx"].x[nbrGhosts:-nbrGhosts]
 
-                vxact = (fpx + fbx)/ni
-                vyact = (fpy + fby)/ni
-                vzact = (fpz + fbz)/ni
+                    fpx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
+                    fpy = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
+                    fpz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
 
-                vxexp =(nprot(x) * vx_fn(x) + nbeam(x) * vx_fn(x))/(nprot(x)+nbeam(x))
-                vyexp =(nprot(x) * vy_fn(x) + nbeam(x) * vy_fn(x))/(nprot(x)+nbeam(x))
-                vzexp =(nprot(x) * vz_fn(x) + nbeam(x) * vz_fn(x))/(nprot(x)+nbeam(x))
+                    fbx = patch.patch_datas["beam_Fx"].dataset[nbrGhosts:-nbrGhosts]
+                    fby = patch.patch_datas["beam_Fy"].dataset[nbrGhosts:-nbrGhosts]
+                    fbz = patch.patch_datas["beam_Fz"].dataset[nbrGhosts:-nbrGhosts]
 
-                for vexp, vact in zip((vxexp, vyexp, vzexp), (vxact, vyact, vzact)):
-                    std = np.std(vexp-vact)
-                    print("sigma(user v - actual v) = {}".format(std))
-                    self.assertTrue(std < 1e-2) # empirical value obtained from print just above
+                    ni  = patch.patch_datas["rho"].dataset[nbrGhosts:-nbrGhosts]
+
+                    vxact = (fpx + fbx)/ni
+                    vyact = (fpy + fby)/ni
+                    vzact = (fpz + fbz)/ni
+
+                    vxexp =(nprot(x) * vx_fn(x) + nbeam(x) * vx_fn(x))/(nprot(x)+nbeam(x))
+                    vyexp =(nprot(x) * vy_fn(x) + nbeam(x) * vy_fn(x))/(nprot(x)+nbeam(x))
+                    vzexp =(nprot(x) * vz_fn(x) + nbeam(x) * vz_fn(x))/(nprot(x)+nbeam(x))
+
+                    for vexp, vact in zip((vxexp, vyexp, vzexp), (vxact, vyact, vzact)):
+                        std = np.std(vexp-vact)
+                        print("sigma(user v - actual v) = {}".format(std))
+                        self.assertTrue(std < 1e-2) # empirical value obtained from print just above
+
+                def reshape(patch_data, nGhosts):
+                    return patch_data.dataset[:].reshape(patch.box.shape + (nGhosts * 2) + 1)
+
+                if dim == 2:
+                    xx, yy = np.meshgrid(patch.patch_datas["protons_Fx"].x, patch.patch_datas["protons_Fx"].y, indexing="ij")
+
+                    density = reshape(patch.patch_datas["rho"], nbrGhosts)
+
+                    protons_Fx = reshape(patch.patch_datas["protons_Fx"], nbrGhosts)
+                    protons_Fy = reshape(patch.patch_datas["protons_Fy"], nbrGhosts)
+                    protons_Fz = reshape(patch.patch_datas["protons_Fz"], nbrGhosts)
+
+                    beam_Fx = reshape(patch.patch_datas["beam_Fx"], nbrGhosts)
+                    beam_Fy = reshape(patch.patch_datas["beam_Fy"], nbrGhosts)
+                    beam_Fz = reshape(patch.patch_datas["beam_Fz"], nbrGhosts)
+
+                    x = xx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    y = yy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+
+                    fpx = protons_Fx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    fpy = protons_Fy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    fpz = protons_Fz[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+
+                    fbx = beam_Fx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    fby = beam_Fy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    fbz = beam_Fz[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+
+                    ni  = density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+
+                    vxact = (fpx + fbx)/ni
+                    vyact = (fpy + fby)/ni
+                    vzact = (fpz + fbz)/ni
+
+                    vxexp =(nprot(x, y) * vx_fn(x, y) + nbeam(x, y) * vx_fn(x, y))/(nprot(x, y)+nbeam(x, y))
+                    vyexp =(nprot(x, y) * vy_fn(x, y) + nbeam(x, y) * vy_fn(x, y))/(nprot(x, y)+nbeam(x, y))
+                    vzexp =(nprot(x, y) * vz_fn(x, y) + nbeam(x, y) * vz_fn(x, y))/(nprot(x, y)+nbeam(x, y))
+
+                    for vexp, vact in zip((vxexp, vyexp, vzexp), (vxact, vyact, vzact)):
+                        self.assertTrue(np.std(vexp-vact) < 1e-2)
+
+    def test_bulkvel_is_as_provided_by_user(self):
+        dimensions = [1, 2]
+        interp_orders = [1, 2, 3]
+        for dim in dimensions:
+            for interp_order in interp_orders:
+                self._test_bulkvel_is_as_provided_by_user(dim, interp_order)
 
 
 
 
-
-    @data(1, 2, 3)
-    def test_density_is_as_provided_by_user(self, interp_order):
+    def _test_density_is_as_provided_by_user(self, dim, interp_order):
+        nbParts = {1 : 10000, 2: 6666}
         print("test_density_is_as_provided_by_user : interp_order : {}".format(interp_order))
-        hier = self.getHierarchy(interp_order,
-                                 {"L0": {"B0": [(10, ), (20, )]}},
-                                 "moments",
-                                 nbr_part_per_cell=10000, beam=True)
+        hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}},
+                                 qty="moments", nbr_part_per_cell=nbParts[dim], beam=True, dims=dim,
+                                 diag_outputs="phare_outputs/test_density/{}/{}".format(dim, interp_order))
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -299,33 +439,67 @@ class InitializationTest(unittest.TestCase):
                 centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
                 nbrGhosts = layout.nbrGhosts(interp_order, centering)
 
-                protons_expected = proton_density_fn(x[nbrGhosts:-nbrGhosts])
-                beam_expected    = beam_density_fn(x[nbrGhosts:-nbrGhosts])
-                ion_expected     = protons_expected + beam_expected
+                if dim == 1:
+                    protons_expected = proton_density_fn(x[nbrGhosts:-nbrGhosts])
+                    beam_expected    = beam_density_fn(x[nbrGhosts:-nbrGhosts])
+                    ion_expected     = protons_expected + beam_expected
 
-                ion_actual     = ion_density[nbrGhosts:-nbrGhosts]
-                beam_actual    = beam_density[nbrGhosts:-nbrGhosts]
-                protons_actual = proton_density[nbrGhosts:-nbrGhosts]
+                    ion_actual     = ion_density[nbrGhosts:-nbrGhosts]
+                    beam_actual    = beam_density[nbrGhosts:-nbrGhosts]
+                    protons_actual = proton_density[nbrGhosts:-nbrGhosts]
 
-                names    = ("ions", "protons", "beam")
-                expected = (ion_expected, protons_expected, beam_expected)
-                actual   = (ion_actual, protons_actual, beam_actual)
-                devs = {name:np.std(expected-actual) for name, expected, actual in zip(names, expected, actual)}
+                    names    = ("ions", "protons", "beam")
+                    expected = (ion_expected, protons_expected, beam_expected)
+                    actual   = (ion_actual, protons_actual, beam_actual)
+                    devs = {name:np.std(expected-actual) for name, expected, actual in zip(names, expected, actual)}
 
-                for name, dev in devs.items():
-                    print("sigma(user density - {} density) = {}".format(name, dev))
+                    for name,dev in devs.items():
+                        print("sigma(user density - {} density) = {}".format(name, dev))
+                        self.assertTrue(dev < 6e-3, '{} has dev = {}'.format(name, dev))  # empirical value obtained from test prints
 
-                for name,dev in devs.items():
-                    self.assertTrue(dev < 6e-3, '{} has dev = {}'.format(name, dev))  # empirical value obtained from test prints
+                def reshape_2d(dataset):
+                    return dataset.reshape(patch.box.shape + (nbrGhosts * 2) + 1)
+
+                if dim == 2:
+                    y   = patch.patch_datas["rho"].y
+                    xx, yy = np.meshgrid(x, y, indexing="ij")
+
+                    ion_density     = reshape_2d(ion_density)
+                    proton_density  = reshape_2d(proton_density)
+                    beam_density    = reshape_2d(beam_density)
+
+                    x0 = xx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    y0 = yy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+
+                    protons_expected = proton_density_fn(x0, y0)
+                    beam_expected    = beam_density_fn(x0, y0)
+                    ion_expected     = protons_expected + beam_expected
+
+                    ion_actual     = ion_density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    beam_actual    = beam_density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+                    protons_actual = proton_density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
+
+                    names    = ("ions", "protons", "beam")
+                    expected = (ion_expected, protons_expected, beam_expected)
+                    actual   = (ion_actual, protons_actual, beam_actual)
+                    devs = {name:np.std(expected-actual) for name, expected, actual in zip(names, expected, actual)}
+
+                    for name,dev in devs.items():
+                        print("sigma(user density - {} density) = {}".format(name, dev))
+                        self.assertTrue(dev < 1e-2, '{} has dev = {}'.format(name, dev))  # empirical value obtained from test prints
+
+    def test_density_is_as_provided_by_user(self):
+        dimensions = [1, 2]
+        interp_orders = [1, 2, 3]
+        for dim in dimensions:
+            for interp_order in interp_orders:
+                self._test_density_is_as_provided_by_user(dim, interp_order)
 
 
 
 
-
-    @data(1, 2, 3)
-    def test_density_decreases_as_1overSqrtN(self,interp_order):
-        import matplotlib
-        matplotlib.use("Agg")  # for systems without GUI
+    # making this +1d might not be so simples
+    def _test_density_decreases_as_1overSqrtN(self, dim, interp_order):
         import matplotlib.pyplot as plt
         print("test_density_decreases_as_1overSqrtN, interp_order = {}".format(interp_order))
 
@@ -366,7 +540,7 @@ class InitializationTest(unittest.TestCase):
             plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
             plt.legend()
             plt.title(r"$\sigma =$ {}".format(noise[inbr]))
-            plt.savefig("noise_{}_interp_{}.png".format(nbrpart, interp_order))
+            plt.savefig("noise_{}_interp_{}_{}.png".format(nbrpart, dim, interp_order))
             plt.close("all")
 
 
@@ -376,7 +550,7 @@ class InitializationTest(unittest.TestCase):
         plt.plot(nbr_particles, 1/np.sqrt(nbr_particles/nbr_particles[0]), label=r"$1/sqrt(nppc/nppc0)$")
         plt.xlabel("nbr_particles")
         plt.legend()
-        plt.savefig("noise_nppc_interp_{}.png".format(interp_order))
+        plt.savefig("noise_nppc_interp_{}_{}.png".format(dim, interp_order))
         plt.close("all")
 
         noiseMinusTheory = noise/noise[0] - 1/np.sqrt(nbr_particles/nbr_particles[0])
@@ -385,31 +559,205 @@ class InitializationTest(unittest.TestCase):
                  label=r"$\sigma/\sigma_0 - 1/sqrt(nppc/nppc0)$")
         plt.xlabel("nbr_particles")
         plt.legend()
-        plt.savefig("noise_nppc_minus_theory_interp_{}.png".format(interp_order))
+        plt.savefig("noise_nppc_minus_theory_interp_{}_{}.png".format(dim, interp_order))
         plt.close("all")
         self.assertGreater(3e-2, noiseMinusTheory[1:].mean())
 
+    def test_density_decreases_as_1overSqrtN(self):
+        import matplotlib
+        matplotlib.use("Agg")  # for systems without GUI
+        dimensions = [1] # update for 2
+        interp_orders = [1, 2, 3]
+        for dim in dimensions:
+            for interp_order in interp_orders:
+              self._test_density_decreases_as_1overSqrtN(dim, interp_order)
+
+
+    def test_nbr_particles_per_cell_is_as_provided(self):
+
+        default_ppc = 100
+        for dim in [1, 2]:
+            for interp_order in [1, 2, 3]:
+                datahier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}}, "particles", dims=dim,
+                              diag_outputs="phare_outputs/ppc/{}/{}".format(dim, interp_order))
+
+                print("test_nbr_particles_per_cell_is_as_provided, interp_order = {}".format(interp_order))
+                L0 = datahier.level(0)
+                for patch in L0.patches:
+                    pd = patch.patch_datas["protons_particles"]
+                    icells = pd.dataset.iCells
+                    mincell = icells.min()
+                    # bincount only works for non-negative values
+                    # but icells could be -1 or -2 for interp order 1 or (2,3)
+                    # so we artificially add the min (-1 or -2) and count the
+                    # number of occurence of cell indexes
+                    # this should be a list of only nbr_part_per_cell
+                    if dim == 1:
+                        counts = np.bincount(icells-mincell)
+                        self.assertTrue(np.all(counts == default_ppc))
+                    elif dim == 2:
+                        i =  icells[:, 0]
+                        j =  icells[:, 1]
+
+                        gb_shape = pd.ghost_box.shape
+                        self.assertTrue(np.all(np.bincount(i - i.min()) == (gb_shape[1] * 100)))
+                        self.assertTrue(np.all(np.bincount(j - j.min()) == (gb_shape[0] * 100)))
+                    elif dim == 3:
+                        # This if block is untested but probably works
+                        i =  icells[:, 0]
+                        j =  icells[:, 1]
+                        k =  icells[:, 2]
+
+                        gb_shape = pd.ghost_box.shape
+                        self.assertTrue(np.all(np.bincount(i - i.min()) == (gb_shape[2] * 100)))
+                        self.assertTrue(np.all(np.bincount(j - j.min()) == (gb_shape[1] * 100)))
+                        self.assertTrue(np.all(np.bincount(k - k.min()) == (gb_shape[0] * 100)))
+                    else:
+                        raise ValueError("Unsupported dimension")
 
 
 
-    @data(1, 2, 3)
-    def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
-        datahier = self.getHierarchy(interp_order, {"L0": {"B0": [(10, ), (20, )]}}, "particles")
-        print("test_nbr_particles_per_cell_is_as_provided, interp_order = {}".format(interp_order))
-        L0 = datahier.level(0)
-        for patch in L0.patches:
-            pd = patch.patch_datas["protons_particles"]
-            icells = pd.dataset.iCells
-            mincell = icells.min()
-            # bincount only works for non-negative values
-            # but icells could be -1 or -2 for interp order 1 or (2,3)
-            # so we artificially add the min (-1 or -2) and count the
-            # number of occurence of cell indexes
-            # this should be a list of only nbr_part_per_cell
-            counts = np.bincount(icells-mincell)
-            self.assertTrue(np.all(counts == 100)) #100 is default nbr for maxwellian model.
+    # ADD 2d
+    @data((1, {"L0": {"B0": [(10, ), (20, )]}}),
+          (2, {"L0": {"B0": [(10, ), (20, )]}}),
+          (3, {"L0": {"B0": [(10, ), (20, )]}}),
+          (1, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          (2, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          (3, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}))
+    @unpack
+    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self,interp_order, refinement_boxes):
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles")
+        print("test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles")
+        print("interporder : {}".format(interp_order))
+        overlaps = hierarchy_overlaps(datahier)
+        for ilvl, lvl_overlaps in overlaps.items():
+            print("level {}".format(ilvl))
+            for overlap in lvl_overlaps:
+
+                if ilvl != 0: #only root level tested here
+                    continue
+
+                if "particles"  not in overlap["pdatas"][0].quantity :
+                    continue
+
+                ref_pd, cmp_pd = overlap["pdatas"]
+
+                box = overlap["box"]
+                print("overlap box : {}, reference patchdata box : {}, ghostbox {},"
+                " comp. patchdata box : {} ghostbox {}".format(box,ref_pd.box,ref_pd.ghost_box,cmp_pd.box, cmp_pd.ghost_box))
+                offsets = overlap["offset"]
+
+                # first let's shift the overlap box over the AMR
+                # indices of the patchdata. The box has been created
+                # by shifting the patchdata ghost box by 'offset' so here
+                # the box is shifted by -offset to get over patchdata
+                shift_refbox, shift_cmpbox = [boxm.shift(box, -off) for off in offsets]
+
+                # the overlap box overlaps both ghost and domain cells
+                # we need to extract the domain ones to later select domain
+                # particles
+                ovlped_refdom = ref_pd.box * shift_refbox
+                ovlped_cmpdom = cmp_pd.box * shift_cmpbox
+
+                # on lvl 0 patches are adjacent
+                # therefore the overlap box must overlap the
+                # patchData box. 1 cell in interporder1, 2 cells for higher
+                assert(ovlped_cmpdom is not None)
+                assert(ovlped_refdom is not None)
+
+                refdomain = ref_pd.dataset.select(ovlped_refdom)
+                cmpdomain = cmp_pd.dataset.select(ovlped_cmpdom)
+
+                # now get the ghost cells of each patch data overlaped by
+                # the overlap box. To do this we need to intersect the shifted
+                # overlap box with the patchdata ghost box, and remove interior cells
+                # note that in 1D we don't expect remove to return more than 1 box, hence [0]
+                ovlped_refghost = boxm.remove(ref_pd.ghost_box * shift_refbox, ref_pd.box)[0]
+                ovlped_cmpghost = boxm.remove(cmp_pd.ghost_box * shift_cmpbox, cmp_pd.box)[0]
+
+                refghost  = ref_pd.dataset.select(ovlped_refghost)
+                cmpghost  = cmp_pd.dataset.select(ovlped_cmpghost)
+
+                print("ghost box {} has {} particles".format(ovlped_refghost, len(refghost.iCells)))
+                print("ghost box {} has {} particles".format(ovlped_cmpghost, len(cmpghost.iCells)))
+
+                # before comparing the particles we need to be sure particles of both patchdatas
+                # are sorted in the same order. We do that by sorting by x position
+                sort_refdomain_idx = np.argsort(refdomain.iCells + refdomain.deltas)
+                sort_cmpdomain_idx = np.argsort(cmpdomain.iCells + cmpdomain.deltas)
+                sort_refghost_idx = np.argsort(refghost.iCells + refghost.deltas)
+                sort_cmpghost_idx = np.argsort(cmpghost.iCells + cmpghost.deltas)
+
+                assert(sort_refdomain_idx.size != 0)
+                assert(sort_cmpdomain_idx.size != 0)
+                assert(sort_refdomain_idx.size != 0)
+                assert(sort_cmpghost_idx.size != 0)
+
+                np.testing.assert_allclose(refdomain.deltas[sort_refdomain_idx], cmpghost.deltas[sort_cmpghost_idx], atol=1e-12)
+                np.testing.assert_allclose(cmpdomain.deltas[sort_cmpdomain_idx], refghost.deltas[sort_refghost_idx], atol=1e-12)
 
 
+
+
+    @data((1, {"L0": {"B0": Box1D(10, 20)}}),
+          (2, {"L0": {"B0": Box1D(10, 20)}}),
+          (3, {"L0": {"B0": Box1D(10, 20)}}),
+          (1, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          (2, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          (3, {"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+          # (1, {"L0": {"B0": Box2D(10, 20)}}), # argsort in 2d?
+    )
+    @unpack
+    def test_overlapped_particledatas_have_identical_particles(self, interp_order, refinement_boxes):
+        dim = len(refinement_boxes["L0"]["B0"].lower)
+        print("test_overlapped_particledatas_have_identical_particles")
+        from copy import copy
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", dims=dim)
+        print("interporder : {}".format(interp_order))
+        overlaps = hierarchy_overlaps(datahier)
+
+        for ilvl, lvl in datahier.patch_levels.items():
+
+            print("testing level {}".format(ilvl))
+            for overlap in overlaps[ilvl]:
+
+                pd1, pd2 = overlap["pdatas"]
+                box      = overlap["box"]
+                offsets  = overlap["offset"]
+
+                self.assertEqual(pd1.quantity, pd2.quantity)
+
+                if "particles" in pd1.quantity:
+
+                    # the following uses 'offset', we need to remember that offset
+                    # is the quantity by which a patch has been moved to detect
+                    # overlap with the other one.
+                    # so shift by +offset when evaluating patch data in overlap box
+                    # index space, and by -offset when we want to shift box indexes
+                    # to the associated patch index space.
+
+                    # overlap box must be shifted by -offset to select data in the patches
+                    part1 = copy(pd1.dataset.select(boxm.shift(box, -offsets[0])))
+                    part2 = copy(pd2.dataset.select(boxm.shift(box, -offsets[1])))
+
+                    idx1 = np.argsort(part1.iCells + part1.deltas)
+                    idx2 = np.argsort(part2.iCells + part2.deltas)
+
+                    # if there is an overlap, there should be particles
+                    # in these cells
+                    assert(len(idx1) >0)
+                    assert(len(idx2) >0)
+
+                    print("respectively {} and {} in overlaped patchdatas".format(len(idx1), len(idx2)))
+
+                    # particle iCells are in their patch AMR space
+                    # so we need to shift them by +offset to move them to the box space
+                    np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
+
+                    self.assertTrue(np.allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12))
+                    self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
 
 
     def _domainParticles_for(self, datahier, ilvl):
@@ -469,51 +817,6 @@ class InitializationTest(unittest.TestCase):
 
 
 
-
-    def _test_levelghostparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes):
-        print("test_levelghostparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
-
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", cells=30)
-        from pyphare.pharein.global_vars import sim
-
-        assert sim is not None and len(sim.cells) == dim
-
-        particle_level_ghost_boxes_per_level = level_ghost_boxes(datahier, "particles")
-
-        self.assertTrue(len(particle_level_ghost_boxes_per_level.items()) > 0)
-        for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
-            self.assertTrue(ilvl > 0) # has no level 0
-            coarse_particles = self._domainParticles_for(datahier, ilvl - 1)
-
-            self.assertTrue(all([particles.size() > 0 for k, particles in coarse_particles.items()]))
-
-            coarse_split_particles = {k: particles.split(sim) for k, particles in coarse_particles.items()}
-
-            for k, particles in coarse_particles.items():
-                self.assertTrue(coarse_split_particles[k].size() > 0)
-                self.assertTrue(coarse_split_particles[k].size() == particles.size() * sim.refined_particle_nbr)
-
-            for pop_name, gaboxes in particle_gaboxes.items():
-                for gabox in gaboxes:
-                    gabox_patchData = gabox["pdata"]
-                    for ghostBox in gabox["boxes"]:
-                        part1 = gabox_patchData.dataset.select(ghostBox)
-                        part2 = coarse_split_particles[pop_name].select(ghostBox)
-                        self.assertEqual(part1, part2)
-
-
-    @data(
-       ({"L0": {"B0": Box1D(10, 14)}}),
-       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(15, 35)}}),
-       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
-    )
-    def test_levelghostparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].ndim
-        for interp_order in [1, 2, 3]:
-            self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
-
-
-
     def _test_patch_ghost_on_refined_level_case(self, has_patch_ghost, **kwargs):
         import pyphare.pharein as ph
 
@@ -541,17 +844,15 @@ class InitializationTest(unittest.TestCase):
                 key = "protons_particles"
                 self.assertTrue((1 in datahier.levels()) == has_patch_ghost)
 
-
     _no_patch_ghost_on_refined_level_case = (
       {
-        "cells": 40,
+       "cells": 40,
         "smallest_patch_size": 20,
         "largest_patch_size": 20},
     )
     @data(*_no_patch_ghost_on_refined_level_case)
     def test_no_patch_ghost_on_refined_level_case(self, simInput):
         self._test_patch_ghost_on_refined_level_case(False, **simInput)
-
 
     _has_patch_ghost_on_refined_level_case = (
       {
@@ -565,6 +866,70 @@ class InitializationTest(unittest.TestCase):
 
 
 
+
+
+    def _test_levelghostparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes):
+        print("test_levelghostparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
+
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", dims=dim, cells=30,
+                                  diag_outputs="phare_outputs/test_levelghost/{}/{}".format(dim, interp_order))
+        from pyphare.pharein.global_vars import sim
+        assert sim is not None
+        assert len(sim.cells) == dim
+
+        particle_level_ghost_boxes_per_level = level_ghost_boxes(datahier, "particles")
+
+        self.assertTrue(len(particle_level_ghost_boxes_per_level.items()) > 0)
+        for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
+
+            self.assertTrue(ilvl > 0) # has no level 0
+
+            lvlParticles = self._domainParticles_for(datahier, ilvl - 1)
+            for pop_name, gaboxes_list in particle_gaboxes.items():
+                coarse_particles = lvlParticles[pop_name]
+                self.assertTrue(coarse_particles.size() > 0)
+
+                coarse_split_particles = coarse_particles.split(sim)
+                self.assertTrue(coarse_split_particles.size() > 0)
+                self.assertTrue(coarse_split_particles.size() == coarse_particles.size() * sim.refined_particle_nbr)
+
+                for gabox in gaboxes_list:
+                    gabox_patchData = gabox["pdata"]
+
+                    for ghostBox in gabox["boxes"]:
+                        part1 = gabox_patchData.dataset.select(ghostBox)
+                        part2 = coarse_split_particles.select(ghostBox)
+                        self.assertTrue(part1.size() == part2.size())
+
+                        dim = ghostBox.ndim
+                        part1.iCells = part1.iCells.reshape(part1.iCells.shape[0], dim)
+                        part1.deltas = part1.deltas.reshape(part1.deltas.shape[0], dim)
+                        part2.iCells = part2.iCells.reshape(part2.iCells.shape[0], dim)
+                        part2.deltas = part2.deltas.reshape(part2.deltas.shape[0], dim)
+
+                        for dim in range(ghostBox.ndim):
+                            idx1 = np.argsort((part1.iCells + part1.deltas)[:,dim])
+                            idx2 = np.argsort((part2.iCells + part2.deltas)[:,dim])
+                            np.testing.assert_array_equal(part1.iCells[idx1,dim], part2.iCells[idx2,dim])
+                            np.testing.assert_allclose(part1.deltas[idx1,dim], part2.deltas[idx2,dim], atol=1e-12)
+
+                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+
+
+    @data(
+       ({"L0": {"B0": Box1D(10, 14)}}),
+       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(15, 35)}}),
+       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
+       ({"L0": {"B0": Box2D(10, 14)}}),
+       ({"L0": {"B0": Box2D(10, 14)}, "L1": {"B0": Box2D(22, 26)}}),
+       ({"L0": {"B0": Box2D( 2, 6), "B1": Box2D(7, 11)}}),
+    )
+    def test_levelghostparticles_have_correct_split_from_coarser_particle(self, refinement_boxes):
+        dim = len(refinement_boxes["L0"]["B0"].lower)
+        for interp_order in [1, 2, 3]:
+            self._test_levelghostparticles_have_correct_split_from_coarser_particle(dim, interp_order, refinement_boxes)
 
 if __name__ == "__main__":
     unittest.main()

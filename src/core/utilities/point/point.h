@@ -127,7 +127,9 @@ namespace core
 
 
         auto begin() { return r.begin(); }
+        auto begin() const { return r.begin(); }
         auto end() { return r.end(); }
+        auto end() const { return r.end(); }
 
 
     private:

@@ -103,8 +103,6 @@ class FieldData(PatchData):
         self.layout = layout
         self.field_name = field_name
         self.name = field_name
-        self.dx = layout.dl[0] # dropped in 2d_py_init PR - use dl[0]
-
         self.dl = np.asarray(layout.dl)
         self.ndim = layout.box.ndim
         self.ghosts_nbr = np.zeros(self.ndim, dtype=int)

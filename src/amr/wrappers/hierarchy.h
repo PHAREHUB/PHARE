@@ -167,8 +167,8 @@ auto parseDimXYZType(PHARE::initializer::PHAREDict const& grid, std::string key)
 }
 
 template<std::size_t dimension>
-void getDomainCoords(PHARE::initializer::PHAREDict const& grid, float lower[dimension],
-                     float upper[dimension])
+void getDomainCoords(PHARE::initializer::PHAREDict const& grid, double lower[dimension],
+                     double upper[dimension])
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
 
@@ -178,8 +178,8 @@ void getDomainCoords(PHARE::initializer::PHAREDict const& grid, float lower[dime
 
     for (std::size_t i = 0; i < dimension; i++)
     {
-        lower[i] = static_cast<float>(origin[i]);
-        upper[i] = static_cast<float>(lower[i] + nbr_cells[i] * mesh_size[i]);
+        lower[i] = origin[i];
+        upper[i] = lower[i] + nbr_cells[i] * mesh_size[i];
     }
 }
 
@@ -211,10 +211,10 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict const& grid)
     }
 
     {
-        float lowerCoord[dimension], upperCoord[dimension];
+        double lowerCoord[dimension], upperCoord[dimension];
         getDomainCoords<dimension>(grid, lowerCoord, upperCoord);
-        db->putFloatArray("x_lo", lowerCoord, dimension);
-        db->putFloatArray("x_up", upperCoord, dimension);
+        db->putDoubleArray("x_lo", lowerCoord, dimension);
+        db->putDoubleArray("x_up", upperCoord, dimension);
     }
 
     int periodicity[dimension];

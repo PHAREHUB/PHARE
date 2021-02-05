@@ -127,6 +127,7 @@ public:
     static const std::size_t dimension = dim;
     using type                         = DataType;
 
+
     explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
         , nCells_{nCells}
@@ -268,7 +269,6 @@ public:
     {
         return MaskedView{*this, std::forward<Mask>(mask)};
     }
-
 
 private:
     std::array<std::uint32_t, dim> nCells_;
