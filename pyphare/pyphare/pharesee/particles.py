@@ -67,6 +67,7 @@ class Particles:
         self.v        = np.concatenate((self.v, particles.v))
         self.charges  = np.concatenate((self.charges, particles.charges))
         self.weights  = np.concatenate((self.weights, particles.weights))
+        self._x = None
 
 
     def shift_icell(self, offset):
