@@ -26,10 +26,10 @@ class Particles:
             self.weights = kwargs["weights"]
             self.charges = kwargs["charges"]
             self.dl      = kwargs["dl"]
-            self._x = None
-            self._y = None
             ndim = self.iCells.ndim
 
+        self._x = None
+        self._y = None
         assert len(self.weights.shape) == 1
         assert len(self.charges.shape) == 1
 
@@ -51,7 +51,6 @@ class Particles:
         assert self.iCells.shape == self.deltas.shape
 
         self.ndim = ndim
-
 
     @property
     def x(self):
