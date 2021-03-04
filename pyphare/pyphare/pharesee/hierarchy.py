@@ -409,6 +409,7 @@ class PatchHierarchy:
         """
         plot
         """
+        import copy
         usr_lvls = kwargs.get("levels",(0,))
         qty = kwargs.get("qty",None)
         time = kwargs.get("time", self.times()[0])
@@ -428,7 +429,7 @@ class PatchHierarchy:
                 if qty is None:
                     qty = list(patch.patch_datas.keys())[0]
 
-                tmp = patch.patch_datas[qty].dataset
+                tmp = copy.copy(patch.patch_datas[qty].dataset)
 
                 # select particles
                 if "select" in kwargs:

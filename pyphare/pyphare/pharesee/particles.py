@@ -26,10 +26,10 @@ class Particles:
             self.weights = kwargs["weights"]
             self.charges = kwargs["charges"]
             self.dl      = kwargs["dl"]
-            self._x = None
-            self._y = None
             ndim = self.iCells.ndim
 
+        self._x = None
+        self._y = None
         assert len(self.weights.shape) == 1
         assert len(self.charges.shape) == 1
 
@@ -52,7 +52,6 @@ class Particles:
 
         self.ndim = ndim
 
-
     @property
     def x(self):
         if self._x is None:
@@ -67,6 +66,7 @@ class Particles:
         self.v        = np.concatenate((self.v, particles.v))
         self.charges  = np.concatenate((self.charges, particles.charges))
         self.weights  = np.concatenate((self.weights, particles.weights))
+        self._x = None
 
 
     def shift_icell(self, offset):
