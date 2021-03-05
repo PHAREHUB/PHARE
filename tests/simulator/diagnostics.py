@@ -170,5 +170,13 @@ class DiagnosticsTest(unittest.TestCase):
             ph.global_vars.sim = None
 
 
+
+    def test_twice_register(self):
+        simulation = ph.Simulation(**simArgs.copy())
+        model = setup_model()
+        dump_all_diags(model.populations) # first register
+        self.assertRaises(RuntimeError, dump_all_diags, model.populations)
+
+
 if __name__ == "__main__":
     unittest.main()
