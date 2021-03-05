@@ -171,9 +171,10 @@ def mag_energy(B, lvlNbr=0):
                 # Bx is primal, but By and Bz dual so
                 # we average By and Bz onto Bx to use them
                 # in the same formula
-                bx = patch.patch_datas["Bx"].dataset[5:-5]
-                bytmp = patch.patch_datas["By"].dataset[4:-4]
-                bztmp = patch.patch_datas["Bz"].dataset[4:-4]
+                ghosts_nbr = pdata.ghosts_nbr[0]
+                bx = patch.patch_datas["Bx"].dataset[ghosts_nbr:-ghosts_nbr]
+                bytmp = patch.patch_datas["By"].dataset[ghosts_nbr-1:-(ghosts_nbr-1)]
+                bztmp = patch.patch_datas["Bz"].dataset[ghosts_nbr-1:-(ghosts_nbr-1)]
                 by = 0.5*(bytmp[1:]+bytmp[:-1])
                 bz = 0.5*(bztmp[1:]+bztmp[:-1])
 
@@ -215,7 +216,7 @@ def avg_interval(t1, t2, times):
 
 def main():
 
-    cases = [0.01]#,0.05,0.1,0.3,0.5,0.75,1,2]
+    cases = [0.01,0.05,0.1,0.3,0.5,0.75,1,2]
 
     dls = [0.2, 0.1]
     nbrcells = [100,200]
