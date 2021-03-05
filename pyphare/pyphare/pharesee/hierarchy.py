@@ -406,12 +406,13 @@ class PatchHierarchy:
 
 
     def dist_plot(self, **kwargs):
+        from scipy.ndimage import gaussian_filter as gf
         """
         plot
         """
         import copy
         usr_lvls = kwargs.get("levels",(0,))
-        qty = kwargs.get("qty",None)
+        pops = kwargs.get("pop",[])
         time = kwargs.get("time", self.times()[0])
         cpt = 0
         fig, ax = plt.subplots()
@@ -420,28 +421,23 @@ class PatchHierarchy:
                 continue
             for ip, patch in enumerate(level.patches):
 
-                pdata_nbr = len(patch.patch_datas)
-                if qty is None and pdata_nbr != 1:
-                    pdata_names = "("+",".join(["'{}'".format(l) for l in patch.patch_datas])+")"
-                    multiple = "multiple quantities in patch, "
-                    err = multiple + "please specify a quantity in  "+ pdata_names
-                    raise ValueError(err)
-                if qty is None:
-                    qty = list(patch.patch_datas.keys())[0]
+                if len(pops)==0:
+                    pops = list(patch.patch_datas.keys())
 
-                tmp = copy.copy(patch.patch_datas[qty].dataset)
+                for pop in pops:
+                    tmp = copy.copy(patch.patch_datas[pop].dataset)
 
-                # select particles
-                if "select" in kwargs:
-                    selected = kwargs["select"](tmp)
-                else:
-                    selected = tmp
-                if cpt == 0:
-                    final = selected
-                else:
-                    final.add(selected)
+                    # select particles
+                    if "select" in kwargs:
+                        selected = kwargs["select"](tmp)
+                    else:
+                        selected = tmp
+                    if cpt == 0:
+                        final = selected
+                    else:
+                        final.add(selected)
 
-                cpt += 1
+                    cpt += 1
 
         axis = kwargs.get("axis",("Vx","Vy"))
 
@@ -454,9 +450,14 @@ class PatchHierarchy:
             y = final.v[:,vaxis[axis[1]]]
 
         bins = kwargs.get("bins", (50,50))
-        ax.hist2d(x, y,
+        h, xh, yh  = np.histogram2d(x, y,
                   bins=kwargs.get("bins", bins),
-                 cmap='jet')
+                  weights=final.weights)
+
+        xc = 0.5*(xh[1:] + xh[:-1])
+        yc = 0.5*(yh[1:] + yh[:-1])
+        sig = kwargs.get("sigma", 2)
+        ax.pcolormesh(xc, yc, gf(h.T, sigma=(sig,sig)), cmap="jet")
 
         if kwargs.get("kde",False) is True:
             sns.kdeplot(x, y, ax=ax, color="w")
@@ -983,7 +984,7 @@ def merge_particles(hierarchy):
                 lghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "levelGhost" in pdname]
 
                 pghost_pdata = pghost_pdatas[0] if pghost_pdatas else None
-                lghost_pdata = lghost_pdatas[0]if lghost_pdatas else None
+                lghost_pdata = lghost_pdatas[0] if lghost_pdatas else None
 
                 if pghost_pdata is not None:
                     domain_pdata[1].dataset.add(pghost_pdata[1].dataset)

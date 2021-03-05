@@ -39,9 +39,9 @@ class Run:
     def __init__(self, path):
         self.path = path
 
-    def _get_hierarchy(self, time, filename):
+    def _get_hierarchy(self, time, filename, hier=None):
         t = "t{:.10f}".format(time)
-        return hierarchy_from(h5_filename=os.path.join(self.path, filename), time=t)
+        return hierarchy_from(h5_filename=os.path.join(self.path, filename), time=t, hier=hier)
 
     def GetB(self, time):
         return self._get_hierarchy(time, "EM_B.h5")
@@ -61,12 +61,15 @@ class Run:
     def GetFlux(self, time, pop_name):
         return self._get_hierarchy(time, "ions_pop_{}_flux.h5".format(pop_name))
 
-    def GetParticles(self, time, pop_name):
-        return self._get_hierarchy(time, "ions_pop_{}_domain.h5".format(pop_name))
-
-
     def GetJ(self, time):
         B = self.GetB(time)
         return compute_hier_from(B, _compute_current)
 
-
+    def GetParticles(self, time, pop_name, hier=None):
+        def filename(name):
+            return f"ions_pop_{name}_domain.h5"
+        if isinstance(pop_name, (list, tuple)):
+            for pop in pop_name:
+                hier = self._get_hierarchy(time, filename(pop), hier=hier)
+            return hier
+        return self._get_hierarchy(time, filename(pop_name), hier=hier)
