@@ -67,19 +67,22 @@ class Diagnostics(object):
     @diagnostics_checker
     def __init__(self,name, **kwargs):
 
-        self.name = name
+        if global_vars.sim is None:
+            raise RuntimeError("A simulation must be created before adding diagnostics")
 
+        self.name = name
         self.path = kwargs['path']
 
         validate_timestamps(self.__class__.__name__, **kwargs)
         self.write_timestamps = kwargs['write_timestamps'] #[0, 1, 2]
         self.compute_timestamps = kwargs['compute_timestamps']
 
+        self._setSubTypeAttributes(**kwargs)
+
+        if any([self.quantity == diagnostic.quantity for diagnostic in global_vars.sim.diagnostics]):
+            raise RuntimeError(f"Error: Diagnostic ({kwargs['quantity']}) already registered")
+
         self.__extent = None
-
-        if global_vars.sim is None:
-            raise RuntimeError("A simulation must be created before adding diagnostics")
-
         global_vars.sim.add_diagnostics(self)
 
 
@@ -99,15 +102,13 @@ class ElectromagDiagnostics(Diagnostics):
                                                     + str(global_vars.sim.count_diagnostics(ElectromagDiagnostics.type))
                                                     , **kwargs)
 
+    def _setSubTypeAttributes(self, **kwargs):
 
-        if 'quantity' not in kwargs:
-            raise ValueError("Error: missing 'quantity' parameter")
+        if kwargs['quantity'] not in ElectromagDiagnostics.em_quantities:
+            error_msg = "Error: '{}' not a valid electromag diagnostics : " + ', '.join(ElectromagDiagnostics.em_quantities)
+            raise ValueError(error_msg.format(kwargs['quantity']))
         else:
-            if kwargs['quantity'] not in ElectromagDiagnostics.em_quantities:
-                error_msg = "Error: '{}' not a valid electromag diagnostics : " + ', '.join(ElectromagDiagnostics.em_quantities)
-                raise ValueError(error_msg.format(kwargs['quantity']))
-            else:
-                self.quantity = "/EM_" + kwargs['quantity']
+            self.quantity = "/EM_" + kwargs['quantity']
 
     def to_dict(self):
         return {"name": self.name,
@@ -134,8 +135,8 @@ class FluidDiagnostics (Diagnostics):
         super(FluidDiagnostics, self).__init__(FluidDiagnostics.type \
                                                + str(global_vars.sim.count_diagnostics(FluidDiagnostics.type)),
                                                **kwargs)
-        if 'quantity' not in kwargs:
-            raise ValueError("Error: missing quantity parameter")
+
+    def _setSubTypeAttributes(self, **kwargs):
 
         self.population_name = None
         if 'population_name' not in kwargs and kwargs['quantity'] == "flux":
@@ -183,8 +184,7 @@ class ParticleDiagnostics(Diagnostics):
                                                   + str(global_vars.sim.count_diagnostics(ParticleDiagnostics.type)),
                                                   **kwargs)
 
-        if 'quantity' not in kwargs:
-            raise ValueError("Error: missing 'quantity' parameter")
+    def _setSubTypeAttributes(self, **kwargs):
 
         if kwargs['quantity'] not in ParticleDiagnostics.particle_quantities:
             error_msg = "Error: '{}' not a valid particle diagnostics : " + ', '.join(ParticleDiagnostics.particle_quantities)
