@@ -55,7 +55,10 @@ class Particles:
     @property
     def x(self):
         if self._x is None:
-            self._x = self.dl[0]*(self.iCells[:,0] + self.deltas[:,0])
+            if self.ndim == 1:
+                self._x = self.dl[0]*(self.iCells[:] + self.deltas[:])
+            else:
+                self._x = self.dl[0]*(self.iCells[:,0] + self.deltas[:,0])
         return self._x
 
 
