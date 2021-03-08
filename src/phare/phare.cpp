@@ -5,6 +5,9 @@
 #include "amr/wrappers/hierarchy.h"
 #include "initializer/python_data_provider.h"
 
+#include "core/logger.h"
+
+
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
     using dataProvider [[maybe_unused]] = std::unique_ptr<PHARE::initializer::DataProvider>;
@@ -58,6 +61,15 @@ int main(int argc, char** argv)
     simulator->initialize();
 
     [[maybe_unused]] auto time = simulator->startTime();
+
+    LogMan logman{"log"};
+    logman.registerLogger();
+    logman.start("outer");
+    for (std::size_t i = 0; i < 10; ++i)
+    {
+        logman.scope("inner");
+    }
+    logman.stop();
 
     while (simulator->currentTime() < simulator->endTime())
     {
