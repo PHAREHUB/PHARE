@@ -132,12 +132,6 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
 
 
 
-
-INSTANTIATE_TEST_SUITE_P(WithRatioFrom2To10TestThat, ALinearFieldRefine1DO1,
-                         ::testing::Values(2, 3, 4, 5, 6, 7, 8, 9, 10));
-
-
-
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
