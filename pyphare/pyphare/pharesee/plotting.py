@@ -4,6 +4,98 @@ from mpl_toolkits.axes_grid1.inset_locator import (
     BboxPatch, BboxConnector, BboxConnectorPatch)
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+def dist_plot(particles, **kwargs):
+    """
+    plot the phase space of given particles
+    particles can be of type Particles, list(Particles), dict{popname:Particles}
+
+    kwargs:
+    * axis : ("x", "Vx"), ("x", "Vy"), ("x", "Vz"), ("Vx", "Vy") (default) --
+       ("Vx", "Vz"), ("Vy", "Vz")
+    * bins :  number of bins in each dimension, default is (50,50)
+    * sigma : width of the gaussian filter, default is (0,0)
+    * norm  : histogram will be normed to Normalize(0,norm)
+    * kde : (default False) : adds contours of kernel density estimate
+    * title : (str) title of the plot
+    * xlabel, ylabel
+    * xlim, ylim
+    * bulk : (bool) (default : False), adds vertical/horizontal lines --
+             at in-plane bulk velocity for velocity axis
+    * filename : (str) if exists, save plot to figure under that name
+
+    return value : fig,ax
+    """
+    from pyphare.pharesee.particles import Particles, aggregate
+    from matplotlib.colors import Normalize
+
+    if isinstance(particles, list):
+        particles = aggregate(particles)
+    elif isinstance(particles, dict):
+        particles = aggregate([p for p in particles.values()])
+
+    if not isinstance(particles, Particles):
+        raise ValueError("Error, 'particles' type should be Particles, list or dict")
+
+    from scipy.ndimage import gaussian_filter as gf
+    if "ax" not in kwargs:
+        fig, ax = plt.subplots()
+    else:
+        ax = kwargs["ax"]
+        fig = ax.figure
+    axis = kwargs.get("axis",("Vx","Vy"))
+    vaxis = {"Vx":0, "Vy":1, "Vz":2}
+
+    if axis[0] in vaxis:
+        x = particles.v[:,vaxis[axis[0]]]
+    elif axis[0] == "x":
+        x = particles.x
+    if axis[1] in vaxis:
+        y = particles.v[:,vaxis[axis[1]]]
+
+    bins = kwargs.get("bins", (50,50))
+    h, xh, yh  = np.histogram2d(x, y,
+              bins=kwargs.get("bins", bins),
+              weights=particles.weights)
+
+    sig = kwargs.get("sigma", (0,0))
+    hm = kwargs.get("norm", h.max())
+    im = ax.pcolormesh(xh, yh, gf(h.T, sigma=sig), cmap="jet", norm=Normalize(0,hm))
+    fig.colorbar(im, ax=ax)
+
+    if kwargs.get("kde",False) is True:
+        sns.kdeplot(x, y, ax=ax, color="w")
+
+
+    ax.set_title(kwargs.get("title",""))
+    ax.set_xlabel(kwargs.get("xlabel", axis[0]))
+    ax.set_ylabel(kwargs.get("ylabel", axis[1]))
+    if "xlim" in kwargs:
+        ax.set_xlim(kwargs["xlim"])
+    if "ylim" in kwargs:
+        ax.set_ylim(kwargs["ylim"])
+    ax.legend()
+
+    if "bulk" in kwargs:
+        if kwargs["bulk"] is True:
+            if axis[0] in vaxis:
+                ax.axvline(np.average(particles.v[:,vaxis[axis[0]]],
+                                         weights=particles.weights), color="w",ls="--")
+            if axis[1] in vaxis:
+                ax.axhline(np.average(particles.v[:,vaxis[axis[1]]],
+                                      weights=particles.weights), color="w",ls="--")
+
+
+    if "filename" in kwargs:
+        fig.savefig(kwargs["filename"])
+
+    return fig,ax
+
+
+
+
 def connect_bbox(bbox1, bbox2,
                  loc1a, loc2a, loc1b, loc2b,
                  prop_lines, prop_patches=None):
