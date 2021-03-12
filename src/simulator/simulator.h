@@ -115,7 +115,7 @@ private:
 
     SimFunctors functors_setup(PHARE::initializer::PHAREDict const& dict)
     {
-        return {{"pre_advance", {/*empty vector*/}}};
+        return {{"post_advance", {/*empty vector*/}}};
     }
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
@@ -187,7 +187,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
                 if (fine_dump_lvl_max > 0)
                 { // copy for later
                     this->fineDumpLvlMax = static_cast<std::size_t>(fine_dump_lvl_max);
-                    functors_["pre_advance"]["fine_dump"] = [&](SimFunctorParams const& params) {
+                    functors_["post_advance"]["fine_dump"] = [&](SimFunctorParams const& params) {
                         std::size_t level_nbr = params["level_nbr"].template to<int>();
                         auto timestamp        = params["timestamp"].template to<double>();
 

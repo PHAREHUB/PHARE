@@ -301,8 +301,8 @@ namespace solver
             bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
-            std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
-                      << "\n";
+            PHARE_DEBUG_PRINT("init level ", levelNumber, " with regriding = ", isRegridding);
+
             if (allocateData)
             {
                 for (auto patch : *level)
@@ -400,13 +400,13 @@ namespace solver
         void dump_(int iLevel)
         {
             // we skip first/last as that's done via regular diag dump mechanism
-            bool fineDumpsActive = simFuncs_.at("pre_advance").count("fine_dump") > 0;
+            bool fineDumpsActive = simFuncs_.at("post_advance").count("fine_dump") > 0;
             bool notCoarsestTime = subcycleEndTimes_[iLevel] != subcycleEndTimes_[0];
             bool shouldDump      = fineDumpsActive and notCoarsestTime and iLevel > 0;
 
             if (shouldDump)
             {
-                auto const& dump_functor = simFuncs_.at("pre_advance").at("fine_dump");
+                auto const& dump_functor = simFuncs_.at("post_advance").at("fine_dump");
                 SimFunctorParams fineDumpParams;
                 fineDumpParams["level_nbr"] = iLevel;
                 fineDumpParams["timestamp"] = subcycleEndTimes_[iLevel];
@@ -443,8 +443,10 @@ namespace solver
 
 
             auto iLevel = level->getLevelNumber();
-            std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
-                      << " from t = " << currentTime << "to t = " << newTime << "\n";
+
+            PHARE_DEBUG_PRINT("advanceLevel ", iLevel, " with dt = ", newTime - currentTime,
+                              " from t = ", currentTime, "to t = ", newTime);
+
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);

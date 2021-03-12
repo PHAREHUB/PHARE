@@ -91,10 +91,12 @@ class Simulator:
             ticktock = tock-tick
             perf.append(ticktock)
             t = self.cpp_sim.currentTime()
-            print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
+            if __debug__:
+                print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
 
         print("mean advance time = {}".format(np.mean(perf)))
         print("total advance time = {}".format(np.sum(perf)))
+        return self
 
 
 

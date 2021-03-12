@@ -9,14 +9,7 @@
 #include <tuple>
 #include <vector>
 
-
 #include "cppdict/include/dict.hpp"
-
-#if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
-#define PHARE_DEBUG_DO(...) __VA_ARGS__
-#else
-#define PHARE_DEBUG_DO(...)
-#endif
 
 
 namespace PHARE

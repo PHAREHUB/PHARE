@@ -2,6 +2,7 @@
 #ifndef PHARE_CORE_INCLUDE_H
 #define PHARE_CORE_INCLUDE_H
 
+#include "core/def.h"
 #include "core/data/electromag/electromag.h"
 #include "core/data/electrons/electrons.h"
 #include "core/data/grid/gridlayout.h"
