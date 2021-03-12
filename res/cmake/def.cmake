@@ -11,6 +11,8 @@ if(withIPO)
   check_ipo_supported(RESULT PHARE_INTERPROCEDURAL_OPTIMIZATION OUTPUT error)
 endif(withIPO)
 
+
+set (PHARE_WITH_CCACHE FALSE)
 if(devMode) # -DdevMode=ON
   # Having quotes on strings here has lead to quotes being added to the compile string, so avoid.
 
@@ -26,6 +28,12 @@ if(devMode) # -DdevMode=ON
 
   set (PHARE_WERROR_FLAGS ${_Werr})
 
+  if(withCcache)
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM)
+      set(PHARE_WITH_CCACHE TRUE)
+    endif()
+  endif()
 endif(devMode)
 
 function(phare_sanitize_ san cflags )
