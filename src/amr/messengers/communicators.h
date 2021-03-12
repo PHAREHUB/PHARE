@@ -1,6 +1,7 @@
 #ifndef PHARE_COMMUNICATORS_H
 #define PHARE_COMMUNICATORS_H
 
+#include "core/def.h"
 #include "quantity_communicator.h"
 
 #include <SAMRAI/hier/RefineOperator.h>
@@ -224,8 +225,8 @@ namespace amr
 
                 if constexpr (Type == RefinerType::LevelBorderParticles)
                 {
-                    std::cout << "regriding adding levelghostparticles on level " << levelNumber
-                              << " " << key << "\n";
+                    PHARE_DEBUG_PRINT("regriding adding levelghostparticles on level ", levelNumber,
+                                      " ", key);
                     auto schedule = algo->createSchedule(
                         std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
                         oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
@@ -233,7 +234,7 @@ namespace amr
                 }
                 else
                 {
-                    std::cout << "regriding adding " << key << " on level " << levelNumber << " \n";
+                    PHARE_DEBUG_PRINT("regriding adding ", key, " on level ", levelNumber);
                     auto schedule = algo->createSchedule(
                         level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
                     schedule->fillData(initDataTime);

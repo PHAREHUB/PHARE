@@ -17,7 +17,7 @@
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
 
-
+#include "core/def.h"
 #include "initializer/data_provider.h"
 
 
@@ -115,7 +115,7 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
         // auto at0db = refinementBoxesDatabase->putDatabase("at_0");
         // at0db->putInteger("cycle", 0);
         // auto tag0db = at0db->putDatabase("tag_0");
-        std::cout << "tagging method is set to REFINE_BOXES\n";
+        PHARE_DEBUG_PRINT("tagging method is set to REFINE_BOXES");
         refinementBoxesDatabase->putString("tagging_method", "REFINE_BOXES");
 
 

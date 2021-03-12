@@ -78,5 +78,7 @@ def check_mandatory_keywords(mandatory_kwd_list, **kwargs):
     check = [(mk, mk in keys) for mk in mandatory_kwd_list]
     return [mk[0] for mk in check if mk[1] is False]
 
-
+def dbg_print(*args):
+    if __debug__:
+        print(*args)
 

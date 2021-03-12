@@ -1,9 +1,10 @@
-
 #ifndef PHARE_CORE_DEF_H
 #define PHARE_CORE_DEF_H
 
-
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
+
+#include <iostream>
+
 #define PHARE_DEBUG_DO(...) __VA_ARGS__
 
 template<class... Args>

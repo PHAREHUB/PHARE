@@ -3,6 +3,8 @@ import atexit
 import time as timem
 import numpy as np
 
+from pyphare.core.phare_utilities import dbg_print
+
 
 life_cycles = {}
 
@@ -16,8 +18,8 @@ def simulator_shutdown():
 
 def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
     from pybindlibs import cpp
-    make_sim = "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart)
-    print("make_sim", make_sim)
+    make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
+    dbg_print("make_sim", make_sim)
     return getattr(cpp, make_sim)(hier)
 
 
@@ -91,8 +93,7 @@ class Simulator:
             ticktock = tock-tick
             perf.append(ticktock)
             t = self.cpp_sim.currentTime()
-            if __debug__:
-                print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
+            dbg_print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
 
         print("mean advance time = {}".format(np.mean(perf)))
         print("total advance time = {}".format(np.sum(perf)))
