@@ -19,11 +19,11 @@
 
 namespace PHARE::diagnostic::h5
 {
-template<typename HighFiveDiagnostic>
+template<typename H5Writer>
 class ElectromagDiagnosticWriter;
-template<typename HighFiveDiagnostic>
+template<typename H5Writer>
 class FluidDiagnosticWriter;
-template<typename HighFiveDiagnostic>
+template<typename H5Writer>
 class ParticlesDiagnosticWriter;
 
 

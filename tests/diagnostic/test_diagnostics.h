@@ -368,11 +368,32 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout         = typename Simulator::PHARETypes::GridLayout_t;
-    constexpr auto dimension = Simulator::dimension;
+    using GridLayout                           = typename Simulator::PHARETypes::GridLayout_t;
+    constexpr auto dimension                   = Simulator::dimension;
+    constexpr std::size_t expectedPopNbr       = 2;
+    constexpr std::size_t expectedPopAttrFiles = 5;
+
+    std::string const ionsPopPath = "/ions/pop/";
 
     auto& hybridModel = *sim.getHybridModel();
-    auto hifile       = hi5.writer.makeFile(hi5.writer.fileString("/EM_B"), hi5.flags_);
+    auto& dict        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+
+    int nbrPop = dict["simulation"]["ions"]["nbrPopulations"].template to<int>();
+    EXPECT_EQ(nbrPop, expectedPopNbr);
+
+    std::vector<std::string> h5FileTypes{"/EM_B", "/EM_E", "/ions/density", "/ions/bulkVelocity"};
+
+    for (int i = 0; i < nbrPop; i++)
+    {
+        std::string popName = dict["simulation"]["ions"]["pop" + std::to_string(i)]["name"]
+                                  .template to<std::string>();
+
+        h5FileTypes.emplace_back(ionsPopPath + popName + "/domain");
+        h5FileTypes.emplace_back(ionsPopPath + popName + "/levelGhost");
+        h5FileTypes.emplace_back(ionsPopPath + popName + "/patchGhost");
+        h5FileTypes.emplace_back(ionsPopPath + popName + "/density");
+        h5FileTypes.emplace_back(ionsPopPath + popName + "/flux");
+    }
 
     auto _check_equal = [](auto& group, auto expected, auto key) {
         std::vector<typename decltype(expected)::value_type> attr;
@@ -380,18 +401,34 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
         EXPECT_EQ(expected, attr);
     };
 
-    auto visit = [&](GridLayout& grid, std::string patchID, std::size_t iLevel) {
-        auto group = hifile->file().getGroup(hi5.getPatchPath(iLevel, patchID));
+    std::size_t popAttrChecks = 0;
+    for (auto const& fileType : h5FileTypes)
+    {
+        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(fileType), hi5.flags_);
 
-        _check_equal(group, grid.origin().toVector(), "origin");
-        _check_equal(group, core::Point<std::uint32_t, dimension>{grid.nbrCells()}.toVector(),
-                     "nbrCells");
-        _check_equal(group, grid.AMRBox().lower.toVector(), "lower");
-        _check_equal(group, grid.AMRBox().upper.toVector(), "upper");
-    };
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t iLevel) {
+            auto group = hifile->file().getGroup(hi5.getPatchPath(iLevel, patchID));
 
-    PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
-                                           sim.hierarchy->getNumberOfLevels(), hybridModel);
+            _check_equal(group, grid.origin().toVector(), "origin");
+            _check_equal(group, core::Point<std::uint32_t, dimension>{grid.nbrCells()}.toVector(),
+                         "nbrCells");
+            _check_equal(group, grid.AMRBox().lower.toVector(), "lower");
+            _check_equal(group, grid.AMRBox().upper.toVector(), "upper");
+        };
+
+        PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit,
+                                               0, sim.hierarchy->getNumberOfLevels(), hybridModel);
+
+        auto rootGroup = hifile->file().getGroup("/");
+        if (fileType.find(ionsPopPath) == 0)
+        {
+            ++popAttrChecks;
+            double pop_mass = 0;
+            rootGroup.getAttribute("pop_mass").read(pop_mass);
+            EXPECT_DOUBLE_EQ(pop_mass, 1.0);
+        }
+    }
+    EXPECT_EQ(popAttrChecks, expectedPopNbr * expectedPopAttrFiles);
 }
 
 

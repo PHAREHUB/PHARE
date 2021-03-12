@@ -18,8 +18,8 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
 public:
     using Attributes = typename Writer::Attributes;
-    H5TypeWriter(Writer& hi5)
-        : hi5_(hi5)
+    H5TypeWriter(Writer& h5Writer)
+        : h5Writer_{h5Writer}
     {
     }
 
@@ -49,12 +49,12 @@ protected:
     void initDataSets_(std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
                        Attributes& patchAttributes, std::size_t maxLevel, InitPatch&& initPatch)
     {
-        for (std::size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
+        for (std::size_t lvl = h5Writer_.minLevel; lvl <= maxLevel; lvl++)
         {
             auto& lvlPatches       = patchIDs.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
             std::size_t maxPatches = core::mpi::max(patchNbr);
-            for (std::size_t i = 0; i < patchNbr; i++)
+            for (std::size_t i = 0; i < patchNbr; ++i)
                 initPatch(lvl, patchAttributes[std::to_string(lvl) + "_" + lvlPatches[i]],
                           lvlPatches[i]);
             for (std::size_t i = patchNbr; i < maxPatches; i++)
@@ -68,25 +68,39 @@ protected:
             patchAttributes,
         std::size_t maxLevel)
     {
-        for (std::size_t lvl = hi5_.minLevel; lvl <= maxLevel; lvl++)
+        for (std::size_t lvl = h5Writer_.minLevel; lvl <= maxLevel; lvl++)
         {
             auto& lvlPatches       = patchAttributes.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
             std::size_t maxPatches = core::mpi::max(patchNbr);
             for (auto const& [patch, attr] : lvlPatches)
-                hi5_.writeAttributeDict(file, attr, hi5_.getPatchPathAddTimestamp(lvl, patch));
+                h5Writer_.writeAttributeDict(file, attr,
+                                             h5Writer_.getPatchPathAddTimestamp(lvl, patch));
             for (std::size_t i = patchNbr; i < maxPatches; i++)
-                hi5_.writeAttributeDict(file, hi5_.modelView().getEmptyPatchProperties(), "");
+                h5Writer_.writeAttributeDict(file, h5Writer_.modelView().getEmptyPatchProperties(),
+                                             "");
         }
 
-        hi5_.writeAttributeDict(file, fileAttributes, "/");
+        h5Writer_.writeAttributeDict(file, fileAttributes, "/");
+    }
+
+    void writeIonPopAttributes_(HighFive::File& file)
+    {
+        auto& h5Writer = this->h5Writer_;
+
+        for (auto& pop : h5Writer.modelView().getIons())
+        {
+            Attributes popAttributes;
+            popAttributes["pop_mass"] = pop.mass();
+            h5Writer.writeAttributeDict(file, popAttributes, "/");
+        }
     }
 
     void writeGhostsAttr_(HighFive::File& file, std::string path, std::size_t ghosts, bool null)
     {
         Attributes dsAttr;
         dsAttr["ghosts"] = ghosts;
-        hi5_.writeAttributeDict(file, dsAttr, null ? "" : path);
+        h5Writer_.writeAttributeDict(file, dsAttr, null ? "" : path);
     }
 
     template<typename FileMap, typename... Quantities>
@@ -95,12 +109,12 @@ protected:
     {
         core::apply(std::forward_as_tuple(vars...), [&](auto const& var) {
             if (diagnostic.quantity == tree + var and !fileData.count(diagnostic.quantity))
-                fileData.emplace(diagnostic.quantity, this->hi5_.makeFile(diagnostic));
+                fileData.emplace(diagnostic.quantity, this->h5Writer_.makeFile(diagnostic));
         });
     }
 
 
-    Writer& hi5_;
+    Writer& h5Writer_;
 };
 
 } // namespace PHARE::diagnostic::h5

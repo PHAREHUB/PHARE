@@ -13,21 +13,21 @@ namespace PHARE::diagnostic::h5
  *
  * /t#/pl#/p#/electromag_(B, E)/(x,y,z)
  */
-template<typename HighFiveDiagnostic>
-class ElectromagDiagnosticWriter : public H5TypeWriter<HighFiveDiagnostic>
+template<typename H5Writer>
+class ElectromagDiagnosticWriter : public H5TypeWriter<H5Writer>
 {
 public:
-    using Super = H5TypeWriter<HighFiveDiagnostic>;
-    using Super::hi5_;
+    using Super = H5TypeWriter<H5Writer>;
+    using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
-    using GridLayout = typename HighFiveDiagnostic::GridLayout;
+    using GridLayout = typename H5Writer::GridLayout;
 
-    ElectromagDiagnosticWriter(HighFiveDiagnostic& hi5)
-        : H5TypeWriter<HighFiveDiagnostic>(hi5)
+    ElectromagDiagnosticWriter(H5Writer& h5Writer)
+        : Super{h5Writer}
     {
     }
     void write(DiagnosticProperties&) override;
@@ -54,21 +54,22 @@ private:
 };
 
 
-template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::createFiles(DiagnosticProperties& diagnostic)
+template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
-    for (auto* vecField : this->hi5_.modelView().getElectromagFields())
+    for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
         checkCreateFileFor_(diagnostic, fileData, "/", vecField->name());
 }
 
 
-template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(
-    DiagnosticProperties& diagnostic, std::size_t iLevel, std::string const& patchID,
-    Attributes& patchAttributes)
+template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
+                                                          std::size_t iLevel,
+                                                          std::string const& patchID,
+                                                          Attributes& patchAttributes)
 {
-    auto& hi5              = this->hi5_;
-    auto vecFields         = hi5.modelView().getElectromagFields();
+    auto& h5Writer         = this->h5Writer_;
+    auto vecFields         = h5Writer.modelView().getElectromagFields();
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
@@ -93,42 +94,42 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::getDataSetInfo(
 }
 
 
-template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
+template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
     DiagnosticProperties& diagnostic,
     std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
     Attributes& patchAttributes, std::size_t maxLevel)
 {
-    auto& hi5      = this->hi5_;
-    auto& file     = fileData.at(diagnostic.quantity)->file();
-    auto vecFields = hi5.modelView().getElectromagFields();
+    auto& h5Writer = this->h5Writer_;
+    auto& h5file   = fileData.at(diagnostic.quantity)->file();
+    auto vecFields = h5Writer.modelView().getElectromagFields();
 
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap)
         {
             auto vFPath = path + "/" + key + "_" + id;
-            hi5.template createDataSet<float>(file, vFPath,
-                                              null ? 0 : attr[key][id].template to<std::size_t>());
+            h5Writer.template createDataSet<float>(
+                h5file, vFPath, null ? 0 : attr[key][id].template to<std::size_t>());
 
             this->writeGhostsAttr_(
-                file, vFPath, null ? 0 : attr[key][id + "_ghosts_x"].template to<std::size_t>(),
+                h5file, vFPath, null ? 0 : attr[key][id + "_ghosts_x"].template to<std::size_t>(),
                 null);
 
             if constexpr (GridLayout::dimension > 1)
                 this->writeGhostsAttr_(
-                    file, vFPath, null ? 0 : attr[key][id + "_ghosts_y"].template to<std::size_t>(),
-                    null);
+                    h5file, vFPath,
+                    null ? 0 : attr[key][id + "_ghosts_y"].template to<std::size_t>(), null);
 
             if constexpr (GridLayout::dimension > 2)
                 this->writeGhostsAttr_(
-                    file, vFPath, null ? 0 : attr[key][id + "_ghosts_z"].template to<std::size_t>(),
-                    null);
+                    h5file, vFPath,
+                    null ? 0 : attr[key][id + "_ghosts_z"].template to<std::size_t>(), null);
         }
     };
 
     auto initPatch = [&](auto& level, auto& attr, std::string patchID = "") {
         bool null = patchID.empty();
-        std::string path{hi5.getPatchPathAddTimestamp(level, patchID)};
+        std::string path{h5Writer.getPatchPathAddTimestamp(level, patchID)};
         for (auto* vecField : vecFields)
         {
             auto& name = vecField->name();
@@ -142,26 +143,26 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::initDataSets(
 
 
 
-template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::write(DiagnosticProperties& diagnostic)
+template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
-    auto& hi5 = this->hi5_;
+    auto& h5Writer = this->h5Writer_;
 
-    for (auto* vecField : hi5.modelView().getElectromagFields())
+    for (auto* vecField : h5Writer.modelView().getElectromagFields())
     {
         auto& name = vecField->name();
         if (diagnostic.quantity == "/" + name)
         {
-            auto& file = fileData.at(diagnostic.quantity)->file();
-            hi5.writeVecFieldAsDataset(file, hi5.patchPath() + "/" + name, *vecField);
+            auto& h5file = fileData.at(diagnostic.quantity)->file();
+            h5Writer.writeVecFieldAsDataset(h5file, h5Writer.patchPath() + "/" + name, *vecField);
         }
     }
 }
 
 
 
-template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
+template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::writeAttributes(
     DiagnosticProperties& diagnostic, Attributes& fileAttributes,
     std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&
         patchAttributes,
@@ -172,8 +173,8 @@ void ElectromagDiagnosticWriter<HighFiveDiagnostic>::writeAttributes(
 }
 
 
-template<typename HighFiveDiagnostic>
-void ElectromagDiagnosticWriter<HighFiveDiagnostic>::finalize(DiagnosticProperties& diagnostic)
+template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::finalize(DiagnosticProperties& diagnostic)
 {
     fileData.erase(diagnostic.quantity);
     assert(fileData.count(diagnostic.quantity) == 0);
