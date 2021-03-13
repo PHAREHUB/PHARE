@@ -53,6 +53,10 @@ option(forceGetPybind "force retrieval of pybind from github" OFF)
 # Useful if you want to avoid using the system wide installed version of pybind
 
 
+#  -DwithCcache=ON # doesn't include dependencies
+option(withCcache "build with ccache if found and devMode=ON" ON)
+
+
 # -DwithIPO=OFF
 option(withIPO "Use IPO/LTO if system supported" OFF)
 # IPO can cause linking to fail so default off
@@ -87,10 +91,12 @@ function(print_phare_options)
   message("build with ubsan support                    : " ${ubsan})
   message("build with asan support                     : " ${asan})
   message("build with ubsan support                    : " ${ubsan})
+  message("build with ccache (if found) in devMode     : " ${withCcache})
 
   if(${devMode})
     message("PHARE_EXEC_LEVEL_MIN                        : " ${PHARE_EXEC_LEVEL_MIN})
     message("PHARE_EXEC_LEVEL_MAX                        : " ${PHARE_EXEC_LEVEL_MAX})
+    message("ccache found                                : " ${PHARE_WITH_CCACHE})
   endif()
 
 endfunction(print_phare_options)
