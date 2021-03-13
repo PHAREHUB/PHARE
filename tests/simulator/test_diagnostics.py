@@ -7,7 +7,7 @@ from tests.diagnostic import dump_all_diags
 from tests.simulator import populate_simulation
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from
 import pyphare.pharein as ph
 import unittest
 import os
@@ -18,7 +18,7 @@ from ddt import ddt, data
 from tests.simulator.config import project_root
 
 
-def setup_model():
+def setup_model(ppc=100):
     def density(*xyz):
         return 1.
 
@@ -64,7 +64,7 @@ def setup_model():
 
     model = ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "init": {"seed": 1337}}
+        protons={"charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 1337}}
     )
     ElectronModel(closure="isothermal", Te=0.12)
     return model
@@ -96,7 +96,7 @@ class DiagnosticsTest(unittest.TestCase):
         "smallest_patch_size": 20,
         "largest_patch_size": 20}),
       dup({
-        "smallest_patch_size": 40,
+        "smallest_patch_size": 20,
         "largest_patch_size": 40})
     )
 
@@ -115,17 +115,23 @@ class DiagnosticsTest(unittest.TestCase):
         return self._testMethodName.split("_")[-1]
 
 
+    @data(*_test_cases)
+    def test_dump_diags(self, simInput):
+        for ndim in [1]:
+            self._test_dump_diags(ndim, **simInput)
+
     def _test_dump_diags(self, dim, **simInput):
         test_id = self.ddt_test_id()
 
         # configure simulation dim sized values
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = [simInput[key] for d in range(dim)]
+
         b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
         for interp in range(1, 4):
-            print("_test_dump_diags dim/interp:{}/{}".format(dim, interp))
+            print("test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
             local_out = f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
             simInput["diag_options"]["options"]["dir"] = local_out
@@ -136,35 +142,36 @@ class DiagnosticsTest(unittest.TestCase):
             dump_all_diags(setup_model().populations)
             self.simulator = Simulator(simulation).initialize().advance()
 
+            refined_particle_nbr = simulation.refined_particle_nbr
+
+            self.assertTrue(any([diagInfo.quantity.endswith("domain") for diagInfo in ph.global_vars.sim.diagnostics]))
+
+            particle_files = 0
             for diagInfo in ph.global_vars.sim.diagnostics:
-                # diagInfo.quantity starts with a / this interferes with os.path.join, hence   [1:]
-                h5_filename = os.path.join(local_out, (diagInfo.quantity + ".h5").replace('/', '_')[1:])
-                print("h5_filename", h5_filename)
+                h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
+                self.assertTrue(os.path.exists(h5_filepath))
 
-                h5_file = h5py.File(h5_filename, "r")
-                self.assertTrue("t0.000000" in h5_file) #    init dump
+                h5_file = h5py.File(h5_filepath, "r")
 
-                self.assertTrue("t0.000100" in h5_file)
-                self.assertTrue("pl1" in h5_file["t0.000100"])
-                self.assertFalse("pl0" in h5_file["t0.000100"])
+                self.assertTrue("t0.0000000000" in h5_file) # init dump
+                self.assertTrue("t0.0010000000" in h5_file) # first advance dump
 
-                self.assertTrue("t0.001000" in h5_file) # advance dump
+                hier = hierarchy_from(h5_filename=h5_filepath)
+                if h5_filepath.endswith("domain.h5"):
+                    particle_files += 1
+                    self.assertTrue("pop_mass" in h5_file.attrs)
+                    self.assertTrue(h5_file.attrs[ "pop_mass"] == 1)
+                    self.assertGreater(len(hier.level(0).patches), 0)
 
+                    for patch in hier.level(0).patches:
+                        self.assertTrue(len(patch.patch_datas.items()))
+                        for qty_name, pd in patch.patch_datas.items():
+                            splits = pd.dataset.split(ph.global_vars.sim)
+                            self.assertTrue(splits.size() > 0)
+                            self.assertTrue(pd.dataset.size() > 0)
+                            self.assertTrue(splits.size() == pd.dataset.size() * refined_particle_nbr)
 
-                # SEE https://github.com/PHAREHUB/PHARE/issues/275
-                if dim == 1: # REMOVE WHEN PHARESEE SUPPORTS 2D
-                    self.assertTrue(os.path.exists(h5_filename))
-                    hier = hierarchy_from(h5_filename=h5_filename)
-                    if h5_filename.endswith("domain.h5"):
-                        for patch in hier.level(0).patches:
-                            for qty_name, pd in patch.patch_datas.items():
-                                splits = pd.dataset.split(ph.global_vars.sim)
-                                self.assertTrue(splits.size() == pd.dataset.size() * 2)
-                                print("splits.iCell", splits.iCells)
-                                print("splits.delta", splits.deltas)
-                                print("splits.weight", splits.weights)
-                                print("splits.charge", splits.charges)
-                                print("splits.v", splits.v)
+            self.assertEqual(particle_files, ph.global_vars.sim.model.nbr_populations())
 
             self.simulator = None
             ph.global_vars.sim = None
