@@ -29,7 +29,7 @@ int size();
 int rank();
 
 template<typename Data>
-constexpr auto mpi_type_for()
+auto mpi_type_for()
 {
     if constexpr (std::is_same_v<double, Data>)
         return MPI_DOUBLE;
@@ -53,7 +53,7 @@ template<typename Data>
 void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
               std::size_t const sendcount = 1, std::size_t const recvcount = 1)
 {
-    constexpr auto mpi_type = mpi_type_for<Data>();
+    auto mpi_type = mpi_type_for<Data>();
 
     MPI_Allgather(      // MPI_Allgather
         sendbuf,        //   void         *sendbuf,
@@ -72,7 +72,7 @@ template<typename Data, typename SendBuff, typename RcvBuff>
 void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int> const& recvcounts,
                      std::vector<int> const& displs, int const mpi_size)
 {
-    constexpr auto mpi_type = mpi_type_for<Data>();
+    auto mpi_type = mpi_type_for<Data>();
     
     assert(recvcounts.size() == displs.size() and static_cast<int>(displs.size()) == mpi_size);
     
