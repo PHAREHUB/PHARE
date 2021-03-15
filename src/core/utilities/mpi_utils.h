@@ -28,43 +28,42 @@ int size();
 
 int rank();
 
-template<typename Data, typename GatherFunc>
-void _gather(GatherFunc const&& gather)
+template<typename Data>
+auto mpi_type_for()
 {
     if constexpr (std::is_same_v<double, Data>)
-        gather(MPI_DOUBLE);
+        return MPI_DOUBLE;
     else if constexpr (std::is_same_v<float, Data>)
-        gather(MPI_FLOAT);
+        return MPI_FLOAT;
     else if constexpr (std::is_same_v<int, Data>)
-        gather(MPI_INT);
+        return MPI_INT;
     else if constexpr (std::is_same_v<std::uint32_t, Data>)
-        gather(MPI_UNSIGNED);
+        return MPI_UNSIGNED;
     else if constexpr (std::is_same_v<uint8_t, Data>)
-        gather(MPI_UNSIGNED_SHORT);
+        return MPI_UNSIGNED_SHORT;
     else if constexpr (std::is_same_v<std::size_t, Data>)
-        gather(MPI_UINT64_T);
+        return MPI_UINT64_T;
     else if constexpr (std::is_same_v<char, Data>)
-        gather(MPI_CHAR);
-    else
-        throw std::runtime_error(std::string("Unhandled MPI data type collection: ")
-                                 + typeid(Data).name());
+        return MPI_CHAR;
+    
+    // don't return anything = compile failure if tried to use this function
 }
 
 template<typename Data>
 void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
               std::size_t const sendcount = 1, std::size_t const recvcount = 1)
 {
-    _gather<Data>([&](auto mpi_type) {
-        MPI_Allgather(      // MPI_Allgather
-            sendbuf,        //   void         *sendbuf,
-            sendcount,      //   int          sendcount,
-            mpi_type,       //   MPI_Datatype sendtype,
-            rcvBuff.data(), //   void         *recvbuf,
-            recvcount,      //   int          recvcount,
-            mpi_type,       //   MPI_Datatype recvtype,
-            MPI_COMM_WORLD  //   MPI_Comm     comm
-        );
-    });
+    auto mpi_type = mpi_type_for<Data>();
+
+    MPI_Allgather(      // MPI_Allgather
+        sendbuf,        //   void         *sendbuf,
+        sendcount,      //   int          sendcount,
+        mpi_type,       //   MPI_Datatype sendtype,
+        rcvBuff.data(), //   void         *recvbuf,
+        recvcount,      //   int          recvcount,
+        mpi_type,       //   MPI_Datatype recvtype,
+        MPI_COMM_WORLD  //   MPI_Comm     comm
+    );
 }
 
 
@@ -73,20 +72,20 @@ template<typename Data, typename SendBuff, typename RcvBuff>
 void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int> const& recvcounts,
                      std::vector<int> const& displs, int const mpi_size)
 {
+    auto mpi_type = mpi_type_for<Data>();
+    
     assert(recvcounts.size() == displs.size() and static_cast<int>(displs.size()) == mpi_size);
-
-    _gather<Data>([&](auto const mpi_type) {
-        MPI_Allgatherv(        // MPI_Allgatherv
-            sendBuff.data(),   //   void         *sendbuf,
-            sendBuff.size(),   //   int          sendcount,
-            mpi_type,          //   MPI_Datatype sendtype,
-            rcvBuff.data(),    //   void         *recvbuf,
-            recvcounts.data(), //   int          *recvcounts,
-            displs.data(),     //   int          *displs,
-            mpi_type,          //   MPI_Datatype recvtype,
-            MPI_COMM_WORLD     //   MPI_Comm     comm
-        );
-    });
+    
+    MPI_Allgatherv(        // MPI_Allgatherv
+        sendBuff.data(),   //   void         *sendbuf,
+        sendBuff.size(),   //   int          sendcount,
+        mpi_type,          //   MPI_Datatype sendtype,
+        rcvBuff.data(),    //   void         *recvbuf,
+        recvcounts.data(), //   int          *recvcounts,
+        displs.data(),     //   int          *displs,
+        mpi_type,          //   MPI_Datatype recvtype,
+        MPI_COMM_WORLD     //   MPI_Comm     comm
+    );   
 }
 
 template<typename Vector>
