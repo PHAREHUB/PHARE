@@ -7,6 +7,7 @@
 #include "split.h"
 #include "core/utilities/constants.h"
 #include "phare_core.h"
+#include "amr/amr_constants.h"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -32,7 +33,7 @@ namespace amr
     Particle toFineGrid(Particle toFine)
     {
         constexpr auto dim   = Particle::dimension;
-        constexpr auto ratio = core::PHARE_Types<dim, interp>::refinementRatio;
+        constexpr auto ratio = PHARE::amr::refinementRatio;
 
         for (size_t iDim = 0; iDim < dim; ++iDim)
         {

@@ -201,7 +201,7 @@ public:
 
     A1DInterpolator()
         : em{"EM"}
-        , particles(1) // so we have 5 particles
+        , particles(1)
         , bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
         , by1d_{"field", HybridQuantity::Scalar::By, nx}
         , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
@@ -562,7 +562,7 @@ public:
         {
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0 * layout.meshSize()[0];
+            part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -570,7 +570,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.4 * layout.meshSize()[0];
+            part.weight   = 0.4;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -578,7 +578,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.6 * layout.meshSize()[0];
+            part.weight   = 0.6;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -589,7 +589,7 @@ public:
         {
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 1.0 * layout.meshSize()[0];
+            part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -597,7 +597,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 0.2 * layout.meshSize()[0];
+            part.weight   = 0.2;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -605,7 +605,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 0.8 * layout.meshSize()[0];
+            part.weight   = 0.8;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -613,7 +613,7 @@ public:
 
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.0f;
-            part.weight   = 1.0 * layout.meshSize()[0];
+            part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -624,7 +624,7 @@ public:
         {
             part.iCell[0] = 18; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0 * layout.meshSize()[0];
+            part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -632,7 +632,7 @@ public:
 
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0 * layout.meshSize()[0];
+            part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -640,7 +640,7 @@ public:
 
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 1.0 * layout.meshSize()[0];
+            part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -648,7 +648,7 @@ public:
 
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.1 * layout.meshSize()[0];
+            part.weight   = 0.1;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -656,7 +656,7 @@ public:
 
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5f;
-            part.weight   = 0.9 * layout.meshSize()[0];
+            part.weight   = 0.9;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -675,6 +675,7 @@ TYPED_TEST_SUITE_P(ACollectionOfParticles_1d);
 
 TYPED_TEST_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d)
 {
+    // node 25 because assume 5 ghosts
     EXPECT_DOUBLE_EQ(this->rho(25), 1.0);
     EXPECT_DOUBLE_EQ(this->vx(25), 2.0);
     EXPECT_DOUBLE_EQ(this->vy(25), -1.0);
@@ -704,18 +705,13 @@ struct ACollectionOfParticles_2d : public ::testing::Test
         v.setBuffer("v_y", &vy);
         v.setBuffer("v_z", &vz);
 
-        double weight = [](auto const& meshSize) {
-            return std::accumulate(meshSize.begin(), meshSize.end(), 1.0,
-                                   std::multiplies<double>());
-        }(layout.meshSize());
-
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)
             {
                 auto& part  = particles.emplace_back();
                 part.iCell  = {i, j};
                 part.delta  = ConstArray<float, dim>(.5);
-                part.weight = weight;
+                part.weight = 1.;
                 part.v[0]   = +2.;
                 part.v[1]   = -1.;
                 part.v[2]   = +1.;
@@ -737,6 +733,8 @@ TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);
 
 TYPED_TEST_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d)
 {
+    // 7 is non-zero particles are in _AMR_ cells 0..4
+    // and there are 5 ghosts.
     EXPECT_DOUBLE_EQ(this->rho(7, 7), 1.0);
     EXPECT_DOUBLE_EQ(this->vx(7, 7), 2.0);
     EXPECT_DOUBLE_EQ(this->vy(7, 7), -1.0);
