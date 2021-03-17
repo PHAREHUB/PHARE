@@ -191,7 +191,7 @@ def finest_data(pdata, ilvl, hierarchy):
     # this just works for fields for now
 
     assert pdata.quantity == 'field'
-    assert hierarchy.dim == 1
+    assert hierarchy.ndim == 1
 
     x_ = pdata.x
     v_ = pdata.dataset
