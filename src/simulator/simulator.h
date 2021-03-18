@@ -7,6 +7,7 @@
 #include "phare_core.h"
 #include "phare_types.h"
 
+#include "core/utilities/timestamps.h"
 #include "amr/tagging/tagger_factory.h"
 #include <chrono>
 
@@ -109,6 +110,7 @@ private:
     std::shared_ptr<HybridModel> hybridModel_;
     std::shared_ptr<MHDModel> mhdModel_;
 
+    std::unique_ptr<PHARE::core::ITimeStamper> timeStamper;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
 
     SimFunctors functors_;
@@ -172,6 +174,9 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
 
         integrator_ = std::make_unique<Integrator>(dict, hierarchy, multiphysInteg_,
                                                    multiphysInteg_, startTime, endTime);
+
+
+        timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
         if (dict["simulation"].contains("diagnostics"))
         {
@@ -257,8 +262,8 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
     {
         if (integrator_)
         {
-            auto dt_new = integrator_->advance(dt);
-            currentTime_ += dt;
+            auto dt_new  = integrator_->advance(dt);
+            currentTime_ = ((*timeStamper) += dt);
             return dt_new;
         }
         else
