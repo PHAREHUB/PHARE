@@ -78,7 +78,7 @@ namespace solver
      * registered IPhysicalModel and ISolver objects
      *
      */
-    template<typename MessengerFactory, typename LevelnitializerFactory, typename AMR_Types>
+    template<typename MessengerFactory, typename LevelInitializerFactory, typename AMR_Types>
     class MultiPhysicsIntegrator : public SAMRAI::mesh::StandardTagAndInitStrategy,
                                    public SAMRAI::algs::TimeRefinementLevelStrategy
     {
@@ -89,10 +89,11 @@ namespace solver
         static constexpr auto dimension = MessengerFactory::dimension;
 
         // model comes with its variables already registered to the manager system
-        MultiPhysicsIntegrator(int nbrOfLevels, SimFunctors const& simFuncs)
-            : nbrOfLevels_{nbrOfLevels}
-            , levelDescriptors_(nbrOfLevels)
+        MultiPhysicsIntegrator(PHARE::initializer::PHAREDict dict, SimFunctors const& simFuncs)
+            : nbrOfLevels_{dict["AMR"]["max_nbr_levels"].template to<int>()}
+            , levelDescriptors_(dict["AMR"]["max_nbr_levels"].template to<int>())
             , simFuncs_{simFuncs}
+            , dict_{std::move(dict)}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -536,8 +537,8 @@ namespace solver
         std::vector<std::shared_ptr<PHARE::amr::Tagger>> taggers_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
-
         SimFunctors const& simFuncs_;
+        PHARE::initializer::PHAREDict dict_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -601,7 +602,8 @@ namespace solver
         {
             if (core::notIn(model, models_))
             {
-                levelInitializers_[model->name()] = LevelnitializerFactory::create(model->name());
+                levelInitializers_[model->name()]
+                    = LevelInitializerFactory::create(model->name(), dict_);
                 models_.push_back(std::move(model));
                 int modelIndex = models_.size() - 1;
 

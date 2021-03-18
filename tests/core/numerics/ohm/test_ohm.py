@@ -116,9 +116,9 @@ def test_ohm_yee1D(path):
     viscousy[psi_p_X:pei_p_X+1] = -nu*(Jy[psi_p_X-1:pei_p_X]-2.0*Jy[psi_p_X:pei_p_X+1]+Jy[psi_p_X+1:pei_p_X+2])/(tv.meshSize[0]*tv.meshSize[0])
     viscousz[psi_p_X:pei_p_X+1] = -nu*(Jz[psi_p_X-1:pei_p_X]-2.0*Jz[psi_p_X:pei_p_X+1]+Jz[psi_p_X+1:pei_p_X+2])/(tv.meshSize[0]*tv.meshSize[0])
 
-    ExNew = idealx+0*pressx+0*resistx+viscousx
-    EyNew = idealy+0*pressy+0*resisty+viscousy
-    EzNew = idealz+0*pressz+0*resistz+viscousz
+    ExNew = idealx+pressx+resistx+viscousx
+    EyNew = idealy+pressy+resisty+viscousy
+    EzNew = idealz+pressz+resistz+viscousz
 
     filename_ohmx = "ohmx_yee_1D_order1.txt"
     filename_ohmy = "ohmy_yee_1D_order1.txt"

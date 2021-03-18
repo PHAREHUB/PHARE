@@ -162,6 +162,9 @@ PHARE::initializer::PHAREDict createDict()
 
     dict["simulation"]["algo"]["pusher"]["name"] = std::string{"modified_boris"};
 
+    dict["simulation"]["algo"]["ohm"]["resistivity"]       = 0.0;
+    dict["simulation"]["algo"]["ohm"]["hyper_resistivity"] = 0.0001;
+
     dict["ions"]["nbrPopulations"]                       = int{2};
     dict["ions"]["pop0"]["name"]                         = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]                         = 1.;

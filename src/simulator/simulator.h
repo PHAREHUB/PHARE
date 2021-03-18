@@ -140,8 +140,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
     , finalTime_{dt_ * timeStepNbr_}
     , functors_{functors_setup(dict)}
-    , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(
-          dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>(), functors_)}
+    , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
     if (find_model("HybridModel"))
     {
