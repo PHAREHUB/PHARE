@@ -171,13 +171,12 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         cellCoords));
 
     auto const [n, V, Vth] = fns();
-    auto const cellVolume  = layout.cellVolume();
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution deltaDistrib;
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)
     {
-        auto const cellWeight   = n[flatCellIdx] * cellVolume / nbrParticlePerCell_;
+        auto const cellWeight   = n[flatCellIdx] / nbrParticlePerCell_;
         auto const AMRCellIndex = layout.localToAMR(point(flatCellIdx, ndCellIndices));
 
         std::array<double, 3> particleVelocity;

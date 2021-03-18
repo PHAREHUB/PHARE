@@ -18,7 +18,7 @@
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
 #include "phare_core.h"
-
+#include "amr/amr_constants.h"
 #include "amr/types/amr_types.h"
 #include "amr/wrappers/hierarchy.h"
 #include "amr/wrappers/integrator.h"

@@ -12,6 +12,7 @@
 #include <cstddef>
 #include "core/utilities/types.h"
 #include "core/utilities/point/point.h"
+#include "amr/amr_constants.h"
 
 namespace PHARE::amr
 {
@@ -55,6 +56,8 @@ private:
     void dispatch(Particle const& particle, Particles& particles, size_t idx) const
     {
         constexpr auto dimension = Particle::dimension;
+        constexpr auto refRatio  = PHARE::amr::refinementRatio;
+        constexpr std::array power{refRatio, refRatio * refRatio, refRatio * refRatio * refRatio};
 
         assert(particles.size() >= idx + nbRefinedParts);
 
@@ -64,11 +67,11 @@ private:
             for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)
             {
                 FineParticle fineParticle = particles[idx++];
-                fineParticle.weight       = particle.weight * pattern.weight_;
-                fineParticle.charge       = particle.charge;
-                fineParticle.iCell        = particle.iCell;
-                fineParticle.delta        = particle.delta;
-                fineParticle.v            = particle.v;
+                fineParticle.weight = particle.weight * pattern.weight_ * power[dimension - 1];
+                fineParticle.charge = particle.charge;
+                fineParticle.iCell  = particle.iCell;
+                fineParticle.delta  = particle.delta;
+                fineParticle.v      = particle.v;
 
                 for (size_t iDim = 0; iDim < dimension; iDim++)
                 {
