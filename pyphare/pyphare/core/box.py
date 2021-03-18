@@ -66,6 +66,12 @@ class Box:
     def __eq__(self, other):
         return isinstance(other, Box) and (self.lower == other.lower).all() and (self.upper == other.upper).all()
 
+    def __sub__(self, other):
+        assert isinstance(other, Box)
+        return remove(self, other)
+
+    def copy(self):
+        return Box(self.lower.copy(), self.upper.copy())
 
 
 class nDBox(Box):

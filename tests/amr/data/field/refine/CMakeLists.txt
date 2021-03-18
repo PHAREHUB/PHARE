@@ -1,8 +1,13 @@
 cmake_minimum_required (VERSION 3.9)
+
 project(test-field-refine)
 
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
+if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+  file(GLOB PYFILES "*.py")
+  file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
 set(SOURCES_INC
   test_field_refinement_on_hierarchy.h

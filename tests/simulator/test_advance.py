@@ -8,6 +8,7 @@ from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, E
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
+from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box1D
@@ -15,6 +16,8 @@ import numpy as np
 import unittest
 from ddt import ddt, data, unpack
 
+
+# AdvanceTest.test_field_level_ghosts_via_subcycles_and_coarser_interpolation_1
 
 @ddt
 class AdvanceTest(unittest.TestCase):
@@ -54,7 +57,7 @@ class AdvanceTest(unittest.TestCase):
             return 0.5*(1+np.tanh((x-x0)/l))
 
         def bx(x):
-            return 0.
+            return 1.
 
         def by(x):
             L = global_vars.sim.simulation_domain()[0]
@@ -96,7 +99,8 @@ class AdvanceTest(unittest.TestCase):
                                       "density": density,
                                       "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
                                       "vthx": vthx, "vthy": vthy, "vthz": vthz,
-                                      "nbr_part_per_cell": nbr_part_per_cell})
+                                      "nbr_part_per_cell": nbr_part_per_cell,
+                                      "init": {"seed": 1337}})
 
         ElectronModel(closure="isothermal", Te=0.12)
 
@@ -124,7 +128,7 @@ class AdvanceTest(unittest.TestCase):
                                  compute_timestamps=timestamps,
                                  population_name=pop)
 
-        Simulator(global_vars.sim).initialize().run()
+        Simulator(global_vars.sim).initialize().run().reset()
 
         eb_hier = None
         if qty in ["e", "eb"]:
@@ -159,7 +163,6 @@ class AdvanceTest(unittest.TestCase):
                                       time_step_nbr=time_step_nbr, smallest_patch_size=5,
                                       largest_patch_size=30)
 
-        levelNumbers = list(range(global_vars.sim.max_nbr_levels))
         lvlSteps = global_vars.sim.level_time_steps
         print("LEVELSTEPS === ", lvlSteps)
         assert len(lvlSteps) > 1  # this test makes no sense with only 1 level
@@ -235,6 +238,124 @@ class AdvanceTest(unittest.TestCase):
     def test_field_coarsening_via_subcycles(self, refinement_boxes):
         dim = refinement_boxes["L0"]["B0"].ndim
         self._test_field_coarsening_via_subcycles(dim, interp_order=1, refinement_boxes=refinement_boxes)
+
+
+
+
+    def _test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, ndim, interp_order, refinement_boxes, refinement_ratio=2):
+        print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(ndim, interp_order))
+
+        from tests.amr.data.field.refine.test_refine_field import refine
+        from pyphare.pharein import global_vars
+
+        time_step_nbr = 1 # after first advance, simulations diverge
+
+        # "un" = unrefined simulation - subject to change!
+        un_diag_outputs=f"phare_outputs_subcycle_coarsening_un_{self.ddt_test_id()}"
+        un_datahier = self.getHierarchy(interp_order, [], "eb", cells=30,
+                                      diag_outputs=un_diag_outputs, time_step=0.001,
+                                      extra_diag_options={"fine_dump_lvl_max": 10},
+                                      time_step_nbr=time_step_nbr, smallest_patch_size=5,
+                                      largest_patch_size=30)
+
+        diag_outputs=f"phare_outputs_subcycle_coarsening_{self.ddt_test_id()}"
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", cells=30,
+                                      diag_outputs=diag_outputs, time_step=0.001,
+                                      extra_diag_options={"fine_dump_lvl_max": 10},
+                                      time_step_nbr=time_step_nbr, smallest_patch_size=5,
+                                      largest_patch_size=30)
+
+        lvlSteps = global_vars.sim.level_time_steps
+        assert len(lvlSteps) == 2  # this test is only configured for L0 -> L1 refinement comparisons
+
+        def assert_time_in_hier(*ts):
+            for t in ts:
+                print(f"checking time {t} exists")
+                self.assertIn(datahier.format_timestamp(t), datahier.times())
+
+        coarsest_time_before = 0 # init
+        coarsest_time_after = coarsest_time_before + lvlSteps[0]
+        assert_time_in_hier(coarsest_time_before, coarsest_time_after)
+
+        coarseUnBeforePatches = un_datahier.level(0, coarsest_time_before).patches
+        coarseUnAfterPatches = un_datahier.level(0, coarsest_time_after).patches
+
+        assert len(coarseUnBeforePatches) == len(coarseUnAfterPatches)
+
+        for coarsePatch_idx in range(len(coarseUnBeforePatches)):
+            coarseUnBeforePatch = coarseUnBeforePatches[coarsePatch_idx]
+            coarseUnAfterPatch  = coarseUnAfterPatches[coarsePatch_idx]
+
+            assert coarseUnBeforePatch.box == coarseUnAfterPatch.box
+            coarsePatchBox      = coarseUnBeforePatch.box
+
+            for finer_subcycle in range(0, 5):
+
+                finer_subcycle_time = coarsest_time_before + (lvlSteps[1] * finer_subcycle)
+                assert_time_in_hier(finer_subcycle_time)
+
+                alpha = (finer_subcycle_time - coarsest_time_before) / (coarsest_time_after - coarsest_time_before)
+                finer_subcycle_patches = datahier.level(1, finer_subcycle_time).patches
+
+                for finer_subcycle_patch in finer_subcycle_patches: # L0 might be multiple patches if running with MPI
+                    if boxm.coarsen(finer_subcycle_patch.box, refinement_ratio) in coarsePatchBox:
+
+                        for EM in ["E", "B"]:
+                            for xyz in ["x", "y", "z"]:
+                                qty = f"{EM}{xyz}"
+                                assert qty in coarseUnBeforePatch.patch_datas
+
+                                coarseUnBefore_pd = coarseUnBeforePatch.patch_datas[qty]
+                                coarseUnAfter_pd  = coarseUnAfterPatch.patch_datas[qty]
+                                coarseUnBefore_dataset = coarseUnBefore_pd.dataset
+                                coarseUnAfter_dataset = coarseUnAfter_pd.dataset
+
+                                is_primal = coarseUnBefore_pd.primal_directions()
+
+                                assert coarseUnBefore_dataset.shape == coarseUnAfter_dataset.shape
+                                coarseUnInterp_dataset = coarseUnAfter_dataset[:].copy()
+
+                                assert coarsePatchBox.ndim == 1 # update for > 1d interpolation values
+                                if coarsePatchBox.ndim == 1:
+                                    for ix in range(coarseUnInterp_dataset.shape[0]):
+                                        coarseUnInterp_dataset[ix] = (1. - alpha) * coarseUnBefore_dataset[ix] + alpha * coarseUnAfter_dataset[ix]
+
+                                refinedUnInterpolatedField = refine(coarseUnBefore_pd, data=coarseUnInterp_dataset)
+                                finer_subcycle_pd = finer_subcycle_patch.patch_datas[qty]
+                                ghosts = finer_subcycle_pd.ghosts_nbr
+                                finer_subcycle_dataset = finer_subcycle_pd.dataset[:]
+
+                                finer_ghost_boxes = finer_subcycle_pd.ghost_box - finer_subcycle_patch.box
+                                for finer_ghost_box in finer_ghost_boxes:
+
+                                    is_upper = np.array(finer_ghost_box.lower > finer_subcycle_patch.box.lower, dtype=int)
+                                    finer_ghost_box = boxm.shift(finer_ghost_box, is_upper and is_primal)
+                                    lvlOverlap = refinedUnInterpolatedField.box * finer_ghost_box
+
+                                    if lvlOverlap is not None:
+                                        finer_ghostbox_data = finer_subcycle_pd[finer_ghost_box]
+                                        if ndim == 1:
+                                            if is_upper[0]:
+                                                np.testing.assert_allclose(finer_ghostbox_data, finer_subcycle_pd.dataset[-finer_subcycle_pd.ghosts_nbr[0]:], atol=1e-6)
+                                            else:
+                                                np.testing.assert_allclose(finer_ghostbox_data, finer_subcycle_pd.dataset[:finer_subcycle_pd.ghosts_nbr[0]], atol=1e-6)
+
+                                        refinedInterp_data_box = Box(finer_ghost_box.lower[0] + ghosts[0], finer_ghost_box.upper[0] + ghosts[0])
+                                        refinedUnInterpGhostBox_data = refinedUnInterpolatedField[refinedInterp_data_box]
+                                        np.testing.assert_allclose(finer_ghostbox_data, refinedUnInterpGhostBox_data, atol=1e-6)
+
+
+
+
+
+    @data( # only supports a hierarchy with 2 levels
+       ({"L0": [Box1D(5, 9)]}),
+       ({"L0": [Box1D(5, 9), Box1D(20, 24)]}),
+    )
+    def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, refinement_boxes):
+        dim = refinement_boxes["L0"][0].ndim
+        for interp in [1, 2, 3]:
+            self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(dim, interp_order=interp, refinement_boxes=refinement_boxes)
 
 
     @data(

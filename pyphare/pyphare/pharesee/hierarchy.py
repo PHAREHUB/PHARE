@@ -55,10 +55,35 @@ class FieldData(PatchData):
             self._z = self._mesh_coords(2)
         return self._z
 
+    def primal_directions(self):
+        return self.size - self.ghost_box.shape
+
     def __str__(self):
         return "FieldData: (box=({}, {}), key={})".format(self.layout.box, self.layout.box.shape, self.field_name)
     def __repr__(self):
         return self.__str__()
+
+    def select(self, box):
+        """ return view of internal data based on overlap of input box """
+        assert isinstance(box, Box) and box.ndim == self.box.ndim
+
+        gbox = self.ghost_box.copy()
+        gbox.upper += 1    # ?!? why is this needed? :|
+
+        overlap = box * gbox
+        assert overlap is not None
+
+        overlap.upper += 1 # ?!? why is this needed? :|
+        lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
+        upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
+
+        assert box.ndim == 1 # this following line is only 1D
+        return self.dataset[:][lower[0]:upper[0]]
+
+
+    def __getitem__(self, box):
+        return self.select(box)
+
 
     def __init__(self, layout, field_name, data, **kwargs):
         """
