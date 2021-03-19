@@ -53,13 +53,15 @@ set( SOURCES_CPP
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
      utilities/mpi_utils.cpp
+     logger.cpp
     )
 
 find_package(MPI)
+find_package (Threads)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES} Threads::Threads)
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 target_include_directories(${PROJECT_NAME}  PUBLIC ${MPI_C_INCLUDE_DIRS}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)

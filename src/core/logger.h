@@ -1,4 +1,7 @@
 
+#ifndef PHARE_CORE_LOGGER_H
+#define PHARE_CORE_LOGGER_H
+
 
 #include <tuple>
 #include <chrono>
@@ -8,16 +11,19 @@
 #include <unordered_map>
 
 
-#include "thread_pool.h"
+#include "thread_queue.h"
+#include "initializer/data_provider.h"
 
-auto get_thread_id()
+namespace PHARE::core
+{
+inline auto get_thread_id()
 {
     std::ostringstream os;
     os << std::hex << pthread_self();
     return os.str();
 }
 
-auto now_in_nanos()
+inline auto now_in_nanos()
 {
     return static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
                                         std::chrono::system_clock::now().time_since_epoch())
@@ -71,42 +77,60 @@ private:
 
     void log(std::string const& s0)
     {
-        pool.enqueue([this](std::string s1) { this->writer << s1 << std::endl; }, s0);
+        queue.enqueue([this](std::string s1) { this->writer << s1 << std::endl; }, s0);
     }
     void log(std::string&& s) { log(s); }
 
-    ThreadPool pool{1}; // overkill but useful for the moment
+    ThreadQueue queue; // overkill but useful for the moment
     std::ofstream writer{std::string{"Logger."} + get_thread_id() + ".txt"};
     std::vector<StartStopLogger> nestings;
 };
 
 class LogMan
 {
+public: // static
+    static LogMan& start()
+    {
+        if (!self)
+            self = std::make_unique<LogMan>("data");
+        return *self;
+    }
+    static LogMan& start(PHARE::initializer::PHAREDict const& dict)
+    {
+        if (!self)
+            self = std::make_unique<LogMan>("data");
+        return *self;
+    }
+    static void kill() { self.release(); }
+
+    static LogMan& get() { return *self; }
+
 public:
     LogMan(std::string base_path)
         : base_path_{base_path}
     {
     }
 
-    auto _fn() { return std::forward_as_tuple(get_thread_id()); }
-
-
-    void start(std::string&& key) { loggers_.at(get_thread_id())->start(key); }
-    void stop() { loggers_.at(get_thread_id())->stop(); }
-    auto scope(std::string&& key) { return loggers_.at(get_thread_id())->scope(key); }
-
-
-    LogMan& registerLogger()
-    {
-        auto const thread_id = get_thread_id();
-        if (!loggers_.count(thread_id))
-            loggers_.emplace(thread_id, std::make_shared<Logger>());
-        return *this;
-    }
-
-    // void log(std::string const& s) { loggers_.at(get_thread_id())->log(s); }
+    void start(std::string&& key) { logger.start(key); }
+    void stop() { logger.stop(); }
+    auto scope(std::string&& key) { return logger.scope(key); }
 
 private:
+    Logger logger;
     std::string base_path_;
-    std::unordered_map<std::string /*thread_id*/, std::shared_ptr<Logger>> loggers_;
+
+    static std::unique_ptr<LogMan> self;
 };
+
+} // namespace PHARE::core
+
+#define PHARE_LOG_STR() std::string{__FILE__} + " " + std::to_string(__LINE__) + " "
+#define PHARE_LOG_START(str) PHARE::core::LogMan::get().start(PHARE_LOG_STR() + str)
+#define PHARE_LOG_STOP() PHARE::core::LogMan::get().stop()
+#define PHARE_LOG_SCOPE(str)                                                                       \
+    auto _scopeLog = PHARE::core::LogMan::get().scope(PHARE_LOG_STR() + str)
+#define PHARE_LOG_NAMED_SCOPE(name, str)                                                           \
+    auto name = PHARE::core::LogMan::get().scope(PHARE_LOG_STR() + str)
+
+
+#endif /* PHARE_CORE_LOGGER_H */

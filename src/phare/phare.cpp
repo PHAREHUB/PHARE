@@ -51,6 +51,9 @@ int main(int argc, char** argv)
     provider->read();
     std::cerr << "done!\n";
 
+    auto& dictHandler = PHARE::initializer::PHAREDictHandler::INSTANCE();
+
+    auto& logman = PHARE::core::LogMan::start(dictHandler.dict());
 
     auto hierarchy = PHARE::amr::Hierarchy::make();
 
@@ -60,16 +63,17 @@ int main(int argc, char** argv)
 
     simulator->initialize();
 
+    dictHandler.stop();
+    provider.release();
+
     [[maybe_unused]] auto time = simulator->startTime();
 
-    LogMan logman{"log"};
-    logman.registerLogger();
-    logman.start("outer");
+    PHARE_LOG_START("outer");
     for (std::size_t i = 0; i < 10; ++i)
     {
-        logman.scope("inner");
+        PHARE_LOG_SCOPE("inner");
     }
-    logman.stop();
+    PHARE_LOG_STOP();
 
     while (simulator->currentTime() < simulator->endTime())
     {
@@ -78,5 +82,4 @@ int main(int argc, char** argv)
         std::cout << simulator->currentTime() << "\n";
         //    time += simulator.timeStep();
     }
-    PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
 }
