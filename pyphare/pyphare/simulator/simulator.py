@@ -97,6 +97,7 @@ class Simulator:
 
         print("mean advance time = {}".format(np.mean(perf)))
         print("total advance time = {}".format(np.sum(perf)))
+        return self
 
 
 
