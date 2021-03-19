@@ -217,8 +217,9 @@ def overlap_mask(x, level, qty):
 
 
 def finest_field(hierarchy, qty, time=None):
-    """returns a non-uniform contiguous primal grid
+    """returns a non-uniform contiguous (value,grid)
        associated to the given hierarchy
+       the quantity "qty" must be a field
     """
     if time is None:
         time = hierarchy.times()[0] # to replace with default
