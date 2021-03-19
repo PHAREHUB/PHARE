@@ -28,11 +28,9 @@ namespace core
         using particle_array_type              = ParticleArray;
         using particle_resource_type           = ParticlesPack<ParticleArray>;
         using vecfield_type                    = VecField;
-        // using particle_initializer_type        = ParticleInitializer<ParticleArray, GridLayout>;
 
 
-
-        IonPopulation(initializer::PHAREDict initializer)
+        IonPopulation(initializer::PHAREDict const& initializer)
             : name_{initializer["name"].template to<std::string>()}
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
@@ -46,7 +44,7 @@ namespace core
         std::string const& name() const { return name_; }
 
 
-        auto particleInitializerInfo() const { return particleInitializerInfo_; }
+        auto const& particleInitializerInfo() const { return particleInitializerInfo_; }
 
 
 
@@ -262,8 +260,7 @@ namespace core
         VecField flux_;
         field_type* rho_{nullptr};
         ParticlesPack<ParticleArray>* particles_{nullptr};
-        // std::unique_ptr<particle_initializer_type> particleInitializer_;
-        initializer::PHAREDict particleInitializerInfo_;
+        initializer::PHAREDict const& particleInitializerInfo_;
     };
 } // namespace core
 } // namespace PHARE

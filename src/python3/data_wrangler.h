@@ -169,7 +169,7 @@ private:
     {
         using SimulatorCaster = SimulatorCaster<dimension, interp_order, nbRefinedPart>;
 
-        auto simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
+        auto const& simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
 
         Simulator* simulator_ptr = core::makeAtRuntime<SimulatorCaster>(
             simDict["dimension"].template to<int>(), simDict["interp_order"].template to<int>(),

@@ -22,7 +22,7 @@ namespace core
     class Ohm : public LayoutHolder<GridLayout>
     {
     public:
-        explicit Ohm(PHARE::initializer::PHAREDict dict)
+        explicit Ohm(PHARE::initializer::PHAREDict const& dict)
             : eta_{dict["resistivity"].template to<double>()}
             , nu_{dict["hyper_resistivity"].template to<double>()}
         {

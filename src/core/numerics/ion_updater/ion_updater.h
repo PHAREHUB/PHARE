@@ -49,7 +49,7 @@ private:
     Interpolator interpolator_;
 
 public:
-    IonUpdater(PHARE::initializer::PHAREDict& dict)
+    IonUpdater(PHARE::initializer::PHAREDict const& dict)
         : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
     {
     }

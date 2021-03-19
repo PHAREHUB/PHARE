@@ -19,11 +19,11 @@ namespace solver
 
     public:
         static std::unique_ptr<LevelInitializer<AMRTypes>>
-        create(std::string modelName, PHARE::initializer::PHAREDict dict)
+        create(std::string modelName, PHARE::initializer::PHAREDict const& dict)
         {
             if (modelName == "HybridModel")
             {
-                return std::make_unique<HybridLevelInitializer<HybridModel>>(std::move(dict));
+                return std::make_unique<HybridLevelInitializer<HybridModel>>(dict);
             }
             return nullptr;
         }

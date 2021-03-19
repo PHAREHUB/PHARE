@@ -47,57 +47,63 @@ PHARE::initializer::PHAREDict createInitDict()
     dict["ions"]["nbrPopulations"] = int{2};
     dict["ions"]["pop0"]["name"]   = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]   = 1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["name"]
+    dict["ions"]["pop0"]["particle_initializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop0"]["ParticleInitializer"]["density"] = static_cast<InitFunctionT>(density);
+    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_x"] = static_cast<InitFunctionT>(vx);
+    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
+        = static_cast<InitFunctionT>(vx);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_y"] = static_cast<InitFunctionT>(vy);
+    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
+        = static_cast<InitFunctionT>(vy);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_z"] = static_cast<InitFunctionT>(vz);
+    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
+        = static_cast<InitFunctionT>(vz);
 
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_x"]
+    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
         = static_cast<InitFunctionT>(vthx);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_y"]
+    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
         = static_cast<InitFunctionT>(vthy);
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_z"]
+    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
         = static_cast<InitFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
-    dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
-    dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+    dict["ions"]["pop0"]["particle_initializer"]["nbrPartPerCell"] = int{100};
+    dict["ions"]["pop0"]["particle_initializer"]["charge"]         = -1.;
+    dict["ions"]["pop0"]["particle_initializer"]["basis"]          = std::string{"Cartesian"};
 
     dict["ions"]["pop1"]["name"] = std::string{"alpha"};
     dict["ions"]["pop1"]["mass"] = 1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["name"]
+    dict["ions"]["pop1"]["particle_initializer"]["name"]
         = std::string{"MaxwellianParticleInitializer"};
-    dict["ions"]["pop1"]["ParticleInitializer"]["density"] = static_cast<InitFunctionT>(density);
+    dict["ions"]["pop1"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_x"] = static_cast<InitFunctionT>(vx);
+    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
+        = static_cast<InitFunctionT>(vx);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_y"] = static_cast<InitFunctionT>(vy);
+    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
+        = static_cast<InitFunctionT>(vy);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_z"] = static_cast<InitFunctionT>(vz);
+    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
+        = static_cast<InitFunctionT>(vz);
 
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_x"]
+    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
         = static_cast<InitFunctionT>(vthx);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_y"]
+    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
         = static_cast<InitFunctionT>(vthy);
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_z"]
+    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
         = static_cast<InitFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
-    dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
-    dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+    dict["ions"]["pop1"]["particle_initializer"]["nbrPartPerCell"] = int{100};
+    dict["ions"]["pop1"]["particle_initializer"]["charge"]         = -1.;
+    dict["ions"]["pop1"]["particle_initializer"]["basis"]          = std::string{"Cartesian"};
 
     dict["electromag"]["name"]             = std::string{"EM"};
     dict["electromag"]["electric"]["name"] = std::string{"E"};
@@ -113,11 +119,11 @@ PHARE::initializer::PHAREDict createInitDict()
 
     return dict;
 }
-
+static auto init_dict = createInitDict();
 
 struct IonPopulation1D_P
 {
-    IonPopulation1D user{createInitDict()["ions"]["pop0"]};
+    IonPopulation1D user{init_dict["ions"]["pop0"]};
 };
 
 
@@ -133,7 +139,7 @@ struct VecField1D_P
 
 struct Ions1D_P
 {
-    Ions1D user{createInitDict()["ions"]};
+    Ions1D user{init_dict["ions"]};
 };
 
 
@@ -144,7 +150,7 @@ struct Electromag1D_P
     std::string name = "ElectroTest";
     Electromag1D user;
     Electromag1D_P()
-        : user{createInitDict()["electromag"]}
+        : user{init_dict["electromag"]}
     {
     }
 };
@@ -153,7 +159,7 @@ struct Electromag1D_P
 
 struct HybridState1D_P
 {
-    HybridState1D user{createInitDict()};
+    HybridState1D user{init_dict};
 };
 
 

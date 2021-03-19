@@ -58,7 +58,7 @@ public:
 
     void dump(double timestamp, double timestep) override { dMan->dump(timestamp, timestep); }
 
-    Simulator(PHARE::initializer::PHAREDict dict,
+    Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
 
 
@@ -130,7 +130,8 @@ private:
 
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
-    PHARE::initializer::PHAREDict dict, std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
+    PHARE::initializer::PHAREDict const& dict,
+    std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
     : hierarchy_{hierarchy}
     , modelNames_{"HybridModel"}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}

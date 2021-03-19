@@ -70,7 +70,7 @@ class DimHierarchy : public Hierarchy
 public:
     static constexpr std::size_t dimension = _dimension;
 
-    DimHierarchy(PHARE::initializer::PHAREDict dict);
+    DimHierarchy(PHARE::initializer::PHAREDict const& dict);
 };
 
 
@@ -81,10 +81,10 @@ public:
  */
 struct HierarchyMaker
 {
-    HierarchyMaker(PHARE::initializer::PHAREDict& dict_);
+    HierarchyMaker(PHARE::initializer::PHAREDict const& dict_);
     template<typename Dimension>
     std::shared_ptr<Hierarchy> operator()(std::size_t userDim, Dimension dimension);
-    PHARE::initializer::PHAREDict& dict;
+    PHARE::initializer::PHAREDict const& dict;
 };
 
 
@@ -94,7 +94,7 @@ struct HierarchyMaker
 //                       HierarchyMaker Definitions
 //-----------------------------------------------------------------------------
 
-inline HierarchyMaker::HierarchyMaker(PHARE::initializer::PHAREDict& dict_)
+inline HierarchyMaker::HierarchyMaker(PHARE::initializer::PHAREDict const& dict_)
     : dict{dict_}
 {
 }
@@ -118,7 +118,7 @@ std::shared_ptr<Hierarchy> HierarchyMaker::operator()(std::size_t userDim, Dimen
 
 inline auto Hierarchy::make()
 {
-    PHARE::initializer::PHAREDict& theDict
+    PHARE::initializer::PHAREDict const& theDict
         = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     auto dim = theDict["simulation"]["dimension"].template to<int>();
     return core::makeAtRuntime<HierarchyMaker>(dim, HierarchyMaker{theDict});
@@ -149,7 +149,7 @@ Hierarchy::Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
 
 
 template<typename Type, std::size_t dimension>
-void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type* arr)
+void parseDimXYZType(PHARE::initializer::PHAREDict const& grid, std::string key, Type* arr)
 {
     arr[0] = grid[key]["x"].template to<Type>();
     if constexpr (dimension > 1)
@@ -159,7 +159,7 @@ void parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key, Type*
 }
 
 template<typename Type, std::size_t dimension>
-auto parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key)
+auto parseDimXYZType(PHARE::initializer::PHAREDict const& grid, std::string key)
 {
     std::array<Type, dimension> arr;
     parseDimXYZType<Type, dimension>(grid, key, arr.data());
@@ -167,7 +167,7 @@ auto parseDimXYZType(PHARE::initializer::PHAREDict& grid, std::string key)
 }
 
 template<std::size_t dimension>
-void getDomainCoords(PHARE::initializer::PHAREDict& grid, float lower[dimension],
+void getDomainCoords(PHARE::initializer::PHAREDict const& grid, float lower[dimension],
                      float upper[dimension])
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
@@ -185,7 +185,7 @@ void getDomainCoords(PHARE::initializer::PHAREDict& grid, float lower[dimension]
 
 
 template<std::size_t dimension>
-auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict& grid)
+auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict const& grid)
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
 
@@ -248,7 +248,7 @@ smallest_patch_size {
 proper_nesting_buffer = 1
  */
 template<std::size_t dimension>
-auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
+auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
 {
     constexpr int ratio = 2; // Nothing else supported
 
@@ -303,7 +303,7 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict& amr)
 
 
 template<std::size_t _dimension>
-DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict dict)
+DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict)
     : Hierarchy(
         std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
             SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",

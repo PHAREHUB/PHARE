@@ -31,7 +31,7 @@ namespace core
     public:
         static constexpr auto dimension = Ions::dimension;
 
-        HybridState(PHARE::initializer::PHAREDict dict)
+        HybridState(PHARE::initializer::PHAREDict const& dict)
             : electromag{dict["electromag"]}
             , ions{dict["ions"]}
             , J{"J", HybridQuantity::Vector::J}

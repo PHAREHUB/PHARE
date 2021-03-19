@@ -16,7 +16,7 @@ enum class Mode { LIGHT, FULL };
 
 
 template<typename DiagManager>
-void registerDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict& diagsParams)
+void registerDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict const& diagsParams)
 {
     std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle"};
 
@@ -60,7 +60,7 @@ public:
 
     template<typename Hierarchy, typename Model>
     static std::unique_ptr<DiagnosticsManager> make_unique(Hierarchy& hier, Model& model,
-                                                           initializer::PHAREDict& dict)
+                                                           initializer::PHAREDict const& dict)
     {
         auto dMan = std::make_unique<DiagnosticsManager>(Writer::make_unique(hier, model, dict));
         registerDiagnostics(*dMan, dict);
@@ -70,7 +70,7 @@ public:
     void dump(double timeStamp, double timeStep) override;
     void dump_level(std::size_t level, double timeStamp) override;
 
-    DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict& dict);
+    DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict const& dict);
 
 
     DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict&& dict)
@@ -132,7 +132,7 @@ private:
 
 template<typename Writer>
 DiagnosticsManager<Writer>&
-DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict& diagInputs)
+DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict const& diagInputs)
 {
     auto& diagProps           = diagnostics_.emplace_back(DiagnosticProperties{});
     diagProps.type            = diagInputs["type"].template to<std::string>();

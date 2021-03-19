@@ -34,7 +34,7 @@ public:
     void initialize() { timeRefIntegrator_->initializeHierarchy(); }
 
 
-    Integrator(PHARE::initializer::PHAREDict dict,
+    Integrator(PHARE::initializer::PHAREDict const& dict,
                std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
                std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
                std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
@@ -54,14 +54,15 @@ private:
 
 template<std::size_t dimension>
 std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
-getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr);
+getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr);
 
 
 
 
 template<std::size_t _dimension>
 Integrator<_dimension>::Integrator(
-    PHARE::initializer::PHAREDict dict, std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
+    PHARE::initializer::PHAREDict const& dict,
+    std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
     std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
     std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy, double startTime,
     double endTime)
@@ -100,10 +101,10 @@ Integrator<_dimension>::Integrator(
 
 template<std::size_t dimension>
 std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
-getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict& amr)
+getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
 {
-    auto& refinement    = amr[std::string{"refinement"}];
-    auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
+    auto const& refinement = amr["refinement"];
+    auto maxLevelNumber    = amr["max_nbr_levels"].template to<int>();
     if (refinement.contains("boxes"))
     {
         auto& refDict = refinement["boxes"];

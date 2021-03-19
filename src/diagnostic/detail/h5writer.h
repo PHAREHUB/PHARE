@@ -54,7 +54,8 @@ public:
     ~Writer() {}
 
     template<typename Hierarchy, typename Model>
-    static decltype(auto) make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict& dict)
+    static decltype(auto) make_unique(Hierarchy& hier, Model& model,
+                                      initializer::PHAREDict const& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
         unsigned flags       = READ_WRITE;
