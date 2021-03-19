@@ -46,13 +46,13 @@ class FieldData(PatchData):
     @property
     def y(self):
         if self._y is None:
-            self._y = self._mesh_coords(1)
+            self._y = self.layout.yeeCoordsFor(self.field_name, "y")
         return self._y
 
     @property
     def z(self):
         if self._z is None:
-            self._z = self._mesh_coords(2)
+            self._z = self.layout.yeeCoordsFor(self.field_name, "z")
         return self._z
 
     def primal_directions(self):
@@ -68,17 +68,16 @@ class FieldData(PatchData):
         assert isinstance(box, Box) and box.ndim == self.box.ndim
 
         gbox = self.ghost_box.copy()
-        gbox.upper += 1    # ?!? why is this needed? :|
+        gbox.upper += self.primal_directions()
 
         overlap = box * gbox
-        assert overlap is not None
+        assert overlap is not None # or return empty array?
 
-        overlap.upper += 1 # ?!? why is this needed? :|
         lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
         upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
 
         assert box.ndim == 1 # this following line is only 1D
-        return self.dataset[:][lower[0]:upper[0]]
+        return self.dataset[:][lower[0]:upper[0] + 1]
 
 
     def __getitem__(self, box):
