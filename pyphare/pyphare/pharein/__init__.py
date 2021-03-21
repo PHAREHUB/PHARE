@@ -72,6 +72,7 @@ def populateDict():
     import pybindlibs.dictator as pp
 
     add = pp.add
+    add_size_t = pp.add_size_t
     addInitFunction = getattr(pp, 'addInitFunction{:d}'.format(simulation.ndim)+'D')
 
     add("simulation/name", "simulation_test")
@@ -195,6 +196,7 @@ def populateDict():
         name_path = type_path + diag.name
         add(name_path + "/" + 'type' , diag.type)
         add(name_path + "/" + 'quantity' , diag.quantity)
+        add_size_t(name_path + "/" + "flush_every", diag.flush_every)
         pp.add_array_as_vector(name_path + "/" + "write_timestamps", diag.write_timestamps)
         pp.add_array_as_vector(name_path + "/" + "compute_timestamps", diag.compute_timestamps)
 

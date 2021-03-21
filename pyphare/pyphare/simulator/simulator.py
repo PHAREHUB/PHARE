@@ -97,7 +97,8 @@ class Simulator:
 
         print("mean advance time = {}".format(np.mean(perf)))
         print("total advance time = {}".format(np.sum(perf)))
-        return self
+
+        return self.reset()
 
 
 
@@ -128,6 +129,7 @@ class Simulator:
         self.cpp_hier = None
         if "samrai" in life_cycles:
             type(life_cycles["samrai"]).reset()
+        return self
 
     def timeStep(self):
         self._check_init()
@@ -149,8 +151,6 @@ class Simulator:
         self._check_init()
         return self.cpp_sim.interp_order # constexpr static value
 
-
-
     def _check_init(self):
         if self.cpp_sim is None:
-            raise ValueError("Simulator not initialized")
+            self.initialize()

@@ -10,6 +10,7 @@ namespace PHARE::diagnostic
 {
 struct DiagnosticProperties
 {
+    std::size_t flushEvery = 1;
     std::vector<double> writeTimestamps, computeTimestamps;
     std::string type, quantity;
 };

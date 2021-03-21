@@ -81,6 +81,7 @@ void allFromPython_test(Simulator&& sim, std::string out_dir)
     using Hierarchy   = typename Simulator::Hierarchy;
 
     sim.dump(*sim.dMan);
+    sim.dMan.reset(); // flush h5files
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;

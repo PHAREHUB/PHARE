@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "diagnostic/diagnostic_writer.h"
+#include "diagnostic/detail/h5file.h"
 
 #include "core/utilities/mpi_utils.h"
 
@@ -41,7 +42,15 @@ public:
         std::size_t maxLevel)
         = 0;
 
-    virtual void finalize(DiagnosticProperties& diagnostic) = 0;
+    void finalize(DiagnosticProperties& diagnostic)
+    {
+        ++dumpIdx_;
+        if (diagnostic.flushEvery > 0 and diagnostic.flushEvery % dumpIdx_ == 0)
+        {
+            fileData_.erase(diagnostic.quantity);
+            assert(fileData_.count(diagnostic.quantity) == 0);
+        }
+    }
 
 
 protected:
@@ -115,6 +124,8 @@ protected:
 
 
     Writer& h5Writer_;
+    std::size_t dumpIdx_ = 0;
+    std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData_;
 };
 
 } // namespace PHARE::diagnostic::h5

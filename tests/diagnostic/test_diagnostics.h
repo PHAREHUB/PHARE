@@ -207,10 +207,11 @@ struct Hi5Diagnostic
     auto dict(std::string&& type, std::string& quantity)
     {
         PHARE::initializer::PHAREDict dict;
-        dict["name"]      = quantity;
-        dict["type"]      = type;
-        dict["quantity"]  = quantity;
-        dict["time_step"] = double{1};
+        dict["name"]        = quantity;
+        dict["type"]        = type;
+        dict["quantity"]    = quantity;
+        dict["time_step"]   = double{1};
+        dict["flush_every"] = std::size_t{0};
 
         dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
         dict["compute_timestamps"] = std::vector<double>{0, 1, 2};

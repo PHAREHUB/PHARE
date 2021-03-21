@@ -107,9 +107,10 @@ class DiagnosticsTest(unittest.TestCase):
                 quantity=quantity,
                 write_timestamps=timestamps,
                 compute_timestamps=timestamps,
+                flush_every=0,
             )
 
-        Simulator(simulation).initialize().run().reset()
+        Simulator(simulation).run()
 
         def make_time(stamp):
             return "t{:.10f}".format(stamp)
