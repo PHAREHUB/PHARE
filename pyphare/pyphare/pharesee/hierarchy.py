@@ -565,7 +565,7 @@ def amr_grid(hierarchy, time):
             else:
                 # on other levels
                 # we take only grids not overlaped by next finer
-                coarsenedNextFinerBoxes = [boxm.coarsen(b,2) for b in lvlPatchBoxes[ilvl+1]]
+                coarsenedNextFinerBoxes = [boxm.coarsen(b, refinement_ratio) for b in lvlPatchBoxes[ilvl+1]]
                 for coarseBox in coarsenedNextFinerBoxes:
                     ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0]+1)
                     inter,icells, iccells = np.intersect1d(cells, ccells, return_indices=True)
@@ -697,7 +697,7 @@ def compute_hier_from(h, compute):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, h.domain_box, 2)
+    return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio)
 
 
 
@@ -798,7 +798,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             h5_patch_lvl_grp = h5_time_grp[plvl_key]
             ilvl = int(plvl_key[2:])
-            lvl_cell_width = root_cell_width / 2 ** ilvl
+            lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
             patches = {}
 
             for pkey in h5_patch_lvl_grp.keys():
@@ -817,7 +817,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
                     patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-        diag_hier = PatchHierarchy(patch_levels, domain_box, 2, t, data_file)
+        diag_hier = PatchHierarchy(patch_levels, domain_box, refinement_ratio, t, data_file)
 
         return diag_hier
 
@@ -840,7 +840,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             for plvl_key in h5_time_grp.keys():
                 ilvl = int(plvl_key[2:])
-                lvl_cell_width = root_cell_width / 2 ** ilvl
+                lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
@@ -872,7 +872,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         for plvl_key in h5_time_grp.keys():
             ilvl = int(plvl_key[2:])
 
-            lvl_cell_width = root_cell_width / 2 ** ilvl
+            lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
             lvl_patches = []
 
             for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
@@ -944,7 +944,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
 
     for ilvl in range(nbr_levels):
 
-        lvl_cell_width = root_cell_width / 2 ** ilvl
+        lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
 
         patches = {ilvl : [] for ilvl in range(nbr_levels)}
         getters = quantidic(ilvl, dw)
