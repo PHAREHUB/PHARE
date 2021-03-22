@@ -1169,7 +1169,7 @@ def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=N
 def merge_particles(hierarchy):
 
     for time, patch_levels in hierarchy.time_hier.items():
-        for ilvl, plvl in hierarchy.patch_levels.items():
+        for ilvl, plvl in patch_levels.items():
             for ip, patch in enumerate(plvl.patches):
                 pdatas = patch.patch_datas
                 domain_pdata = [(pdname,pd) for pdname, pd in pdatas.items() if "domain" in pdname][0]

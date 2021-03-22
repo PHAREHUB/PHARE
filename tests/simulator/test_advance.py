@@ -27,9 +27,9 @@ class AdvanceTest(unittest.TestCase):
 
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
-                     smallest_patch_size=5, largest_patch_size=5,
-                     cells= 120, time_step=0.001, model_init={},
-                     dl=0.3, extra_diag_options={}, time_step_nbr=1, timestamps=None):
+                     smallest_patch_size=5, largest_patch_size=20,
+                     cells=120, time_step=0.001,
+                     dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -121,14 +121,21 @@ class AdvanceTest(unittest.TestCase):
                 compute_timestamps=timestamps
             )
 
-        for pop in ["protons"]:
+        poplist = ["protons"]
+        for pop in poplist:
             for quantity in ["density", "flux"]:
                 FluidDiagnostics(quantity=quantity,
                                  write_timestamps=timestamps,
                                  compute_timestamps=timestamps,
                                  population_name=pop)
 
-        Simulator(global_vars.sim).initialize().run().reset()
+            for quantity in ['domain', 'levelGhost', 'patchGhost']:
+                ParticleDiagnostics(quantity=quantity,
+                                    compute_timestamps=timestamps,
+                                    write_timestamps=timestamps,
+                                    population_name=pop)
+
+        Simulator(global_vars.sim).initialize().run()
 
         eb_hier = None
         if qty in ["e", "eb"]:
@@ -138,12 +145,262 @@ class AdvanceTest(unittest.TestCase):
         if qty in ["e", "b", "eb"]:
             return eb_hier
 
+        is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
+
+        if is_particle_type:
+            particle_hier = None
+
+        if qty == "particles":
+            particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_domain.h5")
+            particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_levelGhost.h5", hier=particle_hier)
+
+        if is_particle_type:
+            particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_patchGhost.h5", hier=particle_hier)
+
+        if qty == "particles":
+            merge_particles(particle_hier)
+
+        if is_particle_type:
+            return particle_hier
+
         if qty == "moments":
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_density.h5")
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_bulkVelocity.h5", hier=mom_hier)
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_density.h5", hier=mom_hier)
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_flux.h5", hier=mom_hier)
             return mom_hier
+
+
+
+    @unpack
+    def _test_overlaped_fields_are_equal(self, dim, interp_order, refinement_boxes):
+        print("test_overlaped_fields_are_equal")
+
+        time_step_nbr=3
+        time_step=0.001
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb",
+                                      time_step=time_step, time_step_nbr=time_step_nbr)
+
+        check=0
+        for time_step_idx in range(time_step_nbr + 1):
+            coarsest_time =  time_step_idx * time_step
+
+            for ilvl, overlaps in hierarchy_overlaps(datahier, coarsest_time).items():
+
+                for overlap in overlaps:
+
+                    pd1, pd2 = overlap["pdatas"]
+                    box      = overlap["box"]
+                    offsets  = overlap["offset"]
+
+                    self.assertEqual(pd1.quantity, pd2.quantity)
+
+                    if pd1.quantity == 'field':
+                        check+=1
+
+                        # we need to transform the AMR overlap box, which is thus
+                        # (because AMR) common to both pd1 and pd2 into local index
+                        # boxes that will allow to slice the data
+
+                        # the patchData ghost box that serves as a reference box
+                        # to transfrom AMR to local indexes first needs to be
+                        # shifted by the overlap offset associated to it
+                        # this is because the overlap box has been calculated from
+                        # the intersection of possibly shifted patch data ghost boxes
+
+                        loc_b1 = boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0]))
+                        loc_b2 = boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1]))
+
+                        data1 = pd1.dataset
+                        data2 = pd2.dataset
+
+                        slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1]
+                        slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
+
+                        try:
+                            np.testing.assert_allclose(slice1, slice2, atol=1e-6)
+                        except AssertionError as e:
+                            print("error", coarsest_time, overlap)
+                            raise e
+
+        self.assertGreater(check, time_step_nbr)
+        self.assertEqual(check % time_step_nbr, 0)
+
+
+    # Deprecates InitializationTest.test_overlaped_fields_are_equal
+    @data(
+        {"L0": [Box1D(10, 19)]},
+        {"L0": [Box1D(8, 20)]},
+
+    )
+    def test_overlaped_fields_are_equal(self, refinement_boxes):
+        dim = 1# refinement_boxes["L0"][0].ndim
+        for interp_order in [1, 2, 3]:
+            self._test_overlaped_fields_are_equal(dim, interp_order=interp_order, refinement_boxes=refinement_boxes)
+
+
+
+
+
+    def _test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, dim, interp_order, refinement_boxes):
+        print("test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles")
+        print("interporder : {}".format(interp_order))
+
+        time_step_nbr=3
+        time_step=0.001
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles",
+                                      time_step=time_step, time_step_nbr=time_step_nbr)
+
+        for time_step_idx in range(time_step_nbr + 1):
+            coarsest_time =  time_step_idx * time_step
+
+            overlaps = hierarchy_overlaps(datahier, coarsest_time)
+            for ilvl, lvl_overlaps in overlaps.items():
+                print("level {}".format(ilvl))
+                for overlap in lvl_overlaps:
+
+                    if ilvl != 0: #only root level tested here
+                        continue
+
+                    if "particles"  not in overlap["pdatas"][0].quantity :
+                        continue
+
+                    ref_pd, cmp_pd = overlap["pdatas"]
+
+                    box = overlap["box"]
+                    print("overlap box : {}, reference patchdata box : {}, ghostbox {},"
+                    " comp. patchdata box : {} ghostbox {}".format(box,ref_pd.box,ref_pd.ghost_box,cmp_pd.box, cmp_pd.ghost_box))
+                    offsets = overlap["offset"]
+
+                    # first let's shift the overlap box over the AMR
+                    # indices of the patchdata. The box has been created
+                    # by shifting the patchdata ghost box by 'offset' so here
+                    # the box is shifted by -offset to get over patchdata
+                    shift_refbox, shift_cmpbox = [boxm.shift(box, -off) for off in offsets]
+
+                    # the overlap box overlaps both ghost and domain cells
+                    # we need to extract the domain ones to later select domain
+                    # particles
+                    ovlped_refdom = ref_pd.box * shift_refbox
+                    ovlped_cmpdom = cmp_pd.box * shift_cmpbox
+
+                    # on lvl 0 patches are adjacent
+                    # therefore the overlap box must overlap the
+                    # patchData box. 1 cell in interporder1, 2 cells for higher
+                    assert(ovlped_cmpdom is not None)
+                    assert(ovlped_refdom is not None)
+
+                    refdomain = ref_pd.dataset.select(ovlped_refdom)
+                    cmpdomain = cmp_pd.dataset.select(ovlped_cmpdom)
+
+                    # now get the ghost cells of each patch data overlaped by
+                    # the overlap box. To do this we need to intersect the shifted
+                    # overlap box with the patchdata ghost box, and remove interior cells
+                    # note that in 1D we don't expect remove to return more than 1 box, hence [0]
+                    ovlped_refghost = boxm.remove(ref_pd.ghost_box * shift_refbox, ref_pd.box)[0]
+                    ovlped_cmpghost = boxm.remove(cmp_pd.ghost_box * shift_cmpbox, cmp_pd.box)[0]
+
+                    refghost  = ref_pd.dataset.select(ovlped_refghost)
+                    cmpghost  = cmp_pd.dataset.select(ovlped_cmpghost)
+
+                    print("ghost box {} has {} particles".format(ovlped_refghost, len(refghost.iCells)))
+                    print("ghost box {} has {} particles".format(ovlped_cmpghost, len(cmpghost.iCells)))
+
+                    # before comparing the particles we need to be sure particles of both patchdatas
+                    # are sorted in the same order. We do that by sorting by x position
+                    sort_refdomain_idx = np.argsort(refdomain.iCells + refdomain.deltas)
+                    sort_cmpdomain_idx = np.argsort(cmpdomain.iCells + cmpdomain.deltas)
+                    sort_refghost_idx = np.argsort(refghost.iCells + refghost.deltas)
+                    sort_cmpghost_idx = np.argsort(cmpghost.iCells + cmpghost.deltas)
+
+                    assert(sort_refdomain_idx.size != 0)
+                    assert(sort_cmpdomain_idx.size != 0)
+                    assert(sort_refdomain_idx.size != 0)
+                    assert(sort_cmpghost_idx.size != 0)
+
+                    np.testing.assert_allclose(refdomain.deltas[sort_refdomain_idx], cmpghost.deltas[sort_cmpghost_idx], atol=1e-12)
+                    np.testing.assert_allclose(cmpdomain.deltas[sort_cmpdomain_idx], refghost.deltas[sort_refghost_idx], atol=1e-12)
+
+
+    @data(
+      {"L0": [Box1D(10, 20)]},
+      {"L0": [Box1D(2, 12), Box1D(13, 25)]},
+    )
+    # deprecates InitializationTest.test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles
+    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, refinement_boxes):
+        dim = refinement_boxes["L0"][0].ndim
+        for interp_order in [1, 2, 3]:
+            self._test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(dim, interp_order=interp_order, refinement_boxes=refinement_boxes)
+
+
+
+    def _test_overlapped_particledatas_have_identical_particles(self, dim, interp_order, refinement_boxes):
+        print("test_overlapped_particledatas_have_identical_particles")
+        print("interporder : {}".format(interp_order))
+        from copy import copy
+
+        time_step_nbr=3
+        time_step=0.001
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles",
+                                      time_step=time_step, time_step_nbr=time_step_nbr)
+
+        for time_step_idx in range(time_step_nbr + 1):
+            coarsest_time =  time_step_idx * time_step
+
+            overlaps = hierarchy_overlaps(datahier, coarsest_time)
+
+            for ilvl, lvl in datahier.patch_levels.items():
+
+                print("testing level {}".format(ilvl))
+                for overlap in overlaps[ilvl]:
+
+                    pd1, pd2 = overlap["pdatas"]
+                    box      = overlap["box"]
+                    offsets  = overlap["offset"]
+
+                    self.assertEqual(pd1.quantity, pd2.quantity)
+
+                    if "particles" in pd1.quantity:
+
+                        # the following uses 'offset', we need to remember that offset
+                        # is the quantity by which a patch has been moved to detect
+                        # overlap with the other one.
+                        # so shift by +offset when evaluating patch data in overlap box
+                        # index space, and by -offset when we want to shift box indexes
+                        # to the associated patch index space.
+
+                        # overlap box must be shifted by -offset to select data in the patches
+                        part1 = copy(pd1.dataset.select(boxm.shift(box, -offsets[0])))
+                        part2 = copy(pd2.dataset.select(boxm.shift(box, -offsets[1])))
+
+                        idx1 = np.argsort(part1.iCells + part1.deltas)
+                        idx2 = np.argsort(part2.iCells + part2.deltas)
+
+                        # if there is an overlap, there should be particles
+                        # in these cells
+                        assert(len(idx1) >0)
+                        assert(len(idx2) >0)
+
+                        print("respectively {} and {} in overlaped patchdatas".format(len(idx1), len(idx2)))
+
+                        # particle iCells are in their patch AMR space
+                        # so we need to shift them by +offset to move them to the box space
+                        np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
+
+                        self.assertTrue(np.allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12))
+                        self.assertTrue(np.allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12))
+                        self.assertTrue(np.allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12))
+                        self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
+
+    @data(
+      {"L0": [Box1D(10, 20)]},
+      {"L0": [Box1D(2, 12), Box1D(13, 25)]},
+    )
+    # deprecates InitializationTest.test_overlapped_particledatas_have_identical_particles
+    def test_overlapped_particledatas_have_identical_particles(self, refinement_boxes):
+        dim = refinement_boxes["L0"][0].ndim
+        for interp_order in [1, 2, 3]:
+            self._test_overlapped_particledatas_have_identical_particles(dim, interp_order, refinement_boxes)
 
 
 

@@ -210,13 +210,13 @@ def compute_overlaps(patches, domain_box):
 
 
 
-def hierarchy_overlaps(hierarchy):
+def hierarchy_overlaps(hierarchy, time=0):
     """
     returns all overlaps for the given hierarchy
     """
     overlaps = {}
 
-    for ilvl, lvl in hierarchy.levels().items():
+    for ilvl, lvl in hierarchy.levels(time).items():
         overlaps[ilvl] = compute_overlaps(lvl.patches, hierarchy.refined_domain_box(ilvl))
     return overlaps
 
