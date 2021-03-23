@@ -178,7 +178,8 @@ class AdvanceTest(unittest.TestCase):
 
         time_step_nbr=3
         time_step=0.001
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb",
+        diag_outputs=f"phare_overlaped_fields_are_equal_{self.ddt_test_id()}"
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
                                       time_step=time_step, time_step_nbr=time_step_nbr)
 
         check=0
@@ -248,7 +249,8 @@ class AdvanceTest(unittest.TestCase):
 
         time_step_nbr=3
         time_step=0.001
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles",
+        diag_outputs=f"phare_patch_ghost_particle_are_clones_{self.ddt_test_id()}"
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
                                       time_step=time_step, time_step_nbr=time_step_nbr)
 
         for time_step_idx in range(time_step_nbr + 1):
@@ -341,7 +343,8 @@ class AdvanceTest(unittest.TestCase):
 
         time_step_nbr=3
         time_step=0.001
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles",
+        diag_outputs=f"phare_overlapped_particledatas_have_identical_particles_{self.ddt_test_id()}"
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
                                       time_step=time_step, time_step_nbr=time_step_nbr)
 
         for time_step_idx in range(time_step_nbr + 1):
