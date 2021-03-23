@@ -513,7 +513,14 @@ namespace amr
             // ionBulkVelSynchronizers_.sync(levelNumber);
         }
 
-
+        void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                             double const time) override
+        {
+            auto levelNumber  = level.getLevelNumber();
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, time);
+        }
 
     private:
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)

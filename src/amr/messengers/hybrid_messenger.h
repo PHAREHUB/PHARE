@@ -192,6 +192,12 @@ namespace amr
 
         void synchronize(SAMRAI::hier::PatchLevel& level) override { strat_->synchronize(level); }
 
+        void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                             double const time) override
+        {
+            strat_->postSynchronize(model, level, time);
+        }
+
 
 
         /**
