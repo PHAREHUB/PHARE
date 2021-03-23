@@ -172,16 +172,7 @@ class AdvanceTest(unittest.TestCase):
 
 
 
-    @unpack
-    def _test_overlaped_fields_are_equal(self, dim, interp_order, refinement_boxes):
-        print("test_overlaped_fields_are_equal")
-
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_overlaped_fields_are_equal_{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
-
+    def _test_overlaped_fields_are_equal(self, time_step, time_step_nbr, datahier):
         check=0
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
@@ -232,12 +223,38 @@ class AdvanceTest(unittest.TestCase):
     @data(
         {"L0": [Box1D(10, 19)]},
         {"L0": [Box1D(8, 20)]},
-
     )
     def test_overlaped_fields_are_equal(self, refinement_boxes):
-        dim = 1# refinement_boxes["L0"][0].ndim
+        dim = refinement_boxes["L0"][0].ndim
+        time_step_nbr=3
+        time_step=0.001
+        diag_outputs=f"phare_overlaped_fields_are_equal_{self.ddt_test_id()}"
         for interp_order in [1, 2, 3]:
-            self._test_overlaped_fields_are_equal(dim, interp_order=interp_order, refinement_boxes=refinement_boxes)
+            datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
+                                      time_step=time_step, time_step_nbr=time_step_nbr)
+            self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
+
+
+    @data(
+        {"L0": [Box1D(10, 19)]},
+        # {"L0": [Box2D(10, 19)]},
+        # {"L0": [Box3D(10, 19)]},
+    )
+    def test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts(self, refinement_boxes):
+        from pyphare.pharein.simulation import check_patch_size
+
+        dim = refinement_boxes["L0"][0].ndim
+
+        cells = [30] * dim
+        time_step_nbr=3
+        time_step=0.001
+        diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts{self.ddt_test_id()}"
+        for interp_order in [1, 2, 3]:
+            largest_patch_size, smallest_patch_size = check_patch_size(interp_order=interp_order, cells=cells)
+            datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
+                                      smallest_patch_size=smallest_patch_size, largest_patch_size=smallest_patch_size,
+                                      time_step=time_step, time_step_nbr=time_step_nbr)
+            self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
 
 
 
