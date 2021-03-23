@@ -1,6 +1,6 @@
 
 import numpy as np
-
+from ..core.phare_utilities import refinement_ratio
 
 class Particles:
     """
@@ -16,16 +16,16 @@ class Particles:
             self.v       = np.random.randn(box.nCells()*100, 3)
             self.weights = np.zeros(self.deltas.shape[0]) + 0.01
             self.charges = np.zeros_like(self.weights) + 1
-            self.dl       = np.zeros(box.ndim)+0.1
+            self.dl      = np.zeros((self.weights.size, box.ndim))+0.1
             ndim = len(box.lower)
 
         else:
-            self.iCells  = kwargs["icells"]
-            self.deltas  = kwargs["deltas"]
-            self.v       = kwargs["v"]
-            self.weights = kwargs["weights"]
-            self.charges = kwargs["charges"]
-            self.dl      = kwargs["dl"]
+            self.iCells  = kwargs["icells"][:]
+            self.deltas  = kwargs["deltas"][:]
+            self.v       = kwargs["v"][:]
+            self.weights = kwargs["weights"][:]
+            self.charges = kwargs["charges"][:]
+            self.dl      = kwargs["dl"][:]
             ndim = self.iCells.ndim
 
         self._x = None
@@ -56,19 +56,19 @@ class Particles:
     def x(self):
         if self._x is None:
             if self.ndim == 1:
-                self._x = self.dl[0]*(self.iCells[:] + self.deltas[:])
+                self._x = self.dl[:,0]*(self.iCells[:] + self.deltas[:])
             else:
-                self._x = self.dl[0]*(self.iCells[:,0] + self.deltas[:,0])
+                self._x = self.dl[:,0]*(self.iCells[:,0] + self.deltas[:,0])
         return self._x
 
 
     def add(self, particles):
-        assert(np.allclose(particles.dl, self.dl, atol=1e-6))
         self.iCells   = np.concatenate((self.iCells, particles.iCells))
         self.deltas   = np.concatenate((self.deltas, particles.deltas))
         self.v        = np.concatenate((self.v, particles.v))
         self.charges  = np.concatenate((self.charges, particles.charges))
         self.weights  = np.concatenate((self.weights, particles.weights))
+        self.dl       = np.concatenate((self.dl, particles.dl))
         self._x = None
 
 
@@ -120,7 +120,7 @@ class Particles:
                          v = self.v[idx,:],
                          weights=self.weights[idx],
                          charges=self.charges[idx],
-                         dl = self.dl)
+                         dl = self.dl[idx])
 
 
 
@@ -136,7 +136,7 @@ class Particles:
           weights=split_pyarrays[2],
           charges=split_pyarrays[3],
           v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3),
-          dl = self.dl/2
+          dl = self.dl[0]/refinement_ratio + np.zeros((split_pyarrays[2].size,self.ndim))
         )
 
 
@@ -156,6 +156,8 @@ def all_assert(part1, part2):
     np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
+    np.testing.assert_allclose(part1.dl[idx1], part2.dl[idx2], atol=1e-12)
+
 
 
 def aggregate(particles_in):
@@ -169,3 +171,36 @@ def aggregate(particles_in):
 
     assert particles_out.size() == sum([particles.size() for particles in particles_in])
     return particles_out
+
+
+
+def remove(particles, idx):
+    """
+    returns a Particles object where particles indexed "idx" 
+    have been removed from "particles"
+    """
+    if len(idx) == particles.size():
+        return None
+
+    icells = np.delete(particles.iCells, idx)
+    deltas = np.delete(particles.deltas, idx)
+    vx = np.delete(particles.v[:,0], idx)
+    vy = np.delete(particles.v[:,1], idx)
+    vz = np.delete(particles.v[:,2], idx)
+    v = np.zeros((vx.size, 3))
+    v[:,0] = vx
+    v[:,1] = vy
+    v[:,2] = vz
+    weights = np.delete(particles.weights, idx)
+    dl = np.zeros((len(weights),particles.ndim))
+    for i in range(particles.ndim):
+        dl[:,i] = np.delete(particles.dl[:,i], idx)
+    
+    charges = np.delete(particles.charges, idx)    
+    return Particles(icells=icells,
+                     deltas=deltas,
+                     v = v,
+                     weights=weights,
+                     charges=charges,
+                     dl = dl
+                    )

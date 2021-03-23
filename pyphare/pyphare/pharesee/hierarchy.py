@@ -10,8 +10,7 @@ from ..core.box import Box
 from ..core.gridlayout import GridLayout
 from ..data.wrangler import DataWrangler
 import matplotlib.pyplot as plt
-import seaborn as sns
-from ..core.phare_utilities import np_array_ify, is_scalar, listify
+from ..core.phare_utilities import np_array_ify, is_scalar, listify, refinement_ratio
 
 
 class PatchData:
@@ -218,6 +217,64 @@ def finest_data(pdata, ilvl, hierarchy):
     return x, v
 
 
+def finest_part_data(hierarchy, time=None):
+    """
+    returns a dict {popname : Particles}
+    Particles contained in the dict are those from
+    the finest patches available at a given location
+    """
+    from .particles import remove
+    from copy import deepcopy
+
+    # we are going to return a dict {popname : Particles}
+    # we prepare it with population names
+    aPatch = hierarchy.level(0, time=time).patches[0]
+    particles = {popname:None for popname in aPatch.patch_datas.keys()}
+
+    # our strategy is to explore the hierarchy from the finest
+    # level to the coarsest. at Each level we keep only particles
+    # that are in cells that are not overlaped by finer boxes
+
+    # this dict keeps boxes for patches at each level
+    # each level will thus need this dict to see next finer boxes
+    lvlPatchBoxes = {ilvl:[] for ilvl in range(hierarchy.finest_level(time)+1)}
+
+    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+        plvl = hierarchy.level(ilvl, time=time)
+        for ip, patch in enumerate(plvl.patches):
+            lvlPatchBoxes[ilvl].append(patch.box)
+            for popname, pdata in patch.patch_datas.items():
+
+                # if we're at the finest level
+                # we need to keep all particles
+                if ilvl == hierarchy.finest_level(time):
+                    if particles[popname] is None:
+                        particles[popname] = deepcopy(pdata.dataset)
+                    else:
+                        particles[popname].add(deepcopy(pdata.dataset))
+
+                # if there is a finer level
+                # we need to keep only those of the current patch
+                # that are not in cells overlaped by finer patch boxes
+                else:
+                    icells = pdata.dataset.iCells
+                    parts = deepcopy(pdata.dataset)
+                    create = True
+                    for finerBox in lvlPatchBoxes[ilvl+1]:
+                        coarseFinerBox = boxm.coarsen(finerBox, refinement_ratio)
+                        within = np.where((icells >= coarseFinerBox.lower[0]) &\
+                                                 (icells <= coarseFinerBox.upper[0]))[0]
+                        if create:
+                            toRemove = within
+                            create=False
+                        else:
+                            toRemove = np.concatenate((toRemove, within))
+
+                    parts = remove(parts, toRemove)
+                    if parts is not None:
+                        particles[popname].add(parts)
+    return particles
+
 
 
 class PatchHierarchy:
@@ -238,15 +295,22 @@ class PatchHierarchy:
         if data_files is not None:
             self.data_files.update(data_files)
 
-    def finest_level(self):
-        return len(self.patch_levels)-1
+    def _default_time(self):
+        return list(self.time_hier.keys())[0]
+
+    def finest_level(self, time=None):
+        if time is None:
+            time  = self._default_time()
+        return max(list(self.levels(time=time).keys()))
 
 
-    def levels(self, time=0.):
+    def levels(self, time=None):
+        if time is None:
+            time = self._default_time()
         return self.time_hier[self.format_timestamp(time)]
 
 
-    def level(self, level_number, time=.0):
+    def level(self, level_number, time=None):
         return self.levels(time)[level_number]
 
 
@@ -406,87 +470,123 @@ class PatchHierarchy:
 
 
     def dist_plot(self, **kwargs):
-        from scipy.ndimage import gaussian_filter as gf
         """
-        plot
+        plot phase space of a particle hierarchy
         """
         import copy
+        from .plotting import dist_plot as dp
         usr_lvls = kwargs.get("levels",(0,))
+        finest = kwargs.get("finest", False)
         pops = kwargs.get("pop",[])
         time = kwargs.get("time", self.times()[0])
-        cpt = 0
-        fig, ax = plt.subplots()
-        for lvl_nbr,level in self.levels(time).items():
-            if lvl_nbr not in usr_lvls:
-                continue
-            for ip, patch in enumerate(level.patches):
+        axis = kwargs.get("axis", ("Vx", "Vy"))
+        all_pops = list(self.level(0,time).patches[0].patch_datas.keys())
+        if finest:
+            final = finest_part_data(self)
+            vmin = kwargs.get("vmin", -2)
+            vmax = kwargs.get("vmax", 2)
+            dv = kwargs.get("dv", 0.05)
+            vbins = vmin + dv*np.arange(int((vmax-vmin)/dv))
 
-                if len(pops)==0:
-                    pops = list(patch.patch_datas.keys())
+            if axis[0] == "x":
+                xbins = amr_grid(self, time)
+                bins = (xbins, vbins)
+            else:
+                bins=(vbins, vbins)
+            kwargs["bins"] = bins
 
-                for pop in pops:
-                    tmp = copy.copy(patch.patch_datas[pop].dataset)
+        else:
+            final = {pop:None for pop in all_pops}
+            for lvl_nbr,level in self.levels(time).items():
+                if lvl_nbr not in usr_lvls:
+                    continue
+                for ip, patch in enumerate(level.patches):
+                    if len(pops)==0:
+                        pops = list(patch.patch_datas.keys())
 
-                    # select particles
-                    if "select" in kwargs:
-                        selected = kwargs["select"](tmp)
+                    for pop in pops:
+                        tmp = copy.copy(patch.patch_datas[pop].dataset)
+
+                        if final[pop] is None:
+                            final[pop] = tmp
+                        else:
+                            final[pop].add(tmp)
+
+        # select particles
+        if "select" in kwargs:
+            for pop, particles in final.items():
+                final[pop] = kwargs["select"](particles)
+
+        return final, dp(final, **kwargs)
+
+
+
+
+
+def amr_grid(hierarchy, time):
+    """returns a non-uniform contiguous primal grid
+       associated to the given hierarchy
+    """
+    lvlPatchBoxes = {ilvl:[] for ilvl in range(hierarchy.finest_level()+1)}
+    finalCells = {ilvl:None for ilvl in range(hierarchy.finest_level()+1)}
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+
+        sorted_patches = sorted(lvl[ilvl].patches,
+                                key= lambda p:p.layout.box.lower[0])
+
+        for ip, patch in enumerate(sorted_patches):
+            box = patch.layout.box
+            lvlPatchBoxes[ilvl].append(box)
+
+            # we create a list of all cells in the current patch
+            # remember that if the box upper cell is, say = 40,
+            # it means that the upper node is the lower node of cell 41
+            # so to get all primal nodes of a patch we need to include
+            # one past the upper cell.
+            # this said we do not want to include that last primal nodes
+            # all the time because that would be a duplicate with the lower
+            # node of the next patch. We only want to add it for the LAST
+            # (because sorted) patch. We also do not want to do it on levels
+            # other than L0 because the last primal node of the last patch
+            # of L_i is the first primal node of a L_{i-1} node, so including it
+            # would also mean adding a duplicate.
+            last = 1 if ilvl==0 and ip == len(sorted_patches)-1 else 0
+            cells = np.arange(box.lower[0], box.upper[0]+1 + last)
+
+            # finest level has no next finer so we take all cells
+            if ilvl == hierarchy.finest_level(time):
+                if finalCells[ilvl] is None:
+                    finalCells[ilvl] = cells
+                else:
+                    finalCells[ilvl] = np.concatenate((finalCells[ilvl],cells))
+
+            else:
+                # on other levels
+                # we take only grids not overlaped by next finer
+                coarsenedNextFinerBoxes = [boxm.coarsen(b, refinement_ratio) for b in lvlPatchBoxes[ilvl+1]]
+                for coarseBox in coarsenedNextFinerBoxes:
+                    ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0]+1)
+                    inter,icells, iccells = np.intersect1d(cells, ccells, return_indices=True)
+                    cells = np.delete(cells, icells)
+                if len(cells):
+                    if finalCells[ilvl] is None:
+                        finalCells[ilvl] = cells
                     else:
-                        selected = tmp
-                    if cpt == 0:
-                        final = selected
-                    else:
-                        final.add(selected)
+                        finalCells[ilvl] = np.unique(np.concatenate((finalCells[ilvl],cells)))
 
-                    cpt += 1
+    # now we have all cells for each level we
+    # just need to compute the primal coordinates
+    # and concatenate in a single array
+    for ilvl in range(hierarchy.finest_level()+1):
+        if ilvl == 0:
+            x = finalCells[ilvl]*hierarchy.level(ilvl).patches[0].layout.dl[0]
+        else:
+            xx = finalCells[ilvl]*hierarchy.level(ilvl).patches[0].layout.dl[0]
+            x = np.concatenate((x, xx))
 
-        axis = kwargs.get("axis",("Vx","Vy"))
-
-        vaxis = {"Vx":0, "Vy":1, "Vz":2}
-        if axis[0] in vaxis:
-            x = final.v[:,vaxis[axis[0]]]
-        elif axis[0] == "x":
-            x = final.x
-        if axis[1] in vaxis:
-            y = final.v[:,vaxis[axis[1]]]
-
-        bins = kwargs.get("bins", (50,50))
-        h, xh, yh  = np.histogram2d(x, y,
-                  bins=kwargs.get("bins", bins),
-                  weights=final.weights)
-
-        xc = 0.5*(xh[1:] + xh[:-1])
-        yc = 0.5*(yh[1:] + yh[:-1])
-        sig = kwargs.get("sigma", 2)
-        ax.pcolormesh(xc, yc, gf(h.T, sigma=(sig,sig)), cmap="jet")
-
-        if kwargs.get("kde",False) is True:
-            sns.kdeplot(x, y, ax=ax, color="w")
-
-
-        ax.set_title(kwargs.get("title",""))
-        ax.set_xlabel(kwargs.get("xlabel", axis[0]))
-        ax.set_ylabel(kwargs.get("ylabel", axis[1]))
-        if "xlim" in kwargs:
-            ax.set_xlim(kwargs["xlim"])
-        if "ylim" in kwargs:
-            ax.set_ylim(kwargs["ylim"])
-        ax.legend()
-
-        if "bulk" in kwargs:
-            if kwargs["bulk"] is True:
-                if axis[0] in vaxis:
-                    ax.axvline(final.v[:,vaxis[axis[0]]].mean(), color="w",ls="--")
-                if axis[1] in vaxis:
-                    ax.axhline(final.v[:,vaxis[axis[1]]].mean(), color="w",ls="--")
-
-
-        if "filename" in kwargs:
-            fig.savefig(kwargs["filename"])
-
-
-
-
-
+    return np.sort(x)
 
 
 
@@ -597,7 +697,7 @@ def compute_hier_from(h, compute):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, h.domain_box, 2)
+    return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio)
 
 
 
@@ -617,13 +717,17 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
         v = np.asarray(h5_patch_grp["v"])
         s = v.size
         v = v[:].reshape(int(s / 3), 3)
+        nbrParts = v.shape[0]
+        dl = np.zeros((nbrParts, layout.ndim))
+        for i in range(layout.ndim):
+            dl[:,i] = layout.dl[i]
 
         particles = Particles(icells=h5_patch_grp["iCell"],
                               deltas=h5_patch_grp["delta"],
                               v=v,
                               weights=h5_patch_grp["weight"],
                               charges=h5_patch_grp["charge"],
-                              dl=np_array_ify(layout.dl))
+                              dl=dl)
 
         pdname = particle_dataset_name(basename)
         if pdname in patch_datas:
@@ -694,7 +798,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             h5_patch_lvl_grp = h5_time_grp[plvl_key]
             ilvl = int(plvl_key[2:])
-            lvl_cell_width = root_cell_width / 2 ** ilvl
+            lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
             patches = {}
 
             for pkey in h5_patch_lvl_grp.keys():
@@ -713,7 +817,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
                     patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-        diag_hier = PatchHierarchy(patch_levels, domain_box, 2, t, data_file)
+        diag_hier = PatchHierarchy(patch_levels, domain_box, refinement_ratio, t, data_file)
 
         return diag_hier
 
@@ -736,7 +840,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             for plvl_key in h5_time_grp.keys():
                 ilvl = int(plvl_key[2:])
-                lvl_cell_width = root_cell_width / 2 ** ilvl
+                lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
@@ -768,7 +872,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         for plvl_key in h5_time_grp.keys():
             ilvl = int(plvl_key[2:])
 
-            lvl_cell_width = root_cell_width / 2 ** ilvl
+            lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
             lvl_patches = []
 
             for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
@@ -840,7 +944,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
 
     for ilvl in range(nbr_levels):
 
-        lvl_cell_width = root_cell_width / 2 ** ilvl
+        lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
 
         patches = {ilvl : [] for ilvl in range(nbr_levels)}
         getters = quantidic(ilvl, dw)

@@ -58,6 +58,7 @@ def np_array_ify(arg):
     return arg
 
 
+refinement_ratio = 2
 
 
 def not_in_keywords_list(kwd_list,**kwargs):
