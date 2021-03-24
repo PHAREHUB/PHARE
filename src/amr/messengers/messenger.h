@@ -205,6 +205,10 @@ namespace amr
 
         virtual void synchronize(SAMRAI::hier::PatchLevel& level) = 0;
 
+        virtual void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                     double const time)
+            = 0;
+
 
         /**
          * @brief fineModelName returns the name of the fine model involved in the messenger

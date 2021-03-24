@@ -116,6 +116,10 @@ namespace amr
 
         virtual void synchronize(SAMRAI::hier::PatchLevel& level) = 0;
 
+        virtual void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+                                     double const time)
+            = 0;
+
 
         std::string name() const { return stratname_; }
 

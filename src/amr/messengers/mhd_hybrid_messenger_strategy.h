@@ -148,6 +148,11 @@ namespace amr
             // call coarsning schedules...
         }
 
+        void postSynchronize(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+                             double const /*time*/) override
+        {
+        }
+
 
 
 
