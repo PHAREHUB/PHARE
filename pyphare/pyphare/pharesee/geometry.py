@@ -283,7 +283,7 @@ def get_periodic_list(patches, domain_box, n_ghosts):
 
 
 
-def ghost_area_boxes(hierarchy, quantities):
+def ghost_area_boxes(hierarchy, quantities, levels=[], time=0):
     """
     this function returns boxes representing ghost cell boxes for all levels
     a ghost cell box is a box containing cells of contiguous AMR index not
@@ -297,9 +297,14 @@ def ghost_area_boxes(hierarchy, quantities):
     return : {level_number : [{"pdata":patch_data1, "boxes":ghost_boxes},
                               {"pdata":patch_data2, "boxes":ghost_boxes}, ...]}
     """
+    levels = listify(levels)
+    if len(levels) == 0:
+        levels = list(hierarchy.levels(time).keys())
+
     gaboxes = {}
 
-    for ilvl, lvl in hierarchy.levels().items():
+    for ilvl in levels:
+        lvl = hierarchy.level(ilvl, time)
         for patch in lvl.patches:
 
             for pd_key, pd in patch.patch_datas.items():
@@ -314,17 +319,17 @@ def ghost_area_boxes(hierarchy, quantities):
                 box = patch.box
 
                 if ilvl not in gaboxes:
-                    gaboxes[ilvl] = []
+                    gaboxes[ilvl] = {}
 
                 if pd_key not in gaboxes[ilvl]:
-                    gaboxes[ilvl] = {pd_key:[]}
+                    gaboxes[ilvl][pd_key] = []
 
                 gaboxes[ilvl][pd_key] += [{"pdata": patch_data, "boxes": boxm.remove(gbox, box)}]
 
     return gaboxes
 
 
-def level_ghost_boxes(hierarchy, quantities):
+def level_ghost_boxes(hierarchy, quantities, input_levels=[], time=0):
     """
     this function returns boxes representing level ghost cell boxes for all levels
     A level ghost cell box is a ghost cell box that does not overlap any cell contained
@@ -340,10 +345,16 @@ def level_ghost_boxes(hierarchy, quantities):
                               {"pdata":patch_data2, "boxes":lvl_ghost_boxes}, ...]}
     """
     quantities = listify(quantities)
-    gaboxes = ghost_area_boxes(hierarchy, quantities)
+
+    levels = listify(input_levels)
+    if len(levels) == 0:
+        levels = list(hierarchy.levels(time).keys())
+
+    gaboxes = ghost_area_boxes(hierarchy, quantities, levels, time)
     lvl_gaboxes = {}
 
-    for ilvl, lvl in hierarchy.levels().items():
+    for ilvl in levels:
+        lvl = hierarchy.level(ilvl, time)
 
         if is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
             continue
@@ -385,9 +396,11 @@ def level_ghost_boxes(hierarchy, quantities):
                         lvl_gaboxes[ilvl] = {}
 
                     if pd_key not in lvl_gaboxes[ilvl]:
-                        lvl_gaboxes[ilvl] = {pd_key:[]}
+                        lvl_gaboxes[ilvl][pd_key] = []
 
                     if len(remaining):
                         lvl_gaboxes[ilvl][pd_key] += [{"pdata": patch_data, "boxes": remaining}]
 
+    if not isinstance(input_levels, list):
+        return lvl_gaboxes[input_levels]
     return lvl_gaboxes

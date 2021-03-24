@@ -22,19 +22,14 @@ def refine(field, **kwargs):
     fine_layout = GridLayout(fine_box, field.origin, field.layout.dl/refinement_ratio, interp_order=field.layout.interp_order)
 
     assert field.box.ndim == 1
-    fine_data   = np.zeros(fine_box.shape + primal_directions + (field.ghosts_nbr[0] * 2))
 
-    for i in range(field.box.shape[0] + int(primal_directions[0]) - 1):
-        ix = i + field.ghosts_nbr[0]
-        if primal_directions[0]:
-            fine_ix                = ix * refinement_ratio
-            fine_data[fine_ix + 0] = data[ix]
-            fine_data[fine_ix + 1] = (data[ix] * .5) + (data[ix + 1] * .5)
-        else:
-            fine_ix                = ix * refinement_ratio
-            fine_data[fine_ix + 0] += data[ix - 1] * .25
-            fine_data[fine_ix + 0] += data[ix + 0] * .75
-            fine_data[fine_ix + 1] += data[ix + 0] * .75
-            fine_data[fine_ix + 1] += data[ix + 1] * .25
+    fine_data = np.zeros(fine_box.shape + primal_directions + (field.ghosts_nbr[0] * 2))
+
+    if primal_directions[0]:
+        fine_data[5:-5:2] = data[5:-5] # coarse primal on top of fine
+        fine_data[6:-4:2] = 0.5*data[5:-5] + 0.5*data[6:-4]
+    else:
+        fine_data[5:-6:2] = 0.25*data[4:-6] + 0.75*data[5:-5]
+        fine_data[6:-4:2] = 0.25*data[6:-4] + 0.75*data[5:-5]
 
     return FieldData(fine_layout, field.field_name, data=fine_data)

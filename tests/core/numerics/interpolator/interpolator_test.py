@@ -49,8 +49,7 @@ def interpolate_datasets(beforeTime, afterTime, interp_time, beforeData, afterDa
     interpData = afterData.copy()
     assert interpData.ndim == 1 # update for > 1d interpolation values
     if interpData.ndim == 1:
-        for ix in range(interpData.shape[0]):
-            interpData[ix] = (1. - alpha) * beforeData[ix] + alpha * afterData[ix]
+        interpData = (1. - alpha) * beforeData + alpha * afterData
     return interpData
 
 

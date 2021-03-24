@@ -71,13 +71,12 @@ class FieldData(PatchData):
         gbox.upper += self.primal_directions()
 
         overlap = box * gbox
-        assert overlap is not None # or return empty array?
-
-        lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
-        upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
-
-        assert box.ndim == 1 # this following line is only 1D
-        return self.dataset[:][lower[0]:upper[0] + 1]
+        if overlap is not None:
+            lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
+            upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
+            assert box.ndim == 1 # this following line is only 1D
+            return self.dataset[lower[0]:upper[0] + 1]
+        return []
 
 
     def __getitem__(self, box):
