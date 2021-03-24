@@ -6,6 +6,7 @@ from mpl_toolkits.axes_grid1.inset_locator import (
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm, Normalize
 
 def dist_plot(particles, **kwargs):
     """
@@ -29,7 +30,6 @@ def dist_plot(particles, **kwargs):
     return value : fig,ax
     """
     from pyphare.pharesee.particles import Particles, aggregate
-    from matplotlib.colors import Normalize
 
     if isinstance(particles, list):
         particles = aggregate(particles)
@@ -61,8 +61,21 @@ def dist_plot(particles, **kwargs):
               weights=particles.weights)
 
     sig = kwargs.get("sigma", (0,0))
-    hm = kwargs.get("norm", h.max())
-    im = ax.pcolormesh(xh, yh, gf(h.T, sigma=sig), cmap="jet", norm=Normalize(0,hm))
+    cmax = kwargs.get("color_max", h.max())
+    cmin = kwargs.get("color_min", h.min())
+    cmin = max(cmin, 1e-4)
+
+    color_scale = kwargs.get("color_scale", "log")
+    if color_scale == "log":
+        norm = LogNorm(vmin=cmin, vmax=cmax)
+    elif color_scale == "linear":
+        norm = Normalize(cmin, cmax)
+
+
+    im = ax.pcolormesh(xh, yh, gf(h.T, sigma=sig),
+                       cmap = "jet",
+                       norm = norm)
+
     fig.colorbar(im, ax=ax)
 
     if kwargs.get("kde",False) is True:

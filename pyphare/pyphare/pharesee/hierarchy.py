@@ -178,8 +178,8 @@ class PatchLevel:
 
 
 
-def are_adjacent(lower_x, upper_x, atol=1e-6):
-    return np.abs(upper_x[0]-lower_x[-1]) < atol
+def are_adjacent(lower, upper, atol=1e-6):
+    return np.abs(upper[0]-lower[-1]) < atol
 
 
 def overlap_mask(x, level, qty):
@@ -221,14 +221,11 @@ def finest_field(hierarchy, qty, time=None):
        associated to the given hierarchy
        the quantity "qty" must be a field
     """
-    if time is None:
-        time = hierarchy.times()[0] # to replace with default
-
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
         sorted_patches = sorted(lvl[ilvl].patches,
-                                key= lambda p:p.layout.box.lower[0])
+                                key= lambda p:p.box.lower[0])
 
         for ip, patch in enumerate(sorted_patches):
 
@@ -545,13 +542,14 @@ class PatchHierarchy:
         time = kwargs.get("time", self.times()[0])
         axis = kwargs.get("axis", ("Vx", "Vy"))
         all_pops = list(self.level(0,time).patches[0].patch_datas.keys())
+
+        vmin = kwargs.get("vmin", -2)
+        vmax = kwargs.get("vmax", 2)
+        dv = kwargs.get("dv", 0.05)
+        vbins = vmin + dv*np.arange(int((vmax-vmin)/dv))
+
         if finest:
             final = finest_part_data(self)
-            vmin = kwargs.get("vmin", -2)
-            vmax = kwargs.get("vmax", 2)
-            dv = kwargs.get("dv", 0.05)
-            vbins = vmin + dv*np.arange(int((vmax-vmin)/dv))
-
             if axis[0] == "x":
                 xbins = amr_grid(self, time)
                 bins = (xbins, vbins)
