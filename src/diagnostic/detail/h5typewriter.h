@@ -45,7 +45,11 @@ public:
     void finalize(DiagnosticProperties& diagnostic)
     {
         ++dumpIdx_;
-        if (diagnostic.flushEvery > 0 and diagnostic.flushEvery % dumpIdx_ == 0)
+
+        assert(diagnostic.params.contains("flush_every"));
+
+        std::size_t flushEvery = diagnostic.param<std::size_t>("flush_every");
+        if (flushEvery != Writer::flush_never and flushEvery % dumpIdx_ == 0)
         {
             fileData_.erase(diagnostic.quantity);
             assert(fileData_.count(diagnostic.quantity) == 0);

@@ -107,7 +107,7 @@ class DiagnosticsTest(unittest.TestCase):
                 quantity=quantity,
                 write_timestamps=timestamps,
                 compute_timestamps=timestamps,
-                flush_every=0,
+                flush_every=ElectromagDiagnostics.h5_flush_never,
             )
 
         Simulator(simulation).run()

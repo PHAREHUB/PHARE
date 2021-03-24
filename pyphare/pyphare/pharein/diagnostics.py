@@ -64,6 +64,8 @@ def validate_timestamps(clazz, **kwargs):
 
 class Diagnostics(object):
 
+    h5_flush_never = 0
+
     @diagnostics_checker
     def __init__(self,name, **kwargs):
 
@@ -78,7 +80,7 @@ class Diagnostics(object):
         self.compute_timestamps = kwargs['compute_timestamps']
 
         self._setSubTypeAttributes(**kwargs)
-        self.flush_every = kwargs.get("flush_every", 1)
+        self.flush_every = kwargs.get("flush_every", 1) # flushes every dump, safe, but costly
 
         if self.flush_every < 0:
             raise RuntimeError(f"{self.__class__.__name__,}.flush_every cannot be negative")

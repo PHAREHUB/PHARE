@@ -211,7 +211,7 @@ struct Hi5Diagnostic
         dict["type"]        = type;
         dict["quantity"]    = quantity;
         dict["time_step"]   = double{1};
-        dict["flush_every"] = std::size_t{0};
+        dict["flush_every"] = Writer_t::flush_never;
 
         dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
         dict["compute_timestamps"] = std::vector<double>{0, 1, 2};
