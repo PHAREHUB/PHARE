@@ -1,3 +1,5 @@
+# default "job.py" for benchmark test suite
+
 def _density(*xyz):
     return 1.0
 

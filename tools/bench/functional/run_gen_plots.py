@@ -20,9 +20,9 @@ from pathlib import Path
 
 assert all([os.path.exists(d) for d in ["tests", "tools", "CMakeLists.txt"]])
 root = Path(os.getcwd())  # expects project root!
-sys.path.insert(0, os.path.join(root, "pyphare"))
-sys.path.insert(0, os.path.join(root, "build"))
 sys.path.insert(0, ".")
+sys.path.insert(0, os.path.join(root, "build"))
+sys.path.insert(0, os.path.join(root, "pyphare"))
 
 # sys.path.insert(0, os.path.join(root, "pyphare"))
 this_dir = Path(os.path.dirname(os.path.abspath(__file__)))
