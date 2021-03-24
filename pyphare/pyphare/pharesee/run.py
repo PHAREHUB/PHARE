@@ -1,5 +1,5 @@
 import os
-from .hierarchy import hierarchy_from
+from .hierarchy import hierarchy_from, finest_field
 import numpy as np
 from pyphare.pharesee.hierarchy import compute_hier_from
 
@@ -43,27 +43,43 @@ class Run:
         t = "{:.10f}".format(time)
         return hierarchy_from(h5_filename=os.path.join(self.path, filename), time=t, hier=hier)
 
-    def GetB(self, time):
-        return self._get_hierarchy(time, "EM_B.h5")
+    def _get(self, hierarchy, time, merged):
+        if merged:
+            merged_qties = {}
+            for qty in hierarchy.quantities():
+                merged_qties[qty] = finest_field(hierarchy, qty, time=time)
+            return merged_qties
+        else:
+            return hierarchy
 
-    def GetE(self, time):
-        return self._get_hierarchy(time, "EM_E.h5")
+    def GetB(self, time, merged=False):
+        hier = self._get_hierarchy(time, "EM_B.h5")
+        return self._get(hier, time, merged)
 
-    def GetNi(self, time):
-        return self._get_hierarchy(time, "ions_density.h5")
+    def GetE(self, time, merged=False):
+        hier = self._get_hierarchy(time, "EM_E.h5")
+        return self._get(hier, time, merged)
 
-    def GetN(self, time, pop_name):
-        return self._get_hierarchy(time, "ions_{}_density.h5".format(pop_name))
+    def GetNi(self, time, merged=False):
+        hier = self._get_hierarchy(time, "ions_density.h5")
+        return self._get(hier, time, merged)
 
-    def GetVi(self, time):
-        return self._get_hierarchy(time, "ions_bulkVelocity.h5")
+    def GetN(self, time, pop_name, merged=False):
+        hier =  self._get_hierarchy(time, "ions_{}_density.h5".format(pop_name))
+        return self._get(hier, time, merged)
 
-    def GetFlux(self, time, pop_name):
-        return self._get_hierarchy(time, "ions_pop_{}_flux.h5".format(pop_name))
+    def GetVi(self, time, merged=False):
+        hier =  self._get_hierarchy(time, "ions_bulkVelocity.h5")
+        return self._get(hier, time, merged)
 
-    def GetJ(self, time):
+    def GetFlux(self, time, pop_name, merged=False):
+        hier = self._get_hierarchy(time, "ions_pop_{}_flux.h5".format(pop_name))
+        return self._get(hier, time, merged)
+
+    def GetJ(self, time, merged=False):
         B = self.GetB(time)
-        return compute_hier_from(B, _compute_current)
+        J = compute_hier_from(B, _compute_current)
+        return self._get(J, time, merged)
 
     def GetParticles(self, time, pop_name, hier=None):
         def filename(name):

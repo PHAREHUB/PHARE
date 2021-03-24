@@ -409,6 +409,26 @@ class PatchHierarchy:
     def levelNbrs(self, time):
         return list(self.levels(time).keys())
 
+    def is_homogeneous(self):
+        """
+        return True if all patches of all levels at all times
+        have the same patch data quantities
+        """
+        qties = self._quantities()
+        it_is = True
+        for time, levels in self.time_hier.items():
+            for ilvl, lvl in levels.items():
+                for patch in lvl.patches:
+                    it_is &= qties == list(patch.patch_datas.keys())
+        return it_is
+
+    def _quantities(self):
+        return list(self.level(0).patches[0].patch_datas.keys())
+
+    def quantities(self):
+        if not self.is_homogeneous():
+            raise RuntimeError("Error - hierarchy is not homogeneous")
+        return self._quantities()
 
     def refined_domain_box(self, level_number):
         """
