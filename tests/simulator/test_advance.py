@@ -163,12 +163,12 @@ class AdvanceTest(unittest.TestCase):
                                       time_step_nbr=time_step_nbr, smallest_patch_size=5,
                                       largest_patch_size=30)
 
-        lvlSteps = global_vars.sim.level_time_steps
-        print("LEVELSTEPS === ", lvlSteps)
-        assert len(lvlSteps) > 1  # this test makes no sense with only 1 level
+        lvl_steps = global_vars.sim.level_time_steps
+        print("LEVELSTEPS === ", lvl_steps)
+        assert len(lvl_steps) > 1  # this test makes no sense with only 1 level
 
-        finestTimeStep = lvlSteps[-1]
-        secondFinestTimeStep = lvlSteps[-2]
+        finestTimeStep = lvl_steps[-1]
+        secondFinestTimeStep = lvl_steps[-2]
 
         finest_level_step_nbr = global_vars.sim.level_step_nbr[-1]
         uniqTimes = set([0])
@@ -242,14 +242,14 @@ class AdvanceTest(unittest.TestCase):
 
 
 
-    def _test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, ndim, interp_order, refinement_boxes, refinement_ratio=2):
+    def _test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, ndim, interp_order, refinement_boxes):
         """
           This test runs two virtually identical simulations for one step.
             L0_datahier has no refined levels
             L0L1_datahier has one refined level
 
-          This is done to compare what would be the uncoarsened L0 values in L0L1_datahier
-            if it had no refined level to the level field ghost of L1 of L0L1_datahier
+          This is done to compare L0 values that haven't received the coarsened values of L1 because there is no L1,
+            to the level field ghost of L1 of L0L1_datahier
 
           The simulations are no longer comparable after the first advance, so this test cannot work beyond that.
         """
@@ -257,26 +257,21 @@ class AdvanceTest(unittest.TestCase):
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(ndim, interp_order))
 
         from tests.amr.data.field.refine.test_refine_field import refine
-        from tests.core.numerics.interpolator.interpolator_test import interpolate_datasets
+        from tests.core.numerics.interpolator.interpolator_test import time_interpolate
         from pyphare.pharein import global_vars
-
-        checks = 0
-        time_step_nbr = 1 # after first advance, simulations are no longer comparable
-        quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
         import random
         rando = random.randint(0, 1e10)
 
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(interp_order, boxes, "eb", cells=30,
-                time_step_nbr=time_step_nbr, smallest_patch_size=5, largest_patch_size=30,
+                time_step_nbr=1, smallest_patch_size=5, largest_patch_size=30,
                 diag_outputs=diag_dir, extra_diag_options={"fine_dump_lvl_max": 10}, time_step=0.001,
                 model_init={"seed": rando}
             )
 
         def assert_time_in_hier(*ts):
             for t in ts:
-                print(f"checking time {t} exists")
                 self.assertIn(L0L1_datahier.format_timestamp(t), L0L1_datahier.times())
 
         def _sort(patches):
@@ -287,59 +282,61 @@ class AdvanceTest(unittest.TestCase):
           f"phare_lvl_ghost_interpolation_L0L1_diags_{self.ddt_test_id()}", refinement_boxes
         )
 
-        lvlSteps = global_vars.sim.level_time_steps
-        assert len(lvlSteps) == 2  # this test is only configured for L0 -> L1 refinement comparisons
+        lvl_steps = global_vars.sim.level_time_steps
+        assert len(lvl_steps) == 2  # this test is only configured for L0 -> L1 refinement comparisons
 
+        coarse_ilvl = 0
+        fine_ilvl   = 1
         coarsest_time_before = 0 # init
-        coarsest_time_after = coarsest_time_before + lvlSteps[0]
+        coarsest_time_after = coarsest_time_before + lvl_steps[coarse_ilvl]
         assert_time_in_hier(coarsest_time_before, coarsest_time_after)
 
-        coarseBeforePatches = _sort(L0_datahier.level(0, coarsest_time_before).patches)
-        coarseAfterPatches = _sort(L0_datahier.level(0, coarsest_time_after).patches)
+        coarseBeforePatches = _sort(L0_datahier.level(coarse_ilvl, coarsest_time_before).patches)
+        coarseAfterPatches = _sort(L0_datahier.level(coarse_ilvl, coarsest_time_after).patches)
         assert len(coarseBeforePatches) == len(coarseAfterPatches)
 
-        finer_subcycle_times = []
-        for finer_subcycle in range(0, global_vars.sim.level_step_nbr[1] + 1):
-            finer_subcycle_time   = coarsest_time_before + (lvlSteps[1] * finer_subcycle)
-            assert_time_in_hier(finer_subcycle_time)
-            finer_subcycle_times += [finer_subcycle_time]
+        fine_subcycle_times = []
+        for fine_subcycle in range(global_vars.sim.level_step_nbr[fine_ilvl] + 1):
+            fine_subcycle_time   = coarsest_time_before + (lvl_steps[fine_ilvl] * fine_subcycle)
+            assert_time_in_hier(fine_subcycle_time)
+            fine_subcycle_times += [fine_subcycle_time]
 
+        quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
         interpolated_fields = { qty: {} for qty in quantities }
 
-        for qty in quantities:
-            for finer_subcycle_time in finer_subcycle_times:
-                interpolated_fields[qty][finer_subcycle_time] = {}
+        for fine_subcycle_time in fine_subcycle_times:
+            for qty in quantities:
+                interpolated_fields[qty][fine_subcycle_time] = {}
                 for coarsePatch_idx in range(len(coarseBeforePatches)):
                     coarseBeforePatch = coarseBeforePatches[coarsePatch_idx]
                     coarseAfterPatch  = coarseAfterPatches[coarsePatch_idx]
                     assert coarseBeforePatch.box == coarseAfterPatch.box
                     coarseBefore_pd = coarseBeforePatch.patch_datas[qty]
                     coarseAfter_pd  = coarseAfterPatch.patch_datas[qty]
-                    interpolated_fields[qty][finer_subcycle_time][coarsePatch_idx] = refine(
+                    interpolated_fields[qty][fine_subcycle_time][coarsePatch_idx] = refine(
                           coarseBefore_pd,
-                          data=interpolate_datasets(
-                            coarsest_time_before, coarsest_time_after, finer_subcycle_time,
+                          data=time_interpolate(
+                            coarsest_time_before, coarsest_time_after, fine_subcycle_time,
                             coarseBefore_pd.dataset[:], coarseAfter_pd.dataset[:])
                         )
 
-        for qty in quantities:
-            for finer_subcycle_time in finer_subcycle_times:
-                finer_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, 1, finer_subcycle_time)
-                for finer_level_ghost_box_data in finer_level_qty_ghost_boxes[qty]:
-                    finer_subcycle_pd = finer_level_ghost_box_data["pdata"]
-                    ghosts_nbr = finer_subcycle_pd.ghosts_nbr
-                    finer_level_ghost_boxes = finer_level_ghost_box_data["boxes"]
-                    for finer_level_ghost_box in finer_level_ghost_boxes:
+        checks = 0
+        for fine_subcycle_time in fine_subcycle_times:
+            fine_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time)
+            for qty in quantities:
+                for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
+                    fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
+                    for fine_level_ghost_box in fine_level_ghost_box_data["boxes"]:
                         for coarsePatch_idx in range(len(coarseBeforePatches)):
-                            refinedInterpolatedField = interpolated_fields[qty][finer_subcycle_time][coarsePatch_idx]
-                            lvlOverlap = refinedInterpolatedField.box * finer_level_ghost_box
+                            refinedInterpolatedField = interpolated_fields[qty][fine_subcycle_time][coarsePatch_idx]
+                            lvlOverlap = refinedInterpolatedField.box * fine_level_ghost_box
                             if lvlOverlap is not None:
-                                finer_ghostbox_data = finer_subcycle_pd[finer_level_ghost_box]
-                                refinedInterpGhostBox_data = refinedInterpolatedField[finer_level_ghost_box]
-                                np.testing.assert_allclose(finer_ghostbox_data, refinedInterpGhostBox_data, atol=1e-7)
+                                fine_ghostbox_data = fine_subcycle_pd[fine_level_ghost_box]
+                                refinedInterpGhostBox_data = refinedInterpolatedField[fine_level_ghost_box]
+                                np.testing.assert_allclose(fine_ghostbox_data, refinedInterpGhostBox_data, atol=1e-7)
                                 checks += 1
 
-        self.assertGreater(checks, len(refinement_boxes["L0"]))
+        self.assertGreater(checks, len(refinement_boxes["L0"]) * len(quantities))
 
 
 
@@ -351,7 +348,7 @@ class AdvanceTest(unittest.TestCase):
     def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, refinement_boxes):
         dim = refinement_boxes["L0"][0].ndim
         for interp in [1, 2, 3]:
-            self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(dim, interp_order=interp, refinement_boxes=refinement_boxes)
+            self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(dim, interp, refinement_boxes)
 
 
     @data(

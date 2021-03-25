@@ -76,7 +76,7 @@ class FieldData(PatchData):
             upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
             assert box.ndim == 1 # this following line is only 1D
             return self.dataset[lower[0]:upper[0] + 1]
-        return []
+        return np.array([])
 
 
     def __getitem__(self, box):

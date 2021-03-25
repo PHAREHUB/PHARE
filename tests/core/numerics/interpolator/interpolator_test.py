@@ -43,14 +43,12 @@ def main():
 
 
 
-def interpolate_datasets(beforeTime, afterTime, interp_time, beforeData, afterData):
-    alpha = (interp_time - beforeTime) / (afterTime - beforeTime)
-    assert beforeData.shape == afterData.shape
-    interpData = afterData.copy()
-    assert interpData.ndim == 1 # update for > 1d interpolation values
-    if interpData.ndim == 1:
-        interpData = (1. - alpha) * beforeData + alpha * afterData
-    return interpData
+def time_interpolate(before_time, after_time, interp_time, before_data, after_data):
+    assert before_time < after_time
+    assert before_time <= interp_time <= after_time
+    assert before_data.shape == after_data.shape
+    alpha = (interp_time - before_time) / (after_time - before_time)
+    return (1. - alpha) * before_data + alpha * after_data
 
 
 if __name__ == "__main__":

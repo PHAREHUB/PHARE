@@ -5,7 +5,7 @@ from ..core import box as boxm
 from pyphare.core.box import Box
 from .hierarchy import FieldData, is_root_lvl
 
-from pyphare.core.phare_utilities import listify
+from pyphare.core.phare_utilities import listify, is_scalar
 
 def toFieldBox(box, patch_data):
     """
@@ -135,7 +135,7 @@ def compute_overlaps(patches, domain_box):
 
             # for two patches, compare patch_datas of the same quantity
             for ref_pdname, ref_pd in refPatch.patch_datas.items():
-                cmp_pd = cmpPatch.patch_datas[ref_pdname]                
+                cmp_pd = cmpPatch.patch_datas[ref_pdname]
 
                 gb1 = ref_pd.ghost_box
                 gb2 = cmp_pd.ghost_box
@@ -329,7 +329,7 @@ def ghost_area_boxes(hierarchy, quantities, levels=[], time=0):
     return gaboxes
 
 
-def level_ghost_boxes(hierarchy, quantities, input_levels=[], time=0):
+def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
     """
     this function returns boxes representing level ghost cell boxes for all levels
     A level ghost cell box is a ghost cell box that does not overlap any cell contained
@@ -343,17 +343,24 @@ def level_ghost_boxes(hierarchy, quantities, input_levels=[], time=0):
         - boxes : level ghost cell boxes
     return : {level_number : [{"pdata":patch_data1, "boxes":lvl_ghost_boxes},
                               {"pdata":patch_data2, "boxes":lvl_ghost_boxes}, ...]}
+
+    optional parameters
+    -----
+      levelNbrs : limit working set of hierarchy levels to those requested, if scalar, returns just that level
+      time      : the simulation time to access the appropriate data for the requested time
+    -----
     """
     quantities = listify(quantities)
 
-    levels = listify(input_levels)
-    if len(levels) == 0:
-        levels = list(hierarchy.levels(time).keys())
+    levelNbrs_is_scalar = is_scalar(levelNbrs)
+    levelNbrs = listify(levelNbrs)
+    if len(levelNbrs) == 0:
+        levelNbrs = list(hierarchy.levels(time).keys())
 
-    gaboxes = ghost_area_boxes(hierarchy, quantities, levels, time)
+    gaboxes = ghost_area_boxes(hierarchy, quantities, levelNbrs, time)
     lvl_gaboxes = {}
 
-    for ilvl in levels:
+    for ilvl in levelNbrs:
         lvl = hierarchy.level(ilvl, time)
 
         if is_root_lvl(lvl):  # level ghost do not make sense for periodic root level
@@ -401,6 +408,6 @@ def level_ghost_boxes(hierarchy, quantities, input_levels=[], time=0):
                     if len(remaining):
                         lvl_gaboxes[ilvl][pd_key] += [{"pdata": patch_data, "boxes": remaining}]
 
-    if not isinstance(input_levels, list):
-        return lvl_gaboxes[input_levels]
+    if levelNbrs_is_scalar:
+        return lvl_gaboxes[levelNbrs[0]]
     return lvl_gaboxes
