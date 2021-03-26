@@ -43,3 +43,40 @@ def refine(field, **kwargs):
         fine_data[ghostX + 1:-(ghostX - 1):cadence] = 0.25*data[ghostX + 1:-(ghostX - 1)] + 0.75*data[ghostX:-ghostX]
 
     return FieldData(fine_layout, field.field_name, data=fine_data)
+
+
+def refine_time_interpolate(datahier, quantities, coarse_ilvl, coarsest_time_before, coarsest_time_after, fine_subcycle_times):
+    """
+      returns {qty : { subcycle_time: [refined_time_interpolated_fields]}}
+    """
+
+    from tests.core.numerics.interpolator.interpolator_test import time_interpolate
+
+    def _sort(patches):
+        return sorted(patches, key=lambda p: p.origin.all())
+
+    interpolated_fields = { qty: {} for qty in quantities }
+
+    coarse_before_patches = _sort(datahier.level(coarse_ilvl, coarsest_time_before).patches)
+    coarse_after_patches = _sort(datahier.level(coarse_ilvl, coarsest_time_after).patches)
+    assert len(coarse_before_patches) == len(coarse_after_patches)
+
+    for qty in quantities:
+        for fine_subcycle_time in fine_subcycle_times:
+            interpolated_fields[qty][fine_subcycle_time] = []
+            for coarsePatch_idx in range(len(coarse_before_patches)):
+                coarse_before_patch = coarse_before_patches[coarsePatch_idx]
+                coarse_after_patch  = coarse_after_patches[coarsePatch_idx]
+                assert coarse_before_patch.box == coarse_after_patch.box
+                coarseBefore_pd = coarse_before_patch.patch_datas[qty]
+                coarseAfter_pd  = coarse_after_patch.patch_datas[qty]
+                interpolated_fields[qty][fine_subcycle_time] += [
+                  refine(
+                    coarseBefore_pd,
+                    data=time_interpolate(
+                      coarsest_time_before, coarsest_time_after, fine_subcycle_time,
+                      coarseBefore_pd.dataset[:], coarseAfter_pd.dataset[:])
+                )]
+
+    return interpolated_fields
+

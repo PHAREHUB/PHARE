@@ -283,7 +283,7 @@ def get_periodic_list(patches, domain_box, n_ghosts):
 
 
 
-def ghost_area_boxes(hierarchy, quantities, levels=[], time=0):
+def ghost_area_boxes(hierarchy, quantities, levelNbrs=[], time=0):
     """
     this function returns boxes representing ghost cell boxes for all levels
     a ghost cell box is a box containing cells of contiguous AMR index not
@@ -297,13 +297,13 @@ def ghost_area_boxes(hierarchy, quantities, levels=[], time=0):
     return : {level_number : [{"pdata":patch_data1, "boxes":ghost_boxes},
                               {"pdata":patch_data2, "boxes":ghost_boxes}, ...]}
     """
-    levels = listify(levels)
-    if len(levels) == 0:
-        levels = list(hierarchy.levels(time).keys())
+    levelNbrs = listify(levelNbrs)
+    if len(levelNbrs) == 0:
+        levelNbrs = list(hierarchy.levels(time).keys())
 
     gaboxes = {}
 
-    for ilvl in levels:
+    for ilvl in levelNbrs:
         lvl = hierarchy.level(ilvl, time)
         for patch in lvl.patches:
 
