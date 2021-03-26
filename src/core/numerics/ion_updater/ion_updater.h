@@ -13,7 +13,7 @@
 
 #include "initializer/data_provider.h"
 
-
+#include "core/logger.h"
 
 #include <memory>
 
@@ -75,6 +75,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
                                                                  GridLayout const& layout,
                                                                  double dt, UpdaterMode mode)
 {
+    PHARE_LOG_SCOPE("IonUpdater::updatePopulations");
+
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(layout.meshSize(), dt);
 
@@ -108,6 +110,8 @@ template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, Electromag const& em,
                                                                   GridLayout const& layout)
 {
+    PHARE_LOG_SCOPE("IonUpdater::updateMomentsOnly_");
+
     auto domainBox = layout.AMRBox();
 
     auto inDomainBox = [&domainBox](auto const& part) {
@@ -180,6 +184,8 @@ template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag const& em,
                                                           GridLayout const& layout)
 {
+    PHARE_LOG_SCOPE("IonUpdater::updateAll_");
+
     auto constexpr partGhostWidth = GridLayout::ghostWidthForParticles();
     auto domainBox                = layout.AMRBox();
     auto ghostBox{domainBox};

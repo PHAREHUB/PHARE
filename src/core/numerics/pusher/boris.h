@@ -8,6 +8,7 @@
 
 #include "core/numerics/pusher/pusher.h"
 #include "core/utilities/range/range.h"
+#include "core/logger.h"
 
 namespace PHARE
 {
@@ -72,6 +73,8 @@ namespace core
                               ParticleSelector const& particleIsNotLeaving,
                               GridLayout const& layout) override
         {
+            PHARE_LOG_SCOPE("Boris::move_no_bc");
+
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/2
             // get a pointer on the first particle of rangeOut that leaves the patch

@@ -439,6 +439,8 @@ namespace solver
                             double const currentTime, double const newTime, bool const firstStep,
                             bool const lastStep, bool const regridAdvance = false) override
         {
+            PHARE_LOG_SCOPE("Multiphys::advanceLevel");
+
             if (regridAdvance)
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
 
@@ -456,6 +458,7 @@ namespace solver
 
             if (firstStep)
             {
+                PHARE_LOG_SCOPE("Multiphys::advanceLevel.firstStep");
                 fromCoarser.firstStep(model, *level, hierarchy, currentTime,
                                       subcycleStartTimes_[iLevel - 1],
                                       subcycleEndTimes_[iLevel - 1]);
@@ -467,6 +470,7 @@ namespace solver
 
             if (lastStep)
             {
+                PHARE_LOG_SCOPE("Multiphys::advanceLevel.lastStep");
                 fromCoarser.lastStep(model, *level);
             }
 
