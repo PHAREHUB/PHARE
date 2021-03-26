@@ -55,6 +55,7 @@ default_cli_args = {
     "use_ninja": binary_exists_on_path("ninja"),
     "use_ccache": binary_exists_on_path("ccache"),
     "multithreaded": False,
+    "use_found_build_for_top": False,
 }
 
 
@@ -87,6 +88,10 @@ def parse_cli_args():
     )
     parser.add_argument(
         "--use_ccache", default=default_cli_args["use_ccache"], type=strtobool, help="default: used if found"
+    )
+    parser.add_argument(
+        "--use_found_build_for_top", default=default_cli_args["use_found_build_for_top"], type=strtobool,
+        help="If true, will not delete the build directory if exists for first set of tests"
     )
     parser.add_argument(
         "--multithreaded",
@@ -122,7 +127,7 @@ cmake_config_user = "-DdevMode=ON -DCMAKE_BUILD_TYPE=Release"
 # not to be changed!
 cmake_config_extra = cmake_config_user + " -Dbench=ON"
 
-
+current_git_hash = git.hashes(1)
 def git_branch_reset_at_exit():
     current_git_branch = git.current_branch()
 
@@ -284,7 +289,11 @@ def cmake_clean_config_build(cli_args):
 
 def build_test(test_cases, cli_args, git_hash):
     git.checkout(git_hash)
-    cmake_clean_config_build(cli_args)
+    should_build = not cli_args["use_found_build_for_top"] or (
+      current_git_hash == git_hash and not os.path.exists(str(build_dir))
+    )
+    if should_build:
+        cmake_clean_config_build(cli_args)
     run_tests(test_cases, cli_args, git_hash)
 
 
