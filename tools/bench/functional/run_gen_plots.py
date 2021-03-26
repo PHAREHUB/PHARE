@@ -6,6 +6,7 @@ new test cases are identified by the file name, minus ".py" i.e. "uniform"
 
 example execution might be
 ```
+export PYTHONPATH=$PWD/build:$PWD/pyphare
 python3 -u tools/bench/functional/run_gen_plots.py --samrai_dir=/mkn/r/llnl/samrai/master
 
 ```
@@ -18,11 +19,12 @@ import atexit
 from distutils.util import strtobool
 from pathlib import Path
 
+import matplotlib as mpl
+mpl.use('Agg') # without GUI
+
 assert all([os.path.exists(d) for d in ["tests", "tools", "CMakeLists.txt"]])
 root = Path(os.getcwd())  # expects project root!
 sys.path.insert(0, ".")
-sys.path.insert(0, os.path.join(root, "build"))
-sys.path.insert(0, os.path.join(root, "pyphare"))
 
 # sys.path.insert(0, os.path.join(root, "pyphare"))
 this_dir = Path(os.path.dirname(os.path.abspath(__file__)))
