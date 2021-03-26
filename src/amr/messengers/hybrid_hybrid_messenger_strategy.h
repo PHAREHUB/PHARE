@@ -270,6 +270,7 @@ namespace amr
          */
         void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillMagneticGhosts");
             magneticGhosts_.fill(B, levelNumber, fillTime);
         }
 
@@ -278,6 +279,7 @@ namespace amr
 
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillElectricGhosts");
             electricGhosts_.fill(E, levelNumber, fillTime);
         }
 
@@ -286,6 +288,7 @@ namespace amr
 
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillCurrentGhosts");
             currentGhosts_.fill(J, levelNumber, fillTime);
         }
 
@@ -299,6 +302,8 @@ namespace amr
         void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                    double const fillTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonGhostParticles");
+
             for (auto patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
@@ -324,6 +329,8 @@ namespace amr
         void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                  double const beforePushTime, double const afterPushTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonMomentGhosts");
+
             auto alpha = timeInterpCoef_(beforePushTime, afterPushTime, level.getLevelNumber());
             if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
             {
@@ -382,6 +389,8 @@ namespace amr
                        double const currentTime, double const prevCoarserTime,
                        double const newCoarserTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::firstStep");
+
             auto levelNumber = level.getLevelNumber();
             if (newCoarserTime < prevCoarserTime)
                 throw std::runtime_error(
@@ -391,7 +400,9 @@ namespace amr
             // root level has no levelghost particles
             if (levelNumber != 0)
             {
+                PHARE_LOG_START("HybridHybridMessengerStrategy::firstStep.fill");
                 levelGhostParticlesNew_.fill(levelNumber, currentTime);
+                PHARE_LOG_STOP("HybridHybridMessengerStrategy::firstStep.fill");
 
                 // during firstStep() coarser level and current level are at the same time
                 // so 'time' is also the beforePushCoarseTime_
@@ -413,6 +424,8 @@ namespace amr
         {
             if (level.getLevelNumber() > 0)
             {
+                PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::lastStep");
+
                 auto& hybridModel = static_cast<HybridModel&>(model);
                 for (auto& patch : level)
                 {
@@ -466,6 +479,8 @@ namespace amr
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::prepareStep");
+
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
             {
@@ -504,6 +519,8 @@ namespace amr
 
         void synchronize(SAMRAI::hier::PatchLevel& level) override
         {
+            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::synchronize");
+
             auto levelNumber = level.getLevelNumber();
 
             // call coarsning schedules...

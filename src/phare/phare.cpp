@@ -5,6 +5,11 @@
 #include "amr/wrappers/hierarchy.h"
 #include "initializer/python_data_provider.h"
 
+#include "core/logger.h"
+
+#include <algorithm>
+
+
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
     using dataProvider [[maybe_unused]] = std::unique_ptr<PHARE::initializer::DataProvider>;
@@ -17,6 +22,7 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
             auto moduleName = arg.substr(0, arg.find_last_of("."));
             if (arg.substr(arg.find_last_of(".") + 1) == "py")
             {
+                std::replace(moduleName.begin(), moduleName.end(), '/', '.');
                 std::cout << "python input detected, building with python provider...\n";
                 return std::make_unique<PHARE::initializer::PythonDataProvider>(moduleName);
             }
@@ -48,6 +54,7 @@ int main(int argc, char** argv)
     provider->read();
     std::cerr << "done!\n";
 
+    auto& dictHandler = PHARE::initializer::PHAREDictHandler::INSTANCE();
 
     auto hierarchy = PHARE::amr::Hierarchy::make();
 
@@ -56,6 +63,9 @@ int main(int argc, char** argv)
     std::cout << PHARE::core::to_str(*simulator) << "\n";
 
     simulator->initialize();
+
+    dictHandler.stop();
+    provider.release();
 
     [[maybe_unused]] auto time = simulator->startTime();
 
@@ -66,5 +76,4 @@ int main(int argc, char** argv)
         std::cout << simulator->currentTime() << "\n";
         //    time += simulator.timeStep();
     }
-    PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
 }
