@@ -126,8 +126,8 @@ cmake_config_user = "-DdevMode=ON -DCMAKE_BUILD_TYPE=Release"
 
 # not to be changed!
 cmake_config_extra = cmake_config_user + " -Dbench=ON"
+current_git_hash = git.hashes(1)[0]
 
-current_git_hash = git.hashes(1)
 def git_branch_reset_at_exit():
     current_git_branch = git.current_branch()
 
