@@ -49,17 +49,17 @@ if ph.PHARE_EXE: # needed to allow params export without calling "job.py"
 """     )
 
 ### following function is called during test_case generation ###
-def generate_all(clean=False):
+def generate_all(clean=True):
     gen_dir = Path(gen_path)
-    if clean:
-        gen_dir.unlink()
-    if not os.path.exists(gen_path):
-        gen_dir.mkdir(parents=True, exist_ok=True)
-        for ndim in ndims:
-            for interp in interps:
-                for cells in cells_list:
-                    for ppc in ppc_list:
-                        generate(ndim, interp, cells, ppc)
+    if clean and os.path.exists(gen_path):
+        import shutil
+        shutil.rmtree(str(gen_dir))
+    gen_dir.mkdir(parents=True, exist_ok=True)
+    for ndim in ndims:
+        for interp in interps:
+            for cells in cells_list:
+                for ppc in ppc_list:
+                    generate(ndim, interp, cells, ppc)
 
 
 if __name__ == "__main__":
