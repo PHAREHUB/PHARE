@@ -59,7 +59,7 @@ def config():
         L = sim.simulation_domain()[0]
         v1=0.125
         v2=4.0
-        return v1 + (v2-v1)*(S(x , L * s0.2, 1) -S(x, L * 0.8, 1))
+        return v1 + (v2-v1)*(S(x , L * 0.2, 1) -S(x, L * 0.8, 1))
 
     def bz(x):
         return 0.
