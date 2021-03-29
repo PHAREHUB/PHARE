@@ -1,5 +1,13 @@
 
-import os, sys, subprocess
+import os
+import sys
+import subprocess
+import numpy as np
+
+# This exists to allow a condition variable for when we are running PHARE from C++ via phare-exe
+#  It is configured to "True" in pyphare/pyphare/pharein/init.py::get_user_inputs(jobname)
+#    which is called from Pybind when phare-exe (or similar) is in use
+PHARE_EXE = False
 
 venv_path = os.environ.get('VIRTUAL_ENV')
 
@@ -12,10 +20,6 @@ if venv_path is not None:
     s = s.split(",")[1:]
     pythonpath = [ss.strip() for ss in s]
     sys.path = sys.path + pythonpath
-
-import numpy as np
-
-
 
 
 from .uniform_model import UniformModel

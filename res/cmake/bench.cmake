@@ -39,8 +39,10 @@ if (bench)
   endfunction(add_phare_cpp_benchmark_)
 
   function(add_phare_cpp_benchmark exec_level project file directory)
-    add_phare_cpp_benchmark_(${exec_level} ${project}_${file} ${file}.cpp ${directory})
-    target_link_libraries(${project}_${file} PUBLIC ${GBENCH_LIBS} phare_simulator)
+    if(${exec_level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${exec_level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+      add_phare_cpp_benchmark_(${exec_level} ${project}_${file} ${file}.cpp ${directory})
+      target_link_libraries(${project}_${file} PUBLIC ${GBENCH_LIBS} phare_simulator)
+    endif()
   endfunction(add_phare_cpp_benchmark)
 
 

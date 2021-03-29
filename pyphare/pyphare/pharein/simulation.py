@@ -7,6 +7,10 @@ from ..core import box as boxm
 from ..core.box import Box
 
 
+def supported_dimensions():
+    return [1]
+
+
 def compute_dimension(cells):
     return len(cells)
 
@@ -178,7 +182,7 @@ def check_boundaries(ndim, **kwargs):
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
 # This should match possibleSimulators() in meta_utilities.h
 valid_refined_particle_nbr = {
-  # dim = {interp = [valid list refined_particle_nbr]}
+  # dim : {interp : [valid list refined_particle_nbr]}
   1: {
     1: [2, 3],
     2: [2, 3, 4],
