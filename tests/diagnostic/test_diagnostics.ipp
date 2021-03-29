@@ -81,6 +81,10 @@ void allFromPython_test(Simulator&& sim, std::string out_dir)
     using Hierarchy   = typename Simulator::Hierarchy;
 
     sim.dump(*sim.dMan);
+    // flush h5files, killing the DiagnosticsManager killes the H5TypeWriter shared_ptrs internally,
+    //  and forces closed any open h5files, flushing any remaining contents, which we use below in
+    //  this test
+    sim.dMan.reset();
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;

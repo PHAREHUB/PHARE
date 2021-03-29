@@ -140,7 +140,7 @@ class DiagnosticsTest(unittest.TestCase):
             self.assertTrue(len(simulation.cells) == dim)
 
             dump_all_diags(setup_model().populations)
-            self.simulator = Simulator(simulation).initialize().advance()
+            self.simulator = Simulator(simulation).initialize().advance().reset()
 
             refined_particle_nbr = simulation.refined_particle_nbr
 

@@ -1,6 +1,6 @@
 
 
-def dump_all_diags(pops=[]):
+def dump_all_diags(pops=[], flush_every=100):
     import pyphare.pharein as ph, numpy as np
 
     sim = ph.global_vars.sim
@@ -13,6 +13,7 @@ def dump_all_diags(pops=[]):
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
+            flush_every=flush_every,
         )
 
     for pop in pops:
@@ -21,6 +22,7 @@ def dump_all_diags(pops=[]):
               quantity=quantity,
               write_timestamps=timestamps,
               compute_timestamps=timestamps,
+              flush_every=flush_every,
               population_name=pop
           )
 
@@ -29,6 +31,7 @@ def dump_all_diags(pops=[]):
                 quantity=quantity,
                 compute_timestamps=timestamps,
                 write_timestamps=timestamps,
+                flush_every=flush_every,
                 population_name=pop
             )
 
@@ -37,4 +40,5 @@ def dump_all_diags(pops=[]):
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
+            flush_every=flush_every,
         )

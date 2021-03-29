@@ -1,7 +1,6 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_H
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_H
 
-#include "diagnostic/detail/h5file.h"
 #include "diagnostic/detail/h5typewriter.h"
 
 #include "core/data/vecfield/vecfield_component.h"
@@ -24,6 +23,7 @@ class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
 public:
     using Super = H5TypeWriter<H5Writer>;
     using Super::h5Writer_;
+    using Super::fileData_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
@@ -52,11 +52,6 @@ public:
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
         std::size_t maxLevel) override;
-
-    void finalize(DiagnosticProperties& diagnostic) override;
-
-private:
-    std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
 
@@ -67,11 +62,11 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
     for (auto const& pop : this->h5Writer_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, fileData, tree, "density", "flux");
+        checkCreateFileFor_(diagnostic, fileData_, tree, "density", "flux");
     }
 
     std::string tree{"/ions/"};
-    checkCreateFileFor_(diagnostic, fileData, tree, "density", "bulkVelocity");
+    checkCreateFileFor_(diagnostic, fileData_, tree, "density", "bulkVelocity");
 }
 
 template<typename H5Writer>
@@ -133,7 +128,7 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& file     = fileData.at(diagnostic.quantity)->file();
+    auto& file     = fileData_.at(diagnostic.quantity)->file();
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
@@ -195,7 +190,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& hfile    = fileData.at(diagnostic.quantity)->file();
+    auto& hfile    = fileData_.at(diagnostic.quantity)->file();
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
     auto writeDS
@@ -229,19 +224,11 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    auto& h5file = fileData.at(diagnostic.quantity)->file();
+    auto& h5file = fileData_.at(diagnostic.quantity)->file();
 
     writeIonPopAttributes_(h5file);
     writeAttributes_(h5file, fileAttributes, patchAttributes, maxLevel);
 }
-
-template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::finalize(DiagnosticProperties& diagnostic)
-{
-    fileData.erase(diagnostic.quantity);
-    assert(fileData.count(diagnostic.quantity) == 0);
-}
-
 
 } // namespace PHARE::diagnostic::h5
 

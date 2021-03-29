@@ -147,7 +147,7 @@ class InitializationTest(unittest.TestCase):
                                     write_timestamps=np.zeros(time_step_nbr),
                                     population_name=pop)
 
-        simulator = Simulator(global_vars.sim).initialize()
+        Simulator(global_vars.sim).initialize().reset()
 
         eb_hier = None
         if qty in ["e", "eb"]:

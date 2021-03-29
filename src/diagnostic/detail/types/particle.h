@@ -1,7 +1,6 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
 
-#include "diagnostic/detail/h5file.h"
 #include "diagnostic/detail/h5typewriter.h"
 #include "diagnostic/detail/h5_utils.h"
 
@@ -30,6 +29,7 @@ class ParticlesDiagnosticWriter : public H5TypeWriter<H5Writer>
 public:
     using Super = H5TypeWriter<H5Writer>;
     using Super::checkCreateFileFor_;
+    using Super::fileData_;
     using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
@@ -60,12 +60,6 @@ public:
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
         std::size_t maxLevel) override;
-
-    void finalize(DiagnosticProperties& diagnostic) override;
-
-private:
-    std::size_t levels_ = 0;
-    std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData;
 };
 
 
@@ -75,7 +69,7 @@ void ParticlesDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diag
     for (auto const& pop : this->h5Writer_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, fileData, tree, "domain", "levelGhost", "patchGhost");
+        checkCreateFileFor_(diagnostic, fileData_, tree, "domain", "levelGhost", "patchGhost");
     }
 }
 
@@ -118,7 +112,6 @@ void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& d
         checkInfo(tree, "levelGhost", popAttr, pop.levelGhostParticles());
         checkInfo(tree, "patchGhost", popAttr, pop.patchGhostParticles());
     }
-    levels_ = iLevel;
 }
 
 
@@ -129,7 +122,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
     Attributes& patchAttributes, std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = fileData.at(diagnostic.quantity)->file();
+    auto& h5file   = fileData_.at(diagnostic.quantity)->file();
 
     auto createDataSet = [&](auto&& path, auto size, auto const& value) {
         using ValueType = std::decay_t<decltype(value)>;
@@ -180,7 +173,7 @@ void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic
     auto writeParticles = [&](auto path, auto& particles) {
         if (particles.size() == 0)
             return;
-        auto& h5file = fileData.at(diagnostic.quantity)->file();
+        auto& h5file = fileData_.at(diagnostic.quantity)->file();
         Packer packer(particles);
         core::ContiguousParticles<dimension> copy{particles.size()};
         packer.pack(copy);
@@ -215,18 +208,10 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    auto& h5file = fileData.at(diagnostic.quantity)->file();
+    auto& h5file = fileData_.at(diagnostic.quantity)->file();
 
     writeIonPopAttributes_(h5file);
     writeAttributes_(h5file, fileAttributes, patchAttributes, maxLevel);
-}
-
-
-template<typename H5Writer>
-void ParticlesDiagnosticWriter<H5Writer>::finalize(DiagnosticProperties& diagnostic)
-{
-    fileData.erase(diagnostic.quantity);
-    assert(fileData.count(diagnostic.quantity) == 0);
 }
 
 

@@ -18,7 +18,6 @@ if(HighFive)
   add_python3_test(advancement     test_advance.py         ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(sim-refineboxes refinement_boxes.py     ${CMAKE_CURRENT_BINARY_DIR})
 
-  # can take a while, shouldn't take more than 10 minutes
   add_python3_test(test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()

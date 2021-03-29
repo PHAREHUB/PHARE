@@ -42,6 +42,9 @@ public:
     static constexpr auto interpOrder = GridLayout::interp_order;
     static constexpr auto READ_WRITE  = HiFile::ReadWrite | HiFile::Create;
 
+    // flush_never: disables manual file closing, but still occurrs via RAII
+    static constexpr std::size_t flush_never = 0;
+
     template<typename Hierarchy, typename Model>
     Writer(Hierarchy& hier, Model& model, std::string const hifivePath,
            unsigned _flags /* = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate */)
