@@ -171,7 +171,8 @@ class IsothermalElectronPressureClosure
     using Field      = typename VecField::field_type;
 
 public:
-    IsothermalElectronPressureClosure(PHARE::initializer::PHAREDict& dict, FluxComputer const& fc)
+    IsothermalElectronPressureClosure(PHARE::initializer::PHAREDict const& dict,
+                                      FluxComputer const& fc)
         : fluxComputer_{fc}
         , Te_{dict["Te"].template to<double>()}
     {
@@ -260,7 +261,7 @@ class ElectronMomentModel
     using FluxComputer = StandardHybridElectronFluxComputer<Ions>;
 
 public:
-    ElectronMomentModel(PHARE::initializer::PHAREDict& dict, Ions& ions, VecField& J)
+    ElectronMomentModel(PHARE::initializer::PHAREDict const& dict, Ions& ions, VecField& J)
         : fluxComput_{ions, J}
         , pressureClosure_{dict["pressure_closure"], fluxComput_}
     {
@@ -323,7 +324,7 @@ class Electrons : public LayoutHolder<typename Ions::gridlayout_type>
     using GridLayout = typename Ions::gridlayout_type;
 
 public:
-    Electrons(PHARE::initializer::PHAREDict& dict, Ions& ions, VecField& J)
+    Electrons(PHARE::initializer::PHAREDict const& dict, Ions& ions, VecField& J)
         : momentModel_{dict, ions, J}
     {
     }

@@ -47,65 +47,65 @@ protected:
         dict["ions"]["nbrPopulations"] = int{2};
         dict["ions"]["pop0"]["name"]   = std::string{"protons"};
         dict["ions"]["pop0"]["mass"]   = 1.;
-        dict["ions"]["pop0"]["ParticleInitializer"]["name"]
+        dict["ions"]["pop0"]["particle_initializer"]["name"]
             = std::string{"MaxwellianParticleInitializer"};
-        dict["ions"]["pop0"]["ParticleInitializer"]["density"]
+        dict["ions"]["pop0"]["particle_initializer"]["density"]
             = static_cast<InitFunctionT>(density);
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_x"]
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
             = static_cast<InitFunctionT>(vx);
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_y"]
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
             = static_cast<InitFunctionT>(vy);
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["bulk_velocity_z"]
+        dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
             = static_cast<InitFunctionT>(vz);
 
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_x"]
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
             = static_cast<InitFunctionT>(vthx);
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_y"]
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
             = static_cast<InitFunctionT>(vthy);
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["thermal_velocity_z"]
+        dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
             = static_cast<InitFunctionT>(vthz);
 
 
-        dict["ions"]["pop0"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
-        dict["ions"]["pop0"]["ParticleInitializer"]["charge"]         = -1.;
-        dict["ions"]["pop0"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+        dict["ions"]["pop0"]["particle_initializer"]["nbrPartPerCell"] = int{100};
+        dict["ions"]["pop0"]["particle_initializer"]["charge"]         = -1.;
+        dict["ions"]["pop0"]["particle_initializer"]["basis"]          = std::string{"Cartesian"};
 
         dict["ions"]["pop1"]["name"] = std::string{"alpha"};
         dict["ions"]["pop1"]["mass"] = 1.;
-        dict["ions"]["pop1"]["ParticleInitializer"]["name"]
+        dict["ions"]["pop1"]["particle_initializer"]["name"]
             = std::string{"MaxwellianParticleInitializer"};
-        dict["ions"]["pop1"]["ParticleInitializer"]["density"]
+        dict["ions"]["pop1"]["particle_initializer"]["density"]
             = static_cast<InitFunctionT>(density);
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_x"]
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
             = static_cast<InitFunctionT>(vx);
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_y"]
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
             = static_cast<InitFunctionT>(vy);
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["bulk_velocity_z"]
+        dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
             = static_cast<InitFunctionT>(vz);
 
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_x"]
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
             = static_cast<InitFunctionT>(vthx);
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_y"]
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
             = static_cast<InitFunctionT>(vthy);
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["thermal_velocity_z"]
+        dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
             = static_cast<InitFunctionT>(vthz);
 
 
-        dict["ions"]["pop1"]["ParticleInitializer"]["nbrPartPerCell"] = int{100};
-        dict["ions"]["pop1"]["ParticleInitializer"]["charge"]         = -1.;
-        dict["ions"]["pop1"]["ParticleInitializer"]["basis"]          = std::string{"Cartesian"};
+        dict["ions"]["pop1"]["particle_initializer"]["nbrPartPerCell"] = int{100};
+        dict["ions"]["pop1"]["particle_initializer"]["charge"]         = -1.;
+        dict["ions"]["pop1"]["particle_initializer"]["basis"]          = std::string{"Cartesian"};
 
         return dict;
     }

@@ -17,7 +17,7 @@ namespace core
     public:
         VecFieldInitializer() = default;
 
-        VecFieldInitializer(initializer::PHAREDict dict)
+        VecFieldInitializer(initializer::PHAREDict const& dict)
             : x_{dict["x_component"].template to<initializer::InitFunction<dimension>>()}
             , y_{dict["y_component"].template to<initializer::InitFunction<dimension>>()}
             , z_{dict["z_component"].template to<initializer::InitFunction<dimension>>()}

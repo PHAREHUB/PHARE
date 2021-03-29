@@ -36,7 +36,7 @@ namespace core
 
 
 
-        explicit Ions(PHARE::initializer::PHAREDict dict)
+        explicit Ions(PHARE::initializer::PHAREDict const& dict)
             : bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
             , populations_{}
         {
@@ -44,7 +44,7 @@ namespace core
 
             for (int ipop = 0; ipop < nbrPop; ++ipop)
             {
-                auto& pop = dict["pop" + std::to_string(ipop)];
+                auto const& pop = dict["pop" + std::to_string(ipop)];
                 populations_.emplace_back(pop);
             }
         }

@@ -89,11 +89,12 @@ namespace solver
         static constexpr auto dimension = MessengerFactory::dimension;
 
         // model comes with its variables already registered to the manager system
-        MultiPhysicsIntegrator(PHARE::initializer::PHAREDict dict, SimFunctors const& simFuncs)
+        MultiPhysicsIntegrator(PHARE::initializer::PHAREDict const& dict,
+                               SimFunctors const& simFuncs)
             : nbrOfLevels_{dict["AMR"]["max_nbr_levels"].template to<int>()}
             , levelDescriptors_(dict["AMR"]["max_nbr_levels"].template to<int>())
             , simFuncs_{simFuncs}
-            , dict_{std::move(dict)}
+            , dict_{dict}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -544,7 +545,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
-        PHARE::initializer::PHAREDict dict_;
+        PHARE::initializer::PHAREDict const& dict_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)

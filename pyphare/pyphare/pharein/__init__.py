@@ -142,10 +142,10 @@ def populateDict():
 
     if refinement_boxes is not None and simulation.refinement =="boxes":
         as_paths(refinement_boxes)
-
-    if simulation.refinement == "tagging":
+    elif simulation.refinement == "tagging":
         add("simulation/AMR/refinement/tagging/method","auto")
-
+    else:
+        add("simulation/AMR/refinement/tagging/method","none") # integrator.h might want some looking at
 
     add("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
     add("simulation/algo/ohm/resistivity", simulation.resistivity)

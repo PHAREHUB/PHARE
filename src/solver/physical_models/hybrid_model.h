@@ -69,7 +69,7 @@ public:
     auto setOnPatch(patch_t& patch) { return resourcesManager->setOnPatch(patch, *this); }
 
 
-    HybridModel(PHARE::initializer::PHAREDict dict,
+    HybridModel(PHARE::initializer::PHAREDict const& dict,
                 std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
@@ -118,7 +118,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::initializ
 
         for (auto& pop : ions)
         {
-            auto info                = pop.particleInitializerInfo();
+            auto const& info         = pop.particleInitializerInfo();
             auto particleInitializer = ParticleInitializerFactory::create(info);
             particleInitializer->loadParticles(pop.domainParticles(), layout);
         }

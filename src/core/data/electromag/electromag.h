@@ -28,7 +28,7 @@ namespace core
         {
         }
 
-        explicit Electromag(initializer::PHAREDict dict)
+        explicit Electromag(initializer::PHAREDict const& dict)
             : E{dict["name"].template to<std::string>() + "_"
                     + dict["electric"]["name"].template to<std::string>(),
                 HybridQuantity::Vector::E}
