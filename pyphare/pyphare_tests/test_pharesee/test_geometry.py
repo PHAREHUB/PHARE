@@ -387,9 +387,8 @@ class GeometryTest(unittest.TestCase):
             assert lower_ds.shape[0] == pdata.ghosts_nbr[0] + qty_is_primal
             assert upper_ds.shape[0] == pdata.ghosts_nbr[0] + qty_is_primal
 
-            np.testing.assert_allclose(lower_ds, pdata.dataset[:lower_ds.shape[0]], atol=1e-12)
-            np.testing.assert_allclose(upper_ds, pdata.dataset[-upper_ds.shape[0]:], atol=1e-12)
-
+            np.testing.assert_array_equal(lower_ds, pdata.dataset[:lower_ds.shape[0]])
+            np.testing.assert_array_equal(upper_ds, pdata.dataset[-upper_ds.shape[0]:])
 
 
 if __name__ == "__main__":
