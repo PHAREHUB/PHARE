@@ -64,11 +64,17 @@ class FieldData(PatchData):
         return self.__str__()
 
     def select(self, box):
-        """ return view of internal data based on overlap of input box """
+        """
+          return view of internal data based on overlap of input box
+             returns a view +1 in size in primal directions
+        """
         assert isinstance(box, Box) and box.ndim == self.box.ndim
 
         gbox = self.ghost_box.copy()
         gbox.upper += self.primal_directions()
+
+        box = box.copy()
+        box.upper += self.primal_directions()
 
         overlap = box * gbox
         if overlap is not None:

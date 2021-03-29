@@ -119,6 +119,7 @@ class GeometryTest(unittest.TestCase):
 
 
 
+
     def test_particle_ghost_area_boxes(self):
         hierarchy = self.basic_hierarchy()
 
@@ -368,6 +369,26 @@ class GeometryTest(unittest.TestCase):
             )
 
             self.assertEqual(expected[ilvl], ghost_area_boxes)
+
+
+
+    def test_field_data_select(self):
+        dim, interp_order, nbr_cells = (1, 1, 20)
+
+        for qty in ["Bx", "By"]:
+
+            hierarchy = self.setup_hierarchy(dim, interp_order, nbr_cells, {}, quantities=qty)
+
+            pdata = hierarchy.level(0).patches[0].patch_datas[qty]
+            lower_gb, upper_gb = sorted(pdata.ghost_box - pdata.box, key=lambda box: box.lower.all())
+            lower_ds, upper_ds = pdata[lower_gb], pdata[upper_gb]
+
+            qty_is_primal = yee_element_is_primal(qty)
+            assert lower_ds.shape[0] == pdata.ghosts_nbr[0] + qty_is_primal
+            assert upper_ds.shape[0] == pdata.ghosts_nbr[0] + qty_is_primal
+
+            np.testing.assert_allclose(lower_ds, pdata.dataset[:lower_ds.shape[0]], atol=1e-12)
+            np.testing.assert_allclose(upper_ds, pdata.dataset[-upper_ds.shape[0]:], atol=1e-12)
 
 
 

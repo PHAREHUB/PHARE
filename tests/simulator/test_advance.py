@@ -302,14 +302,35 @@ class AdvanceTest(unittest.TestCase):
         for fine_subcycle_time in fine_subcycle_times:
             fine_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time)
             for qty in quantities:
+                qty_is_primal = yee_element_is_primal(qty)
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
                     for fine_level_ghost_box in fine_level_ghost_box_data["boxes"]:
+                        upper_dims = fine_level_ghost_box.lower > fine_subcycle_pd.box.upper
                         for refinedInterpolatedField in interpolated_fields[qty][fine_subcycle_time]:
                             lvlOverlap = refinedInterpolatedField.box * fine_level_ghost_box
                             if lvlOverlap is not None:
+
                                 fine_ghostbox_data = fine_subcycle_pd[fine_level_ghost_box]
                                 refinedInterpGhostBox_data = refinedInterpolatedField[fine_level_ghost_box]
+
+                                if qty_is_primal: # drop domain border value which is not a level ghost value
+                                    if upper_dims[0]:
+                                        fine_ghostbox_data = fine_ghostbox_data[1:]
+                                        refinedInterpGhostBox_data = refinedInterpGhostBox_data[1:]
+                                    else:
+                                        fine_ghostbox_data = fine_ghostbox_data[:-1]
+                                        refinedInterpGhostBox_data = refinedInterpGhostBox_data[:-1]
+
+                                fine_ds = fine_subcycle_pd.dataset
+                                if fine_level_ghost_box.ndim == 1: # verify selecting start/end of L1 dataset from ghost box
+                                    if upper_dims[0]:
+                                        assert all(fine_ghostbox_data == fine_ds[-fine_ghostbox_data.shape[0]:])
+                                    else:
+                                        assert all(fine_ghostbox_data == fine_ds[:fine_ghostbox_data.shape[0]])
+
+                                assert refinedInterpGhostBox_data.shape == fine_subcycle_pd.ghosts_nbr
+                                assert fine_ghostbox_data.shape == fine_subcycle_pd.ghosts_nbr
                                 np.testing.assert_allclose(fine_ghostbox_data, refinedInterpGhostBox_data, atol=1e-7)
                                 checks += 1
 
