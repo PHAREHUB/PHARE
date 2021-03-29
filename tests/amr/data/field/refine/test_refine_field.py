@@ -39,7 +39,7 @@ def refine(field, **kwargs):
         fine_data[ghostX:-ghostX:cadence] = data[ghostX:-ghostX] # coarse primal on top of fine
         fine_data[ghostX + 1:-(ghostX - 1):cadence] = 0.5*data[ghostX:-ghostX] + 0.5*data[ghostX + 1:-(ghostX - 1)]
     else:
-        fine_data[ghostX:-(ghostX + 1):cadence] = 0.25*data[4:-(ghostX + 1)] + 0.75*data[ghostX:-ghostX]
+        fine_data[ghostX:-(ghostX + 1):cadence] = 0.25*data[ghostX - 1:-(ghostX + 1)] + 0.75*data[ghostX:-ghostX]
         fine_data[ghostX + 1:-(ghostX - 1):cadence] = 0.25*data[ghostX + 1:-(ghostX - 1)] + 0.75*data[ghostX:-ghostX]
 
     return FieldData(fine_layout, field.field_name, data=fine_data)

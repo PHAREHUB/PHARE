@@ -5,6 +5,8 @@ import numpy as np
 import sys
 import os
 
+from pyphare.core.phare_utilities import FloatingPoint_comparator as FP_cmp
+
 
 def start_index(pos, order):
     return int(pos - (float(order)-1.)/2.)
@@ -44,9 +46,10 @@ def main():
 
 
 def time_interpolate(before_time, after_time, interp_time, before_data, after_data):
-    assert before_time < after_time
-    assert before_time <= interp_time <= after_time
     assert before_data.shape == after_data.shape
+    assert before_time < after_time
+    assert FP_cmp(before_time) <= FP_cmp(interp_time) <= FP_cmp(after_time)
+
     alpha = (interp_time - before_time) / (after_time - before_time)
     return (1. - alpha) * before_data + alpha * after_data
 

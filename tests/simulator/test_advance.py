@@ -165,7 +165,7 @@ class AdvanceTest(unittest.TestCase):
 
         lvl_steps = global_vars.sim.level_time_steps
         print("LEVELSTEPS === ", lvl_steps)
-        assert len(lvl_steps) > 1  # this test makes no sense with only 1 level
+        assert len(lvl_steps) > 1, "this test makes no sense with only 1 level"
 
         finestTimeStep = lvl_steps[-1]
         secondFinestTimeStep = lvl_steps[-2]
@@ -279,7 +279,7 @@ class AdvanceTest(unittest.TestCase):
         )
 
         lvl_steps = global_vars.sim.level_time_steps
-        assert len(lvl_steps) == 2  # this test is only configured for L0 -> L1 refinement comparisons
+        assert len(lvl_steps) == 2, "this test is only configured for L0 -> L1 refinement comparisons"
 
         coarse_ilvl = 0
         fine_ilvl   = 1
