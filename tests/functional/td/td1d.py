@@ -112,7 +112,9 @@ def config():
 
     sim = ph.global_vars.sim
 
-    timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
+    dt_dump = 0.1
+    n_dump = int(sim.final_time/dt_dump)+1
+    timestamps = np.linspace(0, sim.final_time, n_dump)
 
 
 
