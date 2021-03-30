@@ -9,92 +9,85 @@
 
 #include <memory>
 
-namespace PHARE
+namespace PHARE::core
 {
-namespace core
+template<typename ParticleArray, typename GridLayout>
+class ParticleInitializerFactory
 {
-    template<typename ParticleArray, typename GridLayout>
-    class ParticleInitializerFactory
+    using ParticleInitializerT      = ParticleInitializer<ParticleArray, GridLayout>;
+    static constexpr auto dimension = GridLayout::dimension;
+
+
+public:
+    static std::unique_ptr<ParticleInitializerT> create(initializer::PHAREDict const& dict)
     {
-        using ParticleInitializerT      = ParticleInitializer<ParticleArray, GridLayout>;
-        static constexpr auto dimension = GridLayout::dimension;
+        using FunctionType = initializer::InitFunction<dimension>;
 
+        auto initializerName = dict["name"].template to<std::string>();
 
-    public:
-        static std::unique_ptr<ParticleInitializerT> create(initializer::PHAREDict const& dict)
+        if (initializerName == "maxwellian")
         {
-            using FunctionType = initializer::InitFunction<dimension>;
+            auto& density = dict["density"].template to<FunctionType>();
 
-            auto initializerName = dict["name"].template to<std::string>();
+            auto& bulkVelx = dict["bulk_velocity_x"].template to<FunctionType>();
 
-            if (initializerName == "maxwellian")
+            auto& bulkVely = dict["bulk_velocity_y"].template to<FunctionType>();
+
+            auto& bulkVelz = dict["bulk_velocity_z"].template to<FunctionType>();
+
+            auto& vthx = dict["thermal_velocity_x"].template to<FunctionType>();
+
+            auto& vthy = dict["thermal_velocity_y"].template to<FunctionType>();
+
+            auto& vthz = dict["thermal_velocity_z"].template to<FunctionType>();
+
+            auto charge = dict["charge"].template to<double>();
+
+            auto nbrPartPerCell = dict["nbr_part_per_cell"].template to<int>();
+
+            auto basisName = dict["basis"].template to<std::string>();
+
+            std::array<FunctionType, 3> v = {bulkVelx, bulkVely, bulkVelz};
+
+            std::array<FunctionType, 3> vth = {vthx, vthy, vthz};
+
+
+            ParticleInitiazationInfo pInitInfo;
+
+            if (dict.contains("init"))
             {
-                auto& density = dict["density"].template to<FunctionType>();
-
-                auto& bulkVelx = dict["bulk_velocity_x"].template to<FunctionType>();
-
-                auto& bulkVely = dict["bulk_velocity_y"].template to<FunctionType>();
-
-                auto& bulkVelz = dict["bulk_velocity_z"].template to<FunctionType>();
-
-                auto& vthx = dict["thermal_velocity_x"].template to<FunctionType>();
-
-                auto& vthy = dict["thermal_velocity_y"].template to<FunctionType>();
-
-                auto& vthz = dict["thermal_velocity_z"].template to<FunctionType>();
-
-                auto charge = dict["charge"].template to<double>();
-
-                auto nbrPartPerCell = dict["nbr_part_per_cell"].template to<int>();
-
-                auto basisName = dict["basis"].template to<std::string>();
-
-                std::array<FunctionType, 3> v = {bulkVelx, bulkVely, bulkVelz};
-
-                std::array<FunctionType, 3> vth = {vthx, vthy, vthz};
-
-
-                ParticleInitiazationInfo pInitInfo;
-
-                if (dict.contains("init"))
+                if (dict["init"].contains("seed_mode"))
                 {
-                    if (dict["init"].contains("seed_mode"))
-                    {
-                        pInitInfo.seed_mode = dict["init"]["seed_mode"].template to<std::string>();
-                    }
-
-                    if (dict["init"].contains("seed"))
-                    {
-                        pInitInfo.seed
-                            = dict["init"]["seed"].template to<std::optional<std::size_t>>();
-                    }
+                    pInitInfo.seed_mode = dict["init"]["seed_mode"].template to<std::string>();
                 }
 
-                if (basisName == "cartesian")
+                if (dict["init"].contains("seed"))
                 {
-                    return std::make_unique<
-                        MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, pInitInfo);
-                }
-                else if (basisName == "magnetic")
-                {
-                    [[maybe_unused]] Basis basis = Basis::Magnetic;
-                    [[maybe_unused]] auto& bx    = dict["magnetic_x"].template to<FunctionType>();
-                    [[maybe_unused]] auto& by    = dict["magnetic_x"].template to<FunctionType>();
-                    [[maybe_unused]] auto& bz    = dict["magnetic_x"].template to<FunctionType>();
-
-                    return std::make_unique<
-                        MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, pInitInfo);
+                    pInitInfo.seed = dict["init"]["seed"].template to<std::optional<std::size_t>>();
                 }
             }
-            // TODO throw?
-            return nullptr;
+
+            if (basisName == "cartesian")
+            {
+                return std::make_unique<MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
+                    density, v, vth, charge, nbrPartPerCell, pInitInfo);
+            }
+            else if (basisName == "magnetic")
+            {
+                [[maybe_unused]] Basis basis = Basis::Magnetic;
+                [[maybe_unused]] auto& bx    = dict["magnetic_x"].template to<FunctionType>();
+                [[maybe_unused]] auto& by    = dict["magnetic_x"].template to<FunctionType>();
+                [[maybe_unused]] auto& bz    = dict["magnetic_x"].template to<FunctionType>();
+
+                return std::make_unique<MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
+                    density, v, vth, charge, nbrPartPerCell, pInitInfo);
+            }
         }
-    };
+        // TODO throw?
+        return nullptr;
+    }
+};
 
-} // namespace core
-
-} // namespace PHARE
+} // namespace PHARE::core
 
 #endif
