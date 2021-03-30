@@ -17,10 +17,30 @@ using PHARE::initializer::InitFunction;
 
 
 template<typename T>
-void add(std::string path, T&& value)
+void add(std::string const& path, T&& value)
 {
     cppdict::add(path, std::forward<T>(value),
                  PHARE::initializer::PHAREDictHandler::INSTANCE().dict());
+}
+
+void add_int(std::string path, int&& value)
+{
+    add(path, std::forward<int>(value));
+}
+
+void add_float(std::string path, float&& value)
+{
+    // add(path, std::forward<float>(value));
+}
+
+void add_double(std::string path, double&& value)
+{
+    add(path, std::forward<double>(value));
+}
+
+void add_string(std::string path, std::string&& value)
+{
+    add(path, std::forward<std::string>(value));
 }
 
 
@@ -59,9 +79,10 @@ PYBIND11_MODULE(dictator, m)
     m.def("add_size_t", add_size_t, "add_size_t");
     m.def("add_optional_size_t", add_optional_size_t, "add_optional_size_t");
 
-    m.def("add", add<int>, "add");
-    m.def("add", add<double>, "add");
-    m.def("add", add<std::string>, "add");
+    m.def("add_int", add_int, "add");
+    m.def("add_float", add_float, "add");
+    m.def("add_double", add_double, "add");
+    m.def("add_string", add<std::string>, "add");
 
     m.def("addInitFunction1D", add<InitFunction<1>>, "add");
     m.def("addInitFunction2D", add<InitFunction<2>>, "add");
