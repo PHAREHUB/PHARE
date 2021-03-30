@@ -97,6 +97,9 @@ class MaxwellianFluidModel(object):
         beta        : beta of the species, float (default = 1)
         anisotropy  : Pperp/Ppara of the species, float (default = 1)
         init        : dict to pass values on to C++ model initializers
+          possible init keys:
+            seed    : string mode ["deterministic"], or int to use as seed
+                        if unset, uses a random seed per patch
         """
 
         init_keys = ['seed']
@@ -104,9 +107,10 @@ class MaxwellianFluidModel(object):
         if len(wrong_keys) > 0:
             raise ValueError("Model Error: invalid init arguments - " + " ".join(wrong_keys))
 
+        init_ = {} if init is None else init
         if "seed" in init and init["seed"] is not None:
             if isinstance(init["seed"], str):
-                init["seed_mode"] = init.pop("seed")
+                init_["seed_mode"] = init.pop("seed")
 
 
         density = self.defaulter(density, 1.)
@@ -130,7 +134,7 @@ class MaxwellianFluidModel(object):
                           "vthy": vthy,
                           "vthz": vthz,
                           "nbrParticlesPerCell": nbr_part_per_cell,
-                          "init": init}}
+                          "init": init_}}
 
         keys = self.model_dict.keys()
         if name in keys:

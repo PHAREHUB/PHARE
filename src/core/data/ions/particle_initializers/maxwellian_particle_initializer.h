@@ -35,7 +35,8 @@ template<typename ParticleArray, typename GridLayout>
 class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
 {
     // should be constexpr static, but doesn't support this type yet
-    const std::unordered_set<std::string> seed_modes{{"none"}, {"int"}, {"deterministic"}};
+    static inline const std::unordered_set<std::string> seed_modes{
+        {"none"}, {"int"}, {"deterministic"}};
 
 public:
     static constexpr auto dimension = GridLayout::dimension;
@@ -80,7 +81,7 @@ public:
         {
             std::size_t seed = 1;
             for (std::size_t i = 0; i < dimension; ++i)
-                seed *= layout.AMRBox().lower[i] * 1111;
+                seed *= (layout.AMRBox().lower[i] + 1) * layout.meshSize()[i] * 1111;
             return std::mt19937_64(seed);
         }
 
