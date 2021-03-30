@@ -144,7 +144,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     };
 
 
-    auto deltas = [](auto& pos, auto& gen) -> std::array<float, dimension> {
+    auto deltas = [](auto& pos, auto& gen) -> std::array<double, dimension> {
         if constexpr (dimension == 1)
             return {pos(gen)};
         if constexpr (dimension == 2)
@@ -172,7 +172,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
 
     auto const [n, V, Vth] = fns();
     auto randGen           = getRNG(rngSeed_);
-    ParticleDeltaDistribution deltaDistrib;
+    ParticleDeltaDistribution<double> deltaDistrib;
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)
     {
