@@ -5,6 +5,7 @@
 #include <random>
 #include <cassert>
 #include <functional>
+#include <unordered_set>
 
 #include "core/data/grid/gridlayoutdefs.h"
 #include "core/hybrid/hybrid_quantities.h"
@@ -33,6 +34,9 @@ void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3
 template<typename ParticleArray, typename GridLayout>
 class MaxwellianParticleInitializer : public ParticleInitializer<ParticleArray, GridLayout>
 {
+    // should be constexpr static, but doesn't support this type yet
+    const std::unordered_set<std::string> seed_modes{{"none"}, {"int"}, {"deterministic"}};
+
 public:
     static constexpr auto dimension = GridLayout::dimension;
     using InputFunction             = initializer::InitFunction<dimension>;
@@ -40,8 +44,8 @@ public:
     MaxwellianParticleInitializer(InputFunction density, std::array<InputFunction, 3> bulkVelocity,
                                   std::array<InputFunction, 3> thermalVelocity,
                                   double particleCharge, std::uint32_t nbrParticlesPerCell,
-                                  std::optional<std::size_t> seed = {},
-                                  Basis basis                     = Basis::Cartesian,
+                                  ParticleInitiazationInfo pInitInfo = {},
+                                  Basis basis                        = Basis::Cartesian,
                                   std::array<InputFunction, 3> magneticField
                                   = {nullptr, nullptr, nullptr})
         : density_{density}
@@ -51,7 +55,7 @@ public:
         , particleCharge_{particleCharge}
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
-        , rngSeed_{seed}
+        , pInitInfo_{pInitInfo}
     {
     }
 
@@ -66,16 +70,27 @@ public:
     virtual ~MaxwellianParticleInitializer() = default;
 
 
-    static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
+
+    static std::mt19937_64 getRNG(ParticleInitiazationInfo const& pInitInfo,
+                                  GridLayout const& layout)
     {
-        if (!seed.has_value())
+        assert(seed_modes.contains(pInitInfo.seed_mode));
+
+        if (pInitInfo.seed_mode == "deterministic")
         {
-            std::random_device randSeed;
-            std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
-                                   randSeed(), randSeed(), randSeed(), randSeed()};
-            return std::mt19937_64(seed_seq);
+            std::size_t seed = 1;
+            for (std::size_t i = 0; i < dimension; ++i)
+                seed *= layout.AMRBox().lower[i] * 1111;
+            return std::mt19937_64(seed);
         }
-        return std::mt19937_64(*seed);
+
+        if (pInitInfo.seed.has_value())
+            return std::mt19937_64(*pInitInfo.seed);
+
+        std::random_device randSeed;
+        std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
+                               randSeed(), randSeed(), randSeed(), randSeed()};
+        return std::mt19937_64(seed_seq);
     }
 
 private:
@@ -88,7 +103,7 @@ private:
     double particleCharge_;
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
-    std::optional<std::size_t> rngSeed_;
+    ParticleInitiazationInfo pInitInfo_;
 };
 
 
@@ -171,7 +186,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         cellCoords));
 
     auto const [n, V, Vth] = fns();
-    auto randGen           = getRNG(rngSeed_);
+    auto randGen           = getRNG(pInitInfo_, layout);
     ParticleDeltaDistribution deltaDistrib;
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)

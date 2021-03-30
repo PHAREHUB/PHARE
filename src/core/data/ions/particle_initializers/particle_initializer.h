@@ -6,6 +6,17 @@ namespace PHARE
 {
 namespace core
 {
+    struct ParticleInitiazationInfo
+    {
+        ParticleInitiazationInfo(std::string const& _seed_mode = "none")
+            : seed_mode{_seed_mode}
+        {
+        }
+
+        std::string seed_mode;
+        std::optional<std::size_t> seed;
+    };
+
     template<typename ParticleArray, typename GridLayout>
     class ParticleInitializer
     {

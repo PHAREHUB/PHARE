@@ -30,7 +30,7 @@ class InitializationTest(unittest.TestCase):
                      beam = False, time_step_nbr=1,
                      smallest_patch_size=10, largest_patch_size=10,
                      cells= 120,
-                     dl=0.1):
+                     dl=0.1, model_init={"seed": 1337}):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -97,14 +97,14 @@ class InitializationTest(unittest.TestCase):
                                           "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
                                           "vthx": vthx, "vthy": vthy, "vthz": vthz,
                                           "nbr_part_per_cell": nbr_part_per_cell,
-                                          "init": {"seed": 1337}},
+                                          "init": model_init},
 
                                  beam={"charge": 1,
                                        "density": beam_density,
                                        "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
                                        "vthx": vthx, "vthy": vthy, "vthz": vthz,
                                        "nbr_part_per_cell": nbr_part_per_cell,
-                                       "init": {"seed": 1337}})
+                                       "init": model_init})
 
         else:
             MaxwellianFluidModel(bx=bx, by=by, bz=bz,
@@ -113,7 +113,7 @@ class InitializationTest(unittest.TestCase):
                                           "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
                                           "vthx": vthx, "vthy": vthy, "vthz": vthz,
                                           "nbr_part_per_cell": nbr_part_per_cell,
-                                          "init": {"seed": 1337}})
+                                          "init": model_init})
 
 
         ElectronModel(closure="isothermal", Te=0.12)
@@ -752,6 +752,31 @@ class InitializationTest(unittest.TestCase):
         self._test_patch_ghost_on_refined_level_case(True, **simInput)
 
 
+
+    def test_deterministic_model_init(self, dim=1, interp_order=1, refinement_boxes={}):
+        print("test_deterministic_model_init for dim/interp : {}/{}".format(dim, interp_order))
+
+        def _getHierarchy(diag_dir, seed="deterministic"):
+            return self.getHierarchy(interp_order, refinement_boxes, "particles",
+                              diag_outputs=diag_dir, cells=30, model_init={"seed": seed})
+
+        hier0 = _getHierarchy("phare_outputs_model_init0")
+        hier1 = _getHierarchy("phare_outputs_model_init1")
+        hier2 = _getHierarchy("phare_outputs_model_init2", 1337)
+
+        for patch_idx, patch0 in enumerate(hier0.level(0).patches):
+            patch1 = hier1.level(0).patches[patch_idx]
+            patch2 = hier2.level(0).patches[patch_idx]
+            for qty, patch_data in patch0.patch_datas.items():
+                pdataset0 = patch_data.dataset
+                pdataset1 = patch1.patch_datas[qty].dataset
+                pdataset2 = patch2.patch_datas[qty].dataset
+
+                self.assertEqual(patch0.box, patch1.box)
+                self.assertEqual(patch0.box, patch2.box)
+
+                self.assertEqual(pdataset0, pdataset1)
+                self.assertNotEqual(pdataset0, pdataset2)
 
 
 if __name__ == "__main__":

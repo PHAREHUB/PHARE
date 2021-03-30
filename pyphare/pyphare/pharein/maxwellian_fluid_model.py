@@ -96,13 +96,18 @@ class MaxwellianFluidModel(object):
         vbulk       : bulk velocity, tuple of size 3  (default = (0,0,0))
         beta        : beta of the species, float (default = 1)
         anisotropy  : Pperp/Ppara of the species, float (default = 1)
+        init        : dict to pass values on to C++ model initializers
         """
 
         init_keys = ['seed']
         wrong_keys = phare_utilities.not_in_keywords_list(init_keys, **init)
         if len(wrong_keys) > 0:
             raise ValueError("Model Error: invalid init arguments - " + " ".join(wrong_keys))
-        init["seed"] = init["seed"] if "seed" in init else None
+
+        if "seed" in init and init["seed"] is not None:
+            if isinstance(init["seed"], str):
+                init["seed_mode"] = init.pop("seed")
+
 
         density = self.defaulter(density, 1.)
 

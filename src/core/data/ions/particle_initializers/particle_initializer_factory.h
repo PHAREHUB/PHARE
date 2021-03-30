@@ -53,15 +53,28 @@ namespace core
 
                 std::array<FunctionType, 3> vth = {vthx, vthy, vthz};
 
-                std::optional<std::size_t> seed;
-                if (dict.contains("init") && dict["init"].contains("seed"))
-                    seed = dict["init"]["seed"].template to<std::optional<std::size_t>>();
+
+                ParticleInitiazationInfo pInitInfo;
+
+                if (dict.contains("init"))
+                {
+                    if (dict["init"].contains("seed_mode"))
+                    {
+                        pInitInfo.seed_mode = dict["init"]["seed_mode"].template to<std::string>();
+                    }
+
+                    if (dict["init"].contains("seed"))
+                    {
+                        pInitInfo.seed
+                            = dict["init"]["seed"].template to<std::optional<std::size_t>>();
+                    }
+                }
 
                 if (basisName == "cartesian")
                 {
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, seed);
+                        density, v, vth, charge, nbrPartPerCell, pInitInfo);
                 }
                 else if (basisName == "magnetic")
                 {
@@ -72,7 +85,7 @@ namespace core
 
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, seed);
+                        density, v, vth, charge, nbrPartPerCell, pInitInfo);
                 }
             }
             // TODO throw?
