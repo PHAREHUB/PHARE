@@ -2,6 +2,9 @@
 #define PHARE_PARTICLE_INITIALIZER_H
 
 
+#include <optional>
+
+
 namespace PHARE::core
 {
 struct ParticleInitiazationInfo
