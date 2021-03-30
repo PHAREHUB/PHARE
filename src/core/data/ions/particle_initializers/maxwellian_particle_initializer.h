@@ -75,7 +75,7 @@ public:
     static std::mt19937_64 getRNG(ParticleInitiazationInfo const& pInitInfo,
                                   GridLayout const& layout)
     {
-        assert(seed_modes.contains(pInitInfo.seed_mode));
+        assert(seed_modes.count(pInitInfo.seed_mode));
 
         if (pInitInfo.seed_mode == "deterministic")
         {
