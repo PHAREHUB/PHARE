@@ -1,6 +1,6 @@
 
 import numpy as np
-from ..core.phare_utilities import refinement_ratio
+from ..core.phare_utilities import refinement_ratio, print_trace, is_scalar
 
 class Particles:
     """
@@ -52,14 +52,31 @@ class Particles:
 
         self.ndim = ndim
 
+
+
+    def xyz(self, i=0):
+        if self.ndim == 1:
+            return self.dl[:,0]*(self.iCells[:] + self.deltas[:])
+        return self.dl[:,i]*(self.iCells[:,i] + self.deltas[:,i])
+
+
     @property
     def x(self):
         if self._x is None:
-            if self.ndim == 1:
-                self._x = self.dl[:,0]*(self.iCells[:] + self.deltas[:])
-            else:
-                self._x = self.dl[:,0]*(self.iCells[:,0] + self.deltas[:,0])
+            self._x = self.xyz()
         return self._x
+
+    @property
+    def y(self):
+        if self._y is None:
+            self._y = self.xyz(1)
+        return self._y
+
+
+    def _reset(self):
+        self._x = None
+        self._y = None
+
 
 
     def add(self, particles):
@@ -69,13 +86,12 @@ class Particles:
         self.charges  = np.concatenate((self.charges, particles.charges))
         self.weights  = np.concatenate((self.weights, particles.weights))
         self.dl       = np.concatenate((self.dl, particles.dl))
-        self._x = None
+        self._reset()
 
 
     def shift_icell(self, offset):
         self.iCells += offset
-        self._x = None
-        self._y = None
+        self._reset()
         return self
 
     def size(self):
@@ -88,6 +104,8 @@ class Particles:
                 all_assert(self, that)
                 return True
             except AssertionError as ex:
+                print(f"particles.py:Particles::eq failed with:", ex)
+                print_trace()
                 return False
         return False
 
@@ -122,6 +140,31 @@ class Particles:
                          charges=self.charges[idx],
                          dl = self.dl[idx])
 
+    def __getitem__(self, box):
+        return self.select(box)
+
+
+    def erase(self, idx):
+        self.iCells  = np.delete(self.iCells,idx, axis=0)
+        self.deltas  = np.delete(self.deltas,idx, axis=0)
+        self.v       = np.delete(self.v,idx, axis=0)
+        self.weights = np.delete(self.weights,idx, axis=0)
+        self.charges = np.delete(self.charges,idx, axis=0)
+        self.dl      = np.delete(self.dl,idx, axis=0)
+
+
+    def pop(self, idx):
+        particles = Particles(
+            icells  = self.iCells[idx].copy(),
+            deltas  = self.deltas[idx].copy(),
+            v       = self.v[idx].copy(),
+            weights = self.weights[idx].copy(),
+            charges = self.charges[idx].copy(),
+            dl      = self.dl[idx].copy(),
+        )
+        self.erase(idx)
+        return particles
+
 
 
     def split(self, sim): # REQUIRES C++ PYBIND PHARE LIB
@@ -150,13 +193,29 @@ def all_assert(part1, part2):
 
     np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
 
-    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
+    deltol = 1e-6 if any([part.deltas.dtype == np.float32 for part in [part1, part2]] ) else 1e-12
+    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=deltol)
 
     np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
     np.testing.assert_allclose(part1.dl[idx1], part2.dl[idx2], atol=1e-12)
+
+
+def any_assert(part1, part2):
+    np.testing.assert_equal(part1.size(), part2.size())
+    assert part1.size() < 10 # slowness
+
+    for part1_idx in range(part1.size()):
+        assert part1.deltas[part1_idx] in part2.deltas
+        assert part1.iCells[part1_idx] in part2.iCells
+        assert part1.v[part1_idx] in part2.v
+        assert part1.weights[part1_idx] in part2.weights
+        assert part1.charges[part1_idx] in part2.charges
+        assert part1.dl[part1_idx] in part2.dl
+
+
 
 
 
@@ -176,7 +235,7 @@ def aggregate(particles_in):
 
 def remove(particles, idx):
     """
-    returns a Particles object where particles indexed "idx" 
+    returns a Particles object where particles indexed "idx"
     have been removed from "particles"
     """
     if len(idx) == particles.size():
@@ -195,8 +254,8 @@ def remove(particles, idx):
     dl = np.zeros((len(weights),particles.ndim))
     for i in range(particles.ndim):
         dl[:,i] = np.delete(particles.dl[:,i], idx)
-    
-    charges = np.delete(particles.charges, idx)    
+
+    charges = np.delete(particles.charges, idx)
     return Particles(icells=icells,
                      deltas=deltas,
                      v = v,

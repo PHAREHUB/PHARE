@@ -8,6 +8,10 @@
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
 #endif
 
+#if !defined(PHARE_DIAG_DOUBLES)
+#define PHARE_DIAG_DOUBLES false
+#endif
+
 #if PHARE_HAS_HIGHFIVE
 #include "highfive/H5Version.hpp"
 #define _PHARE_WITH_HIGHFIVE(...) __VA_ARGS__

@@ -1,15 +1,15 @@
-
-from pybindlibs import cpp
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
 
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
 from pyphare.pharein import ElectronModel
-from pyphare.pharein.simulation import Simulation
+from pyphare.pharein.simulation import Simulation, supported_dimensions
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
 from pyphare.core.gridlayout import yee_element_is_primal
-from pyphare.pharesee.particles import aggregate as aggregate_particles
+from pyphare.pharesee.particles import aggregate as aggregate_particles, any_assert as particles_any_assert
 import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box1D
 import numpy as np
@@ -17,7 +17,6 @@ import unittest
 from ddt import ddt, data, unpack
 
 
-# AdvanceTest.test_field_level_ghosts_via_subcycles_and_coarser_interpolation_1
 
 @ddt
 class AdvanceTest(unittest.TestCase):
@@ -63,10 +62,10 @@ class AdvanceTest(unittest.TestCase):
             L = global_vars.sim.simulation_domain()[0]
             v1=-1
             v2=1.
-            return v1 + (v2-v1)*(S(x,L*0.25,1) -S(x, L*0.75, 1))
+            return 0.
 
         def bz(x):
-            return 0.5
+            return 0.0
 
         def b2(x):
             return bx(x)**2 + by(x)**2 + bz(x)**2
@@ -76,13 +75,13 @@ class AdvanceTest(unittest.TestCase):
             return 1/density(x)*(K - b2(x)*0.5)
 
         def vx(x):
-            return 0.
+            return 0.1
 
         def vy(x):
-            return 0.
+            return 0.1
 
         def vz(x):
-            return 0.
+            return 0.1
 
         def vthx(x):
             return T(x)
@@ -135,7 +134,7 @@ class AdvanceTest(unittest.TestCase):
                                     write_timestamps=timestamps,
                                     population_name=pop)
 
-        Simulator(global_vars.sim).initialize().run()
+        Simulator(global_vars.sim).run()
 
         eb_hier = None
         if qty in ["e", "eb"]:
@@ -394,21 +393,63 @@ class AdvanceTest(unittest.TestCase):
                         idx1 = np.argsort(part1.iCells + part1.deltas)
                         idx2 = np.argsort(part2.iCells + part2.deltas)
 
-                        # if there is an overlap, there should be particles
-                        # in these cells
+                        # if there is an overlap, there should be particles in these cells
                         assert(len(idx1) >0)
                         assert(len(idx2) >0)
+                        assert(len(idx1) == len(idx2))
 
                         print("respectively {} and {} in overlaped patchdatas".format(len(idx1), len(idx2)))
 
                         # particle iCells are in their patch AMR space
                         # so we need to shift them by +offset to move them to the box space
-                        np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
 
-                        self.assertTrue(np.allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12))
-                        self.assertTrue(np.allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12))
-                        self.assertTrue(np.allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12))
-                        self.assertTrue(np.allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12))
+                        # find difference in case of duplicates
+                        tmp = (part1.v[idx1,0] - part2.v[idx2,0])
+                        cell = np.where(tmp > 0)[0]
+                        duplicate_found = len(cell)
+                        if duplicate_found:
+                            print(cell)
+                            print(part1.deltas[idx1][cell])
+                            print(part2.deltas[idx2][cell])
+                            print("duplicate particles found, test will fail")
+
+                        np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
+                        np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
+                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+
+
+
+
+
+
+    def test_L0_particle_number_conservation(self):
+        nbr_part_per_cell=100
+        cells=120
+        time_step_nbr=10
+        time_step=0.001
+
+        # to2d
+        for ndim in [1]:
+            n_particles = nbr_part_per_cell * (cells ** ndim)
+            for interp_order in [1, 2, 3]:
+                diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
+                datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
+                                          time_step=time_step, time_step_nbr=time_step_nbr,
+                                          nbr_part_per_cell=nbr_part_per_cell, cells=cells)
+                for time_step_idx in range(time_step_nbr + 1):
+                    coarsest_time =  time_step_idx * time_step
+                    n_particles_at_t = 0
+                    for patch in datahier.level(0, coarsest_time).patches:
+                        n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
+                    self.assertEqual(n_particles, n_particles_at_t)
+
+
+
+
+
+
 
     @data(
       {"L0": [Box1D(10, 20)]},

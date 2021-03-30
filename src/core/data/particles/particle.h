@@ -3,6 +3,9 @@
 
 #include <array>
 #include <random>
+#include <iomanip>
+#include <iostream>
+#include <algorithm>
 #include <type_traits>
 
 #include "core/utilities/point/point.h"
@@ -16,7 +19,7 @@ template<typename T = float>
 struct ParticleDeltaDistribution
 {
     template<typename Generator>
-    float operator()(Generator& generator)
+    T operator()(Generator& generator)
     {
         return dist(generator);
     }
@@ -41,9 +44,9 @@ struct Particle
     double weight;
     double charge;
 
-    std::array<int, dim> iCell   = ConstArray<int, dim>();
-    std::array<float, dim> delta = ConstArray<float, dim>();
-    std::array<double, 3> v      = ConstArray<double, 3>();
+    std::array<int, dim> iCell    = ConstArray<int, dim>();
+    std::array<double, dim> delta = ConstArray<double, dim>();
+    std::array<double, 3> v       = ConstArray<double, 3>();
 
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
@@ -59,7 +62,7 @@ struct ParticleView
     double& weight;
     double& charge;
     std::array<int, dim>& iCell;
-    std::array<float, dim>& delta;
+    std::array<double, dim>& delta;
     std::array<double, 3>& v;
 };
 
@@ -85,8 +88,8 @@ struct ContiguousParticles
     {
     }
 
-    template<typename Container_int, typename Container_float, typename Container_double>
-    ContiguousParticles(Container_int&& _iCell, Container_float&& _delta,
+    template<typename Container_int, typename Container_double>
+    ContiguousParticles(Container_int&& _iCell, Container_double&& _delta,
                         Container_double&& _weight, Container_double&& _charge,
                         Container_double&& _v)
         : iCell{_iCell}
@@ -152,7 +155,7 @@ struct ContiguousParticles
     auto cend() const { return iterator(this); }
 
     container_t<int> iCell;
-    container_t<float> delta;
+    container_t<double> delta;
     container_t<double> weight, charge, v;
 };
 

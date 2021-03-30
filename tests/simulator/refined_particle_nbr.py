@@ -2,7 +2,8 @@
 #
 # formatted with black
 
-from pybindlibs import cpp
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
 
 import os, sys, unittest, yaml
 import numpy as np

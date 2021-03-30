@@ -115,7 +115,7 @@ def decode_bytes(input, errors="ignore"):
     return input.decode("ascii", errors=errors)
 
 
-def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=True):
+def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=False):
     """
     https://docs.python.org/3/library/subprocess.html
     """
@@ -137,3 +137,9 @@ def top_git_hash():
     if len(hashes) > 0:
         return hashes[0]
     return "master" # github actions fails?
+
+
+def print_trace():
+    import sys, traceback
+    _, _, tb = sys.exc_info()
+    traceback.print_tb(tb)

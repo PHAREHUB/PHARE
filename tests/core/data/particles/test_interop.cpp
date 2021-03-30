@@ -32,7 +32,7 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
         view.weight = 1 + i;
         view.charge = 1 + i;
         view.iCell  = ConstArray<int, dim>(i);
-        view.delta  = ConstArray<float, dim>(i + 1);
+        view.delta  = ConstArray<double, dim>(i + 1);
         view.v      = ConstArray<double, 3>(view.weight + 2);
         EXPECT_EQ(std::copy(view), view);
     }
