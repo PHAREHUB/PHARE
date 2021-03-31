@@ -146,6 +146,7 @@ namespace amr
             electricGhosts_.registerLevel(hierarchy, level);
             currentGhosts_.registerLevel(hierarchy, level);
             patchGhostParticles_.registerLevel(hierarchy, level);
+            densityGhosts_.registerLevel(hierarchy, level);
 
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
@@ -292,6 +293,11 @@ namespace amr
             currentGhosts_.fill(J, levelNumber, fillTime);
         }
 
+
+        void fillDensityGhosts(int const levelNumber, double const fillTime) override
+        {
+            densityGhosts_.fill(levelNumber, fillTime);
+        }
 
 
 
@@ -554,6 +560,8 @@ namespace amr
 
             fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
                           currentGhosts_);
+
+            fillRefiners_(info->ghostIonDensity, densityGhosts_);
         }
 
 
@@ -653,6 +661,11 @@ namespace amr
             }
         }
 
+        template<typename RefinerPool>
+        void fillRefiners_(FieldDescriptor const& descriptor, RefinerPool& refiner)
+        {
+            refiner.add(descriptor, nullptr, descriptor, resourcesManager_);
+        }
 
 
         void copyLevelGhostOldToPushable_(SAMRAI::hier::PatchLevel& level, IPhysicalModel& model)
@@ -720,6 +733,7 @@ namespace amr
 
         RefinerPool<RefinerType::GhostField> currentGhosts_;
 
+        RefinerPool<RefinerType::GhostField> densityGhosts_;
 
         // algo and schedule used to initialize domain particles
         // from coarser level using particleRefineOp<domain>

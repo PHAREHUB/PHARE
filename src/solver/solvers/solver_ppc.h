@@ -24,6 +24,7 @@
 #include "core/numerics/ampere/ampere.h"
 #include "core/numerics/faraday/faraday.h"
 #include "core/numerics/ohm/ohm.h"
+#include "core/numerics/filter/filter.h"
 
 #include "core/data/particles/particle_array.h"
 #include "core/data/vecfield/vecfield.h"
@@ -124,6 +125,8 @@ private:
                    Messenger& fromCoarser, double const currentTime, double const newTime,
                    core::UpdaterMode mode);
 
+    void filterDensity_(level_t& level, HybridModel& model, Messenger& messenger, double newTime);
+
 
     /*
     template<typename HybridMessenger>
@@ -204,13 +207,16 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::moments_only);
 
-    predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
+    // filterDensity_(*level, hybridModel, fromCoarser, newTime);
 
+    predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
     average_(*level, hybridModel);
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::particles_and_moments);
+
+    // filterDensity_(*level, hybridModel, fromCoarser, newTime);
 
     corrector_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
@@ -471,6 +477,31 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
         PHARE::core::average(E, Epred, Eavg);
     }
 }
+
+
+
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::filterDensity_(level_t& level, HybridModel& model,
+                                                       Messenger& messenger, double newTime)
+{
+    auto& ions             = model.state.ions;
+    auto& resourcesManager = model.resourcesManager;
+    PHARE::core::Filter filter;
+
+    for (auto i = 0; i < 10; ++i)
+    {
+        for (auto& patch : level)
+        {
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _      = resourcesManager->setOnPatch(*patch, ions);
+
+            auto& density = ions.density();
+            filter(density, layout);
+        }
+        messenger.fillDensityGhosts(level.getLevelNumber(), newTime);
+    }
+}
+
 
 
 

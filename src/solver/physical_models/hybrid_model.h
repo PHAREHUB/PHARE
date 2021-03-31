@@ -148,6 +148,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::fillMesse
     modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
     modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
     modelInfo.ghostCurrent.push_back(state.J);
+    modelInfo.ghostIonDensity = state.ions.densityName();
 
 
     auto transform_ = [](auto& ions, auto& inserter) {

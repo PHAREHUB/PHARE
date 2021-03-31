@@ -97,6 +97,8 @@ namespace amr
         //! HybridMessenger::fillGhostCurrent
         std::vector<VecFieldDescriptor> ghostCurrent;
 
+        FieldDescriptor ghostIonDensity;
+
 
         virtual ~HybridMessengerInfo() = default;
     };

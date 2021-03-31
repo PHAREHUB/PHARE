@@ -62,7 +62,7 @@ namespace amr
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
         using IPhysicalModel = typename HybridModel::Interface;
-
+        using FieldT         = typename VecFieldT::field_type;
 
         using stratT = HybridMessengerStrategy<HybridModel>;
 
@@ -300,6 +300,13 @@ namespace amr
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime)
         {
             strat_->fillCurrentGhosts(J, levelNumber, fillTime);
+        }
+
+
+
+        void fillDensityGhosts(int const levelNumber, double const fillTime)
+        {
+            strat_->fillDensityGhosts(levelNumber, fillTime);
         }
 
 
