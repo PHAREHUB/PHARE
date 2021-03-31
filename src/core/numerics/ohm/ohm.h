@@ -209,7 +209,7 @@ namespace core
                 auto gradPOnEx = this->layout_->deriv(
                     Pe, index, DirectionTag<Direction::X>{}); // TODO : issue 3391
 
-                return gradPOnEx / nOnEx;
+                return -gradPOnEx / nOnEx;
             }
 
             if constexpr (ComponentTag::component == Component::Y)
@@ -221,7 +221,7 @@ namespace core
                     auto gradPOnEy = this->layout_->deriv(
                         Pe, index, DirectionTag<Direction::Y>{}); // TODO : issue 3391
 
-                    return gradPOnEy / nOnEy;
+                    return -gradPOnEy / nOnEy;
                 }
                 else
                 {
@@ -238,7 +238,7 @@ namespace core
                     auto gradPOnEz = this->layout_->deriv(
                         Pe, index, DirectionTag<Direction::Z>{}); // TODO : issue 3391
 
-                    return gradPOnEz / nOnEz;
+                    return -gradPOnEz / nOnEz;
                 }
                 else
                 {

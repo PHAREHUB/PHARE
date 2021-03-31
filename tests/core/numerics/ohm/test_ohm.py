@@ -101,7 +101,7 @@ def test_ohm_yee1D(path):
                               - 0.5*Vx[psi_p_X:pei_p_X+1]*(By[psi_d_X-1:pei_d_X+1]+By[psi_d_X:pei_d_X+2])
 
     # pressure term
-    pressx[psi_d_X:pei_d_X+1] = ((P[psi_p_X+1:pei_p_X+1]-P[psi_p_X:pei_p_X])/tv.meshSize[0])\
+    pressx[psi_d_X:pei_d_X+1] = -((P[psi_p_X+1:pei_p_X+1]-P[psi_p_X:pei_p_X])/tv.meshSize[0])\
                                 /(0.5*(n[psi_p_X:pei_p_X]+n[psi_p_X+1:pei_p_X+1]))
     pressy[psi_p_X:pei_p_X+1] = 0
     pressz[psi_p_X:pei_p_X+1] = 0
@@ -237,13 +237,13 @@ def test_ohm_yee2D(path):
 
     # pressure term
     pressx[psi_d_X  :pei_d_X+1, psi_p_Y  :pei_p_Y+1] = \
-       ((P[psi_p_X+1:pei_p_X+1, psi_p_Y  :pei_p_Y+1]\
+       -((P[psi_p_X+1:pei_p_X+1, psi_p_Y  :pei_p_Y+1]\
         -P[psi_p_X  :pei_p_X  , psi_p_Y  :pei_p_Y+1])/tv.meshSize[0])\
   /(0.5*(n[psi_p_X  :pei_p_X  , psi_p_Y  :pei_p_Y+1]\
         +n[psi_p_X+1:pei_p_X+1, psi_p_Y  :pei_p_Y+1]))
 
     pressy[psi_p_X  :pei_p_X+1, psi_d_Y  :pei_d_Y+1] = \
-       ((P[psi_p_X  :pei_p_X+1, psi_p_Y+1:pei_p_Y+1]\
+       -((P[psi_p_X  :pei_p_X+1, psi_p_Y+1:pei_p_Y+1]\
         -P[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y  ])/tv.meshSize[1])\
   /(0.5*(n[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y  ]\
         +n[psi_p_X  :pei_p_X+1, psi_p_Y+1:pei_p_Y+1]))
@@ -447,19 +447,19 @@ def test_ohm_yee3D(path):
 
     # pressure term
     pressx[psi_d_X  :pei_d_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1] = \
-       ((P[psi_p_X+1:pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1]\
+       -((P[psi_p_X+1:pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1]\
         -P[psi_p_X  :pei_p_X  , psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1])/tv.meshSize[0])\
   /(0.5*(n[psi_p_X  :pei_p_X  , psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1]\
         +n[psi_p_X+1:pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z+1]))
 
     pressy[psi_p_X  :pei_p_X+1, psi_d_Y  :pei_d_Y+1, psi_p_Z  :pei_p_Z+1] = \
-       ((P[psi_p_X  :pei_p_X+1, psi_p_Y+1:pei_p_Y+1, psi_p_Z  :pei_p_Z+1]\
+       -((P[psi_p_X  :pei_p_X+1, psi_p_Y+1:pei_p_Y+1, psi_p_Z  :pei_p_Z+1]\
         -P[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y  , psi_p_Z  :pei_p_Z+1])/tv.meshSize[1])\
   /(0.5*(n[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y  , psi_p_Z  :pei_p_Z+1]\
         +n[psi_p_X  :pei_p_X+1, psi_p_Y+1:pei_p_Y+1, psi_p_Z  :pei_p_Z+1]))
 
     pressz[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_d_Z  :pei_d_Z+1] = \
-       ((P[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z+1:pei_p_Z+1]\
+       -((P[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z+1:pei_p_Z+1]\
         -P[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z  ])/tv.meshSize[2])\
   /(0.5*(n[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z  :pei_p_Z  ]\
         +n[psi_p_X  :pei_p_X+1, psi_p_Y  :pei_p_Y+1, psi_p_Z+1:pei_p_Z+1]))
