@@ -5,7 +5,7 @@ class IsothermalClosure(object):
 
     closure_name = "isothermal"
     def __init__(self, **kwargs):
-        self.Te   = float(kwargs.get("Te", IsothermalClosure._defaultTe()))
+        self.Te   = kwargs.get("Te", IsothermalClosure._defaultTe())
 
 
     @staticmethod
