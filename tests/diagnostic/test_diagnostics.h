@@ -215,6 +215,7 @@ struct Hi5Diagnostic
 
         dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
         dict["compute_timestamps"] = std::vector<double>{0, 1, 2};
+        dict["n_attributes"]       = std::size_t{0}; // real diag attrs are loaded from python
 
         return dict;
     }

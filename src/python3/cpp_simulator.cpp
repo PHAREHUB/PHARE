@@ -160,6 +160,27 @@ void declare(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedParts...
 }
 
 
+
+auto pybind_version()
+{
+    std::stringstream ss;
+    ss << PYBIND11_VERSION_MAJOR << ".";
+    ss << PYBIND11_VERSION_MINOR << ".";
+    ss << PHARE_TO_STR(PYBIND11_VERSION_PATCH);
+    return ss.str();
+}
+
+auto samrai_version()
+{
+    std::stringstream ss;
+    ss << SAMRAI_VERSION_MAJOR << ".";
+    ss << SAMRAI_VERSION_MINOR << ".";
+    ss << SAMRAI_VERSION_PATCHLEVEL;
+    return ss.str();
+}
+
+
+
 PYBIND11_MODULE(cpp, m)
 {
     py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
@@ -196,6 +217,14 @@ PYBIND11_MODULE(cpp, m)
         m, "PyWrapper");
 
     m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
+
+    m.def("phare_deps", []() {
+        std::unordered_map<std::string, std::string> versions{{"pybind", pybind_version()},
+                                                              {"samrai", samrai_version()}};
+        _PHARE_WITH_HIGHFIVE(versions["highfive"] = PHARE_TO_STR(HIGHFIVE_VERSION));
+        return versions;
+    });
 }
+
 
 } // namespace PHARE::pydata

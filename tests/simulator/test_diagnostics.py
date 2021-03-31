@@ -7,7 +7,7 @@ from tests.diagnostic import dump_all_diags
 from tests.simulator import populate_simulation
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from
+from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
 import pyphare.pharein as ph
 import unittest
 import os
@@ -130,6 +130,9 @@ class DiagnosticsTest(unittest.TestCase):
         b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
+        py_attrs = ["dep_" + version for version in ["samrai", "highfive", "pybind"] ]
+        py_attrs += ["git_hash"]
+
         for interp in range(1, 4):
             print("test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
@@ -146,6 +149,8 @@ class DiagnosticsTest(unittest.TestCase):
 
             self.assertTrue(any([diagInfo.quantity.endswith("domain") for diagInfo in ph.global_vars.sim.diagnostics]))
 
+
+
             particle_files = 0
             for diagInfo in ph.global_vars.sim.diagnostics:
                 h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
@@ -153,8 +158,12 @@ class DiagnosticsTest(unittest.TestCase):
 
                 h5_file = h5py.File(h5_filepath, "r")
 
-                self.assertTrue("t0.0000000000" in h5_file) # init dump
-                self.assertTrue("t0.0010000000" in h5_file) # first advance dump
+                self.assertTrue("t0.0000000000" in h5_file[h5_time_grp_key]) # init dump
+                self.assertTrue("t0.0010000000" in h5_file[h5_time_grp_key]) # first advance dump
+
+                h5_py_attrs = h5_file["py_attrs"].attrs.keys()
+                for py_attr in py_attrs:
+                    self.assertIn(py_attr, h5_py_attrs)
 
                 hier = hierarchy_from(h5_filename=h5_filepath)
                 if h5_filepath.endswith("domain.h5"):

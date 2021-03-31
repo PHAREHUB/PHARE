@@ -109,3 +109,31 @@ class FloatingPoint_comparator:
 
     def __ge__(self, other):
         return fp_gtr_equal(self.fp, other.fp, self.atol)
+
+
+def decode_bytes(input, errors="ignore"):
+    return input.decode("ascii", errors=errors)
+
+
+def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=True):
+    """
+    https://docs.python.org/3/library/subprocess.html
+    """
+    import subprocess
+    if print_cmd:
+        print(f"running: {cmd}")
+    try:
+        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check)
+    except subprocess.CalledProcessError as e: # only triggers on failure if check=True
+        raise RuntimeError(decode_bytes(e.stderr))
+
+
+def git_hashes(N=1):
+    return decode_bytes(run_cli_cmd(f"git log -{N} --pretty=format:%h").stdout).splitlines()
+
+
+def top_git_hash():
+    hashes = git_hashes(1)
+    if len(hashes) > 0:
+        return hashes[0]
+    return "master" # github actions fails?

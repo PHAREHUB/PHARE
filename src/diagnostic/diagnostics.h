@@ -8,6 +8,13 @@
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
 #endif
 
+#if PHARE_HAS_HIGHFIVE
+#include "highfive/H5Version.hpp"
+#define _PHARE_WITH_HIGHFIVE(...) __VA_ARGS__
+#else
+#define _PHARE_WITH_HIGHFIVE(...)
+#endif
+
 #include "diagnostic_manager.h"
 
 #include "cppdict/include/dict.hpp"

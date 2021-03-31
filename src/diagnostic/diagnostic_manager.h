@@ -143,6 +143,15 @@ DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict const& dia
     diagProps.computeTimestamps
         = diagInputs["compute_timestamps"].template to<std::vector<double>>();
 
+    diagProps.nAttributes = diagInputs["n_attributes"].template to<std::size_t>();
+    for (std::size_t i = 0; i < diagProps.nAttributes; ++i)
+    {
+        std::string idx = std::to_string(i);
+        std::string key = diagInputs["attribute_" + idx + "_key"].template to<std::string>();
+        std::string val = diagInputs["attribute_" + idx + "_value"].template to<std::string>();
+        diagProps.fileAttributes[key] = val;
+    }
+
     return *this;
 }
 

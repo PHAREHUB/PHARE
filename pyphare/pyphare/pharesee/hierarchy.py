@@ -366,8 +366,6 @@ def finest_part_data(hierarchy, time=None):
                         particles[popname].add(parts)
     return particles
 
-
-
 class PatchHierarchy:
     """is a collection of patch levels """
 
@@ -855,6 +853,9 @@ def patch_has_datasets(h5_patch_grp):
     return len(h5_patch_grp.keys())>0
 
 
+
+h5_time_grp_key = "t"
+
 def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     import h5py
     data_file = h5py.File(h5_filename, "r")
@@ -869,7 +870,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         # then add all other times
         if not silent:
             print("creating hierarchy from all times in file")
-        times = list(data_file.keys())
+        times = list(data_file[h5_time_grp_key].keys())
         hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier)
         if len(times) > 1:
             for t in times[1:]:
@@ -881,7 +882,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
             print("creating hierarchy from time {}".format(time))
         t = time.strip("t")
 
-        h5_time_grp = data_file[time]
+        h5_time_grp = data_file[h5_time_grp_key][time]
         patch_levels = {}
 
         for plvl_key in h5_time_grp.keys():
@@ -914,7 +915,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     if load_one_time(time, hier):
         if not silent:
             print("loading data at time {} into existing hierarchy".format(time))
-        h5_time_grp = data_file[time]
+        h5_time_grp = data_file[h5_time_grp_key][time]
         t = time.strip("t")
 
         if t in hier.time_hier:
@@ -982,7 +983,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     if load_all_times(time, hier):
         if not silent:
             print("loading all times in existing hier")
-        for time in data_file.keys():
+        for time in data_file[h5_time_grp_key].keys():
             hier = hierarchy_fromh5(h5_filename, time, hier)
 
         return hier

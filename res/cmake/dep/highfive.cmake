@@ -25,7 +25,11 @@ if(HighFive)
 
   include_directories(
     ${HIGHFIVE_SRC}/include
+    ${CMAKE_BINARY_DIR}/subprojects/highfive/include # configured include for version info
   )
+  set(HIGHFIVE_USE_BOOST OFF)
+  set(HIGHFIVE_BUILD_DOCS OFF) # conflicts with phare doc target
+  add_subdirectory(${HIGHFIVE_SRC})
 
   message("HighFive enabled - checking HDF5")
 

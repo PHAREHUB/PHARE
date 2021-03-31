@@ -61,10 +61,17 @@ def validate_timestamps(clazz, **kwargs):
 
 # ------------------------------------------------------------------------------
 
+def try_cpp_dep_vers():
+    try:
+        from pybindlibs import cpp
+        return cpp.phare_deps()
+    except ImportError:
+        return {}
 
 class Diagnostics(object):
 
     h5_flush_never = 0
+    cpp_dep_vers = try_cpp_dep_vers()
 
     @diagnostics_checker
     def __init__(self,name, **kwargs):
@@ -78,6 +85,15 @@ class Diagnostics(object):
         validate_timestamps(self.__class__.__name__, **kwargs)
         self.write_timestamps = kwargs['write_timestamps'] #[0, 1, 2]
         self.compute_timestamps = kwargs['compute_timestamps']
+
+        self.attributes = kwargs.get("attributes", {})
+        self.attributes["git_hash"]  = phare_utilities.top_git_hash()
+
+        for dep, dep_ver in Diagnostics.cpp_dep_vers.items():
+            self.attributes["dep_" + dep] = dep_ver
+
+        for key in self.attributes: # avoid conflict with other root attributes
+            self.attributes[key] = "py_" + self.attributes[key]
 
         self._setSubTypeAttributes(**kwargs)
         self.flush_every = kwargs.get("flush_every", 1) # flushes every dump, safe, but costly

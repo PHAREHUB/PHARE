@@ -76,7 +76,7 @@ protected:
     }
 
     void writeAttributes_(
-        HighFive::File& file, Attributes& fileAttributes,
+        DiagnosticProperties& diagnostic, HighFive::File& file, Attributes& fileAttributes,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&
             patchAttributes,
         std::size_t maxLevel)
@@ -94,6 +94,8 @@ protected:
                                              "");
         }
 
+        if (diagnostic.nAttributes > 0)
+            h5Writer_.writeAttributeDict(file, diagnostic.fileAttributes, "/py_attrs");
         h5Writer_.writeAttributeDict(file, fileAttributes, "/");
     }
 

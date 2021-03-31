@@ -18,6 +18,8 @@
 #define PHARE_DEBUG_DO(...)
 #endif
 
+#define _PHARE_TO_STR(x) #x // convert macro text to string
+#define PHARE_TO_STR(x) _PHARE_TO_STR(x)
 
 namespace PHARE
 {
