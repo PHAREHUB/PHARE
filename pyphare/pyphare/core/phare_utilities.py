@@ -98,9 +98,14 @@ class FloatingPoint_comparator:
     def __eq__(self, other):
         return fp_equal(self.fp, other.fp, self.atol)
 
-    def __ge__(self, other):
-        return fp_gtr_equal(self.fp, other.fp, self.atol)
+    def __lt__(self, other):
+        return self.fp < other.fp
 
     def __le__(self, other):
         return fp_less_equal(self.fp, other.fp, self.atol)
 
+    def __gt__(self, other):
+        return self.fp > other.fp
+
+    def __ge__(self, other):
+        return fp_gtr_equal(self.fp, other.fp, self.atol)

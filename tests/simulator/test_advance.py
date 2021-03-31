@@ -8,7 +8,7 @@ from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, E
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
-from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
+from pyphare.core.gridlayout import yee_element_is_primal
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box1D
@@ -306,7 +306,6 @@ class AdvanceTest(unittest.TestCase):
         for fine_subcycle_time in fine_subcycle_times:
             fine_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time)
             for qty in quantities:
-                qty_is_primal = yee_element_is_primal(qty)
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
                     for fine_level_ghost_box in fine_level_ghost_box_data["boxes"]:
