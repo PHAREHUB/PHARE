@@ -46,19 +46,48 @@ class FieldData(PatchData):
     @property
     def y(self):
         if self._y is None:
-            self._y = self._mesh_coords(1)
+            self._y = self.layout.yeeCoordsFor(self.field_name, "y")
         return self._y
 
     @property
     def z(self):
         if self._z is None:
-            self._z = self._mesh_coords(2)
+            self._z = self.layout.yeeCoordsFor(self.field_name, "z")
         return self._z
+
+    def primal_directions(self):
+        return self.size - self.ghost_box.shape
 
     def __str__(self):
         return "FieldData: (box=({}, {}), key={})".format(self.layout.box, self.layout.box.shape, self.field_name)
     def __repr__(self):
         return self.__str__()
+
+    def select(self, box):
+        """
+          return view of internal data based on overlap of input box
+             returns a view +1 in size in primal directions
+        """
+        assert isinstance(box, Box) and box.ndim == self.box.ndim
+
+        gbox = self.ghost_box.copy()
+        gbox.upper += self.primal_directions()
+
+        box = box.copy()
+        box.upper += self.primal_directions()
+
+        overlap = box * gbox
+        if overlap is not None:
+            lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
+            upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
+            assert box.ndim == 1 # this following line is only 1D
+            return self.dataset[lower[0]:upper[0] + 1]
+        return np.array([])
+
+
+    def __getitem__(self, box):
+        return self.select(box)
+
 
     def __init__(self, layout, field_name, data, **kwargs):
         """

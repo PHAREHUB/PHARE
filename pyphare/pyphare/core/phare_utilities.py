@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 def all_iterables(*args):
@@ -80,4 +81,31 @@ def check_mandatory_keywords(mandatory_kwd_list, **kwargs):
     return [mk[0] for mk in check if mk[1] is False]
 
 
+def fp_equal(a, b, atol=1e-6):
+    return math.isclose(a, b, abs_tol=atol)
 
+def fp_less_equal(a, b, atol=1e-6):
+    return fp_equal(a, b, atol=atol) or a < b
+
+def fp_gtr_equal(a, b, atol=1e-6):
+    return fp_equal(a, b, atol=atol) or a > b
+
+class FloatingPoint_comparator:
+    def __init__(self, fp, atol=1e-6):
+        self.fp   = fp
+        self.atol = atol
+
+    def __eq__(self, other):
+        return fp_equal(self.fp, other.fp, self.atol)
+
+    def __lt__(self, other):
+        return self.fp < other.fp
+
+    def __le__(self, other):
+        return fp_less_equal(self.fp, other.fp, self.atol)
+
+    def __gt__(self, other):
+        return self.fp > other.fp
+
+    def __ge__(self, other):
+        return fp_gtr_equal(self.fp, other.fp, self.atol)
