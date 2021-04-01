@@ -880,7 +880,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     if create_from_one_time(time, hier):
         if not silent:
             print("creating hierarchy from time {}".format(time))
-        t = time.strip("t")
+        t = time
 
         h5_time_grp = data_file[h5_time_grp_key][time]
         patch_levels = {}
@@ -916,7 +916,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         if not silent:
             print("loading data at time {} into existing hierarchy".format(time))
         h5_time_grp = data_file[h5_time_grp_key][time]
-        t = time.strip("t")
+        t = time
 
         if t in hier.time_hier:
             if not silent:

@@ -100,7 +100,7 @@ public:
 
     static std::string getFullPatchPath(std::string timestamp, int iLevel, std::string globalCoords)
     {
-        return "/t/t" + timestamp + "/pl" + std::to_string(iLevel) + "/p" + globalCoords;
+        return "/t/" + timestamp + "/pl" + std::to_string(iLevel) + "/p" + globalCoords;
     }
 
     template<typename Type>

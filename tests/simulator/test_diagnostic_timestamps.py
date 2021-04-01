@@ -113,7 +113,7 @@ class DiagnosticsTest(unittest.TestCase):
         Simulator(simulation).run()
 
         def make_time(stamp):
-            return "t{:.10f}".format(stamp)
+            return "{:.10f}".format(stamp)
 
         for diagInfo in ph.global_vars.sim.diagnostics:
             h5_filename = os.path.join(out, h5_filename_from(diagInfo))

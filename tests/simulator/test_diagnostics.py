@@ -158,8 +158,8 @@ class DiagnosticsTest(unittest.TestCase):
 
                 h5_file = h5py.File(h5_filepath, "r")
 
-                self.assertTrue("t0.0000000000" in h5_file[h5_time_grp_key]) # init dump
-                self.assertTrue("t0.0010000000" in h5_file[h5_time_grp_key]) # first advance dump
+                self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key]) # init dump
+                self.assertTrue("0.0010000000" in h5_file[h5_time_grp_key]) # first advance dump
 
                 h5_py_attrs = h5_file["py_attrs"].attrs.keys()
                 for py_attr in py_attrs:
