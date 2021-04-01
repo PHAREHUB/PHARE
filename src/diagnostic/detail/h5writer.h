@@ -252,6 +252,26 @@ void Writer<ModelView>::dump_level(std::size_t level,
 }
 
 
+namespace
+{ // during attribute/dataset creation, we currently don't require the parents of the group to
+  // exist, but create all that are missing - this used to exist in highfive
+    inline std::string getParentName(const std::string& path)
+    {
+        std::size_t idx = path.find_last_of("/");
+        if (idx == std::string::npos or idx == 0)
+            return "/";
+        return path.substr(0, idx);
+    }
+
+    inline void createGroupsToDataSet(HiFile& file, const std::string& path)
+    {
+        std::string group_name = getParentName(path);
+        if (!file.exist(group_name))
+            file.createGroup(group_name);
+    }
+}
+
+
 /*
  * Communicate all dataset paths and sizes to all MPI process to allow each to create all
  * datasets independently. This is a requirement of HDF5.
@@ -261,18 +281,18 @@ void Writer<ModelView>::dump_level(std::size_t level,
  */
 template<typename ModelView>
 template<typename Type>
-void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, std::size_t dataSetSize)
+void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path,
+                                             std::size_t dataSetSize)
 {
-    int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto sizes = core::mpi::collect(dataSetSize, mpi_size);
-    auto paths = core::mpi::collect(path, mpi_size);
+    auto mpi_size = core::mpi::size();
+    auto sizes    = core::mpi::collect(dataSetSize, mpi_size);
+    auto paths    = core::mpi::collect(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
         if (sizes[i] == 0)
             continue;
-        H5Easy::detail::createGroupsToDataSet(h5, paths[i]);
-        h5.createDataSet<Type>(paths[i], HighFive::DataSpace(sizes[i]));
+        createGroupsToDataSet(h5file, paths[i]);
+        h5file.createDataSet<Type>(paths[i], HighFive::DataSpace(sizes[i]));
     }
 }
 
@@ -288,7 +308,7 @@ void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5, std::string path, std::
  */
 template<typename ModelView>
 template<typename Data>
-void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
+void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5file, std::string path, std::string key,
                                               Data const& data)
 {
     constexpr bool data_is_vector = core::is_std_vector_v<Data>;
@@ -318,16 +338,16 @@ void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5, std::string path, std:
         if (keyPath.empty())
             continue;
 
-        if (h5.exist(keyPath) && h5.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
+        if (h5file.exist(keyPath) && h5file.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
         {
-            if (!h5.getDataSet(keyPath).hasAttribute(key))
-                doAttribute(h5.getDataSet(keyPath), key, values[i]);
+            if (!h5file.getDataSet(keyPath).hasAttribute(key))
+                doAttribute(h5file.getDataSet(keyPath), key, values[i]);
         }
         else // group
         {
-            H5Easy::detail::createGroupsToDataSet(h5, keyPath + "/dataset");
-            if (!h5.getGroup(keyPath).hasAttribute(key))
-                doAttribute(h5.getGroup(keyPath), key, values[i]);
+            createGroupsToDataSet(h5file, keyPath + "/dataset");
+            if (!h5file.getGroup(keyPath).hasAttribute(key))
+                doAttribute(h5file.getGroup(keyPath), key, values[i]);
         }
     }
 }
