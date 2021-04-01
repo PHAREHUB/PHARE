@@ -257,28 +257,17 @@ namespace
   // exist, but create all that are missing - this used to exist in highfive
     inline std::string getParentName(const std::string& path)
     {
-        std::size_t idx = path.find_last_of("/\\");
-        if (idx == std::string::npos)
-        {
+        std::size_t idx = path.find_last_of("/");
+        if (idx == std::string::npos or idx == 0)
             return "/";
-        }
-        else if (idx == 0)
-        {
-            return "/";
-        }
-        else
-        {
-            return path.substr(0, idx);
-        }
+        return path.substr(0, idx);
     }
 
     inline void createGroupsToDataSet(HiFile& file, const std::string& path)
     {
         std::string group_name = getParentName(path);
         if (!file.exist(group_name))
-        {
             file.createGroup(group_name);
-        }
     }
 }
 
@@ -295,10 +284,9 @@ template<typename Type>
 void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path,
                                              std::size_t dataSetSize)
 {
-    int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    auto sizes = core::mpi::collect(dataSetSize, mpi_size);
-    auto paths = core::mpi::collect(path, mpi_size);
+    auto mpi_size = core::mpi::size();
+    auto sizes    = core::mpi::collect(dataSetSize, mpi_size);
+    auto paths    = core::mpi::collect(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
         if (sizes[i] == 0)
