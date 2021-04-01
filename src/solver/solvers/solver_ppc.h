@@ -207,7 +207,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::moments_only);
 
-    // filterDensity_(*level, hybridModel, fromCoarser, newTime);
+    filterDensity_(*level, hybridModel, fromCoarser, newTime);
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
@@ -216,7 +216,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::particles_and_moments);
 
-    // filterDensity_(*level, hybridModel, fromCoarser, newTime);
+    filterDensity_(*level, hybridModel, fromCoarser, newTime);
 
     corrector_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
@@ -487,8 +487,11 @@ void SolverPPC<HybridModel, AMR_Types>::filterDensity_(level_t& level, HybridMod
     auto& ions             = model.state.ions;
     auto& resourcesManager = model.resourcesManager;
     PHARE::core::Filter filter;
+    auto levelNumber = level.getLevelNumber();
+    messenger.fillDensityGhosts(levelNumber, newTime);
 
-    for (auto i = 0; i < 10; ++i)
+
+    for (auto i = 0; i < 2; ++i)
     {
         for (auto& patch : level)
         {
@@ -498,7 +501,7 @@ void SolverPPC<HybridModel, AMR_Types>::filterDensity_(level_t& level, HybridMod
             auto& density = ions.density();
             filter(density, layout);
         }
-        messenger.fillDensityGhosts(level.getLevelNumber(), newTime);
+        messenger.fillDensityGhosts(levelNumber, newTime);
     }
 }
 
