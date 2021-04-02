@@ -130,7 +130,7 @@ class DiagnosticsTest(unittest.TestCase):
         b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
-        py_attrs = ["dep_" + version for version in ["samrai", "highfive", "pybind"] ]
+        py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"] ]
         py_attrs += ["git_hash"]
 
         for interp in range(1, 4):

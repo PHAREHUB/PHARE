@@ -90,10 +90,10 @@ class Diagnostics(object):
         self.attributes["git_hash"]  = phare_utilities.top_git_hash()
 
         for dep, dep_ver in Diagnostics.cpp_dep_vers.items():
-            self.attributes["dep_" + dep] = dep_ver
+            self.attributes[f"{dep}_version"] = dep_ver
 
-        for key in self.attributes: # avoid conflict with other root attributes
-            self.attributes[key] = "py_" + self.attributes[key]
+        for key in self.attributes:
+            self.attributes[key] = self.attributes[key]
 
         self._setSubTypeAttributes(**kwargs)
         self.flush_every = kwargs.get("flush_every", 1) # flushes every dump, safe, but costly
