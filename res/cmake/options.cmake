@@ -62,6 +62,10 @@ option(withIPO "Use IPO/LTO if system supported" OFF)
 # IPO can cause linking to fail so default off
 # https://cmake.org/cmake/help/latest/module/CheckIPOSupported.html
 
+# -DwithCaliper=OFF
+option(withCaliper "Use LLNL Caliper" OFF)
+
+
 # Controlling the activation of tests
 if (NOT DEFINED PHARE_EXEC_LEVEL_MIN)
   set(PHARE_EXEC_LEVEL_MIN 1)
@@ -92,11 +96,13 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ubsan support                    : " ${ubsan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
+  message("build with LLNL Caliper                     : " ${withCaliper})
 
   if(${devMode})
     message("PHARE_EXEC_LEVEL_MIN                        : " ${PHARE_EXEC_LEVEL_MIN})
     message("PHARE_EXEC_LEVEL_MAX                        : " ${PHARE_EXEC_LEVEL_MAX})
     message("ccache found                                : " ${PHARE_WITH_CCACHE})
+    message("PHARE_BASE_LIBS                             : " ${PHARE_BASE_LIBS})
   endif()
 
 endfunction(print_phare_options)

@@ -4,6 +4,8 @@ set (PHARE_FLAGS ${PHARE_FLAGS})
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 
+set (PHARE_BASE_LIBS )
+
 # Link Time Optimisation flags - is disabled if coverage is enabled
 set (PHARE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 if(withIPO)

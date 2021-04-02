@@ -16,6 +16,7 @@
 #include "core/models/physical_state.h"
 #include "core/utilities/meta/meta_utilities.h"
 #include "core/utilities/algorithm.h"
+#include "core/logger.h"
 
 #include <string>
 #include <vector>

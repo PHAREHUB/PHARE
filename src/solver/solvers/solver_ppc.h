@@ -187,12 +187,13 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
                                                      IMessenger& fromCoarserMessenger,
                                                      double const currentTime, double const newTime)
 {
+    PHARE_LOG_SCOPE("SolverPPC::advanceLevel");
+
     auto& hybridModel      = dynamic_cast<HybridModel&>(model);
     auto& hybridState      = hybridModel.state;
     auto& fromCoarser      = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
     auto& resourcesManager = *hybridModel.resourcesManager;
     auto level             = hierarchy->getPatchLevel(levelNumber);
-
 
 
     predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
@@ -225,6 +226,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
                                                     Messenger& fromCoarser,
                                                     double const currentTime, double const newTime)
 {
+    PHARE_LOG_SCOPE("SolverPPC::predictor1_");
+
     auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
@@ -233,6 +236,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::predictor1_.faraday");
+
         auto& Bpred = electromagPred_.B;
         auto& B     = electromag.B;
         auto& E     = electromag.E;
@@ -254,6 +259,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::predictor1_.ampere");
+
         auto& Bpred = electromagPred_.B;
         auto& J     = hybridState.J;
 
@@ -273,6 +280,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::predictor1_.ohm");
+
         auto& electrons = hybridState.electrons;
         auto& Bpred     = electromagPred_.B;
         auto& Epred     = electromagPred_.E;
@@ -301,6 +310,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
                                                     Messenger& fromCoarser,
                                                     double const currentTime, double const newTime)
 {
+    PHARE_LOG_SCOPE("SolverPPC::predictor2_");
+
     auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
@@ -309,6 +320,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::predictor2_.faraday");
+
         auto& Bpred = electromagPred_.B;
         auto& B     = hybridState.electromag.B;
         auto& Eavg  = electromagAvg_.E;
@@ -328,6 +341,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::predictor2_.ampere");
+
         auto& Bpred = electromagPred_.B;
         auto& J     = hybridState.J;
 
@@ -346,6 +361,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::predictor2_.ohm");
+
         auto& electrons = hybridState.electrons;
         auto& Bpred     = electromagPred_.B;
         auto& Epred     = electromagPred_.E;
@@ -376,12 +393,16 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
                                                    Messenger& fromCoarser, double const currentTime,
                                                    double const newTime)
 {
+    PHARE_LOG_SCOPE("SolverPPC::corrector_");
+
     auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
     auto levelNumber       = level.getLevelNumber();
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::corrector_.faraday");
+
         auto& B    = hybridState.electromag.B;
         auto& Eavg = electromagAvg_.E;
 
@@ -401,6 +422,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
 
     {
+        PHARE_LOG_SCOPE("SolverPPC::corrector_.ohm");
+
         auto& electrons = hybridState.electrons;
         auto& B         = hybridState.electromag.B;
         auto& E         = hybridState.electromag.E;
@@ -428,6 +451,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model)
 {
+    PHARE_LOG_SCOPE("SolverPPC::average_");
+
     auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
 
@@ -455,6 +480,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
+    PHARE_LOG_SCOPE("SolverPPC::moveIons_");
+
     std::size_t nbrDomainParticles        = 0;
     std::size_t nbrPatchGhostParticles    = 0;
     std::size_t nbrLevelGhostNewParticles = 0;
