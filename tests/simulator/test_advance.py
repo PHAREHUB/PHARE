@@ -28,7 +28,7 @@ class AdvanceTest(unittest.TestCase):
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
                      smallest_patch_size=5, largest_patch_size=20,
-                     cells=120, time_step=0.001,
+                     cells=120, time_step=0.001, model_init={},
                      dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None):
 
         from pyphare.pharein import global_vars
