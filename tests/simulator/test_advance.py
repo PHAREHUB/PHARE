@@ -219,7 +219,6 @@ class AdvanceTest(unittest.TestCase):
         self.assertEqual(check % time_step_nbr, 0)
 
 
-    # Deprecates InitializationTest.test_overlaped_fields_are_equal
     @data(
         {"L0": [Box1D(10, 19)]},
         {"L0": [Box1D(8, 20)]},
@@ -345,7 +344,6 @@ class AdvanceTest(unittest.TestCase):
       {"L0": [Box1D(10, 20)]},
       {"L0": [Box1D(2, 12), Box1D(13, 25)]},
     )
-    # deprecates InitializationTest.test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles
     def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, refinement_boxes):
         dim = refinement_boxes["L0"][0].ndim
         for interp_order in [1, 2, 3]:
@@ -416,7 +414,6 @@ class AdvanceTest(unittest.TestCase):
       {"L0": [Box1D(10, 20)]},
       {"L0": [Box1D(2, 12), Box1D(13, 25)]},
     )
-    # deprecates InitializationTest.test_overlapped_particledatas_have_identical_particles
     def test_overlapped_particledatas_have_identical_particles(self, refinement_boxes):
         dim = refinement_boxes["L0"][0].ndim
         for interp_order in [1, 2, 3]:
