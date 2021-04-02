@@ -16,6 +16,8 @@
 #include "core/data/particles/particle_array.h"
 #include "amr/resources_manager/amr_utils.h"
 
+#include "core/logger.h"
+
 namespace PHARE
 {
 namespace amr
@@ -137,6 +139,8 @@ namespace amr
          */
         void copy(SAMRAI::hier::PatchData const& source) override
         {
+            PHARE_LOG_SCOPE("copy");
+
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
             // throws if fails
@@ -172,6 +176,8 @@ namespace amr
         void copy(SAMRAI::hier::PatchData const& source,
                   SAMRAI::hier::BoxOverlap const& overlap) override
         {
+            PHARE_LOG_SCOPE("copy");
+
             // casts throw on failure
             auto& pSource  = dynamic_cast<ParticlesData const&>(source);
             auto& pOverlap = dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap);
@@ -266,6 +272,8 @@ namespace amr
         void packStream(SAMRAI::tbox::MessageStream& stream,
                         SAMRAI::hier::BoxOverlap const& overlap) const override
         {
+            PHARE_LOG_SCOPE("packStream");
+
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
             std::vector<Particle_t> specie;
@@ -333,6 +341,8 @@ namespace amr
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
                           SAMRAI::hier::BoxOverlap const& overlap) override
         {
+            PHARE_LOG_SCOPE("unpackStream");
+
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
             if (!pOverlap.isOverlapEmpty())
