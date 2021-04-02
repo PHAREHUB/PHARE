@@ -75,11 +75,15 @@ def populateDict():
     from .global_vars import sim as simulation
     import pybindlibs.dictator as pp
 
-    add_int = pp.add_int
-    add_double = pp.add_double
-    add_string = pp.add_string
+    # pybind complains if receiving wrong type
+    def add_int(path, val):
+        pp.add_int(path, int(val))
+    def add_double(path, val):
+        pp.add_double(path, float(val))
+    def add_size_t(path, val):
+        pp.add_size_t(path, int(val))
 
-    add_size_t = pp.add_size_t
+    add_string = pp.add_string
     addInitFunction = getattr(pp, 'addInitFunction{:d}'.format(simulation.ndim)+'D')
 
     add_string("simulation/name", "simulation_test")
@@ -93,36 +97,36 @@ def populateDict():
 
 
     add_string("simulation/grid/layout_type", simulation.layout)
-    add_int("simulation/grid/nbr_cells/x", int(simulation.cells[0]))
+    add_int("simulation/grid/nbr_cells/x", simulation.cells[0])
     add_double("simulation/grid/meshsize/x", simulation.dl[0])
     add_double("simulation/grid/origin/x", simulation.origin[0])
 
     if (simulation.ndim>1):
-        add_int("simulation/grid/nbr_cells/y", int(simulation.cells[1]))
+        add_int("simulation/grid/nbr_cells/y", simulation.cells[1])
         add_double("simulation/grid/meshsize/y", simulation.dl[1])
         add_double("simulation/grid/origin/y", simulation.origin[1])
 
         if (simulation.ndim >2):
-            add_int("simulation/grid/nbr_cells/z", int(simulation.cells[2]))
+            add_int("simulation/grid/nbr_cells/z", simulation.cells[2])
             add_double("simulation/grid/meshsize/z", simulation.dl[2])
             add_double("simulation/grid/origin/z", simulation.origin[2])
 
 
 
-    add_int("simulation/interp_order", int(simulation.interp_order))
-    add_int("simulation/refined_particle_nbr", int(simulation.refined_particle_nbr))
-    add_double("simulation/time_step", float(simulation.time_step))
-    add_int("simulation/time_step_nbr",int(simulation.time_step_nbr))
+    add_int("simulation/interp_order", simulation.interp_order)
+    add_int("simulation/refined_particle_nbr", simulation.refined_particle_nbr)
+    add_double("simulation/time_step", simulation.time_step)
+    add_int("simulation/time_step_nbr", simulation.time_step_nbr)
 
 
-    add_int("simulation/AMR/max_nbr_levels", int(simulation.max_nbr_levels))
-    add_int("simulation/AMR/nesting_buffer", int(simulation.nesting_buffer))
+    add_int("simulation/AMR/max_nbr_levels", simulation.max_nbr_levels)
+    add_int("simulation/AMR/nesting_buffer", simulation.nesting_buffer)
     refinement_boxes = simulation.refinement_boxes
 
 
 
     def as_paths(rb):
-        add_int("simulation/AMR/refinement/boxes/nbr_levels/", int(len(rb.keys())))
+        add_int("simulation/AMR/refinement/boxes/nbr_levels/", len(rb.keys()))
         for level,boxes in rb.items():
             level_path = "simulation/AMR/refinement/boxes/"+level+"/"
             add_int(level_path + 'nbr_boxes/',int(len(boxes)))
@@ -132,18 +136,18 @@ def populateDict():
                 upper = box.upper
                 box_lower_path_x = box_id + "/lower/x/"
                 box_upper_path_x = box_id + "/upper/x/"
-                add_int(level_path + box_lower_path_x, int(lower[0]))
-                add_int(level_path + box_upper_path_x, int(upper[0]))
+                add_int(level_path + box_lower_path_x, lower[0])
+                add_int(level_path + box_upper_path_x, upper[0])
                 if len(lower)>=2:
                     box_lower_path_y = box_id + "/lower/y/"
                     box_upper_path_y = box_id + "/upper/y/"
-                    add_int(level_path+box_lower_path_y, int(lower[1]))
-                    add_int(level_path+box_upper_path_y, int(upper[1]))
+                    add_int(level_path+box_lower_path_y, lower[1])
+                    add_int(level_path+box_upper_path_y, upper[1])
                     if (len(lower)==3):
                         box_lower_path_z = box_id + "/lower/z/"
                         box_upper_path_z = box_id + "/upper/z/"
-                        add_int(level_path+box_lower_path_z, int(lower[2]))
-                        add_int(level_path+box_upper_path_z, int(upper[2]))
+                        add_int(level_path+box_lower_path_z, lower[2])
+                        add_int(level_path+box_upper_path_z, upper[2])
 
 
 
@@ -171,7 +175,7 @@ def populateDict():
         partinit_path = pop_path+"{:d}/".format(pop_index)+partinit+"/"
         d = modelDict[pop]
         add_string(pop_path+"{:d}/name".format(pop_index), pop)
-        add_double(pop_path+"{:d}/mass".format(pop_index), float(d["mass"]))
+        add_double(pop_path+"{:d}/mass".format(pop_index), d["mass"])
         add_string(partinit_path+"name", "maxwellian")
 
         addInitFunction(partinit_path+"density", fn_wrapper(d["density"]))
@@ -181,8 +185,8 @@ def populateDict():
         addInitFunction(partinit_path+"thermal_velocity_x",fn_wrapper(d["vthx"]))
         addInitFunction(partinit_path+"thermal_velocity_y",fn_wrapper(d["vthy"]))
         addInitFunction(partinit_path+"thermal_velocity_z",fn_wrapper(d["vthz"]))
-        add_int(partinit_path+"nbr_part_per_cell", int(d["nbrParticlesPerCell"]))
-        add_double(partinit_path+"charge", float(d["charge"]))
+        add_int(partinit_path+"nbr_part_per_cell", d["nbrParticlesPerCell"])
+        add_double(partinit_path+"charge", d["charge"])
         add_string(partinit_path+"basis", "cartesian")
         if "init" in d and "seed" in d["init"]:
             pp.add_optional_size_t(partinit_path+"init/seed", d["init"]["seed"])
