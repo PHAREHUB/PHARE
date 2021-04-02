@@ -207,42 +207,105 @@ class PatchLevel:
 
 
 
-def finest_data(pdata, ilvl, hierarchy):
+def are_adjacent(lower, upper, atol=1e-6):
+    return np.abs(upper[0]-lower[-1]) < atol
+
+
+def overlap_mask(x, level, qty):
     """
-    given a FieldData, a levelnumber and a hierarchy
-    this function returns the coordinates and values
-    of the field at locations where no value exist on the
-    next finer level in the hierachy.
+    returns a mask for x where x is overlaped by
+    the qty patch datas on the specified level
     """
-    # although a priori doable for particles
-    # this just works for fields for now
 
-    assert pdata.quantity == 'field'
-    assert hierarchy.ndim == 1
+    is_overlaped = x != x #lgtm [py/comparison-of-identical-expressions]
 
-    x_ = pdata.x
-    v_ = pdata.dataset
+    # the strategy is to exclude from this patch data
+    # all nodes and values that are overlaped by next finer values
+    # the is_overlaped array will serve as a mask
 
-    if ilvl == hierarchy.finest_level():
-        return x_,v_
+    for patch in level.patches:
+        pdata = patch.patch_datas[qty]
+        ghosts_nbr = pdata.ghosts_nbr[0]
+        finex = pdata.x[ghosts_nbr:-ghosts_nbr]
+        fine_dx = finex[1]-finex[0]
+        local_dx = x[1]-x[0]
+        if fine_dx < local_dx:
+            # the fine patch min and max are widened
+            # a bit so we include border nodes as overlaped
+            xmin, xmax = finex.min() - fine_dx/2, finex.max() + fine_dx/2
+            overlaped_idx = np.where( (x > xmin) & (x < xmax))[0]
+            is_overlaped[overlaped_idx] = True
+        else:
+            raise ValueError("level needs to have finer grid resolution than that of x")
 
-    qtyname = pdata.field_name
-    inner = x_ != x_ #lgtm [py/comparison-of-identical-expressions]
+    return is_overlaped
 
-    # iteratively fill the mask with true where current patch coordinates
-    # are within limits of the next refined level patchdatas
-    for ipatch, finer_patch in enumerate(hierarchy.patch_levels[ilvl+1].patches):
-        pdat = finer_patch.patch_datas[qtyname]
-        xmin,xmax = [pdat.x[ix] for ix in (4,-4)]
-        inner  = inner | ((x_ > xmin) & (x_ < xmax))
 
-    # now take the complement of the mas
-    # i.e. data that has coordinates not existing on
-    # next finer level
-    x = x_[~inner]
-    v = v_[~inner]
 
-    return x, v
+
+
+
+def finest_field(hierarchy, qty, time=None):
+    """returns a non-uniform contiguous (value,grid)
+       associated to the given hierarchy
+       the quantity "qty" must be a field
+    """
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+        sorted_patches = sorted(lvl[ilvl].patches,
+                                key= lambda p:p.box.lower[0])
+
+        for ip, patch in enumerate(sorted_patches):
+
+            pdata = patch.patch_datas[qty]
+            ghosts_nbr = pdata.ghosts_nbr[0]
+            patch_values = pdata.dataset[ghosts_nbr:-ghosts_nbr]
+            x = pdata.x[ghosts_nbr:-ghosts_nbr]
+
+            if ilvl == hierarchy.finest_level(time):
+                if ip == 0:
+                    final = patch_values
+                    final_x = x
+                    last_x = x
+                else:
+                    if are_adjacent(last_x, x):
+                        first_node = 1
+                    else:
+                        first_node = 0
+
+                    final = np.concatenate((final, patch_values[first_node:]))
+                    final_x = np.concatenate((final_x, x[first_node:]))
+                    last_x = x[first_node:]
+
+            else:
+                is_overlaped = overlap_mask(x, hierarchy.level(ilvl+1, time), qty)
+                unique_values = patch_values[~is_overlaped]
+                unique_x = x[~is_overlaped]
+
+                if unique_x.size:
+                    if are_adjacent(last_x, unique_x):
+                        first_node = 1
+                    else:
+                        first_node = 0
+
+                    last_x = unique_x[first_node:]
+
+                    tmp_x = np.concatenate((final_x, unique_x[first_node:]))
+                    final_x = np.sort(tmp_x)
+
+                    # ok now we need to insert unique_values in
+                    # final. unique_values should be inserted in final
+                    # in the same order unique_x should be in final_x
+                    # i.e. with the indexing that sorts tmp_x
+
+                    order = np.argsort(tmp_x)
+                    tmp = np.concatenate((final, unique_values[first_node:-1]))
+                    final = np.concatenate((final, unique_values[first_node:]))[order]
+
+    return final, final_x
+
+
 
 
 def finest_part_data(hierarchy, time=None):
@@ -324,7 +387,7 @@ class PatchHierarchy:
             self.data_files.update(data_files)
 
     def _default_time(self):
-        return list(self.time_hier.keys())[0]
+        return self.times()[0]
 
     def finest_level(self, time=None):
         if time is None:
@@ -508,13 +571,14 @@ class PatchHierarchy:
         time = kwargs.get("time", self.times()[0])
         axis = kwargs.get("axis", ("Vx", "Vy"))
         all_pops = list(self.level(0,time).patches[0].patch_datas.keys())
+
+        vmin = kwargs.get("vmin", -2)
+        vmax = kwargs.get("vmax", 2)
+        dv = kwargs.get("dv", 0.05)
+        vbins = vmin + dv*np.arange(int((vmax-vmin)/dv))
+
         if finest:
             final = finest_part_data(self)
-            vmin = kwargs.get("vmin", -2)
-            vmax = kwargs.get("vmax", 2)
-            dv = kwargs.get("dv", 0.05)
-            vbins = vmin + dv*np.arange(int((vmax-vmin)/dv))
-
             if axis[0] == "x":
                 xbins = amr_grid(self, time)
                 bins = (xbins, vbins)
