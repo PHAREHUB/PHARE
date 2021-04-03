@@ -1,12 +1,16 @@
 
 
+def all_timestamps(sim):
+    import numpy as np
+    return sim.time_step * np.arange(0, sim.final_time / sim.time_step + 1)
+
+
 def dump_all_diags(pops=[], flush_every=100):
     import pyphare.pharein as ph, numpy as np
 
     sim = ph.global_vars.sim
 
-
-    timestamps = np.arange(0, sim.final_time + sim.time_step, sim.time_step)
+    timestamps = all_timestamps(sim)
 
     for quantity in ["density", "bulkVelocity"]:
         ph.FluidDiagnostics(

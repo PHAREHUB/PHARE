@@ -16,6 +16,7 @@ import numpy as np
 mpl.use('Agg')
 
 
+from tests.diagnostic import all_timestamps
 
 
 
@@ -111,9 +112,7 @@ def config():
 
 
 
-    sim = ph.global_vars.sim
-
-    timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
+    timestamps = all_timestamps(gv.sim)
 
 
 

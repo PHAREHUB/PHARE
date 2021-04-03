@@ -94,7 +94,6 @@ function(print_phare_options)
   message("Enable IPO/LTO if system supported          : " ${withIPO})
   message("build with ubsan support                    : " ${ubsan})
   message("build with asan support                     : " ${asan})
-  message("build with ubsan support                    : " ${ubsan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
 
