@@ -14,6 +14,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 
 
+from tests.diagnostic import all_timestamps
 
 
 def config_uni(**kwargs):
@@ -29,7 +30,7 @@ def config_uni(**kwargs):
         final_time=20.,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=500,                # integer or tuple length == dimension
-        dl=1,                  # mesh size of the root level, float or tuple
+        dl=1.0,                  # mesh size of the root level, float or tuple
         refinement_boxes={"L0": {"B0": [(100, ), (200, )]},
                           "L1":{"B0":[(300,),(350,)]}},
         diag_options={"format": "phareh5", "options": {"dir": kwargs["diagdir"],"mode":"overwrite"}}
@@ -85,9 +86,7 @@ def config_uni(**kwargs):
 
 
 
-    sim = ph.global_vars.sim
-
-    timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
+    timestamps = all_timestamps(gv.sim)
 
 
 
@@ -123,7 +122,7 @@ def config_td(**kwargs):
         final_time=20.,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=200,                # integer or tuple length == dimension
-        dl=1,                  # mesh size of the root level, float or tuple
+        dl=1.0,                  # mesh size of the root level, float or tuple
         refinement_boxes={"L0": {"B0": [(50, ), (150, )]},
                           "L1":{"B0":[(125,),(175,)]}},
         diag_options={"format": "phareh5", "options": {"dir": kwargs["diagdir"],"mode":"overwrite"}}
@@ -200,9 +199,7 @@ def config_td(**kwargs):
 
 
 
-    sim = ph.global_vars.sim
-
-    timestamps = np.arange(0, sim.final_time +sim.time_step, sim.time_step)
+    timestamps = all_timestamps(gv.sim)
 
 
 
