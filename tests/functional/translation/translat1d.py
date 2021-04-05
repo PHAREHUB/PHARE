@@ -86,9 +86,7 @@ def config_uni(**kwargs):
 
 
 
-    sim = ph.global_vars.sim
-
-    timestamps = sim.time_step * np.arange(0, sim.final_time / sim.time_step + 1)
+    timestamps = all_timestamps(gv.sim)
 
 
 
