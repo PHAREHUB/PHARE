@@ -9,4 +9,5 @@ Testing
 *.png
 *.jpg
 data*
+.sublime*
 

@@ -7,7 +7,7 @@ from tests.simulator import populate_simulation
 from pyphare.pharein import ElectronModel
 from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics, ParticleDiagnostics
 from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from
+from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
 import pyphare.pharein as ph
 import unittest
 import os
@@ -113,7 +113,7 @@ class DiagnosticsTest(unittest.TestCase):
         Simulator(simulation).run()
 
         def make_time(stamp):
-            return "t{:.10f}".format(stamp)
+            return "{:.10f}".format(stamp)
 
         for diagInfo in ph.global_vars.sim.diagnostics:
             h5_filename = os.path.join(out, h5_filename_from(diagInfo))
@@ -122,7 +122,7 @@ class DiagnosticsTest(unittest.TestCase):
             h5_file = h5py.File(h5_filename, "r")
 
             for timestamp in timestamps:
-                self.assertIn(make_time(timestamp), h5_file)
+                self.assertIn(make_time(timestamp), h5_file[h5_time_grp_key])
 
 
 

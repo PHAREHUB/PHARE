@@ -11,7 +11,8 @@ namespace PHARE::diagnostic
 struct DiagnosticProperties
 {
     // Types limited to actual need, no harm to modify
-    using Params = cppdict::Dict<std::size_t>;
+    using Params         = cppdict::Dict<std::size_t>;
+    using FileAttributes = cppdict::Dict<std::string>;
 
     std::vector<double> writeTimestamps, computeTimestamps;
     std::string type, quantity;
@@ -26,6 +27,9 @@ struct DiagnosticProperties
     {
         return params[paramKey].template to<T>();
     }
+
+    std::size_t nAttributes = 0;
+    FileAttributes fileAttributes{};
 };
 
 } // namespace PHARE::diagnostic

@@ -211,7 +211,7 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
     auto& h5file = fileData_.at(diagnostic.quantity)->file();
 
     writeIonPopAttributes_(h5file);
-    writeAttributes_(h5file, fileAttributes, patchAttributes, maxLevel);
+    writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);
 }
 
 

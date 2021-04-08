@@ -163,7 +163,7 @@ void ElectromagDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    writeAttributes_(fileData_.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
+    writeAttributes_(diagnostic, fileData_.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
                      maxLevel);
 }
 

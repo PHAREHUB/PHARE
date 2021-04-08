@@ -110,7 +110,7 @@ def uniform(vth, dl, cells, nbr_steps):
 def get_times(path):
     import h5py
     f = h5py.File(path, 'r')
-    times = np.array(sorted([float(s.strip("t")) for s in list(f.keys())]))
+    times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
     f.close()
     return times
 
