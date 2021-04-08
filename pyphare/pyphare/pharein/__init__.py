@@ -212,8 +212,8 @@ def populateDict():
         pp.add_array_as_vector(name_path + "/" + "compute_timestamps", diag.compute_timestamps)
         add_size_t(name_path + "/" + 'n_attributes' , len(diag.attributes))
         for attr_idx, attr_key in enumerate(diag.attributes):
-            add(name_path + "/" + f'attribute_{attr_idx}_key' , attr_key)
-            add(name_path + "/" + f'attribute_{attr_idx}_value' , diag.attributes[attr_key])
+            add_string(name_path + "/" + f'attribute_{attr_idx}_key' , attr_key)
+            add_string(name_path + "/" + f'attribute_{attr_idx}_value' , diag.attributes[attr_key])
 
 
 
