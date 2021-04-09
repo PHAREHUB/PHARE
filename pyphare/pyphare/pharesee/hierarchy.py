@@ -1197,3 +1197,10 @@ def merge_particles(hierarchy):
 def h5_filename_from(diagInfo):
     # diagInfo.quantity starts with a / , hence   [1:]
     return (diagInfo.quantity + ".h5").replace('/', '_')[1:]
+
+def get_times_from_h5(filepath):
+    import h5py
+    f = h5py.File(path, 'r')
+    times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
+    f.close()
+    return times

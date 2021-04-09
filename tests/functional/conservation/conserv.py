@@ -13,6 +13,7 @@ import os
 import numpy as np
 import pyphare
 from pyphare.pharesee.run import Run
+from pyphare.pharesee.hierarchy import get_times
 from glob import glob
 
 
@@ -107,14 +108,6 @@ def uniform(vth, dl, cells, nbr_steps):
 #               POSTPROCESS ROUTINES
 #############################################################
 #plotting et al. functions
-def get_times(path):
-    import h5py
-    f = h5py.File(path, 'r')
-    times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
-    f.close()
-    return times
-
-
 
 def kinetic_energy(particles, kind="iso"):
     """
