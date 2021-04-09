@@ -8,6 +8,7 @@
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
 #include "amr/data/particles/refine/particles_data_split.h"
 #include "amr/data/particles/refine/split.h"
+#include "amr/messengers/messenger_info.h"
 #include "amr/messengers/hybrid_messenger_info.h"
 #include "amr/messengers/hybrid_messenger_strategy.h"
 #include "amr/resources_manager/amr_utils.h"
