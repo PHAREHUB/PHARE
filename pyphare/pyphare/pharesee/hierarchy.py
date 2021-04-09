@@ -1200,7 +1200,7 @@ def h5_filename_from(diagInfo):
 
 def get_times_from_h5(filepath):
     import h5py
-    f = h5py.File(path, 'r')
+    f = h5py.File(filepath, 'r')
     times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
     f.close()
     return times
