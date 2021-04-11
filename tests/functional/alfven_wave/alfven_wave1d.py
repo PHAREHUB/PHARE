@@ -16,20 +16,27 @@ mpl.use('Agg')
 
 
 
+####################################################################
+#
+#                     Simulation configuration
+#
+####################################################################
 def config():
 
     # configure the simulation
 
     Simulation(
-        smallest_patch_size=20,
-        largest_patch_size=20,
-        time_step_nbr=10000,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=10.,             # simulation final time (not specified if time_step and time_step_nbr provided)
+        smallest_patch_size=50,
+        largest_patch_size=50,
+        time_step_nbr=100000,        # number of time steps (not specified if time_step and final_time provided)
+        final_time=1000,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
-        cells=40,                # integer or tuple length == dimension
-        dl=0.3,                  # mesh size of the root level, float or tuple
-        refinement_boxes={"L0": {"B0": [(10, ), (20, )]}},
-        diag_options={"format": "phareh5", "options": {"dir": "alfven_norefine","mode":"overwrite"}}
+        cells=1000,                # integer or tuple length == dimension
+        dl=1,                  # mesh size of the root level, float or tuple
+        hyper_resistivity = 0.001,
+        refinement_boxes={"L0": {"B0": [(450, ), (550, )]}},
+        diag_options={"format": "phareh5",
+                      "options": {"dir": ".","mode":"overwrite"}}
     )
 
 
@@ -40,13 +47,13 @@ def config():
     def by(x):
         from pyphare.pharein.global_vars import sim
         L = sim.simulation_domain()
-        return 0.1*np.cos(2*np.pi*x/L[0])
+        return 0.01*np.cos(2*np.pi*x/L[0])
 
 
     def bz(x):
         from pyphare.pharein.global_vars import sim
         L = sim.simulation_domain()
-        return 0.1*np.sin(2*np.pi*x/L[0])
+        return 0.01*np.sin(2*np.pi*x/L[0])
 
 
     def bx(x):
@@ -60,12 +67,12 @@ def config():
     def vy(x):
         from pyphare.pharein.global_vars import sim
         L = sim.simulation_domain()
-        return 0.1*np.cos(2*np.pi*x/L[0])
+        return 0.01*np.cos(2*np.pi*x/L[0])
 
     def vz(x):
         from pyphare.pharein.global_vars import sim
         L = sim.simulation_domain()
-        return 0.1*np.sin(2*np.pi*x/L[0])
+        return 0.01*np.sin(2*np.pi*x/L[0])
 
 
     def vthx(x):
@@ -87,18 +94,16 @@ def config():
 
     MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "init": {"seed": 1337}}
+        protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.12)
-
-
+    ElectronModel(closure="isothermal", Te=0.0)
 
     sim = ph.global_vars.sim
 
-    timestamps = np.arange(0, sim.final_time +sim.time_step, 10*sim.time_step)
-
-
+    dtdiag = 10*sim.time_step
+    ndiag  = sim.final_time/dtdiag+1
+    timestamps = dtdiag * np.arange(ndiag)
 
     for quantity in ["E", "B"]:
         ElectromagDiagnostics(
@@ -118,54 +123,95 @@ def config():
 
 
 
-def plot(bhier):
-    times = np.sort(np.asarray(list(bhier.time_hier.keys())))
+####################################################################
+#                      post processing
+####################################################################
 
-    components  =("B_x", "B_y", "B_z")
-    ylims = ((0,1.5),(-0.25,0.25),(-0.25,0.25))
-
-    for component,ylim in zip(components,ylims):
-        for it,t in enumerate(times):
-            fig,ax = plt.subplots(figsize=(10,6))
-            for il,level in bhier.levels(t).items():
-                patches = level.patches
-                if il == 0:
-                    marker="+"
-                    alpha=1
-                    ls='-'
-                else:
-                    marker='o'
-                    alpha=0.4
-                    ls='none'
-
-                for ip, patch in enumerate(patches):
-                    val   = patch.patch_datas["EM_"+component].dataset[:]
-                    x_val = patch.patch_datas["EM_"+component].x
-                    label="${}$ level {} patch {}".format(component,il,ip)
-                    ax.plot(x_val, val, label=label,
-                            marker=marker, alpha=alpha, ls=ls)
-                    ax.set_ylim(ylim)
-
-            ax.legend(ncol=4)
-            ax.set_title("t = {:05.2f}".format(t))
-            fig.savefig("{}_{:04d}.png".format(component,it))
-            plt.close(fig)
+def wave(x, a0, k, phi):
+    return a0*np.cos(k*x + phi)
 
 
+def phase_speed(run_path, ampl, xmax):
+    from scipy.signal import medfilt
+    import os
+    time = np.asarray(get_times(os.path.join(run_path,"EM_B.h5")))
+    r = Run(run_path)
+    phase = np.zeros_like(time)
+    amplitude = np.zeros_like(time)
+    wave_vec = np.zeros_like(time)
+
+    for it, t in enumerate(time):
+        B = r.GetB(t)
+        by, xby = finest_field(B, "By")
+        a, k, phi = curve_fit(wave, xby, by,p0=(ampl, 2*np.pi/xmax, 0))[0]
+        phase[it] = phi
+        amplitude[it] = a
+        wave_vec[it]  = k
+
+    vphi = medfilt(np.gradient(phase, time)/wave_vec, kernel_size=7)
+    return vphi, time, phase, amplitude, wave_vec
 
 
+def get_times(path):
+    import h5py
+    f = h5py.File(path, 'r')
+    times = np.array(sorted([float(s.strip("t")) for s in list(f.keys())]))
+    f.close()
+    return times
 
 
 def main():
+    from pybindlibs import mpi_rank
+    from pyphare.pharesee.run import Run
+    from pyphare.pharesee.hierarchy import finest_field
+
+
     config()
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
 
+    if mpi_rank() == 0:
 
-    #if cpp.mpi_rank() == 0:
-    #    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
-    #    plot(b)
-    #
+        vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)
+
+        r = Run(".")
+        t = get_times("EM_B.h5")
+        fig, ax = plt.subplots(figsize=(9,5), nrows=1)
+
+        B = r.GetB(t[int(len(t)/2)])
+        by, xby = finest_field(B, "By")
+        ax.plot(xby, by, label="t = 500", alpha=0.6)
+
+        sorted_patches=sorted(B.patch_levels[1].patches,
+                              key=lambda p:p.box.lower[0])
+
+        x0 = sorted_patches[0].patch_datas["By"].x[0]
+        x1 = sorted_patches[-1].patch_datas["By"].x[-1]
+
+        B = r.GetB(t[-1])
+        by, xby = finest_field(B, "By")
+        ax.plot(xby, by, label="t = 1000", alpha=0.6)
+        ax.plot(xby, wave(xby, 0.01, 2*np.pi/1000., 2*np.pi/1000*500),
+                color="k", ls="--", label="T=500 (theory)")
+
+        B = r.GetB(t[0])
+        by, xby = finest_field(B, "By")
+        ax.plot(xby, by, label="t = 0", color="k")
+
+        ax.set_xlabel("x")
+        ax.set_ylabel(r"$B_y$")
+        ax.legend(ncol=4, loc="upper center")
+        ax.set_ylim((-0.012, 0.013))
+        ax.set_title(r"$V_\phi = {:6.4f}$".format(vphi.mean()))
+
+        ax.axvspan(x0, x1, alpha=0.2)
+        fig.tight_layout()
+
+        fig.savefig("alfven_wave.png", dpi=200)
+
+        assert np.mean(np.abs(vphi-1) < 5e-2)
+
+
 if __name__=="__main__":
     main()
