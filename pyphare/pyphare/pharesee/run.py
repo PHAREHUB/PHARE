@@ -26,10 +26,10 @@ def _current1d(by, bz, xby, xbz):
 
 
 def _compute_current(patch):
-    By = patch.patch_datas["B_y"].dataset[:]
-    xby  = patch.patch_datas["B_y"].x
-    Bz = patch.patch_datas["B_z"].dataset[:]
-    xbz  = patch.patch_datas["B_z"].x
+    By = patch.patch_datas["By"].dataset[:]
+    xby  = patch.patch_datas["By"].x
+    Bz = patch.patch_datas["Bz"].dataset[:]
+    xbz  = patch.patch_datas["Bz"].x
     Jy, Jz =  _current1d(By, Bz, xby, xbz)
     return ({"name":"J_y", "data":Jy,"centering":"primal"},
             {"name":"J_z", "data":Jz,"centering":"primal"})
