@@ -53,9 +53,6 @@ namespace amr
         using CoarseToFineRefineOpOld  = typename RefinementParams::CoarseToFineRefineOpOld;
         using CoarseToFineRefineOpNew  = typename RefinementParams::CoarseToFineRefineOpNew;
 
-        template<typename HybridModel_1, typename IPhysicalModel_1>
-        friend class StaticHybridHybridMessengerStrategy;
-
 
     public:
         static const std::string stratName;
