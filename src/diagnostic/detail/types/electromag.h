@@ -25,6 +25,7 @@ public:
     using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename H5Writer::GridLayout;
+    using FloatType  = typename H5Writer::FloatType;
 
     ElectromagDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}
@@ -103,7 +104,7 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
         for (auto& [id, type] : core::Components::componentMap)
         {
             auto vFPath = path + "/" + key + "_" + id;
-            h5Writer.template createDataSet<float>(
+            h5Writer.template createDataSet<FloatType>(
                 h5file, vFPath, null ? 0 : attr[key][id].template to<std::size_t>());
 
             this->writeGhostsAttr_(
@@ -163,8 +164,8 @@ void ElectromagDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    writeAttributes_(diagnostic, fileData_.at(diagnostic.quantity)->file(), fileAttributes, patchAttributes,
-                     maxLevel);
+    writeAttributes_(diagnostic, fileData_.at(diagnostic.quantity)->file(), fileAttributes,
+                     patchAttributes, maxLevel);
 }
 
 

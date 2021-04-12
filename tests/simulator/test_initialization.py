@@ -1,5 +1,6 @@
 
-from pybindlibs import cpp
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
 
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
@@ -515,7 +516,7 @@ class InitializationTest(unittest.TestCase):
 
     def _test_patch_ghost_on_refined_level_case(self, has_patch_ghost, **kwargs):
         import pyphare.pharein as ph
-        from pybindlibs import cpp
+
         from pyphare.simulator.simulator import startMPI
 
         startMPI()

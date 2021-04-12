@@ -2,7 +2,9 @@
 #!/usr/bin/env python3
 
 
-from pybindlibs import cpp
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
+
 from tests.diagnostic import dump_all_diags
 from tests.simulator import populate_simulation
 from pyphare.pharein import ElectronModel

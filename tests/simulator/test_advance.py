@@ -1,5 +1,6 @@
 
-from pybindlibs import cpp
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
 
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
@@ -390,6 +391,13 @@ class AdvanceTest(unittest.TestCase):
                         # overlap box must be shifted by -offset to select data in the patches
                         part1 = copy(pd1.dataset.select(boxm.shift(box, -offsets[0])))
                         part2 = copy(pd2.dataset.select(boxm.shift(box, -offsets[1])))
+
+                        def contains_duplicates(X):
+                            return len(np.unique(X)) != len(X)
+
+                        if contains_duplicates(part1.deltas) and contains_duplicates(part2.deltas):
+                            # https://github.com/PHAREHUB/PHARE/issues/513
+                            continue
 
                         idx1 = np.argsort(part1.iCells + part1.deltas)
                         idx2 = np.argsort(part2.iCells + part2.deltas)

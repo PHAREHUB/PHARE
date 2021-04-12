@@ -63,10 +63,10 @@ class fn_wrapper:
         if is_scalar(ret):
             ret = np.full(len(args[-1]), ret)
 
-        from pybindlibs import cpp
+        from pyphare.cpp import cpp_lib
         # convert numpy array to C++ SubSpan
         # couples vector init functions to C++
-        return cpp.makePyArrayWrapper(ret)
+        return cpp_lib().makePyArrayWrapper(ret)
 
 
 

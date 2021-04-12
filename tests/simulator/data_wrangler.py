@@ -3,7 +3,8 @@
 # formatted with black
 
 
-from pybindlibs import cpp
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
 from tests.simulator import populate_simulation
 import numpy as np
 from pyphare.simulator.simulator import Simulator

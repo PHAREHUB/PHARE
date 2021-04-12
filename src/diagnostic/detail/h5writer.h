@@ -17,6 +17,11 @@
 #include "core/utilities/types.h"
 
 
+#if !defined(PHARE_DIAG_DOUBLES)
+#error // PHARE_DIAG_DOUBLES not defined
+#endif
+
+
 namespace PHARE::diagnostic::h5
 {
 template<typename H5Writer>
@@ -31,6 +36,8 @@ class ParticlesDiagnosticWriter;
 template<typename ModelView>
 class Writer : public PHARE::diagnostic::IWriter
 {
+    using FloatType = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
+
     static constexpr std::size_t timestamp_precision = 10;
 
 public:
@@ -107,10 +114,12 @@ public:
     static void createDataSet(HiFile& h5, std::string const& path, std::size_t size)
     {
         if constexpr (std::is_same_v<Type, double>) // force doubles for floats for storage
-            This::createDatasetsPerMPI<float>(h5, path, size);
+            This::createDatasetsPerMPI<FloatType>(h5, path, size);
         else
             This::createDatasetsPerMPI<Type>(h5, path, size);
     }
+
+
 
     template<typename Array, typename String>
     static void writeDataSet(HiFile& h5, String path, Array const* const array)
