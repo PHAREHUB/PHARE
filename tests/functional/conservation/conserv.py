@@ -13,7 +13,7 @@ import os
 import numpy as np
 import pyphare
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import get_times
+from pyphare.pharesee.hierarchy import get_times_from_h5
 from glob import glob
 
 
@@ -184,7 +184,7 @@ def energies(path, kkind="iso"):
     as a function of time.
     """
     r = Run(path)
-    times = get_times(r.path+"/EM_B.h5")
+    times = get_times_from_h5(r.path+"/EM_B.h5")
     Bnrj = np.zeros_like(times)
     K = np.zeros_like(times)
     for it,t in enumerate(times):
