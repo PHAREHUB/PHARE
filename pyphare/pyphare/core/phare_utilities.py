@@ -137,3 +137,9 @@ def top_git_hash():
     if len(hashes) > 0:
         return hashes[0]
     return "master" # github actions fails?
+
+
+def print_trace():
+    import sys, traceback
+    _, _, tb = sys.exc_info()
+    traceback.print_tb(tb)

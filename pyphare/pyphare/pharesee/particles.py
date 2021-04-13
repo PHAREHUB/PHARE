@@ -1,6 +1,6 @@
 
 import numpy as np
-from ..core.phare_utilities import refinement_ratio
+from ..core.phare_utilities import refinement_ratio, print_trace
 
 class Particles:
     """
@@ -88,6 +88,8 @@ class Particles:
                 all_assert(self, that)
                 return True
             except AssertionError as ex:
+                print(f"particles.py:Particles::eq failed with:", ex)
+                print_trace()
                 return False
         return False
 
@@ -150,7 +152,8 @@ def all_assert(part1, part2):
 
     np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
 
-    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
+    deltol = 1e-6 if any([part.deltas.dtype == np.float32 for part in [part1, part2]] ) else 1e-12
+    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=deltol)
 
     np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
