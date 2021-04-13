@@ -17,7 +17,6 @@ def simulator_shutdown():
 def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
     from pybindlibs import cpp
     make_sim = "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart)
-    print("make_sim", make_sim)
     return getattr(cpp, make_sim)(hier)
 
 

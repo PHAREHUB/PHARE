@@ -1,4 +1,4 @@
-from tools.python3 import run
+from tools.python3 import decode_bytes, run
 
 
 def version():
@@ -29,3 +29,23 @@ def config(
 
 def build(use_ninja=False, threads=1):
     run("ninja" if use_ninja else f"make -j{threads}", capture_output=False)
+
+
+def list_tests():
+    proc = run("ctest -N", capture_output=True)
+    out  = decode_bytes(proc.stdout)
+    return [
+        line.split(" ")[-1] for line in out.splitlines()[1:-2]
+    ]
+
+
+def test_cmd(test, verbose=False):
+    cmd = f"ctest -R {test}"
+    if verbose:
+        cmd = f"{cmd} -V"
+    return cmd
+
+
+def run_test(test, verbose=False, capture_output=False):
+    run(test_cmd(cmd, verbose=verbose), capture_output=capture_output)
+

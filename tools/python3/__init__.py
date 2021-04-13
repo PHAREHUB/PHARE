@@ -2,7 +2,7 @@ def decode_bytes(input):
     return input.decode("ascii", errors="ignore")
 
 
-def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True):
+def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwargs):
     """
     https://docs.python.org/3/library/subprocess.html
     """
@@ -11,7 +11,7 @@ def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True):
     if print_cmd:
         print(f"running: {cmd}")
     try:
-        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check)
+        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check, **kwargs)
     except subprocess.CalledProcessError as e: # only triggers on failure if check=True
         raise RuntimeError(decode_bytes(e.stderr))
 
@@ -54,3 +54,14 @@ def scan_dir(path, files_only=False, dirs_only=False, drop=[]):
         for entry in os.scandir(path)
         if all([check(entry) for check in checks])
     ]
+
+import contextlib
+@contextlib.contextmanager
+def pushd(new_cwd):
+    import os
+    cwd = os.getcwd()
+    os.chdir(new_cwd)
+    try:
+        yield
+    finally:
+        os.chdir(cwd)
