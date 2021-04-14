@@ -10,4 +10,5 @@ Testing
 *.jpg
 data*
 .sublime*
-
+compile_commands.json
+.clangd
