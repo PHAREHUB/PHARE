@@ -161,7 +161,7 @@ def get_times(path):
 
 
 def main():
-    from pybindlibs import mpi_rank
+    from pybindlibs.cpp import mpi_rank
     from pyphare.pharesee.run import Run
     from pyphare.pharesee.hierarchy import finest_field
 
