@@ -24,6 +24,7 @@ public:
     {
     }
 
+    //------  defined by each concrete H5TypeWriter---------------------------
     virtual void createFiles(DiagnosticProperties& diagnostic) = 0;
 
     virtual void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
@@ -41,9 +42,15 @@ public:
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
         std::size_t maxLevel)
         = 0;
+    //------------------------------------------------------------------------
 
+
+
+    //------ valid for all h5type writers -------------------------------------
     void finalize(DiagnosticProperties& diagnostic)
     {
+        // we close the file by removing the associated file
+        // from the map. This is done only at flush time otherwise
         ++dumpIdx_;
 
         assert(diagnostic.params.contains("flush_every"));
@@ -55,6 +62,7 @@ public:
             assert(fileData_.count(diagnostic.quantity) == 0);
         }
     }
+    //------------------------------------------------------------------------
 
 
 protected:

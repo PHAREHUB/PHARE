@@ -29,7 +29,7 @@ class ParticlesDiagnosticWriter;
 
 
 template<typename ModelView>
-class Writer : public PHARE::diagnostic::IWriter
+class Writer
 {
     static constexpr std::size_t timestamp_precision = 10;
 
@@ -68,9 +68,9 @@ public:
     }
 
 
-    void dump(std::vector<DiagnosticProperties*> const&, double current_timestamp) override;
+    void dump(std::vector<DiagnosticProperties*> const&, double current_timestamp);
     void dump_level(std::size_t level, std::vector<DiagnosticProperties*> const& diagnostics,
-                    double timestamp) override;
+                    double timestamp);
 
     template<typename String>
     auto getDiagnosticWriterForType(String& type)
@@ -269,7 +269,7 @@ namespace
         if (!file.exist(group_name))
             file.createGroup(group_name);
     }
-}
+} // namespace
 
 
 /*

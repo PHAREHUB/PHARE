@@ -15,15 +15,6 @@ public:
     virtual ~TypeWriter() {}
 };
 
-class IWriter
-{
-public:
-    virtual ~IWriter() {}
-    virtual void dump(std::vector<DiagnosticProperties*> const& diagnostics, double timestamp) = 0;
-    virtual void dump_level(std::size_t level,
-                            std::vector<DiagnosticProperties*> const& diagnostics, double timestamp)
-        = 0;
-};
 
 } // namespace PHARE::diagnostic
 
