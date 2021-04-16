@@ -7,6 +7,10 @@ from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
+from pyphare.pharesee.hierarchy import get_times_from_h5
+from tests.diagnostic import all_timestamps
+from pyphare.pharesee.run import Run
+from pyphare.pharesee.hierarchy import finest_field
 
 
 import matplotlib.pyplot as plt
@@ -99,11 +103,7 @@ def config():
 
     ElectronModel(closure="isothermal", Te=0.0)
 
-    sim = ph.global_vars.sim
-
-    dtdiag = 10*sim.time_step
-    ndiag  = sim.final_time/dtdiag+1
-    timestamps = dtdiag * np.arange(ndiag)
+    timestamps = all_timestamps(gv.sim)
 
     for quantity in ["E", "B"]:
         ElectromagDiagnostics(
@@ -133,8 +133,9 @@ def wave(x, a0, k, phi):
 
 def phase_speed(run_path, ampl, xmax):
     from scipy.signal import medfilt
+    from scipy.optimize import curve_fit
     import os
-    time = np.asarray(get_times(os.path.join(run_path,"EM_B.h5")))
+    time = get_times_from_h5(os.path.join(run_path,"EM_B.h5"))
     r = Run(run_path)
     phase = np.zeros_like(time)
     amplitude = np.zeros_like(time)
@@ -152,31 +153,20 @@ def phase_speed(run_path, ampl, xmax):
     return vphi, time, phase, amplitude, wave_vec
 
 
-def get_times(path):
-    import h5py
-    f = h5py.File(path, 'r')
-    times = np.array(sorted([float(s.strip("t")) for s in list(f.keys())]))
-    f.close()
-    return times
-
 
 def main():
     from pybindlibs.cpp import mpi_rank
-    from pyphare.pharesee.run import Run
-    from pyphare.pharesee.hierarchy import finest_field
 
 
     config()
-    simulator = Simulator(gv.sim)
-    simulator.initialize()
-    simulator.run()
+    Simulator(gv.sim).initialize().run()
 
     if mpi_rank() == 0:
 
         vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)
 
         r = Run(".")
-        t = get_times("EM_B.h5")
+        t = get_times_from_h5("EM_B.h5")
         fig, ax = plt.subplots(figsize=(9,5), nrows=1)
 
         B = r.GetB(t[int(len(t)/2)])
