@@ -65,7 +65,7 @@ def setup_model(ppc=100):
     model = ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
         protons={"mass":1, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 1337}},
-        brotons={"mass":2, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 2334}},
+        alpha={"mass":4, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 2334}},
     )
     ElectronModel(closure="isothermal", Te=0.12)
     return model
@@ -173,8 +173,8 @@ class DiagnosticsTest(unittest.TestCase):
 
                     if "protons" in h5_filepath:
                         self.assertTrue(h5_file.attrs[ "pop_mass"] == 1)
-                    elif "brotons" in h5_filepath:
-                        self.assertTrue(h5_file.attrs[ "pop_mass"] == 2)
+                    elif "alpha" in h5_filepath:
+                        self.assertTrue(h5_file.attrs[ "pop_mass"] == 4)
                     else:
                         raise RuntimeError("Unknown population")
 
