@@ -99,16 +99,14 @@ protected:
         h5Writer_.writeAttributeDict(file, fileAttributes, "/");
     }
 
-    void writeIonPopAttributes_(HighFive::File& file)
+    template<typename ParticlePopulation>
+    void writeIonPopAttributes_(HighFive::File& file, ParticlePopulation const& pop)
     {
         auto& h5Writer = this->h5Writer_;
 
-        for (auto& pop : h5Writer.modelView().getIons())
-        {
-            Attributes popAttributes;
-            popAttributes["pop_mass"] = pop.mass();
-            h5Writer.writeAttributeDict(file, popAttributes, "/");
-        }
+        Attributes popAttributes;
+        popAttributes["pop_mass"] = pop.mass();
+        h5Writer.writeAttributeDict(file, popAttributes, "/");
     }
 
     void writeGhostsAttr_(HighFive::File& file, std::string path, std::size_t ghosts, bool null)
