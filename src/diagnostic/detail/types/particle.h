@@ -209,9 +209,22 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    auto& h5file = fileData_.at(diagnostic.quantity)->file();
+    auto& h5Writer = this->h5Writer_;
+    auto& h5file   = fileData_.at(diagnostic.quantity)->file();
 
-    writeIonPopAttributes_(h5file);
+    auto checkWrite = [&](auto& tree, std::string pType, auto const& pop) {
+        if (diagnostic.quantity == tree + pType)
+            this->writeIonPopAttributes_(h5file, pop);
+    };
+
+    for (auto& pop : h5Writer.modelView().getIons())
+    {
+        std::string tree = "/ions/pop/" + pop.name() + "/";
+        checkWrite(tree, "domain", pop);
+        checkWrite(tree, "levelGhost", pop);
+        checkWrite(tree, "patchGhost", pop);
+    }
+
     writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);
 }
 

@@ -66,7 +66,8 @@ def setup_model(ppc=100):
 
     model = ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 1337}}
+        protons={"mass":1, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 1337}},
+        alpha={"mass":4, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 2334}},
     )
     ElectronModel(closure="isothermal", Te=0.12)
     return model
@@ -171,7 +172,14 @@ class DiagnosticsTest(unittest.TestCase):
                 if h5_filepath.endswith("domain.h5"):
                     particle_files += 1
                     self.assertTrue("pop_mass" in h5_file.attrs)
-                    self.assertTrue(h5_file.attrs[ "pop_mass"] == 1)
+
+                    if "protons" in h5_filepath:
+                        self.assertTrue(h5_file.attrs[ "pop_mass"] == 1)
+                    elif "alpha" in h5_filepath:
+                        self.assertTrue(h5_file.attrs[ "pop_mass"] == 4)
+                    else:
+                        raise RuntimeError("Unknown population")
+
                     self.assertGreater(len(hier.level(0).patches), 0)
 
                     for patch in hier.level(0).patches:
