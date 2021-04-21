@@ -89,3 +89,19 @@ class Run:
                 hier = self._get_hierarchy(time, filename(pop), hier=hier)
             return hier
         return self._get_hierarchy(time, filename(pop_name), hier=hier)
+
+    def GetMass(self, pop_name):
+        list_of_qty = ['density', 'flux', 'domain', 'levelGhost', 'patchGhost']
+        list_of_mass = []
+
+        import h5py
+        for qty in list_of_qty:
+            file = os.path.join(self.path, "ions_pop_{}_{}.h5".format(pop_name, qty))
+            if os.path.isfile(file):
+                h5_file = h5py.File(file, "r")
+                list_of_mass.append(h5_file.attrs["pop_mass"])
+
+        assert all(m==list_of_mass[0] for m in list_of_mass)
+
+        return list_of_mass[0]
+
