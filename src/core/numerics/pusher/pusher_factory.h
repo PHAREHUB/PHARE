@@ -6,6 +6,7 @@
 #include <string>
 
 #include "boris.h"
+#include "kirov.h"
 #include "pusher.h"
 
 namespace PHARE
@@ -17,11 +18,23 @@ namespace core
     public:
         template<std::size_t dim, typename ParticleIterator, typename Electromag,
                  typename Interpolator, typename BoundaryCondition, typename GridLayout>
-        static auto makePusher(std::string pusherName)
+        static std::unique_ptr<
+            Pusher<dim, ParticleIterator, Electromag, Interpolator, BoundaryCondition, GridLayout>>
+        makePusher(std::string pusherName)
         {
+            // /*TORM */ return std::make_unique<KirovPusher<
+            //     dim, ParticleIterator, Electromag, Interpolator, BoundaryCondition,
+            //     GridLayout>>();
+
             if (pusherName == "modified_boris")
             {
                 return std::make_unique<BorisPusher<dim, ParticleIterator, Electromag, Interpolator,
+                                                    BoundaryCondition, GridLayout>>();
+            }
+
+            if (pusherName == "kirov")
+            {
+                return std::make_unique<KirovPusher<dim, ParticleIterator, Electromag, Interpolator,
                                                     BoundaryCondition, GridLayout>>();
             }
 

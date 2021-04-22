@@ -129,7 +129,7 @@ def check_interp_order(**kwargs):
 
 def check_pusher(**kwargs):
     pusher = kwargs.get('particle_pusher', 'modified_boris')
-    if pusher not in ['modified_boris']:
+    if pusher not in ['modified_boris', 'kirov']:
         raise ValueError('Error: invalid pusher ({})'.format(pusher))
     return pusher
 

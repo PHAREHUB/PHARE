@@ -135,7 +135,14 @@ namespace core
             throw std::runtime_error("Error - VecField not usable");
         }
 
-
+        auto getComponents()
+        {
+            return std::forward_as_tuple(*components_[0], *components_[1], *components_[2]);
+        }
+        auto getComponents() const
+        {
+            return std::forward_as_tuple(*components_[0], *components_[1], *components_[2]);
+        }
 
 
         Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&

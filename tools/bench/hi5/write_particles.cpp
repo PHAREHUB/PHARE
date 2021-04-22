@@ -31,7 +31,7 @@ void do_bench(benchmark::State& state)
     };
 
     auto createDataSet_ = [&](auto& hi5, auto const& path, auto const size, auto const& value) {
-        H5Easy::detail::createGroupsToDataSet(hi5.file_, path);
+        h5::createGroupsToDataSet(hi5.file_, path);
         using ValueType = std::decay_t<decltype(value)>;
         if constexpr (h5::is_array_dataset<ValueType, dim>)
             return hi5.file_.template createDataSet<typename ValueType::value_type>(

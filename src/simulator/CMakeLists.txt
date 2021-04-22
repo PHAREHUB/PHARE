@@ -19,5 +19,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_initializer
   phare_amr # for mpicc
   phare_diagnostic
+  Threads::Threads
   )
 

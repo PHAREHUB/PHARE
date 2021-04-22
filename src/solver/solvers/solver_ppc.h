@@ -30,6 +30,8 @@
 #include "core/data/grid/gridlayout_utils.h"
 
 
+#include "core/numerics/ion_updater/lol_ion_updater.h"
+
 #include <iomanip>
 
 namespace PHARE::solver
@@ -60,7 +62,7 @@ private:
     PHARE::core::Faraday<GridLayout> faraday_;
     PHARE::core::Ampere<GridLayout> ampere_;
     PHARE::core::Ohm<GridLayout> ohm_;
-    PHARE::core::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
+    PHARE::core::LOL_IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
 
 
 

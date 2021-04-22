@@ -20,6 +20,8 @@ if(HighFive)
 
   add_python3_test(test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 
+  add_python3_test(pusher_kirov    test_kirov.py           ${CMAKE_CURRENT_BINARY_DIR})
+
 endif()
 
 add_python3_test(data-wrangler        data_wrangler.py        ${CMAKE_CURRENT_BINARY_DIR})

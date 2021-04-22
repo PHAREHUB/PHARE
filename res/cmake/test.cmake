@@ -94,7 +94,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   if(DEFINED GTEST_ROOT)
     set(GTEST_ROOT ${GTEST_ROOT} CACHE PATH "Path to googletest")
     find_package(GTest REQUIRED)
-    set(GTEST_LIBS GTest::GTest GTest::Main)
+    set(GTEST_LIBS GTest::GTest GTest::Main Threads::Threads)
   else()
     set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googletest)
 
@@ -106,7 +106,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     set(GTEST_INCLUDE_DIRS
       $<BUILD_INTERFACE:${gtest_SOURCE_DIR}/include>
       $<BUILD_INTERFACE:${gmock_SOURCE_DIR}/include>)
-    set(GTEST_LIBS gtest gmock)
+    set(GTEST_LIBS gtest gmock Threads::Threads)
 
   endif()
 

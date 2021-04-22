@@ -38,6 +38,9 @@ namespace core
 
         std::size_t size() const { return std::distance(first_, last_); }
 
+        auto& operator[](std::size_t i) { return *(first_ + i); }
+        auto& operator[](std::size_t i) const { return *(first_ + i); }
+
     private:
         Iterator first_;
         Iterator last_;

@@ -25,7 +25,7 @@ namespace core
         using ParticleSelector = typename Super::ParticleSelector;
         using ParticleRange    = Range<ParticleIterator>;
 
-        /** see Pusher::move() domentation*/
+        /** see Pusher::move() documentation*/
         ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
                               Electromag const& emFields, double mass, Interpolator& interpolator,
                               ParticleSelector const& particleIsNotLeaving, BoundaryCondition& bc,
@@ -67,7 +67,7 @@ namespace core
         }
 
 
-        /** see Pusher::move() domentation*/
+        /** see Pusher::move() documentation*/
         ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
                               Electromag const& emFields, double mass, Interpolator& interpolator,
                               ParticleSelector const& particleIsNotLeaving,
@@ -100,7 +100,7 @@ namespace core
         }
 
 
-        /** see Pusher::move() domentation*/
+        /** see Pusher::move() documentation*/
         virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) override
         {
             std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),

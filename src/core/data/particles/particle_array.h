@@ -26,6 +26,11 @@ public:
     {
     }
 
+    ParticleArray(ParticleArray const& copy)
+        : particles(copy.particles)
+    {
+    }
+
     ParticleArray(std::size_t size, Particle_t&& particle)
         : particles(size, particle)
     {
