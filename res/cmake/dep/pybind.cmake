@@ -1,4 +1,5 @@
 
+SET(PYBIND_MIN_VERSION "2.5.0")
 
 function(get_pybind)
 
@@ -30,7 +31,7 @@ if (forceGetPybind)
   get_pybind()
 else()
 
-  find_package(pybind11 CONFIG QUIET)
+  find_package(pybind11 ${PYBIND_MIN_VERSION} CONFIG QUIET)
 
   if (NOT pybind11_FOUND)
     get_pybind()
