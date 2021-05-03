@@ -31,8 +31,8 @@ def _compute_current(patch):
     Bz = patch.patch_datas["Bz"].dataset[:]
     xbz  = patch.patch_datas["Bz"].x
     Jy, Jz =  _current1d(By, Bz, xby, xbz)
-    return ({"name":"J_y", "data":Jy,"centering":"primal"},
-            {"name":"J_z", "data":Jz,"centering":"primal"})
+    return ({"name":"Jy", "data":Jy,"centering":"primal"},
+            {"name":"Jz", "data":Jz,"centering":"primal"})
 
 
 class Run:

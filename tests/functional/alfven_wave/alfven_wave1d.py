@@ -156,6 +156,8 @@ def phase_speed(run_path, ampl, xmax):
 
 def main():
     from pybindlibs.cpp import mpi_rank
+    from pyphare.pharesee.run import Run
+    from pyphare.pharesee.hierarchy import finest_field
 
 
     config()
