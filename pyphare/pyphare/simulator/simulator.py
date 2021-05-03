@@ -15,15 +15,15 @@ def simulator_shutdown():
 
 
 def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
-    from pybindlibs import cpp
-    make_sim = "make_simulator_" + str(dim) + "_" + str(interp)+ "_" + str(nbrRefinedPart)
-    return getattr(cpp, make_sim)(hier)
+    from pyphare.cpp import cpp_lib
+    make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
+    return getattr(cpp_lib(), make_sim)(hier)
 
 
 def startMPI():
     if "samrai" not in life_cycles:
-        from pybindlibs import cpp
-        life_cycles["samrai"] = cpp.SamraiLifeCycle()
+        from pyphare.cpp import cpp_lib
+        life_cycles["samrai"] = cpp_lib().SamraiLifeCycle()
 
 
 class Simulator:
@@ -47,11 +47,11 @@ class Simulator:
         if self.cpp_sim is not None:
             raise ValueError("Simulator already initialized: requires reset to re-initialize")
         try:
-            from pybindlibs import cpp
+            from pyphare.cpp import cpp_lib
             from pyphare.pharein import populateDict
             startMPI()
             populateDict()
-            self.cpp_hier = cpp.make_hierarchy()
+            self.cpp_hier = cpp_lib().make_hierarchy()
 
             self.cpp_sim = make_cpp_simulator(
               self.simulation.ndim, self.simulation.interp_order, self.simulation.refined_particle_nbr, self.cpp_hier
@@ -79,7 +79,7 @@ class Simulator:
                          self.timeStep())
 
     def run(self):
-        from pybindlibs import cpp
+        from pyphare.cpp import cpp_lib
         self._check_init()
         perf = []
         end_time = self.cpp_sim.endTime()
@@ -91,7 +91,7 @@ class Simulator:
             ticktock = tock-tick
             perf.append(ticktock)
             t = self.cpp_sim.currentTime()
-            if cpp.mpi_rank() == 0:
+            if cpp_lib().mpi_rank() == 0:
                 print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
 
         print("mean advance time = {}".format(np.mean(perf)))

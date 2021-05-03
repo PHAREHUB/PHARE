@@ -17,7 +17,7 @@ template<std::size_t dim, typename PyArrayTuple>
 core::ContiguousParticlesView<dim> contiguousViewFrom(PyArrayTuple const& py_particles)
 {
     return {makeSpan<int>(std::get<0>(py_particles)),     // iCell
-            makeSpan<float>(std::get<1>(py_particles)),   // delta
+            makeSpan<double>(std::get<1>(py_particles)),  // delta
             makeSpan<double>(std::get<2>(py_particles)),  // weight
             makeSpan<double>(std::get<3>(py_particles)),  // charge
             makeSpan<double>(std::get<4>(py_particles))}; // v
@@ -26,11 +26,11 @@ core::ContiguousParticlesView<dim> contiguousViewFrom(PyArrayTuple const& py_par
 template<std::size_t dim>
 pyarray_particles_t makePyArrayTuple(std::size_t const size)
 {
-    return std::make_tuple(py_array_t<int>(size * dim),   // iCell
-                           py_array_t<float>(size * dim), // delta
-                           py_array_t<double>(size),      // weight
-                           py_array_t<double>(size),      // charge
-                           py_array_t<double>(size * 3)); // v
+    return std::make_tuple(py_array_t<int>(size * dim),    // iCell
+                           py_array_t<double>(size * dim), // delta
+                           py_array_t<double>(size),       // weight
+                           py_array_t<double>(size),       // charge
+                           py_array_t<double>(size * 3));  // v
 }
 
 

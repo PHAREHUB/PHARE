@@ -1,6 +1,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <array>
 #include <cstddef>
 #include <fstream>
 #include <iterator>
@@ -109,6 +110,9 @@ template<std::size_t dimension_>
 struct DummyLayout
 {
     static constexpr std::size_t dimension = dimension_;
+    std::array<unsigned int, dimension> nbrCells_;
+    auto nbrCells() const { return nbrCells_; }
+    auto AMRBox() const { return PHARE::core::Box<int, 1>{}; }
 };
 
 template<std::size_t dim>

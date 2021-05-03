@@ -26,6 +26,12 @@
 #include "python3/patch_level.h"
 #include "python3/data_wrangler.h"
 
+
+#if !defined(PHARE_CPP_MOD_NAME)
+#define PHARE_CPP_MOD_NAME cpp
+#endif
+
+
 namespace py = pybind11;
 
 namespace PHARE::pydata
@@ -181,7 +187,7 @@ auto samrai_version()
 
 
 
-PYBIND11_MODULE(cpp, m)
+PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
 {
     py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
         .def(py::init<>())
