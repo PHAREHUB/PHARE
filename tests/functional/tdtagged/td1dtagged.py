@@ -8,6 +8,7 @@ from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
+from pyphare.pharesee.run import Run
 
 
 import matplotlib.pyplot as plt
