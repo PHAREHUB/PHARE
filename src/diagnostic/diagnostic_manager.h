@@ -8,6 +8,7 @@
 
 #include <utility>
 #include <cmath>
+#include <memory>
 
 namespace PHARE::diagnostic
 {
@@ -16,12 +17,15 @@ enum class Mode { LIGHT, FULL };
 
 
 template<typename DiagManager>
-void registerDiagnostics(DiagManager& dMan, PHARE::initializer::PHAREDict const& diagsParams)
+void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
     std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle"};
 
     for (auto& diagType : diagTypes)
     {
+        // several diags of the same type can be registeroed
+        // corresponding to several blocks in user input
+        // fluid0, fluid1, electromag0, electromag1, etc.
         std::size_t diagBlockID = 0;
         while (diagsParams.contains(diagType)
                && diagsParams[diagType].contains(diagType + std::to_string(diagBlockID)))
@@ -51,12 +55,19 @@ template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
+    void dump(double timeStamp, double timeStep) override;
+
+
+    void dump_level(std::size_t level, double timeStamp) override;
+
+
     DiagnosticsManager(std::unique_ptr<Writer>&& writer_ptr)
-        : writer_{std::forward<std::unique_ptr<Writer>>(writer_ptr)}
+        : writer_{std::move(writer_ptr)}
     {
         if (!writer_)
             throw std::runtime_error("Error: DiagnosticsManager received null Writer");
     }
+
 
     template<typename Hierarchy, typename Model>
     static std::unique_ptr<DiagnosticsManager> make_unique(Hierarchy& hier, Model& model,
@@ -67,64 +78,53 @@ public:
         return dMan;
     }
 
-    void dump(double timeStamp, double timeStep) override;
-    void dump_level(std::size_t level, double timeStamp) override;
 
-    DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict const& dict);
+    DiagnosticsManager& addDiagDict(initializer::PHAREDict const& dict);
 
 
-    DiagnosticsManager& addDiagDict(PHARE::initializer::PHAREDict&& dict)
-    {
-        return addDiagDict(dict);
-    }
+    DiagnosticsManager& addDiagDict(initializer::PHAREDict&& dict) { return addDiagDict(dict); }
 
-
-    void addDiagnostic(DiagnosticProperties& diagnostic)
-    {
-        diagnostics_.emplace_back(diagnostic);
-        nextWrite_[diagnostic.type + diagnostic.quantity]   = -1;
-        nextCompute_[diagnostic.type + diagnostic.quantity] = -1;
-    }
 
     auto& diagnostics() const { return diagnostics_; }
 
 
-    bool needsWrite(DiagnosticProperties& diag, double timeStamp, double timeStep)
-    {
-        auto nextWrite = nextWrite_[diag.type + diag.quantity];
-        return nextWrite < diag.writeTimestamps.size()
-               and needsAction(diag.writeTimestamps[nextWrite], timeStamp, timeStep);
-    }
-
-    bool needsCompute(DiagnosticProperties& diag, double timeStamp, double timeStep)
-    {
-        auto nextCompute = nextCompute_[diag.type + diag.quantity];
-        return nextCompute < diag.computeTimestamps.size()
-               and needsAction(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
-    }
-
     Writer& writer() { return *writer_.get(); }
 
-protected:
+
+    DiagnosticsManager(DiagnosticsManager const&) = delete;
+    DiagnosticsManager(DiagnosticsManager&&)      = delete;
+    DiagnosticsManager& operator=(DiagnosticsManager const&) = delete;
+    DiagnosticsManager& operator=(DiagnosticsManager&&) = delete;
+
+private:
     std::vector<DiagnosticProperties> diagnostics_;
 
-    bool needsAction(double nextTime, double timeStamp, double timeStep)
+    bool needsAction_(double nextTime, double timeStamp, double timeStep)
     {
         // casting to float to truncate double to avoid trailing imprecision
         return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
     }
 
-private:
-    std::unique_ptr<Writer> writer_;
 
+    bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    {
+        auto nextWrite = nextWrite_[diag.type + diag.quantity];
+        return nextWrite < diag.writeTimestamps.size()
+               and needsAction_(diag.writeTimestamps[nextWrite], timeStamp, timeStep);
+    }
+
+
+    bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    {
+        auto nextCompute = nextCompute_[diag.type + diag.quantity];
+        return nextCompute < diag.computeTimestamps.size()
+               and needsAction_(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
+    }
+
+
+    std::unique_ptr<Writer> writer_;
     std::map<std::string, std::size_t> nextCompute_;
     std::map<std::string, std::size_t> nextWrite_;
-
-
-    DiagnosticsManager(const DiagnosticsManager&)  = delete;
-    DiagnosticsManager(const DiagnosticsManager&&) = delete;
-    DiagnosticsManager& operator=(const DiagnosticsManager&) = delete;
-    DiagnosticsManager& operator=(const DiagnosticsManager&&) = delete;
 };
 
 
@@ -132,23 +132,23 @@ private:
 
 template<typename Writer>
 DiagnosticsManager<Writer>&
-DiagnosticsManager<Writer>::addDiagDict(PHARE::initializer::PHAREDict const& diagInputs)
+DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams)
 {
     auto& diagProps           = diagnostics_.emplace_back(DiagnosticProperties{});
-    diagProps.type            = diagInputs["type"].template to<std::string>();
-    diagProps.quantity        = diagInputs["quantity"].template to<std::string>();
-    diagProps.writeTimestamps = diagInputs["write_timestamps"].template to<std::vector<double>>();
-    diagProps["flush_every"]  = diagInputs["flush_every"].template to<std::size_t>();
+    diagProps.type            = diagParams["type"].template to<std::string>();
+    diagProps.quantity        = diagParams["quantity"].template to<std::string>();
+    diagProps.writeTimestamps = diagParams["write_timestamps"].template to<std::vector<double>>();
+    diagProps["flush_every"]  = diagParams["flush_every"].template to<std::size_t>();
 
     diagProps.computeTimestamps
-        = diagInputs["compute_timestamps"].template to<std::vector<double>>();
+        = diagParams["compute_timestamps"].template to<std::vector<double>>();
 
-    diagProps.nAttributes = diagInputs["n_attributes"].template to<std::size_t>();
+    diagProps.nAttributes = diagParams["n_attributes"].template to<std::size_t>();
     for (std::size_t i = 0; i < diagProps.nAttributes; ++i)
     {
         std::string idx = std::to_string(i);
-        std::string key = diagInputs["attribute_" + idx + "_key"].template to<std::string>();
-        std::string val = diagInputs["attribute_" + idx + "_value"].template to<std::string>();
+        std::string key = diagParams["attribute_" + idx + "_key"].template to<std::string>();
+        std::string val = diagParams["attribute_" + idx + "_value"].template to<std::string>();
         diagProps.fileAttributes[key] = val;
     }
 
@@ -160,8 +160,10 @@ template<typename Writer>
 void DiagnosticsManager<Writer>::dump_level(std::size_t level, double timeStamp)
 {
     std::vector<DiagnosticProperties*> activeDiagnostics;
+
     for (auto& diag : diagnostics_)
         activeDiagnostics.emplace_back(&diag);
+
     writer_->dump_level(level, activeDiagnostics, timeStamp);
 }
 
@@ -174,12 +176,12 @@ void DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     {
         auto diagID = diag.type + diag.quantity;
 
-        if (needsCompute(diag, timeStamp, timeStep))
+        if (needsCompute_(diag, timeStamp, timeStep))
         {
             writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
             nextCompute_[diagID]++;
         }
-        if (needsWrite(diag, timeStamp, timeStep))
+        if (needsWrite_(diag, timeStamp, timeStep))
         {
             activeDiagnostics.emplace_back(&diag);
         }
