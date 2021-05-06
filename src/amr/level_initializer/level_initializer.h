@@ -2,7 +2,7 @@
 #define PHARE_LEVEL_INITIALIZER_H
 
 #include "amr/messengers/messenger.h"
-#include "solver/physical_models/physical_model.h"
+#include "amr/physical_models/physical_model.h"
 
 namespace PHARE
 {

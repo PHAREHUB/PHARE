@@ -11,7 +11,7 @@
 
 #include "amr/messengers/mhd_messenger_info.h"
 #include "core/models/mhd_state.h"
-#include "solver/physical_models/physical_model.h"
+#include "amr/physical_models/physical_model.h"
 #include "amr/resources_manager/resources_manager.h"
 
 

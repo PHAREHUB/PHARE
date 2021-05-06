@@ -11,8 +11,8 @@
 #include "initializer/data_provider.h"
 #include "amr/messengers/hybrid_messenger.h"
 #include "amr/messengers/messenger.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
+#include "amr/physical_models/hybrid_model.h"
+#include "amr/physical_models/mhd_model.h"
 #include "amr/resources_manager/resources_manager.h"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>

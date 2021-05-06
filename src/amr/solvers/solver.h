@@ -9,7 +9,7 @@
 
 #include "amr/messengers/messenger.h"
 #include "amr/messengers/messenger_info.h"
-#include "solver/physical_models/physical_model.h"
+#include "amr/physical_models/physical_model.h"
 
 
 

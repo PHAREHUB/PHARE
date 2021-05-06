@@ -4,8 +4,8 @@
 
 
 #include "amr/messengers/messenger.h"
-#include "solver/physical_models/physical_model.h"
-#include "solver/solvers/solver.h"
+#include "physical_models/physical_model.h"
+#include "amr/solvers/solver.h"
 
 
 namespace PHARE

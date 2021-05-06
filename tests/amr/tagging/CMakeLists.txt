@@ -19,7 +19,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_amr
-  phare_solver
   ${GTEST_LIBS})
 
 

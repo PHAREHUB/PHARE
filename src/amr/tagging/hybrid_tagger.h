@@ -4,7 +4,7 @@
 
 #include "tagger.h"
 #include "hybrid_tagger_strategy.h"
-#include "solver/physical_models/hybrid_model.h"
+#include "amr/physical_models/hybrid_model.h"
 #include "amr/types/amr_types.h"
 
 #include <SAMRAI/pdat/CellData.h>

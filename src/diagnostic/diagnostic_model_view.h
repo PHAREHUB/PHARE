@@ -2,7 +2,7 @@
 #define DIAGNOSTIC_MODEL_VIEW_H
 
 #include "core/utilities/mpi_utils.h"
-#include "solver/physical_models/hybrid_model.h"
+#include "amr/physical_models/hybrid_model.h"
 #include "cppdict/include/dict.hpp"
 
 namespace PHARE::diagnostic
