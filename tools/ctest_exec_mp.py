@@ -4,8 +4,9 @@ import os
 import sys
 from pathlib import Path
 
-assert all([os.path.exists(d) for d in ["tests", "tools", "CMakeLists.txt"]])
-root = Path(os.getcwd())  # expects project root!
+not_root_error = "script must be run from project root directory"
+assert all([os.path.exists(d) for d in ["tests", "tools", "CMakeLists.txt"]]), not_root_error
+root = Path(os.getcwd())
 sys.path.insert(0, ".")
 
 from tools.python3 import run, pushd
@@ -39,6 +40,7 @@ def main():
         data_dir = Path(os.path.join(str(root), "data_out", current_git_hash, "ctest_logs"))
         os.makedirs(str(data_dir), exist_ok=True)
         N_CORES= int(os.environ["N_CORES"]) if "N_CORES" in os.environ else 1
+        print(f"Launching ctests with N_CORES {N_CORES}")
         run_tests_log_to_file(data_dir, N_CORES, cmake.list_tests())
 
 if __name__ == "__main__":

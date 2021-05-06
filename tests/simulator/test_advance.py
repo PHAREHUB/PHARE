@@ -28,7 +28,7 @@ class AdvanceTest(unittest.TestCase):
                      diag_outputs="phare_outputs",
                      smallest_patch_size=5, largest_patch_size=20,
                      cells=120, time_step=0.001, model_init={},
-                     dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None):
+                     dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -41,8 +41,8 @@ class AdvanceTest(unittest.TestCase):
             time_step_nbr=time_step_nbr,
             time_step=time_step,
             boundary_types="periodic",
-            cells=cells,
-            dl=dl,
+            cells=[cells] * ndim,
+            dl=[dl] * ndim,
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
@@ -218,44 +218,6 @@ class AdvanceTest(unittest.TestCase):
         self.assertEqual(check % time_step_nbr, 0)
 
 
-    @data(
-        {"L0": [Box1D(10, 19)]},
-        {"L0": [Box1D(8, 20)]},
-    )
-    def test_overlaped_fields_are_equal(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_overlaped_fields_are_equal_{self.ddt_test_id()}"
-        for interp_order in [1, 2, 3]:
-            datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
-            self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
-
-
-    @data(
-        {"L0": [Box1D(10, 19)]},
-        # {"L0": [Box2D(10, 19)]},
-        # {"L0": [Box3D(10, 19)]},
-    )
-    def test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts(self, refinement_boxes):
-        from pyphare.pharein.simulation import check_patch_size
-
-        dim = refinement_boxes["L0"][0].ndim
-
-        cells = [30] * dim
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts{self.ddt_test_id()}"
-        for interp_order in [1, 2, 3]:
-            largest_patch_size, smallest_patch_size = check_patch_size(dim, interp_order=interp_order, cells=cells)
-            datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
-                                      smallest_patch_size=smallest_patch_size, largest_patch_size=smallest_patch_size,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
-            self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
-
-
-
 
 
     def _test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, dim, interp_order, refinement_boxes):
@@ -339,14 +301,6 @@ class AdvanceTest(unittest.TestCase):
                     np.testing.assert_allclose(cmpdomain.deltas[sort_cmpdomain_idx], refghost.deltas[sort_refghost_idx], atol=1e-12)
 
 
-    @data(
-      {"L0": [Box1D(10, 20)]},
-      {"L0": [Box1D(2, 12), Box1D(13, 25)]},
-    )
-    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        for interp_order in [1, 2, 3]:
-            self._test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(dim, interp_order=interp_order, refinement_boxes=refinement_boxes)
 
 
 
@@ -451,15 +405,6 @@ class AdvanceTest(unittest.TestCase):
 
 
 
-    @data(
-      {"L0": [Box1D(10, 20)]},
-      {"L0": [Box1D(2, 12), Box1D(13, 25)]},
-    )
-    def test_overlapped_particledatas_have_identical_particles(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        for interp_order in [1, 2, 3]:
-            self._test_overlapped_particledatas_have_identical_particles(dim, interp_order, refinement_boxes)
-
 
 
 
@@ -541,18 +486,6 @@ class AdvanceTest(unittest.TestCase):
                                     coarsen(qty, coarse_pd.layout, fine_pd.layout, coarseBox, fine_pdDataset, afterCoarse)
                                     np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-6)
 
-
-    @data(
-       ({"L0": {"B0": Box1D(10, 19)}}),
-       ({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
-       ({"L0": {"B0": Box1D(6, 23)}}),
-       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
-       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(15, 19)}}),
-       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(12, 38)}, "L2": {"B0": Box1D(30, 52)} }),
-    )
-    def test_field_coarsening_via_subcycles(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].ndim
-        self._test_field_coarsening_via_subcycles(dim, interp_order=1, refinement_boxes=refinement_boxes)
 
 
 
@@ -650,16 +583,6 @@ class AdvanceTest(unittest.TestCase):
         self.assertGreater(checks, len(refinement_boxes["L0"]) * len(quantities))
 
 
-
-    @data( # only supports a hierarchy with 2 levels
-       ({"L0": [Box1D(5, 9)]}),
-       ({"L0": [Box1D(5, 24)]}),
-       ({"L0": [Box1D(5, 9), Box1D(20, 24)]}),
-    )
-    def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        for interp in [1, 2, 3]:
-            self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(dim, interp, refinement_boxes)
 
 
     @data(

@@ -66,6 +66,10 @@ option(withIPO "Use IPO/LTO if system supported" OFF)
 option(withCaliper "Use LLNL Caliper" OFF)
 
 
+# -DlowResourceTests=ON
+option(lowResourceTests "Disable heavy tests for CI (2d/3d/etc" OFF)
+
+
 # Controlling the activation of tests
 if (NOT DEFINED PHARE_EXEC_LEVEL_MIN)
   set(PHARE_EXEC_LEVEL_MIN 1)
@@ -102,6 +106,7 @@ function(print_phare_options)
     message("PHARE_EXEC_LEVEL_MAX                        : " ${PHARE_EXEC_LEVEL_MAX})
     message("ccache found                                : " ${PHARE_WITH_CCACHE})
     message("PHARE_BASE_LIBS                             : " ${PHARE_BASE_LIBS})
+    message("Exclude heavier tests                       : " ${lowResourceTests})
   endif()
 
 endfunction(print_phare_options)

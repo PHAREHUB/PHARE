@@ -12,3 +12,5 @@ data*
 .sublime*
 compile_commands.json
 .clangd
+phare_outputs*
+

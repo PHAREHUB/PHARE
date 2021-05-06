@@ -26,16 +26,7 @@ namespace core
     template<typename NdArrayImpl, typename PhysicalQuantity, typename DataType = double>
     class VecField
     {
-        struct VecFieldProperties
-        {
-            std::string name;
-            typename PhysicalQuantity::Scalar qty;
-        };
-
     public:
-        using resources_properties = std::vector<VecFieldProperties>;
-        using field_type           = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
-
         VecField()                                 = delete;
         VecField& Vecfield(VecField const& source) = delete;
         VecField(VecField&& source)                = default;
@@ -62,6 +53,16 @@ namespace core
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
+
+        struct VecFieldProperties
+        {
+            std::string name;
+            typename PhysicalQuantity::Scalar qty;
+        };
+
+        using resources_properties = std::vector<VecFieldProperties>;
+
+        using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
         resources_properties getFieldNamesAndQuantities() const
         {

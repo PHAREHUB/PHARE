@@ -18,11 +18,14 @@ if(HighFive)
   add_python3_test(advancement     test_advance.py         ${CMAKE_CURRENT_BINARY_DIR})
   add_python3_test(sim-refineboxes refinement_boxes.py     ${CMAKE_CURRENT_BINARY_DIR})
 
-  add_python3_test(test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
-
+  phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 add_python3_test(data-wrangler        data_wrangler.py        ${CMAKE_CURRENT_BINARY_DIR})
 add_python3_test(sim-refineParticlNbr refined_particle_nbr.py ${CMAKE_CURRENT_BINARY_DIR})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py ${CMAKE_CURRENT_BINARY_DIR}/config.py @ONLY)
+
+add_subdirectory(initialize)
+add_subdirectory(advance)
+

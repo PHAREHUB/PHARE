@@ -8,7 +8,7 @@ from ..core.box import Box
 
 
 def supported_dimensions():
-    return [1]
+    return [1, 2]
 
 
 def compute_dimension(cells):

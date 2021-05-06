@@ -183,24 +183,29 @@ class Particles:
         )
 
 
+
 def all_assert(part1, part2):
+    np.testing.assert_equal(part1.ndim, part2.ndim)
     np.testing.assert_equal(part1.size(), part2.size())
 
-    idx1 = np.argsort(part1.iCells + part1.deltas)
-    idx2 = np.argsort(part2.iCells + part2.deltas)
+    ndim = part1.ndim
 
-    np.testing.assert_equal(len(idx1), len(idx2))
-
-    np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
+    part1.iCells = part1.iCells.reshape(part1.iCells.shape[0], ndim)
+    part1.deltas = part1.deltas.reshape(part1.deltas.shape[0], ndim)
+    part2.iCells = part2.iCells.reshape(part2.iCells.shape[0], ndim)
+    part2.deltas = part2.deltas.reshape(part2.deltas.shape[0], ndim)
 
     deltol = 1e-6 if any([part.deltas.dtype == np.float32 for part in [part1, part2]] ) else 1e-12
-    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=deltol)
+    for dimdex in range(ndim):
+        idx1 = np.argsort((part1.iCells + part1.deltas)[:,dimdex])
+        idx2 = np.argsort((part2.iCells + part2.deltas)[:,dimdex])
+        np.testing.assert_array_equal(part1.iCells[idx1,dimdex], part2.iCells[idx2,dimdex])
+        np.testing.assert_allclose(part1.deltas[idx1,dimdex], part2.deltas[idx2,dimdex], atol=deltol)
 
     np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
-    np.testing.assert_allclose(part1.dl[idx1], part2.dl[idx2], atol=1e-12)
 
 
 def any_assert(part1, part2):
