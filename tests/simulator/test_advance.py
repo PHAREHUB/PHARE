@@ -24,8 +24,13 @@ class AdvanceTest(unittest.TestCase):
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
 
+
+    def _density(*xyz):
+        x = xyz[0]
+        return 0.3 + 1./np.cosh((x-6)/4.)**2
+
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
-                     diag_outputs="phare_outputs",
+                     diag_outputs="phare_outputs", density = _density,
                      smallest_patch_size=5, largest_patch_size=20,
                      cells=120, time_step=0.001, model_init={},
                      dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1):
@@ -40,7 +45,7 @@ class AdvanceTest(unittest.TestCase):
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
             time_step=time_step,
-            boundary_types="periodic",
+            boundary_types=["periodic"] * ndim,
             cells=[cells] * ndim,
             dl=[dl] * ndim,
             interp_order=interp_order,
@@ -49,48 +54,54 @@ class AdvanceTest(unittest.TestCase):
                           "options": extra_diag_options}
         )
 
-        def density(x):
-            return 1.
 
         def S(x,x0,l):
             return 0.5*(1+np.tanh((x-x0)/l))
 
-        def bx(x):
+        def bx(*xyz):
             return 1.
 
-        def by(x):
-            L = global_vars.sim.simulation_domain()[0]
-            v1=-1
-            v2=1.
-            return 0.
+        def by(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def bz(x):
-            return 0.0
+        def bz(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def b2(x):
-            return bx(x)**2 + by(x)**2 + bz(x)**2
+        def vx(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def T(x):
-            K = 1
-            return 1/density(x)*(K - b2(x)*0.5)
+        def vy(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vx(x):
-            return 0.1
+        def vz(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vy(x):
-            return 0.1
+        def vth(*xyz):
+            return 0.01 + np.zeros_like(xyz[0])
 
-        def vz(x):
-            return 0.1
+        def vthx(*xyz):
+            return vth(*xyz)
 
-        def vthx(x):
-            return T(x)
+        def vthy(*xyz):
+            return vth(*xyz)
 
-        def vthy(x):
-            return T(x)
-
-        def vthz(x):
-            return T(x)
+        def vthz(*xyz):
+            return vth(*xyz)
 
 
         MaxwellianFluidModel(bx=bx, by=by, bz=bz,
@@ -202,11 +213,16 @@ class AdvanceTest(unittest.TestCase):
                         loc_b1 = boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0]))
                         loc_b2 = boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1]))
 
-                        data1 = pd1.dataset
-                        data2 = pd2.dataset
+                        data1 = pd1.dataset[:].reshape(pd1.ghost_box.shape + pd1.primal_directions())
+                        data2 = pd2.dataset[:].reshape(pd2.ghost_box.shape + pd2.primal_directions())
 
-                        slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1]
-                        slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
+                        if box.ndim == 1:
+                            slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1]
+                            slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
+
+                        if box.ndim == 2:
+                            slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1, loc_b1.lower[1]:loc_b1.upper[1] + 1]
+                            slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1, loc_b2.lower[1]:loc_b2.upper[1] + 1]
 
                         try:
                             np.testing.assert_allclose(slice1, slice2, atol=1e-6)
@@ -226,9 +242,9 @@ class AdvanceTest(unittest.TestCase):
 
         time_step_nbr=3
         time_step=0.001
-        diag_outputs=f"phare_patch_ghost_particle_are_clones_{self.ddt_test_id()}"
+        diag_outputs=f"phare_patch_ghost_particle_are_clones_{dim}/{self.ddt_test_id()}"
         datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
+                                      time_step=time_step, time_step_nbr=time_step_nbr, ndim=dim)
 
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
@@ -255,7 +271,7 @@ class AdvanceTest(unittest.TestCase):
                     # indices of the patchdata. The box has been created
                     # by shifting the patchdata ghost box by 'offset' so here
                     # the box is shifted by -offset to get over patchdata
-                    shift_refbox, shift_cmpbox = [boxm.shift(box, -off) for off in offsets]
+                    shift_refbox, shift_cmpbox = [boxm.shift(box, -np.asarray(off)) for off in offsets]
 
                     # the overlap box overlaps both ghost and domain cells
                     # we need to extract the domain ones to later select domain
@@ -376,34 +392,24 @@ class AdvanceTest(unittest.TestCase):
 
 
 
-
-
-    def test_L0_particle_number_conservation(self):
+    def _test_L0_particle_number_conservation(self, ndim):
         nbr_part_per_cell=100
         cells=120
         time_step_nbr=10
         time_step=0.001
 
-        # to2d
-        for ndim in [1]:
-            n_particles = nbr_part_per_cell * (cells ** ndim)
-            for interp_order in [1, 2, 3]:
-                diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
-                datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
-                                          time_step=time_step, time_step_nbr=time_step_nbr,
-                                          nbr_part_per_cell=nbr_part_per_cell, cells=cells)
-                for time_step_idx in range(time_step_nbr + 1):
-                    coarsest_time =  time_step_idx * time_step
-                    n_particles_at_t = 0
-                    for patch in datahier.level(0, coarsest_time).patches:
-                        n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
-                    self.assertEqual(n_particles, n_particles_at_t)
-
-
-
-
-
-
+        n_particles = nbr_part_per_cell * (cells ** ndim)
+        for interp_order in [1, 2, 3]:
+            diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
+            datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
+                                      time_step=time_step, time_step_nbr=time_step_nbr,
+                                      nbr_part_per_cell=nbr_part_per_cell, cells=cells, ndim=ndim)
+            for time_step_idx in range(time_step_nbr + 1):
+                coarsest_time =  time_step_idx * time_step
+                n_particles_at_t = 0
+                for patch in datahier.level(0, coarsest_time).patches:
+                    n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
+                self.assertEqual(n_particles, n_particles_at_t)
 
 
 
@@ -421,7 +427,7 @@ class AdvanceTest(unittest.TestCase):
                                       diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
                                       time_step_nbr=time_step_nbr, smallest_patch_size=5,
-                                      largest_patch_size=30)
+                                      largest_patch_size=30, ndim=dim)
 
         lvl_steps = global_vars.sim.level_time_steps
         print("LEVELSTEPS === ", lvl_steps)
@@ -514,7 +520,7 @@ class AdvanceTest(unittest.TestCase):
             return self.getHierarchy(interp_order, boxes, "eb", cells=30,
                 time_step_nbr=1, smallest_patch_size=5, largest_patch_size=30,
                 diag_outputs=diag_dir, extra_diag_options={"fine_dump_lvl_max": 10}, time_step=0.001,
-                model_init={"seed": rando}
+                model_init={"seed": rando}, ndim=ndim
             )
 
         def assert_time_in_hier(*ts):
@@ -604,7 +610,7 @@ class AdvanceTest(unittest.TestCase):
                 hier = self.getHierarchy(interp_order=1, refinement_boxes=refinement_boxes, qty="eb", cells=30,
                                               diag_outputs=diag_outputs, time_step=time_step,
                                               time_step_nbr=time_step_nbr, smallest_patch_size=5,
-                                              largest_patch_size=30, timestamps=timestamps)
+                                              largest_patch_size=30, timestamps=timestamps, ndim=dim)
 
                 time_hier_keys = list(hier.time_hier.keys())
                 self.assertEqual(len(time_hier_keys), len(timestamps))

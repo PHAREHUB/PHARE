@@ -55,3 +55,11 @@ class Advance2dTest(AdvanceTest):
         for interp in [1, 2, 3]:
             self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(ndim, interp, refinement_boxes)
 
+
+    def test_L0_particle_number_conservation(self):
+        self._test_L0_particle_number_conservation(ndim)
+
+
+if __name__ == "__main__":
+    unittest.main()
+

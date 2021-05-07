@@ -215,7 +215,7 @@ class InitializationTest(unittest.TestCase):
 
         print("test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(dim, interp_order))
         hier = self.getHierarchy(interp_order, refinement_boxes=None, qty="b", dims=dim,
-                                  diag_outputs="phare_outputs/test_b/{}/{}".format(dim, interp_order), **kwargs)
+                                  diag_outputs=f"phare_outputs/test_b/{dim}/{interp_order}/{self.ddt_test_id()}", **kwargs)
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -269,7 +269,7 @@ class InitializationTest(unittest.TestCase):
     def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order):
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 19)}},
                                  "moments", nbr_part_per_cell=100, beam=True, dims=dim,  # ppc needs to be 10000?
-                                  diag_outputs="phare_outputs/test_bulkV/{}/{}".format(dim, interp_order))
+                                  diag_outputs=f"phare_outputs/test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}")
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -362,7 +362,7 @@ class InitializationTest(unittest.TestCase):
         print("test_density_is_as_provided_by_user : interp_order : {}".format(interp_order))
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}},
                                  qty="moments", nbr_part_per_cell=nbParts[dim], beam=True, dims=dim,
-                                 diag_outputs="phare_outputs/test_density/{}/{}".format(dim, interp_order))
+                                 diag_outputs=f"phare_outputs/test_density/{dim}/{interp_order}/{self.ddt_test_id()}")
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -446,7 +446,7 @@ class InitializationTest(unittest.TestCase):
 
             hier = self.getHierarchy(interp_order, None, "moments",
                                      nbr_part_per_cell=nbrpart,
-                                     diag_outputs="phare_outputs_{}".format(nbrpart),
+                                     diag_outputs=f"phare_outputs/1overSqrtN/{dim}/{interp_order}/{nbrpart}",
                                      density=lambda x:np.zeros_like(x)+1.,
                                      smallest_patch_size=480,
                                      largest_patch_size=480,
@@ -501,9 +501,9 @@ class InitializationTest(unittest.TestCase):
 
 
     def _test_nbr_particles_per_cell_is_as_provided(self, dim, interp_order, default_ppc=100):
-
+        ddt_test_id = self.ddt_test_id()
         datahier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}}, "particles", dims=dim,
-                      diag_outputs="phare_outputs/ppc/{}/{}".format(dim, interp_order))
+                      diag_outputs=f"phare_outputs/ppc/{dim}/{interp_order}/{ddt_test_id}")
 
         print("test_nbr_particles_per_cell_is_as_provided, interp_order = {}".format(interp_order))
         L0 = datahier.level(0)
@@ -558,8 +558,10 @@ class InitializationTest(unittest.TestCase):
 
     def _test_domainparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes, **kwargs):
         print("test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
+        ddt_test_id = self.ddt_test_id()
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles",
+           diag_outputs=f"phare_outputs/coarser_split/{dim}/{interp_order}/{ddt_test_id}", cells=30, **kwargs)
 
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", cells=30, **kwargs)
         from pyphare.pharein.global_vars import sim
         assert sim is not None and len(sim.cells) == dim
 

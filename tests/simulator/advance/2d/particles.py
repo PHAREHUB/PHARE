@@ -9,7 +9,7 @@ matplotlib.use("Agg")  # for systems without GUI
 
 ndim = 2
 interp_orders = [1, 2, 3]
-ppc = 10
+
 
 @ddt
 class Advance2dTest(AdvanceTest):
@@ -30,7 +30,6 @@ class Advance2dTest(AdvanceTest):
     def test_overlapped_particledatas_have_identical_particles(self, refinement_boxes):
         for interp_order in [1, 2, 3]:
             self._test_overlapped_particledatas_have_identical_particles(ndim, interp_order, refinement_boxes)
-
 
 
     @data(
@@ -55,4 +54,12 @@ class Advance2dTest(AdvanceTest):
     def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, refinement_boxes):
         for interp in [1, 2, 3]:
             self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(ndim, interp, refinement_boxes)
+
+
+    def test_L0_particle_number_conservation(self):
+        self._test_L0_particle_number_conservation(ndim)
+
+
+if __name__ == "__main__":
+    unittest.main()
 

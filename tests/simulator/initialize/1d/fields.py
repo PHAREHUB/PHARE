@@ -13,12 +13,11 @@ interp_orders = [1, 2, 3]
 
 @ddt
 class Initialization1dTest(InitializationTest):
+
     def test_B_is_as_provided_by_user(self):
         # print(f"{self._testMethodName}_{ndim}d")
         for interp_order in interp_orders:
             self._test_B_is_as_provided_by_user(ndim, interp_order)
-
-
 
     def test_bulkvel_is_as_provided_by_user(self):
         # print(f"{self._testMethodName}_{ndim}d")
