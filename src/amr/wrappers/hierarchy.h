@@ -38,10 +38,10 @@ public:
 
 protected:
     template<std::size_t dimension>
-    Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo, //
-              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,         //
-              std::array<int, dimension> const domainBox,                 //
-              std::array<double, dimension> const origin,                 //
+    Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
+              std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
+              std::array<int, dimension> const domainBox,
+              std::array<double, dimension> const origin,
               std::array<double, dimension> const cellWidth);
 
 private:
@@ -126,10 +126,10 @@ inline auto Hierarchy::make()
 
 
 template<std::size_t dimension>
-Hierarchy::Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo, //
-                     std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,         //
-                     std::array<int, dimension> const domainBox,                 //
-                     std::array<double, dimension> const origin,                 //
+Hierarchy::Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
+                     std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
+                     std::array<int, dimension> const domainBox,
+                     std::array<double, dimension> const origin,
                      std::array<double, dimension> const cellWidth)
     : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
     , cellWidth_(cellWidth.data(), cellWidth.data() + dimension)
@@ -257,27 +257,27 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
     auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
     hierDB->putInteger("max_levels", maxLevelNumber);
 
-    std::vector<int> nesting_buffer(maxLevelNumber, amr["nesting_buffer"].template to<int>());
+    std::vector<int> nesting_buffer = amr["nesting_buffer"].template to<std::vector<int>>();
     hierDB->putIntegerVector("proper_nesting_buffer", nesting_buffer);
 
     auto ratioToCoarserDB = hierDB->putDatabase("ratio_to_coarser");
 
-    int smallestPatchSize = 0, largestPatchSize = 0;
+    std::vector<int> smallestPatchSize, largestPatchSize;
     std::shared_ptr<SAMRAI::tbox::Database> smallestPatchSizeDB, largestPatchSizeDB;
 
     if (amr.contains("smallest_patch_size"))
     {
         smallestPatchSizeDB = hierDB->putDatabase("smallest_patch_size");
-        smallestPatchSize   = amr["smallest_patch_size"].template to<int>();
+        smallestPatchSize   = amr["smallest_patch_size"].template to<std::vector<int>>();
     }
 
     if (amr.contains("largest_patch_size"))
     {
         largestPatchSizeDB = hierDB->putDatabase("largest_patch_size");
-        largestPatchSize   = amr["largest_patch_size"].template to<int>();
+        largestPatchSize   = amr["largest_patch_size"].template to<std::vector<int>>();
     }
 
-    auto addIntDimArray = [](auto& db, auto& value, auto& level) {
+    auto addIntDimArray = [](auto& db, auto const& value, auto const& level) {
         int arr[dimension];
         std::fill_n(arr, dimension, value);
         db->putIntegerArray(level, arr, dimension);
@@ -291,10 +291,10 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
             addIntDimArray(ratioToCoarserDB, ratio, level);
 
         if (smallestPatchSizeDB)
-            addIntDimArray(smallestPatchSizeDB, smallestPatchSize, level);
+            smallestPatchSizeDB->putIntegerVector(level, smallestPatchSize);
 
         if (largestPatchSizeDB)
-            addIntDimArray(largestPatchSizeDB, largestPatchSize, level);
+            largestPatchSizeDB->putIntegerVector(level, largestPatchSize);
     }
 
     return hierDB;

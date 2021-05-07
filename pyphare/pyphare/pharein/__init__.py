@@ -82,6 +82,8 @@ def populateDict():
         pp.add_double(path, float(val))
     def add_size_t(path, val):
         pp.add_size_t(path, int(val))
+    def add_vector_int(path, val):
+        pp.add_vector_int(path, list(val))
 
     add_string = pp.add_string
     addInitFunction = getattr(pp, 'addInitFunction{:d}'.format(simulation.ndim)+'D')
@@ -91,9 +93,9 @@ def populateDict():
     add_string("simulation/boundary_types", simulation.boundary_types[0])
 
     if simulation.smallest_patch_size is not None:
-        add_int("simulation/AMR/smallest_patch_size", simulation.smallest_patch_size)
+        add_vector_int("simulation/AMR/smallest_patch_size", simulation.smallest_patch_size)
     if simulation.largest_patch_size is not None:
-        add_int("simulation/AMR/largest_patch_size", simulation.largest_patch_size)
+        add_vector_int("simulation/AMR/largest_patch_size", simulation.largest_patch_size)
 
 
     add_string("simulation/grid/layout_type", simulation.layout)
@@ -120,7 +122,7 @@ def populateDict():
 
 
     add_int("simulation/AMR/max_nbr_levels", simulation.max_nbr_levels)
-    add_int("simulation/AMR/nesting_buffer", simulation.nesting_buffer)
+    add_vector_int("simulation/AMR/nesting_buffer", simulation.nesting_buffer)
     refinement_boxes = simulation.refinement_boxes
 
 
