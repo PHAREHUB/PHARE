@@ -248,7 +248,7 @@ class AdvanceTest(unittest.TestCase):
         time_step=0.001
         diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts{self.ddt_test_id()}"
         for interp_order in [1, 2, 3]:
-            largest_patch_size, smallest_patch_size = check_patch_size(interp_order=interp_order, cells=cells)
+            largest_patch_size, smallest_patch_size = check_patch_size(dim, interp_order=interp_order, cells=cells)
             datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
                                       smallest_patch_size=smallest_patch_size, largest_patch_size=smallest_patch_size,
                                       time_step=time_step, time_step_nbr=time_step_nbr)

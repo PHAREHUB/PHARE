@@ -51,9 +51,9 @@ def is_nd_array(arg):
     return isinstance(arg, np.ndarray)
 
 
-def np_array_ify(arg):
+def np_array_ify(arg, size = 1):
     if is_scalar(arg):
-        return np.asarray([arg])
+        return np.asarray([arg] * size)
     if not is_nd_array(arg):
         return np.asarray(arg)
     return arg
