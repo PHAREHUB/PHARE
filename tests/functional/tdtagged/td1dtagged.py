@@ -203,6 +203,7 @@ def make_figure():
         v2=1
         return v1 + (v2-v1)*(S(x, L*0.25, 1)-S(x, L*0.75, 1))
 
+    wT0 = 150.
     ax0, ax1, ax2 = axarr
     ax0.plot(xbywT, bywT)
     ax0.plot(xbyNoRef, byNoRef, color="k", alpha=0.6)
