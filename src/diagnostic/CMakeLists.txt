@@ -26,5 +26,5 @@ add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME}  INTERFACE
   $<INSTALL_INTERFACE:include/phare/diagnostic>)
 
-target_link_libraries(${PROJECT_NAME} INTERFACE phare_solver)
+target_link_libraries(${PROJECT_NAME} INTERFACE phare_amr)
 

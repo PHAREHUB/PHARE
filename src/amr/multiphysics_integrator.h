@@ -17,15 +17,14 @@
 
 #include "amr/messengers/messenger.h"
 #include "amr/tagging/tagger.h"
-
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
-#include "solver/physical_models/physical_model.h"
-#include "solver/solvers/solver.h"
-#include "solver/messenger_registration.h"
-#include "solver/level_initializer/level_initializer.h"
-#include "solvers/solver_mhd.h"
-#include "solver/solvers/solver_ppc.h"
+#include "amr/physical_models/hybrid_model.h"
+#include "amr/physical_models/mhd_model.h"
+#include "amr/physical_models/physical_model.h"
+#include "amr/solvers/solver.h"
+#include "amr/messenger_registration.h"
+#include "amr/level_initializer/level_initializer.h"
+#include "amr/solvers/solver_mhd.h"
+#include "amr/solvers/solver_ppc.h"
 
 #include "core/utilities/algorithm.h"
 

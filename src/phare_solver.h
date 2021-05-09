@@ -4,15 +4,15 @@
 
 #include "phare_amr.h"
 
-#include "solver/solvers/solver.h"
-#include "solver/solvers/solver_mhd.h"
-#include "solver/solvers/solver_ppc.h"
-#include "solver/level_initializer/level_initializer.h"
-#include "solver/level_initializer/level_initializer_factory.h"
-#include "solver/multiphysics_integrator.h"
-#include "solver/physical_models/hybrid_model.h"
-#include "solver/physical_models/mhd_model.h"
-#include "solver/physical_models/physical_model.h"
+#include "amr/solvers/solver.h"
+#include "amr/solvers/solver_mhd.h"
+#include "amr/solvers/solver_ppc.h"
+#include "amr/level_initializer/level_initializer.h"
+#include "amr/level_initializer/level_initializer_factory.h"
+#include "amr/multiphysics_integrator.h"
+#include "amr/physical_models/hybrid_model.h"
+#include "amr/physical_models/mhd_model.h"
+#include "amr/physical_models/physical_model.h"
 
 namespace PHARE::solver
 {

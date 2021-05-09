@@ -7,9 +7,9 @@
 #include "core/data/grid/gridlayoutdefs.h"
 #include "core/data/vecfield/vecfield_component.h"
 #include "amr/messengers/hybrid_messenger.h"
-#include "solver/physical_models/hybrid_model.h"
+#include "amr/physical_models/hybrid_model.h"
 #include "amr/resources_manager/amr_utils.h"
-#include "solver/solvers/solver_ppc.h"
+#include "amr/solvers/solver_ppc.h"
 
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 

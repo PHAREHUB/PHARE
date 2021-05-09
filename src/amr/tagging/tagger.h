@@ -2,7 +2,7 @@
 #ifndef PHARE_TAGGER_H
 #define PHARE_TAGGER_H
 
-#include "physical_models/physical_model.h"
+#include "amr/physical_models/physical_model.h"
 #include "amr/types/amr_types.h"
 
 #include <memory>

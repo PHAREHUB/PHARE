@@ -13,7 +13,7 @@
 #include "amr/resources_manager/resources_manager.h"
 #include "amr/resources_manager/amr_utils.h"
 
-#include "solver/solvers/solver.h"
+#include "amr/solvers/solver.h"
 
 #include "core/numerics/pusher/pusher.h"
 #include "core/numerics/pusher/pusher_factory.h"

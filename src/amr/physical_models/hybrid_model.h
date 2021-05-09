@@ -8,7 +8,7 @@
 
 #include "initializer/data_provider.h"
 #include "core/models/hybrid_state.h"
-#include "solver/physical_models/physical_model.h"
+#include "amr/physical_models/physical_model.h"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.h"
 #include "amr/resources_manager/resources_manager.h"
 #include "amr/messengers/hybrid_messenger_info.h"
