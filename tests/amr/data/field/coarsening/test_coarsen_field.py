@@ -10,6 +10,7 @@ from pyphare.core.box import Box
 import pyphare.core.box as boxm
 from pyphare.core import gridlayout
 from pyphare.core.gridlayout import directions
+from pyphare.core.phare_utilities import refinement_ratio
 
 def exec_fn(xyz, fn):
     ndim = len(xyz)
@@ -34,7 +35,6 @@ def cos(xyz, L):
 
 
 functionList = [cos, sin]
-ratio = 2
 
 
 def dump(ndim, path, quantity):
@@ -100,9 +100,23 @@ def main(path="./"):
 
 
 
-def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
+def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
+    coarseLayout = coarseField.layout
+    fineLayout = fineField.layout
     ndim = coarseLayout.box.ndim
-    ratio = 2
+
+    def reshape_if(data, field): # could be a function on field patch data
+        real_shape = field.ghost_box.shape + field.primal_directions()
+        if (data.shape != real_shape).all():
+            return data.reshape(real_shape)
+        return data
+
+    coarseData = reshape_if(coarseData, coarseField)
+    fineData = reshape_if(fineData, fineField)
+
+    real_shape = fineField.ghost_box.shape + fineField.primal_directions()
+    if (fineData.shape != real_shape).all():
+        fineData = fineData.reshape(real_shape)
 
     nGhosts = coarseLayout.nbrGhostFor(qty)
     coarseStartIndex = coarseLayout.physicalStartIndices(qty)
@@ -116,7 +130,7 @@ def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
         return np.arange(coarseBox.lower[dim], coarseBox.upper[dim] + 1)
 
     def fineLocal(coarse_index, dim):
-        return fineLayout.AMRIndexToLocal(dim, coarse_index * ratio)
+        return fineLayout.AMRIndexToLocal(dim, coarse_index * refinement_ratio)
 
     def coarseLocal(index, dim):
         return coarseLayout.AMRIndexToLocal(dim, index)

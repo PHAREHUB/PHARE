@@ -12,7 +12,7 @@ interp_orders = [1, 2, 3]
 ppc = 100
 
 @ddt
-class Initialization2dTest(InitializationTest):
+class InitializationTest(InitializationTest):
 
     def test_B_is_as_provided_by_user(self):
         print(f"\n{self._testMethodName}_{ndim}d")

@@ -19,6 +19,7 @@ from ddt import ddt, data, unpack
 
 
 from datetime import datetime
+from tests.simulator import spawn_tests_from
 
 
 @ddt
@@ -45,7 +46,7 @@ class InitializationTest(unittest.TestCase):
                      beam = False, time_step_nbr=1,
                      smallest_patch_size=5, largest_patch_size=10,
                      cells=120,
-                     dl=0.1, dims=1):
+                     dl=0.1, ndim=1):
 
         from pyphare.pharein import global_vars
         global_vars.sim =None
@@ -55,9 +56,9 @@ class InitializationTest(unittest.TestCase):
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
             final_time=30.,
-            boundary_types=["periodic"] * dims,
-            cells=[cells] * dims,
-            dl=[dl] * dims,
+            boundary_types=["periodic"] * ndim,
+            cells=[cells] * ndim,
+            dl=[dl] * ndim,
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
@@ -556,14 +557,14 @@ class InitializationTest(unittest.TestCase):
             for pop_name, patchDatas in particlePatchDatas.items()
         }
 
-    def _test_domainparticles_have_correct_split_from_coarser_particle(self, dim, interp_order, refinement_boxes, **kwargs):
-        print("test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(dim, interp_order))
+    def _test_domainparticles_have_correct_split_from_coarser_particle(self, ndim, interp_order, refinement_boxes, **kwargs):
+        print("test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(ndim, interp_order))
         ddt_test_id = self.ddt_test_id()
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles",
-           diag_outputs=f"phare_outputs/coarser_split/{dim}/{interp_order}/{ddt_test_id}", cells=30, **kwargs)
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", ndim=ndim,
+           diag_outputs=f"phare_outputs/coarser_split/{ndim}/{interp_order}/{ddt_test_id}", cells=30, **kwargs)
 
         from pyphare.pharein.global_vars import sim
-        assert sim is not None and len(sim.cells) == dim
+        assert sim is not None and len(sim.cells) == ndim
 
         levels = datahier.levels()
         self.assertTrue(len(levels) > 1)

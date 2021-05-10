@@ -12,25 +12,25 @@ interp_orders = [1, 2, 3]
 
 
 @ddt
-class Initialization1dTest(InitializationTest):
+class InitializationTest(InitializationTest):
 
     def test_B_is_as_provided_by_user(self):
-        # print(f"{self._testMethodName}_{ndim}d")
+        print(f"{self._testMethodName}_{ndim}d")
         for interp_order in interp_orders:
             self._test_B_is_as_provided_by_user(ndim, interp_order)
 
     def test_bulkvel_is_as_provided_by_user(self):
-        # print(f"{self._testMethodName}_{ndim}d")
+        print(f"{self._testMethodName}_{ndim}d")
         for interp_order in interp_orders:
             self._test_bulkvel_is_as_provided_by_user(ndim, interp_order)
 
     def test_density_is_as_provided_by_user(self):
-        # print(f"{self._testMethodName}_{ndim}d")
+        print(f"{self._testMethodName}_{ndim}d")
         for interp_order in interp_orders:
             self._test_density_is_as_provided_by_user(ndim, interp_order)
 
     def test_density_decreases_as_1overSqrtN(self):
-        # print(f"{self._testMethodName}_{ndim}d")
+        print(f"{self._testMethodName}_{ndim}d")
         for interp_order in interp_orders:
             self._test_density_decreases_as_1overSqrtN(ndim, interp_order)
 

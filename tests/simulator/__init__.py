@@ -3,6 +3,17 @@
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
+def spawn_tests_from(clazz, n_threads):
+    """
+    """
+    import unittest
+    suite = unittest.TestLoader().loadTestsFromTestCase(clazz)
+    from concurrencytest import ConcurrentTestSuite, fork_for_tests
+    concurrent_suite = ConcurrentTestSuite(suite, fork_for_tests(n_threads))
+    runner = unittest.TextTestRunner(verbosity = 0)
+    runner.run(concurrent_suite)
+
+
 # Block accidental dictionary key rewrites
 class NoOverwriteDict(dict):
     def __init__(self, dict):

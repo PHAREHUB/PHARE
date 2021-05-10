@@ -17,9 +17,10 @@ import unittest
 from ddt import ddt, data, unpack
 
 
+from tests.simulator import spawn_tests_from
 
 @ddt
-class AdvanceTest(unittest.TestCase):
+class AdvanceTestBase(unittest.TestCase):
 
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
@@ -389,6 +390,8 @@ class AdvanceTest(unittest.TestCase):
                         np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
                         np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
+                        self.assertEqual(part2, part2)
+
 
 
 
@@ -489,7 +492,7 @@ class AdvanceTest(unittest.TestCase):
                                     afterCoarse = np.copy(coarse_pdDataset)
                                     afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = 0
 
-                                    coarsen(qty, coarse_pd.layout, fine_pd.layout, coarseBox, fine_pdDataset, afterCoarse)
+                                    coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
                                     np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-6)
 
 

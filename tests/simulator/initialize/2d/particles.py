@@ -12,8 +12,7 @@ interp_orders = [1, 2, 3]
 ppc = 10
 
 @ddt
-class Initialization1dTest(InitializationTest):
-
+class InitializationTest(InitializationTest):
 
     def test_nbr_particles_per_cell_is_as_provided(self):
         for interp_order in interp_orders:
@@ -44,22 +43,21 @@ class Initialization1dTest(InitializationTest):
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
 
-    ## _test_domainparticles_have_correct_split_from_coarser_particle needs updating
-    # @data(
-    #     ({"L0": {"B0": Box2D(10, 14)}}),
-    #     ({"L0": {"B0": Box2D(5, 20)}, "L1": {"B0": Box2D(15, 35)}}),
-    #     ({"L0": {"B0": Box2D(2, 12), "B1": Box2D(13, 25)}}),
-    # )
-    # def test_domainparticles_have_correct_split_from_coarser_particle(
-    #     self, refinement_boxes
-    # ):
-    #     print(f"\n{self._testMethodName}_{ndim}d")
-    #     now = self.datetime_now()
-    #     for interp_order in [1, 2, 3]:
-    #         self._test_domainparticles_have_correct_split_from_coarser_particle(
-    #             ndim, interp_order, refinement_boxes
-    #         )
-    #     print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
+    @data(
+        ({"L0": {"B0": Box2D(10, 14)}}),
+        ({"L0": {"B0": Box2D(5, 20)}, "L1": {"B0": Box2D(15, 35)}}),
+        ({"L0": {"B0": Box2D(2, 12), "B1": Box2D(13, 25)}}),
+    )
+    def test_domainparticles_have_correct_split_from_coarser_particle(
+        self, refinement_boxes
+    ):
+        print(f"\n{self._testMethodName}_{ndim}d")
+        now = self.datetime_now()
+        for interp_order in [1, 2, 3]:
+            self._test_domainparticles_have_correct_split_from_coarser_particle(
+                ndim, interp_order, refinement_boxes
+            )
+        print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
 
 
