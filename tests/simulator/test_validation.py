@@ -118,6 +118,19 @@ class SimulatorValidation(unittest.TestCase):
 
         dup({"smallest_patch_size": None, "largest_patch_size": None}),
         dup({"smallest_patch_size": (10, 10), "largest_patch_size": (20,20)}),
+        dup({"smallest_patch_size": [10, 10], "largest_patch_size": [20,20]}),
+
+        dup({"smallest_patch_size": (10, 10), "largest_patch_size": None}),
+        dup({"smallest_patch_size": None, "largest_patch_size": (20,20)}),
+
+        dup({"smallest_patch_size": (10, 10)}),
+        dup({"largest_patch_size": (20,20)}),
+
+        dup({"smallest_patch_size": 10, "largest_patch_size": (20,20)}),
+        dup({"smallest_patch_size": (10, 10), "largest_patch_size": 20}),
+
+        dup({"smallest_patch_size": [10, 10], "largest_patch_size": (20,20)}),
+        dup({"smallest_patch_size": (10, 10), "largest_patch_size": [20,20]}),
 
         dup({"cells":[65, 65], "refinement_boxes": None, "smallest_patch_size": 20, "largest_patch_size": 20, "nesting_buffer": 10}),
 
