@@ -11,18 +11,17 @@ from ddt import ddt, data
 from tests.diagnostic import dump_all_diags
 from tests.simulator import NoOverwriteDict, populate_simulation
 from pyphare.simulator.simulator import Simulator,startMPI
-from pyphare.core.box import Box
+from pyphare.core.box import Box, Box2D
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}
 
 
 @ddt
-class SimulatorRefineBoxInputs(unittest.TestCase):
-
+class SimulatorValidation(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(SimulatorRefineBoxInputs, self).__init__(*args, **kwargs)
+        super(SimulatorValidation, self).__init__(*args, **kwargs)
         self.simulator = None
 
 
@@ -31,6 +30,23 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
         dic.update(diags.copy())
         dic.update({"diags_fn": lambda model: dump_all_diags(model.populations)})
         return dic
+
+    def tearDown(self):
+        if self.simulator is not None:
+            self.simulator.reset()
+
+
+
+    def _do_dim(self, dim, input, valid: bool = False):
+        for interp in range(1, 4):
+
+            try:
+                self.simulator = Simulator(populate_simulation(dim, interp, **input))
+                self.simulator.initialize()
+                self.assertTrue(valid)
+                self.simulator = None
+            except ValueError as e:
+                self.assertTrue(not valid)
 
     """
       The first set of boxes "B0": [(10,), (14,)]
@@ -84,25 +100,7 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
         dup({"cells":[65], "refinement_boxes": {"L0": [Box(5, 9), Box(11, 15)], "L1": [Box(11, 29)]}}),
     ]
 
-    def tearDown(self):
-        if self.simulator is not None:
-            self.simulator.reset()
 
-
-
-    def _do_dim(self, dim, input, valid: bool = False):
-        for interp in range(1, 4):
-
-            try:
-                self.simulator = Simulator(populate_simulation(dim, interp, **input))
-                self.simulator.initialize()
-
-                self.assertTrue(valid)
-
-                self.simulator = None
-
-            except ValueError as e:
-                self.assertTrue(not valid)
 
     @data(*valid1D)
     def test_1d_valid(self, input):
@@ -112,6 +110,64 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
     def test_1d_invalid(self, input):
         self._do_dim(1, input)
 
+
+
+
+    valid2D = [
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 55)]}}),
+
+        dup({"smallest_patch_size": None, "largest_patch_size": None}),
+        dup({"smallest_patch_size": (10, 10), "largest_patch_size": (20,20)}),
+
+        dup({"cells":[65, 65], "refinement_boxes": None, "smallest_patch_size": 20, "largest_patch_size": 20, "nesting_buffer": 10}),
+
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": {"B0": Box2D(5, 55)}}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 55)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {  0 : [Box2D(5, 55)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {  0 : [Box2D(0, 55)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 14), Box2D(15, 25)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(12, 48)], "L2": [Box2D(60, 64)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(12, 48)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(20, 30)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 49)]}, "nesting_buffer": 1}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(10, 50)]}}),
+        dup({"cells":[65, 65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(15, 49)]}}),
+    ]
+
+    invalid2D = [
+        # finer box outside lower
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 24)], "L1": [Box2D(9, 30)]}}),
+        # finer box outside lower
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 24)], "L1": [Box2D(9, 30)]}}),
+        # finer box outside upper
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 24)], "L1": [Box2D(15, 50)]}}),
+        # overlapping boxes
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 15), Box2D(15, 25)]}}),
+        # box.upper outside domain
+        dup({"cells": [55,55], "refinement_boxes": {"L0": {"B0": Box2D(5, 65,)}}}),
+        # largest_patch_size > smallest_patch_size
+        dup({"smallest_patch_size": 100, "largest_patch_size": 64,}),
+        # refined_particle_nbr doesn't exist
+        dup({"refined_particle_nbr": 1}),
+        # L2 box incompatible with L1 box due to nesting buffer
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 49)]}, "nesting_buffer": 2}),
+        # negative nesting buffer
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 49)]}, "nesting_buffer": -1}),
+        # too large nesting buffer
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 49)]}, "nesting_buffer": 33}),
+        dup({"cells":[65,65], "refinement_boxes": None, "largest_patch_size": 20, "nesting_buffer": 46}),
+        # finer box is not within set of coarser boxes
+        dup({"cells":[65,65], "refinement_boxes": {"L0": [Box2D(5, 9), Box2D(11, 15)], "L1": [Box2D(11, 29)]}}),
+    ]
+
+
+    @data(*valid2D)
+    def test_2d_valid(self, input):
+        self._do_dim(2, input, True)
+
+    @data(*invalid2D)
+    def test_2d_invalid(self, input):
+        self._do_dim(2, input)
 
 if __name__ == "__main__":
     unittest.main()
