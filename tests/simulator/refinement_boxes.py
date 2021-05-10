@@ -114,4 +114,8 @@ class SimulatorRefineBoxInputs(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    try:
+        from concurrencytest import ConcurrentTestSuite, fork_for_tests
+        unittest.TextTestRunner().run(ConcurrentTestSuite(unittest.TestLoader().loadTestsFromTestCase(SimulatorRefineBoxInputs), fork_for_tests(12)))
+    except ImportError as err:
+        unittest.main()

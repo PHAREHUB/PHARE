@@ -71,5 +71,9 @@ class AdvanceTest(AdvanceTestBase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    try:
+        from concurrencytest import ConcurrentTestSuite, fork_for_tests
+        unittest.TextTestRunner().run(ConcurrentTestSuite(unittest.TestLoader().loadTestsFromTestCase(AdvanceTest), fork_for_tests(22)))
+    except ImportError as err:
+        unittest.main()
 

@@ -590,33 +590,5 @@ class AdvanceTestBase(unittest.TestCase):
 
 
 
-    @data(
-       ({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
-    )
-    def test_hierarchy_timestamp_cadence(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].ndim
-
-        time_step     = .001
-        # time_step_nbr chosen to force diagnostics dumping double imprecision cadence calculations accuracy testing
-        time_step_nbr = 101
-        final_time    = time_step * time_step_nbr
-
-        for trailing in [0, 1]: # 1 = skip init dumps
-            for i in [2, 3]:
-                timestamps = np.arange(0, final_time, time_step*i)[trailing:]
-
-                diag_outputs=f"phare_outputs_hierarchy_timestamp_cadence_{self.ddt_test_id()}_{i}"
-                hier = self.getHierarchy(interp_order=1, refinement_boxes=refinement_boxes, qty="eb", cells=30,
-                                              diag_outputs=diag_outputs, time_step=time_step,
-                                              time_step_nbr=time_step_nbr, smallest_patch_size=5,
-                                              largest_patch_size=30, timestamps=timestamps, ndim=dim)
-
-                time_hier_keys = list(hier.time_hier.keys())
-                self.assertEqual(len(time_hier_keys), len(timestamps))
-
-                for i, timestamp in enumerate(time_hier_keys):
-                    self.assertEqual(hier.format_timestamp(timestamps[i]), timestamp)
-
-
 if __name__ == "__main__":
     unittest.main()

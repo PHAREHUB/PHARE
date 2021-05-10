@@ -15,6 +15,7 @@ ppc = 25
 class AdvanceTest(AdvanceTestBase):
 
     # @data(
+    #   {},
     #   {"L0": [Box2D(10, 20)]},
     #   {"L0": [Box2D(2, 12), Box2D(13, 25)]},
     # )
