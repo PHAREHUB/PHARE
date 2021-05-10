@@ -215,7 +215,7 @@ class InitializationTest(unittest.TestCase):
     def _test_B_is_as_provided_by_user(self, dim, interp_order, **kwargs):
 
         print("test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(dim, interp_order))
-        hier = self.getHierarchy(interp_order, refinement_boxes=None, qty="b", dims=dim,
+        hier = self.getHierarchy(interp_order, refinement_boxes=None, qty="b", ndim=dim,
                                   diag_outputs=f"phare_outputs/test_b/{dim}/{interp_order}/{self.ddt_test_id()}", **kwargs)
 
         from pyphare.pharein import global_vars
@@ -269,7 +269,7 @@ class InitializationTest(unittest.TestCase):
 
     def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order):
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 19)}},
-                                 "moments", nbr_part_per_cell=100, beam=True, dims=dim,  # ppc needs to be 10000?
+                                 "moments", nbr_part_per_cell=100, beam=True, ndim=dim,  # ppc needs to be 10000?
                                   diag_outputs=f"phare_outputs/test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}")
 
         from pyphare.pharein import global_vars
@@ -362,7 +362,7 @@ class InitializationTest(unittest.TestCase):
         nbParts = {1 : 10000, 2: 3456}
         print("test_density_is_as_provided_by_user : interp_order : {}".format(interp_order))
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}},
-                                 qty="moments", nbr_part_per_cell=nbParts[dim], beam=True, dims=dim,
+                                 qty="moments", nbr_part_per_cell=nbParts[dim], beam=True, ndim=dim,
                                  diag_outputs=f"phare_outputs/test_density/{dim}/{interp_order}/{self.ddt_test_id()}")
 
         from pyphare.pharein import global_vars
@@ -503,7 +503,7 @@ class InitializationTest(unittest.TestCase):
 
     def _test_nbr_particles_per_cell_is_as_provided(self, dim, interp_order, default_ppc=100):
         ddt_test_id = self.ddt_test_id()
-        datahier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}}, "particles", dims=dim,
+        datahier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}}, "particles", ndim=dim,
                       diag_outputs=f"phare_outputs/ppc/{dim}/{interp_order}/{ddt_test_id}")
 
         print("test_nbr_particles_per_cell_is_as_provided, interp_order = {}".format(interp_order))
@@ -609,7 +609,7 @@ class InitializationTest(unittest.TestCase):
         kwargs["diag_outputs"] = local_out
 
         interp=1 # not sure it matters for this test to do all interps
-        datahier = self.getHierarchy(interp, refinement_boxes, "particles_patch_ghost", **kwargs, dims=dim)
+        datahier = self.getHierarchy(interp, refinement_boxes, "particles_patch_ghost", **kwargs, ndim=dim)
 
         self.assertTrue(any([diagInfo.quantity.endswith("patchGhost") for diagInfo in ph.global_vars.sim.diagnostics]))
 

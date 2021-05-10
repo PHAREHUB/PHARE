@@ -9,7 +9,7 @@ matplotlib.use("Agg")  # for systems without GUI
 
 ndim = 1
 interp_orders = [1, 2, 3]
-ppc = 10
+ppc = 25
 
 @ddt
 class InitializationTest(InitializationTest):
@@ -35,7 +35,7 @@ class InitializationTest(InitializationTest):
                     interp_order,
                     refinement_boxes,
                     "particles",
-                    dims=ndim,
+                    ndim=ndim,
                     cells=30,
                     diag_outputs=f"phare_outputs/test_levelghost/{ndim}/{interp_order}",
                 )

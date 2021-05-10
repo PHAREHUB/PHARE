@@ -11,6 +11,7 @@ import pyphare.core.box as boxm
 from pyphare.core import gridlayout
 from pyphare.core.gridlayout import directions
 from pyphare.core.phare_utilities import refinement_ratio
+from pyphare.pharesee.hierarchy import FieldData
 
 def exec_fn(xyz, fn):
     ndim = len(xyz)
@@ -44,6 +45,7 @@ def dump(ndim, path, quantity):
     coarseLayout = gridlayout.GridLayout(
         Box([0] * ndim, [39] * ndim), origin=origin, dl=[0.2] * ndim
     )
+
     fineLayout = gridlayout.GridLayout(
         Box([18] * ndim, [37] * ndim), origin=origin, dl=[0.1] * ndim
     )
@@ -66,7 +68,9 @@ def dump(ndim, path, quantity):
         coarse = function(coarseCoords, domainSize)
         afterCoarse = np.copy(coarse)
 
-        coarsen(quantity, coarseLayout, fineLayout, coarseBox, fine, afterCoarse)
+        coarseField = FieldData(coarseLayout, quantity, data=coarse)
+        fineField   = FieldData(fineLayout, quantity, data=fine)
+        coarsen(quantity, coarseField, fineField, coarseBox, fine, afterCoarse)
 
         if fn_idx == 0:
             fineData = np.copy(fine)

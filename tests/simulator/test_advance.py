@@ -237,7 +237,7 @@ class AdvanceTestBase(unittest.TestCase):
 
 
 
-    def _test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, dim, interp_order, refinement_boxes):
+    def _test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, dim, interp_order, refinement_boxes, ppc=100):
         print("test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles")
         print("interporder : {}".format(interp_order))
 
@@ -245,7 +245,7 @@ class AdvanceTestBase(unittest.TestCase):
         time_step=0.001
         diag_outputs=f"phare_patch_ghost_particle_are_clones_{dim}/{self.ddt_test_id()}"
         datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr, ndim=dim)
+                                      time_step=time_step, time_step_nbr=time_step_nbr, ndim=dim, nbr_part_per_cell=ppc)
 
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
@@ -321,7 +321,7 @@ class AdvanceTestBase(unittest.TestCase):
 
 
 
-    def _test_overlapped_particledatas_have_identical_particles(self, dim, interp_order, refinement_boxes):
+    def _test_overlapped_particledatas_have_identical_particles(self, ndim, interp_order, refinement_boxes, ppc=100):
         print("test_overlapped_particledatas_have_identical_particles")
         print("interporder : {}".format(interp_order))
         from copy import copy
@@ -329,8 +329,8 @@ class AdvanceTestBase(unittest.TestCase):
         time_step_nbr=3
         time_step=0.001
         diag_outputs=f"phare_overlapped_particledatas_have_identical_particles_{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs, ndim=ndim,
+                                      time_step=time_step, time_step_nbr=time_step_nbr, nbr_part_per_cell=ppc)
 
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
@@ -358,8 +358,8 @@ class AdvanceTestBase(unittest.TestCase):
                         # to the associated patch index space.
 
                         # overlap box must be shifted by -offset to select data in the patches
-                        part1 = copy(pd1.dataset.select(boxm.shift(box, -offsets[0])))
-                        part2 = copy(pd2.dataset.select(boxm.shift(box, -offsets[1])))
+                        part1 = copy(pd1.dataset.select(boxm.shift(box, -np.asarray(offsets[0]))))
+                        part2 = copy(pd2.dataset.select(boxm.shift(box, -np.asarray(offsets[1]))))
 
                         idx1 = np.argsort(part1.iCells + part1.deltas)
                         idx2 = np.argsort(part2.iCells + part2.deltas)
@@ -390,23 +390,19 @@ class AdvanceTestBase(unittest.TestCase):
                         np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
                         np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
-                        self.assertEqual(part2, part2)
 
 
-
-
-    def _test_L0_particle_number_conservation(self, ndim):
-        nbr_part_per_cell=100
+    def _test_L0_particle_number_conservation(self, ndim, ppc=100):
         cells=120
         time_step_nbr=10
         time_step=0.001
 
-        n_particles = nbr_part_per_cell * (cells ** ndim)
+        n_particles = ppc * (cells ** ndim)
         for interp_order in [1, 2, 3]:
             diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
             datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
                                       time_step=time_step, time_step_nbr=time_step_nbr,
-                                      nbr_part_per_cell=nbr_part_per_cell, cells=cells, ndim=ndim)
+                                      nbr_part_per_cell=ppc, cells=cells, ndim=ndim)
             for time_step_idx in range(time_step_nbr + 1):
                 coarsest_time =  time_step_idx * time_step
                 n_particles_at_t = 0

@@ -15,6 +15,7 @@ ppc = 10
 class InitializationTest(InitializationTest):
 
     def test_nbr_particles_per_cell_is_as_provided(self):
+        print(f"{self._testMethodName}_{ndim}d")
         for interp_order in interp_orders:
             self._test_nbr_particles_per_cell_is_as_provided(ndim, interp_order)
 
@@ -35,8 +36,8 @@ class InitializationTest(InitializationTest):
                     interp_order,
                     refinement_boxes,
                     "particles",
-                    dims=ndim,
-                    cells=30,
+                    ndim=ndim,
+                    cells=30, nbr_part_per_cell=ppc,
                     diag_outputs=f"phare_outputs/test_levelghost/{ndim}/{interp_order}",
                 )
             )
@@ -55,20 +56,20 @@ class InitializationTest(InitializationTest):
         now = self.datetime_now()
         for interp_order in [1, 2, 3]:
             self._test_domainparticles_have_correct_split_from_coarser_particle(
-                ndim, interp_order, refinement_boxes
+                ndim, interp_order, refinement_boxes, nbr_part_per_cell=ppc
             )
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
 
 
-    @data({"cells": 40, "smallest_patch_size": 20, "largest_patch_size": 20})
+    @data({"cells": 40, "smallest_patch_size": 20, "largest_patch_size": 20, "nbr_part_per_cell" : ppc})
     def test_no_patch_ghost_on_refined_level_case(self, simInput):
         print(f"\n{self._testMethodName}_{ndim}d")
         now = self.datetime_now()
         self._test_patch_ghost_on_refined_level_case(ndim, False, **simInput)
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
-    @data({"cells": 40, "smallest_patch_size": 5, "largest_patch_size": 5})
+    @data({"cells": 40, "smallest_patch_size": 5, "largest_patch_size": 5, "nbr_part_per_cell" : ppc})
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
         print(f"\n{self._testMethodName}_{ndim}d")
         now = self.datetime_now()
