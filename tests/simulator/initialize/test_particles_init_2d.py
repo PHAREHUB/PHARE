@@ -11,53 +11,56 @@ ndim = 2
 interp_orders = [1, 2, 3]
 ppc = 10
 
+def per_interp(dic):
+    return [(interp, dic) for interp in interp_orders]
+
 @ddt
 class InitializationTest(InitializationTest):
 
-    def test_nbr_particles_per_cell_is_as_provided(self):
+    @data(*interp_orders)
+    def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")
-        for interp_order in interp_orders:
-            self._test_nbr_particles_per_cell_is_as_provided(ndim, interp_order)
+        self._test_nbr_particles_per_cell_is_as_provided(ndim, interp_order)
 
 
     @data(
-        ({"L0": {"B0": Box2D(10, 14)}}),
-        ({"L0": {"B0": Box2D(10, 14)}, "L1": {"B0": Box2D(22, 26)}}),
-        ({"L0": {"B0": Box2D(2, 6), "B1": Box2D(7, 11)}}),
+        *per_interp(({"L0": {"B0": Box2D(10, 14)}})),
+        *per_interp(({"L0": {"B0": Box2D(10, 14)}, "L1": {"B0": Box2D(22, 26)}})),
+        *per_interp(({"L0": {"B0": Box2D(2, 6), "B1": Box2D(7, 11)}})),
     )
+    @unpack
     def test_levelghostparticles_have_correct_split_from_coarser_particle(
-        self, refinement_boxes
+        self, interp_order, refinement_boxes
     ):
         print(f"\n{self._testMethodName}_{ndim}d")
         now = self.datetime_now()
-        for interp_order in [1, 2, 3]:
-            self._test_levelghostparticles_have_correct_split_from_coarser_particle(
-                self.getHierarchy(
-                    interp_order,
-                    refinement_boxes,
-                    "particles",
-                    ndim=ndim,
-                    cells=30, nbr_part_per_cell=ppc,
-                    diag_outputs=f"phare_outputs/test_levelghost/{ndim}/{interp_order}/{self.ddt_test_id()}",
-                )
+        self._test_levelghostparticles_have_correct_split_from_coarser_particle(
+            self.getHierarchy(
+                interp_order,
+                refinement_boxes,
+                "particles",
+                ndim=ndim,
+                cells=30, nbr_part_per_cell=ppc,
+                diag_outputs=f"phare_outputs/test_levelghost/{ndim}/{interp_order}/{self.ddt_test_id()}",
             )
+        )
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
 
     @data(
-        ({"L0": {"B0": Box2D(10, 14)}}),
-        ({"L0": {"B0": Box2D(5, 20)}, "L1": {"B0": Box2D(15, 35)}}),
-        ({"L0": {"B0": Box2D(2, 12), "B1": Box2D(13, 25)}}),
+        *per_interp(({"L0": {"B0": Box2D(10, 14)}})),
+        *per_interp(({"L0": {"B0": Box2D(5, 20)}, "L1": {"B0": Box2D(15, 35)}})),
+        *per_interp(({"L0": {"B0": Box2D(2, 12), "B1": Box2D(13, 25)}})),
     )
+    @unpack
     def test_domainparticles_have_correct_split_from_coarser_particle(
-        self, refinement_boxes
+        self, interp_order, refinement_boxes
     ):
         print(f"\n{self._testMethodName}_{ndim}d")
         now = self.datetime_now()
-        for interp_order in [1, 2, 3]:
-            self._test_domainparticles_have_correct_split_from_coarser_particle(
-                ndim, interp_order, refinement_boxes, nbr_part_per_cell=ppc
-            )
+        self._test_domainparticles_have_correct_split_from_coarser_particle(
+            ndim, interp_order, refinement_boxes, nbr_part_per_cell=ppc
+        )
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
 

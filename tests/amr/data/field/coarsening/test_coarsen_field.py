@@ -109,19 +109,6 @@ def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
     fineLayout = fineField.layout
     ndim = coarseLayout.box.ndim
 
-    def reshape_if(data, field): # could be a function on field patch data
-        real_shape = field.ghost_box.shape + field.primal_directions()
-        if (data.shape != real_shape).all():
-            return data.reshape(real_shape)
-        return data
-
-    coarseData = reshape_if(coarseData, coarseField)
-    fineData = reshape_if(fineData, fineField)
-
-    real_shape = fineField.ghost_box.shape + fineField.primal_directions()
-    if (fineData.shape != real_shape).all():
-        fineData = fineData.reshape(real_shape)
-
     nGhosts = coarseLayout.nbrGhostFor(qty)
     coarseStartIndex = coarseLayout.physicalStartIndices(qty)
     fineOffset = fineLayout.box.lower - boxm.refine(coarseLayout.box, 2).lower

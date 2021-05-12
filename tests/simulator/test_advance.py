@@ -237,100 +237,15 @@ class AdvanceTestBase(unittest.TestCase):
 
 
 
-    def _test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, dim, interp_order, refinement_boxes, ppc=100):
-        print("test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles")
-        print("interporder : {}".format(interp_order))
-
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_patch_ghost_particle_are_clones_{dim}/{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr, ndim=dim, nbr_part_per_cell=ppc)
-
-        for time_step_idx in range(time_step_nbr + 1):
-            coarsest_time =  time_step_idx * time_step
-
-            overlaps = hierarchy_overlaps(datahier, coarsest_time)
-            for ilvl, lvl_overlaps in overlaps.items():
-                print("level {}".format(ilvl))
-                for overlap in lvl_overlaps:
-
-                    if ilvl != 0: #only root level tested here
-                        continue
-
-                    if "particles"  not in overlap["pdatas"][0].quantity :
-                        continue
-
-                    ref_pd, cmp_pd = overlap["pdatas"]
-
-                    box = overlap["box"]
-                    print("overlap box : {}, reference patchdata box : {}, ghostbox {},"
-                    " comp. patchdata box : {} ghostbox {}".format(box,ref_pd.box,ref_pd.ghost_box,cmp_pd.box, cmp_pd.ghost_box))
-                    offsets = overlap["offset"]
-
-                    # first let's shift the overlap box over the AMR
-                    # indices of the patchdata. The box has been created
-                    # by shifting the patchdata ghost box by 'offset' so here
-                    # the box is shifted by -offset to get over patchdata
-                    shift_refbox, shift_cmpbox = [boxm.shift(box, -np.asarray(off)) for off in offsets]
-
-                    # the overlap box overlaps both ghost and domain cells
-                    # we need to extract the domain ones to later select domain
-                    # particles
-                    ovlped_refdom = ref_pd.box * shift_refbox
-                    ovlped_cmpdom = cmp_pd.box * shift_cmpbox
-
-                    # on lvl 0 patches are adjacent
-                    # therefore the overlap box must overlap the
-                    # patchData box. 1 cell in interporder1, 2 cells for higher
-                    assert(ovlped_cmpdom is not None)
-                    assert(ovlped_refdom is not None)
-
-                    refdomain = ref_pd.dataset.select(ovlped_refdom)
-                    cmpdomain = cmp_pd.dataset.select(ovlped_cmpdom)
-
-                    # now get the ghost cells of each patch data overlaped by
-                    # the overlap box. To do this we need to intersect the shifted
-                    # overlap box with the patchdata ghost box, and remove interior cells
-                    # note that in 1D we don't expect remove to return more than 1 box, hence [0]
-                    ovlped_refghost = boxm.remove(ref_pd.ghost_box * shift_refbox, ref_pd.box)[0]
-                    ovlped_cmpghost = boxm.remove(cmp_pd.ghost_box * shift_cmpbox, cmp_pd.box)[0]
-
-                    refghost  = ref_pd.dataset.select(ovlped_refghost)
-                    cmpghost  = cmp_pd.dataset.select(ovlped_cmpghost)
-
-                    print("ghost box {} has {} particles".format(ovlped_refghost, len(refghost.iCells)))
-                    print("ghost box {} has {} particles".format(ovlped_cmpghost, len(cmpghost.iCells)))
-
-                    # before comparing the particles we need to be sure particles of both patchdatas
-                    # are sorted in the same order. We do that by sorting by x position
-                    sort_refdomain_idx = np.argsort(refdomain.iCells + refdomain.deltas)
-                    sort_cmpdomain_idx = np.argsort(cmpdomain.iCells + cmpdomain.deltas)
-                    sort_refghost_idx = np.argsort(refghost.iCells + refghost.deltas)
-                    sort_cmpghost_idx = np.argsort(cmpghost.iCells + cmpghost.deltas)
-
-                    assert(sort_refdomain_idx.size != 0)
-                    assert(sort_cmpdomain_idx.size != 0)
-                    assert(sort_refdomain_idx.size != 0)
-                    assert(sort_cmpghost_idx.size != 0)
-
-                    np.testing.assert_allclose(refdomain.deltas[sort_refdomain_idx], cmpghost.deltas[sort_cmpghost_idx], atol=1e-12)
-                    np.testing.assert_allclose(cmpdomain.deltas[sort_cmpdomain_idx], refghost.deltas[sort_refghost_idx], atol=1e-12)
-
-
-
-
-
-    def _test_overlapped_particledatas_have_identical_particles(self, ndim, interp_order, refinement_boxes, ppc=100):
-        print("test_overlapped_particledatas_have_identical_particles")
-        print("interporder : {}".format(interp_order))
+    def _test_overlapped_particledatas_have_identical_particles(self, ndim, interp_order, refinement_boxes, ppc=100, **kwargs):
+        print("test_overlapped_particledatas_have_identical_particles, interporder : {}".format(interp_order))
         from copy import copy
 
         time_step_nbr=3
         time_step=0.001
-        diag_outputs=f"phare_overlapped_particledatas_have_identical_particles_{self.ddt_test_id()}"
+        diag_outputs=f"phare_overlapped_particledatas_have_identical_particles/{ndim}/{self.ddt_test_id()}"
         datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs, ndim=ndim,
-                                      time_step=time_step, time_step_nbr=time_step_nbr, nbr_part_per_cell=ppc)
+                                      time_step=time_step, time_step_nbr=time_step_nbr, nbr_part_per_cell=ppc, **kwargs)
 
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
@@ -341,7 +256,6 @@ class AdvanceTestBase(unittest.TestCase):
 
                 print("testing level {}".format(ilvl))
                 for overlap in overlaps[ilvl]:
-
                     pd1, pd2 = overlap["pdatas"]
                     box      = overlap["box"]
                     offsets  = overlap["offset"]
@@ -361,35 +275,11 @@ class AdvanceTestBase(unittest.TestCase):
                         part1 = copy(pd1.dataset.select(boxm.shift(box, -np.asarray(offsets[0]))))
                         part2 = copy(pd2.dataset.select(boxm.shift(box, -np.asarray(offsets[1]))))
 
-                        idx1 = np.argsort(part1.iCells + part1.deltas)
-                        idx2 = np.argsort(part2.iCells + part2.deltas)
+                        # periodic icell overlaps need shifting to be the same
+                        part1.iCells = part1.iCells + offsets[0]
+                        part2.iCells = part2.iCells + offsets[1]
 
-                        # if there is an overlap, there should be particles in these cells
-                        assert(len(idx1) >0)
-                        assert(len(idx2) >0)
-                        assert(len(idx1) == len(idx2))
-
-                        print("respectively {} and {} in overlaped patchdatas".format(len(idx1), len(idx2)))
-
-                        # particle iCells are in their patch AMR space
-                        # so we need to shift them by +offset to move them to the box space
-
-                        # find difference in case of duplicates
-                        tmp = (part1.v[idx1,0] - part2.v[idx2,0])
-                        cell = np.where(tmp > 0)[0]
-                        duplicate_found = len(cell)
-                        if duplicate_found:
-                            print(cell)
-                            print(part1.deltas[idx1][cell])
-                            print(part2.deltas[idx2][cell])
-                            print("duplicate particles found, test will fail")
-
-                        np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
-                        np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
-
+                        self.assertEqual(part1, part2)
 
 
     def _test_L0_particle_number_conservation(self, ndim, ppc=100):
@@ -413,7 +303,7 @@ class AdvanceTestBase(unittest.TestCase):
 
 
 
-    def _test_field_coarsening_via_subcycles(self, dim, interp_order, refinement_boxes):
+    def _test_field_coarsening_via_subcycles(self, dim, interp_order, refinement_boxes, **kwargs):
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(dim, interp_order))
 
         from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
@@ -426,7 +316,7 @@ class AdvanceTestBase(unittest.TestCase):
                                       diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
                                       time_step_nbr=time_step_nbr, smallest_patch_size=5,
-                                      largest_patch_size=30, ndim=dim)
+                                      largest_patch_size=30, ndim=dim, **kwargs)
 
         lvl_steps = global_vars.sim.level_time_steps
         print("LEVELSTEPS === ", lvl_steps)
@@ -451,6 +341,13 @@ class AdvanceTestBase(unittest.TestCase):
         #  SEE: https://github.com/PHAREHUB/PHARE/issues/400
         assert syncSteps % time_step_nbr == 0 # perfect division
         startStep = int(syncSteps / time_step_nbr) + 1 # skip first coarsest step due to issue 400
+
+        def reshape_if(data, field): # could be a function on field patch data
+            real_shape = field.ghost_box.shape + field.primal_directions()
+            if (data.shape != real_shape).all():
+                return data.reshape(real_shape)
+            return data
+
 
         for step in range(startStep, syncSteps + 1):
             checkTime = datahier.format_timestamp(secondFinestTimeStep * step)
@@ -485,8 +382,17 @@ class AdvanceTestBase(unittest.TestCase):
                                     dataBox_lower = coarseOffset + nGhosts
                                     dataBox = Box(dataBox_lower, dataBox_lower + coarseBox.shape - 1)
 
+                                    coarse_pdDataset = reshape_if(np.copy(coarse_pdDataset), coarse_pd)
+                                    fine_pdDataset = reshape_if(np.copy(fine_pdDataset), fine_pd)
+
                                     afterCoarse = np.copy(coarse_pdDataset)
-                                    afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = 0
+
+                                    # change values that should be updated to make failure obvious
+                                    if dim == 1:
+                                        afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = -144123
+                                    if dim == 2:
+                                        afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1,
+                                                    dataBox.lower[1] : dataBox.upper[1] + 1] = -144123
 
                                     coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
                                     np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-6)

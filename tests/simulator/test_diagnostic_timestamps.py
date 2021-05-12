@@ -15,6 +15,7 @@ import os
 import h5py
 import numpy as np
 from ddt import ddt, data
+from pyphare.core.box import Box, Box1D
 
 from tests.simulator.config import project_root
 

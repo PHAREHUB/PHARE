@@ -100,13 +100,7 @@ class Particles:
 
     def __eq__(self, that):
         if isinstance(that, Particles):
-            try:
-                all_assert(self, that)
-                return True
-            except AssertionError as ex:
-                print(f"particles.py:Particles::eq failed with:", ex)
-                print_trace()
-                return False
+            return set(self.as_tuples()) == set(that.as_tuples())
         return False
 
 
@@ -182,6 +176,17 @@ class Particles:
           dl = self.dl[0]/refinement_ratio + np.zeros((split_pyarrays[2].size,self.ndim))
         )
 
+
+    def as_tuples(self):
+        return [
+            ( *self.iCells[i],
+              *self.deltas[i],
+              *self.v[i],
+              *self.dl[i],
+              self.weights[i],
+              self.charges[i]
+            ) for i in range(self.size())
+        ]
 
 
 def all_assert(part1, part2):
@@ -268,3 +273,13 @@ def remove(particles, idx):
                      charges=charges,
                      dl = dl
                     )
+
+# def _sort(particles):
+    # x1 = part1.iCells[:,0] + part1.deltas[:,0] + offsets[0][0]
+    # y1 = part1.iCells[:,1] + part1.deltas[:,1] + offsets[0][1]
+    # x2 = part2.iCells[:,0] + part2.deltas[:,0] + offsets[1][0]
+    # y2 = part2.iCells[:,1] + part2.deltas[:,1] + offsets[1][1]
+    # k1 = np.sqrt((x1 ** 2 + y1 ** 2)) / (x1 / y1)
+    # k2 = np.sqrt((x2 ** 2 + y2 ** 2)) / (x2 / y2)
+    # idx1 = np.argsort(k1)
+    # idx2 = np.argsort(k2)
