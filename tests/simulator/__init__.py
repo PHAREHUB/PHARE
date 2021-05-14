@@ -20,7 +20,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     from pyphare.pharein.simulation import valid_refined_particle_nbr
 
     cells = kwargs.get("cells", [20 for i in range(dim)])
-    if not isinstance(cells, list):
+    if not isinstance(cells, (list, tuple)):
         cells = [cells] * dim
     dl = [1.0 / v for v in cells]
     b0 = [[3] * dim, [8] * dim]
