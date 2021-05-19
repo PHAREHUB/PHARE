@@ -26,30 +26,14 @@ class Particles:
             self.weights = kwargs["weights"][:]
             self.charges = kwargs["charges"][:]
             self.dl      = kwargs["dl"][:]
-            ndim = self.iCells.ndim
+            ndim = self.iCells.shape[1]
 
         self._x = None
         self._y = None
-        assert len(self.weights.shape) == 1
-        assert len(self.charges.shape) == 1
 
         assert self.iCells.ndim == self.deltas.ndim
         assert self.iCells.shape == self.deltas.shape
-
-        # we like to maintain iCells/deltas in reshaped form per ndim
-        needs_reshaping = ndim == 1 and int(len(self.iCells) / self.size()) > 1
-        if needs_reshaping:
-            nICells = len(self.iCells)
-            assert nICells % self.size() == 0 # perfect division
-            ndim = int(nICells / self.size())
-            assert ndim in [1, 2, 3]
-            self.iCells = np.asarray(self.iCells).reshape(int(nICells / ndim), ndim)
-            self.deltas = np.asarray(self.deltas).reshape(int(nICells / ndim), ndim)
-
         assert self.iCells.shape[0] == self.size()
-        assert self.iCells.ndim == self.deltas.ndim
-        assert self.iCells.shape == self.deltas.shape
-
         self.ndim = ndim
 
 
@@ -100,13 +84,7 @@ class Particles:
 
     def __eq__(self, that):
         if isinstance(that, Particles):
-            try:
-                all_assert(self, that)
-                return True
-            except AssertionError as ex:
-                print(f"particles.py:Particles::eq failed with:", ex)
-                print_trace()
-                return False
+            return set(self.as_tuples()) == set(that.as_tuples())
         return False
 
 
@@ -174,33 +152,52 @@ class Particles:
           (self.iCells, self.deltas, self.weights, self.charges, self.v)
         )
         return Particles(
-          icells=split_pyarrays[0],
-          deltas=split_pyarrays[1],
-          weights=split_pyarrays[2],
-          charges=split_pyarrays[3],
-          v=np.asarray(split_pyarrays[4]).reshape(int(len(split_pyarrays[4]) / 3), 3),
+          icells=split_pyarrays[0].reshape(int(len(split_pyarrays[0]) / self.ndim), self.ndim),
+          deltas=split_pyarrays[1].reshape(int(len(split_pyarrays[1]) / self.ndim), self.ndim),
+          weights=split_pyarrays[2].reshape(int(len(split_pyarrays[2])), 1),
+          charges=split_pyarrays[3].reshape(int(len(split_pyarrays[3])), 1),
+          v=split_pyarrays[4].reshape(int(len(split_pyarrays[4]) / 3), 3),
           dl = self.dl[0]/refinement_ratio + np.zeros((split_pyarrays[2].size,self.ndim))
         )
 
 
+    def as_tuples(self):
+        tuples = [
+            ( *self.iCells[i],
+              *self.deltas[i],
+              *self.v[i],
+              *self.dl[i],
+              *self.weights[i],
+              *self.charges[i]
+            ) for i in range(self.size())
+        ]
+        print(tuples[0])
+        return tuples
+
+
+
 def all_assert(part1, part2):
+    np.testing.assert_equal(part1.ndim, part2.ndim)
     np.testing.assert_equal(part1.size(), part2.size())
 
-    idx1 = np.argsort(part1.iCells + part1.deltas)
-    idx2 = np.argsort(part2.iCells + part2.deltas)
+    ndim = part1.ndim
 
-    np.testing.assert_equal(len(idx1), len(idx2))
-
-    np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
+    part1.iCells = part1.iCells.reshape(part1.iCells.shape[0], ndim)
+    part1.deltas = part1.deltas.reshape(part1.deltas.shape[0], ndim)
+    part2.iCells = part2.iCells.reshape(part2.iCells.shape[0], ndim)
+    part2.deltas = part2.deltas.reshape(part2.deltas.shape[0], ndim)
 
     deltol = 1e-6 if any([part.deltas.dtype == np.float32 for part in [part1, part2]] ) else 1e-12
-    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=deltol)
+    for dimdex in range(ndim):
+        idx1 = np.argsort((part1.iCells + part1.deltas)[:,dimdex])
+        idx2 = np.argsort((part2.iCells + part2.deltas)[:,dimdex])
+        np.testing.assert_array_equal(part1.iCells[idx1,dimdex], part2.iCells[idx2,dimdex])
+        np.testing.assert_allclose(part1.deltas[idx1,dimdex], part2.deltas[idx2,dimdex], atol=deltol)
 
     np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
     np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
 
-    np.testing.assert_allclose(part1.dl[idx1], part2.dl[idx2], atol=1e-12)
 
 
 def any_assert(part1, part2):
@@ -263,3 +260,9 @@ def remove(particles, idx):
                      charges=charges,
                      dl = dl
                     )
+
+## 2d particle sorting
+# def _sort(particles):
+    # x1 = particles.iCells[:,0] + particles.deltas[:,0]
+    # y1 = particles.iCells[:,1] + particles.deltas[:,1]
+    # return np.argsort(np.sqrt((x1 ** 2 + y1 ** 2)) / (x1 / y1))

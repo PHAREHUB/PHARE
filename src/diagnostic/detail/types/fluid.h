@@ -91,16 +91,15 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
     };
 
     auto infoDS = [&](auto& field, std::string name, auto& attr) {
-        attr[name] = field.size();
+        // highfive doesn't accept uint32 which ndarray.shape() is
+        auto const& shape = field.shape();
+        attr[name]        = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
         setGhostNbr(field, attr, name);
     };
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
-        for (auto& [id, type] : core::Components::componentMap)
-        {
-            attr[name][id] = vecF.getComponent(type).size();
-            setGhostNbr(vecF.getComponent(type), attr[name], id);
-        }
+        for (auto const& [id, type] : core::Components::componentMap)
+            infoDS(vecF.getComponent(type), name + "_" + id, attr);
     };
 
     for (auto& pop : ions)
@@ -146,18 +145,15 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 
     auto initDS = [&](auto& path, auto& attr, std::string key, auto null) {
         auto dsPath = path + key;
-        h5Writer.template createDataSet<FloatType>(file, dsPath,
-                                                   null ? 0 : attr[key].template to<std::size_t>());
+        h5Writer.template createDataSet<FloatType>(
+            file, dsPath,
+            null ? std::vector<std::size_t>(GridLayout::dimension, 0)
+                 : attr[key].template to<std::vector<std::size_t>>());
         writeGhosts(dsPath, attr, key, null);
     };
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap)
-        {
-            auto vFPath = path + key + "_" + id;
-            h5Writer.template createDataSet<FloatType>(
-                file, vFPath, null ? 0 : attr[key][id].template to<std::size_t>());
-            writeGhosts(vFPath, attr[key], id, null);
-        }
+            initDS(path, attr, key + "_" + id, null);
     };
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
@@ -191,11 +187,12 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& hfile    = fileData_.at(diagnostic.quantity)->file();
+    auto& hfile    = *fileData_.at(diagnostic.quantity);
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
-    auto writeDS
-        = [&](auto path, auto& field) { h5Writer.writeDataSet(hfile, path, field.data()); };
+    auto writeDS     = [&](auto path, auto& field) {
+        hfile.template write_data_set_flat<GridLayout::dimension>(path, &(*field.begin()));
+    };
     auto writeVF
         = [&](auto path, auto& vecF) { h5Writer.writeVecFieldAsDataset(hfile, path, vecF); };
 

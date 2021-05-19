@@ -387,37 +387,14 @@ class AdvanceTest(unittest.TestCase):
                         # to the associated patch index space.
 
                         # overlap box must be shifted by -offset to select data in the patches
-                        part1 = copy(pd1.dataset.select(boxm.shift(box, -offsets[0])))
-                        part2 = copy(pd2.dataset.select(boxm.shift(box, -offsets[1])))
+                        part1 = copy(pd1.dataset.select(boxm.shift(box, -np.asarray(offsets[0]))))
+                        part2 = copy(pd2.dataset.select(boxm.shift(box, -np.asarray(offsets[1]))))
 
-                        idx1 = np.argsort(part1.iCells + part1.deltas)
-                        idx2 = np.argsort(part2.iCells + part2.deltas)
+                        # periodic icell overlaps need shifting to be the same
+                        part1.iCells = part1.iCells + offsets[0]
+                        part2.iCells = part2.iCells + offsets[1]
 
-                        # if there is an overlap, there should be particles in these cells
-                        assert(len(idx1) >0)
-                        assert(len(idx2) >0)
-                        assert(len(idx1) == len(idx2))
-
-                        print("respectively {} and {} in overlaped patchdatas".format(len(idx1), len(idx2)))
-
-                        # particle iCells are in their patch AMR space
-                        # so we need to shift them by +offset to move them to the box space
-
-                        # find difference in case of duplicates
-                        tmp = (part1.v[idx1,0] - part2.v[idx2,0])
-                        cell = np.where(tmp > 0)[0]
-                        duplicate_found = len(cell)
-                        if duplicate_found:
-                            print(cell)
-                            print(part1.deltas[idx1][cell])
-                            print(part2.deltas[idx2][cell])
-                            print("duplicate particles found, test will fail")
-
-                        np.testing.assert_array_equal(part1.iCells[idx1]+offsets[0], part2.iCells[idx2]+offsets[1])
-                        np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-                        np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+                        self.assertEqual(part1, part2)
 
 
 

@@ -110,8 +110,8 @@ public:
         return "/t/" + timestamp + "/pl" + std::to_string(iLevel) + "/p" + globalCoords;
     }
 
-    template<typename Type>
-    static void createDataSet(HiFile& h5, std::string const& path, std::size_t size)
+    template<typename Type, typename Size>
+    static void createDataSet(HiFile& h5, std::string const& path, Size size)
     {
         if constexpr (std::is_same_v<Type, double>) // force doubles for floats for storage
             This::createDatasetsPerMPI<FloatType>(h5, path, size);
@@ -121,11 +121,11 @@ public:
 
 
 
-    template<typename Array, typename String>
-    static void writeDataSet(HiFile& h5, String path, Array const* const array)
-    {
-        h5.getDataSet(path).write(array);
-    }
+    // template<typename Array, typename String>
+    // static void writeDataSet(HiFile& h5, String path, Array* array)
+    // {
+    //     h5.getDataSet(path).write(array);
+    // }
 
     // global function when all path+key are the same
     template<typename Data>
@@ -150,10 +150,11 @@ public:
                                       Data const& value);
 
     template<typename VecField>
-    static void writeVecFieldAsDataset(HiFile& h5, std::string path, VecField& vecField)
+    static void writeVecFieldAsDataset(h5::HighFiveFile& h5, std::string path, VecField& vecField)
     {
         for (auto& [id, type] : core::Components::componentMap)
-            h5.getDataSet(path + "_" + id).write(vecField.getComponent(type).data());
+            h5.write_data_set_flat<dimension>(path + "_" + id,
+                                              &(*vecField.getComponent(type).begin()));
     }
 
     auto& modelView() { return modelView_; }
@@ -182,8 +183,8 @@ private:
         return std::make_shared<Writer>(*this);
     }
 
-    template<typename Type>
-    static void createDatasetsPerMPI(HiFile& h5, std::string path, std::size_t dataSetSize);
+    template<typename Type, typename Size>
+    static void createDatasetsPerMPI(HiFile& h5, std::string path, Size dataSetSize);
 
 
     void initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
@@ -288,17 +289,31 @@ namespace
  * such that the current process creates datasets for all other processes with non-zero
  * sizes. Recommended to use similar sized paths, if possible.
  */
+
+namespace
+{
+    template<typename Size>
+    bool is_zero(Size size)
+    {
+        if constexpr (core::is_std_vector_v<Size>)
+            return std::all_of(size.begin(), size.end(), [](auto const& val) { return val == 0; });
+
+        else
+            return size == 0;
+    }
+
+}
+
 template<typename ModelView>
-template<typename Type>
-void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path,
-                                             std::size_t dataSetSize)
+template<typename Type, typename Size>
+void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path, Size dataSetSize)
 {
     auto mpi_size = core::mpi::size();
     auto sizes    = core::mpi::collect(dataSetSize, mpi_size);
     auto paths    = core::mpi::collect(path, mpi_size);
     for (int i = 0; i < mpi_size; i++)
     {
-        if (sizes[i] == 0)
+        if (is_zero(sizes[i]))
             continue;
         createGroupsToDataSet(h5file, paths[i]);
         h5file.createDataSet<Type>(paths[i], HighFive::DataSpace(sizes[i]));

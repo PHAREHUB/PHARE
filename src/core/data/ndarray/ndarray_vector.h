@@ -124,8 +124,9 @@ template<std::size_t dim, typename DataType = double, typename Pointer = DataTyp
 class NdArrayView : NdArrayViewer<dim, DataType>
 {
 public:
-    static const std::size_t dimension = dim;
-    using type                         = DataType;
+    static constexpr bool is_contiguous = 1;
+    static const std::size_t dimension  = dim;
+    using type                          = DataType;
 
     explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
@@ -163,6 +164,11 @@ public:
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes));
     }
 
+    auto data() const { return ptr_; }
+    std::size_t size() const
+    {
+        return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
+    }
     auto shape() const { return nCells_; }
 
 private:
@@ -177,8 +183,9 @@ template<std::size_t dim, typename DataType = double>
 class NdArrayVector
 {
 public:
-    static const std::size_t dimension = dim;
-    using type                         = DataType;
+    static constexpr bool is_contiguous = 1;
+    static const std::size_t dimension  = dim;
+    using type                          = DataType;
 
     NdArrayVector() = delete;
 
@@ -199,10 +206,7 @@ public:
     NdArrayVector(NdArrayVector const& source) = default;
     NdArrayVector(NdArrayVector&& source)      = default;
 
-    static constexpr bool is_contiguous = 1;
-
     auto data() const { return data_.data(); }
-
     auto size() const { return data_.size(); }
 
     auto begin() const { return std::begin(data_); }

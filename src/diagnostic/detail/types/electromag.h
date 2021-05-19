@@ -71,8 +71,11 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
         for (auto& [id, type] : core::Components::componentMap)
         {
-            attr[name][id] = vecF.getComponent(type).size();
-            auto ghosts    = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
+            // highfive doesn't accept uint32 which ndarray.shape() is
+            auto const& array_shape = vecF.getComponent(type).shape();
+            attr[name][id]          = std::vector<std::size_t>(array_shape.data(),
+                                                      array_shape.data() + array_shape.size());
+            auto ghosts = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
             attr[name][id + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
             if constexpr (GridLayout::dimension > 1)
                 attr[name][id + "_ghosts_y"] = static_cast<std::size_t>(ghosts[1]);
@@ -105,7 +108,9 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
         {
             auto vFPath = path + "/" + key + "_" + id;
             h5Writer.template createDataSet<FloatType>(
-                h5file, vFPath, null ? 0 : attr[key][id].template to<std::size_t>());
+                h5file, vFPath,
+                null ? std::vector<std::size_t>(GridLayout::dimension, 0)
+                     : attr[key][id].template to<std::vector<std::size_t>>());
 
             this->writeGhostsAttr_(
                 h5file, vFPath, null ? 0 : attr[key][id + "_ghosts_x"].template to<std::size_t>(),
@@ -145,14 +150,10 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
     auto& h5Writer = this->h5Writer_;
 
     for (auto* vecField : h5Writer.modelView().getElectromagFields())
-    {
-        auto& name = vecField->name();
-        if (diagnostic.quantity == "/" + name)
-        {
-            auto& h5file = fileData_.at(diagnostic.quantity)->file();
-            h5Writer.writeVecFieldAsDataset(h5file, h5Writer.patchPath() + "/" + name, *vecField);
-        }
-    }
+        if (diagnostic.quantity == "/" + vecField->name())
+            h5Writer.writeVecFieldAsDataset(*fileData_.at(diagnostic.quantity),
+                                            h5Writer.patchPath() + "/" + vecField->name(),
+                                            *vecField);
 }
 
 

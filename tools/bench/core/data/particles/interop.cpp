@@ -15,7 +15,7 @@ auto makeContiguous()
         view.weight = 1 + i;
         view.charge = 1 + i;
         view.iCell  = PHARE::core::ConstArray<int, dim>(i);
-        view.delta  = PHARE::core::ConstArray<float, dim>(i + 1);
+        view.delta  = PHARE::core::ConstArray<double, dim>(i + 1);
         view.v      = PHARE::core::ConstArray<double, 3>(view.weight + 2);
     }
     return contiguous;

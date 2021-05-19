@@ -406,8 +406,11 @@ class InitializationTest(unittest.TestCase):
             # so we artificially add the min (-1 or -2) and count the
             # number of occurence of cell indexes
             # this should be a list of only nbr_part_per_cell
-            counts = np.bincount(icells-mincell)
-            self.assertTrue(np.all(counts == 100)) #100 is default nbr for maxwellian model.
+
+            gb_shape = pd.ghost_box.shape
+
+            i =  icells[:, 0]
+            self.assertTrue(np.all(np.bincount(i - i.min()) == 100))
 
 
 
