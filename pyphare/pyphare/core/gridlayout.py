@@ -232,6 +232,13 @@ class GridLayout(object):
 
 
     def yeeCoordsFor(self, qty, direction):
+        """
+        from a qty and a direction, returns a 1d array containing
+        the coordinates where the qty is defined, including the ghost nodes
+
+        :param qty: the quantity (can be primal or dual)
+        :param direction: can only be a single one
+        """
 
         assert direction in direction_to_dim, f"direction ({direction} not supported)"
         assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
