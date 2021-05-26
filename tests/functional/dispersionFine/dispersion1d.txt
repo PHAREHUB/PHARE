@@ -1,0 +1,16 @@
+error Left ... k = 0.0628   w_the = 0.0609   w_num = 0.0628   err = 3.1909
+error Left ... k = 0.1257   w_the = 0.1180   w_num = 0.1257   err = 6.4804
+error Left ... k = 0.2513   w_the = 0.2217   w_num = 0.2199   err = 0.8163
+error Left ... k = 0.5027   w_the = 0.3920   w_num = 0.3770   err = 3.8180
+error Left ... k = 1.0053   w_the = 0.6198   w_num = 0.6283   err = 1.3674
+error Left ... k = 2.0106   w_the = 0.8297   w_num = 0.8168   err = 1.5541
+error Left ... k = 4.0212   w_the = 0.9448   w_num = 0.9111   err = 3.5707
+error Left ... k = 8.0425   w_the = 0.9850   w_num = 0.9739   err = 1.1275
+error Right... k = 0.0628   w_the = 0.0648   w_num = 0.0628   err = 3.0923
+error Right... k = 0.1257   w_the = 0.1338   w_num = 0.1257   err = 6.0860
+error Right... k = 0.2513   w_the = 0.2849   w_num = 0.2827   err = 0.7524
+error Right... k = 0.5027   w_the = 0.6446   w_num = 0.6597   err = 2.3450
+error Right... k = 1.0053   w_the = 1.6305   w_num = 1.6336   err = 0.1925
+error Right... k = 2.0106   w_the = 4.8723   w_num = 4.8381   err = 0.7029
+error Right... k = 4.0212   w_the = 17.1152   w_num = 16.8075   err = 1.7975
+error Right... k = 8.0425   w_the = 65.6664   w_num = 62.1721   err = 5.3213
