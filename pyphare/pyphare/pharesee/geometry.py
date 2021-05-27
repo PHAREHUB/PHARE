@@ -88,6 +88,9 @@ def periodicity_shifts(domain_box):
             "topleft" : [*shifts["left"], *shifts["top"], (shape_x, -shape_y)],
             "topright" : [*shifts["right"], *shifts["top"], (-shape_x, -shape_y)],
         })
+        shifts.update({"bottomtopleftright" : [
+            *shifts["bottomleft"], *shifts["topright"],
+            shifts["bottomright"][-1], shifts["topleft"][-1]] })
         return shifts
 
     raise ValueError("Unhandeled dimension")
@@ -177,6 +180,10 @@ def compute_overlaps(patches, domain_box):
     borders_per_patch = {p : borders_per(p) for p in patches}
     border_patches = [p for p, in_sides in borders_per_patch.items() if len(in_sides) > 0]
 
+    # lvl 0 patch might be periodic with itself
+    domain_is_one_patch = len(patches) == 1 and (patches[0].box.shape == domain_box.shape).all()
+    ignore_self = int(not domain_is_one_patch)
+
     for patch_i, ref_patch in enumerate(border_patches):
 
         in_sides = borders_per_patch[ref_patch]
@@ -184,7 +191,7 @@ def compute_overlaps(patches, domain_box):
 
         for ref_pdname, ref_pd in ref_patch.patch_datas.items():
             for shift in shifts[in_sides]:
-                for cmp_patch in border_patches[patch_i + 1:]:
+                for cmp_patch in border_patches[patch_i + ignore_self:]:
                     for cmp_pdname, cmp_pd in cmp_patch.patch_datas.items():
                         if cmp_pdname == ref_pdname:
 
