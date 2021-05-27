@@ -131,7 +131,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
 
     for (auto& pop : ions)
     {
-        ParticleArray tmpDomain;
+        ParticleArray& domain = pop.domainParticles();
         ParticleArray tmpPatchGhost;
         ParticleArray tmpLevelGhost;
 
@@ -139,24 +139,24 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
         // push them while still inDomainBox
         // accumulate those inDomainBox
 
-        tmpDomain.resize(pop.domainParticles().size());
+        domain.resize(pop.domainParticles().size());
 
         auto inRange
             = makeRange(std::begin(pop.domainParticles()), std::end(pop.domainParticles()));
-        auto outRange = makeRange(std::begin(tmpDomain), std::end(tmpDomain));
+        auto outRange = makeRange(std::begin(domain), std::end(domain));
 
         auto newEnd
             = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_, inDomainBox, layout);
 
-        interpolator_(std::begin(tmpDomain), newEnd, pop.density(), pop.flux(), layout);
-
+        interpolator_(std::begin(domain), newEnd, pop.density(), pop.flux(), layout);
 
         // then push patch and level ghost particles
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
         // some will leave the ghost area
         // deposit moments on those which leave to go inDomainBox
 
-        auto pushAndAccumulateGhosts = [&](auto& inputArray, auto& outputArray) {
+        auto pushAndAccumulateGhosts = [&](auto& inputArray, auto& outputArray,
+                                           bool patchghost = false) {
             outputArray.resize(inputArray.size());
 
             inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
@@ -168,9 +168,12 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
             auto endInDomain = std::partition(firstGhostOut, std::end(outputArray), inDomainBox);
 
             interpolator_(firstGhostOut, endInDomain, pop.density(), pop.flux(), layout);
+
+            if (patchghost)
+                std::copy(firstGhostOut, endInDomain, std::back_inserter(domain));
         };
 
-        pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost);
+        pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost, true);
         pushAndAccumulateGhosts(pop.levelGhostParticles(), tmpLevelGhost);
     }
 }
