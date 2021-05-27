@@ -836,7 +836,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::moments_only);
+                                 UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 
@@ -860,13 +860,11 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
         }
     };
 
-    checkIsUnTouched(populations[0].domainParticles(), ionsBufferCpy.protonDomain);
     checkIsUnTouched(populations[0].patchGhostParticles(), ionsBufferCpy.protonPatchGhost);
     checkIsUnTouched(populations[0].levelGhostParticles(), ionsBufferCpy.protonLevelGhost);
     checkIsUnTouched(populations[0].levelGhostParticlesOld(), ionsBufferCpy.protonLevelGhostOld);
     checkIsUnTouched(populations[0].levelGhostParticlesNew(), ionsBufferCpy.protonLevelGhostNew);
 
-    checkIsUnTouched(populations[1].domainParticles(), ionsBufferCpy.alphaDomain);
     checkIsUnTouched(populations[1].patchGhostParticles(), ionsBufferCpy.alphaPatchGhost);
     checkIsUnTouched(populations[1].levelGhostParticles(), ionsBufferCpy.alphaLevelGhost);
     checkIsUnTouched(populations[1].levelGhostParticlesOld(), ionsBufferCpy.alphaLevelGhost);
@@ -908,8 +906,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::particles_and_moments);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt, UpdaterMode::all);
 
     this->fillIonsMomentsGhosts();
 
@@ -930,7 +927,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::moments_only);
+                                 UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 
@@ -948,7 +945,7 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
         init_dict["simulation"]["algo"]["ion_updater"]};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::moments_only);
+                                 UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 
@@ -984,7 +981,7 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
         init_dict["simulation"]["algo"]["ion_updater"]};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::moments_only);
+                                 UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
 

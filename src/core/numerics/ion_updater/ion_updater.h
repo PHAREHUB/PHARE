@@ -22,7 +22,7 @@
 
 namespace PHARE::core
 {
-enum class UpdaterMode { moments_only = 1, particles_and_moments = 2 };
+enum class UpdaterMode { domain_only = 1, all = 2 };
 
 template<typename Ions, typename Electromag, typename GridLayout>
 class IonUpdater
@@ -55,7 +55,7 @@ public:
     }
 
     void updatePopulations(Ions& ions, Electromag const& em, GridLayout const& layout, double dt,
-                           UpdaterMode = UpdaterMode::particles_and_moments);
+                           UpdaterMode = UpdaterMode::all);
 
 
     void updateIons(Ions& ions, GridLayout const& layout);
@@ -80,7 +80,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(layout.meshSize(), dt);
 
-    if (mode == UpdaterMode::moments_only)
+    if (mode == UpdaterMode::domain_only)
     {
         updateMomentsOnly_(ions, em, layout);
     }

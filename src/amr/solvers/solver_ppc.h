@@ -247,7 +247,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 
     saveState_(*level, hybridState.ions, resourcesManager);
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
-              newTime, core::UpdaterMode::moments_only);
+              newTime, core::UpdaterMode::domain_only);
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
@@ -256,7 +256,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 
     restoreState_(*level, hybridState.ions, resourcesManager);
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
-              newTime, core::UpdaterMode::particles_and_moments);
+              newTime, core::UpdaterMode::all);
 
     corrector_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
