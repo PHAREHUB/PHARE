@@ -394,23 +394,14 @@ class InitializationTest(unittest.TestCase):
 
     @data(1, 2, 3)
     def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
+        print(self._testMethodName)
+        ppc = 100
         datahier = self.getHierarchy(interp_order, {"L0": {"B0": [(10, ), (20, )]}}, "particles")
-        print("test_nbr_particles_per_cell_is_as_provided, interp_order = {}".format(interp_order))
-        L0 = datahier.level(0)
-        for patch in L0.patches:
+        for patch in datahier.level(0).patches:
             pd = patch.patch_datas["protons_particles"]
-            icells = pd.dataset.iCells
-            mincell = icells.min()
-            # bincount only works for non-negative values
-            # but icells could be -1 or -2 for interp order 1 or (2,3)
-            # so we artificially add the min (-1 or -2) and count the
-            # number of occurence of cell indexes
-            # this should be a list of only nbr_part_per_cell
-
-            gb_shape = pd.ghost_box.shape
-
-            i =  icells[:, 0]
-            self.assertTrue(np.all(np.bincount(i - i.min()) == 100))
+            icells = pd.dataset[patch.box].iCells
+            H, edges = np.histogramdd(icells)
+            self.assertTrue((H == ppc).all())
 
 
 

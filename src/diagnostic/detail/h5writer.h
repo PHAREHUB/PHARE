@@ -120,13 +120,6 @@ public:
     }
 
 
-
-    // template<typename Array, typename String>
-    // static void writeDataSet(HiFile& h5, String path, Array* array)
-    // {
-    //     h5.getDataSet(path).write(array);
-    // }
-
     // global function when all path+key are the same
     template<typename Data>
     static void writeAttribute(HiFile& h5, std::string path, std::string key, Data const& value)
