@@ -300,7 +300,6 @@ def check_refinement_boxes(ndim, **kwargs):
                 raise ValueError(f"Box({box}) is incompatible with coarser boxes({refined_coarser_boxes}) and nest_buffer({nesting_buffer})")
 
             if box.ndim != ndim:
-                print("box.ndim != ndim", box.ndim, ndim)
                 raise ValueError(f"Box({box}) has incorrect dimensions for simulation")
             for l in boxm.refine(box, refinement_ratio).shape:
                 if (l < smallest_patch_size).any():
@@ -318,37 +317,37 @@ def check_patch_size(ndim, **kwargs):
         return max(grid.nbrGhosts(kwargs["interp_order"], x) for x in ['primal','dual'])
 
     max_ghosts = get_max_ghosts()
-    small_invalid_patch_size = (max_ghosts - 1)
+    small_invalid_patch_size = phare_utilities.np_array_ify(max_ghosts - 1, ndim)
+    largest_patch_size =  kwargs.get("largest_patch_size", None)
+    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim)
+    if "smallest_patch_size" in kwargs and kwargs["smallest_patch_size"] is not None:
+        smallest_patch_size = phare_utilities.np_array_ify(kwargs["smallest_patch_size"], ndim)
 
-    largest_patch_size =  phare_utilities.np_array_ify(kwargs.get("largest_patch_size", None), ndim)
-    smallest_patch_size = phare_utilities.np_array_ify(kwargs.get("smallest_patch_size", max_ghosts), ndim)
-
-    if largest_patch_size.size != ndim:
-        raise ValueError(f"Error: largest_patch_size must be size {ndim}")
+    cells = phare_utilities.np_array_ify(kwargs["cells"])
 
     if smallest_patch_size.size != ndim:
-        raise ValueError(f"Error: smallest_patch_size must be size {ndim}")
+        raise ValueError(f"Error: smallest_patch_size({smallest_patch_size.size}) must be size {ndim}")
 
-    cells = kwargs["cells"]
+    if (smallest_patch_size <= small_invalid_patch_size).any():
+        raise ValueError("Error - smallest_patch_size cannot be <= " + str(small_invalid_patch_size))
 
-    for dimdex in range(ndim):
-        if largest_patch_size[dimdex] is not None:
+    if (smallest_patch_size > cells).any():
+        raise ValueError("Error - smallest_patch_size should be less than nbr of cells in all directions")
 
-            if largest_patch_size[dimdex] > cells[dimdex]:
-                raise ValueError("Error - largest_patch_size should be less than nbr of cells in all directions")
+    if largest_patch_size is not None:
+        largest_patch_size = phare_utilities.np_array_ify(largest_patch_size, ndim)
 
-            if largest_patch_size[dimdex] <= 0:
-                raise ValueError("Error - largest_patch_size cannot be <= 0")
+        if largest_patch_size.size != ndim:
+            raise ValueError(f"Error: largest_patch_size({largest_patch_size.size}) must be size {ndim}")
 
-        if smallest_patch_size[dimdex] > cells[dimdex]:
-            raise ValueError("Error - smallest_patch_size should be less than nbr of cells in all directions")
+        if (largest_patch_size > cells).any():
+            raise ValueError("Error - largest_patch_size should be less than nbr of cells in all directions")
 
-        if smallest_patch_size[dimdex] <= small_invalid_patch_size:
-            raise ValueError("Error - smallest_patch_size cannot be <= " + str(small_invalid_patch_size))
+        if (largest_patch_size <= 0).any():
+            raise ValueError("Error - largest_patch_size cannot be <= 0")
 
-        if largest_patch_size[dimdex] is not None:
-            if largest_patch_size[dimdex] < smallest_patch_size[dimdex]:
-                raise ValueError("Error - largest_patch_size and smallest_patch_size are incompatible")
+        if (largest_patch_size < smallest_patch_size).any():
+            raise ValueError("Error - largest_patch_size and smallest_patch_size are incompatible")
 
     return largest_patch_size, smallest_patch_size
 
@@ -401,13 +400,12 @@ def check_nesting_buffer(ndim, **kwargs):
 
     cells = np.asarray(kwargs["cells"])
 
-    for dimdex in range(ndim):
-        if largest_patch_size[dimdex] != None and nesting_buffer[dimdex] > cells[dimdex] - largest_patch_size[dimdex]:
-          raise ValueError(f"Error: nesting_buffer({nesting_buffer})"
-                            + f"incompatible with number of domain cells ({cells}) and largest_patch_size({largest_patch_size})")
+    if largest_patch_size is not None and (nesting_buffer > (cells - largest_patch_size)).any():
+      raise ValueError(f"Error: nesting_buffer({nesting_buffer})"
+                        + f"incompatible with number of domain cells ({cells}) and largest_patch_size({largest_patch_size})")
 
-        elif nesting_buffer[dimdex] > cells[dimdex]:
-            raise ValueError(f"Error: nesting_buffer({nesting_buffer}) incompatible with number of domain cells ({cells})")
+    elif (nesting_buffer > cells).any():
+        raise ValueError(f"Error: nesting_buffer({nesting_buffer}) incompatible with number of domain cells ({cells})")
 
     return nesting_buffer
 
@@ -459,8 +457,6 @@ def checker(func):
             raise ValueError("Error: invalid arguments - " + " ".join(wrong_kwds))
 
         dl, cells = check_domain(**kwargs)
-
-        kwargs["refinement_ratio"] = 2
 
         kwargs["dl"] = dl
         kwargs["cells"] =  cells

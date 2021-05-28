@@ -19,21 +19,18 @@ class NoOverwriteDict(dict):
 def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     from pyphare.pharein.simulation import valid_refined_particle_nbr
 
-    cells = [20 for i in range(dim)]
-    if "cells" in kwargs:
-        cells = kwargs["cells"]
-    if not isinstance(cells, list):
-        cells = [cells]
+    cells = kwargs.get("cells", [20 for i in range(dim)])
+    if not isinstance(cells, (list, tuple)):
+        cells = [cells] * dim
     dl = [1.0 / v for v in cells]
-    b0 = [[3 for i in range(dim)], [8 for i in range(dim)]]
-    boundary = ["periodic" for i in range(dim)]
+    b0 = [[3] * dim, [8] * dim]
     args = {
         "interp_order": interp,
-        "smallest_patch_size": 5,
-        "largest_patch_size": 20,
+        "smallest_patch_size": [5] * dim,
+        "largest_patch_size": [20] * dim,
         "time_step_nbr": 1000,
         "final_time": 1.0,
-        "boundary_types": boundary,
+        "boundary_types": ["periodic"] * dim,
         "cells": cells,
         "dl": dl,
         "refinement_boxes": {"L0": {"B0": b0}},

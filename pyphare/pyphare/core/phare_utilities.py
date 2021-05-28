@@ -44,7 +44,7 @@ def listify(arg):
 
 
 def is_scalar(arg):
-    return not isinstance(arg, list) and not is_nd_array(arg)
+    return not isinstance(arg, (list, tuple)) and not is_nd_array(arg)
 
 
 def is_nd_array(arg):
