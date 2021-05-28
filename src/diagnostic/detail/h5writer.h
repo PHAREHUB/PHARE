@@ -15,6 +15,7 @@
 #include "core/data/vecfield/vecfield_component.h"
 #include "core/utilities/mpi_utils.h"
 #include "core/utilities/types.h"
+#include "core/utilities/meta/meta_utilities.h"
 
 
 #if !defined(PHARE_DIAG_DOUBLES)
@@ -288,7 +289,7 @@ namespace
     template<typename Size>
     bool is_zero(Size size)
     {
-        if constexpr (core::is_std_vector_v<Size>)
+        if constexpr (core::is_iterable_v<Size>)
             return std::all_of(size.begin(), size.end(), [](auto const& val) { return val == 0; });
 
         else
