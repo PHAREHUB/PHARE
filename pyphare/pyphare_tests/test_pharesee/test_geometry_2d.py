@@ -141,6 +141,63 @@ class GeometryTest(AGeometryTest):
                 "hierarchy_2d_lvl_" + str(1) + "_simple_test_" + str(test_id) + ".png"
             )
 
+    @data(
+        [
+            {"box": Box([-5, -5], [6, 25]), "offset": ([0, 0], [-20, 0])},
+            {"box": Box([15, -5], [26, 25]), "offset": ([20, 0], [0, 0])},
+            {"box": Box([-5, -5], [26, 5]), "offset": ([0, 0], [0, -20])},
+            {"box": Box([-5, 15], [26, 25]), "offset": ([0, 20], [0, 0])},
+            {"box": Box([-5, -5], [6, 5]), "offset": ([0, 0], [-20, -20])},
+            {"box": Box([15, 15], [26, 25]), "offset": ([20, 20], [0, 0])},
+            {"box": Box([15, -5], [26, 25]), "offset": ([0, 0], [20, 0])},
+            {"box": Box([-5, -5], [6, 25]), "offset": ([-20, 0], [0, 0])},
+            {"box": Box([-5, 15], [26, 25]), "offset": ([0, 0], [0, 20])},
+            {"box": Box([-5, -5], [26, 5]), "offset": ([0, -20], [0, 0])},
+            {"box": Box([15, 15], [26, 25]), "offset": ([0, 0], [20, 20])},
+            {"box": Box([-5, -5], [6, 5]), "offset": ([-20, -20], [0, 0])},
+            {"box": Box([15, -5], [26, 5]), "offset": ([0, 0], [20, -20])},
+            {"box": Box([-5, 15], [6, 25]), "offset": ([-20, 20], [0, 0])},
+            {"box": Box([-5, 15], [6, 25]), "offset": ([0, 0], [-20, 20])},
+            {"box": Box([15, -5], [26, 5]), "offset": ([20, -20], [0, 0])},
+        ]
+    )
+    def test_large_patchoverlaps(self, expected):
+        print(f"GeometryTest.{self._testMethodName}")
+        test_id = self._testMethodName.split("_")[-1]
+        dim, interp_order, nbr_cells = (2, 1, [20] * 2)
+        hierarchy = self.setup_hierarchy(
+            dim, interp_order, nbr_cells, {}, quantities="Bx", largest_patch_size=20
+        )
+
+        level_overlaps = hierarchy_overlaps(hierarchy)
+        ilvl = 0
+        lvl = hierarchy.level(ilvl)
+        overlap_boxes = []
+
+        self.assertEqual(len(expected), len(level_overlaps[ilvl]))
+        for exp, actual in zip(expected, level_overlaps[ilvl]):
+            self.assertEqual(actual["box"], exp["box"])
+            self.assertTrue(
+                (np.asarray(actual["offset"]) == np.asarray(exp["offset"])).all()
+            )
+            overlap_boxes += [actual["box"]]
+
+        fig = hierarchy.plot_2d_patches(
+            ilvl,
+            collections=[
+                {
+                    "boxes": overlap_boxes,
+                    "facecolor": "yellow",
+                },
+                {
+                    "boxes": [p.box for p in hierarchy.level(ilvl).patches],
+                    "facecolor": "grey",
+                },
+            ],
+        )
+        fig.savefig(f"hierarchy_2d_lvl_0_large_patch_test_{test_id}.png")
+
+
     def test_touch_border(self):
         print("GeometryTest.test_touch_border")
         hierarchy = super().basic_hierarchy()
@@ -226,9 +283,6 @@ class GeometryTest(AGeometryTest):
                 for exp_box in exp_pdata["boxes"]:
                     self.assertTrue(exp_box in act_pdata["boxes"])
 
-
-
-
     def test_particle_level_ghost_boxes_do_not_overlap_patch_interiors(self):
         print(
             "GeometryTest.test_particle_level_ghost_boxes_do_not_overlap_patch_interiors"
@@ -251,7 +305,7 @@ class GeometryTest(AGeometryTest):
 @ddt
 class ParticleLevelGhostGeometryTest(AGeometryTest):
     @data(
-        (   # no patch ghost on level 1
+        (  # no patch ghost on level 1
             {"L0": [Box2D(5, 9), Box2D(14, 19)]},
             {
                 1: [
@@ -266,7 +320,7 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                 ]
             },
         ),
-        (   # top right of gabox0 overlaps bottom left gabox1
+        (  # top right of gabox0 overlaps bottom left gabox1
             {"L0": [Box2D(5, 9), Box2D(10, 11)]},
             {
                 1: [
@@ -281,7 +335,7 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                 ]
             },
         ),
-        (   # right side of gabox0 overlaps left side of gabox1
+        (  # right side of gabox0 overlaps left side of gabox1
             {"L0": [Box2D(2, 9), Box([10, 1], [14, 10])]},
             {
                 1: [
@@ -298,7 +352,7 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
         ),
         (
             {  # right side of gabox0 overlaps left of gabox1/gabox2
-               # left side of gabox3 overlaps right of gabox1/gabox2
+                # left side of gabox3 overlaps right of gabox1/gabox2
                 "L0": [
                     Box([0, 0], [4, 19]),
                     Box([10, 0], [14, 19]),
@@ -360,7 +414,9 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                         "facecolor": "grey",
                     },
                 ],
-                title="".join([str(box)+"," for box in refinement_boxes["L"+str(ilvl-1)]])
+                title="".join(
+                    [str(box) + "," for box in refinement_boxes["L" + str(ilvl - 1)]]
+                ),
             )
             fig.savefig(f"{type(self).__name__}_lvl_{ilvl}_{self._testMethodName}.png")
 

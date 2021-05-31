@@ -1,7 +1,7 @@
 import numpy as np
 
 import pyphare.core.box as boxm
-from pyphare.core.box import Box
+from pyphare.core.box import Box, nDBox
 from pyphare.core.phare_utilities import listify
 from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 
@@ -20,7 +20,7 @@ def init(ghost_box, layout, L, qty, fn):
     ndim = ghost_box.ndim
 
     dl, origin = layout.dl, layout.origin
-    xyz, directions = [], ["x", "y", "z"][: ndim]
+    xyz, directions = [], ["x", "y", "z"][:ndim]
     for dimdex, direction in enumerate(directions):
         primal = yee_element_is_primal(qty, direction)
         nbrGhosts = layout.nbrGhosts(primal, layout.interp_order)
@@ -42,27 +42,27 @@ def init(ghost_box, layout, L, qty, fn):
 
 
 def Bx(ghost_box, layout, L):
-    return init(ghost_box, layout, L, "Bx", lambda i, v : np.sin(2 * np.pi / L[i] * v))
+    return init(ghost_box, layout, L, "Bx", lambda i, v: np.sin(2 * np.pi / L[i] * v))
 
 
 def By(ghost_box, layout, L):
-    return init(ghost_box, layout, L, "By", lambda i, v : np.cos(2 * np.pi / L[i] * v))
+    return init(ghost_box, layout, L, "By", lambda i, v: np.cos(2 * np.pi / L[i] * v))
 
 
 def Bz(ghost_box, layout, L):
-    return init(ghost_box, layout, L, "Bz", lambda i, v : np.sin(4 * np.pi / L[i] * v))
+    return init(ghost_box, layout, L, "Bz", lambda i, v: np.sin(4 * np.pi / L[i] * v))
 
 
 def Ex(ghost_box, layout, L):
-    return init(ghost_box, layout, L, "Ex", lambda i, v : np.sin(2 * np.pi / L[i] * v))
+    return init(ghost_box, layout, L, "Ex", lambda i, v: np.sin(2 * np.pi / L[i] * v))
 
 
 def Ey(ghost_box, layout, L):
-    return init(ghost_box, layout, L, "Ey", lambda i, v : np.cos(2 * np.pi / L[i] * v))
+    return init(ghost_box, layout, L, "Ey", lambda i, v: np.cos(2 * np.pi / L[i] * v))
 
 
 def Ez(ghost_box, layout, L):
-    return init(ghost_box, layout, L, "Ez", lambda i, v : np.sin(4 * np.pi / L[i] * v))
+    return init(ghost_box, layout, L, "Ez", lambda i, v: np.sin(4 * np.pi / L[i] * v))
 
 
 def build_boxes(domain_box, **kwargs):
@@ -96,22 +96,32 @@ def build_boxes(domain_box, **kwargs):
 
     # coarse level boxes are arbitrarily divided in 2 patches in the middle
 
-    if ndim == 1:
-        middle_cell = np.round(domain_box.upper / 2)
-        lower_box = Box(0, middle_cell)
-        upper_box = Box(middle_cell + 1, domain_box.upper)
+    if (
+        "largest_patch_size" in kwargs
+        and (kwargs["largest_patch_size"] == domain_box.upper + 1).all()
+    ):
+        boxes[0] = [Box(domain_box.lower, domain_box.upper + 1)]
 
+    else:
+        if ndim == 1:
+            middle_cell = np.round(domain_box.upper / 2)
+            lower_box = Box(0, middle_cell)
+            upper_box = Box(middle_cell + 1, domain_box.upper)
 
-    if ndim >= 2:
-        middle_cell = np.round(domain_box.upper / 2)
-        lower_box = Box([0] * ndim, middle_cell - 1)
-        upper_box = Box(middle_cell, domain_box.upper)
+        if ndim >= 2:
+            middle_cell = np.round(domain_box.upper / 2)
+            lower_box = Box([0] * ndim, middle_cell - 1)
+            upper_box = Box(middle_cell, domain_box.upper)
 
-    boxes[0] = [lower_box, upper_box]
+        boxes[0] = [lower_box, upper_box]
 
-    if ndim >= 2:
-        boxes[0].append(Box([0, middle_cell[1]], [middle_cell[0] - 1, domain_box.upper[1]]))
-        boxes[0].append(Box([middle_cell[0], 0], [domain_box.upper[0], middle_cell[1] - 1]))
+        if ndim >= 2:
+            boxes[0].append(
+                Box([0, middle_cell[1]], [middle_cell[0] - 1, domain_box.upper[1]])
+            )
+            boxes[0].append(
+                Box([middle_cell[0], 0], [domain_box.upper[0], middle_cell[1] - 1])
+            )
 
     return boxes
 
@@ -164,7 +174,7 @@ def build_patch_datas(domain_box, boxes, **kwargs):
                 level_domain_box = boxm.refine(domain_box, refinement_ratio)
                 grow_by = [domain_layout.particleGhostNbr(interp_order)] * ndim
                 lvl_ghost_domain_box = boxm.grow(level_domain_box, grow_by)
-                lvl_particles = Particles(box = lvl_ghost_domain_box)
+                lvl_particles = Particles(box=lvl_ghost_domain_box)
 
         if ilvl not in patch_datas:
             patch_datas[ilvl] = []
@@ -175,14 +185,17 @@ def build_patch_datas(domain_box, boxes, **kwargs):
             origin = box.lower * lvl_cell_width
             layout = GridLayout(box, origin, lvl_cell_width, interp_order)
 
-            datas = {qty: globals()[qty](ghost_box, layout, domain_size) for qty in quantities}
+            datas = {
+                qty: globals()[qty](ghost_box, layout, domain_size)
+                for qty in quantities
+            }
 
             if not skip_particles:
                 datas["particles"] = lvl_particles.select(ghost_box)
 
             boxed_patch_datas = {}
             for qty_name, data in datas.items():
-                if qty_name == 'particles':
+                if qty_name == "particles":
                     pdata = ParticleData(layout, data, "pop_name")
                 else:
                     pdata = FieldData(layout, qty_name, data)
@@ -219,18 +232,18 @@ def build_kwargs(**kwargs):
 
 def build_hierarchy(**kwargs):
     """accepted keywords:
-     - simulation : a simulation Object
+    - simulation : a simulation Object
 
-     or
+    or
 
-     - nbr_cells
-     - origin
-     - interp_order
-     - domain_size
-     - cell_width
-     - refinement_ratio
-     - refinement_boxes
-     """
+    - nbr_cells
+    - origin
+    - interp_order
+    - domain_size
+    - cell_width
+    - refinement_ratio
+    - refinement_boxes
+    """
     kwargs = build_kwargs(**kwargs)
 
     nbr_cells = np.asarray(kwargs["nbr_cells"])
@@ -259,4 +272,3 @@ def build_hierarchy(**kwargs):
     sorted_levels_numbers = sorted(patch_levels)
     patch_levels = {ilvl: patch_levels[ilvl] for ilvl in sorted_levels_numbers}
     return PatchHierarchy(patch_levels, domain_box, refinement_ratio)
-
