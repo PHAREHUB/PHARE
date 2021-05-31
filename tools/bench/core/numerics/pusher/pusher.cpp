@@ -18,8 +18,8 @@ PHARE::core::Particle<dim> particle()
     return {//
             /*.weight = */ 0,
             /*.charge = */ 1,
-            /*.iCell  = */ PHARE::core::ConstArray<int, dim>(5), // first domain
-            /*.delta  = */ PHARE::core::ConstArray<float, dim>(.01),
+            /*.iCell  = */ PHARE::core::ConstArray<int, dim>(35),
+            /*.delta  = */ PHARE::core::ConstArray<double, dim>(.01),
             /*.v      = */ {{0, 10., 0}}};
 }
 

@@ -37,8 +37,9 @@ std::array<std::uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Fu
 }
 
 
-template<std::size_t dim, typename T, typename GridLayout, typename Field>
-void validateFluidGhosts(std::vector<T> const& data, GridLayout const& layout, Field const& field)
+
+template<std::size_t dim, typename GridLayout, typename Field, typename Data>
+void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const& field)
 {
     using Filter = FieldDomainPlusNFilter;
     auto filter  = Filter{1}; // include one ghost on each side
@@ -110,14 +111,13 @@ void validateFluidGhosts(std::vector<T> const& data, GridLayout const& layout, F
 
 
 template<typename GridLayout, typename Field, typename FieldFilter = PHARE::FieldNullFilter>
-auto checkField(HighFive::File const& file, GridLayout const& layout, Field const& field,
+auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field const& field,
                 std::string const path, FieldFilter const ff = FieldFilter{})
 {
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    std::vector<float> fieldV;
-    file.getDataSet(path).read(fieldV);
+    auto fieldV = hifile.read_data_set_flat<float, dim>(path);
     EXPECT_EQ(fieldV.size(), field.size());
 
     auto siz = fieldIndices(FieldNullFilter{},
@@ -175,7 +175,7 @@ auto checkField(HighFive::File const& file, GridLayout const& layout, Field cons
 }
 
 template<typename GridLayout, typename VecField, typename FieldFilter = PHARE::FieldNullFilter>
-void checkVecField(HighFive::File const& file, GridLayout const& layout, VecField const& vecField,
+void checkVecField(HighFiveFile const& file, GridLayout const& layout, VecField const& vecField,
                    std::string const path, FieldFilter const ff = FieldFilter{})
 {
     for (auto& [id, type] : core::Components::componentMap)
@@ -249,7 +249,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
-        auto&& data = checkField(hifile->file(), layout, field, path + name, FieldDomainFilter{});
+        auto&& data = checkField(*hifile, layout, field, path + name, FieldDomainFilter{});
         /*
           Validate ghost of first border node is equal to border node
           see fixMomentGhosts() in src/core/data/ions/ions.h
@@ -258,7 +258,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
-        checkVecField(hifile->file(), layout, val, path + name, FieldDomainFilter{});
+        checkVecField(*hifile, layout, val, path + name, FieldDomainFilter{});
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
@@ -273,7 +273,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 
         std::string tree{"/ions"}, var{"/bulkVelocity"};
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var), hi5.flags_);
-        checkVecField(hifile->file(), layout, ions.velocity(), path + var, FieldDomainFilter{});
+        checkVecField(*hifile, layout, ions.velocity(), path + var, FieldDomainFilter{});
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,
@@ -291,7 +291,7 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree), hi5.flags_);
-        checkVecField(hifile->file(), layout, val, path + tree);
+        checkVecField(*hifile, layout, val, path + tree);
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
@@ -312,17 +312,14 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 
     auto& hybridModel = *sim.getHybridModel();
 
-    auto checkParticles = [&](auto& file, auto& particles, auto path) {
+    auto checkParticles = [&](auto& hifile, auto& particles, auto path) {
         if (!particles.size())
             return;
-        std::vector<float> weightV, chargeV, vV;
-        file.getDataSet(path + "weight").read(weightV);
-        file.getDataSet(path + "charge").read(chargeV);
-        file.getDataSet(path + "v").read(vV);
-        std::vector<int> iCellV;
-        file.getDataSet(path + "iCell").read(iCellV);
-        std::vector<float> deltaV;
-        file.getDataSet(path + "delta").read(deltaV);
+        auto weightV = hifile.template read_data_set_flat<float, 2>(path + "weight");
+        auto chargeV = hifile.template read_data_set_flat<float, 2>(path + "charge");
+        auto vV      = hifile.template read_data_set_flat<float, 2>(path + "v");
+        auto iCellV  = hifile.template read_data_set_flat<float, 2>(path + "iCell");
+        auto deltaV  = hifile.template read_data_set_flat<float, 2>(path + "delta");
 
         core::ParticlePacker packer{particles};
 
@@ -350,7 +347,7 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 
     auto checkFile = [&](auto& path, auto tree, auto& particles) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree), hi5.flags_);
-        checkParticles(hifile->file(), particles, path + "/");
+        checkParticles(*hifile, particles, path + "/");
     };
 
     auto visit = [&](GridLayout&, std::string patchID, std::size_t iLevel) {

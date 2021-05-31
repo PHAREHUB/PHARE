@@ -83,18 +83,20 @@ void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& d
     auto& h5Writer         = this->h5Writer_;
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
-    auto getSize = [&](auto const& value) {
+    auto getSize = [&](auto const& value, auto n_particles) {
         using ValueType = std::decay_t<decltype(value)>;
+        if (n_particles == 0)
+            return std::vector<std::size_t>{0};
         if constexpr (is_array_dataset<ValueType, dimension>)
-            return value.size();
-        else
-            return 1; /* not an array so value one of type ValueType*/
+            return std::vector<std::size_t>{n_particles, value.size()};
+        else /* not an array so value one of type ValueType*/
+            return std::vector<std::size_t>{n_particles, 1};
     };
 
     auto particleInfo = [&](auto& attr, auto& particles) {
         std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
-            attr[Packer::keys()[part_idx]] = getSize(arg) * particles.size();
+            attr[Packer::keys()[part_idx]] = getSize(arg, particles.size());
             ++part_idx;
         });
     };
@@ -125,13 +127,19 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
     auto& h5Writer = this->h5Writer_;
     auto& h5file   = fileData_.at(diagnostic.quantity)->file();
 
-    auto createDataSet = [&](auto&& path, auto size, auto const& value) {
+    auto createDataSet = [&](auto&& path, auto& attr, auto& key, auto& value, auto null) {
         using ValueType = std::decay_t<decltype(value)>;
+
+        auto shape = null ? std::vector<std::size_t>(0)
+                          : attr[key].template to<std::vector<std::size_t>>();
+
         if constexpr (is_array_dataset<ValueType, dimension>)
+        {
             return h5Writer.template createDataSet<typename ValueType::value_type>(h5file, path,
-                                                                                   size);
+                                                                                   shape);
+        }
         else
-            return h5Writer.template createDataSet<ValueType>(h5file, path, size);
+            return h5Writer.template createDataSet<ValueType>(h5file, path, shape);
     };
 
     auto initDataSet = [&](auto& lvl, auto& patchID, auto& attr) {
@@ -139,9 +147,8 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
         std::string path{h5Writer_.getPatchPathAddTimestamp(lvl, patchID) + "/"};
         std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
-            createDataSet(path + Packer::keys()[part_idx],
-                          null ? 0 : attr[Packer::keys()[part_idx]].template to<std::size_t>(),
-                          arg);
+            createDataSet(path + Packer::keys()[part_idx], attr, Packer::keys()[part_idx], arg,
+                          null);
             ++part_idx;
         });
         this->writeGhostsAttr_(h5file, path, amr::ghostWidthForParticles<interpOrder>(), null);
@@ -174,16 +181,18 @@ void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic
     auto writeParticles = [&](auto path, auto& particles) {
         if (particles.size() == 0)
             return;
-        auto& h5file = fileData_.at(diagnostic.quantity)->file();
+
+        auto& h5file = *fileData_.at(diagnostic.quantity);
         Packer packer(particles);
         core::ContiguousParticles<dimension> copy{particles.size()};
         packer.pack(copy);
 
-        h5Writer.writeDataSet(h5file, path + packer.keys()[0], copy.weight.data());
-        h5Writer.writeDataSet(h5file, path + packer.keys()[1], copy.charge.data());
-        h5Writer.writeDataSet(h5file, path + packer.keys()[2], copy.iCell.data());
-        h5Writer.writeDataSet(h5file, path + packer.keys()[3], copy.delta.data());
-        h5Writer.writeDataSet(h5file, path + packer.keys()[4], copy.v.data());
+
+        h5file.template write_data_set_flat<2>(path + packer.keys()[0], copy.weight.data());
+        h5file.template write_data_set_flat<2>(path + packer.keys()[1], copy.charge.data());
+        h5file.template write_data_set_flat<2>(path + packer.keys()[2], copy.iCell.data());
+        h5file.template write_data_set_flat<2>(path + packer.keys()[3], copy.delta.data());
+        h5file.template write_data_set_flat<2>(path + packer.keys()[4], copy.v.data());
     };
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {

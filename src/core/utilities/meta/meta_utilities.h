@@ -46,6 +46,9 @@ namespace core
     using is_iterable = std::enable_if_t<has_beginend<IterableCandidate>::value, dummy::type>;
 
 
+    template<typename IterableCandidate>
+    constexpr static bool is_iterable_v = has_beginend<IterableCandidate>::value;
+
 
     // Basic function
     template<typename T>
