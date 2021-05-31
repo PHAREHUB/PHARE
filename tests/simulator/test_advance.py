@@ -9,7 +9,7 @@ from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation, supported_dimensions
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
 from pyphare.core.gridlayout import yee_element_is_primal
-from pyphare.pharesee.particles import aggregate as aggregate_particles, all_assert_sorted
+from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box1D
 import numpy as np
@@ -393,8 +393,6 @@ class AdvanceTest(unittest.TestCase):
                         # periodic icell overlaps need shifting to be the same
                         part1.iCells = part1.iCells + offsets[0]
                         part2.iCells = part2.iCells + offsets[1]
-
-                        all_assert_sorted(part1, part2)
                         self.assertEqual(part1, part2)
 
 
