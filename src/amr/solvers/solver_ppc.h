@@ -45,6 +45,7 @@ private:
 
     using Electromag       = typename HybridModel::electromag_type;
     using Ions             = typename HybridModel::ions_type;
+    using ParticleArray    = typename Ions::particle_array_type;
     using VecFieldT        = typename HybridModel::vecfield_type;
     using GridLayout       = typename HybridModel::gridlayout_type;
     using ResourcesManager = typename HybridModel::resources_manager_type;
@@ -125,6 +126,10 @@ private:
                    core::UpdaterMode mode);
 
 
+    void saveState_(level_t& level, Ions& ions, ResourcesManager& rm);
+
+    void restoreState_(level_t& level, Ions& ions, ResourcesManager& rm);
+
     /*
     template<typename HybridMessenger>
     void syncLevel(HybridMessenger& toCoarser)
@@ -132,6 +137,11 @@ private:
         toCoarser.syncMagnetic(model_.electromag.B);
         toCoarser.syncElectric(model_.electromag.E);
     }*/
+
+
+    // extend lifespan
+    std::unordered_map<std::string, ParticleArray> tmpDomain;
+    std::unordered_map<std::string, ParticleArray> patchGhost;
 
 
 }; // end solverPPC
@@ -179,6 +189,40 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 }
 
 
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, Ions& ions, ResourcesManager& rm)
+{
+    for (auto& patch : level)
+    {
+        std::stringstream ss;
+        ss << patch->getGlobalId();
+
+        auto _ = rm.setOnPatch(*patch, ions);
+        for (auto& pop : ions)
+        {
+            tmpDomain[ss.str() + "_" + pop.name()]  = pop.domainParticles();
+            patchGhost[ss.str() + "_" + pop.name()] = pop.patchGhostParticles();
+        }
+    }
+}
+
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, Ions& ions,
+                                                      ResourcesManager& rm)
+{
+    for (auto& patch : level)
+    {
+        std::stringstream ss;
+        ss << patch->getGlobalId();
+
+        auto _ = rm.setOnPatch(*patch, ions);
+        for (auto& pop : ions)
+        {
+            pop.domainParticles()     = std::move(tmpDomain[ss.str() + "_" + pop.name()]);
+            pop.patchGhostParticles() = std::move(patchGhost[ss.str() + "_" + pop.name()]);
+        }
+    }
+}
 
 
 template<typename HybridModel, typename AMR_Types>
@@ -201,16 +245,18 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 
     average_(*level, hybridModel);
 
+    saveState_(*level, hybridState.ions, resourcesManager);
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
-              newTime, core::UpdaterMode::moments_only);
+              newTime, core::UpdaterMode::domain_only);
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
 
     average_(*level, hybridModel);
 
+    restoreState_(*level, hybridState.ions, resourcesManager);
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
-              newTime, core::UpdaterMode::particles_and_moments);
+              newTime, core::UpdaterMode::all);
 
     corrector_(*level, hybridModel, fromCoarser, currentTime, newTime);
 

@@ -22,7 +22,7 @@
 
 namespace PHARE::core
 {
-enum class UpdaterMode { moments_only = 1, particles_and_moments = 2 };
+enum class UpdaterMode { domain_only = 1, all = 2 };
 
 template<typename Ions, typename Electromag, typename GridLayout>
 class IonUpdater
@@ -55,16 +55,16 @@ public:
     }
 
     void updatePopulations(Ions& ions, Electromag const& em, GridLayout const& layout, double dt,
-                           UpdaterMode = UpdaterMode::particles_and_moments);
+                           UpdaterMode = UpdaterMode::all);
 
 
     void updateIons(Ions& ions, GridLayout const& layout);
 
 
 private:
-    void updateMomentsOnly_(Ions& ions, Electromag const& em, GridLayout const& layout);
+    void updateAndDepositDomain_(Ions& ions, Electromag const& em, GridLayout const& layout);
 
-    void updateAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
+    void updateAndDepositAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
 };
 
 
@@ -80,13 +80,13 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(layout.meshSize(), dt);
 
-    if (mode == UpdaterMode::moments_only)
+    if (mode == UpdaterMode::domain_only)
     {
-        updateMomentsOnly_(ions, em, layout);
+        updateAndDepositDomain_(ions, em, layout);
     }
     else
     {
-        updateAll_(ions, em, layout);
+        updateAndDepositAll_(ions, em, layout);
     }
 }
 
@@ -104,13 +104,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions, GridLayout
 
 template<typename Ions, typename Electromag, typename GridLayout>
 /**
- * @brief IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_
+ * @brief IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_
    evolves moments from time n to n+1 without updating particles, which stay at time n
  */
-void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, Electromag const& em,
-                                                                  GridLayout const& layout)
+void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ions,
+                                                                       Electromag const& em,
+                                                                       GridLayout const& layout)
 {
-    PHARE_LOG_SCOPE("IonUpdater::updateMomentsOnly_");
+    PHARE_LOG_SCOPE("IonUpdater::updateAndDepositDomain_");
 
     auto domainBox = layout.AMRBox();
 
@@ -131,7 +132,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
 
     for (auto& pop : ions)
     {
-        ParticleArray tmpDomain;
+        ParticleArray& domain = pop.domainParticles();
         ParticleArray tmpPatchGhost;
         ParticleArray tmpLevelGhost;
 
@@ -139,24 +140,22 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
         // push them while still inDomainBox
         // accumulate those inDomainBox
 
-        tmpDomain.resize(pop.domainParticles().size());
-
         auto inRange
             = makeRange(std::begin(pop.domainParticles()), std::end(pop.domainParticles()));
-        auto outRange = makeRange(std::begin(tmpDomain), std::end(tmpDomain));
+        auto outRange = makeRange(std::begin(domain), std::end(domain));
 
         auto newEnd
             = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_, inDomainBox, layout);
 
-        interpolator_(std::begin(tmpDomain), newEnd, pop.density(), pop.flux(), layout);
-
+        interpolator_(std::begin(domain), newEnd, pop.density(), pop.flux(), layout);
 
         // then push patch and level ghost particles
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
         // some will leave the ghost area
         // deposit moments on those which leave to go inDomainBox
 
-        auto pushAndAccumulateGhosts = [&](auto& inputArray, auto& outputArray) {
+        auto pushAndAccumulateGhosts = [&](auto& inputArray, auto& outputArray,
+                                           bool copyInDomain = false) {
             outputArray.resize(inputArray.size());
 
             inRange  = makeRange(std::begin(inputArray), std::end(inputArray));
@@ -168,9 +167,20 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
             auto endInDomain = std::partition(firstGhostOut, std::end(outputArray), inDomainBox);
 
             interpolator_(firstGhostOut, endInDomain, pop.density(), pop.flux(), layout);
+
+            if (copyInDomain)
+                std::copy(firstGhostOut, endInDomain, std::back_inserter(domain));
         };
 
-        pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost);
+        // After this function is done domain particles overlaping ghost layers of neighbor patches
+        // are sent to these neighbor's patchghost particle array.
+        // After being pushed, some patch ghost particles may enter the domain. These need to be
+        // copied into the domain array so they are transfered to the neighbor patch
+        // ghost array and contribute to moments there too.
+        // On the contrary level ghost particles entering the domain here do not need to be copied
+        // since they contribute to nodes that are not shared with neighbor patches an since
+        // level border nodes will receive contributions from levelghost old and new particles
+        pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost, true);
         pushAndAccumulateGhosts(pop.levelGhostParticles(), tmpLevelGhost);
     }
 }
@@ -178,13 +188,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_(Ions& ions, El
 
 template<typename Ions, typename Electromag, typename GridLayout>
 /**
- * @brief IonUpdater<Ions, Electromag, GridLayout>::updateMomentsOnly_
+ * @brief IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_
    evolves moments and particles from time n to n+1
  */
-void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag const& em,
-                                                          GridLayout const& layout)
+void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
+                                                                    Electromag const& em,
+                                                                    GridLayout const& layout)
 {
-    PHARE_LOG_SCOPE("IonUpdater::updateAll_");
+    PHARE_LOG_SCOPE("IonUpdater::updateAndDepositAll_");
 
     auto constexpr partGhostWidth = GridLayout::ghostWidthForParticles();
     auto domainBox                = layout.AMRBox();
