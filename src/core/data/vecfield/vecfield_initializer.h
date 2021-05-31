@@ -41,14 +41,13 @@ namespace core
         void initializeComponent_(Field& field, GridLayout const& layout,
                                   initializer::InitFunction<dimension> const& init)
         {
-            auto indices      = layout.ghostStartToEndIndices(field, /*includeEnd=*/true);
-            auto const coords = layout.template indexesToCoordVectors</*WithField=*/true>(
+            auto const indices = layout.ghostStartToEndIndices(field, /*includeEnd=*/true);
+            auto const coords  = layout.template indexesToCoordVectors</*WithField=*/true>(
                 indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
                     return gridLayout.fieldNodeCoordinates(field_, gridLayout.origin(), args...);
                 });
 
-            // keep grid data alive
-            std::shared_ptr<Span<double>> gridPtr
+            std::shared_ptr<Span<double>> gridPtr // keep grid data alive
                 = std::apply([&](auto&... args) { return init(args...); }, coords);
             Span<double>& grid = *gridPtr;
 

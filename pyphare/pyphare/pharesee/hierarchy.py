@@ -80,8 +80,10 @@ class FieldData(PatchData):
         if overlap is not None:
             lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
             upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
-            assert box.ndim == 1 # this following line is only 1D
-            return self.dataset[lower[0]:upper[0] + 1]
+            if box.ndim == 1:
+                return self.dataset[lower[0] : upper[0] + 1]
+            if box.ndim == 2:
+                return self.dataset[lower[0]:upper[0] + 1 , lower[1] : upper[1] + 1]
         return np.array([])
 
 
@@ -103,8 +105,6 @@ class FieldData(PatchData):
         self.layout = layout
         self.field_name = field_name
         self.name = field_name
-        self.dx = layout.dl[0] # dropped in 2d_py_init PR - use dl[0]
-
         self.dl = np.asarray(layout.dl)
         self.ndim = layout.box.ndim
         self.ghosts_nbr = np.zeros(self.ndim, dtype=int)

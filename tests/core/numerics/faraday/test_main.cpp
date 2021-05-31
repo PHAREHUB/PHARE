@@ -44,6 +44,7 @@ struct FieldMock
         return data;
     }
     QtyCentering physicalQuantity() { return QtyCentering::dual; }
+    std::string name() const { return "FieldMock"; }
 };
 
 template<typename Field>

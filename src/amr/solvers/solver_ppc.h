@@ -558,6 +558,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
 
 
     auto dt = newTime - currentTime;
+
     for (auto& patch : level)
     {
         auto _ = rm.setOnPatch(*patch, electromag, ions);
