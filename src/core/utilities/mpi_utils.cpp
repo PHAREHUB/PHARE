@@ -24,4 +24,11 @@ std::size_t max(std::size_t const local, int mpi_size)
     auto perMPI = collect(local, mpi_size);
     return *std::max_element(std::begin(perMPI), std::end(perMPI));
 }
+
+
+void barrier()
+{
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
 } // namespace PHARE::core::mpi

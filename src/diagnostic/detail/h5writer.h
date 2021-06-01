@@ -215,6 +215,8 @@ template<typename ModelView>
 void Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
                              double timestamp)
 {
+    core::mpi::barrier(); // wait for all processes to hit here before making anymore mpi calls
+
     timestamp_                     = timestamp;
     fileAttributes_["dimension"]   = dimension;
     fileAttributes_["interpOrder"] = interpOrder;
