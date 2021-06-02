@@ -7,9 +7,12 @@
 #include "phare_core.h"
 #include "phare_types.h"
 
+#include "core/utilities/mpi_utils.h"
 #include "core/utilities/timestamps.h"
 #include "amr/tagging/tagger_factory.h"
+
 #include <chrono>
+#include <exception>
 
 
 namespace PHARE
@@ -121,6 +124,7 @@ private:
     }
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
+    std::exception_ptr exception_ptr_{nullptr};
 };
 
 
@@ -258,28 +262,37 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 {
+    double dt_new = 0;
+
+    if (!integrator_)
+        throw std::runtime_error("Error - no valid integrator in the simulator");
+
     try
     {
-        if (integrator_)
-        {
-            PHARE_LOG_SCOPE("Simulator::advance");
-            auto dt_new  = integrator_->advance(dt);
-            currentTime_ = ((*timeStamper) += dt);
-            return dt_new;
-        }
-        else
-            throw std::runtime_error("Error - no valid integrator in the simulator");
+        PHARE_LOG_SCOPE("Simulator::advance");
+        dt_new       = integrator_->advance(dt);
+        currentTime_ = ((*timeStamper) += dt);
     }
     catch (const std::runtime_error& e)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-        std::rethrow_exception(std::current_exception());
+        exception_ptr_ = std::current_exception();
     }
     catch (...)
     {
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-        std::rethrow_exception(std::current_exception());
+        exception_ptr_ = std::current_exception();
     }
+
+    auto proc_exceptions = core::mpi::collect(exception_ptr_ ? 'y' : 'n');
+    if (std::any_of(std::begin(proc_exceptions), std::end(proc_exceptions),
+                    [](auto const& e) { return e == 'y'; }))
+    {
+        this->dMan.release(); // closes/flushes hdf5 files
+        throw std::runtime_error("forcing error");
+    }
+
+    return dt_new;
 }
 
 

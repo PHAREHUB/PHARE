@@ -39,7 +39,7 @@ auto mpi_type_for()
         return MPI_INT;
     else if constexpr (std::is_same_v<std::uint32_t, Data>)
         return MPI_UNSIGNED;
-    else if constexpr (std::is_same_v<uint8_t, Data>)
+    else if constexpr (std::is_same_v<std::uint8_t, Data>)
         return MPI_UNSIGNED_SHORT;
     else if constexpr (std::is_same_v<std::size_t, Data>)
         return MPI_UINT64_T;
