@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 #include <cstring>
+#include <exception>
 
 // clang-format off
 #include "initializer/pragma_disable.h"
@@ -24,9 +25,51 @@ std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
 std::size_t max(std::size_t const local, int mpi_size = 0);
 
+bool any(bool);
+
+class Exception : public std::runtime_error
+{
+public:
+    Exception(std::string const& s)
+        : std::runtime_error(s)
+    {
+    }
+    Exception(std::string&& s)
+        : std::runtime_error(std::forward<std::string>(s))
+    {
+    }
+};
+
+struct Errors
+{
+    static auto& I()
+    {
+        static Errors i;
+        return i;
+    }
+
+    auto& operator()() const { return ptr_; }
+    void operator()(std::exception_ptr const& ptr) { ptr_ = ptr; }
+
+    void check()
+    {
+        bool b = any(bool{ptr_});
+        if (b)
+            throw Exception("MPI exception somewhere");
+    }
+
+    std::exception_ptr ptr_{nullptr};
+};
+
+
+
 int size();
 
 int rank();
+
+void abort();
+
+void finalize();
 
 template<typename Data>
 auto mpi_type_for()
@@ -45,7 +88,7 @@ auto mpi_type_for()
         return MPI_UINT64_T;
     else if constexpr (std::is_same_v<char, Data>)
         return MPI_CHAR;
-    
+
     // don't return anything = compile failure if tried to use this function
 }
 
@@ -73,9 +116,9 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
                      std::vector<int> const& displs, int const mpi_size)
 {
     auto mpi_type = mpi_type_for<Data>();
-    
+
     assert(recvcounts.size() == displs.size() and static_cast<int>(displs.size()) == mpi_size);
-    
+
     MPI_Allgatherv(        // MPI_Allgatherv
         sendBuff.data(),   //   void         *sendbuf,
         sendBuff.size(),   //   int          sendcount,
@@ -85,7 +128,7 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
         displs.data(),     //   int          *displs,
         mpi_type,          //   MPI_Datatype recvtype,
         MPI_COMM_WORLD     //   MPI_Comm     comm
-    );   
+    );
 }
 
 template<typename Vector>

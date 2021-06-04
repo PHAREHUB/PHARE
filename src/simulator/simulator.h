@@ -263,6 +263,7 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 {
     double dt_new = 0;
+    bool stop     = false;
 
     if (!integrator_)
         throw std::runtime_error("Error - no valid integrator in the simulator");
@@ -273,7 +274,12 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
         dt_new       = integrator_->advance(dt);
         currentTime_ = ((*timeStamper) += dt);
     }
-    catch (const std::runtime_error& e)
+    catch (core::mpi::Exception const& e)
+    {
+        std::cerr << "MPI EXCEPTION CAUGHT: " << e.what() << std::endl;
+        stop = true;
+    }
+    catch (std::runtime_error const& e)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
         exception_ptr_ = std::current_exception();
@@ -284,9 +290,14 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
         exception_ptr_ = std::current_exception();
     }
 
-    auto proc_exceptions = core::mpi::collect(exception_ptr_ ? 'y' : 'n');
-    if (std::any_of(std::begin(proc_exceptions), std::end(proc_exceptions),
-                    [](auto const& e) { return e == 'y'; }))
+    if (exception_ptr_)
+    {
+        core::mpi::Errors::I()(exception_ptr_);
+        core::mpi::any(bool{core::mpi::Errors::I()()}); // collective
+        stop = true;
+    }
+
+    if (stop)
     {
         this->dMan.release(); // closes/flushes hdf5 files
         throw std::runtime_error("forcing error");

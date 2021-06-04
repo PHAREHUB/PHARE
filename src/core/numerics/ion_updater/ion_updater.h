@@ -13,6 +13,7 @@
 
 #include "initializer/data_provider.h"
 
+#include "core/utilities/mpi_utils.h"
 #include "core/logger.h"
 
 #include <memory>
@@ -88,6 +89,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
     {
         updateAndDepositAll_(ions, em, layout);
     }
+    
+    core::mpi::Errors::I().check();
 }
 
 

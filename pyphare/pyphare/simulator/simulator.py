@@ -69,7 +69,14 @@ class Simulator:
         self._check_init()
         if dt is None:
             dt = self.timeStep()
-        self.cpp_sim.advance(dt)
+        try:
+            self.cpp_sim.advance(dt)
+        except RuntimeError as e:
+            import sys
+            from pyphare.cpp import cpp_lib
+            if cpp_lib().mpi_rank() == 0:
+                print(f"Exception caught in simulator.py::advance: \n{e}")
+            sys.exit(1)
         self._auto_dump()
         return self
 
