@@ -25,6 +25,8 @@ std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
 std::size_t max(std::size_t const local, int mpi_size = 0);
 
+bool initialized();
+
 bool any(bool);
 
 int size();
@@ -61,7 +63,7 @@ struct Errors
 
     void check()
     {
-        if (core::mpi::size() > 1)
+        if (core::mpi::initialized() and core::mpi::size() > 1)
         {
             bool b = any(bool{ptr_});
             if (b)

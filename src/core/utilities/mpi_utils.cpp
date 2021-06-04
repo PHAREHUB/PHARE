@@ -2,6 +2,14 @@
 
 namespace PHARE::core::mpi
 {
+bool initialized()
+{
+    int i;
+    MPI_Initialized(&i);
+    return i > 0;
+}
+
+
 int size()
 {
     int mpi_size;
