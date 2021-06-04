@@ -124,7 +124,6 @@ private:
     }
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
-    std::exception_ptr exception_ptr_{nullptr};
 };
 
 
@@ -282,18 +281,15 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
     catch (std::runtime_error const& e)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-        exception_ptr_ = std::current_exception();
-        stop           = true;
+        core::mpi::Errors::I()(std::current_exception());
+        stop = true;
     }
     catch (...)
     {
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-        exception_ptr_ = std::current_exception();
-        stop           = true;
+        core::mpi::Errors::I()(std::current_exception());
+        stop = true;
     }
-
-    if (exception_ptr_)
-        core::mpi::Errors::I()(exception_ptr_);
 
     if (stop)
     {
