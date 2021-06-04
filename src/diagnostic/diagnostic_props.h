@@ -29,7 +29,7 @@ struct DiagnosticProperties
         return params[paramKey].template to<T>();
     }
 
-    std::size_t nAttributes = 0;
+    std::size_t nAttributes = 0, dumpIdx = 0;
     FileAttributes fileAttributes{};
 };
 

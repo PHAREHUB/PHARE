@@ -27,6 +27,10 @@ std::size_t max(std::size_t const local, int mpi_size = 0);
 
 bool any(bool);
 
+int size();
+
+int rank();
+
 class Exception : public std::runtime_error
 {
 public:
@@ -49,23 +53,25 @@ struct Errors
     }
 
     auto& operator()() const { return ptr_; }
-    void operator()(std::exception_ptr const& ptr) { ptr_ = ptr; }
+    void operator()(std::exception_ptr const& ptr)
+    {
+        ptr_ = ptr;
+        check();
+    }
 
     void check()
     {
-        bool b = any(bool{ptr_});
-        if (b)
-            throw Exception("MPI exception somewhere");
+        if (core::mpi::size() > 1)
+        {
+            bool b = any(bool{ptr_});
+            if (b)
+                throw Exception("MPI exception somewhere");
+        }
     }
 
     std::exception_ptr ptr_{nullptr};
 };
 
-
-
-int size();
-
-int rank();
 
 void abort();
 
