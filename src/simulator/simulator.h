@@ -252,6 +252,13 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
         std::rethrow_exception(std::current_exception());
     }
+
+    if (core::mpi::any(core::Errors::instance().any()))
+    {
+        this->dMan.release(); // closes/flushes hdf5 files
+        throw std::runtime_error("forcing error");
+    }
+
     isInitialized = true;
 }
 
@@ -262,7 +269,6 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 {
     double dt_new = 0;
-    bool stop     = false;
 
     if (!integrator_)
         throw std::runtime_error("Error - no valid integrator in the simulator");
@@ -273,25 +279,18 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
         dt_new       = integrator_->advance(dt);
         currentTime_ = ((*timeStamper) += dt);
     }
-    catch (core::mpi::Exception const& e)
-    {
-        std::cerr << "MPI EXCEPTION CAUGHT: " << e.what() << std::endl;
-        stop = true;
-    }
     catch (std::runtime_error const& e)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-        core::mpi::Errors::I()(std::current_exception());
-        stop = true;
+        std::rethrow_exception(std::current_exception());
     }
     catch (...)
     {
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-        core::mpi::Errors::I()(std::current_exception());
-        stop = true;
+        std::rethrow_exception(std::current_exception());
     }
 
-    if (stop)
+    if (core::mpi::any(core::Errors::instance().any()))
     {
         this->dMan.release(); // closes/flushes hdf5 files
         throw std::runtime_error("forcing error");

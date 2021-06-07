@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include "core/numerics/pusher/pusher.h"
 #include "core/utilities/range/range.h"
+#include "core/errors.h"
 #include "core/logger.h"
 #include "core/data/particles/particle.h"
 
@@ -131,7 +132,7 @@ namespace core
                 double iCell = std::floor(delta);
                 if (std::abs(delta) > 2)
                 {
-                    throw std::runtime_error("Error, particle moves more than 1 cell, delta >2");
+                    PHARE_LOG_ERROR("Error, particle moves more than 1 cell, delta >2");
                 }
                 partOut.delta[iDim] = delta - iCell;
                 partOut.iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);

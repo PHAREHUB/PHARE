@@ -2,14 +2,6 @@
 
 namespace PHARE::core::mpi
 {
-bool initialized()
-{
-    int i;
-    MPI_Initialized(&i);
-    return i > 0;
-}
-
-
 int size()
 {
     int mpi_size;
@@ -34,15 +26,6 @@ std::size_t max(std::size_t const local, int mpi_size)
 }
 
 
-void abort()
-{
-    MPI_Abort(MPI_COMM_WORLD, 1);
-}
-
-void finalize()
-{
-    MPI_Finalize();
-}
 
 bool any(bool b)
 {

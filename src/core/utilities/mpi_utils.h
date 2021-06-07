@@ -25,59 +25,11 @@ std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
 std::size_t max(std::size_t const local, int mpi_size = 0);
 
-bool initialized();
-
 bool any(bool);
 
 int size();
 
 int rank();
-
-class Exception : public std::runtime_error
-{
-public:
-    Exception(std::string const& s)
-        : std::runtime_error(s)
-    {
-    }
-    Exception(std::string&& s)
-        : std::runtime_error(std::forward<std::string>(s))
-    {
-    }
-};
-
-struct Errors
-{
-    static auto& I()
-    {
-        static Errors i;
-        return i;
-    }
-
-    auto& operator()() const { return ptr_; }
-    void operator()(std::exception_ptr const& ptr)
-    {
-        ptr_ = ptr;
-        check();
-    }
-
-    void check()
-    {
-        if (core::mpi::initialized() and core::mpi::size() > 1)
-        {
-            bool b = any(bool{ptr_});
-            if (b)
-                throw Exception("MPI exception somewhere");
-        }
-    }
-
-    std::exception_ptr ptr_{nullptr};
-};
-
-
-void abort();
-
-void finalize();
 
 template<typename Data>
 auto mpi_type_for()
