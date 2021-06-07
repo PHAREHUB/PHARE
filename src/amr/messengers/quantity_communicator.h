@@ -23,7 +23,7 @@
 #include <optional>
 
 
-#include "GhostBoxGeometryVariableFillPattern.h"
+#include "ghost_only_variable_fill_pattern.h"
 
 namespace PHARE
 {
@@ -49,18 +49,15 @@ namespace amr
     {
     };
 
-    class XGhostBoxGeometryVariableFillPattern
-        : public SAMRAI::xfer::GhostBoxGeometryVariableFillPattern
+    class XGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
     {
     };
 
-    class YGhostBoxGeometryVariableFillPattern
-        : public SAMRAI::xfer::GhostBoxGeometryVariableFillPattern
+    class YGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
     {
     };
 
-    class ZGhostBoxGeometryVariableFillPattern
-        : public SAMRAI::xfer::GhostBoxGeometryVariableFillPattern
+    class ZGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
     {
     };
 
@@ -176,11 +173,11 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XGhostBoxGeometryVariableFillPattern>();
+            = std::make_shared<XGhostOnlyVariablyFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YGhostBoxGeometryVariableFillPattern>();
+            = std::make_shared<YGhostOnlyVariablyFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZGhostBoxGeometryVariableFillPattern>();
+            = std::make_shared<ZGhostOnlyVariablyFillPattern>();
 
         Communicator<Refiner> com;
 
