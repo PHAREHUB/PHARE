@@ -4,6 +4,7 @@
 
 namespace PHARE::amr
 {
-const std::string GhostOnlyVariablyFillPattern::s_name_id = "GHOST_ONLY_FILL_PATTERN";
+// the value of this string cannot change, SAMRAI breaks :|
+const std::string GhostOnlyVariablyFillPattern::s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
 
 } // namespace PHARE::amr
