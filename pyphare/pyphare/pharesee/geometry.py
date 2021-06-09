@@ -74,7 +74,7 @@ def periodicity_shifts(domain_box):
             "right" : -shape_x,
         }
 
-    elif domain_box.ndim == 2:
+    if domain_box.ndim == 2:
         shape_x, shape_y = domain_box.shape
         shifts = {
             "left" : [(shape_x, 0)],
@@ -87,10 +87,31 @@ def periodicity_shifts(domain_box):
             "bottomright" : [*shifts["right"], *shifts["bottom"], (-shape_x, shape_y)],
             "topleft" : [*shifts["left"], *shifts["top"], (shape_x, -shape_y)],
             "topright" : [*shifts["right"], *shifts["top"], (-shape_x, -shape_y)],
+            "bottomtop" : [*shifts["bottom"], *shifts["top"]],
+            "leftright" : [*shifts["left"], *shifts["right"]],
         })
-        return shifts
+        shifts.update({
+          "bottomtopleft" : [
+              *shifts["bottomtop"], *shifts["left"],
+              shifts["bottomleft"][-1], shifts["topleft"][-1]],
+          "bottomtopright" : [
+              *shifts["bottomtop"], *shifts["right"],
+              shifts["bottomright"][-1], shifts["topright"][-1]],
+          "bottomleftright" : [
+              *shifts["leftright"], *shifts["bottom"],
+              shifts["bottomleft"][-1], shifts["bottomright"][-1]],
+          "topleftright" : [
+              *shifts["leftright"], *shifts["top"],
+              shifts["topleft"][-1], shifts["topright"][-1]],
+          "bottomtopleftright" : [ # one patch covers domain
+              *shifts["bottomleft"], *shifts["topright"],
+              shifts["bottomright"][-1], shifts["topleft"][-1]]
+        })
 
-    raise ValueError("Unhandeled dimension")
+    if domain_box.ndim == 3:
+        raise ValueError("Unhandeled dimension")
+
+    return shifts
 
 
 def compute_overlaps(patches, domain_box):
@@ -184,7 +205,7 @@ def compute_overlaps(patches, domain_box):
 
         for ref_pdname, ref_pd in ref_patch.patch_datas.items():
             for shift in shifts[in_sides]:
-                for cmp_patch in border_patches[patch_i + 1:]:
+                for cmp_patch in border_patches[patch_i:]: # patches can overlap with themselves
                     for cmp_pdname, cmp_pd in cmp_patch.patch_datas.items():
                         if cmp_pdname == ref_pdname:
 
