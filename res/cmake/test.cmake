@@ -185,6 +185,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/tdtagged)
   add_subdirectory(tests/functional/shock)
   add_subdirectory(tests/functional/conservation)
+  add_subdirectory(tests/functional/exb)
 
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)
