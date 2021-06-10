@@ -80,7 +80,7 @@ class Simulator:
         
         try:
             self.cpp_sim.advance(dt)
-        except (RuntimeError, TypeError, NameError, ValueError) as e:
+        except (RuntimeError, TypeError, NameError, ValueError, BaseException) as e:
             self._throw(f"Exception caught in simulator.py::advance: \n{e}")
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
