@@ -239,9 +239,9 @@ def make_figure():
 
 
     # select data around the rightward TD
-    idx = np.where((xby15>150) & (xby15<190))
-    xx = xby15[idx]
-    bby = by15[idx]
+    idx = np.where((xbywT>150) & (xbywT<190))
+    xx = xbywT[idx]
+    bby = bywT[idx]
 
 
     # now we will fit by_fit to the data
