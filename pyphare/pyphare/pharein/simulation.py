@@ -504,6 +504,8 @@ def checker(func):
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
 
+        kwargs["strict"] = kwargs.get('strict', True)
+
         return func(simulation_object, **kwargs)
 
     return wrapper
@@ -540,6 +542,7 @@ class Simulation(object):
     largest_patch_size   :
     max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
     init_time            : unused for now, will be time for restarts someday
+    strict               : bool, turns warnings into errors (default True)
 
     """
 

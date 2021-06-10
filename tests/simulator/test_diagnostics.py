@@ -9,6 +9,7 @@ from tests.diagnostic import dump_all_diags
 from tests.simulator import populate_simulation
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
 import pyphare.pharein as ph
 import unittest
@@ -25,14 +26,16 @@ def setup_model(ppc=100):
         return 1.
 
     def by(*xyz):
-        x = xyz[0]
-        L = ph.global_vars.sim.simulation_domain()
-        return 0.1*np.cos(2*np.pi*x/L[0])
+        from pyphare.pharein.global_vars import sim
+        L = sim.simulation_domain()
+        _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
+        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
     def bz(*xyz):
-        x = xyz[0]
-        L = ph.global_vars.sim.simulation_domain()
-        return 0.1*np.sin(2*np.pi*x/L[0])
+        from pyphare.pharein.global_vars import sim
+        L = sim.simulation_domain()
+        _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
+        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
     def bx(*xyz):
         return 1.
@@ -41,14 +44,16 @@ def setup_model(ppc=100):
         return 0.
 
     def vy(*xyz):
-        x = xyz[0]
-        L = ph.global_vars.sim.simulation_domain()
-        return 0.1*np.cos(2*np.pi*x/L[0])
+        from pyphare.pharein.global_vars import sim
+        L = sim.simulation_domain()
+        _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
     def vz(*xyz):
-        x = xyz[0]
-        L = ph.global_vars.sim.simulation_domain()
-        return 0.1*np.sin(2*np.pi*x/L[0])
+        from pyphare.pharein.global_vars import sim
+        L = sim.simulation_domain()
+        _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
     def vthx(*xyz):
         return 0.01
@@ -120,7 +125,7 @@ class DiagnosticsTest(unittest.TestCase):
 
     @data(*_test_cases)
     def test_dump_diags(self, simInput):
-        for ndim in [1]:
+        for ndim in supported_dimensions():
             self._test_dump_diags(ndim, **simInput)
 
     def _test_dump_diags(self, dim, **simInput):

@@ -15,24 +15,27 @@ yee_centering = {
         'Ex':'dual', 'Ey':'primal', 'Ez':'primal',
         'Jx':'dual', 'Jy':'primal', 'Jz':'primal',
         'Vx':'primal','Vy':'primal','Vz':'primal',
-        "Fx":"primal","Fy":"primal","Fz":"primal",
-        'rho':'primal', 'P':'primal'
+        'Fx':'primal', 'Fy':'primal', 'Fz':'primal',
+        'rho':'primal', 'P':'primal',
+        'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
     },
     'y' : {
         'Bx':'dual', 'By':'primal', 'Bz':'dual',
         'Ex':'primal', 'Ey':'dual', 'Ez':'primal',
         'Jx':'primal', 'Jy':'dual', 'Jz':'primal',
         'Vx':'primal','Vy':'primal', 'Vz':'primal',
-        "Fx":"primal","Fy":"primal","Fz":"primal",
-        'rho':'primal', 'P':'primal'
+        'Fx':'primal', 'Fy':'primal', 'Fz':'primal',
+        'rho':'primal', 'P':'primal',
+        'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
     },
     'z' : {
         'Bx':'dual', 'By':'dual', 'Bz':'primal',
         'Ex':'primal', 'Ey':'primal', 'Ez':'dual',
         'Jx':'primal', 'Jy':'primal', 'Jz':'dual',
         'Vx':'primal','Vy':'primal', 'Vz':'primal',
-        "Fx":"primal","Fy":"primal","Fz":"primal",
-         'rho':'primal', 'P':'primal'
+        'Fx':'primal', 'Fy':'primal', 'Fz':'primal',
+        'rho':'primal', 'P':'primal',
+        'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
     }
 }
 yee_centering_lower = {
@@ -228,9 +231,12 @@ class GridLayout(object):
         return x
 
 
-    def yeeCoordsFor(self, qty, direction):
+    def yeeCoordsFor(self, qty, direction, include_ghosts=True):
 
-        assert qty in self.hybridQuantities and direction in direction_to_dim
+        assert direction in direction_to_dim, f"direction ({direction} not supported)"
+        assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
+        if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
+            qty = qty[0].upper() + qty[1:]
 
         centering = yee_centering[direction][qty]
         nbrGhosts = self.nbrGhosts(self.interp_order, centering)

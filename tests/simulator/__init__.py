@@ -52,28 +52,11 @@ def meshify(*xyz):
 def pi_over_max_domain():
     return [np.pi / max_domain for max_domain in ph.global_vars.sim.simulation_domain()]
 
-def fn_1d_periodic(sim, x):
-    pi_over_xmax = pi_over_max_domain()[0]
-    return np.sin(1 * pi_over_xmax * x)
-
-def fn_2d_periodic(sim, x, y):
-    xmax, ymax = sim.simulation_domain()
-    xx, yy = meshify(x, y)
-    kx, ky = 3, 6
-    zx = np.cos(kx * 2 * np.pi / xmax * xx)
-    zy = np.sin(ky * 2 * np.pi / ymax * yy)
-    return zx * zy
-
-# def fn_3d_periodic(sim, x, y, z):
-#     xmax, ymax, zmax = sim.simulation_domain()
-#     xx, yy, zz = meshify(x, y, z)
-#     kx, ky, kz = 3, 6, 3
-#     zx = np.cos(kx * 2 * np.pi / xmax * xx)
-#     zy = np.sin(ky * 2 * np.pi / ymax * yy)
-#     zz = np.sin(kz * 2 * np.pi / zmax * zz)
-#     r = zx * zy * zz
-#     return r
-
+def fn_periodic(sim, *xyz):
+    from pyphare.pharein.global_vars import sim
+    L = sim.simulation_domain()
+    _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+    return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
 def density_1d_periodic(sim, x):
     xmax = sim.simulation_domain()[0]
@@ -110,25 +93,24 @@ def defaultPopulationSettings(sim, density_fn, vbulk_fn):
 def makeBasicModel(extra_pops={}):
     sim = ph.global_vars.sim
     _density_fn_periodic = globals()["density_"+str(sim.ndim)+"d_periodic"]
-    _fn_periodic = globals()["fn_"+str(sim.ndim)+"d_periodic"]
 
     pops = {
         "protons": {
-            **defaultPopulationSettings(sim, _density_fn_periodic, _fn_periodic),
+            **defaultPopulationSettings(sim, _density_fn_periodic, fn_periodic),
             "nbr_part_per_cell": 100,
             "init": {"seed": 1337},
         },
         "alpha": {
-            **defaultPopulationSettings(sim, _density_fn_periodic, _fn_periodic),
+            **defaultPopulationSettings(sim, _density_fn_periodic, fn_periodic),
             "nbr_part_per_cell": 100,
             "init": {"seed": 13337},
         },
     }
     pops.update(extra_pops)
     return ph.MaxwellianFluidModel(
-        bx= lambda *xyz: _fn_periodic(sim, *xyz) + 0.04,
-        by= lambda *xyz: _fn_periodic(sim, *xyz) + 0.05,
-        bz= lambda *xyz: _fn_periodic(sim, *xyz) + 0.06,
+        bx= lambda *xyz: fn_periodic(sim, *xyz) + 0.04,
+        by= lambda *xyz: fn_periodic(sim, *xyz) + 0.05,
+        bz= lambda *xyz: fn_periodic(sim, *xyz) + 0.06,
         **pops
     )
 
