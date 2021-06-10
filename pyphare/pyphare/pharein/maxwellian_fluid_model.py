@@ -163,11 +163,12 @@ class MaxwellianFluidModel(object):
             ]
 
         def qty_shifts(qty, nbrGhosts):
-          primal_shifts = np.arange(-5, 6)
-          dual_shifts   = np.arange(-5, 5)
           shifts = []
           for dim in range(sim.ndim):
-              shifts += [primal_shifts * dl[dim] if yee_element_is_primal(qty, directions[dim]) else dual_shifts *  dl[dim] + (.5 * dl[dim])]
+              if yee_element_is_primal(qty, directions[dim]):
+                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim] + 1) * dl[dim]]
+              else:
+                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim]) *  dl[dim] + (.5 * dl[dim])]
           return shifts
 
         def _1d_check(layout, nbrGhosts, primal_directions, qty, fn):
