@@ -65,11 +65,26 @@ class Simulator:
             print('Exception caught in "Simulator.initialize()": {}'.format(sys.exc_info()[0]))
             raise ValueError("Error in Simulator.initialize(), see previous error")
 
+    def _throw(self, e):
+        import sys
+        from pyphare.cpp import cpp_lib
+        if cpp_lib().mpi_rank() == 0:
+            print(e)
+        sys.exit(1)
+
+
     def advance(self, dt = None):
         self._check_init()
         if dt is None:
             dt = self.timeStep()
-        self.cpp_sim.advance(dt)
+        
+        try:
+            self.cpp_sim.advance(dt)
+        except (RuntimeError, TypeError, NameError, ValueError) as e:
+            self._throw(f"Exception caught in simulator.py::advance: \n{e}")
+        except KeyboardInterrupt as e:
+            self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
+
         self._auto_dump()
         return self
 

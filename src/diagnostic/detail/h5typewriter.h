@@ -53,12 +53,13 @@ public:
     {
         // we close the file by removing the associated file
         // from the map. This is done only at flush time otherwise
-        ++dumpIdx_;
+        ++diagnostic.dumpIdx;
 
         assert(diagnostic.params.contains("flush_every"));
 
         std::size_t flushEvery = diagnostic.param<std::size_t>("flush_every");
-        if (flushEvery != Writer::flush_never and flushEvery % dumpIdx_ == 0)
+
+        if (flushEvery != Writer::flush_never and diagnostic.dumpIdx % flushEvery == 0)
         {
             fileData_.erase(diagnostic.quantity);
             assert(fileData_.count(diagnostic.quantity) == 0);
@@ -138,7 +139,6 @@ protected:
 
 
     Writer& h5Writer_;
-    std::size_t dumpIdx_ = 0;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData_;
 };
 

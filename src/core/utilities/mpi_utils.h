@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 #include <cstring>
+#include <exception>
 
 // clang-format off
 #include "initializer/pragma_disable.h"
@@ -24,6 +25,8 @@ std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
 std::size_t max(std::size_t const local, int mpi_size = 0);
 
+bool any(bool);
+
 int size();
 
 int rank();
@@ -39,13 +42,13 @@ auto mpi_type_for()
         return MPI_INT;
     else if constexpr (std::is_same_v<std::uint32_t, Data>)
         return MPI_UNSIGNED;
-    else if constexpr (std::is_same_v<uint8_t, Data>)
+    else if constexpr (std::is_same_v<std::uint8_t, Data>)
         return MPI_UNSIGNED_SHORT;
     else if constexpr (std::is_same_v<std::size_t, Data>)
         return MPI_UINT64_T;
     else if constexpr (std::is_same_v<char, Data>)
         return MPI_CHAR;
-    
+
     // don't return anything = compile failure if tried to use this function
 }
 
@@ -73,9 +76,9 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
                      std::vector<int> const& displs, int const mpi_size)
 {
     auto mpi_type = mpi_type_for<Data>();
-    
+
     assert(recvcounts.size() == displs.size() and static_cast<int>(displs.size()) == mpi_size);
-    
+
     MPI_Allgatherv(        // MPI_Allgatherv
         sendBuff.data(),   //   void         *sendbuf,
         sendBuff.size(),   //   int          sendcount,
@@ -85,7 +88,7 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
         displs.data(),     //   int          *displs,
         mpi_type,          //   MPI_Datatype recvtype,
         MPI_COMM_WORLD     //   MPI_Comm     comm
-    );   
+    );
 }
 
 template<typename Vector>

@@ -7,9 +7,12 @@
 #include "phare_core.h"
 #include "phare_types.h"
 
+#include "core/utilities/mpi_utils.h"
 #include "core/utilities/timestamps.h"
 #include "amr/tagging/tagger_factory.h"
+
 #include <chrono>
+#include <exception>
 
 
 namespace PHARE
@@ -249,6 +252,13 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
         std::rethrow_exception(std::current_exception());
     }
+
+    if (core::mpi::any(core::Errors::instance().any()))
+    {
+        this->dMan.release(); // closes/flushes hdf5 files
+        throw std::runtime_error("forcing error");
+    }
+
     isInitialized = true;
 }
 
@@ -258,19 +268,18 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 {
+    double dt_new = 0;
+
+    if (!integrator_)
+        throw std::runtime_error("Error - no valid integrator in the simulator");
+
     try
     {
-        if (integrator_)
-        {
-            PHARE_LOG_SCOPE("Simulator::advance");
-            auto dt_new  = integrator_->advance(dt);
-            currentTime_ = ((*timeStamper) += dt);
-            return dt_new;
-        }
-        else
-            throw std::runtime_error("Error - no valid integrator in the simulator");
+        PHARE_LOG_SCOPE("Simulator::advance");
+        dt_new       = integrator_->advance(dt);
+        currentTime_ = ((*timeStamper) += dt);
     }
-    catch (const std::runtime_error& e)
+    catch (std::runtime_error const& e)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
         std::rethrow_exception(std::current_exception());
@@ -280,6 +289,14 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
         std::rethrow_exception(std::current_exception());
     }
+
+    if (core::mpi::any(core::Errors::instance().any()))
+    {
+        this->dMan.release(); // closes/flushes hdf5 files
+        throw std::runtime_error("forcing error");
+    }
+
+    return dt_new;
 }
 
 
