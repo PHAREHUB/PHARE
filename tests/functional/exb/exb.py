@@ -144,11 +144,11 @@ def getEmeans(path):
             Emeans[component][it] /= sum(ncells[component])
     return Emeans
 
-import glob.glob as glob
+import glob
 
 def makeFigs():
 
-    runs = glob("run*")
+    runs = glob.glob("run*")
 
     expecteds = ((0,0,0),
                 (0,0,0),
