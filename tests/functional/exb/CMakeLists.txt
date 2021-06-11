@@ -10,5 +10,5 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  phare_python3_exec(9, exb.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(9, test-exb2d exb.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()
