@@ -27,13 +27,14 @@ def startMPI():
 
 
 class Simulator:
-    def __init__(self, simulation, auto_dump=True):
+    def __init__(self, simulation, auto_dump=True, **kwargs):
         import pyphare.pharein as ph #lgtm [py/import-and-import-from]
         assert isinstance(simulation, ph.Simulation)
         self.simulation = simulation
         self.cpp_hier = None   # HERE
         self.cpp_sim  = None   # BE
         self.cpp_dw   = None   # DRAGONS, i.e. use weakrefs if you have to ref these.
+        self.post_advance = kwargs.get("post_advance", None)
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
         _simulator.obj = self
@@ -85,7 +86,8 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        self._auto_dump()
+        if self._auto_dump() and self.post_advance != None:
+            self.post_advance(self.cpp_sim.currentTime())
         return self
 
     def times(self):
@@ -115,18 +117,17 @@ class Simulator:
         return self.reset()
 
 
-
     def _auto_dump(self):
-        if self.auto_dump and len(self.simulation.diagnostics) > 0:
-            self.dump()
+        return self.auto_dump and len(self.simulation.diagnostics) > 0 and self.dump()
+
 
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
         if len(args) == 0:
-            self.cpp_sim.dump(timestamp=self.currentTime(), timestep=self.timeStep())
+            return self.cpp_sim.dump(timestamp=self.currentTime(), timestep=self.timeStep())
         else:
-            self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
-        return self
+            return self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
+        return False
 
     def data_wrangler(self):
         self._check_init()

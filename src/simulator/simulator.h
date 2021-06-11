@@ -35,7 +35,7 @@ public:
     virtual std::string to_str() = 0;
 
     virtual ~ISimulator() {}
-    virtual void dump(double timestamp, double timestep) {} // overriding optional
+    virtual bool dump(double timestamp, double timestep) { return false; } // overriding optional
 };
 
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
@@ -60,7 +60,10 @@ public:
 
     std::string to_str() override;
 
-    void dump(double timestamp, double timestep) override { dMan->dump(timestamp, timestep); }
+    bool dump(double timestamp, double timestep) override
+    {
+        return dMan->dump(timestamp, timestep);
+    }
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
