@@ -125,9 +125,8 @@ class Simulator:
         assert len(args) == 0 or len(args) == 2
         if len(args) == 0:
             return self.cpp_sim.dump(timestamp=self.currentTime(), timestep=self.timeStep())
-        else:
-            return self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
-        return False
+        return self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
+
 
     def data_wrangler(self):
         self._check_init()
