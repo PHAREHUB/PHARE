@@ -231,7 +231,7 @@ class GridLayout(object):
         return x
 
 
-    def yeeCoordsFor(self, qty, direction, include_ghosts=True):
+    def yeeCoordsFor(self, qty, direction):
 
         assert direction in direction_to_dim, f"direction ({direction} not supported)"
         assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
