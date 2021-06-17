@@ -368,58 +368,6 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
 
 
 
-TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsReturnEqualStayingParticles)
-{
-    auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut1 = makeRange(std::begin(particlesOut1), std::end(particlesOut1));
-    auto rangeOut2 = makeRange(std::begin(particlesOut2), std::end(particlesOut2));
-    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut1.begin());
-    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut2.begin());
-
-    auto newEndWithBC    = std::end(particlesOut1);
-    auto newEndWithoutBC = std::end(particlesOut2);
-
-    bc.setBoundaryBoxes(std::vector<Box<int, 1>>{});
-
-    auto selector
-        = [this](auto const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
-
-    for (decltype(nt) i = 0; i < nt; ++i)
-    {
-        auto layout = DummyLayout<1>{};
-        newEndWithBC
-            = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
-        newEndWithoutBC
-            = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector, layout);
-        [[maybe_unused]] auto s2 = rangeOut2.size();
-        [[maybe_unused]] auto s1 = rangeOut1.size();
-        [[maybe_unused]] auto s  = rangeIn.size();
-
-        if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
-        {
-            std::cout << "stopping integration at i = " << i << "\n";
-            std::cout << std::distance(std::begin(particlesOut1), newEndWithBC) << " in domain\n";
-            std::cout << std::distance(newEndWithBC, std::end(particlesOut1)) << " leaving\n";
-            break;
-        }
-    }
-    auto part1 = std::begin(particlesOut1);
-    auto part2 = std::begin(particlesOut2);
-
-    for (; part1 < newEndWithBC && part2 < newEndWithoutBC; ++part1, ++part2)
-    {
-        EXPECT_FLOAT_EQ(part1->delta[0], part2->delta[0]);
-        EXPECT_FLOAT_EQ(part1->delta[1], part2->delta[1]);
-        EXPECT_FLOAT_EQ(part1->delta[2], part2->delta[2]);
-
-        EXPECT_DOUBLE_EQ(part1->v[0], part2->v[0]);
-        EXPECT_DOUBLE_EQ(part1->v[1], part2->v[1]);
-        EXPECT_DOUBLE_EQ(part1->v[2], part2->v[2]);
-    }
-}
-
-
-
 TEST(APusherFactory, canReturnABorisPusher)
 {
     auto pusher
