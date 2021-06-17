@@ -37,6 +37,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
         "refined_particle_nbr": valid_refined_particle_nbr[dim][interp][0],
         "diag_options": {},
         "nesting_buffer": 0,
+        "strict": True,
     }
     for k, v in kwargs.items():
         if k in args:

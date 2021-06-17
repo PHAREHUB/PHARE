@@ -46,7 +46,8 @@ class AdvanceTest(unittest.TestCase):
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
-                          "options": extra_diag_options}
+                          "options": extra_diag_options},
+            strict=True,
         )
 
         def density(x):

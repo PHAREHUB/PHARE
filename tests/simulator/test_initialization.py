@@ -47,7 +47,8 @@ class InitializationTest(unittest.TestCase):
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
-                          "options": {"dir": diag_outputs, "mode":"overwrite"}}
+                          "options": {"dir": diag_outputs, "mode":"overwrite"}},
+            strict=True,
         )
 
         def beam_density(x):
