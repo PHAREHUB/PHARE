@@ -1,6 +1,7 @@
 
 
 from ..core import phare_utilities
+from ..core.gridlayout import yee_element_is_primal
 from . import global_vars
 
 
@@ -141,14 +142,105 @@ class MaxwellianFluidModel(object):
 #------------------------------------------------------------------------------
 
     def validate(self, sim):
-        import math
+        import itertools
+        import numpy as np
+        from ..core.gridlayout import GridLayout, directions as all_directions
+        from ..core.box import Box
+        from pyphare.pharein import py_fn_wrapper
+
+        dl = np.array(sim.dl)
+        directions = all_directions[:sim.ndim]
+
+        domain_box = Box([0] * sim.ndim, np.asarray(sim.cells) - 1)
+        assert len(sim.origin) == domain_box.ndim
+
+        def _primal_directions(qty):
+            return [1 if yee_element_is_primal(qty, direction) else 0 for direction in directions]
+
+        def _nbrGhosts(qty, layout, primal_directions):
+            return [
+                layout.nbrGhosts(sim.interp_order, "primal" if primal_directions[dim] else "dual") for dim in range(sim.ndim)
+            ]
+
+        def qty_shifts(qty, nbrGhosts):
+          shifts = []
+          for dim in range(sim.ndim):
+              if yee_element_is_primal(qty, directions[dim]):
+                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim] + 1) * dl[dim]]
+              else:
+                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim]) *  dl[dim] + (.5 * dl[dim])]
+          return shifts
+
+        def _1d_check(layout, nbrGhosts, primal_directions, qty, fn):
+            fnX = py_fn_wrapper(fn)(layout.yeeCoordsFor(qty, "x"))
+            include_border = primal_directions[0]
+            np.testing.assert_allclose(fnX[:nbrGhosts * 2 + include_border] , fnX[-(nbrGhosts * 2) - include_border:], atol=1e-15)
+            return (
+                np.allclose(fnX[:nbrGhosts * 2 + include_border] , fnX[-(nbrGhosts * 2) - include_border:], atol=1e-15)
+            )
+
+
+        def split_to_columns(ar):
+            ar = ar.reshape(-1, sim.ndim) # drop outer arrays if any
+            return [ar[:,dim] for dim in range(sim.ndim)]
+
+
+        def _2d_check(nbrGhosts, primal_directions, qty, fn, shift):
+            layout = GridLayout(domain_box, sim.origin + (shift * sim.dl), sim.dl, sim.interp_order)
+            x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
+            y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
+            X,Y = np.meshgrid(x,y,indexing="ij")
+            coords = np.array([X.flatten(),Y.flatten()]).T
+            top = coords[:len(x)]
+            bot = coords[-len(x):]
+            left  = coords[0 :: len(x)]
+            right = coords[len(x) - 1 :: len(x)]
+            return (
+                np.allclose(fn(*split_to_columns(left)) , fn(*split_to_columns(right)), atol=1e-15) and
+                np.allclose(fn(*split_to_columns(top))  , fn(*split_to_columns(bot)), atol=1e-15)
+            )
+
+        def _3d_check(nbrGhosts, primal_directions, qty, fn, shift):
+            def get_3d_faces(M):
+                def get_face(M, dim, front_side):
+                    return M[tuple((0 if front_side else -1) if i == dim else slice(None) for i in range(M.ndim))]
+                return [get_face(M, dim, front_side) for dim in range(sim.ndim) for front_side in (True, False)]
+
+            layout = GridLayout(domain_box, sim.origin + (shift * sim.dl), sim.dl, sim.interp_order)
+            x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
+            y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
+            z = layout.yeeCoordsFor(qty, "z")[nbrGhosts[2]:-(nbrGhosts[2]-1)-(primal_directions[2])]
+            coords = np.array([X.flatten(), Y.flatten(), Z.flatten()]).T.reshape((len(x), len(y), len(z), sim.ndim))
+            left, right, top, bot, front, back = get_3d_faces(coords)
+            return (
+                np.allclose(fn(split_to_columns(left)) , fn(split_to_columns(right)), atol=1e-15) and
+                np.allclose(fn(split_to_columns(top))  , fn(split_to_columns(bot)), atol=1e-15) and
+                np.allclose(fn(split_to_columns(front)), fn(split_to_columns(back)), atol=1e-15)
+            )
 
         def periodic_function_check(vec_field, dic):
+            valid = True
             for xyz in ["x", "y", "z"]:
-                fn = dic[vec_field + xyz]
-                if not math.isclose(fn(*sim.origin), fn(*sim.simulation_domain()), abs_tol=1e-5):
-                    return False
-            return True
+                qty = vec_field + xyz
+                fn = dic[qty]
+
+                layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
+                primal_directions = _primal_directions(qty)
+                nbrGhosts = _nbrGhosts(qty, layout, primal_directions)
+
+                if sim.ndim == 1:
+                    valid &= _1d_check(layout, nbrGhosts[0], primal_directions, qty, fn)
+
+                if sim.ndim == 2:
+                    permutations = itertools.product(*qty_shifts(qty, nbrGhosts))
+                    valid &= all([_2d_check(nbrGhosts, primal_directions, qty, fn, np.asarray(perm)) for perm in permutations])
+
+                if sim.ndim == 3:
+                    # untested block - add in during 3d/splitting PR https://github.com/PHAREHUB/PHARE/pull/314
+                    permutations = itertools.product(*qty_shifts(qty, nbrGhosts))
+                    valid &= all([_3d_check(nbrGhosts, primal_directions, qty, fn, np.asarray(perm)) for perm in permutations])
+
+            return valid
 
         if sim.boundary_types[0] == "periodic":
             model_dict = self.model_dict
@@ -159,3 +251,5 @@ class MaxwellianFluidModel(object):
             valid &= periodic_function_check("b", model_dict)
             if not valid:
                 print("Warning: Simulation is periodic but some functions are not")
+                if sim.strict:
+                    raise RuntimeError("Simulation is not periodic")

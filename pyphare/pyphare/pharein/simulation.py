@@ -448,7 +448,7 @@ def checker(func):
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity' ]
+                             'resistivity', 'hyper_resistivity', 'strict' ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -457,6 +457,8 @@ def checker(func):
             raise ValueError("Error: invalid arguments - " + " ".join(wrong_kwds))
 
         dl, cells = check_domain(**kwargs)
+
+        kwargs["strict"] = kwargs.get('strict', False)
 
         kwargs["dl"] = dl
         kwargs["cells"] =  cells
@@ -540,6 +542,7 @@ class Simulation(object):
     largest_patch_size   :
     max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
     init_time            : unused for now, will be time for restarts someday
+    strict               : bool, turns warnings into errors (default False)
 
     """
 

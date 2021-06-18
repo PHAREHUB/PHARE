@@ -41,32 +41,32 @@ def is_ndarray(x):
 def is_scalar(x):
     return not is_ndarray(x) and not isinstance(x, list)
 
+# converts scalars to array of expected size
+# converts lists to arrays
+class py_fn_wrapper:
+    def __init__(self, fn):
+        self.fn = fn
+    def __call__(self, *xyz):
+        args = []
+        for i, arg in enumerate(xyz):
+            args.append(np.asarray(arg))
+        ret = self.fn(*args)
+        if isinstance(ret, list):
+            ret = np.asarray(ret)
+        if is_scalar(ret):
+            ret = np.full(len(args[-1]), ret)
+        return ret
 
 # Wrap calls to user init functions to turn C++ vectors to ndarrays,
 #  and returned ndarrays to C++ span
-class fn_wrapper:
-
+class fn_wrapper(py_fn_wrapper):
     def __init__(self, fn):
-        self.fn = fn
-
+        super().__init__(fn)
     def __call__(self, *xyz):
-        args = []
-
-        for i, arg in enumerate(xyz):
-            args.append(np.asarray(arg))
-
-        ret = self.fn(*args)
-
-        if isinstance(ret, list):
-            ret = np.asarray(ret)
-
-        if is_scalar(ret):
-            ret = np.full(len(args[-1]), ret)
-
         from pyphare.cpp import cpp_lib
         # convert numpy array to C++ SubSpan
         # couples vector init functions to C++
-        return cpp_lib().makePyArrayWrapper(ret)
+        return cpp_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 
 
