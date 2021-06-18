@@ -17,7 +17,9 @@ def dist_plot(particles, **kwargs):
     * axis : ("x", "Vx"), ("x", "Vy"), ("x", "Vz"), ("Vx", "Vy") (default) --
        ("Vx", "Vz"), ("Vy", "Vz")
     * bins :  number of bins in each dimension, default is (50,50)
-    * sigma : width of the gaussian filter, default is (0,0)
+    * gaussian_filter_sigma : sigma of the gaussian filter, default is (0,0)
+    * median_filter_size : size of the median filter, default is (0,0)
+    * cmap : color table, default is "jet"
     * norm  : histogram will be normed to Normalize(0,norm)
     * kde : (default False) : adds contours of kernel density estimate
     * title : (str) title of the plot
@@ -39,7 +41,6 @@ def dist_plot(particles, **kwargs):
     if not isinstance(particles, Particles):
         raise ValueError("Error, 'particles' type should be Particles, list or dict")
 
-    from scipy.ndimage import gaussian_filter as gf
     if "ax" not in kwargs:
         fig, ax = plt.subplots()
     else:
@@ -60,7 +61,21 @@ def dist_plot(particles, **kwargs):
               bins=kwargs.get("bins", bins),
               weights=particles.weights)
 
-    sig = kwargs.get("sigma", (0,0))
+    if "gaussian_filter_sigma" in kwargs and "median_filter_size" not in kwargs: 
+        from scipy.ndimage import gaussian_filter
+        sig = kwargs.get("gaussian_filter_sigma", (0,0))
+        image = gaussian_filter(h.T, sigma=sig)
+    elif "median_filter_size" in kwargs and "gaussian_filter_sigma" not in kwargs: 
+        from scipy.ndimage import median_filter
+        siz = kwargs.get("median_filter_size", (0,0))
+        image = median_filter(h.T, size=siz)
+    elif "gaussian_filter_sigma" not in kwargs and "median_filter_size" not in kwargs:
+        image = h.T
+    else:
+        raise ValueError("gaussian and median filters can not be called at the same time")
+
+    cmap = kwargs.get("cmap", "jet")
+
     cmax = kwargs.get("color_max", h.max())
     cmin = kwargs.get("color_min", h.min())
     cmin = max(cmin, 1e-4)
@@ -71,16 +86,12 @@ def dist_plot(particles, **kwargs):
     elif color_scale == "linear":
         norm = Normalize(cmin, cmax)
 
-
-    im = ax.pcolormesh(xh, yh, gf(h.T, sigma=sig),
-                       cmap = "jet",
-                       norm = norm)
+    im = ax.pcolormesh(xh, yh, image, cmap = cmap, norm = norm)
 
     fig.colorbar(im, ax=ax)
 
     if kwargs.get("kde",False) is True:
         sns.kdeplot(x, y, ax=ax, color="w")
-
 
     ax.set_title(kwargs.get("title",""))
     ax.set_xlabel(kwargs.get("xlabel", axis[0]))
