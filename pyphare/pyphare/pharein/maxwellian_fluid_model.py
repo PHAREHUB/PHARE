@@ -245,7 +245,7 @@ class MaxwellianFluidModel(object):
         if sim.boundary_types[0] == "periodic":
             model_dict = self.model_dict
             valid = True
-            for pop_index, pop in enumerate(self.populations):
+            for pop in self.populations:
                 for v in ["vth", "v"]:
                     valid &= periodic_function_check(v, model_dict[pop])
             valid &= periodic_function_check("b", model_dict)
