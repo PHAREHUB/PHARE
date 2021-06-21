@@ -73,7 +73,7 @@ simArgs = {
   "boundary_types":"periodic",
   "cells":10,
   "dl":0.2,
-  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite"}}
+  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite"}},
   "strict": True,
 }
 
