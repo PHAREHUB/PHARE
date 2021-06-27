@@ -2,6 +2,7 @@ from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 
 from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.core.phare_utilities import np_array_ify
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
@@ -26,9 +27,9 @@ class AdvanceTest(unittest.TestCase):
 
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
-                     smallest_patch_size=5, largest_patch_size=20,
+                     smallest_patch_size=6, largest_patch_size=20,
                      cells=120, time_step=0.001, model_init={},
-                     dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None):
+                     dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1):
 
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -41,8 +42,8 @@ class AdvanceTest(unittest.TestCase):
             time_step_nbr=time_step_nbr,
             time_step=time_step,
             boundary_types="periodic",
-            cells=cells,
-            dl=dl,
+            cells=np_array_ify(cells, ndim),
+            dl=np_array_ify(dl, ndim),
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
@@ -210,9 +211,9 @@ class AdvanceTest(unittest.TestCase):
                         slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
 
                         try:
-                            np.testing.assert_allclose(slice1, slice2, atol=1e-6)
+                            np.testing.assert_equal(slice1, slice2)
                         except AssertionError as e:
-                            print("error", coarsest_time, overlap)
+                            print("error", pd1.name, coarsest_time, overlap)
                             raise e
 
         self.assertGreater(check, time_step_nbr)
@@ -235,16 +236,15 @@ class AdvanceTest(unittest.TestCase):
 
 
     @data(
+        {},
         {"L0": [Box1D(10, 19)]},
-        # {"L0": [Box2D(10, 19)]},
-        # {"L0": [Box3D(10, 19)]},
     )
     def test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts(self, refinement_boxes):
         from pyphare.pharein.simulation import check_patch_size
 
-        dim = refinement_boxes["L0"][0].ndim
+        dim = 1
 
-        cells = [30] * dim
+        cells = [60] * dim
         time_step_nbr=3
         time_step=0.001
         diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts{self.ddt_test_id()}"
@@ -252,9 +252,8 @@ class AdvanceTest(unittest.TestCase):
             largest_patch_size, smallest_patch_size = check_patch_size(dim, interp_order=interp_order, cells=cells)
             datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
                                       smallest_patch_size=smallest_patch_size, largest_patch_size=smallest_patch_size,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
+                                      time_step=time_step, time_step_nbr=time_step_nbr, cells=cells)
             self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
-
 
 
 
@@ -452,7 +451,7 @@ class AdvanceTest(unittest.TestCase):
         datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", cells=30,
                                       diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
-                                      time_step_nbr=time_step_nbr, smallest_patch_size=5,
+                                      time_step_nbr=time_step_nbr,
                                       largest_patch_size=30)
 
         lvl_steps = global_vars.sim.level_time_steps
@@ -556,7 +555,7 @@ class AdvanceTest(unittest.TestCase):
 
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(interp_order, boxes, "eb", cells=30,
-                time_step_nbr=1, smallest_patch_size=5, largest_patch_size=30,
+                time_step_nbr=1,  largest_patch_size=30,
                 diag_outputs=diag_dir, extra_diag_options={"fine_dump_lvl_max": 10}, time_step=0.001,
                 model_init={"seed": rando}
             )
@@ -657,7 +656,7 @@ class AdvanceTest(unittest.TestCase):
                 diag_outputs=f"phare_outputs_hierarchy_timestamp_cadence_{self.ddt_test_id()}_{i}"
                 hier = self.getHierarchy(interp_order=1, refinement_boxes=refinement_boxes, qty="eb", cells=30,
                                               diag_outputs=diag_outputs, time_step=time_step,
-                                              time_step_nbr=time_step_nbr, smallest_patch_size=5,
+                                              time_step_nbr=time_step_nbr,
                                               largest_patch_size=30, timestamps=timestamps)
 
                 time_hier_keys = list(hier.time_hier.keys())

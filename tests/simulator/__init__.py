@@ -26,7 +26,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     b0 = [[3] * dim, [8] * dim]
     args = {
         "interp_order": interp,
-        "smallest_patch_size": [5] * dim,
+        "smallest_patch_size": [6] * dim,
         "largest_patch_size": [20] * dim,
         "time_step_nbr": 1000,
         "final_time": 1.0,

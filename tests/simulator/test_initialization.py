@@ -551,8 +551,8 @@ class InitializationTest(unittest.TestCase):
     _has_patch_ghost_on_refined_level_case = (
       {
         "cells": 40,
-        "smallest_patch_size": 5,
-        "largest_patch_size": 5},
+        "smallest_patch_size": 6,
+        "largest_patch_size": 6},
     )
     @data(*_has_patch_ghost_on_refined_level_case)
     def test_has_patch_ghost_on_refined_level_case(self, simInput):

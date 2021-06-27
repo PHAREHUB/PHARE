@@ -9,6 +9,24 @@
 #include "core/data/grid/gridlayout_impl.h"
 #include "field_overlap.h"
 
+
+
+namespace PHARE::amr
+{
+class AFieldGeometry : public SAMRAI::hier::BoxGeometry
+{
+public:
+    virtual ~AFieldGeometry() {}
+    AFieldGeometry(SAMRAI::hier::Box const& box)
+        : patchBox{box}
+    {
+    }
+
+    SAMRAI::hier::Box const patchBox;
+};
+
+} // namespace PHARE::amr
+
 namespace PHARE
 {
 namespace amr
@@ -17,7 +35,7 @@ namespace amr
     /**
      * @brief The FieldGeometry class
      */
-    class FieldGeometry : public SAMRAI::hier::BoxGeometry
+    class FieldGeometry : public AFieldGeometry
     {
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -27,7 +45,8 @@ namespace amr
          * with a temporary gridlayout
          */
         FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT layout, PhysicalQuantity qty)
-            : ghostBox_{toFieldBox(box, qty, layout)}
+            : AFieldGeometry{box}
+            , ghostBox_{toFieldBox(box, qty, layout)}
             , interiorBox_{toFieldBox(box, qty, layout, false)}
             , layout_{std::move(layout)}
             , quantity_{qty}
@@ -222,7 +241,6 @@ namespace amr
         PhysicalQuantity quantity_;
 
 
-
         /*** \brief Compute destination box representing the intersection of two geometry
          *
          *   \param destinationBoxes BoxContainer that will be filled of box
@@ -286,10 +304,10 @@ namespace amr
 
             SAMRAI::hier::Box const together(destinationBox * sourceBox * fillField);
 
-
             // if the interesection is not empty we either push it into the container
             // if we don't want to fill the interior we remove it from the intersection
             // which may add multiple boxes to the container.
+
             if (!together.empty())
             {
                 if (overwriteInterior)

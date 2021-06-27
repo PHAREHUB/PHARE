@@ -23,6 +23,7 @@
 #include <optional>
 
 
+#include "ghost_only_variable_fill_pattern.h"
 
 namespace PHARE
 {
@@ -45,6 +46,18 @@ namespace amr
     };
 
     class ZVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
+
+    class XGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
+    {
+    };
+
+    class YGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
+    {
+    };
+
+    class ZGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
     {
     };
 
@@ -125,6 +138,9 @@ namespace amr
          */
         void add(std::shared_ptr<Schedule> schedule, int levelNumber)
         {
+            // for shared border node value sync
+            schedule->setDeterministicUnpackOrderingFlag(true);
+
             schedules_[levelNumber] = std::move(schedule);
         }
     };
@@ -160,11 +176,12 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XVariableFillPattern>();
+            = std::make_shared<XGhostOnlyVariablyFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YVariableFillPattern>();
+            = std::make_shared<YGhostOnlyVariablyFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZVariableFillPattern>();
+            = std::make_shared<ZGhostOnlyVariablyFillPattern>();
+
         Communicator<Refiner> com;
 
         auto registerRefine

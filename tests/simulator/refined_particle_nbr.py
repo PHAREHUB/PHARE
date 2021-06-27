@@ -20,6 +20,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(SimulatorRefinedParticleNbr, self).__init__(*args, **kwargs)
+        self.simulator = None
         with open(os.path.join(project_root, "res/amr/splitting.yml"), 'r') as stream:
             try:
                 self.yaml_root = yaml.safe_load(stream)
