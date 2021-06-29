@@ -1,6 +1,5 @@
-
-#ifndef GhostOnlyVariablyFillPattern_
-#define GhostOnlyVariablyFillPattern_
+#ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_H
+#define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_H
 
 #include <cassert>
 #include "SAMRAI/xfer/VariableFillPattern.h"
@@ -8,11 +7,11 @@
 
 namespace PHARE::amr
 {
-class GhostOnlyVariablyFillPattern : public SAMRAI::xfer::VariableFillPattern
+class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
 public:
-    GhostOnlyVariablyFillPattern() {}
-    virtual ~GhostOnlyVariablyFillPattern() {}
+    FieldFillPattern() {}
+    virtual ~FieldFillPattern() {}
 
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
     calculateOverlap(const SAMRAI::hier::BoxGeometry& dst_geometry,
@@ -35,7 +34,8 @@ public:
         // for shared border node value sync
         if (src_cast.patchBox.getGlobalId().getOwnerRank()
             != dst_cast.patchBox.getGlobalId().getOwnerRank())
-            overwrite_interior = src_cast.patchBox.getLocalId() > dst_cast.patchBox.getLocalId();
+            overwrite_interior = src_cast.patchBox.getGlobalId() > dst_cast.patchBox.getGlobalId();
+        // overwrite_interior = src_cast.patchBox.getLocalId() > dst_cast.patchBox.getLocalId();
 
         return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
                                              transformation);
@@ -44,8 +44,8 @@ public:
     const std::string& getPatternName() const { return s_name_id; }
 
 private:
-    GhostOnlyVariablyFillPattern(const GhostOnlyVariablyFillPattern&);            // not implemented
-    GhostOnlyVariablyFillPattern& operator=(const GhostOnlyVariablyFillPattern&); // not implemented
+    FieldFillPattern(const FieldFillPattern&);            // not implemented
+    FieldFillPattern& operator=(const FieldFillPattern&); // not implemented
 
     static const std::string s_name_id; // = "GHOST_ONLY_FILL_PATTERN";
 
@@ -94,4 +94,4 @@ private:
 
 } // namespace PHARE::amr
 
-#endif /*GhostOnlyVariablyFillPattern*/
+#endif /* PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_H */

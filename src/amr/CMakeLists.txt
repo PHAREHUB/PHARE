@@ -36,7 +36,6 @@ set( SOURCES_INC
      messengers/mhd_hybrid_messenger_strategy.h
      messengers/mhd_messenger.h
      messengers/messenger_factory.h
-     messengers/ghost_only_variable_fill_pattern.cpp
      messengers/messenger_info.h
      messengers/hybrid_messenger_info.h
      messengers/mhd_messenger_info.h
@@ -65,6 +64,7 @@ set( SOURCES_CPP
      resources_manager/amr_utils.cpp
      data/field/coarsening/field_coarsen.cpp
      messengers/messenger_factory.cpp
+     data/field/field_variable_fill_pattern.cpp
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

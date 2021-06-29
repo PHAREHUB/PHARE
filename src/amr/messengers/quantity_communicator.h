@@ -4,6 +4,7 @@
 
 #include "amr/messengers/hybrid_messenger_info.h"
 
+#include "amr/data/field/field_variable_fill_pattern.h"
 #include "amr/data/field/coarsening/field_coarsen_operator.h"
 #include "amr/data/field/refine/field_refine_operator.h"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
@@ -23,7 +24,7 @@
 #include <optional>
 
 
-#include "ghost_only_variable_fill_pattern.h"
+
 
 namespace PHARE
 {
@@ -49,15 +50,15 @@ namespace amr
     {
     };
 
-    class XGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
+    class XFieldFillPattern : public FieldFillPattern
     {
     };
 
-    class YGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
+    class YFieldFillPattern : public FieldFillPattern
     {
     };
 
-    class ZGhostOnlyVariablyFillPattern : public GhostOnlyVariablyFillPattern
+    class ZFieldFillPattern : public FieldFillPattern
     {
     };
 
@@ -176,11 +177,11 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XGhostOnlyVariablyFillPattern>();
+            = std::make_shared<XFieldFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YGhostOnlyVariablyFillPattern>();
+            = std::make_shared<YFieldFillPattern>();
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZGhostOnlyVariablyFillPattern>();
+            = std::make_shared<ZFieldFillPattern>();
 
         Communicator<Refiner> com;
 
