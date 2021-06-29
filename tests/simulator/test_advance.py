@@ -27,12 +27,18 @@ class AdvanceTest(unittest.TestCase):
 
     def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
                      diag_outputs="phare_outputs",
-                     smallest_patch_size=6, largest_patch_size=20,
+                     smallest_patch_size=None, largest_patch_size=20,
                      cells=120, time_step=0.001, model_init={},
                      dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1):
 
+        cells = np_array_ify(cells, ndim)
         from pyphare.pharein import global_vars
         global_vars.sim = None
+
+        if smallest_patch_size is None:
+            from pyphare.pharein.simulation import check_patch_size
+            _, smallest_patch_size = check_patch_size(ndim, interp_order=interp_order, cells=cells)
+
         startMPI()
         extra_diag_options["mode"] = "overwrite"
         extra_diag_options["dir"] = diag_outputs

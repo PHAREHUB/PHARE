@@ -528,8 +528,8 @@ class InitializationTest(unittest.TestCase):
 
                 local_out = f"{out}/dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
                 kwargs["diag_outputs"] = local_out
-
-                datahier = self.getHierarchy(interp, refinement_boxes, "particles_patch_ghost", **kwargs)
+                kwargs["interp_order"] = kwargs.get("interp_order", 1)
+                datahier = self.getHierarchy(refinement_boxes=refinement_boxes, qty="particles_patch_ghost", **kwargs)
 
                 self.assertTrue(any([diagInfo.quantity.endswith("patchGhost") for diagInfo in ph.global_vars.sim.diagnostics]))
 
@@ -551,11 +551,15 @@ class InitializationTest(unittest.TestCase):
     _has_patch_ghost_on_refined_level_case = (
       {
         "cells": 40,
-        "smallest_patch_size": 6,
-        "largest_patch_size": 6},
+        "interp_order": 1
+      },
     )
     @data(*_has_patch_ghost_on_refined_level_case)
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
+        from pyphare.pharein.simulation import check_patch_size
+        _, smallest_patch_size = check_patch_size(ndim=1, **simInput)
+        simInput["smallest_patch_size"] = smallest_patch_size
+        simInput["largest_patch_size"] = smallest_patch_size
         self._test_patch_ghost_on_refined_level_case(True, **simInput)
 
 
