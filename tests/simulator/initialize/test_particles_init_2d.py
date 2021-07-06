@@ -77,9 +77,14 @@ class InitializationTest(InitializationTest):
         self._test_patch_ghost_on_refined_level_case(ndim, False, **simInput)
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
 
-    @data({"cells": 40, "smallest_patch_size": 5, "largest_patch_size": 5, "nbr_part_per_cell" : ppc})
+    @data({"cells": 40, "interp_order": 1, "nbr_part_per_cell" : ppc})
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
         print(f"\n{self._testMethodName}_{ndim}d")
+        from pyphare.pharein.simulation import check_patch_size
+        diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts_{ndim}_{self.ddt_test_id()}"
+        _, smallest_patch_size = check_patch_size(ndim, **simInput)
+        simInput["smallest_patch_size"] = smallest_patch_size
+        simInput["largest_patch_size"] = smallest_patch_size
         now = self.datetime_now()
         self._test_patch_ghost_on_refined_level_case(ndim, True, **simInput)
         print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")

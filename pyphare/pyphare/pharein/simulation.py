@@ -631,5 +631,8 @@ def serialize(sim):
     import dill, codecs
     return codecs.encode(dill.dumps(sim), 'hex')
 
+
 def deserialize(hex):
+    import dill, codecs
     return dill.loads(codecs.decode(hex, 'hex'))
+

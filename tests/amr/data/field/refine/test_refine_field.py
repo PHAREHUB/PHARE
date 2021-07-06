@@ -32,6 +32,7 @@ def refine(field, **kwargs):
         interp_order=field.layout.interp_order,
     )
 
+    # fine box has extra ghosts for padding against coarser such that at the normal number of ghosts are filled
     fine_box = boxm.shrink(
         boxm.refine(field.ghost_box, refinement_ratio), field.ghosts_nbr
     )
@@ -43,8 +44,9 @@ def refine(field, **kwargs):
     cadence = 2
     assert cadence == refinement_ratio
 
-    gX = 2
-    rgX = 4
+    assert ghostX == 5 # the next two lines will likely need reconsidering if the number of ghosts changes
+    gX = 2  # level 0 ghost buffer from edge
+    rgX = 4 # level 1 ghost buffer from edge
 
     if field.box.ndim == 1:
         if primal_directions[0]:
@@ -62,6 +64,7 @@ def refine(field, **kwargs):
             )
 
     if fine_box.ndim > 1:
+        assert field.ghosts_nbr[1] == 5 # also these
         gY = 2
         rgY = 4
         cad = cadence

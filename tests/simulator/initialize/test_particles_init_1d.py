@@ -75,9 +75,14 @@ class InitializationTest(InitializationTest):
         print(f"{self._testMethodName}_{ndim}d")
         self._test_patch_ghost_on_refined_level_case(ndim, False, **simInput)
 
-    @data({"cells": 40, "smallest_patch_size": 5, "largest_patch_size": 5})
+    @data({"cells": 40, "interp_order": 1})
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
         print(f"{self._testMethodName}_{ndim}d")
+        from pyphare.pharein.simulation import check_patch_size
+        diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts_{ndim}_{self.ddt_test_id()}"
+        _, smallest_patch_size = check_patch_size(ndim, **simInput)
+        simInput["smallest_patch_size"] = smallest_patch_size
+        simInput["largest_patch_size"] = smallest_patch_size
         self._test_patch_ghost_on_refined_level_case(ndim, True, **simInput)
 
 

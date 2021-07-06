@@ -177,13 +177,18 @@ def compute_overlaps(patches, domain_box):
                         overlap = toFieldBox(overlap, ref_pd)
 
                     overlaps.append({"pdatas": (ref_pd, cmp_pd),
+                                     "patches": (refPatch, cmpPatch),
                                      "box": overlap,
                                      "offset": (zero_offset, zero_offset)})
 
 
 
-    def append(ref_pd, cmp_pd, overlap, offset_tuple):
-        overlaps.append({"pdatas": (ref_pd, cmp_pd), "box": overlap, "offset": offset_tuple})
+    def append(ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
+        overlaps.append({
+            "pdatas": (ref_pd, cmp_pd),
+            "patches": (refPatch, cmpPatch),
+            "box": overlap,
+            "offset": offset_tuple})
 
     def borders_per(patch):
         return "".join([key for key, side in sides.items() if patch.box * side is not None])
@@ -224,8 +229,8 @@ def compute_overlaps(patches, domain_box):
                                     overlap = toFieldBox(overlap, ref_pd)
                                     other_ovrlp = toFieldBox(other_ovrlp, ref_pd)
 
-                                append(ref_pd, cmp_pd, overlap, (zero_offset, (-offset).tolist()))
-                                append(ref_pd, cmp_pd, other_ovrlp, (offset.tolist(), zero_offset))
+                                append(ref_pd, cmp_pd, ref_patch, cmp_patch, overlap, (zero_offset, (-offset).tolist()))
+                                append(ref_pd, cmp_pd, ref_patch, cmp_patch, other_ovrlp, (offset.tolist(), zero_offset))
 
     return overlaps
 

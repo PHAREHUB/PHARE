@@ -52,14 +52,29 @@ namespace amr
 
     class XFieldFillPattern : public FieldFillPattern
     {
+    public:
+        XFieldFillPattern(std::optional<bool> overwrite_interior)
+            : FieldFillPattern{overwrite_interior}
+        {
+        }
     };
 
     class YFieldFillPattern : public FieldFillPattern
     {
+    public:
+        YFieldFillPattern(std::optional<bool> overwrite_interior)
+            : FieldFillPattern{overwrite_interior}
+        {
+        }
     };
 
     class ZFieldFillPattern : public FieldFillPattern
     {
+    public:
+        ZFieldFillPattern(std::optional<bool> overwrite_interior)
+            : FieldFillPattern{overwrite_interior}
+        {
+        }
     };
 
     struct Refiner
@@ -177,11 +192,11 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XFieldFillPattern>();
+            = FieldFillPattern::make_shared<XFieldFillPattern>(refineOp);
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YFieldFillPattern>();
+            = FieldFillPattern::make_shared<YFieldFillPattern>(refineOp);
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZFieldFillPattern>();
+            = FieldFillPattern::make_shared<ZFieldFillPattern>(refineOp);
 
         Communicator<Refiner> com;
 

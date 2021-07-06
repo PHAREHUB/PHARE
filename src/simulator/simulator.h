@@ -7,6 +7,7 @@
 #include "phare_core.h"
 #include "phare_types.h"
 
+#include "core/utilities/types.h"
 #include "core/utilities/mpi_utils.h"
 #include "core/utilities/timestamps.h"
 #include "amr/tagging/tagger_factory.h"
@@ -95,6 +96,8 @@ public:
 private:
     auto find_model(std::string name);
 
+    std::ofstream log_out{".log/" + std::to_string(core::mpi::rank()) + ".out"};
+    std::streambuf* coutbuf;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
 
@@ -129,7 +132,20 @@ private:
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
 };
 
-
+namespace
+{
+    inline auto logging(std::ofstream& log_out)
+    {
+        std::streambuf* buf = nullptr;
+        if (std::optional<std::string> log = core::get_env("PHARE_LOG");
+            log and *log == "RANK_FILES")
+        {
+            buf = std::cout.rdbuf();
+            std::cout.rdbuf(log_out.rdbuf());
+        }
+        return buf;
+    }
+} // namespace
 //-----------------------------------------------------------------------------
 //                           Definitions
 //-----------------------------------------------------------------------------
@@ -140,7 +156,8 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     PHARE::initializer::PHAREDict const& dict,
     std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
-    : hierarchy_{hierarchy}
+    : coutbuf{logging(log_out)}
+    , hierarchy_{hierarchy}
     , modelNames_{"HybridModel"}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
     , messengerFactory_{descriptors_}

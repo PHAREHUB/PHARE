@@ -46,12 +46,16 @@ class InitializationTest(unittest.TestCase):
                      diag_outputs, nbr_part_per_cell=100,
                      density = _density,
                      beam = False, time_step_nbr=1,
-                     smallest_patch_size=5, largest_patch_size=10,
+                     smallest_patch_size=None, largest_patch_size=10,
                      cells=120,
                      dl=0.1, ndim=1):
         diag_outputs = f"phare_outputs/init/{diag_outputs}"
         from pyphare.pharein import global_vars
         global_vars.sim =None
+
+        if smallest_patch_size is None:
+            from pyphare.pharein.simulation import check_patch_size
+            _, smallest_patch_size = check_patch_size(ndim, interp_order=interp_order, cells=cells)
 
         Simulation(
             smallest_patch_size=smallest_patch_size,
@@ -582,10 +586,10 @@ class InitializationTest(unittest.TestCase):
 
         refinement_boxes = {"L0": [nDBox(dim, 10, 19)]}
 
-        local_out = f"{out}/dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
-        kwargs["diag_outputs"] = local_out
         kwargs["interp_order"] = kwargs.get("interp_order", 1)
-        datahier = self.getHierarchy(refinement_boxes=refinement_boxes, qty="particles_patch_ghost", **kwargs)
+        local_out = f"{out}/dim{dim}_interp{kwargs['interp_order']}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
+        kwargs["diag_outputs"] = local_out
+        datahier = self.getHierarchy(refinement_boxes=refinement_boxes, qty="particles_patch_ghost", ndim=dim, **kwargs)
 
         self.assertTrue(any([diagInfo.quantity.endswith("patchGhost") for diagInfo in ph.global_vars.sim.diagnostics]))
         self.assertTrue((1 in datahier.levels()) == has_patch_ghost)

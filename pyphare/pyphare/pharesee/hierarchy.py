@@ -174,7 +174,7 @@ class Patch:
     A patch represents a hyper-rectangular region of space
     """
 
-    def __init__(self, patch_datas):
+    def __init__(self, patch_datas, patch_id=""):
         """
         :param patch_datas: a list of PatchData objects
         these are assumed to "belong" to the Patch so to
@@ -186,8 +186,13 @@ class Patch:
         self.origin = pdata0.layout.origin
         self.dl = pdata0.layout.dl
         self.patch_datas = patch_datas
+        self.id = patch_id
 
 
+    def __str__(self):
+        return f"Patch: box( {self.box}), id({self.id})"
+    def __repr__(self):
+        return self.__str__()
 
 
 class PatchLevel:
@@ -801,7 +806,7 @@ def compute_hier_from(h, compute):
                 new_patch_datas[data["name"]] = pd
             if ilvl not in patches:
                 patches[ilvl] = []
-            patches[ilvl].append(Patch(new_patch_datas))
+            patches[ilvl].append(Patch(new_patch_datas, patch.id))
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
@@ -924,7 +929,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                     if ilvl not in patches:
                         patches[ilvl] = []
 
-                    patches[ilvl].append(Patch(patch_datas))
+                    patches[ilvl].append(Patch(patch_datas, h5_patch_grp.name.split("/")[-1]))
 
                     patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 

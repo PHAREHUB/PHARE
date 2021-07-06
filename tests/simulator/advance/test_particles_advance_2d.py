@@ -31,7 +31,7 @@ class AdvanceTest(AdvanceTestBase):
     @unpack
     def test_overlapped_particledatas_have_identical_particles(self, interp_order, refinement_boxes):
         self._test_overlapped_particledatas_have_identical_particles(
-            ndim, interp_order, refinement_boxes, ppc=ppc, cells=40, smallest_patch_size=5, largest_patch_size=20)
+            ndim, interp_order, refinement_boxes, ppc=ppc, cells=40, largest_patch_size=20)
 
 
     def test_L0_particle_number_conservation(self):
