@@ -402,7 +402,7 @@ class AdvanceTestBase(unittest.TestCase):
                                                     dataBox.lower[1] : dataBox.upper[1] + 1] = -144123
 
                                     coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
-                                    np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-6, rtol=0)
+                                    np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-16, rtol=0)
 
 
 

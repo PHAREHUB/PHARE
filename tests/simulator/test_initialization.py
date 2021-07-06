@@ -249,9 +249,10 @@ class InitializationTest(unittest.TestCase):
                 xbz   = bz_pd.x[:]
 
                 if dim == 1:
-                    np.testing.assert_allclose(bx, bx_fn(xbx), atol=1e-16)
-                    np.testing.assert_allclose(by, by_fn(xby), atol=1e-16)
-                    np.testing.assert_allclose(bz, bz_fn(xbz), atol=1e-16)
+                    # discrepancy in 1d for some reason : https://github.com/PHAREHUB/PHARE/issues/580
+                    np.testing.assert_allclose(bx, bx_fn(xbx), atol=1e-15, rtol=0)
+                    np.testing.assert_allclose(by, by_fn(xby), atol=1e-15, rtol=0)
+                    np.testing.assert_allclose(bz, bz_fn(xbz), atol=1e-15, rtol=0)
 
                 if dim >= 2:
                     ybx   = bx_pd.y[:]
@@ -263,9 +264,9 @@ class InitializationTest(unittest.TestCase):
                     xby, yby = [a.flatten() for a in np.meshgrid(xby, yby, indexing="ij")]
                     xbz, ybz = [a.flatten() for a in np.meshgrid(xbz, ybz, indexing="ij")]
 
-                    np.testing.assert_allclose(bx, bx_fn(xbx, ybx), atol=1e-16)
-                    np.testing.assert_allclose(by, by_fn(xby, yby).reshape(by.shape), atol=1e-16)
-                    np.testing.assert_allclose(bz, bz_fn(xbz, ybz).reshape(bz.shape), atol=1e-16)
+                    np.testing.assert_allclose(bx, bx_fn(xbx, ybx), atol=1e-16, rtol=0)
+                    np.testing.assert_allclose(by, by_fn(xby, yby).reshape(by.shape), atol=1e-16, rtol=0)
+                    np.testing.assert_allclose(bz, bz_fn(xbz, ybz).reshape(bz.shape), atol=1e-16, rtol=0)
 
                 if dim == 3:
                     raise ValueError("Unsupported dimension")
