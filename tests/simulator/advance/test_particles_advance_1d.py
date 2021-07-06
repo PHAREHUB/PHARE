@@ -34,8 +34,9 @@ class AdvanceTest(AdvanceTestBase):
 
 
 
-    def test_L0_particle_number_conservation(self):
-        self._test_L0_particle_number_conservation(ndim)
+    @data(*interp_orders)
+    def test_L0_particle_number_conservation(self, interp):
+        self._test_L0_particle_number_conservation(ndim, interp)
 
 
 if __name__ == "__main__":

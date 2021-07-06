@@ -58,6 +58,7 @@ set( SOURCES_INC
      level_initializer/level_initializer.h
      level_initializer/hybrid_level_initializer.h
      level_initializer/level_initializer_factory.h
+     data/field/field_variable_fill_pattern.h
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

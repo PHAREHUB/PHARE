@@ -3,6 +3,7 @@
 
 #include <array>
 #include <optional>
+#include <string>
 #include <algorithm>
 #include <cinttypes>
 #include <cmath>

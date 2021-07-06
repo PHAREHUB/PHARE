@@ -26,6 +26,7 @@ namespace PHARE::amr
       if the src.globalID > dst.globalID to end up with a single value across MPI domains.
     we also remove the exclusive interior of the src patch to isolate only shared primal nodes.
 */
+// This class is mostly a copy of BoxGeometryVariableFillPattern
 class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
 protected:
@@ -98,7 +99,7 @@ private:
     FieldFillPattern(FieldFillPattern const&) = delete;
     FieldFillPattern& operator=(FieldFillPattern const&) = delete;
 
-    static const std::string s_name_id; // = "GHOST_ONLY_FILL_PATTERN";
+    static const std::string s_name_id;
 
     SAMRAI::hier::IntVector const& getStencilWidth()
     {

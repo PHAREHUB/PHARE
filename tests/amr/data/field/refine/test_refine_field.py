@@ -45,8 +45,8 @@ def refine(field, **kwargs):
     assert cadence == refinement_ratio
 
     assert ghostX == 5 # the next two lines will likely need reconsidering if the number of ghosts changes
-    gX = 2  # level 0 ghost buffer from edge
-    rgX = 4 # level 1 ghost buffer from edge
+    gX = 2  # level 0 ghost buffer from edge of normal coarse data box
+    rgX = 4 # level 1 ghost buffer from edge of extra large fine data box
 
     if field.box.ndim == 1:
         if primal_directions[0]:
@@ -64,7 +64,7 @@ def refine(field, **kwargs):
             )
 
     if fine_box.ndim > 1:
-        assert field.ghosts_nbr[1] == 5 # also these
+        assert field.ghosts_nbr[1] == 5 # also these if ghosts change like gX
         gY = 2
         rgY = 4
         cad = cadence

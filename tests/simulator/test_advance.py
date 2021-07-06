@@ -12,7 +12,7 @@ from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
 from pyphare.core.gridlayout import yee_element_is_primal
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
-from pyphare.core.box import Box, Box1D
+from pyphare.core.box import Box
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
@@ -299,23 +299,26 @@ class AdvanceTestBase(unittest.TestCase):
                         self.assertEqual(part1, part2)
 
 
-    def _test_L0_particle_number_conservation(self, ndim, ppc=100):
+    def _test_L0_particle_number_conservation(self, ndim, interp_order, ppc=100):
         cells=120
         time_step_nbr=10
         time_step=0.001
 
         n_particles = ppc * (cells ** ndim)
-        for interp_order in [1, 2, 3]:
-            diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
-            datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr,
-                                      nbr_part_per_cell=ppc, cells=cells, ndim=ndim)
-            for time_step_idx in range(time_step_nbr + 1):
-                coarsest_time =  time_step_idx * time_step
-                n_particles_at_t = 0
-                for patch in datahier.level(0, coarsest_time).patches:
-                    n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
-                self.assertEqual(n_particles, n_particles_at_t)
+
+        diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
+
+        datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
+                                  time_step=time_step, time_step_nbr=time_step_nbr,
+                                  nbr_part_per_cell=ppc, cells=cells, ndim=ndim)
+
+        for time_step_idx in range(time_step_nbr + 1):
+            coarsest_time =  time_step_idx * time_step
+            n_particles_at_t = 0
+            for patch in datahier.level(0, coarsest_time).patches:
+                n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
+            self.assertEqual(n_particles, n_particles_at_t)
+
 
 
 
@@ -359,13 +362,6 @@ class AdvanceTestBase(unittest.TestCase):
         assert syncSteps % time_step_nbr == 0 # perfect division
         startStep = int(syncSteps / time_step_nbr) + 1 # skip first coarsest step due to issue 400
 
-        def reshape_if(data, field): # could be a function on field patch data
-            real_shape = field.ghost_box.shape + field.primal_directions()
-            if (data.shape != real_shape).all():
-                return data.reshape(real_shape)
-            return data
-
-
         for step in range(startStep, syncSteps + 1):
             checkTime = datahier.format_timestamp(secondFinestTimeStep * step)
             self.assertIn(checkTime, datahier.times())
@@ -390,18 +386,12 @@ class AdvanceTestBase(unittest.TestCase):
                                     fine_pd  = finePatch.patch_datas[qty]
                                     coarseBox = boxm.coarsen(lvlOverlap, 2)
 
-                                    nGhosts = coarse_pd.layout.nbrGhostFor(qty)
-
                                     coarse_pdDataset = coarse_pd.dataset[:]
                                     fine_pdDataset = fine_pd.dataset[:]
 
                                     coarseOffset = coarseBox.lower - coarse_pd.layout.box.lower
-                                    dataBox_lower = coarseOffset + nGhosts
+                                    dataBox_lower = coarseOffset + coarse_pd.layout.nbrGhostFor(qty)
                                     dataBox = Box(dataBox_lower, dataBox_lower + coarseBox.shape - 1)
-
-                                    coarse_pdDataset = reshape_if(np.copy(coarse_pdDataset), coarse_pd)
-                                    fine_pdDataset = reshape_if(np.copy(fine_pdDataset), fine_pd)
-
                                     afterCoarse = np.copy(coarse_pdDataset)
 
                                     # change values that should be updated to make failure obvious

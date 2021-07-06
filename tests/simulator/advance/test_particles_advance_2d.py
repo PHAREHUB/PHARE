@@ -33,9 +33,9 @@ class AdvanceTest(AdvanceTestBase):
         self._test_overlapped_particledatas_have_identical_particles(
             ndim, interp_order, refinement_boxes, ppc=ppc, cells=40, largest_patch_size=20)
 
-
-    def test_L0_particle_number_conservation(self):
-        self._test_L0_particle_number_conservation(ndim, ppc=ppc)
+    @data(*interp_orders)
+    def test_L0_particle_number_conservation(self, interp):
+        self._test_L0_particle_number_conservation(ndim, interp, ppc=ppc)
 
 
 if __name__ == "__main__":

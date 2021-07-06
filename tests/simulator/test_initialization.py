@@ -11,7 +11,7 @@ from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
-from pyphare.core.box import Box, Box1D, Box2D, Box3D, nDBox
+from pyphare.core.box import nDBox
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
