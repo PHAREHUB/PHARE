@@ -10,6 +10,8 @@ from pyphare.core.box import Box
 import pyphare.core.box as boxm
 from pyphare.core import gridlayout
 from pyphare.core.gridlayout import directions
+from pyphare.core.phare_utilities import refinement_ratio
+from pyphare.pharesee.hierarchy import FieldData
 
 def exec_fn(xyz, fn):
     ndim = len(xyz)
@@ -34,7 +36,6 @@ def cos(xyz, L):
 
 
 functionList = [cos, sin]
-ratio = 2
 
 
 def dump(ndim, path, quantity):
@@ -44,6 +45,7 @@ def dump(ndim, path, quantity):
     coarseLayout = gridlayout.GridLayout(
         Box([0] * ndim, [39] * ndim), origin=origin, dl=[0.2] * ndim
     )
+
     fineLayout = gridlayout.GridLayout(
         Box([18] * ndim, [37] * ndim), origin=origin, dl=[0.1] * ndim
     )
@@ -66,7 +68,9 @@ def dump(ndim, path, quantity):
         coarse = function(coarseCoords, domainSize)
         afterCoarse = np.copy(coarse)
 
-        coarsen(quantity, coarseLayout, fineLayout, coarseBox, fine, afterCoarse)
+        coarseField = FieldData(coarseLayout, quantity, data=coarse)
+        fineField   = FieldData(fineLayout, quantity, data=fine)
+        coarsen(quantity, coarseField, fineField, coarseBox, fine, afterCoarse)
 
         if fn_idx == 0:
             fineData = np.copy(fine)
@@ -100,9 +104,10 @@ def main(path="./"):
 
 
 
-def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
+def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
+    coarseLayout = coarseField.layout
+    fineLayout = fineField.layout
     ndim = coarseLayout.box.ndim
-    ratio = 2
 
     nGhosts = coarseLayout.nbrGhostFor(qty)
     coarseStartIndex = coarseLayout.physicalStartIndices(qty)
@@ -116,7 +121,7 @@ def coarsen(qty, coarseLayout, fineLayout, coarseBox, fineData, coarseData):
         return np.arange(coarseBox.lower[dim], coarseBox.upper[dim] + 1)
 
     def fineLocal(coarse_index, dim):
-        return fineLayout.AMRIndexToLocal(dim, coarse_index * ratio)
+        return fineLayout.AMRIndexToLocal(dim, coarse_index * refinement_ratio)
 
     def coarseLocal(index, dim):
         return coarseLayout.AMRIndexToLocal(dim, index)

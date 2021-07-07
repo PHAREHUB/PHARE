@@ -4,6 +4,7 @@
 
 #include "amr/messengers/hybrid_messenger_info.h"
 
+#include "amr/data/field/field_variable_fill_pattern.h"
 #include "amr/data/field/coarsening/field_coarsen_operator.h"
 #include "amr/data/field/refine/field_refine_operator.h"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
@@ -21,6 +22,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+
 
 
 
@@ -46,6 +48,33 @@ namespace amr
 
     class ZVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
     {
+    };
+
+    class XFieldFillPattern : public FieldFillPattern
+    {
+    public:
+        XFieldFillPattern(std::optional<bool> overwrite_interior)
+            : FieldFillPattern{overwrite_interior}
+        {
+        }
+    };
+
+    class YFieldFillPattern : public FieldFillPattern
+    {
+    public:
+        YFieldFillPattern(std::optional<bool> overwrite_interior)
+            : FieldFillPattern{overwrite_interior}
+        {
+        }
+    };
+
+    class ZFieldFillPattern : public FieldFillPattern
+    {
+    public:
+        ZFieldFillPattern(std::optional<bool> overwrite_interior)
+            : FieldFillPattern{overwrite_interior}
+        {
+        }
     };
 
     struct Refiner
@@ -125,6 +154,9 @@ namespace amr
          */
         void add(std::shared_ptr<Schedule> schedule, int levelNumber)
         {
+            // for shared border node value sync
+            schedule->setDeterministicUnpackOrderingFlag(true);
+
             schedules_[levelNumber] = std::move(schedule);
         }
     };
@@ -160,11 +192,12 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XVariableFillPattern>();
+            = FieldFillPattern::make_shared<XFieldFillPattern>(refineOp);
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YVariableFillPattern>();
+            = FieldFillPattern::make_shared<YFieldFillPattern>(refineOp);
         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZVariableFillPattern>();
+            = FieldFillPattern::make_shared<ZFieldFillPattern>(refineOp);
+
         Communicator<Refiner> com;
 
         auto registerRefine

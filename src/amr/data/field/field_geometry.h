@@ -1,13 +1,69 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_H
 #define PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_H
 
-#include <SAMRAI/hier/BoxGeometry.h>
+#include <cassert>
 
 #include "core/data/grid/gridlayoutdefs.h"
 #include "core/utilities/types.h"
 #include "core/data/grid/gridlayout.h"
 #include "core/data/grid/gridlayout_impl.h"
+
 #include "field_overlap.h"
+
+#include <SAMRAI/hier/Box.h>
+#include <SAMRAI/hier/BoxGeometry.h>
+
+
+namespace PHARE::amr
+{
+class AFieldGeometry : public SAMRAI::hier::BoxGeometry
+{
+    auto get_unshared_interiorBox(SAMRAI::hier::Box const& box,
+                                  SAMRAI::hier::Box const& interiorBox)
+    {
+        if (patchBox.isSpatiallyEqual(interiorBox_))
+            return interiorBox_;
+
+        auto copy{interiorBox};
+
+        for (auto dir = PHARE::core::dirX; dir < dimension; ++dir)
+        {
+            assert(interiorBox.upper(dir) == patchBox.upper(dir)
+                   or interiorBox.upper(dir) == patchBox.upper(dir) + 1);
+
+            if (interiorBox.upper(dir) == patchBox.upper(dir) + 1)
+            {
+                copy.setLower(dir, copy.lower()(dir) + 1);
+                copy.setUpper(dir, copy.upper()(dir) - 1);
+            }
+        }
+        return copy;
+    }
+
+public:
+    virtual ~AFieldGeometry() {}
+    AFieldGeometry(std::size_t dimension_, SAMRAI::hier::Box const& box,
+                   SAMRAI::hier::Box const& ghostBox, SAMRAI::hier::Box const& interiorBox)
+        : dimension{dimension_}
+        , patchBox{box}
+        , ghostBox_{ghostBox}
+        , interiorBox_{interiorBox}
+        , unshared_interiorBox_{get_unshared_interiorBox(box, interiorBox)}
+    {
+    }
+
+    auto const& unshared_interiorBox() const { return unshared_interiorBox_; }
+
+    std::size_t const dimension;
+    SAMRAI::hier::Box const patchBox;
+
+protected:
+    SAMRAI::hier::Box const ghostBox_;
+    SAMRAI::hier::Box const interiorBox_;
+    SAMRAI::hier::Box const unshared_interiorBox_;
+};
+
+} // namespace PHARE::amr
 
 namespace PHARE
 {
@@ -17,7 +73,7 @@ namespace amr
     /**
      * @brief The FieldGeometry class
      */
-    class FieldGeometry : public SAMRAI::hier::BoxGeometry
+    class FieldGeometry : public AFieldGeometry
     {
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -27,8 +83,8 @@ namespace amr
          * with a temporary gridlayout
          */
         FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT layout, PhysicalQuantity qty)
-            : ghostBox_{toFieldBox(box, qty, layout)}
-            , interiorBox_{toFieldBox(box, qty, layout, false)}
+            : AFieldGeometry{GridLayoutT::dimension, box, toFieldBox(box, qty, layout),
+                             toFieldBox(box, qty, layout, false)}
             , layout_{std::move(layout)}
             , quantity_{qty}
         {
@@ -44,7 +100,7 @@ namespace amr
          * the destination, after that we have to tell how the sourceMask should be transformed
          * to intersect it with the destination box (for example: when using periodics boundary,
          * the mask will be shifted).
-         * Finaly we can also add some restrictions on the boxes for the destination.
+         * Finally we can also add some restrictions on the boxes for the destination.
          */
         std::shared_ptr<SAMRAI::hier::BoxOverlap> calculateOverlap(
             SAMRAI::hier::BoxGeometry const& destinationGeometry,
@@ -216,11 +272,8 @@ namespace amr
 
 
     private:
-        SAMRAI::hier::Box ghostBox_;
-        SAMRAI::hier::Box interiorBox_;
         GridLayoutT layout_;
         PhysicalQuantity quantity_;
-
 
 
         /*** \brief Compute destination box representing the intersection of two geometry
@@ -286,10 +339,10 @@ namespace amr
 
             SAMRAI::hier::Box const together(destinationBox * sourceBox * fillField);
 
-
             // if the interesection is not empty we either push it into the container
             // if we don't want to fill the interior we remove it from the intersection
             // which may add multiple boxes to the container.
+
             if (!together.empty())
             {
                 if (overwriteInterior)
@@ -330,13 +383,13 @@ namespace amr
                    bool const overwriteInterior, SAMRAI::hier::Transformation const& sourceOffset,
                    SAMRAI::hier::BoxContainer const& destinationRestrictBoxes) const
         {
-            SAMRAI::hier::BoxContainer destinationBox;
+            SAMRAI::hier::BoxContainer destinationBoxes;
 
-            destinationGeometry.computeDestinationBoxes_(destinationBox, sourceGeometry, sourceMask,
-                                                         fillBox, overwriteInterior, sourceOffset,
-                                                         destinationRestrictBoxes);
+            destinationGeometry.computeDestinationBoxes_(destinationBoxes, sourceGeometry,
+                                                         sourceMask, fillBox, overwriteInterior,
+                                                         sourceOffset, destinationRestrictBoxes);
 
-            return std::make_shared<FieldOverlap>(destinationBox, sourceOffset);
+            return std::make_shared<FieldOverlap>(destinationBoxes, sourceOffset);
         }
     };
 

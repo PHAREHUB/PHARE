@@ -14,6 +14,22 @@
 #include <string>
 
 
+namespace PHARE::amr
+{
+class AFieldRefineOperator
+{
+public:
+    AFieldRefineOperator(bool b)
+        : node_only{b}
+    {
+    }
+    virtual ~AFieldRefineOperator() {}
+
+    bool const node_only = false;
+};
+} // namespace PHARE::amr
+
+
 namespace PHARE
 {
 namespace amr
@@ -23,16 +39,17 @@ namespace amr
     using core::dirZ;
 
     template<typename GridLayoutT, typename FieldT>
-    class FieldRefineOperator : public SAMRAI::hier::RefineOperator
+    class FieldRefineOperator : public SAMRAI::hier::RefineOperator, public AFieldRefineOperator
     {
     public:
+        static constexpr std::size_t dimension = GridLayoutT::dimension;
         using GridLayoutImpl                   = typename GridLayoutT::implT;
         using PhysicalQuantity                 = typename FieldT::physical_quantity_type;
-        static constexpr std::size_t dimension = GridLayoutT::dimension;
         using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
 
-        FieldRefineOperator()
+        FieldRefineOperator(bool node_only = false)
             : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
+            , AFieldRefineOperator{node_only}
         {
         }
 
@@ -67,6 +84,8 @@ namespace amr
                     SAMRAI::hier::BoxOverlap const& destinationOverlap,
                     SAMRAI::hier::IntVector const& ratio) const override
         {
+            using FieldGeometry = typename FieldDataT::Geometry;
+
             auto const& destinationFieldOverlap
                 = dynamic_cast<FieldOverlap const&>(destinationOverlap);
 
@@ -85,11 +104,12 @@ namespace amr
 
             bool const withGhost{true};
 
-            auto destinationFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                destination.getBox(), qty, destinationLayout, withGhost);
+            auto destinationFieldBox = FieldGeometry::toFieldBox(destination.getBox(), qty,
+                                                                 destinationLayout, withGhost);
 
-            auto sourceFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                source.getBox(), qty, sourceLayout, withGhost);
+
+            auto sourceFieldBox
+                = FieldGeometry::toFieldBox(source.getBox(), qty, sourceLayout, withGhost);
 
 
 

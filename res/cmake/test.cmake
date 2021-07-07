@@ -56,7 +56,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   function(add_no_mpi_python3_test name file directory)
     if(NOT testMPI OR (testMPI AND forceSerialTests))
-      add_test(NAME py3_${name} COMMAND python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endif()
   endfunction(add_no_mpi_python3_test)
@@ -68,7 +68,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
-      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
 
@@ -76,6 +76,16 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
     endfunction(add_mpi_python3_test)
+
+    function(phare_mpi_python3_exec level N target file directory)
+      if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+        add_test(NAME py3_${target}_mpi_n_${N} COMMAND mpirun -n ${N} python3 -u ${file} WORKING_DIRECTORY ${directory})
+        set_exe_paths_(py3_${target}_mpi_n_${N})
+      endif()
+    endfunction(phare_mpi_python3_exec)
+    # use
+    #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
+
   else()
     function(add_phare_test binary directory)
       add_no_mpi_phare_test(${binary} ${directory})
@@ -88,6 +98,10 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     function(add_mpi_python3_test N name file directory)
       # do nothing
     endfunction(add_mpi_python3_test)
+
+    function(phare_mpi_python3_exec level N target file directory)
+      # do nothing
+    endfunction(phare_mpi_python3_exec)
   endif(testMPI)
 
 
@@ -120,12 +134,12 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   function(phare_python3_exec level target file directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
-      add_test(NAME ${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
-      set_exe_paths_(${target})
+      add_test(NAME py3_${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+      set_exe_paths_(py3_${target})
     endif()
   endfunction(phare_python3_exec)
   # use
-  #  phare_python3_exec(1 test_id lol.py ${CMAKE_CURRENT_BINARY_DIR})
+  #  phare_python3_exec(1 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
 
   set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIRS} ${PHARE_PROJECT_DIR})
 
@@ -185,6 +199,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/tdtagged)
   add_subdirectory(tests/functional/shock)
   add_subdirectory(tests/functional/conservation)
+  add_subdirectory(tests/functional/harris)
 
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)

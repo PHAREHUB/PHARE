@@ -40,6 +40,11 @@ public:
     auto& operator[](std::size_t i) const { return particles[i]; }
     auto& operator[](std::size_t i) { return particles[i]; }
 
+    bool operator==(ParticleArray<dim> const& that) const
+    {
+        return (this->particles == that.particles);
+    }
+
     auto begin() const { return particles.begin(); }
     auto begin() { return particles.begin(); }
 

@@ -8,7 +8,8 @@ Testing
 .idea
 *.png
 *.jpg
-data*
+data_out
 .sublime*
 compile_commands.json
 .clangd
+phare_outputs*

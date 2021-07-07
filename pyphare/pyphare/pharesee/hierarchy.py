@@ -80,8 +80,10 @@ class FieldData(PatchData):
         if overlap is not None:
             lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
             upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
-            assert box.ndim == 1 # this following line is only 1D
-            return self.dataset[lower[0]:upper[0] + 1]
+            if box.ndim == 1:
+                return self.dataset[lower[0] : upper[0] + 1]
+            if box.ndim == 2:
+                return self.dataset[lower[0]:upper[0] + 1 , lower[1] : upper[1] + 1]
         return np.array([])
 
 
@@ -103,8 +105,6 @@ class FieldData(PatchData):
         self.layout = layout
         self.field_name = field_name
         self.name = field_name
-        self.dx = layout.dl[0] # dropped in 2d_py_init PR - use dl[0]
-
         self.dl = np.asarray(layout.dl)
         self.ndim = layout.box.ndim
         self.ghosts_nbr = np.zeros(self.ndim, dtype=int)
@@ -174,7 +174,7 @@ class Patch:
     A patch represents a hyper-rectangular region of space
     """
 
-    def __init__(self, patch_datas):
+    def __init__(self, patch_datas, patch_id=""):
         """
         :param patch_datas: a list of PatchData objects
         these are assumed to "belong" to the Patch so to
@@ -186,8 +186,13 @@ class Patch:
         self.origin = pdata0.layout.origin
         self.dl = pdata0.layout.dl
         self.patch_datas = patch_datas
+        self.id = patch_id
 
 
+    def __str__(self):
+        return f"Patch: box( {self.box}), id({self.id})"
+    def __repr__(self):
+        return self.__str__()
 
 
 class PatchLevel:
@@ -801,7 +806,7 @@ def compute_hier_from(h, compute):
                 new_patch_datas[data["name"]] = pd
             if ilvl not in patches:
                 patches[ilvl] = []
-            patches[ilvl].append(Patch(new_patch_datas))
+            patches[ilvl].append(Patch(new_patch_datas, patch.id))
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
@@ -924,7 +929,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                     if ilvl not in patches:
                         patches[ilvl] = []
 
-                    patches[ilvl].append(Patch(patch_datas))
+                    patches[ilvl].append(Patch(patch_datas, h5_patch_grp.name.split("/")[-1]))
 
                     patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 

@@ -42,8 +42,8 @@ void assertParticlePyArraySizes(PyArrayTuple const& py_particles)
         return ar.request().shape[dimdex];
     };
 
-    auto const& n_iCell  = shape_nd(std::get<0>(py_particles));
-    auto const& n_delta  = shape_nd(std::get<1>(py_particles));
+    auto const& n_iCell  = ndSize(std::get<0>(py_particles).request());
+    auto const& n_delta  = ndSize(std::get<1>(py_particles).request());
     auto const& n_weight = shape_nd(std::get<2>(py_particles));
     auto const& n_charge = shape_nd(std::get<3>(py_particles));
 

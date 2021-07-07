@@ -2,6 +2,7 @@ from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 
 from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.core.phare_utilities import np_array_ify
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
 from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
@@ -11,27 +12,40 @@ from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
 from pyphare.core.gridlayout import yee_element_is_primal
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
-from pyphare.core.box import Box, Box1D
+from pyphare.core.box import Box
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
-
-
+from tests.diagnostic import all_timestamps
 
 @ddt
-class AdvanceTest(unittest.TestCase):
+class AdvanceTestBase(unittest.TestCase):
 
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
 
-    def getHierarchy(self, interp_order, refinement_boxes, qty, nbr_part_per_cell=100,
-                     diag_outputs="phare_outputs",
-                     smallest_patch_size=5, largest_patch_size=20,
-                     cells=120, time_step=0.001, model_init={},
-                     dl=0.1, extra_diag_options={}, time_step_nbr=1, timestamps=None):
 
+    def _density(*xyz):
+        from pyphare.pharein.global_vars import sim
+        hL = np.array(sim.simulation_domain()) / 2
+        _ = lambda i: -(xyz[i]-hL[i]) ** 2
+        return .3 + np.exp(sum([_(i) for i,v in enumerate(xyz)]))
+
+
+
+    def getHierarchy(self, interp_order, refinement_boxes, qty,
+                     diag_outputs, nbr_part_per_cell=100, density = _density,
+                     smallest_patch_size=None, largest_patch_size=20,
+                     cells=120, time_step=0.001, model_init={},
+                     dl=0.2, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1):
+        diag_outputs = f"phare_outputs/advance/{diag_outputs}"
         from pyphare.pharein import global_vars
         global_vars.sim = None
+
+        if smallest_patch_size is None:
+            from pyphare.pharein.simulation import check_patch_size
+            _, smallest_patch_size = check_patch_size(ndim, interp_order=interp_order, cells=cells)
+
         startMPI()
         extra_diag_options["mode"] = "overwrite"
         extra_diag_options["dir"] = diag_outputs
@@ -40,9 +54,9 @@ class AdvanceTest(unittest.TestCase):
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
             time_step=time_step,
-            boundary_types="periodic",
-            cells=cells,
-            dl=dl,
+            boundary_types=["periodic"] * ndim,
+            cells=np_array_ify(cells, ndim),
+            dl=np_array_ify(dl, ndim),
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
@@ -50,48 +64,56 @@ class AdvanceTest(unittest.TestCase):
             strict=True,
         )
 
-        def density(x):
-            return 1.
 
         def S(x,x0,l):
             return 0.5*(1+np.tanh((x-x0)/l))
 
-        def bx(x):
+        def bx(*xyz):
             return 1.
 
-        def by(x):
-            L = global_vars.sim.simulation_domain()[0]
-            v1=-1
-            v2=1.
-            return 0.
 
-        def bz(x):
-            return 0.0
+        def by(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def b2(x):
-            return bx(x)**2 + by(x)**2 + bz(x)**2
+        def bz(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def T(x):
-            K = 1
-            return 1/density(x)*(K - b2(x)*0.5)
+        def vx(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vx(x):
-            return 0.1
+        def vy(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vy(x):
-            return 0.1
+        def vz(*xyz):
+            from pyphare.pharein.global_vars import sim
+            L = sim.simulation_domain()
+            _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
+            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
 
-        def vz(x):
-            return 0.1
 
-        def vthx(x):
-            return T(x)
+        def vth(*xyz):
+            return 0.01 + np.zeros_like(xyz[0])
 
-        def vthy(x):
-            return T(x)
+        def vthx(*xyz):
+            return vth(*xyz)
 
-        def vthz(x):
-            return T(x)
+        def vthy(*xyz):
+            return vth(*xyz)
+
+        def vthz(*xyz):
+            return vth(*xyz)
 
 
         MaxwellianFluidModel(bx=bx, by=by, bz=bz,
@@ -100,12 +122,13 @@ class AdvanceTest(unittest.TestCase):
                                       "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
                                       "vthx": vthx, "vthy": vthy, "vthz": vthz,
                                       "nbr_part_per_cell": nbr_part_per_cell,
-                                      "init": model_init})
+                                      "init": model_init,
+                                      })
 
-        ElectronModel(closure="isothermal", Te=0.12)
+        ElectronModel(closure="isothermal", Te=0)#0.12)
 
         if timestamps is None:
-            timestamps = np.arange(0, global_vars.sim.final_time + global_vars.sim.time_step, global_vars.sim.time_step)
+            timestamps = all_timestamps(global_vars.sim)
 
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(
@@ -138,9 +161,9 @@ class AdvanceTest(unittest.TestCase):
         Simulator(global_vars.sim).run()
 
         eb_hier = None
-        if qty in ["e", "eb"]:
+        if qty in ["e", "eb", "fields"]:
             eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_E.h5", hier=eb_hier)
-        if qty in ["b", "eb"]:
+        if qty in ["b", "eb", "fields"]:
             eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_B.h5", hier=eb_hier)
         if qty in ["e", "b", "eb"]:
             return eb_hier
@@ -163,8 +186,8 @@ class AdvanceTest(unittest.TestCase):
         if is_particle_type:
             return particle_hier
 
-        if qty == "moments":
-            mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_density.h5")
+        if qty == "moments" or qty == "fields":
+            mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_density.h5", hier=eb_hier)
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_bulkVelocity.h5", hier=mom_hier)
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_density.h5", hier=mom_hier)
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_flux.h5", hier=mom_hier)
@@ -172,195 +195,75 @@ class AdvanceTest(unittest.TestCase):
 
 
 
-    def _test_overlaped_fields_are_equal(self, time_step, time_step_nbr, datahier):
-        check=0
-        for time_step_idx in range(time_step_nbr + 1):
-            coarsest_time =  time_step_idx * time_step
 
-            for ilvl, overlaps in hierarchy_overlaps(datahier, coarsest_time).items():
+    def base_test_overlaped_fields_are_equal(self, datahier, coarsest_time):
+        checks = 0
 
-                for overlap in overlaps:
+        for ilvl, overlaps in hierarchy_overlaps(datahier, coarsest_time).items():
+            for overlap in overlaps:
+                pd1, pd2 = overlap["pdatas"]
+                box      = overlap["box"]
+                offsets  = overlap["offset"]
 
-                    pd1, pd2 = overlap["pdatas"]
-                    box      = overlap["box"]
-                    offsets  = overlap["offset"]
+                self.assertEqual(pd1.quantity, pd2.quantity)
 
-                    self.assertEqual(pd1.quantity, pd2.quantity)
+                if pd1.quantity == 'field':
 
-                    if pd1.quantity == 'field':
-                        check+=1
+                    # we need to transform the AMR overlap box, which is thus
+                    # (because AMR) common to both pd1 and pd2 into local index
+                    # boxes that will allow to slice the data
 
-                        # we need to transform the AMR overlap box, which is thus
-                        # (because AMR) common to both pd1 and pd2 into local index
-                        # boxes that will allow to slice the data
+                    # the patchData ghost box that serves as a reference box
+                    # to transfrom AMR to local indexes first needs to be
+                    # shifted by the overlap offset associated to it
+                    # this is because the overlap box has been calculated from
+                    # the intersection of possibly shifted patch data ghost boxes
 
-                        # the patchData ghost box that serves as a reference box
-                        # to transfrom AMR to local indexes first needs to be
-                        # shifted by the overlap offset associated to it
-                        # this is because the overlap box has been calculated from
-                        # the intersection of possibly shifted patch data ghost boxes
+                    loc_b1 = boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0]))
+                    loc_b2 = boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1]))
 
-                        loc_b1 = boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0]))
-                        loc_b2 = boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1]))
+                    data1 = pd1.dataset
+                    data2 = pd2.dataset
 
-                        data1 = pd1.dataset
-                        data2 = pd2.dataset
-
+                    if box.ndim == 1:
                         slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1]
                         slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1]
 
-                        try:
-                            np.testing.assert_allclose(slice1, slice2, atol=1e-6)
-                        except AssertionError as e:
-                            print("error", coarsest_time, overlap)
-                            raise e
+                    if box.ndim == 2:
+                        slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1, loc_b1.lower[1]:loc_b1.upper[1] + 1]
+                        slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1, loc_b2.lower[1]:loc_b2.upper[1] + 1]
 
-        self.assertGreater(check, time_step_nbr)
-        self.assertEqual(check % time_step_nbr, 0)
+                    assert slice1.dtype == np.float64
+                    np.testing.assert_equal(slice1, slice2)
+                    checks += 1
 
-
-    @data(
-        {"L0": [Box1D(10, 19)]},
-        {"L0": [Box1D(8, 20)]},
-    )
-    def test_overlaped_fields_are_equal(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_overlaped_fields_are_equal_{self.ddt_test_id()}"
-        for interp_order in [1, 2, 3]:
-            datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
-            self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
-
-
-    @data(
-        {"L0": [Box1D(10, 19)]},
-        # {"L0": [Box2D(10, 19)]},
-        # {"L0": [Box3D(10, 19)]},
-    )
-    def test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts(self, refinement_boxes):
-        from pyphare.pharein.simulation import check_patch_size
-
-        dim = refinement_boxes["L0"][0].ndim
-
-        cells = [30] * dim
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts{self.ddt_test_id()}"
-        for interp_order in [1, 2, 3]:
-            largest_patch_size, smallest_patch_size = check_patch_size(dim, interp_order=interp_order, cells=cells)
-            datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
-                                      smallest_patch_size=smallest_patch_size, largest_patch_size=smallest_patch_size,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
-            self._test_overlaped_fields_are_equal(time_step, time_step_nbr, datahier)
+        return checks
 
 
 
+    def _test_overlaped_fields_are_equal(self, datahier, time_step_nbr, time_step):
+        if cpp.mpi_rank() > 0: return
 
-
-    def _test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, dim, interp_order, refinement_boxes):
-        print("test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles")
-        print("interporder : {}".format(interp_order))
-
-        time_step_nbr=3
-        time_step=0.001
-        diag_outputs=f"phare_patch_ghost_particle_are_clones_{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
-
+        checks = 0
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
+            checks += self.base_test_overlaped_fields_are_equal(datahier, coarsest_time)
 
-            overlaps = hierarchy_overlaps(datahier, coarsest_time)
-            for ilvl, lvl_overlaps in overlaps.items():
-                print("level {}".format(ilvl))
-                for overlap in lvl_overlaps:
-
-                    if ilvl != 0: #only root level tested here
-                        continue
-
-                    if "particles"  not in overlap["pdatas"][0].quantity :
-                        continue
-
-                    ref_pd, cmp_pd = overlap["pdatas"]
-
-                    box = overlap["box"]
-                    print("overlap box : {}, reference patchdata box : {}, ghostbox {},"
-                    " comp. patchdata box : {} ghostbox {}".format(box,ref_pd.box,ref_pd.ghost_box,cmp_pd.box, cmp_pd.ghost_box))
-                    offsets = overlap["offset"]
-
-                    # first let's shift the overlap box over the AMR
-                    # indices of the patchdata. The box has been created
-                    # by shifting the patchdata ghost box by 'offset' so here
-                    # the box is shifted by -offset to get over patchdata
-                    shift_refbox, shift_cmpbox = [boxm.shift(box, -off) for off in offsets]
-
-                    # the overlap box overlaps both ghost and domain cells
-                    # we need to extract the domain ones to later select domain
-                    # particles
-                    ovlped_refdom = ref_pd.box * shift_refbox
-                    ovlped_cmpdom = cmp_pd.box * shift_cmpbox
-
-                    # on lvl 0 patches are adjacent
-                    # therefore the overlap box must overlap the
-                    # patchData box. 1 cell in interporder1, 2 cells for higher
-                    assert(ovlped_cmpdom is not None)
-                    assert(ovlped_refdom is not None)
-
-                    refdomain = ref_pd.dataset.select(ovlped_refdom)
-                    cmpdomain = cmp_pd.dataset.select(ovlped_cmpdom)
-
-                    # now get the ghost cells of each patch data overlaped by
-                    # the overlap box. To do this we need to intersect the shifted
-                    # overlap box with the patchdata ghost box, and remove interior cells
-                    # note that in 1D we don't expect remove to return more than 1 box, hence [0]
-                    ovlped_refghost = boxm.remove(ref_pd.ghost_box * shift_refbox, ref_pd.box)[0]
-                    ovlped_cmpghost = boxm.remove(cmp_pd.ghost_box * shift_cmpbox, cmp_pd.box)[0]
-
-                    refghost  = ref_pd.dataset.select(ovlped_refghost)
-                    cmpghost  = cmp_pd.dataset.select(ovlped_cmpghost)
-
-                    print("ghost box {} has {} particles".format(ovlped_refghost, len(refghost.iCells)))
-                    print("ghost box {} has {} particles".format(ovlped_cmpghost, len(cmpghost.iCells)))
-
-                    # before comparing the particles we need to be sure particles of both patchdatas
-                    # are sorted in the same order. We do that by sorting by x position
-                    sort_refdomain_idx = np.argsort(refdomain.iCells + refdomain.deltas)
-                    sort_cmpdomain_idx = np.argsort(cmpdomain.iCells + cmpdomain.deltas)
-                    sort_refghost_idx = np.argsort(refghost.iCells + refghost.deltas)
-                    sort_cmpghost_idx = np.argsort(cmpghost.iCells + cmpghost.deltas)
-
-                    assert(sort_refdomain_idx.size != 0)
-                    assert(sort_cmpdomain_idx.size != 0)
-                    assert(sort_refdomain_idx.size != 0)
-                    assert(sort_cmpghost_idx.size != 0)
-
-                    np.testing.assert_allclose(refdomain.deltas[sort_refdomain_idx], cmpghost.deltas[sort_cmpghost_idx], atol=1e-12)
-                    np.testing.assert_allclose(cmpdomain.deltas[sort_cmpdomain_idx], refghost.deltas[sort_refghost_idx], atol=1e-12)
-
-
-    @data(
-      {"L0": [Box1D(10, 20)]},
-      {"L0": [Box1D(2, 12), Box1D(13, 25)]},
-    )
-    def test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        for interp_order in [1, 2, 3]:
-            self._test_patch_ghost_particle_are_clone_of_overlaped_patch_domain_particles(dim, interp_order=interp_order, refinement_boxes=refinement_boxes)
+        self.assertGreater(checks, time_step_nbr)
+        self.assertEqual(checks % time_step_nbr, 0)
 
 
 
-    def _test_overlapped_particledatas_have_identical_particles(self, dim, interp_order, refinement_boxes):
-        print("test_overlapped_particledatas_have_identical_particles")
-        print("interporder : {}".format(interp_order))
+
+    def _test_overlapped_particledatas_have_identical_particles(self, ndim, interp_order, refinement_boxes, ppc=100, **kwargs):
+        print("test_overlapped_particledatas_have_identical_particles, interporder : {}".format(interp_order))
         from copy import copy
 
         time_step_nbr=3
         time_step=0.001
-        diag_outputs=f"phare_overlapped_particledatas_have_identical_particles_{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs,
-                                      time_step=time_step, time_step_nbr=time_step_nbr)
+        diag_outputs=f"phare_overlapped_particledatas_have_identical_particles/{ndim}/{interp_order}/{self.ddt_test_id()}"
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", diag_outputs=diag_outputs, ndim=ndim,
+                                      time_step=time_step, time_step_nbr=time_step_nbr, nbr_part_per_cell=ppc, **kwargs)
 
         for time_step_idx in range(time_step_nbr + 1):
             coarsest_time =  time_step_idx * time_step
@@ -371,7 +274,6 @@ class AdvanceTest(unittest.TestCase):
 
                 print("testing level {}".format(ilvl))
                 for overlap in overlaps[ilvl]:
-
                     pd1, pd2 = overlap["pdatas"]
                     box      = overlap["box"]
                     offsets  = overlap["offset"]
@@ -397,50 +299,31 @@ class AdvanceTest(unittest.TestCase):
                         self.assertEqual(part1, part2)
 
 
-
-
-
-
-    def test_L0_particle_number_conservation(self):
-        nbr_part_per_cell=100
+    def _test_L0_particle_number_conservation(self, ndim, interp_order, ppc=100):
         cells=120
         time_step_nbr=10
         time_step=0.001
 
-        # to2d
-        for ndim in [1]:
-            n_particles = nbr_part_per_cell * (cells ** ndim)
-            for interp_order in [1, 2, 3]:
-                diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
-                datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
-                                          time_step=time_step, time_step_nbr=time_step_nbr,
-                                          nbr_part_per_cell=nbr_part_per_cell, cells=cells)
-                for time_step_idx in range(time_step_nbr + 1):
-                    coarsest_time =  time_step_idx * time_step
-                    n_particles_at_t = 0
-                    for patch in datahier.level(0, coarsest_time).patches:
-                        n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
-                    self.assertEqual(n_particles, n_particles_at_t)
+        n_particles = ppc * (cells ** ndim)
+
+        diag_outputs=f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
+
+        datahier = self.getHierarchy(interp_order, None, "particles", diag_outputs=diag_outputs,
+                                  time_step=time_step, time_step_nbr=time_step_nbr,
+                                  nbr_part_per_cell=ppc, cells=cells, ndim=ndim)
+
+        for time_step_idx in range(time_step_nbr + 1):
+            coarsest_time =  time_step_idx * time_step
+            n_particles_at_t = 0
+            for patch in datahier.level(0, coarsest_time).patches:
+                n_particles_at_t += patch.patch_datas["protons_particles"].dataset[patch.box].size()
+            self.assertEqual(n_particles, n_particles_at_t)
 
 
 
 
 
-
-
-    @data(
-      {"L0": [Box1D(10, 20)]},
-      {"L0": [Box1D(2, 12), Box1D(13, 25)]},
-    )
-    def test_overlapped_particledatas_have_identical_particles(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        for interp_order in [1, 2, 3]:
-            self._test_overlapped_particledatas_have_identical_particles(dim, interp_order, refinement_boxes)
-
-
-
-
-    def _test_field_coarsening_via_subcycles(self, dim, interp_order, refinement_boxes):
+    def _test_field_coarsening_via_subcycles(self, dim, interp_order, refinement_boxes, **kwargs):
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(dim, interp_order))
 
         from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
@@ -448,12 +331,12 @@ class AdvanceTest(unittest.TestCase):
 
         time_step_nbr=3
 
-        diag_outputs=f"phare_outputs_subcycle_coarsening_{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", cells=30,
+        diag_outputs=f"subcycle_coarsening/{dim}/{interp_order}/{self.ddt_test_id()}"
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", cells=60,
                                       diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
-                                      time_step_nbr=time_step_nbr, smallest_patch_size=5,
-                                      largest_patch_size=30)
+                                      time_step_nbr=time_step_nbr,
+                                      largest_patch_size=30, ndim=dim, **kwargs)
 
         lvl_steps = global_vars.sim.level_time_steps
         print("LEVELSTEPS === ", lvl_steps)
@@ -503,33 +386,24 @@ class AdvanceTest(unittest.TestCase):
                                     fine_pd  = finePatch.patch_datas[qty]
                                     coarseBox = boxm.coarsen(lvlOverlap, 2)
 
-                                    nGhosts = coarse_pd.layout.nbrGhostFor(qty)
-
                                     coarse_pdDataset = coarse_pd.dataset[:]
                                     fine_pdDataset = fine_pd.dataset[:]
 
                                     coarseOffset = coarseBox.lower - coarse_pd.layout.box.lower
-                                    dataBox_lower = coarseOffset + nGhosts
+                                    dataBox_lower = coarseOffset + coarse_pd.layout.nbrGhostFor(qty)
                                     dataBox = Box(dataBox_lower, dataBox_lower + coarseBox.shape - 1)
-
                                     afterCoarse = np.copy(coarse_pdDataset)
-                                    afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = 0
 
-                                    coarsen(qty, coarse_pd.layout, fine_pd.layout, coarseBox, fine_pdDataset, afterCoarse)
-                                    np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-6)
+                                    # change values that should be updated to make failure obvious
+                                    if dim == 1:
+                                        afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = -144123
+                                    if dim == 2:
+                                        afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1,
+                                                    dataBox.lower[1] : dataBox.upper[1] + 1] = -144123
 
+                                    coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
+                                    np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-16, rtol=0)
 
-    @data(
-       ({"L0": {"B0": Box1D(10, 19)}}),
-       ({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
-       ({"L0": {"B0": Box1D(6, 23)}}),
-       ({"L0": {"B0": Box1D( 2, 12), "B1": Box1D(13, 25)}}),
-       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(15, 19)}}),
-       ({"L0": {"B0": Box1D( 5, 20)}, "L1": {"B0": Box1D(12, 38)}, "L2": {"B0": Box1D(30, 52)} }),
-    )
-    def test_field_coarsening_via_subcycles(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].ndim
-        self._test_field_coarsening_via_subcycles(dim, interp_order=1, refinement_boxes=refinement_boxes)
 
 
 
@@ -545,7 +419,6 @@ class AdvanceTest(unittest.TestCase):
 
           The simulations are no longer comparable after the first advance, so this test cannot work beyond that.
         """
-
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(ndim, interp_order))
 
         from tests.amr.data.field.refine.test_refine_field import refine_time_interpolate
@@ -555,19 +428,19 @@ class AdvanceTest(unittest.TestCase):
         rando = random.randint(0, 1e10)
 
         def _getHier(diag_dir, boxes=[]):
-            return self.getHierarchy(interp_order, boxes, "eb", cells=30,
-                time_step_nbr=1, smallest_patch_size=5, largest_patch_size=30,
+            return self.getHierarchy(interp_order, boxes, "eb", cells=60,
+                time_step_nbr=1, largest_patch_size=15,
                 diag_outputs=diag_dir, extra_diag_options={"fine_dump_lvl_max": 10}, time_step=0.001,
-                model_init={"seed": rando}
+                model_init={"seed": rando}, ndim=ndim
             )
 
         def assert_time_in_hier(*ts):
             for t in ts:
                 self.assertIn(L0L1_datahier.format_timestamp(t), L0L1_datahier.times())
 
-        L0_datahier = _getHier(f"phare_lvl_ghost_interpolation_L0_diags_{self.ddt_test_id()}")
+        L0_datahier = _getHier(f"phare_lvl_ghost_interpolation_L0_diags/{ndim}/{interp_order}/{self.ddt_test_id()}")
         L0L1_datahier = _getHier(
-          f"phare_lvl_ghost_interpolation_L0L1_diags_{self.ddt_test_id()}", refinement_boxes
+          f"phare_lvl_ghost_interpolation_L0L1_diags/{ndim}/{interp_order}/{self.ddt_test_id()}", refinement_boxes
         )
 
         lvl_steps = global_vars.sim.level_time_steps
@@ -586,6 +459,7 @@ class AdvanceTest(unittest.TestCase):
             fine_subcycle_times += [fine_subcycle_time]
 
         quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
+
         interpolated_fields = refine_time_interpolate(
           L0_datahier, quantities, coarse_ilvl, coarsest_time_before, coarsest_time_after, fine_subcycle_times
         )
@@ -596,75 +470,45 @@ class AdvanceTest(unittest.TestCase):
             for qty in quantities:
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
-                    for fine_level_ghost_box in fine_level_ghost_box_data["boxes"]:
+
+                    for fine_level_ghost_box_info in fine_level_ghost_box_data["boxes"]:
 
                         # trim the border level ghost nodes from the primal fields to ignore them in comparison checks
-                        fine_level_ghost_boxes = fine_level_ghost_box - boxm.grow(fine_subcycle_pd.box, fine_subcycle_pd.primal_directions())
-                        self.assertEqual(len(fine_level_ghost_boxes), 1) # should not be possibly > 1
-                        self.assertEqual(fine_level_ghost_boxes[0].shape, fine_level_ghost_box.shape - fine_subcycle_pd.primal_directions())
-                        fine_level_ghost_box = fine_level_ghost_boxes[0]
+                        fine_level_ghost_boxes = fine_level_ghost_box_info - boxm.grow(fine_subcycle_pd.box, fine_subcycle_pd.primal_directions())
 
-                        upper_dims = fine_level_ghost_box.lower > fine_subcycle_pd.box.upper
-                        for refinedInterpolatedField in interpolated_fields[qty][fine_subcycle_time]:
-                            lvlOverlap = refinedInterpolatedField.box * fine_level_ghost_box
-                            if lvlOverlap is not None:
+                        if ndim == 1:
+                            self.assertEqual(len(fine_level_ghost_boxes), 1) # should not be possibly > 1 in 1d
+                            np.testing.assert_equal(fine_level_ghost_boxes[0].shape, fine_level_ghost_box_info.shape - fine_subcycle_pd.primal_directions())
 
-                                fine_ghostbox_data = fine_subcycle_pd[fine_level_ghost_box]
-                                refinedInterpGhostBox_data = refinedInterpolatedField[fine_level_ghost_box]
+                        for fine_level_ghost_box in fine_level_ghost_boxes:
 
-                                fine_ds = fine_subcycle_pd.dataset
-                                if fine_level_ghost_box.ndim == 1: # verify selecting start/end of L1 dataset from ghost box
-                                    if upper_dims[0]:
-                                        assert all(fine_ghostbox_data == fine_ds[-fine_ghostbox_data.shape[0]:])
-                                    else:
-                                        assert all(fine_ghostbox_data == fine_ds[:fine_ghostbox_data.shape[0]])
+                            upper_dims = fine_level_ghost_box.lower > fine_subcycle_pd.box.upper
+                            for refinedInterpolatedField in interpolated_fields[qty][fine_subcycle_time]:
 
-                                assert refinedInterpGhostBox_data.shape == fine_subcycle_pd.ghosts_nbr
-                                assert fine_ghostbox_data.shape == fine_subcycle_pd.ghosts_nbr
-                                np.testing.assert_allclose(fine_ghostbox_data, refinedInterpGhostBox_data, atol=1e-7)
-                                checks += 1
+                                # level_ghost_boxes() includes periodic shifts, which we want to ignore here I think
+                                is_periodic_shifted = refinedInterpolatedField.box * fine_subcycle_pd.box is None
+                                lvlOverlap = refinedInterpolatedField.ghost_box * fine_level_ghost_box
+                                if lvlOverlap is not None and not is_periodic_shifted:
+
+                                    fine_ghostbox_data = fine_subcycle_pd[fine_level_ghost_box]
+                                    refinedInterpGhostBox_data = refinedInterpolatedField[fine_level_ghost_box]
+
+                                    fine_ds = fine_subcycle_pd.dataset
+                                    if ndim == 1: # verify selecting start/end of L1 dataset from ghost box
+                                        if upper_dims[0]:
+                                            assert all(fine_ghostbox_data == fine_ds[-fine_ghostbox_data.shape[0]:])
+                                        else:
+                                            assert all(fine_ghostbox_data == fine_ds[:fine_ghostbox_data.shape[0]])
+                                        assert refinedInterpGhostBox_data.shape == fine_subcycle_pd.ghosts_nbr
+                                        assert fine_ghostbox_data.shape == fine_subcycle_pd.ghosts_nbr
+
+
+                                    np.testing.assert_allclose(fine_ghostbox_data, refinedInterpGhostBox_data, atol=1e-15, rtol=0)
+                                    checks += 1
 
         self.assertGreater(checks, len(refinement_boxes["L0"]) * len(quantities))
 
 
-
-    @data( # only supports a hierarchy with 2 levels
-       ({"L0": [Box1D(5, 9)]}),
-       ({"L0": [Box1D(5, 24)]}),
-       ({"L0": [Box1D(5, 9), Box1D(20, 24)]}),
-    )
-    def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, refinement_boxes):
-        dim = refinement_boxes["L0"][0].ndim
-        for interp in [1, 2, 3]:
-            self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(dim, interp, refinement_boxes)
-
-
-    @data(
-       ({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
-    )
-    def test_hierarchy_timestamp_cadence(self, refinement_boxes):
-        dim = refinement_boxes["L0"]["B0"].ndim
-
-        time_step     = .001
-        # time_step_nbr chosen to force diagnostics dumping double imprecision cadence calculations accuracy testing
-        time_step_nbr = 101
-        final_time    = time_step * time_step_nbr
-
-        for trailing in [0, 1]: # 1 = skip init dumps
-            for i in [2, 3]:
-                timestamps = np.arange(0, final_time, time_step*i)[trailing:]
-
-                diag_outputs=f"phare_outputs_hierarchy_timestamp_cadence_{self.ddt_test_id()}_{i}"
-                hier = self.getHierarchy(interp_order=1, refinement_boxes=refinement_boxes, qty="eb", cells=30,
-                                              diag_outputs=diag_outputs, time_step=time_step,
-                                              time_step_nbr=time_step_nbr, smallest_patch_size=5,
-                                              largest_patch_size=30, timestamps=timestamps)
-
-                time_hier_keys = list(hier.time_hier.keys())
-                self.assertEqual(len(time_hier_keys), len(timestamps))
-
-                for i, timestamp in enumerate(time_hier_keys):
-                    self.assertEqual(hier.format_timestamp(timestamps[i]), timestamp)
 
 
 if __name__ == "__main__":

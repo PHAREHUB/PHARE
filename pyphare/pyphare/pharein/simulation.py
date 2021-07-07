@@ -8,7 +8,7 @@ from ..core.box import Box
 
 
 def supported_dimensions():
-    return [1]
+    return [1, 2]
 
 
 def compute_dimension(cells):
@@ -317,9 +317,11 @@ def check_patch_size(ndim, **kwargs):
         return max(grid.nbrGhosts(kwargs["interp_order"], x) for x in ['primal','dual'])
 
     max_ghosts = get_max_ghosts()
-    small_invalid_patch_size = phare_utilities.np_array_ify(max_ghosts - 1, ndim)
+    small_invalid_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim)
     largest_patch_size =  kwargs.get("largest_patch_size", None)
-    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim)
+
+    # to prevent primal ghost overlaps of non adjacent patches, we need smallest_patch_size+=1
+    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim) + 1
     if "smallest_patch_size" in kwargs and kwargs["smallest_patch_size"] is not None:
         smallest_patch_size = phare_utilities.np_array_ify(kwargs["smallest_patch_size"], ndim)
 
@@ -623,3 +625,14 @@ class Simulation(object):
     def set_electrons(self, electrons):
         self.electrons = electrons
 # ------------------------------------------------------------------------------
+
+
+def serialize(sim):
+    import dill, codecs
+    return codecs.encode(dill.dumps(sim), 'hex')
+
+
+def deserialize(hex):
+    import dill, codecs
+    return dill.loads(codecs.decode(hex, 'hex'))
+

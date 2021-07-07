@@ -140,9 +140,14 @@ namespace amr
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
+            magneticSharedNodes_.registerLevel(hierarchy, level);
+            electricSharedNodes_.registerLevel(hierarchy, level);
+            currentSharedNodes_.registerLevel(hierarchy, level);
+
             magneticGhosts_.registerLevel(hierarchy, level);
             electricGhosts_.registerLevel(hierarchy, level);
             currentGhosts_.registerLevel(hierarchy, level);
+
             patchGhostParticles_.registerLevel(hierarchy, level);
 
             // root level is not initialized with a schedule using coarser level data
@@ -269,6 +274,7 @@ namespace amr
         void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillMagneticGhosts");
+            magneticSharedNodes_.fill(B, levelNumber, fillTime);
             magneticGhosts_.fill(B, levelNumber, fillTime);
         }
 
@@ -278,6 +284,7 @@ namespace amr
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillElectricGhosts");
+            electricSharedNodes_.fill(E, levelNumber, fillTime);
             electricGhosts_.fill(E, levelNumber, fillTime);
         }
 
@@ -287,6 +294,7 @@ namespace amr
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillCurrentGhosts");
+            currentSharedNodes_.fill(J, levelNumber, fillTime);
             currentGhosts_.fill(J, levelNumber, fillTime);
         }
 
@@ -505,6 +513,9 @@ namespace amr
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
+            magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
+            electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
+
             magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
             patchGhostParticles_.fill(levelNumber, initDataTime);
@@ -533,6 +544,10 @@ namespace amr
         {
             auto levelNumber  = level.getLevelNumber();
             auto& hybridModel = static_cast<HybridModel&>(model);
+
+            magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, time);
+
             magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, time);
         }
@@ -543,13 +558,18 @@ namespace amr
             auto const& Eold = EM_old_.E;
             auto const& Bold = EM_old_.B;
 
-
+            fillRefiners_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
+                          electricSharedNodes_, fieldNodeRefineOp_);
             fillRefiners_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
                           electricGhosts_);
 
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
+                          magneticSharedNodes_, fieldNodeRefineOp_);
+            fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                           magneticGhosts_);
 
+            fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
+                          currentSharedNodes_, fieldNodeRefineOp_);
             fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
                           currentGhosts_);
         }
@@ -627,13 +647,23 @@ namespace amr
         void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
                            VecFieldDescriptor const& modelVec,
                            VecFieldDescriptor const& oldModelVec,
-                           RefinerPool<RefinerType::GhostField>& refiners)
+                           RefinerPool<RefinerType::GhostField>& refiners,
+                           std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp)
         {
             for (auto const& ghostVec : ghostVecs)
             {
-                refiners.add(ghostVec, modelVec, oldModelVec, resourcesManager_, fieldRefineOp_,
+                refiners.add(ghostVec, modelVec, oldModelVec, resourcesManager_, refineOp,
                              fieldTimeOp_, ghostVec.vecName);
             }
+        }
+
+
+        void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
+                           VecFieldDescriptor const& modelVec,
+                           VecFieldDescriptor const& oldModelVec,
+                           RefinerPool<RefinerType::GhostField>& refiners)
+        {
+            fillRefiners_(ghostVecs, modelVec, oldModelVec, refiners, fieldRefineOp_);
         }
 
 
@@ -704,18 +734,21 @@ namespace amr
 
 
         //! store communicators for magnetic fields that need ghosts to be filled
+        RefinerPool<RefinerType::GhostField> magneticSharedNodes_;
         RefinerPool<RefinerType::GhostField> magneticGhosts_;
 
         //! store communicators for magnetic fields that need to be initialized
         RefinerPool<RefinerType::InitField> magneticInit_;
 
         //! store refiners for electric fields that need ghosts to be filled
+        RefinerPool<RefinerType::GhostField> electricSharedNodes_;
         RefinerPool<RefinerType::GhostField> electricGhosts_;
 
         //! store communicators for electric fields that need to be initializes
         RefinerPool<RefinerType::InitField> electricInit_;
 
 
+        RefinerPool<RefinerType::GhostField> currentSharedNodes_;
         RefinerPool<RefinerType::GhostField> currentGhosts_;
 
 
@@ -740,6 +773,10 @@ namespace amr
 
         SynchronizerPool<dimension> magnetoSynchronizers_;
 
+
+        // see field_variable_fill_pattern.h for explanation about this "node_only" flag
+        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldNodeRefineOp_{
+            std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>(/*node_only*/ true)};
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
             std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()};

@@ -5,9 +5,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  BUILD_TYPE: Debug
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -78,16 +75,20 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache
+      run: |
+        cmake $GITHUB_WORKSPACE \
+              -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
+              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 -O2"
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE
+      run: cmake --build .
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
       env:
         CTEST_OUTPUT_ON_FAILURE: 1
       shell: bash
-      run: ctest -C $BUILD_TYPE
+      run: ctest

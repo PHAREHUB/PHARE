@@ -6,7 +6,9 @@ def timestamps_with_step(sim, dump_step):
     return dump_step * np.arange(nbr_dump_step)
 
 def all_timestamps(sim):
-    return timestamps_with_step(sim, sim.time_step)
+    import numpy as np
+    nbr_dump_step = int(sim.final_time / sim.time_step) + 1
+    return sim.time_step * np.arange(nbr_dump_step)
 
 
 def dump_all_diags(pops=[], flush_every=100):

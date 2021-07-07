@@ -15,6 +15,11 @@ from pyphare.core.box import Box, Box2D
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}
 
+def dup(dic):
+    dic = NoOverwriteDict(dic)
+    dic.update(diags.copy())
+    return dic
+
 
 @ddt
 class SimulatorValidation(unittest.TestCase):
@@ -24,15 +29,9 @@ class SimulatorValidation(unittest.TestCase):
         self.simulator = None
 
 
-    def dup(dic):
-        dic = NoOverwriteDict(dic)
-        dic.update(diags.copy())
-        return dic
-
     def tearDown(self):
         if self.simulator is not None:
             self.simulator.reset()
-
 
 
     def _do_dim(self, dim, input, valid: bool = False):

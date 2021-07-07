@@ -40,6 +40,7 @@ namespace amr
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+        using Geometry                            = FieldGeometry<GridLayoutT, PhysicalQuantity>;
 
         /*** \brief Construct a FieldData from information associated to a patch
          *
@@ -100,13 +101,12 @@ namespace amr
             // = true). note that we could have stored the ghost box of the field data at
             // creation
 
-            SAMRAI::hier::Box sourceBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                fieldSource.getBox(), quantity_, fieldSource.gridLayout);
+            SAMRAI::hier::Box sourceBox
+                = Geometry::toFieldBox(fieldSource.getBox(), quantity_, fieldSource.gridLayout);
 
 
             SAMRAI::hier::Box destinationBox
-                = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                    this->getBox(), quantity_, this->gridLayout);
+                = Geometry::toFieldBox(this->getBox(), quantity_, this->gridLayout);
 
             // Given the two boxes in correct space we just have to intersect them
             SAMRAI::hier::Box intersectionBox = sourceBox * destinationBox;
@@ -214,8 +214,7 @@ namespace amr
                 {
                     auto const& source = field;
                     SAMRAI::hier::Box sourceBox
-                        = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                            getBox(), quantity_, gridLayout);
+                        = Geometry::toFieldBox(getBox(), quantity_, gridLayout);
 
                     SAMRAI::hier::Box packBox{box};
 
@@ -273,8 +272,7 @@ namespace amr
 
                     auto& source = field;
                     SAMRAI::hier::Box destination
-                        = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                            getBox(), quantity_, gridLayout);
+                        = Geometry::toFieldBox(getBox(), quantity_, gridLayout);
 
 
                     SAMRAI::hier::Box packBox{box * destination};
@@ -373,13 +371,11 @@ namespace amr
                     for (auto const& box : boxList)
                     {
                         SAMRAI::hier::Box sourceBox
-                            = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                                source.getBox(), quantity_, source.gridLayout);
+                            = Geometry::toFieldBox(source.getBox(), quantity_, source.gridLayout);
 
 
                         SAMRAI::hier::Box destinationBox
-                            = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                                this->getBox(), quantity_, this->gridLayout);
+                            = Geometry::toFieldBox(this->getBox(), quantity_, this->gridLayout);
 
 
                         SAMRAI::hier::Box transformedSource{sourceBox};
