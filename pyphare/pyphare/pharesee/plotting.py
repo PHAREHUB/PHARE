@@ -8,6 +8,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
 
+
+
+
 def dist_plot(particles, **kwargs):
     """
     plot the phase space of given particles
@@ -145,6 +148,8 @@ def connect_bbox(bbox1, bbox2,
     return c1, c2, bbox_patch1, bbox_patch2, p
 
 
+
+
 def zoom_effect(ax1, ax2, xmin, xmax, **kwargs):
     """
     Connect *ax1* and *ax2*. The *xmin*-to-*xmax* range in both axes will
@@ -184,3 +189,117 @@ def zoom_effect(ax1, ax2, xmin, xmax, **kwargs):
     ax2.add_patch(p)
 
     return c1, c2, bbox_patch1, bbox_patch2, p
+
+
+
+
+def finest_field_plot(run_path, qty, **kwargs):
+    """
+    plot the given field
+    from a given flat_field, the kind of interpolator (nearest or linear)
+    and the grid where it is plotted are defined in the kwargs
+    * run_path : the path of the run
+    * qty : the one to plot
+
+    kwargs:
+    * ax : the handle for the fig axes
+    * time : time (that should be in the time_stamps of the run)
+    * interp : the type of interpolation for the interpolator
+    * draw_style : steps-mid ou default... only for 1d
+    * title : (str) title of the plot
+    * xlabel, ylabel
+    * xlim, ylim
+    * filename : (str) if exists, save plot to figure under that name
+
+    return value : fig,ax
+    """
+
+
+    import os
+    from pyphare.pharesee.hierarchy import get_times_from_h5
+    from pyphare.pharesee.run import Run
+
+    r = Run(run_path)
+
+    time = kwargs.get("time", None)
+    dim = r.GetDl('finest', time).shape[0]
+    interp = kwargs.get("interp", "nearest")
+    domain = r.GetDomainSize()
+
+    if qty in ['Bx', 'By', 'Bz']:
+        file = os.path.join(run_path, "EM_B.h5")
+        if time is None:
+            times = get_times_from_h5(file)
+            time = times[0]
+        interpolator, finest_coords = r.GetB(time, merged=True,\
+                                             interp=interp)[qty]
+    elif qty in ['Ex', 'Ey', 'Ez']:
+        file = os.path.join(run_path, "EM_E.h5")
+        if time is None:
+            times = get_times_from_h5(file)
+            time = times[0]
+        interpolator, finest_coords = r.GetE(time, merged=True,\
+                                             interp=interp)[qty]
+    elif qty in ['Vx', 'Vy', 'Vz']:
+        file = os.path.join(run_path, "ions_bulkVelocity.h5")
+        if time is None:
+            times = get_times_from_h5(file)
+            time = times[0]
+        interpolator, finest_coords = r.GetVi(time, merged=True,\
+                                              interp=interp)[qty]
+    elif qty is 'rho':
+        file = os.path.join(run_path, "ions_density.h5")
+        if time is None:
+            times = get_times_from_h5(file)
+            time = times[0]
+        interpolator, finest_coords = r.GetNi(time, merged=True,\
+                                              interp=interp)[qty]
+    else:
+        # ___ TODO : should also include the files for a given population
+        raise ValueError("qty should be in ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']")
+
+    if "ax" not in kwargs:
+        fig, ax = plt.subplots()
+    else:
+        ax = kwargs["ax"]
+        fig = ax.figure
+
+    if dim == 1:
+        drawstyle = kwargs.get("drawstyle", "steps-mid")
+
+        ax.plot(finest_coords[0], interpolator(finest_coords[0]),\
+                drawstyle=drawstyle)
+    elif dim == 2:
+        X, Y = np.meshgrid(finest_coords[0], finest_coords[1])
+        DATA = interpolator(X, Y)
+
+        vmin = kwargs.get("vmin", np.nanmin(DATA))
+        vmax = kwargs.get("vmax", np.nanmax(DATA))
+
+        fig.imshow(DATA,
+                   aspect = 'equal',
+                   interpolation = interp,
+                   cmap = 'viridis',
+                   origin = 'lower',
+                   extent = [0, domain[0], 0, domain[1]],
+                   vmin = vmin,
+                   vmax = vmax)
+        plt.colorbar()
+    else:
+        raise ValueError("finest_field_plot not yet ready for 3d")
+
+    ax.set_title(kwargs.get("title", ""))
+
+    ax.set_xlabel(kwargs.get("xlabel", "$x c / \omega_p$"))
+    ax.set_ylabel(kwargs.get("ylabel", "$y c / \omega_p$"))
+
+    if "xlim" in kwargs:
+        ax.set_xlim(kwargs["xlim"])
+    if "ylim" in kwargs:
+        ax.set_ylim(kwargs["ylim"])
+
+    if "filename" in kwargs:
+        fig.savefig(kwargs["filename"])
+
+    return fig, ax
+

@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from ..core.phare_utilities import np_array_ify, is_scalar, listify, refinement_ratio
 
 
+
+
 class PatchData:
     """
     base class for FieldData and ParticleData
@@ -86,10 +88,8 @@ class FieldData(PatchData):
                 return self.dataset[lower[0]:upper[0] + 1 , lower[1] : upper[1] + 1]
         return np.array([])
 
-
     def __getitem__(self, box):
         return self.select(box)
-
 
     def __init__(self, layout, field_name, data, **kwargs):
         """
@@ -142,6 +142,7 @@ class FieldData(PatchData):
 
 
 
+
 class ParticleData(PatchData):
     """
     Concrete type of PatchData representing particles in a region
@@ -167,6 +168,8 @@ class ParticleData(PatchData):
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
         assert (self.box.lower == self.ghost_box.lower + self.ghosts_nbr).all()
+
+
 
 
 class Patch:
@@ -212,34 +215,43 @@ class PatchLevel:
 
 
 
+
 def are_adjacent(lower, upper, atol=1e-6):
     return np.abs(upper[0]-lower[-1]) < atol
 
 
-def overlap_mask(x, level, qty):
+
+
+
+def overlap_mask_1d(x, dl, level, qty):
     """
-    returns a mask for x where x is overlaped by
-    the qty patch datas on the specified level
+    return the mask for x where x is overlaped by the qty patch datas
+    on the given level, assuming that this level is finer than the one of x
+
+    :param x: 1d array containing the [x] position
+    :param dl: list containing the grid steps where x is defined
+    :param level: a given level associated to a hierarchy
+    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
     """
 
-    is_overlaped = x != x #lgtm [py/comparison-of-identical-expressions]
-
-    # the strategy is to exclude from this patch data
-    # all nodes and values that are overlaped by next finer values
-    # the is_overlaped array will serve as a mask
+    is_overlaped = np.ones(x.shape[0], dtype=bool)*False
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr[0]
-        finex = pdata.x[ghosts_nbr:-ghosts_nbr]
-        fine_dx = finex[1]-finex[0]
-        local_dx = x[1]-x[0]
-        if fine_dx < local_dx:
-            # the fine patch min and max are widened
-            # a bit so we include border nodes as overlaped
-            xmin, xmax = finex.min() - fine_dx/2, finex.max() + fine_dx/2
-            overlaped_idx = np.where( (x > xmin) & (x < xmax))[0]
+        ghosts_nbr = pdata.ghosts_nbr
+
+        fine_x = pdata.x[ghosts_nbr[0]-1:-ghosts_nbr[0]+1]
+
+        fine_dl = pdata.dl
+        local_dl = dl
+
+        if (fine_dl[0] < local_dl[0]):
+            xmin, xmax = fine_x.min(), fine_x.max()
+
+            overlaped_idx = np.where( (x > xmin) & (x < xmax) )[0]
+
             is_overlaped[overlaped_idx] = True
+ 
         else:
             raise ValueError("level needs to have finer grid resolution than that of x")
 
@@ -248,67 +260,172 @@ def overlap_mask(x, level, qty):
 
 
 
-
-
-def finest_field(hierarchy, qty, time=None):
-    """returns a non-uniform contiguous (value,grid)
-       associated to the given hierarchy
-       the quantity "qty" must be a field
+def overlap_mask_2d(x, y, dl, level, qty):
     """
+    return the mask for x & y where ix & y are overlaped by the qty patch datas
+    on the given level, assuming that this level is finer than the one of x & y
+    important note : this mask is flatten
+
+    :param x: 1d array containing the [x] position
+    :param y: 1d array containing the [y] position
+    :param dl: list containing the grid steps where x and y are defined
+    :param level: a given level associated to a hierarchy
+    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
+    """
+
+    is_overlaped = np.ones([x.shape[0]*y.shape[0]], dtype=bool)*False
+
+    for patch in level.patches:
+        pdata = patch.patch_datas[qty]
+        ghosts_nbr = pdata.ghosts_nbr
+
+        fine_x = pdata.x[ghosts_nbr[0]-1:-ghosts_nbr[0]+1]
+        fine_y = pdata.y[ghosts_nbr[1]-1:-ghosts_nbr[1]+1]
+
+        fine_dl = pdata.dl
+        local_dl = dl
+
+        if (fine_dl[0] < local_dl[0]) and (fine_dl[1] < local_dl[1]):
+            xmin, xmax = fine_x.min(), fine_x.max()
+            ymin, ymax = fine_y.min(), fine_y.max()
+
+            xv, yv = np.meshgrid(x, y, indexing='ij')
+            xf = xv.flatten()
+            yf = yv.flatten()
+
+            overlaped_idx = np.where( (xf > xmin) & (xf < xmax) &\
+                                      (yf > ymin) & (yf < ymax) )[0]
+
+            is_overlaped[overlaped_idx] = True
+
+        else:
+            raise ValueError("level needs to have finer grid resolution than that of x or y")
+
+    return is_overlaped
+
+
+
+
+def flat_finest_field(hierarchy, qty, time=None):
+    """
+    returns 2 flattened arrays containing the data (with shape [Npoints])
+    and the coordinates (with shape [Npoints, Ndim]) for the given
+    hierarchy of qty.
+
+    :param hierarchy: the hierarchy where qty is defined
+    :param qty: the field (eg "Bx") that we want
+    """
+
+    dim = hierarchy.ndim
+
+    if dim == 1:
+        return flat_finest_field_1d(hierarchy, qty, time)
+    elif dim == 2:
+        return flat_finest_field_2d(hierarchy, qty, time)
+    elif dim == 3:
+        return flat_finest_field_3d(hierarchy, qty, time)
+    else:
+        raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
+
+
+
+
+def flat_finest_field_1d(hierarchy, qty, time=None):
+
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
-        sorted_patches = sorted(lvl[ilvl].patches,
-                                key= lambda p:p.box.lower[0])
+        patches = lvl[ilvl].patches
 
-        for ip, patch in enumerate(sorted_patches):
+        for ip, patch in enumerate(patches):
 
             pdata = patch.patch_datas[qty]
-            ghosts_nbr = pdata.ghosts_nbr[0]
-            patch_values = pdata.dataset[ghosts_nbr:-ghosts_nbr]
-            x = pdata.x[ghosts_nbr:-ghosts_nbr]
+
+            # all but 1 ghost nodes are removed in order to limit
+            # the overlapping, but to keep enough point to avoid
+            # any extrapolation for the interpolator
+            needed_points = pdata.ghosts_nbr-1
+
+            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
+            data = pdata.dataset[needed_points[0]:-needed_points[0]]
+            x = pdata.x[needed_points[0]:-needed_points[0]]
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
-                    final = patch_values
+                    final_data = data
                     final_x = x
-                    last_x = x
                 else:
-                    if are_adjacent(last_x, x):
-                        first_node = 1
-                    else:
-                        first_node = 0
-
-                    final = np.concatenate((final, patch_values[first_node:]))
-                    final_x = np.concatenate((final_x, x[first_node:]))
-                    last_x = x[first_node:]
+                    final_data = np.concatenate((final_data, data))
+                    final_x = np.concatenate((final_x, x))
 
             else:
-                is_overlaped = overlap_mask(x, hierarchy.level(ilvl+1, time), qty)
-                unique_values = patch_values[~is_overlaped]
-                unique_x = x[~is_overlaped]
+                is_overlaped = overlap_mask_1d(x, pdata.dl,\
+                               hierarchy.level(ilvl+1, time), qty)
 
-                if unique_x.size:
-                    if are_adjacent(last_x, unique_x):
-                        first_node = 1
-                    else:
-                        first_node = 0
+                finest_data = data[~is_overlaped]
+                finest_x = x[~is_overlaped]
 
-                    last_x = unique_x[first_node:]
+                final_data = np.concatenate((final_data, finest_data))
+                final_x = np.concatenate((final_x, finest_x))
 
-                    tmp_x = np.concatenate((final_x, unique_x[first_node:]))
-                    final_x = np.sort(tmp_x)
+    return final_data, final_x
 
-                    # ok now we need to insert unique_values in
-                    # final. unique_values should be inserted in final
-                    # in the same order unique_x should be in final_x
-                    # i.e. with the indexing that sorts tmp_x
 
-                    order = np.argsort(tmp_x)
-                    tmp = np.concatenate((final, unique_values[first_node:-1]))
-                    final = np.concatenate((final, unique_values[first_node:]))[order]
 
-    return final, final_x
+
+def flat_finest_field_2d(hierarchy, qty, time=None):
+
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+        patches = lvl[ilvl].patches
+
+        for ip, patch in enumerate(patches):
+
+            pdata = patch.patch_datas[qty]
+
+            # all but 1 ghost nodes are removed in order to limit
+            # the overlapping, but to keep enough point to avoid
+            # any extrapolation for the interpolator
+            needed_points = pdata.ghosts_nbr-1
+
+            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
+            data = pdata.dataset[needed_points[0]:-needed_points[0],\
+                                 needed_points[1]:-needed_points[1]]
+            x = pdata.x[needed_points[0]:-needed_points[0]]
+            y = pdata.y[needed_points[1]:-needed_points[1]]
+
+            xv, yv = np.meshgrid(x, y, indexing='ij')
+
+            data_f = data.flatten()
+            xv_f = xv.flatten()
+            yv_f = yv.flatten()
+
+            if ilvl == hierarchy.finest_level(time):
+                if ip == 0:
+                    final_data = data_f
+                    tmp_x = xv_f
+                    tmp_y = yv_f
+                else:
+                    final_data = np.concatenate((final_data, data_f))
+                    tmp_x = np.concatenate((tmp_x, xv_f))
+                    tmp_y = np.concatenate((tmp_y, yv_f))
+
+            else:
+                is_overlaped = overlap_mask_2d(x, y, pdata.dl,\
+                               hierarchy.level(ilvl+1, time), qty)
+
+                finest_data = data_f[~is_overlaped]
+                finest_x = xv_f[~is_overlaped]
+                finest_y = yv_f[~is_overlaped]
+
+                final_data = np.concatenate((final_data, finest_data))
+                tmp_x = np.concatenate((tmp_x, finest_x))
+                tmp_y = np.concatenate((tmp_y, finest_y))
+
+    final_xy = np.stack((tmp_x, tmp_y), axis=1)
+
+    return final_data, final_xy
 
 
 
@@ -371,6 +488,9 @@ def finest_part_data(hierarchy, time=None):
                         particles[popname].add(parts)
     return particles
 
+
+
+
 class PatchHierarchy:
     """is a collection of patch levels """
 
@@ -397,12 +517,10 @@ class PatchHierarchy:
             time  = self._default_time()
         return max(list(self.levels(time=time).keys()))
 
-
     def levels(self, time=None):
         if time is None:
             time = self._default_time()
         return self.time_hier[self.format_timestamp(time)]
-
 
     def level(self, level_number, time=None):
         return self.levels(time)[level_number]
@@ -442,18 +560,15 @@ class PatchHierarchy:
         assert (level_number >= 0)
         return boxm.refine(self.domain_box, self.refinement_ratio ** level_number)
 
-
     def format_timestamp(self, timestamp):
         if isinstance(timestamp, str):
             return timestamp
         return "{:.10f}".format(timestamp)
 
-
     def level_domain_box(self, level_number):
         if level_number == 0:
             return self.domain_box
         return self.refined_domain_box(level_number)
-
 
     def __str__(self):
         s = "Hierarchy: \n"
@@ -471,7 +586,6 @@ class PatchHierarchy:
     def times(self):
         return np.sort(np.asarray(list(self.time_hier.keys())))
 
-
     def plot_patches(self, save=False):
         fig, ax = plt.subplots(figsize=(10, 3))
         for ilvl, lvl in self.levels(0.).items():
@@ -487,12 +601,9 @@ class PatchHierarchy:
         if save:
             fig.savefig("hierarchy.png")
 
-
     def box_to_Rectangle(self, box):
         from matplotlib.patches import Rectangle
         return Rectangle(box.lower, *box.shape)
-
-
 
     def plot_2d_patches(self, ilvl, collections, **kwargs):
         if isinstance(collections, list) and all([isinstance(el, Box) for el in collections]):
@@ -532,8 +643,6 @@ class PatchHierarchy:
         ax.grid(which='both')
 
         return fig
-
-
 
     def plot(self, **kwargs):
         """
@@ -580,7 +689,6 @@ class PatchHierarchy:
 
         if "filename" in kwargs:
             fig.savefig(kwargs["filename"])
-
 
     def dist_plot(self, **kwargs):
         """
@@ -632,7 +740,6 @@ class PatchHierarchy:
                 final[pop] = kwargs["select"](particles)
 
         return final, dp(final, **kwargs)
-
 
 
 
@@ -704,12 +811,9 @@ def amr_grid(hierarchy, time):
 
 
 
+
 def is_root_lvl(patch_level):
     return patch_level.level_number == 0
-
-
-
-
 
 
 
@@ -729,11 +833,16 @@ field_qties = {"EM_B_x": "Bx",
                "density": "rho"}
 
 
+
+
 particle_files_patterns = ("domain", "patchGhost", "levelGhost")
+
+
 
 
 def is_particle_file(filename):
     return any([pattern in filename for pattern in particle_files_patterns])
+
 
 
 
@@ -746,6 +855,8 @@ def particle_dataset_name(basename):
     dataset_name = popname + "_" + part_type
 
     return dataset_name
+
+
 
 
 def is_pop_fluid_file(basename):
@@ -762,20 +873,29 @@ def make_layout(h5_patch_grp, cell_width, interp_order):
 
 
 
+
 def create_from_all_times(time, hier):
     return time is None and hier is None
+
+
 
 
 def create_from_one_time(time, hier):
     return time is not None and hier is None
 
 
+
+
 def load_all_times(time, hier):
     return time is None and hier is not None
 
 
+
+
 def load_one_time(time, hier):
     return time is not None and hier is not None
+
+
 
 
 def compute_hier_from(h, compute):
@@ -817,6 +937,8 @@ def compute_hier_from(h, compute):
 
 def pop_name(basename):
     return basename.strip(".h5").split("_")[-2]
+
+
 
 
 def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
@@ -874,12 +996,17 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
 
 
+
 def patch_has_datasets(h5_patch_grp):
     return len(h5_patch_grp.keys())>0
 
 
 
+
 h5_time_grp_key = "t"
+
+
+
 
 def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     import h5py
@@ -1014,6 +1141,8 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         return hier
 
 
+
+
 def quantidic(ilvl, wrangler):
     pl = wrangler.getPatchLevel(ilvl)
 
@@ -1034,6 +1163,7 @@ def quantidic(ilvl, wrangler):
 
 
 
+
 def isFieldQty(qty):
     return qty in ("density",
                    "bulkVelocity_x",
@@ -1046,6 +1176,7 @@ def isFieldQty(qty):
                    "EM_E_y",
                    "EM_E_z",
                    "flux_x", "flux_y", "flux_z")
+
 
 
 
@@ -1162,11 +1293,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
 
 
 
-
-
-
-
-
 def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=None, hier=None):
     """
     this function reads an HDF5 PHARE file and returns a PatchHierarchy from
@@ -1189,6 +1315,7 @@ def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=N
         return hierarchy_from_sim(simulator, qty, pop=pop)
 
     raise ValueError("can't make hierarchy")
+
 
 
 
@@ -1219,9 +1346,14 @@ def merge_particles(hierarchy):
                 del pdatas[domain_pdata[0]]
 
 
+
+
 def h5_filename_from(diagInfo):
     # diagInfo.quantity starts with a / , hence   [1:]
     return (diagInfo.quantity + ".h5").replace('/', '_')[1:]
+
+
+
 
 def get_times_from_h5(filepath):
     import h5py
@@ -1229,3 +1361,4 @@ def get_times_from_h5(filepath):
     times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
     f.close()
     return times
+
