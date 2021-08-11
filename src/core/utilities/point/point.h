@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "core/utilities/meta/meta_utilities.h"
+#include "core/def.h"
 
 namespace PHARE
 {
@@ -37,6 +38,7 @@ namespace core
         static constexpr std::size_t dimension = dim;
         using type                             = Type;
 
+
         template<typename... Indexes>
         constexpr Point(Indexes... index)
             : r{{index...}}
@@ -63,9 +65,9 @@ namespace core
 
         constexpr Point() { core::fill(Type{0}, r); }
 
-        type& operator[](std::size_t i) { return r[i]; }
+        type& operator[](std::size_t i) _PHARE_FN_SIG_ { return r[i]; }
 
-        type const& operator[](std::size_t i) const { return r[i]; }
+        type const& operator[](std::size_t i) const _PHARE_FN_SIG_ { return r[i]; }
 
 
         bool operator==(Point const& p) const
@@ -131,14 +133,18 @@ namespace core
         auto end() { return r.end(); }
         auto end() const { return r.end(); }
 
+        auto const& operator()() const { return r; }
 
     private:
         std::array<Type, dim> r{};
     };
 
-    template<typename... Indexes>
+    template<typename... Indexes, // block constructor from use if not int/float/etc
+             typename
+             = typename std::enable_if<(true && ... && std::is_arithmetic_v<Indexes>), void>::type>
     Point(Indexes... indexes)
-        ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+        -> Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+
 
 
 

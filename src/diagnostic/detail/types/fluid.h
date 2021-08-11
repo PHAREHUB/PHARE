@@ -22,13 +22,13 @@ class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
 {
 public:
     using Super = H5TypeWriter<H5Writer>;
-    using Super::h5Writer_;
+    using Super::checkCreateFileFor_;
     using Super::fileData_;
+    using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
-    using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename H5Writer::GridLayout;
     using FloatType  = typename H5Writer::FloatType;

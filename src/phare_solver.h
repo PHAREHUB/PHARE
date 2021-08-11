@@ -7,6 +7,7 @@
 #include "amr/solvers/solver.h"
 #include "amr/solvers/solver_mhd.h"
 #include "amr/solvers/solver_ppc.h"
+
 #include "amr/level_initializer/level_initializer.h"
 #include "amr/level_initializer/level_initializer_factory.h"
 #include "amr/multiphysics_integrator.h"
@@ -14,9 +15,14 @@
 #include "amr/physical_models/mhd_model.h"
 #include "amr/physical_models/physical_model.h"
 
+#if defined(PHARE_WITH_GPU)
+#include "amr/solvers/gpu/solver_ppc.h"
+#endif
+
 namespace PHARE::solver
 {
-template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_>
+template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_,
+         bool offload = false>
 struct PHARE_Types
 {
     static auto constexpr dimension     = dimension_;
@@ -24,7 +30,7 @@ struct PHARE_Types
     static auto constexpr nbRefinedPart = nbRefinedPart_;
 
     // core deps
-    using core_types   = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using core_types   = PHARE::core::PHARE_Types<dimension, interp_order, offload>;
     using VecField_t   = typename core_types::VecField_t;
     using Electromag_t = typename core_types::Electromag_t;
     using Ions_t       = typename core_types::Ions_t;
@@ -35,8 +41,17 @@ struct PHARE_Types
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
     using HybridModel_t  = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t,
                                                      Electrons_t, PHARE::amr::SAMRAI_Types>;
-    using MHDModel_t  = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
-    using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+    using MHDModel_t = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
+
+
+    using CPU_SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+#if defined(PHARE_WITH_GPU)
+    using GPU_SolverPPC_t = PHARE::solver::gpu::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+    using SolverPPC_t = std::conditional_t<core_types::offload, GPU_SolverPPC_t, CPU_SolverPPC_t>;
+#else
+    using SolverPPC_t = CPU_SolverPPC_t;
+#endif
+
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;
     using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
 

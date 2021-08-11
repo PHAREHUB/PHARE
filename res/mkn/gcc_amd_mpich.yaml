@@ -1,0 +1,29 @@
+
+
+# local:
+#   repo: /mkn/r
+#   mod-repo: /mkn/m
+
+# remote:
+#   repo: git@github.com:mkn/
+#   mod-repo: git@github.com:mkn-mod/
+
+env: |
+  MKN_LIB_LINK_LIB=1
+
+
+compiler:
+  mask:
+    g++:
+      mpicxx
+
+file:
+  - type: c:S
+    archiver: ar -cr
+    compiler: gcc
+    linker: gcc
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler: ccache mpicxx -cxx=g++-11 -std=c++17 -fPIC -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -foffload="-lm " -lm
+    linker: mpicxx -cxx=g++-11
+

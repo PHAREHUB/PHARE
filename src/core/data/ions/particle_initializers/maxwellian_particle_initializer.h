@@ -57,8 +57,7 @@ public:
 
 
     /**
-     * @brief load pacore
-} // namespace PHARErticles in a ParticleArray in a domain defined by the given layout
+     * @brief load particles in a ParticleArray in a domain defined by the given layout
      */
     void loadParticles(ParticleArray& particles, GridLayout const& layout) const override;
 
@@ -144,16 +143,6 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     };
 
 
-    auto deltas = [](auto& pos, auto& gen) -> std::array<double, dimension> {
-        if constexpr (dimension == 1)
-            return {pos(gen)};
-        if constexpr (dimension == 2)
-            return {pos(gen), pos(gen)};
-        if constexpr (dimension == 3)
-            return {pos(gen), pos(gen), pos(gen)};
-    };
-
-
     // in the following two calls,
     // primal indexes are given here because that's what cellCenteredCoordinates takes
 
@@ -197,9 +186,10 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(Particle{cellWeight, particleCharge_,
-                                            AMRCellIndex.template toArray<int>(),
-                                            deltas(deltaDistrib, randGen), particleVelocity});
+            particles.emplace_back(
+                Particle{cellWeight, particleCharge_, AMRCellIndex.template toArray<int>(),
+                         core::ConstArrayFrom<dimension>([&] { return deltaDistrib(randGen); }),
+                         particleVelocity});
         }
     }
 }

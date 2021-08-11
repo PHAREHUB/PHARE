@@ -2,6 +2,11 @@
 // Philip Deegan comments: IWYU may work on this file, but it takes forever so I never found out.
 //   headers were included manually
 
+#include <cassert>
+#define KASSERT_REPLACE_ASSERT 1
+#include "kul/assert.hpp"
+
+
 #include <vector>
 #include <cstddef>
 
@@ -82,7 +87,7 @@ void declareSimulator(PyClass&& sim)
         .def("dump", &Simulator::dump, py::arg("timestamp"), py::arg("timestep"));
 }
 
-template<typename _dim, typename _interp, typename _nbRefinedPart>
+template<typename _dim, typename _interp, typename _nbRefinedPart, bool offload = false>
 void declare(py::module& m)
 {
     constexpr auto dim           = _dim{}();
@@ -92,8 +97,10 @@ void declare(py::module& m)
 
     std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
                               + std::to_string(nbRefinedPart);
+    if (offload)
+        type_string += "_" + std::to_string(offload);
 
-    using Sim        = Simulator<dim, interp, nbRefinedPart>;
+    using Sim        = Simulator<dim, interp, nbRefinedPart, offload>;
     std::string name = "Simulator" + type_string;
     declareSimulator<Sim>(
         py::class_<Sim, std::shared_ptr<Sim>>(m, name.c_str())
@@ -106,54 +113,57 @@ void declare(py::module& m)
 
     name = "make_simulator" + type_string;
     m.def(name.c_str(), [](std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-        return std::shared_ptr<Sim>{std::move(makeSimulator<dim, interp, nbRefinedPart>(hier))};
+        return std::shared_ptr<Sim>{std::move(makeSimulator<Sim>(hier))};
     });
 
+    if (!offload)
+    {
+        using DW = DataWrangler<dim, interp, nbRefinedPart>;
+        name     = "DataWrangler" + type_string;
+        py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
+            .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
+            .def(py::init<std::shared_ptr<ISimulator> const&,
+                          std::shared_ptr<amr::Hierarchy> const&>())
+            .def("sync_merge", &DW::sync_merge)
+            .def("getPatchLevel", &DW::getPatchLevel)
+            .def("getNumberOfLevels", &DW::getNumberOfLevels);
 
-    using DW = DataWrangler<dim, interp, nbRefinedPart>;
-    name     = "DataWrangler" + type_string;
-    py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
-        .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def("sync_merge", &DW::sync_merge)
-        .def("getPatchLevel", &DW::getPatchLevel)
-        .def("getNumberOfLevels", &DW::getNumberOfLevels);
+        using PL = PatchLevel<dim, interp, nbRefinedPart>;
+        name     = "PatchLevel_" + type_string;
 
-    using PL = PatchLevel<dim, interp, nbRefinedPart>;
-    name     = "PatchLevel_" + type_string;
+        py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
+            .def("getEM", &PL::getEM)
+            .def("getE", &PL::getE)
+            .def("getB", &PL::getB)
+            .def("getBx", &PL::getBx)
+            .def("getBy", &PL::getBy)
+            .def("getBz", &PL::getBz)
+            .def("getEx", &PL::getEx)
+            .def("getEy", &PL::getEy)
+            .def("getEz", &PL::getEz)
+            .def("getVix", &PL::getVix)
+            .def("getViy", &PL::getViy)
+            .def("getViz", &PL::getViz)
+            .def("getDensity", &PL::getDensity)
+            .def("getBulkVelocity", &PL::getBulkVelocity)
+            .def("getPopDensities", &PL::getPopDensities)
+            .def("getPopFluxes", &PL::getPopFlux)
+            .def("getFx", &PL::getFx)
+            .def("getFy", &PL::getFy)
+            .def("getFz", &PL::getFz)
+            .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
 
-    py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
-        .def("getEM", &PL::getEM)
-        .def("getE", &PL::getE)
-        .def("getB", &PL::getB)
-        .def("getBx", &PL::getBx)
-        .def("getBy", &PL::getBy)
-        .def("getBz", &PL::getBz)
-        .def("getEx", &PL::getEx)
-        .def("getEy", &PL::getEy)
-        .def("getEz", &PL::getEz)
-        .def("getVix", &PL::getVix)
-        .def("getViy", &PL::getViy)
-        .def("getViz", &PL::getViz)
-        .def("getDensity", &PL::getDensity)
-        .def("getBulkVelocity", &PL::getBulkVelocity)
-        .def("getPopDensities", &PL::getPopDensities)
-        .def("getPopFluxes", &PL::getPopFlux)
-        .def("getFx", &PL::getFx)
-        .def("getFy", &PL::getFy)
-        .def("getFz", &PL::getFz)
-        .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
+        using _Splitter
+            = PHARE::amr::Splitter<_dim, _interp, core::RefinedParticlesConst<nbRefinedPart>>;
+        name = "Splitter" + type_string;
+        py::class_<_Splitter, std::shared_ptr<_Splitter>>(m, name.c_str())
+            .def(py::init<>())
+            .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
+            .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
 
-    using _Splitter
-        = PHARE::amr::Splitter<_dim, _interp, core::RefinedParticlesConst<nbRefinedPart>>;
-    name = "Splitter" + type_string;
-    py::class_<_Splitter, std::shared_ptr<_Splitter>>(m, name.c_str())
-        .def(py::init<>())
-        .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
-        .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
-
-    name = "split_pyarray_particles" + type_string;
-    m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
+        name = "split_pyarray_particles" + type_string;
+        m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
+    }
 }
 
 
@@ -201,10 +211,6 @@ PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
             .def("dump", &ISimulator::dump, py::arg("timestamp"), py::arg("timestep")));
 
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
-    m.def("make_simulator", [](std::shared_ptr<PHARE::amr::Hierarchy>& hier) {
-        return std::shared_ptr<ISimulator>{std::move(PHARE::getSimulator(hier))};
-    });
-
     m.def("mpi_size", []() { return core::mpi::size(); });
     m.def("mpi_rank", []() { return core::mpi::rank(); });
 
@@ -214,15 +220,14 @@ PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
 
     core::apply(core::possibleSimulators(), [&](auto const& simType) { declare(m, simType); });
 
+    {
+        using namespace PHARE::core;
+        declare<DimConst<1>, InterpConst<1>, std::integral_constant<std::size_t, 2>, true>(m);
+    }
+
     declarePatchData<std::vector<double>, 1>(m, "PatchDataVectorDouble_1D");
     declarePatchData<std::vector<double>, 2>(m, "PatchDataVectorDouble_2D");
     declarePatchData<std::vector<double>, 3>(m, "PatchDataVectorDouble_3D");
-
-    py::class_<core::Span<double>, std::shared_ptr<core::Span<double>>>(m, "Span");
-    py::class_<PyArrayWrapper<double>, std::shared_ptr<PyArrayWrapper<double>>, core::Span<double>>(
-        m, "PyWrapper");
-
-    m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
 
     m.def("phare_deps", []() {
         std::unordered_map<std::string, std::string> versions{{"pybind", pybind_version()},

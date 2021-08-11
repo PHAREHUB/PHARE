@@ -26,7 +26,8 @@
 
 namespace PHARE::amr
 {
-template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_>
+template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_,
+         bool offload = false>
 struct PHARE_Types
 {
     static auto constexpr dimension     = dimension_;
@@ -39,7 +40,7 @@ struct PHARE_Types
                                           PHARE::core::InterpConst<interp_order>,
                                           PHARE::core::RefinedParticlesConst<nbRefinedPart>>;
 
-    using core_types = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using core_types = PHARE::core::PHARE_Types<dimension, interp_order, offload>;
 
     using RefinementParams
         = PHARE::amr::RefinementParams<typename core_types::ParticleArray_t, Splitter>;

@@ -3,7 +3,6 @@
 
 namespace PHARE::amr
 {
-
 template<typename HybridModel>
 class HybridTaggerStrategy
 {
@@ -18,6 +17,6 @@ template<typename HybridModel>
 HybridTaggerStrategy<HybridModel>::~HybridTaggerStrategy()
 {
 }
-}
+} // namespace PHARE::amr
 
 #endif // HYBRID_TAGGER_STRATEGY_H

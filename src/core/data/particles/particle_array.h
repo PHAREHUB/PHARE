@@ -26,6 +26,11 @@ public:
     {
     }
 
+    ParticleArray(ParticleArray const& copy)
+        : particles(copy.particles)
+    {
+    }
+
     ParticleArray(std::size_t size, Particle_t&& particle)
         : particles(size, particle)
     {
@@ -57,8 +62,14 @@ public:
         particles.insert(position, first, last);
     }
 
+    auto data() { return particles.data(); }
+    auto data() const { return particles.data(); }
+
     auto back() { return particles.back(); }
+    auto back() const { return particles.back(); }
+
     auto front() { return particles.front(); }
+    auto front() const { return particles.front(); }
 
     iterator erase(iterator position) { return particles.erase(position); }
     iterator erase(iterator first, iterator last) { return particles.erase(first, last); }
@@ -71,7 +82,7 @@ public:
 
     void swap(ParticleArray<dim>& that) { std::swap(this->particles, that.particles); }
 
-private:
+    // private:
     Vector particles;
 };
 

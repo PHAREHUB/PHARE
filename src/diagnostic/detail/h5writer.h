@@ -18,6 +18,7 @@
 #include "core/utilities/meta/meta_utilities.h"
 
 
+
 #if !defined(PHARE_DIAG_DOUBLES)
 #error // PHARE_DIAG_DOUBLES not defined
 #endif
@@ -296,7 +297,7 @@ namespace
             return size == 0;
     }
 
-}
+} // namespace
 
 template<typename ModelView>
 template<typename Type, typename Size>
@@ -305,11 +306,16 @@ void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path, S
     auto mpi_size = core::mpi::size();
     auto sizes    = core::mpi::collect(dataSetSize, mpi_size);
     auto paths    = core::mpi::collect(path, mpi_size);
+
     for (int i = 0; i < mpi_size; i++)
     {
         if (is_zero(sizes[i]))
             continue;
+
         createGroupsToDataSet(h5file, paths[i]);
+
+        assert(paths[i].back() != '/');
+
         h5file.createDataSet<Type>(paths[i], HighFive::DataSpace(sizes[i]));
     }
 }
@@ -324,31 +330,43 @@ void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path, S
  * sizes. Recommended to use similar sized paths, if possible. key is always assumed to the be
  * the same
  */
+namespace
+{
+    // openacc compiler has issues with the lambda version
+    template<typename H5Node, typename T>
+    void _doAttribute(H5Node&& node, std::string const& key, core::Span<T, int> const& value)
+    {
+        node.template createAttribute<T>(key, HighFive::DataSpace(value.size()))
+            .write(value.data());
+    }
+
+    template<typename H5Node, typename T>
+    void _doAttribute(H5Node&& node, std::string const& key, T const& value)
+    {
+        node.template createAttribute<T>(key, HighFive::DataSpace::From(value)).write(value);
+    }
+
+    template<typename T>
+    auto _values(std::vector<T> const& data, int mpi_size)
+    {
+        return core::mpi::collect_raw(data, mpi_size);
+    }
+
+    template<typename T>
+    auto _values(T const& data, int mpi_size)
+    {
+        return core::mpi::collect(data, mpi_size);
+    }
+} // namespace
+
 template<typename ModelView>
 template<typename Data>
 void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5file, std::string path, std::string key,
                                               Data const& data)
 {
-    constexpr bool data_is_vector = core::is_std_vector_v<Data>;
-
-    auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
-        if constexpr (data_is_vector)
-            node.template createAttribute<typename Data::value_type>(
-                    _key, HighFive::DataSpace(value.size()))
-                .write(value.data());
-        else
-            node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
-                .write(value);
-    };
-
     int mpi_size = core::mpi::size();
-    auto values  = [&]() {
-        if constexpr (data_is_vector)
-            return core::mpi::collect_raw(data, mpi_size);
-        else
-            return core::mpi::collect(data, mpi_size);
-    }();
-    auto paths = core::mpi::collect(path, mpi_size);
+    auto values  = _values(data, mpi_size);
+    auto paths   = core::mpi::collect(path, mpi_size);
 
     for (int i = 0; i < mpi_size; i++)
     {
@@ -359,13 +377,13 @@ void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5file, std::string path, 
         if (h5file.exist(keyPath) && h5file.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
         {
             if (!h5file.getDataSet(keyPath).hasAttribute(key))
-                doAttribute(h5file.getDataSet(keyPath), key, values[i]);
+                _doAttribute(h5file.getDataSet(keyPath), key, values[i]);
         }
         else // group
         {
             createGroupsToDataSet(h5file, keyPath + "/dataset");
             if (!h5file.getGroup(keyPath).hasAttribute(key))
-                doAttribute(h5file.getGroup(keyPath), key, values[i]);
+                _doAttribute(h5file.getGroup(keyPath), key, values[i]);
         }
     }
 }
@@ -445,5 +463,7 @@ void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const&
 
 
 } /* namespace PHARE::diagnostic::h5 */
+
+
 
 #endif /* PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H */

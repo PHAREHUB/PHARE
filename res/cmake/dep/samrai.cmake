@@ -1,3 +1,8 @@
+
+# these are being reset somewhere between first call and here
+include("${PHARE_PROJECT_DIR}/res/cmake/policies.cmake")
+
+
 find_package(SAMRAI CONFIG QUIET)
 if (NOT SAMRAI_FOUND)
     message("SAMRAI NOT FOUND")
@@ -19,6 +24,7 @@ if (NOT SAMRAI_FOUND)
     endif()
 
     option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
+    option(ENABLE_SAMRAI_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
 
     add_subdirectory(${SAMRAI_SRCDIR})
     unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY CACHE) # undoes what samrai does, so ctest can continue to work

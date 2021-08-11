@@ -2,7 +2,7 @@
 #define PHARE_CORE_GRID_GRIDLAYOUTYEE_H
 
 
-
+#include "core/def.h"
 #include "core/hybrid/hybrid_quantities.h"
 #include "core/utilities/types.h"
 #include "gridlayoutdefs.h"
@@ -149,7 +149,7 @@ namespace core
                         return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX]}};
                     case HybridQuantity::Scalar::P:
                         return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX]}};
-                    default: throw std::runtime_error("Wrong hybridQuantity");
+                    default: throw_runtime_error("Wrong hybridQuantity");
                 }
             }
 
@@ -199,7 +199,7 @@ namespace core
                     case HybridQuantity::Scalar::P:
                         return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirY]}};
-                    default: throw std::runtime_error("Wrong hybridQuantity");
+                    default: throw_runtime_error("Wrong hybridQuantity");
                 }
             }
 
@@ -263,7 +263,7 @@ namespace core
                         return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirY],
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirZ]}};
-                    default: throw std::runtime_error("Wrong hybridQuantity");
+                    default: throw_runtime_error("Wrong hybridQuantity");
                 }
             }
         }
@@ -297,7 +297,7 @@ namespace core
                              centering(HybridQuantity::Scalar::Ez)}};
 
 
-                default: throw std::runtime_error("Wrong hybridQuantity");
+                default: throw_runtime_error("Wrong hybridQuantity");
             }
         }
 

@@ -17,12 +17,12 @@ class ElectromagDiagnosticWriter : public H5TypeWriter<H5Writer>
 {
 public:
     using Super = H5TypeWriter<H5Writer>;
-    using Super::h5Writer_;
+    using Super::checkCreateFileFor_;
     using Super::fileData_;
+    using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
-    using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename H5Writer::GridLayout;
     using FloatType  = typename H5Writer::FloatType;
@@ -150,10 +150,14 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
     auto& h5Writer = this->h5Writer_;
 
     for (auto* vecField : h5Writer.modelView().getElectromagFields())
+    {
+        if constexpr (GridLayout::dimension == 1)
+            assert(!(std::isnan((*vecField)[1](0))));
         if (diagnostic.quantity == "/" + vecField->name())
             h5Writer.writeVecFieldAsDataset(*fileData_.at(diagnostic.quantity),
                                             h5Writer.patchPath() + "/" + vecField->name(),
                                             *vecField);
+    }
 }
 
 

@@ -28,11 +28,12 @@
 
 namespace PHARE::core
 {
-template<std::size_t dimension_, std::size_t interp_order_>
+template<std::size_t dimension_, std::size_t interp_order_, bool offload_ = false>
 struct PHARE_Types
 {
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
+    static auto constexpr offload      = offload_;
 
     using Array_t      = PHARE::core::NdArrayVector<dimension>;
     using VecField_t   = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;

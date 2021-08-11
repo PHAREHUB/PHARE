@@ -129,7 +129,7 @@ def check_interp_order(**kwargs):
 
 def check_pusher(**kwargs):
     pusher = kwargs.get('particle_pusher', 'modified_boris')
-    if pusher not in ['modified_boris']:
+    if pusher not in ['modified_boris', 'kirov', 'petrov', 'pavlov']:
         raise ValueError('Error: invalid pusher ({})'.format(pusher))
     return pusher
 
@@ -441,6 +441,14 @@ def check_hyper_resistivity(**kwargs):
 
 
 
+def check_offloading(**kwargs):
+    options = ['cuda']
+    offloading = kwargs.get('offload', None)
+    if offloading is not None and offloading not in options:
+        raise ValueError(f"Simulation offloading option ({offloading}) is not available")
+    return offloading
+
+
 # ------------------------------------------------------------------------------
 
 def checker(func):
@@ -450,7 +458,7 @@ def checker(func):
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity', 'strict' ]
+                             'resistivity', 'hyper_resistivity', 'strict', 'offload' ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -460,6 +468,7 @@ def checker(func):
 
         dl, cells = check_domain(**kwargs)
 
+        kwargs['offload'] = check_offloading(**kwargs)
         kwargs["strict"] = kwargs.get('strict', False)
 
         kwargs["dl"] = dl
@@ -545,7 +554,7 @@ class Simulation(object):
     max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
     init_time            : unused for now, will be time for restarts someday
     strict               : bool, turns warnings into errors (default False)
-
+    offload              : use accelerators for some operations, options ['cuda'], default disabled
     """
 
     @checker

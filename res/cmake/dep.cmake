@@ -1,5 +1,12 @@
 
 
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/gtest.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/gbench.cmake")
+
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # SAMRAI build option
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/samrai.cmake")
 

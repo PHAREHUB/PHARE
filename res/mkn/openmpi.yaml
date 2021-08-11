@@ -1,0 +1,27 @@
+
+# local:
+#   repo: /mkn/r
+#   mod-repo: /mkn/m
+
+## optional compiler override
+# env: |
+#   OMPI_CXX=clang++
+
+
+compiler:
+  mask:
+    gcc:
+      mpicc
+    g++:
+      mpicxx
+
+file:
+  - type: c:S
+    archiver: ar -cr
+    compiler: pgcc
+    linker: pgcc -acc
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler: mpicxx -std=c++17 -fPIC
+    linker: mpicxx
+

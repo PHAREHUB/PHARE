@@ -6,6 +6,7 @@
 #include <string>
 #include <tuple>
 
+#include "core/def.h"
 #include "core/hybrid/hybrid_quantities.h"
 #include "core/data/vecfield/vecfield_initializer.h"
 #include "initializer/data_provider.h"

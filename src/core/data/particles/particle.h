@@ -11,7 +11,7 @@
 #include "core/utilities/point/point.h"
 #include "core/utilities/span.h"
 #include "core/utilities/types.h"
-
+#include "core/def.h"
 
 namespace PHARE::core
 {
@@ -28,12 +28,17 @@ struct ParticleDeltaDistribution
 
 
 template<typename Particle>
-auto cellAsPoint(Particle const& particle)
+auto cellAsPoint(Particle const& particle) _PHARE_FN_SIG_
 {
     return Point<int, Particle::dimension>{particle.iCell};
 }
 
 
+struct ParticleElectromag
+{
+    double Ex = 0, Ey = 0, Ez = 0;
+    double Bx = 0, By = 0, Bz = 0;
+};
 
 template<size_t dim>
 struct Particle
@@ -48,22 +53,13 @@ struct Particle
     std::array<double, dim> delta = ConstArray<double, dim>();
     std::array<double, 3> v       = ConstArray<double, 3>();
 
-    double Ex = 0, Ey = 0, Ez = 0;
-    double Bx = 0, By = 0, Bz = 0;
-
     bool operator==(Particle<dim> const& that) const
     {
         return (this->weight == that.weight) && //
                (this->charge == that.charge) && //
                (this->iCell == that.iCell) &&   //
                (this->delta == that.delta) &&   //
-               (this->v == that.v) &&           //
-               (this->Ex == that.Ex) &&         //
-               (this->Ey == that.Ey) &&         //
-               (this->Ez == that.Ez) &&         //
-               (this->Bx == that.Bx) &&         //
-               (this->By == that.By) &&         //
-               (this->Bz == that.Bz);
+               (this->v == that.v);
     }
 };
 

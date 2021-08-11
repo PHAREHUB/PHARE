@@ -1,0 +1,37 @@
+
+# local:
+#   repo: /mkn/r
+#   mod-repo: /mkn/m
+
+property:
+  nvhpc.version: 21.3
+  nvhpc.arch: Linux_x86_64
+  nvhpc.path: /opt/nvidia/hpc_sdk
+
+env: |
+  PATH=${nvhpc.path}/${nvhpc.arch}/${nvhpc.version}/compilers/bin:${PATH}
+  OMPI_CXX=pgc++
+  MKN_LIB_LINK_LIB=1
+
+path:
+  ${nvhpc.path}/${nvhpc.arch}/${nvhpc.version}/compilers/lib
+
+compiler:
+  mask:
+    gcc:
+      pgcc
+    g++:
+      mpicxx
+      pgc++
+
+file:
+  - type: c:S
+    archiver: ar -cr
+    compiler: pgcc -acc -ta=multicore -Minfo=accel
+    linker: pgcc -acc
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler: mpicxx -acc -ta=multicore -Minfo=accel -std=c++17 -fPIC
+    linker: mpicxx -acc -ta=multicore -Minfo=accel
+
+

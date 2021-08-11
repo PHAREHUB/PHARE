@@ -63,8 +63,8 @@ TEST(GridLayout, canTransformALocalBoxIntoAnAMRBox)
 TEST(GridLayout, canTransformAnAMRIndexIntoALocalIndex)
 {
     GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
-    EXPECT_EQ(Point{5}, layout.AMRToLocal(Point{50}));
-    EXPECT_EQ(Point{40}, layout.AMRToLocal(Point{85}));
+    EXPECT_EQ(Point{5}, layout.AMRToLocal(Point<int, 1>{50}));
+    EXPECT_EQ(Point{40}, layout.AMRToLocal(Point<int, 1>{85}));
 }
 
 

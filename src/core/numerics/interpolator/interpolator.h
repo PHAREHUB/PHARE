@@ -11,6 +11,8 @@
 #include "core/utilities/point/point.h"
 
 #include "core/logger.h"
+#include "core/def.h"
+#include "core/operators.h"
 
 namespace PHARE
 {
@@ -26,12 +28,17 @@ namespace core
 
     //! return the number of points on which to interpolate at order InterpOrder
     template<std::size_t interpOrder>
-    int computeStartIndex(double normalizedPos)
+    int computeStartIndex(double normalizedPos) _PHARE_FN_SIG_
     {
         return static_cast<int>(normalizedPos - (static_cast<double>(interpOrder) - 1.) / 2.);
     }
 
+    template<std::size_t dimension, std::size_t interpOrder>
+    using Weights_t
+        = std::array<std::array<std::array<double, nbrPointsSupport(interpOrder)>, dimension>, 2>;
 
+    template<std::size_t dimension>
+    using StartIndices_t = std::array<std::array<int, dimension>, 2>;
 
 
     /** \brief the class Weight aims at computing the weight coefficient for
@@ -62,7 +69,7 @@ namespace core
     {
     public:
         inline void computeWeight(double normalizedPos, int startIndex,
-                                  std::array<double, nbrPointsSupport(1)>& weights)
+                                  std::array<double, nbrPointsSupport(1)>& weights) _PHARE_FN_SIG_
         {
             weights[1] = normalizedPos - static_cast<double>(startIndex);
             weights[0] = 1. - weights[1];
@@ -79,7 +86,7 @@ namespace core
     {
     public:
         inline void computeWeight(double normalizedPos, int startIndex,
-                                  std::array<double, nbrPointsSupport(2)>& weights)
+                                  std::array<double, nbrPointsSupport(2)>& weights) _PHARE_FN_SIG_
         {
             auto index = startIndex + 1;
             auto delta = static_cast<double>(index) - normalizedPos;
@@ -105,7 +112,7 @@ namespace core
     {
     public:
         inline void computeWeight(double normalizedPos, int startIndex,
-                                  std::array<double, nbrPointsSupport(3)>& weights)
+                                  std::array<double, nbrPointsSupport(3)>& weights) _PHARE_FN_SIG_
         {
             double coef1, coef2, coef3, coef4;
             auto index = static_cast<double>(startIndex) - normalizedPos;
@@ -155,7 +162,7 @@ namespace core
         template<typename Field, typename Array1, typename Array2>
         inline double operator()(Field const& field,
                                  std::array<QtyCentering, 1> const& fieldCentering,
-                                 Array1 const& startIndex, Array2 const& weights)
+                                 Array1 const& startIndex, Array2 const& weights) _PHARE_FN_SIG_
         {
             auto fieldAtParticle    = 0.;
             auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
@@ -188,7 +195,7 @@ namespace core
         template<typename Field, typename Array1, typename Array2>
         inline double operator()(Field const& field,
                                  std::array<QtyCentering, 2> const& fieldCentering,
-                                 Array1 const& startIndex, Array2 const& weights)
+                                 Array1 const& startIndex, Array2 const& weights) _PHARE_FN_SIG_
         {
             auto const& xStartIndex = startIndex[static_cast<int>(fieldCentering[0])][0];
             auto const& yStartIndex = startIndex[static_cast<int>(fieldCentering[1])][1];
@@ -229,7 +236,7 @@ namespace core
         template<typename Field, typename Array1, typename Array2>
         inline double operator()(Field const& field,
                                  std::array<QtyCentering, 3> const& fieldCentering,
-                                 Array1 const& startIndex, Array2 const& weights)
+                                 Array1 const& startIndex, Array2 const& weights) _PHARE_FN_SIG_
         {
             auto const& xStartIndex = startIndex[static_cast<std::size_t>(fieldCentering[0])][0];
             auto const& yStartIndex = startIndex[static_cast<std::size_t>(fieldCentering[1])][1];
@@ -263,34 +270,33 @@ namespace core
 
 
     //! ParticleToMesh projects a particle density and flux to given grids
-    template<std::size_t dim>
+    template<std::size_t dim, typename Operator = CPU_Operators::Operator<double>>
     class ParticleToMesh
     {
     };
 
-
-
     /** \brief specialization of ParticleToMesh for 1D interpolation
      */
-    template<>
-    class ParticleToMesh<1>
-    {
-    public: /** Performs the 1D interpolation
-             * \param[in] density is the field that will be interpolated from the particle Particle
-             * \param[in] xFlux is the field that will be interpolated from the particle Particle
-             * \param[in] yFlux is the field that will be interpolated from the particle Particle
-             * \param[in] zFlux is the field that will be interpolated from the particle Particle
-             * \param[in] fieldCentering is the centering (dual or primal) of the field in each
-             * direction \param[in] particle is the single particle used for the interpolation of
-             * density and flux \param[in] startIndex is the first index for which a particle will
-             * contribute \param[in] weights is the arrays of weights for the associated index
-             */
+    template<typename Op>
+    class ParticleToMesh<1, Op>
+    { /** Performs the 1D interpolation
+       * \param[in] density is the field that will be interpolated from the particle Particle
+       * \param[in] xFlux is the field that will be interpolated from the particle Particle
+       * \param[in] yFlux is the field that will be interpolated from the particle Particle
+       * \param[in] zFlux is the field that will be interpolated from the particle Particle
+       * \param[in] fieldCentering is the centering (dual or primal) of the field in each
+       * direction \param[in] particle is the single particle used for the interpolation of
+       * density and flux \param[in] startIndex is the first index for which a particle will
+       * contribute \param[in] weights is the arrays of weights for the associated index
+       */
+    public:
         template<typename Field, typename Array1, typename Array2, typename Particle,
                  typename VectorCenteringArray>
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 1> const& densityCentering,
                                VectorCenteringArray const& fluxCentering, Particle const& particle,
-                               Array1 const& startIndex, Array2 const& weights, double coef = 1.)
+                               Array1 const& startIndex, Array2 const& weights,
+                               double coef = 1.) _PHARE_FN_SIG_
         {
             auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
             auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
@@ -313,11 +319,18 @@ namespace core
 
             for (auto ik = 0u; ik < order_size; ++ik)
             {
-                density(xDenStartIndex + ik) += partRho * xDenWeights[ik] * coef;
+                assert(partRho > 0);
+                assert(xDenWeights[ik] > 0);
+                assert(coef > 0);
+                
+                auto tmp = partRho * xDenWeights[ik] * coef;
+                
+                assert(tmp > 0);
+                Op{density(xDenStartIndex + ik)} += partRho * xDenWeights[ik] * coef;
 
-                xFlux(xXFluxStartIndex + ik) += xPartFlux * xXFluxWeights[ik] * coef;
-                yFlux(xYFluxStartIndex + ik) += yPartFlux * xYFluxWeights[ik] * coef;
-                zFlux(xZFluxStartIndex + ik) += zPartFlux * xZFluxWeights[ik] * coef;
+                Op{xFlux(xXFluxStartIndex + ik)} += xPartFlux * xXFluxWeights[ik] * coef;
+                Op{yFlux(xYFluxStartIndex + ik)} += yPartFlux * xYFluxWeights[ik] * coef;
+                Op{zFlux(xZFluxStartIndex + ik)} += zPartFlux * xZFluxWeights[ik] * coef;
             }
         }
     };
@@ -327,8 +340,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 2D interpolation
      */
-    template<>
-    class ParticleToMesh<2>
+    template<typename Op>
+    class ParticleToMesh<2, Op>
     {
     public: /** Performs the 2D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -345,7 +358,8 @@ namespace core
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 2> const& densityCentering,
                                VectorCenteringArray const& fluxCentering, Particle const& particle,
-                               Array1 const& startIndex, Array2 const& weights, double coef = 1.)
+                               Array1 const& startIndex, Array2 const& weights,
+                               double coef = 1.) _PHARE_FN_SIG_
         {
             auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
             auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
@@ -407,8 +421,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 3D interpolation
      */
-    template<>
-    class ParticleToMesh<3>
+    template<typename Op>
+    class ParticleToMesh<3, Op>
     {
     public: /** Performs the 3D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -425,7 +439,8 @@ namespace core
         inline void operator()(Field& density, Field& xFlux, Field& yFlux, Field& zFlux,
                                std::array<QtyCentering, 3> const& densityCentering,
                                VectorCenteringArray const& fluxCentering, Particle const& particle,
-                               Array1 const& startIndex, Array2 const& weights, double coef = 1.)
+                               Array1 const& startIndex, Array2 const& weights,
+                               double coef = 1.) _PHARE_FN_SIG_
         {
             auto const& xDenStartIndex = startIndex[static_cast<int>(densityCentering[0])][0];
             auto const& xDenWeights    = weights[static_cast<int>(densityCentering[0])][0];
@@ -507,12 +522,68 @@ namespace core
     /** \brief Interpolator is used to perform particle-mesh interpolations using
      * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
      */
-    template<std::size_t dim, std::size_t interpOrder>
+    template<std::size_t dim, std::size_t interpOrder, bool offload = false>
     class Interpolator : private Weighter<interpOrder>
     {
+        template<typename T>
+        auto static constexpr nullable()
+        {
+            return static_cast<T*>(nullptr);
+        }
+        auto static constexpr deduce_operator()
+        {
+            if constexpr (offload)
+                return nullable<GPU_Operators::AtomicOperator<double>>();
+            else
+                return nullable<CPU_Operators::Operator<double>>();
+        }
+
     public:
+        using Operator = std::decay_t<decltype(*deduce_operator())>;
+
         auto static constexpr interp_order = interpOrder;
         auto static constexpr dimension    = dim;
+
+        using IndexAndWeight = std::tuple<StartIndices_t<dim>, Weights_t<dim, interpOrder>>;
+
+        /* this function calculates the startIndex and the nbrPointsSupport() weights for
+         * dual field interpolation and puts this at the corresponding location
+         * in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
+         * is offseted compared to primal ones.*/
+        template<typename Particle_t, typename GridLayout>
+        auto indexAndWeight(Particle_t const& part, GridLayout const& layout) _PHARE_FN_SIG_
+        {
+            IndexAndWeight indexAndWeight;
+            auto& [startIndex_, weights_] = indexAndWeight;
+
+            for (auto iDim = 0u; iDim < dimension; ++iDim)
+            {
+                auto iCell           = layout.AMRToLocal(Point<int, dim>{part.iCell});
+                double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
+
+                startIndex_[centering2int(QtyCentering::dual)][iDim]
+                    = computeStartIndex<interpOrder>(normalizedPos);
+
+                weightComputer_.computeWeight(normalizedPos,
+                                              startIndex_[centering2int(QtyCentering::dual)][iDim],
+                                              weights_[centering2int(QtyCentering::dual)][iDim]);
+            }
+
+            for (auto iDim = 0u; iDim < dimension; ++iDim)
+            {
+                auto iCell           = layout.AMRToLocal(Point<int, dim>{part.iCell});
+                double normalizedPos = iCell[iDim] + part.delta[iDim];
+
+                startIndex_[centering2int(QtyCentering::primal)][iDim]
+                    = computeStartIndex<interpOrder>(normalizedPos);
+
+                weightComputer_.computeWeight(
+                    normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
+                    weights_[centering2int(QtyCentering::primal)][iDim]);
+            }
+            return indexAndWeight;
+        }
+
         /**\brief interpolate electromagnetic fields on all particles in the range
          *
          * For each particle :
@@ -521,60 +592,37 @@ namespace core
          *  - then it uses Interpol<> to calculate the interpolation of E and B components
          * onto the particle.
          */
+        template<typename Particle_t, typename Electromag, typename GridLayout>
+        auto meshToParticle(Particle_t& particle, Electromag const& Em,
+                            GridLayout const& layout) _PHARE_FN_SIG_
+        {
+            auto constexpr ExCentering = GridLayout::centering(HybridQuantity::Scalar::Ex);
+            auto constexpr EyCentering = GridLayout::centering(HybridQuantity::Scalar::Ey);
+            auto constexpr EzCentering = GridLayout::centering(HybridQuantity::Scalar::Ez);
+            auto constexpr BxCentering = GridLayout::centering(HybridQuantity::Scalar::Bx);
+            auto constexpr ByCentering = GridLayout::centering(HybridQuantity::Scalar::By);
+            auto constexpr BzCentering = GridLayout::centering(HybridQuantity::Scalar::Bz);
+
+            auto const& [Ex, Ey, Ez] = Em.E.getComponents();
+            auto const& [Bx, By, Bz] = Em.B.getComponents();
+
+            auto [startIndex_, weights_] = indexAndWeight(particle, layout);
+
+
+            return std::array<std::tuple<double, double, double>, 2>{
+                std::make_tuple(meshToParticle_(Ex, ExCentering, startIndex_, weights_),
+                                meshToParticle_(Ey, EyCentering, startIndex_, weights_),
+                                meshToParticle_(Ez, EzCentering, startIndex_, weights_)),
+                std::make_tuple(meshToParticle_(Bx, BxCentering, startIndex_, weights_),
+                                meshToParticle_(By, ByCentering, startIndex_, weights_),
+                                meshToParticle_(Bz, BzCentering, startIndex_, weights_))};
+        }
+
         template<typename PartIterator, typename Electromag, typename GridLayout>
-        inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+        inline auto operator()(PartIterator begin, PartIterator end, Electromag const& Em,
                                GridLayout const& layout)
         {
             PHARE_LOG_SCOPE("Interpolator::operator()");
-
-            // this lambda calculates the startIndex and the nbrPointsSupport() weights for
-            // dual field interpolation and puts this at the corresponding location
-            // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
-            // is offseted compared to primal ones.
-            auto indexAndWeightDual = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
-
-                    startIndex_[centering2int(QtyCentering::dual)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::dual)][iDim],
-                        weights_[centering2int(QtyCentering::dual)][iDim]);
-                }
-            };
-
-            // does the same as above but for a primal field
-            auto indexAndWeightPrimal = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim];
-
-                    startIndex_[centering2int(QtyCentering::primal)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
-                        weights_[centering2int(QtyCentering::primal)][iDim]);
-                }
-            };
-
-            auto const& Ex = Em.E.getComponent(Component::X);
-            auto const& Ey = Em.E.getComponent(Component::Y);
-            auto const& Ez = Em.E.getComponent(Component::Z);
-            auto const& Bx = Em.B.getComponent(Component::X);
-            auto const& By = Em.B.getComponent(Component::Y);
-            auto const& Bz = Em.B.getComponent(Component::Z);
-
-            auto const ExCentering = GridLayout::centering(HybridQuantity::Scalar::Ex);
-            auto const EyCentering = GridLayout::centering(HybridQuantity::Scalar::Ey);
-            auto const EzCentering = GridLayout::centering(HybridQuantity::Scalar::Ez);
-            auto const BxCentering = GridLayout::centering(HybridQuantity::Scalar::Bx);
-            auto const ByCentering = GridLayout::centering(HybridQuantity::Scalar::By);
-            auto const BzCentering = GridLayout::centering(HybridQuantity::Scalar::Bz);
 
 
             // for each particle, first calculate the startIndex and weights
@@ -584,20 +632,14 @@ namespace core
             // the trick here is that the StartIndex and weights have only been calculated
             // twice, and not for each E,B component.
 
+            std::vector<std::array<std::tuple<double, double, double>, 2>> ebs;
+            ebs.reserve(std::distance(begin, end));
             PHARE_LOG_START("MeshToParticle::operator()");
             for (auto currPart = begin; currPart != end; ++currPart)
-            {
-                indexAndWeightPrimal(*currPart);
-                indexAndWeightDual(*currPart);
-
-                currPart->Ex = meshToParticle_(Ex, ExCentering, startIndex_, weights_);
-                currPart->Ey = meshToParticle_(Ey, EyCentering, startIndex_, weights_);
-                currPart->Ez = meshToParticle_(Ez, EzCentering, startIndex_, weights_);
-                currPart->Bx = meshToParticle_(Bx, BxCentering, startIndex_, weights_);
-                currPart->By = meshToParticle_(By, ByCentering, startIndex_, weights_);
-                currPart->Bz = meshToParticle_(Bz, BzCentering, startIndex_, weights_);
-            }
+                ebs.emplace_back(meshToParticle(*currPart, Em, layout));
             PHARE_LOG_STOP("MeshToParticle::operator()");
+
+            return ebs;
         }
 
 
@@ -611,71 +653,36 @@ namespace core
          *  - then it uses Interpol<> to calculate the interpolation of E and B components
          * onto the particle.
          */
-        template<typename PartIterator, typename VecField, typename GridLayout,
-                 typename Field = typename VecField::field_type>
-        inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux,
-                               GridLayout const& layout, double coef = 1.)
+        template<typename Particle_t, typename VecField, typename GridLayout, typename Field>
+        void particleToMesh(Particle_t const& particle, Field& density, VecField& flux,
+                            GridLayout const& layout, double coef) _PHARE_FN_SIG_
         {
-            // this lambda calculates the startIndex and the order+1 weights for
-            // dual field interpolation and puts this at the corresponding location
-            // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
-            // is offseted compared to primal ones.
-            auto indexAndWeightDual = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
-
-                    startIndex_[centering2int(QtyCentering::dual)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::dual)][iDim],
-                        weights_[centering2int(QtyCentering::dual)][iDim]);
-                }
-            };
-
-            // does the same as above but for a primal field
-            auto indexAndWeightPrimal = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim];
-
-                    startIndex_[centering2int(QtyCentering::primal)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
-                        weights_[centering2int(QtyCentering::primal)][iDim]);
-                }
-            };
-
-            auto& xFlux = flux.getComponent(Component::X);
-            auto& yFlux = flux.getComponent(Component::Y);
-            auto& zFlux = flux.getComponent(Component::Z);
-
             auto constexpr densityCentering = GridLayout::centering(HybridQuantity::Scalar::rho);
             auto constexpr fluxCentering    = GridLayout::centering(HybridQuantity::Vector::V);
 
+            auto const& [xFlux, yFlux, zFlux] = flux.getComponents();
 
+            // DOTO #3375 ?
+            auto [startIndex_, weights_] = indexAndWeight(particle, layout);
+
+            particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, fluxCentering, particle,
+                            startIndex_, weights_, coef);
+        }
+
+        template<typename PartIterator, typename VecField, typename GridLayout, typename Field>
+        inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux,
+                               GridLayout const& layout, double coef = 1.)
+        {
             // for each particle, first calculate the startIndex and weights
             // for dual and primal quantities.
             // then, knowing the centering (primal or dual) of each electromagnetic
             // component, we use Interpol to actually perform the interpolation.
-            // the trick here is that the StartIndex and weights have only been calculated
-            // twice, and not for each E,B component.
+            // the trick here is that the StartIndex and weights have only been
+            // calculated twice, and not for each E,B component.
 
             PHARE_LOG_START("ParticleToMesh::operator()");
             for (auto currPart = begin; currPart != end; ++currPart)
-            {
-                // TODO #3375
-                indexAndWeightPrimal(*currPart);
-                indexAndWeightDual(*currPart);
-
-                particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, fluxCentering,
-                                *currPart, startIndex_, weights_, coef);
-            }
+                particleToMesh(*currPart, density, flux, layout, coef);
             PHARE_LOG_STOP("ParticleToMesh::operator()");
         }
 
@@ -688,12 +695,7 @@ namespace core
 
         Weighter<interpOrder> weightComputer_;
         MeshToParticle<dimension> meshToParticle_;
-        ParticleToMesh<dimension> particleToMesh_;
-
-        // array[dual/primal][dim]
-        std::array<std::array<int, dimension>, 2> startIndex_;
-        std::array<std::array<std::array<double, nbrPointsSupport(interpOrder)>, dimension>, 2>
-            weights_;
+        ParticleToMesh<dimension, Operator> particleToMesh_;
 
         /**
          * @brief dualOffset returns the offset by which changing the
@@ -705,8 +707,6 @@ namespace core
             return offsets[static_cast<std::array<double, 3>::size_type>(order - 1)];
         }
     };
-
-
 } // namespace core
 
 } // namespace PHARE

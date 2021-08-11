@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include "core/def.h"
 #include "core/data/field/field.h"
 #include "vecfield_component.h"
 #include "core/utilities/meta/meta_utilities.h"
@@ -135,7 +136,14 @@ namespace core
             throw std::runtime_error("Error - VecField not usable");
         }
 
-
+        auto getComponents() _PHARE_FN_SIG_
+        {
+            return std::forward_as_tuple(*components_[0], *components_[1], *components_[2]);
+        }
+        auto getComponents() const _PHARE_FN_SIG_
+        {
+            return std::forward_as_tuple(*components_[0], *components_[1], *components_[2]);
+        }
 
 
         Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
@@ -192,7 +200,8 @@ namespace core
 
         auto cend() const { return std::cend(components_); }
 
-
+        auto& operator[](size_t i) { return *components_[i]; }
+        auto& operator[](size_t i) const { return *components_[i]; }
 
     private:
         std::string name_ = "No Name";

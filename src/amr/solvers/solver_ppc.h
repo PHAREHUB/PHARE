@@ -39,7 +39,7 @@ namespace PHARE::solver
 template<typename HybridModel, typename AMR_Types>
 class SolverPPC : public ISolver<AMR_Types>
 {
-private:
+protected:
     static constexpr auto dimension    = HybridModel::dimension;
     static constexpr auto interp_order = HybridModel::gridlayout_type::interp_order;
 
@@ -102,7 +102,7 @@ public:
 
 
 
-private:
+protected:
     using Messenger = amr::HybridMessenger<HybridModel>;
 
 

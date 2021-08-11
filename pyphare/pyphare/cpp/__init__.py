@@ -1,5 +1,10 @@
 
 
+def cpp_ext():
+    import importlib
+    return importlib.import_module("pybindlibs.cpp_ext")
+
+
 def cpp_lib():
     import importlib
     if not __debug__:

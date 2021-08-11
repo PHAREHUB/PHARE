@@ -1,5 +1,6 @@
 
 #include "benchmark/benchmark.h"
+
 #define PHARE_DIAG_DOUBLES 0
 #include "diagnostic/detail/h5writer.h"
 #include "diagnostic/detail/h5_utils.h"
@@ -49,6 +50,7 @@ void do_bench(benchmark::State& state)
         datasets[4].write(particles.v.data());
     };
 
+    auto keys = core::packer_keys();
     std::string path{"/lol/"};
     while (state.KeepRunning())
     {
@@ -62,8 +64,8 @@ void do_bench(benchmark::State& state)
 
         std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
-            datasets.emplace_back(createDataSet_(hi5, path + Packer::keys()[part_idx],
-                                                 getSize(arg) * particles.size(), arg));
+            datasets.emplace_back(
+                createDataSet_(hi5, path + keys[part_idx], getSize(arg) * particles.size(), arg));
             part_idx++;
         });
         writeParticles(datasets, particles);

@@ -6,7 +6,7 @@
 
 #include "core/utilities/point/point.h"
 #include "core/utilities/meta/meta_utilities.h"
-
+#include "core/def.h"
 
 namespace PHARE
 {
@@ -54,7 +54,7 @@ namespace core
     };
 
     template<typename T, std::size_t s>
-    Box(Point<T, s> lower, Point<T, s> upper)->Box<T, s>;
+    Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;
 
 
     template<typename T, std::size_t dim>
@@ -77,7 +77,7 @@ namespace core
      * Returns occurs at the first box the point is in.
      */
     template<typename Point, typename BoxContainer, is_iterable<BoxContainer> = dummy::value>
-    bool isIn(Point const& point, BoxContainer const& boxes)
+    bool isIn(Point const& point, BoxContainer const& boxes) _PHARE_FN_SIG_
     {
         if (boxes.size() == 0)
             return false;
@@ -110,7 +110,8 @@ namespace core
      * one box.
      */
     template<typename Point>
-    bool isIn(Point const& point, Box<typename Point::type, Point::dimension> const& box)
+    bool isIn(Point const& point,
+              Box<typename Point::type, Point::dimension> const& box) _PHARE_FN_SIG_
     {
         auto isIn1D = [](typename Point::type pos, typename Point::type lower,
                          typename Point::type upper) { return pos >= lower && pos <= upper; };

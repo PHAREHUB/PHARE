@@ -167,6 +167,15 @@ namespace core
         return arr;
     }
 
+    template<std::size_t size, typename FN>
+    constexpr auto ConstArrayFrom(FN fn)
+    {
+        std::array<decltype(fn()), size> arr{};
+        for (uint8_t i = 0; i < size; i++)
+            arr[i] = fn();
+        return arr;
+    }
+
     template<typename Type>
     std::vector<Type> displacementFrom(std::vector<Type> const& input)
     {
@@ -221,6 +230,37 @@ namespace core
         return std::nullopt;
     }
     inline std::optional<std::string> get_env(std::string&& key) { return get_env(key); }
+
+
+
+    template<class F>
+    auto generate(F&& f, std::size_t count)
+    {
+        using value_type = std::decay_t<std::result_of_t<F const&(std::size_t const&)>>;
+        std::vector<value_type> v;
+        v.reserve(count);
+        for (std::size_t i = 0; i < count; ++i)
+            v.emplace_back(f(i));
+        return v;
+    }
+
+
+    template<class F, typename T>
+    auto generate(F&& f, std::vector<T> const& v0)
+    {
+        using value_type = std::decay_t<std::result_of_t<F const&(T const&)>>;
+        std::vector<value_type> v1;
+        v1.reserve(v0.size());
+        for (auto const& v : v0)
+            v1.emplace_back(f(v));
+        return v1;
+    }
+
+    template<class F, typename T>
+    auto generate(F&& f, std::vector<T> const&& v)
+    {
+        return generate(std::forward<F>(f), v);
+    }
 
 } // namespace core
 } // namespace PHARE

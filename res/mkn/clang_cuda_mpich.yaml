@@ -1,0 +1,23 @@
+
+local:
+  repo: /mkn/r
+  mod-repo: /mkn/m
+
+remote:
+  repo: git@github.com:mkn/
+  mod-repo: git@github.com:mkn-mod/
+
+compiler:
+  mask:
+    g++:
+      mpicxx
+
+# The following compile flags will likely be required with their specific values for your current hardware
+#
+# --cuda-gpu-arch=sm_61  # sm_61 = nvidia 1080 (see: http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards )
+
+file:
+  - type: cpp:cxx:cc:cu
+    compiler: mpicxx -cxx=clang++ --std=c++17 -fPIC -fsized-deallocation -x cuda --cuda-gpu-arch=sm_61
+    linker: mpicxx -cxx=clang++ -Wl,-z,defs -lcudart -fuse-ld=gold #-Wl,--threads -Wl,--thread-count=5
+    archiver: ar -cr

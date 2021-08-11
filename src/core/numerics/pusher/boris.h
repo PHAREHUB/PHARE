@@ -28,8 +28,7 @@ namespace core
         using ParticleSelector = typename Super::ParticleSelector;
         using ParticleRange    = Range<ParticleIterator>;
 
-    private:
-    public:
+
         // This move function should be considered when being used so that all particles are pushed
         // twice - see: https://github.com/PHAREHUB/PHARE/issues/571
         /** see Pusher::move() documentation*/
@@ -55,10 +54,10 @@ namespace core
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
-            interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
+            auto eb = interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
             // get the particle velocity from t=n to t=n+1
-            accelerate_(rangeOut, rangeOut, mass);
+            accelerate_(rangeOut, rangeOut, mass, eb);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
@@ -90,10 +89,10 @@ namespace core
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
-            interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
+            auto eb = interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
             // get the particle velocity from t=n to t=n+1
-            accelerate_(rangeOut, rangeOut, mass);
+            accelerate_(rangeOut, rangeOut, mass, eb);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
@@ -105,12 +104,20 @@ namespace core
             return rangeOut.end();
         }
 
+        ParticleIterator move(ParticleRange& range, Electromag const& emFields, double mass,
+                              Interpolator& interpolator,
+                              ParticleSelector const& particleIsNotLeaving,
+                              GridLayout const& layout) override
+        {
+            return move(range, range, emFields, mass, interpolator, particleIsNotLeaving, layout);
+        }
 
         /** see Pusher::move() documentation*/
-        virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) override
+        virtual void setMeshAndTimeStep(std::array<double, dim> const& ms,
+                                        double ts) override _PHARE_FN_SIG_
         {
             std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
-                           [ts](double& x) { return 0.5 * ts / x; });
+                           [ts](auto const& x) { return 0.5 * ts / x; });
             dt_ = ts;
         }
 
@@ -192,30 +199,34 @@ namespace core
 
         /** Accelerate the particles in rangeIn and put the new velocity in rangeOut
          */
-        template<typename ParticleRangeIn, typename ParticleRangeOut>
-        void accelerate_(ParticleRangeIn inputParticles, ParticleRangeOut outputParticles,
-                         double mass)
+        template<typename ParticleRange, typename ParticleElectromag>
+        void accelerate_(ParticleRange inputParticles, ParticleRange outputParticles, double mass,
+                         ParticleElectromag const& particleElectromag)
         {
             double dto2m = 0.5 * dt_ / mass;
 
+            std::size_t i   = 0;
             auto currentOut = outputParticles.begin();
 
             for (auto const& currentIn : inputParticles)
             {
+                auto const& [Ex, Ey, Ez] = particleElectromag[i][0];
+                auto const& [Bx, By, Bz] = particleElectromag[i][1];
+
                 double coef1 = currentIn.charge * dto2m;
 
                 // We now apply the 3 steps of the BORIS PUSHER
 
                 // 1st half push of the electric field
-                double velx1 = currentIn.v[0] + coef1 * currentIn.Ex;
-                double vely1 = currentIn.v[1] + coef1 * currentIn.Ey;
-                double velz1 = currentIn.v[2] + coef1 * currentIn.Ez;
+                double velx1 = currentIn.v[0] + coef1 * Ex;
+                double vely1 = currentIn.v[1] + coef1 * Ey;
+                double velz1 = currentIn.v[2] + coef1 * Ez;
 
 
                 // preparing variables for magnetic rotation
-                double const rx = coef1 * currentIn.Bx;
-                double const ry = coef1 * currentIn.By;
-                double const rz = coef1 * currentIn.Bz;
+                double const rx = coef1 * Bx;
+                double const ry = coef1 * By;
+                double const rz = coef1 * Bz;
 
                 double const rx2  = rx * rx;
                 double const ry2  = ry * ry;
@@ -247,9 +258,9 @@ namespace core
 
 
                 // 2nd half push of the electric field
-                velx1 = velx2 + coef1 * currentIn.Ex;
-                vely1 = vely2 + coef1 * currentIn.Ey;
-                velz1 = velz2 + coef1 * currentIn.Ez;
+                velx1 = velx2 + coef1 * Ex;
+                vely1 = vely2 + coef1 * Ey;
+                velz1 = velz2 + coef1 * Ez;
 
                 // Update particle velocity
                 currentOut->v[0] = velx1;

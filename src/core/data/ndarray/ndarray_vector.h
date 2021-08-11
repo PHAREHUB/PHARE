@@ -8,6 +8,7 @@
 #include <tuple>
 #include <numeric>
 
+#include "core/def.h"
 
 namespace PHARE::core
 {
@@ -15,7 +16,8 @@ template<std::size_t dim, typename DataType = double>
 struct NdArrayViewer
 {
     template<typename NCells, typename... Indexes>
-    static DataType const& at(DataType const* data, NCells const& nCells, Indexes const&... indexes)
+    static DataType const& at(DataType const* data, NCells const& nCells,
+                              Indexes const&... indexes) _PHARE_FN_SIG_
     {
         auto params = std::forward_as_tuple(indexes...);
         static_assert(sizeof...(Indexes) == dim);
@@ -49,7 +51,7 @@ struct NdArrayViewer
 
     template<typename NCells, typename Index>
     static DataType const& at(DataType const* data, NCells const& nCells,
-                              std::array<Index, dim> const& indexes)
+                              std::array<Index, dim> const& indexes) _PHARE_FN_SIG_
 
     {
         if constexpr (dim == 1)
@@ -128,43 +130,44 @@ public:
     static const std::size_t dimension  = dim;
     using type                          = DataType;
 
-    explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
-        : ptr_{ptr}
-        , nCells_{nCells}
+    NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const nCells) _PHARE_FN_SIG_
+        : ptr_{ptr},
+          nCells_{nCells}
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v,
-                         std::array<std::uint32_t, dim> const& nbCell)
+    NdArrayView(std::vector<DataType> const& v, std::array<std::uint32_t, dim> const& nbCell)
         : NdArrayView{v.data(), nbCell}
     {
     }
 
     template<typename... Indexes>
-    DataType const& operator()(Indexes... indexes) const
+    DataType const& operator()(Indexes... indexes) const _PHARE_FN_SIG_
     {
         return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes...);
     }
 
     template<typename... Indexes>
-    DataType& operator()(Indexes... indexes)
+    DataType& operator()(Indexes... indexes) _PHARE_FN_SIG_
     {
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes...));
     }
 
     template<typename Index>
-    DataType const& operator()(std::array<Index, dim> const& indexes) const
+    DataType const& operator()(std::array<Index, dim> const& indexes) const _PHARE_FN_SIG_
     {
         return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
-    DataType& operator()(std::array<Index, dim> const& indexes)
+    DataType& operator()(std::array<Index, dim> const& indexes) _PHARE_FN_SIG_
     {
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes));
     }
 
     auto data() const { return ptr_; }
+    auto data() { return ptr_; }
+
     std::size_t size() const
     {
         return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
@@ -206,6 +209,7 @@ public:
     NdArrayVector(NdArrayVector const& source) = default;
     NdArrayVector(NdArrayVector&& source)      = default;
 
+    auto data() { return data_.data(); }
     auto data() const { return data_.data(); }
     auto size() const { return data_.size(); }
 
@@ -215,7 +219,9 @@ public:
     auto end() const { return std::end(data_); }
     auto end() { return std::end(data_); }
 
-    void zero() { data_ = std::vector<DataType>(data_.size(), {0}); }
+    void zero() { //data_ = std::vector<DataType>(data_.size(), {0}); 
+    	std::fill(data_.begin(), data_.end(), 0);
+    }
 
 
     NdArrayVector& operator=(NdArrayVector const& source)

@@ -14,9 +14,14 @@ def simulator_shutdown():
     life_cycles.clear()
 
 
-def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
+def make_cpp_simulator(dim, interp, nbrRefinedPart, hier, offloading):
     from pyphare.cpp import cpp_lib
+    print(f"sim offload {offloading}")
+    offload = 1 if offloading == "cuda" else 0
     make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
+    if offloading != None and offloading != 0:
+        make_sim += f"_{offload}"
+    print(f"make_sim {make_sim}")
     return getattr(cpp_lib(), make_sim)(hier)
 
 
@@ -53,9 +58,9 @@ class Simulator:
             startMPI()
             populateDict()
             self.cpp_hier = cpp_lib().make_hierarchy()
-
+            sim = self.simulation
             self.cpp_sim = make_cpp_simulator(
-              self.simulation.ndim, self.simulation.interp_order, self.simulation.refined_particle_nbr, self.cpp_hier
+              sim.ndim, sim.interp_order, sim.refined_particle_nbr, self.cpp_hier, sim.offload
             )
 
             self.cpp_sim.initialize()

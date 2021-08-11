@@ -17,7 +17,6 @@ namespace core
         using pointer           = typename Iterator::pointer;
 
 
-
         template<class Container>
         explicit Range(Container const& c)
             : first_{std::begin(c)}
@@ -37,6 +36,9 @@ namespace core
         Iterator end() const { return last_; }
 
         std::size_t size() const { return std::distance(first_, last_); }
+
+        auto& operator[](std::size_t i) { return *(first_ + i); }
+        auto& operator[](std::size_t i) const { return *(first_ + i); }
 
     private:
         Iterator first_;

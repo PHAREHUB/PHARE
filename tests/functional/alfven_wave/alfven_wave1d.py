@@ -158,6 +158,8 @@ def main():
     from pybindlibs.cpp import mpi_rank
     from pyphare.pharesee.run import Run
     from pyphare.pharesee.hierarchy import finest_field
+    from pyphare.cpp import cpp_lib
+    mpi_rank = cpp_lib().mpi_rank
 
 
     config()

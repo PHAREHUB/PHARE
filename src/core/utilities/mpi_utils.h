@@ -32,7 +32,7 @@ int size();
 int rank();
 
 template<typename Data>
-auto mpi_type_for()
+MPI_Datatype mpi_type_for()
 {
     if constexpr (std::is_same_v<double, Data>)
         return MPI_DOUBLE;

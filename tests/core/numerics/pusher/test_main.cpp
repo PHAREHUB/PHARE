@@ -71,18 +71,23 @@ Trajectory readExpectedTrajectory()
 class Interpolator
 {
 public:
+    template<typename Particle_t, typename Electromag, typename GridLayout>
+    void meshToParticle(Particle_t& particle, Electromag const& Em, GridLayout const& layout)
+    {
+        particle.Ex = 0.01;
+        particle.Ey = -0.05;
+        particle.Ez = 0.05;
+        particle.Bx = 1.;
+        particle.By = 1.;
+        particle.Bz = 1.;
+    }
+
     template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const&, GridLayout&)
+    void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+                    GridLayout const& layout)
     {
         for (auto currPart = begin; currPart != end; ++currPart)
-        {
-            currPart->Ex = 0.01;
-            currPart->Ey = -0.05;
-            currPart->Ez = 0.05;
-            currPart->Bx = 1.;
-            currPart->By = 1.;
-            currPart->Bz = 1.;
-        }
+            meshToParticle(*currPart, Em, layout);
     }
 };
 

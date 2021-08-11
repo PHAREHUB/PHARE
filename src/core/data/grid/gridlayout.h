@@ -6,6 +6,8 @@
 #include "core/utilities/types.h"
 #include "core/data/field/field.h"
 #include "gridlayoutdefs.h"
+
+#include "core/def.h"
 #include "core/utilities/algorithm.h"
 #include "core/utilities/box/box.h"
 #include "core/utilities/constants.h"
@@ -115,6 +117,8 @@ namespace core
 
 
         GridLayout(GridLayout&& source) = default;
+        GridLayout(GridLayout const& source) = default;
+        GridLayout()                         = default;
 
 
         /**
@@ -128,7 +132,10 @@ namespace core
         /**
          * @brief returns the mesh size in the 'dim' dimensions
          */
-        std::array<double, dimension> const& meshSize() const noexcept { return meshSize_; }
+        std::array<double, dimension> const& meshSize() const noexcept _PHARE_FN_SIG_
+        {
+            return meshSize_;
+        }
 
 
 
@@ -150,7 +157,7 @@ namespace core
         std::array<std::uint32_t, dimension> nbrCells() const { return nbrPhysicalCells_; }
 
 
-        auto const& AMRBox() const { return AMRBox_; }
+        auto const& AMRBox() const _PHARE_FN_SIG_ { return AMRBox_; }
 
 
 
@@ -261,7 +268,8 @@ namespace core
          * @brief physicalStartIndex returns the index of the first node of a given
          * centering and in a given direction that is in the physical domain, i.e. not a ghost node.
          */
-        std::uint32_t physicalStartIndex(QtyCentering centering, Direction direction) const
+        std::uint32_t physicalStartIndex(QtyCentering centering,
+                                         Direction direction) const _PHARE_FN_SIG_
         {
             std::uint32_t icentering = static_cast<std::uint32_t>(centering);
             std::uint32_t iDir       = static_cast<std::uint32_t>(direction);
@@ -513,7 +521,7 @@ namespace core
         /**
          * @brief the number of ghost nodes on each side of the mesh for a given centering
          */
-        std::uint32_t static nbrGhosts(QtyCentering centering)
+        std::uint32_t static nbrGhosts(QtyCentering centering) _PHARE_FN_SIG_
         {
             std::uint32_t nbrGhosts = nbrPrimalGhosts_();
 
@@ -758,7 +766,7 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        auto AMRToLocal(Point<T, dimension> AMRPoint) const
+        auto AMRToLocal(Point<T, dimension> AMRPoint) const _PHARE_FN_SIG_
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
             Point<T, dimension> localPoint;
@@ -857,7 +865,8 @@ namespace core
          * @return An std::array<std::uint32_t, dim> object, containing the size to which allocate
          * arrays of an HybridQuantity::Quantity 'qty' in every directions.
          */
-        std::array<std::uint32_t, dimension> allocSize(HybridQuantity::Scalar qty) const
+        std::array<std::uint32_t, dimension>
+        allocSize(HybridQuantity::Scalar qty) const _PHARE_FN_SIG_
         {
             std::uint32_t iQty = static_cast<std::uint32_t>(qty);
 
@@ -1253,7 +1262,7 @@ namespace core
          * directions depending on the multi-dimensional centering.
          */
         std::array<std::uint32_t, dimension> physicalNodeNbrFromCentering_(
-            std::array<QtyCentering, dimension> const& qtyCenterings) const
+            std::array<QtyCentering, dimension> const& qtyCenterings) const _PHARE_FN_SIG_
         {
             std::array<std::uint32_t, dimension> nodeNbr;
 
@@ -1274,8 +1283,8 @@ namespace core
          * The calculation is easy : there are nbrPhysicalCells + 1 nodes in the domain
          * + 2 times the number of ghost nodes.
          */
-        std::array<std::uint32_t, dimension>
-        nodeNbrFromCentering_(std::array<QtyCentering, dimension> const& qtyCenterings) const
+        std::array<std::uint32_t, dimension> nodeNbrFromCentering_(
+            std::array<QtyCentering, dimension> const& qtyCenterings) const _PHARE_FN_SIG_
         {
             std::array<std::uint32_t, dimension> nbrNodes
                 = physicalNodeNbrFromCentering_(qtyCenterings);
