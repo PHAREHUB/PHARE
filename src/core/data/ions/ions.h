@@ -90,7 +90,7 @@ namespace core
 
 
         void computeDensity()
-        {            
+        {
             rho_->zero();
 
             for (auto const& pop : populations_)
@@ -100,16 +100,11 @@ namespace core
                 // have to account for the field dimensionality.
 
                 auto& popDensity = pop.density();
-                KLOG(INF) << popDensity.size() << " " << popDensity.data();
-                for(std::size_t i = 5; i < popDensity.size() - 5; ++i){
-                    KLOG(INF) << popDensity.data()[i];
-                    assert(popDensity.data()[i] > 0);                   
-                }
-                
                 std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
                                std::begin(*rho_), std::plus<typename field_type::type>{});
-                               
-                for(std::size_t i = 5; i < rho_->size() - 5; ++i){
+
+                for (std::size_t i = 5; i < rho_->size() - 5; ++i)
+                {
                     assert(rho_->data()[i] > 0);
                 }
             }

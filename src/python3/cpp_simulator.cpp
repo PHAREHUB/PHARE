@@ -3,9 +3,6 @@
 //   headers were included manually
 
 #include <cassert>
-#define KASSERT_REPLACE_ASSERT 1
-#include "kul/assert.hpp"
-
 
 #include <vector>
 #include <cstddef>

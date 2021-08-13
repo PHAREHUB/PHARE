@@ -59,8 +59,7 @@ namespace core
                 assert(!(std::isnan(Bynew(ix))));
                 auto der = this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
                 KLOG(INF) << ix << " " << der;
-                Bynew(ix)
-                    = By(ix) + dt * der;
+                Bynew(ix) = By(ix) + dt * der;
                 assert(!(std::isnan(Bynew(ix))));
             }
 

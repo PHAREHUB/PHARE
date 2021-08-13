@@ -118,12 +118,12 @@ struct ETC : kul::gpu::DeviceClass<GPU>
     using container_t = typename Super::template container_t<T>;
 
     ETC(PatchState<GridLayout_>& state, std::size_t pop_idx)
-        : Ex{state.electromag[0]}
-        , Ey{state.electromag[1]}
-        , Ez{state.electromag[2]}
-        , Bx{state.electromag[3]}
-        , By{state.electromag[4]}
-        , Bz{state.electromag[5]}
+        : Ex{state.electromag[0].size()}
+        , Ey{state.electromag[1].size()}
+        , Ez{state.electromag[2].size()}
+        , Bx{state.electromag[3].size()}
+        , By{state.electromag[4].size()}
+        , Bz{state.electromag[5].size()}
         , density{state.density[pop_idx]}
         , fluxX{state.flux[0 + (3 * pop_idx)]}
         , fluxY{state.flux[1 + (3 * pop_idx)]}
@@ -227,9 +227,7 @@ class Offloader : gpu::BaseOffloader<Solver>
         = [] __device__(auto i, auto particles, auto copy, auto info, auto layout, auto etc) {};
 
 public:
-    Offloader(PHARE::initializer::PHAREDict const& dict)        
-    {
-    }
+    Offloader(PHARE::initializer::PHAREDict const& dict) {}
 
     auto& clear()
     {
@@ -241,72 +239,52 @@ public:
         return *this;
     };
 
-    auto& alloc(GridLayout const& layout, HybridState& hybrid_state)
+    auto& alloc(GridLayout const& layout, HybridState& hybrid_state, double timestep)
     {
-        patch_states.emplace_back(layout, hybrid_state);
+        auto& patch_state = patch_states.emplace_back(layout, hybrid_state);
+        for (std::size_t i = 0; i < patch_state.ions.size(); ++i)
+            batches.emplace_back(_alloc_(patch_state, i, timestep))->send();
         return *this;
     };
 
-    std::vector<std::shared_ptr<kul::gpu::HostMem<Particle_t>>> particles_;
-    std::vector<std::shared_ptr<kul::gpu::DeviceMem<Particle_t>>> particle_copies_;
-    std::vector<std::shared_ptr<ETC_t>> etcs_;
 
-    template<bool noop>
-    auto _move0_(double timestep, std::size_t state_idx, std::size_t pop_idx)
+    auto _alloc_(PatchState<GridLayout>& state, std::size_t pop_idx, double timestep)
     {
         using ParticleDevMem = kul::gpu::DeviceMem<Particle_t>;
-        auto& state          = patch_states[state_idx];
         auto& pop            = *state.ions[pop_idx];
-
-        for (auto const& particle : pop)
-        {
-            assert(particle.iCell[0] > -6);
-        }
-
         particles_.emplace_back(
             std::make_shared<kul::gpu::HostMem<Particle_t>>(pop.data(), pop.size()));
-        particle_copies_.emplace_back(std::make_shared<ParticleDevMem>(pop.size())),
-            etcs_.emplace_back(std::make_shared<ETC_t>(state, pop_idx));
-        if constexpr (noop)
-            return kul::gpu::asio::Launcher{TP_BLOCK}(
-                push_fn_test, *particles_.back(), *particle_copies_.back(),
-                PushInfo{timestep, state.masses[pop_idx]}, state.layout, *etcs_.back());
-        else
-            return kul::gpu::asio::Launcher{TP_BLOCK}(
-                push_fn_0, *particles_.back(), *particle_copies_.back(),
-                PushInfo{timestep, state.masses[pop_idx]}, state.layout, *etcs_.back());
+        particle_copies_.emplace_back(std::make_shared<ParticleDevMem>(pop.size()));
+        etcs_.emplace_back(std::make_shared<ETC_t>(state, pop_idx));
+        return kul::gpu::asio::BatchMaker::make_unique(*particles_.back(), *particle_copies_.back(),
+                                                       PushInfo{timestep, state.masses[pop_idx]},
+                                                       state.layout, *etcs_.back());
     }
 
     template<bool noop = false>
-    void _move0(double timestep)
+    void _move0()
     {
         KLOG(TRC);
         assert(patch_states.size());
 
-        std::size_t state_idx = 0, pop_idx = 0;
-        std::size_t n_pops = patch_states[0].ions.size();
+        _send_em();
 
-        batches = PHARE::core::generate(
-            [&](auto const&) {
-                auto _sidx = state_idx;
-                auto _pidx = pop_idx;
-                ++pop_idx;
-                if (pop_idx == n_pops)
-                {
-                    pop_idx = 0;
-                    ++state_idx;
-                }
-                return _move0_<noop>(timestep, _sidx, _pidx);
-            },
-            patch_states.size() * n_pops);
+        for (auto& batch : batches)
+        {
+            batch->sync();
+            if constexpr (noop)
+                kul::gpu::asio::Launcher{TP_BLOCK}.send(false).launch(push_fn_test, *batch);
+            else
+                kul::gpu::asio::Launcher{TP_BLOCK}.send(false).launch(push_fn_0, *batch);
+        }
     }
-    void _move1(double timestep)
+
+    void _send_em()
     {
-        KLOG(TRC);
-        assert(batches.size() > 0);
         assert(patch_states.size() == batches.size());
-        for(std::size_t i = 0; i < batches.size(); ++i){
-            auto& etc = std::get<3>(*batches[i]);
+        for (std::size_t i = 0; i < batches.size(); ++i)
+        {
+            auto& etc         = std::get<3>(*batches[i]);
             auto& patch_state = patch_states[i];
             etc.Ex.send(patch_state.electromag[0]);
             etc.Ey.send(patch_state.electromag[1]);
@@ -315,8 +293,16 @@ public:
             etc.By.send(patch_state.electromag[4]);
             etc.Bz.send(patch_state.electromag[5]);
         }
+    }
 
-        visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx){
+    void _move1()
+    {
+        KLOG(TRC);
+        assert(batches.size() > 0);
+
+        _send_em();
+
+        visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx) {
             auto& etc = std::get<3>(batch);
             etc.fluxX.send(patch_state.flux[0 + (3 * pop_idx)]);
             etc.fluxY.send(patch_state.flux[1 + (3 * pop_idx)]);
@@ -329,12 +315,12 @@ public:
     }
 
     template<std::size_t index>
-    auto& move(double dt)
+    auto& move()
     {
         if constexpr (index == 0)
-            _move0(dt);
+            _move0();
         else if constexpr (index == 1)
-            _move1(dt);
+            _move1();
         else
         {
             assert(false);
@@ -357,7 +343,7 @@ public:
             }
         }
     }
-    
+
     template<typename Fn>
     void visit(Fn&& fn)
     {
@@ -379,7 +365,7 @@ public:
     void _copy_back_particles()
     {
         KLOG(TRC);
-        visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx){
+        visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx) {
             auto& copy_back = batch.get(0);
             assert(pop.size() > 0);
             assert(copy_back.size() == pop.size());
@@ -390,8 +376,7 @@ public:
 
     void _copy_back_fields()
     {
-        visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx)
-        {
+        visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx) {
             auto& etc = std::get<3>(batch);
             etc.fluxX.take(patch_state.flux[0 + (3 * pop_idx)]);
             etc.fluxY.take(patch_state.flux[1 + (3 * pop_idx)]);
@@ -411,7 +396,7 @@ public:
         return *this;
     }
 
-    auto new_end(ParticleArray& array)
+    auto const& new_end(ParticleArray& array)
     {
         assert(array.size());
         KLOG(INF) << array.data() << " " << array.size();
@@ -419,14 +404,18 @@ public:
         return post_partition.at(array.data());
     }
 
+
+private:
     std::unordered_map<Particle_t const*, PartIterator> post_partition;
     std::vector<PatchState<GridLayout>> patch_states;
-    
-private:
+    std::vector<std::shared_ptr<kul::gpu::HostMem<Particle_t>>> particles_;
+    std::vector<std::shared_ptr<kul::gpu::DeviceMem<Particle_t>>> particle_copies_;
+    std::vector<std::shared_ptr<ETC_t>> etcs_;
+
     std::vector<kul::gpu::HostMem<Particle_t>> particles;
 
-    using Batch_t = std::decay_t<
-        std::result_of_t<decltype (&This::_move0_<false>)(This, double, std::size_t, std::size_t)>>;
+    using Batch_t = std::decay_t<std::result_of_t<decltype (&This::_alloc_)(
+        This, PatchState<GridLayout>&, std::size_t, double)>>;
     std::vector<Batch_t> batches;
 };
 } // namespace PHARE::solver::gpu_mkn

@@ -322,9 +322,9 @@ namespace core
                 assert(partRho > 0);
                 assert(xDenWeights[ik] > 0);
                 assert(coef > 0);
-                
+
                 auto tmp = partRho * xDenWeights[ik] * coef;
-                
+
                 assert(tmp > 0);
                 Op{density(xDenStartIndex + ik)} += partRho * xDenWeights[ik] * coef;
 

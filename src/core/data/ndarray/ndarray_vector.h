@@ -219,8 +219,9 @@ public:
     auto end() const { return std::end(data_); }
     auto end() { return std::end(data_); }
 
-    void zero() { //data_ = std::vector<DataType>(data_.size(), {0}); 
-    	std::fill(data_.begin(), data_.end(), 0);
+    void zero()
+    { // data_ = std::vector<DataType>(data_.size(), {0});
+        std::fill(data_.begin(), data_.end(), 0);
     }
 
 

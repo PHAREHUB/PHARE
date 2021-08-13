@@ -77,13 +77,13 @@ int test_offloader(){
     Setup<PHARE_Types> setup{job_file};
     auto& dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     Solver solver{dict["simulation"]["algo"]};
-    PHARE::solver::gpu_mkn::Offloader<Solver> offloader{solver, dict};
+    PHARE::solver::gpu_mkn::Offloader<Solver> offloader{dict};
     PHARE::amr::visitHierarchy<GridLayout>(
         setup.hierarchy, *setup.hybridModel.resourcesManager,
         [&](auto& gridLayout, std::string patchID, size_t) {
-            offloader.alloc(gridLayout, setup.state);
+            offloader.alloc(gridLayout, setup.state, 0.0001);
         }, 0, 1, setup.hybridModel);
-    offloader._move0(0.0001);
+    offloader._move0();
     offloader.visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx){
       auto span = batch.get(0);
       for(std::size_t i = 0 ; i < pop.size(); i++){
@@ -95,7 +95,7 @@ int test_offloader(){
              p0.iCell[dimdex] > p1.iCell[dimdex] + 1) throw std::runtime_error("FAIL");
       }
     });
-    offloader._move1(.0001);
+    offloader._move1();
     offloader.visit([&](auto& batch, auto& patch_state, auto& pop, auto pop_idx){
       auto span = batch.get(0);
       for(std::size_t i = 0 ; i < pop.size(); i++){
@@ -123,13 +123,13 @@ int test_offloader_noop(){
     Setup<PHARE_Types> setup{job_file};
     auto& dict = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
     Solver solver{dict["simulation"]["algo"]};
-    PHARE::solver::gpu_mkn::Offloader<Solver> offloader{solver, dict};
+    PHARE::solver::gpu_mkn::Offloader<Solver> offloader{dict};
     PHARE::amr::visitHierarchy<GridLayout>(
         setup.hierarchy, *setup.hybridModel.resourcesManager,
         [&](auto& gridLayout, std::string patchID, size_t) {
-            offloader.alloc(gridLayout, setup.state);
+            offloader.alloc(gridLayout, setup.state, 0);
         }, 0, 1, setup.hybridModel);
-    offloader.template _move0<true>(0);
+    offloader.template _move0<true>();
 
     auto as_vec=[](auto& arr){ return std::vector<double>(arr.data(), arr.data() + arr.size()); };    
 

@@ -33,7 +33,6 @@ profile:
 
 - name: simulator
   parent: base
-  src: src/simulator
   self: diagnostic
   out: phare_simulator
 
@@ -79,7 +78,7 @@ profile:
   out: cpp_ext
 
 - name: py
-  self: dictator cpp_ext
+  self: simulator dictator cpp_ext
 
 - name: test
   parent: base

@@ -3,8 +3,6 @@
 
 
 #include <cassert>
-#define KASSERT_REPLACE_ASSERT 1
-#include "kul/assert.hpp"
 
 #include "amr/solvers/solver_ppc.h"
 #include "core/numerics/ion_updater/gpu/ion_updater.h"
@@ -21,7 +19,7 @@ class SolverPPC : public PHARE::solver::SolverPPC<HybridModel, AMR_Types>
 public:
     static constexpr auto dimension    = HybridModel::dimension;
     static constexpr auto interp_order = HybridModel::gridlayout_type::interp_order;
-    
+
     using Super            = PHARE::solver::SolverPPC<HybridModel, AMR_Types>;
     using This             = PHARE::solver::gpu::SolverPPC<HybridModel, AMR_Types>;
     using HybridModel_t    = HybridModel;
@@ -39,20 +37,20 @@ public:
 
 private:
     using Super::average_;
+    using Super::corrector_;
+    using Super::electromagAvg_;
     using Super::predictor1_;
     using Super::predictor2_;
-    using Super::corrector_;
-    using Super::saveState_;
     using Super::restoreState_;
-    using Super::electromagAvg_;
-    
-//     PHARE::core::Faraday<GridLayout> faraday_;
-//     PHARE::core::Ampere<GridLayout> ampere_;
-//     PHARE::core::Ohm<GridLayout> ohm_;
-    
+    using Super::saveState_;
+
+    //     PHARE::core::Faraday<GridLayout> faraday_;
+    //     PHARE::core::Ampere<GridLayout> ampere_;
+    //     PHARE::core::Ohm<GridLayout> ohm_;
+
     std::unique_ptr<Offloader_t> offloader;
     PHARE::core::gpu::IonUpdater<Ions, Electromag, GridLayout, Offloader_t> ionUpdater_;
-//     PHARE::core::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
+    //     PHARE::core::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
 
 
 public:
@@ -64,7 +62,7 @@ public:
         : Super{dict}
         , offloader{std::make_unique<PHARE::solver::gpu_mkn::Offloader<This>>(dict)}
         , ionUpdater_{dict["ion_updater"], *offloader}
-//     , ionUpdater_{dict["ion_updater"]}
+    //     , ionUpdater_{dict["ion_updater"]}
 
     {
     }
@@ -81,7 +79,7 @@ public:
 
 private:
     using Messenger = amr::HybridMessenger<HybridModel>;
-    
+
     void moveIons_(level_t& level, Ions& ions, Electromag& electromag, ResourcesManager& rm,
                    Messenger& fromCoarser, double const currentTime, double const newTime,
                    core::UpdaterMode mode);
@@ -105,31 +103,32 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
     auto& resourcesManager = *hybridModel.resourcesManager;
     auto level             = hierarchy->getPatchLevel(levelNumber);
 
-    predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
-    average_(*level, hybridModel);
-    saveState_(*level, hybridState.ions, resourcesManager);
-
-    // GPU // this block should be above, but not finished
-    offloader->clear();
-    {
+    auto reset_moments = [&]() {
         auto& ions = hybridState.ions;
-        auto& B    = hybridState.electromag.B;
-        auto& E    = hybridState.electromag.E;
-
-        auto inDomain = [](auto const& layout, auto const& particle) {
-            return core::isIn(core::cellAsPoint(particle), layout.AMRBox());
-        };
-
         for (auto& patch : *level)
         {
-            auto _      = resourcesManager.setOnPatch(*patch, ions, E, B);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            offloader->alloc(layout, hybridState);
+            auto _ = resourcesManager.setOnPatch(*patch, ions);
             resetMoments(ions);
         }
+    };
+    reset_moments();
+
+    // GPU
+    offloader->clear();
+    for (auto& patch : *level)
+    {
+        auto _      = resourcesManager.setOnPatch(*patch, hybridState);
+        auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+        offloader->alloc(layout, hybridState, newTime - currentTime);
     }
-    offloader->template move<0>(newTime - currentTime);
-    offloader->join();
+    // GPU
+
+    predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
+    average_(*level, hybridModel);
+    //     saveState_(*level, hybridState.ions, resourcesManager);
+
+    // GPU
+    offloader->template move<0>().join();
     // GPU
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
@@ -137,21 +136,12 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
     average_(*level, hybridModel);
-    restoreState_(*level, hybridState.ions, resourcesManager);
-    
+    //     restoreState_(*level, hybridState.ions, resourcesManager);
 
-    {
-        auto& ions = hybridState.ions;
-        for (auto& patch : *level)
-        {
-            auto _      = resourcesManager.setOnPatch(*patch, ions);
-            resetMoments(ions);
-        }
-    }
-    
+    reset_moments();
+
     // GPU
-    offloader->template move<1>(newTime - currentTime);
-    offloader->join();
+    offloader->template move<1>().join();
     // GPU
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,

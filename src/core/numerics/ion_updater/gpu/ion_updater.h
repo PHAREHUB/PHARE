@@ -162,7 +162,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositDomain
         // level border nodes will receive contributions from levelghost old and new particles
         pushAndAccumulateGhosts(pop.patchGhostParticles(), tmpPatchGhost, true);
         pushAndAccumulateGhosts(pop.levelGhostParticles(), tmpLevelGhost);
-    }    
+    }
 }
 
 
@@ -195,7 +195,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositAll_(
     for (auto& pop : ions)
     {
         auto& domainParticles = pop.domainParticles();
-        auto firstOutside = offloader_.new_end(domainParticles);
+        auto firstOutside     = offloader_.new_end(domainParticles);
         domainParticles.erase(firstOutside, std::end(domainParticles));
         assert(domainParticles.size());
 
@@ -215,8 +215,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositAll_(
         pushAndCopyInDomain(pop.levelGhostParticles());
 
         // only interpolate new domain particles here
-        interpolator_(firstOutside, std::end(domainParticles), pop.density(),
-                      pop.flux(), layout);
+        interpolator_(firstOutside, std::end(domainParticles), pop.density(), pop.flux(), layout);
     }
 }
 
