@@ -102,11 +102,6 @@ namespace core
                 auto& popDensity = pop.density();
                 std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
                                std::begin(*rho_), std::plus<typename field_type::type>{});
-
-                for (std::size_t i = 5; i < rho_->size() - 5; ++i)
-                {
-                    assert(rho_->data()[i] > 0);
-                }
             }
         }
 

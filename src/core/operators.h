@@ -1,8 +1,6 @@
 #ifndef PHARE_CORE_OPERATORS_H
 #define PHARE_CORE_OPERATORS_H
 
-#include "kul/log.hpp"
-
 #include "core/def.h"
 
 #if defined(PHARE_WITH_GPU)

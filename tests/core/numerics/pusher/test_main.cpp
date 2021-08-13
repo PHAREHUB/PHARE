@@ -72,22 +72,23 @@ class Interpolator
 {
 public:
     template<typename Particle_t, typename Electromag, typename GridLayout>
-    void meshToParticle(Particle_t& particle, Electromag const& Em, GridLayout const& layout)
+    auto meshToParticle(Particle_t& particle, Electromag const& Em, GridLayout const& layout)
     {
-        particle.Ex = 0.01;
-        particle.Ey = -0.05;
-        particle.Ez = 0.05;
-        particle.Bx = 1.;
-        particle.By = 1.;
-        particle.Bz = 1.;
+        return std::array<std::tuple<double, double, double>, 2>{
+            std::make_tuple(.01, -0.05, 0.05),
+            std::make_tuple(1, 1, 1)};
     }
 
     template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+    auto operator()(PartIterator begin, PartIterator end, Electromag const& Em,
                     GridLayout const& layout)
     {
+
+        std::vector<std::array<std::tuple<double, double, double>, 2>> ebs;
+        ebs.reserve(std::distance(begin, end));
         for (auto currPart = begin; currPart != end; ++currPart)
-            meshToParticle(*currPart, Em, layout);
+            ebs.emplace_back(meshToParticle(*currPart, Em, layout));
+        return ebs;
     }
 };
 

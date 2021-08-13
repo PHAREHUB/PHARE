@@ -25,4 +25,4 @@ function(_add_ion_updater_test src_name)
 endfunction(_add_ion_updater_test)
 
 _add_ion_updater_test(test_updater)
-_add_ion_updater_test(test_lol_updater)
+#_add_ion_updater_test(test_multithreaded_updater)

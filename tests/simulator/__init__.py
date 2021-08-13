@@ -1,6 +1,6 @@
 
-import ctypes
-ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
+# import ctypes
+# ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
@@ -46,7 +46,8 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     for k, v in kwargs.items():
         if k in args:
             args[k] = v
-    print("args", args)
+    args["cells"] = np_array_ify(args["cells"], dim)
+    args["dl"]    = np_array_ify(args["dl"], dim)
     return args
 
 def meshify(*xyz):
@@ -95,7 +96,7 @@ def defaultPopulationSettings(sim, density_fn, vbulk_fn):
     }
 
 
-def makeBasicModel(ppc=100, extra_pops={}):
+def makeBasicModel(extra_pops={}, ppc=100):
     sim = ph.global_vars.sim
     _density_fn_periodic = globals()["density_"+str(sim.ndim)+"d_periodic"]
 

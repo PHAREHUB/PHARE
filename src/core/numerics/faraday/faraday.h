@@ -49,18 +49,11 @@ namespace core
             start = this->layout_->physicalStartIndex(Bynew, Direction::X);
             end   = this->layout_->physicalEndIndex(Bynew, Direction::X);
 
-            assert(start >= 0 and start <= 1e6);
-            KLOG(INF) << dt;
-            KLOG(INF) << start;
-            KLOG(INF) << end;
 
             for (auto ix = start; ix <= end; ++ix)
             {
-                assert(!(std::isnan(Bynew(ix))));
-                auto der = this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
-                KLOG(INF) << ix << " " << der;
-                Bynew(ix) = By(ix) + dt * der;
-                assert(!(std::isnan(Bynew(ix))));
+                Bynew(ix) 
+                    = By(ix) + dt * this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
             }
 
             start = this->layout_->physicalStartIndex(Bznew, Direction::X);

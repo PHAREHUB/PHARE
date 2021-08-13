@@ -172,12 +172,6 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
                 Pointwise(DoubleEq(), this->particle.delta));
     EXPECT_THAT(this->destData.domainParticles[0].weight, DoubleEq(this->particle.weight));
     EXPECT_THAT(this->destData.domainParticles[0].charge, DoubleEq(this->particle.charge));
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Ex, this->particle.Ex);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Ey, this->particle.Ey);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Ez, this->particle.Ez);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Bx, this->particle.Bx);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].By, this->particle.By);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Bz, this->particle.Bz);
 
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
@@ -202,12 +196,6 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
                 Pointwise(DoubleEq(), this->particle.delta));
     EXPECT_THAT(this->destData.patchGhostParticles[0].weight, DoubleEq(this->particle.weight));
     EXPECT_THAT(this->destData.patchGhostParticles[0].charge, DoubleEq(this->particle.charge));
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Ex, this->particle.Ex);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Ey, this->particle.Ey);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Ez, this->particle.Ez);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Bx, this->particle.Bx);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].By, this->particle.By);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Bz, this->particle.Bz);
 }
 
 

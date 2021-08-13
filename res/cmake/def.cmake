@@ -1,10 +1,16 @@
 
 
-set (PHARE_FLAGS ${PHARE_FLAGS} -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -fcf-protection=none) #  -foffload="-lm " -lm
-set (PHARE_BIN_FLAGS ${PHARE_BIN_FLAGS} -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -fcf-protection=none) #  -foffload="-lm " -lm
-set (PHARE_LIB_FLAGS ${PHARE_LIB_FLAGS} -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -fcf-protection=none) #  -foffload="-lm " -lm
+set (PHARE_FLAGS ${PHARE_FLAGS})
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
+
+#if(AMD_OPENACC)
+#set (PHARE_FLAGS ${PHARE_FLAGS} -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -fcf-protection=none) #  -foffload="-lm " -lm
+#set (PHARE_BIN_FLAGS ${PHARE_BIN_FLAGS} -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -fcf-protection=none) #  -foffload="-lm " -lm
+#set (PHARE_LIB_FLAGS ${PHARE_LIB_FLAGS} -fopenacc -foffload=amdgcn-amdhsa="-march=gfx906" -fcf-protection=none) #  -foffload="-lm " -lm
+#set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
+#set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
+#endif(AMD_OPENACC)
 
 set (PHARE_BASE_LIBS )
 
