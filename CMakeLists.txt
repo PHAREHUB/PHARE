@@ -2,7 +2,8 @@ cmake_minimum_required (VERSION 3.9)
 
 project(PHARE VERSION 0.1)
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-include("${PHARE_PROJECT_DIR}/res/cmake/policies.cmake")
+
+include("${PHARE_PROJECT_DIR}/res/cmake/policies.cmake" NO_POLICY_SCOPE)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
@@ -20,7 +21,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
-find_program(Git git)
 find_package(PythonInterp  3.0 REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)

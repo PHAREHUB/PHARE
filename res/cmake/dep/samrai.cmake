@@ -1,7 +1,4 @@
 
-# these are being reset somewhere between first call and here
-include("${PHARE_PROJECT_DIR}/res/cmake/policies.cmake")
-
 
 find_package(SAMRAI CONFIG QUIET)
 if (NOT SAMRAI_FOUND)
