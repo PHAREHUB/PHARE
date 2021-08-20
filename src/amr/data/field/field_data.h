@@ -49,9 +49,9 @@ namespace amr
          * number of cells in each needed directions
          */
         FieldData(SAMRAI::hier::Box const& domain, SAMRAI::hier::IntVector const& ghost,
-                  std::string name, GridLayoutT layout, PhysicalQuantity qty)
+                  std::string name, GridLayoutT const& layout, PhysicalQuantity qty)
             : SAMRAI::hier::PatchData(domain, ghost)
-            , gridLayout{std::move(layout)}
+            , gridLayout{layout}
             , field(name, qty, gridLayout.allocSize(qty))
             , quantity_{qty}
         {

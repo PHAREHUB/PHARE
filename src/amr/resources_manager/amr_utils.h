@@ -129,7 +129,7 @@ namespace amr
 
 
     template<std::size_t dim>
-    auto toPHAREBox(SAMRAI::hier::Box b)
+    auto toPHAREBox(SAMRAI::hier::Box const& b)
     {
         if constexpr (dim == 1)
         {

@@ -42,7 +42,7 @@ class AFieldGeometry : public SAMRAI::hier::BoxGeometry
 
 public:
     virtual ~AFieldGeometry() {}
-    AFieldGeometry(std::size_t dimension_, SAMRAI::hier::Box const& box,
+    AFieldGeometry(std::size_t const dimension_, SAMRAI::hier::Box const& box,
                    SAMRAI::hier::Box const& ghostBox, SAMRAI::hier::Box const& interiorBox)
         : dimension{dimension_}
         , patchBox{box}
@@ -82,10 +82,11 @@ namespace amr
         /** \brief Construct a FieldGeometry on a region, for a specific quantity,
          * with a temporary gridlayout
          */
-        FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT layout, PhysicalQuantity qty)
+        FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT const& layout,
+                      PhysicalQuantity const qty)
             : AFieldGeometry{GridLayoutT::dimension, box, toFieldBox(box, qty, layout),
                              toFieldBox(box, qty, layout, false)}
-            , layout_{std::move(layout)}
+            , layout_{layout}
             , quantity_{qty}
         {
         }

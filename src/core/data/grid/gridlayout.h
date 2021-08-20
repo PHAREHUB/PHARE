@@ -114,7 +114,8 @@ namespace core
         }
 
 
-        GridLayout(GridLayout&& source) = default;
+        GridLayout(GridLayout const& that) = default;
+        GridLayout(GridLayout&& source)    = default;
 
 
         /**

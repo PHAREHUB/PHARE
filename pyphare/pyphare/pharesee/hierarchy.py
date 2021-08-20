@@ -9,7 +9,7 @@ from ..core import box as boxm
 from ..core.box import Box
 from ..core.gridlayout import GridLayout
 import matplotlib.pyplot as plt
-from ..core.phare_utilities import np_array_ify, is_scalar, listify, refinement_ratio
+from ..core.phare_utilities import refinement_ratio
 
 
 
