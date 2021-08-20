@@ -9,6 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
 endif()
 
+find_package(PythonInterp  3.0 REQUIRED)
 include("${PHARE_PROJECT_DIR}/res/cmake/options.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
@@ -21,7 +22,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
-find_package(PythonInterp  3.0 REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
