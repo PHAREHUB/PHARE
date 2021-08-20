@@ -26,14 +26,30 @@ public:
     {
     }
 
-    ParticleArray(ParticleArray const& copy)
-        : particles(copy.particles)
+    ParticleArray(ParticleArray const& that)
+        : particles(that.particles)
+    {
+    }
+
+    ParticleArray(ParticleArray&& that)
+        : particles(std::move(that.particles))
     {
     }
 
     ParticleArray(std::size_t size, Particle_t&& particle)
         : particles(size, particle)
     {
+    }
+
+    auto& operator=(ParticleArray const& that)
+    {
+        this->particles = that.particles;
+        return *this;
+    }
+    auto& operator=(ParticleArray&& that)
+    {
+        this->particles = std::move(that.particles);
+        return *this;
     }
 
     std::size_t size() const { return particles.size(); }

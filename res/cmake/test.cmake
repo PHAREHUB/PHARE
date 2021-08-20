@@ -79,15 +79,6 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       set_exe_paths_(py3_${name}_mpi_n_${N})
     endfunction(add_mpi_python3_test)
 
-    function(phare_mpi_python3_exec level N target file directory)
-      if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
-        add_test(NAME py3_${target}_mpi_n_${N} COMMAND mpirun -n ${N} python3 -u ${file} WORKING_DIRECTORY ${directory})
-        set_exe_paths_(py3_${target}_mpi_n_${N})
-      endif()
-    endfunction(phare_mpi_python3_exec)
-    # use
-    #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
-
   else()
     function(add_phare_test binary directory)
       add_no_mpi_phare_test(${binary} ${directory})
@@ -100,10 +91,6 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     function(add_mpi_python3_test N name file directory)
       # do nothing
     endfunction(add_mpi_python3_test)
-
-    function(phare_mpi_python3_exec level N target file directory)
-      # do nothing
-    endfunction(phare_mpi_python3_exec)
   endif(testMPI)
 
 
@@ -123,6 +110,21 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   endfunction(phare_python3_exec)
   # use
   #  phare_python3_exec(1 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
+
+
+  function(phare_mpi_python3_exec level N target file directory)
+    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+      if(${N} EQUAL 1)
+        add_test(NAME py3_${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+        set_exe_paths_(py3_${target})
+      else()
+        add_test(NAME py3_${target}_mpi_n_${N} COMMAND mpirun -n ${N} python3 -u ${file} WORKING_DIRECTORY ${directory})
+        set_exe_paths_(py3_${target}_mpi_n_${N})
+      endif()
+    endif()
+  endfunction(phare_mpi_python3_exec)
+  # use
+  #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
 
   set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIRS} ${PHARE_PROJECT_DIR})
 

@@ -12,9 +12,26 @@ namespace core
     class HybridQuantity
     {
     public:
-        enum class Scalar { Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, rho, Vx, Vy, Vz, P, count };
+        enum class Scalar {
+            Bx,
+            By,
+            Bz,
+            Ex,
+            Ey,
+            Ez,
+            Jx,
+            Jy,
+            Jz,
+            rho,
+            Vx,
+            Vy,
+            Vz,
+            P,
+            count,
+            INVALID
+        };
 
-        enum class Vector { B, E, J, V };
+        enum class Vector { B, E, J, V, INVALID };
 
         static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
         {
