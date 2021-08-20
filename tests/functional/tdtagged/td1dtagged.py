@@ -174,7 +174,7 @@ def noRefinement(**kwargs):
 
 def make_figure():
     from scipy.optimize import curve_fit
-    from pyphare.pharesee.hierarchy import finest_field
+    from pyphare.pharesee.hierarchy import flat_finest_field
 
     rwT    = Run("./withTagging")
     rNoRef = Run("./noRefinement")
@@ -187,10 +187,10 @@ def make_figure():
     JwT = rwT.GetJ(plot_time)
     JNoRef = rNoRef.GetJ(plot_time)
 
-    bywT, xbywT  = finest_field(BwT, "By")
-    byNoRef, xbyNoRef  = finest_field(BNoRef, "By")
-    jzwT, xjzwT  = finest_field(JwT, "Jz")
-    jzNoRef, xjzNoRef  = finest_field(JNoRef, "Jz")
+    bywT, xbywT  = flat_finest_field(BwT, "By")
+    byNoRef, xbyNoRef  = flat_finest_field(BNoRef, "By")
+    jzwT, xjzwT  = flat_finest_field(JwT, "Jz")
+    jzNoRef, xjzNoRef  = flat_finest_field(JNoRef, "Jz")
 
     fig, axarr = plt.subplots(nrows=3, figsize=(8,8))
 

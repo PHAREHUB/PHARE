@@ -10,7 +10,7 @@ from pyphare.pharein import global_vars as gv
 from pyphare.pharesee.hierarchy import get_times_from_h5
 from tests.diagnostic import all_timestamps
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import finest_field
+from pyphare.pharesee.hierarchy import flat_finest_field
 
 
 import matplotlib.pyplot as plt
@@ -143,7 +143,7 @@ def phase_speed(run_path, ampl, xmax):
 
     for it, t in enumerate(time):
         B = r.GetB(t)
-        by, xby = finest_field(B, "By")
+        by, xby = flat_finest_field(B, "By")
         a, k, phi = curve_fit(wave, xby, by,p0=(ampl, 2*np.pi/xmax, 0))[0]
         phase[it] = phi
         amplitude[it] = a
@@ -157,7 +157,7 @@ def phase_speed(run_path, ampl, xmax):
 def main():
     from pybindlibs.cpp import mpi_rank
     from pyphare.pharesee.run import Run
-    from pyphare.pharesee.hierarchy import finest_field
+    from pyphare.pharesee.hierarchy import flat_finest_field
 
 
     config()
@@ -172,7 +172,7 @@ def main():
         fig, ax = plt.subplots(figsize=(9,5), nrows=1)
 
         B = r.GetB(t[int(len(t)/2)])
-        by, xby = finest_field(B, "By")
+        by, xby = flat_finest_field(B, "By")
         ax.plot(xby, by, label="t = 500", alpha=0.6)
 
         sorted_patches=sorted(B.patch_levels[1].patches,
@@ -182,13 +182,13 @@ def main():
         x1 = sorted_patches[-1].patch_datas["By"].x[-1]
 
         B = r.GetB(t[-1])
-        by, xby = finest_field(B, "By")
+        by, xby = flat_finest_field(B, "By")
         ax.plot(xby, by, label="t = 1000", alpha=0.6)
         ax.plot(xby, wave(xby, 0.01, 2*np.pi/1000., 2*np.pi/1000*500),
                 color="k", ls="--", label="T=500 (theory)")
 
         B = r.GetB(t[0])
-        by, xby = finest_field(B, "By")
+        by, xby = flat_finest_field(B, "By")
         ax.plot(xby, by, label="t = 0", color="k")
 
         ax.set_xlabel("x")
