@@ -28,6 +28,26 @@
 
 namespace PHARE::core
 {
+template<std::size_t dim, bool offload>
+auto constexpr type_selector()
+{
+    using Array_t = PHARE::core::NdArrayVector<dimension>;
+
+#if defined(PHARE_WITH_GPU)
+    using GPU_SolverPPC_t = PHARE::solver::gpu::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+#elif defined(WITH_RAJA) and defined(WITH_UMPIRE)
+    using GPU_SolverPPC_t = PHARE::solver::llnl::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+#elif defined(WITH_RAJA) or defined(WITH_UMPIRE)
+#error // invalid, both RAJA and UMPIRE are required together.
+#endif
+
+    return static_cast<std::conditional_t<offload, GPU_SolverPPC_t, CPU_SolverPPC_t>*>(nullptr);
+}
+
+} // namespace PHARE::core
+
 template<std::size_t dimension_, std::size_t interp_order_, bool offload_ = false>
 struct PHARE_Types
 {

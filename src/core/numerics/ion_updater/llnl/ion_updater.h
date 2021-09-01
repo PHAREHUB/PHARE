@@ -1,14 +1,13 @@
-#ifndef PHARE_CORE_GPU_ION_UPDATER_H
-#define PHARE_CORE_GPU_ION_UPDATER_H
+#ifndef PHARE_CORE_LLNL_ION_UPDATER_H
+#define PHARE_CORE_LLNL_ION_UPDATER_H
 
 #include "core/numerics/ion_updater/ion_updater.h"
-
 // TODO alpha coef for interpolating new and old levelGhost should be given somehow...
 
 
-namespace PHARE::core::gpu
+namespace PHARE::core::llnl
 {
-template<typename Ions, typename Electromag, typename GridLayout, typename Offloader>
+template<typename Ions, typename Electromag, typename GridLayout>
 class IonUpdater
 {
 public:
@@ -31,9 +30,8 @@ private:
                                                  BoundaryCondition, GridLayout>;
 
 public:
-    IonUpdater(PHARE::initializer::PHAREDict const& dict, Offloader& offloader)
+    IonUpdater(PHARE::initializer::PHAREDict const& dict)
         : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
-        , offloader_{offloader}
     {
     }
 
@@ -47,14 +45,13 @@ private:
     void updateAndDepositAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
 
     std::unique_ptr<Pusher> pusher_;
-    Offloader& offloader_;
     Interpolator interpolator_{};
 };
 
 
 
 
-template<typename Ions, typename Electromag, typename GridLayout, typename Offloader>
+template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updatePopulations(
     Ions& ions, Electromag const& em, GridLayout const& layout, double dt, UpdaterMode mode)
 {
@@ -72,7 +69,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updatePopulations(
 
 
 
-template<typename Ions, typename Electromag, typename GridLayout, typename Offloader>
+template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateIons(Ions& ions,
                                                                      GridLayout const& layout)
 {
@@ -83,7 +80,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateIons(Ions& ions,
 
 
 
-template<typename Ions, typename Electromag, typename GridLayout, typename Offloader>
+template<typename Ions, typename Electromag, typename GridLayout>
 /**
  * @brief IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositDomain_
    evolves moments from time n to n+1 without updating particles, which stay at time n
@@ -152,7 +149,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositDomain
 }
 
 
-template<typename Ions, typename Electromag, typename GridLayout, typename Offloader>
+template<typename Ions, typename Electromag, typename GridLayout>
 /**
  * @brief IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositDomain_
    evolves moments and particles from time n to n+1
@@ -181,7 +178,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositAll_(
     for (auto& pop : ions)
     {
         auto& domainParticles = pop.domainParticles();
-        auto firstOutside     = offloader_.new_end(domainParticles);
+        auto firstOutside     = domainParticles.end(); // TODO FIX
         domainParticles.erase(firstOutside, std::end(domainParticles));
         assert(domainParticles.size());
 
@@ -207,7 +204,7 @@ void IonUpdater<Ions, Electromag, GridLayout, Offloader>::updateAndDepositAll_(
 
 
 
-} // namespace PHARE::core::gpu
+} // namespace PHARE::core::llnl
 
 
 #endif // ION_UPDATER_H

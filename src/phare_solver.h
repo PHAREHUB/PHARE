@@ -17,10 +17,30 @@
 
 #if defined(PHARE_WITH_GPU)
 #include "amr/solvers/gpu/solver_ppc.h"
+#elif defined(WITH_RAJA) and defined(WITH_UMPIRE)
+#include "amr/solvers/llnl/solver_ppc.h"
 #endif
 
 namespace PHARE::solver
 {
+template<bool offload>
+auto* constexpr solver_select()
+{
+    using CPU_SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+#if defined(PHARE_WITH_GPU)
+    using GPU_SolverPPC_t = PHARE::solver::gpu::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+#elif defined(WITH_RAJA) and defined(WITH_UMPIRE)
+    using GPU_SolverPPC_t = PHARE::solver::llnl::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+#elif defined(WITH_RAJA) or defined(WITH_UMPIRE)
+#error // invalid, both RAJA and UMPIRE are required together.
+#endif
+
+    return static_cast<std::conditional_t<offload, GPU_SolverPPC_t, CPU_SolverPPC_t>*>(nullptr);
+}
+
 template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_,
          bool offload = false>
 struct PHARE_Types
@@ -43,14 +63,7 @@ struct PHARE_Types
                                                      Electrons_t, PHARE::amr::SAMRAI_Types>;
     using MHDModel_t = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
 
-
-    using CPU_SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
-#if defined(PHARE_WITH_GPU)
-    using GPU_SolverPPC_t = PHARE::solver::gpu::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
-    using SolverPPC_t = std::conditional_t<core_types::offload, GPU_SolverPPC_t, CPU_SolverPPC_t>;
-#else
-    using SolverPPC_t = CPU_SolverPPC_t;
-#endif
+    using SolverPPC_t = decltype(*solver_select<offload>());
 
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;
     using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;

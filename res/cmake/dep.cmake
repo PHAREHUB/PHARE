@@ -5,6 +5,8 @@ find_program(Git git)
 
 # SAMRAI build option
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/samrai.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/raja_umpire.cmake")
+
 
 # caliper build option
 #  enabled with -DCALIPER_ROOT=/path/to/caliper
