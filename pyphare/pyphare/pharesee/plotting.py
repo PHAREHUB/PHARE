@@ -195,11 +195,10 @@ def zoom_effect(ax1, ax2, xmin, xmax, **kwargs):
 
 def finest_field_plot(run_path, qty, **kwargs):
     """
-    plot the given field
-    from a given flat_field, the kind of interpolator (nearest or linear)
-    and the grid where it is plotted are defined in the kwargs
+    plot the given quantity (qty) at 'run_path' with only the finest data
+
     * run_path : the path of the run
-    * qty : the one to plot
+    * qty : ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
 
     kwargs:
     * ax : the handle for the fig axes
@@ -218,6 +217,7 @@ def finest_field_plot(run_path, qty, **kwargs):
     import os
     from pyphare.pharesee.hierarchy import get_times_from_h5
     from pyphare.pharesee.run import Run
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     r = Run(run_path)
 
@@ -247,7 +247,7 @@ def finest_field_plot(run_path, qty, **kwargs):
             time = times[0]
         interpolator, finest_coords = r.GetVi(time, merged=True,\
                                               interp=interp)[qty]
-    elif qty is 'rho':
+    elif qty == 'rho':
         file = os.path.join(run_path, "ions_density.h5")
         if time is None:
             times = get_times_from_h5(file)
@@ -275,16 +275,17 @@ def finest_field_plot(run_path, qty, **kwargs):
 
         vmin = kwargs.get("vmin", np.nanmin(DATA))
         vmax = kwargs.get("vmax", np.nanmax(DATA))
+        cmap = kwargs.get("cmap", 'Spectral_r')
 
-        fig.imshow(DATA,
-                   aspect = 'equal',
-                   interpolation = interp,
-                   cmap = 'viridis',
-                   origin = 'lower',
-                   extent = [0, domain[0], 0, domain[1]],
+        im = ax.pcolormesh(finest_coords[0], finest_coords[1],
+                   DATA,
+                   cmap = cmap,
                    vmin = vmin,
                    vmax = vmax)
-        plt.colorbar()
+        ax.set_aspect("equal")
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.08)
+        cb = plt.colorbar( im, ax=ax, cax=cax )
     else:
         raise ValueError("finest_field_plot not yet ready for 3d")
 
