@@ -17,7 +17,7 @@
 
 namespace PHARE::core
 {
-void maxwellianVelocity(std::array<double, 3> V, std::array<double, 3> Vth,
+void maxwellianVelocity(std::array<double, 3> const& V, std::array<double, 3> const& Vth,
                         std::mt19937_64& generator, std::array<double, 3>& partVelocity);
 
 
@@ -37,13 +37,12 @@ public:
     static constexpr auto dimension = GridLayout::dimension;
     using InputFunction             = initializer::InitFunction<dimension>;
 
-    MaxwellianParticleInitializer(InputFunction density, std::array<InputFunction, 3> bulkVelocity,
-                                  std::array<InputFunction, 3> thermalVelocity,
-                                  double particleCharge, std::uint32_t nbrParticlesPerCell,
-                                  std::optional<std::size_t> seed = {},
-                                  Basis basis                     = Basis::Cartesian,
-                                  std::array<InputFunction, 3> magneticField
-                                  = {nullptr, nullptr, nullptr})
+    MaxwellianParticleInitializer(
+        InputFunction density, std::array<InputFunction, 3> const& bulkVelocity,
+        std::array<InputFunction, 3> const& thermalVelocity, double const particleCharge,
+        std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
+        Basis const basis                                = Basis::Cartesian,
+        std::array<InputFunction, 3> const magneticField = {nullptr, nullptr, nullptr})
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}

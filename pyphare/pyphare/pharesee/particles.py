@@ -1,6 +1,6 @@
 
 import numpy as np
-from ..core.phare_utilities import refinement_ratio, print_trace, is_scalar
+from ..core.phare_utilities import refinement_ratio, print_trace
 
 class Particles:
     """
