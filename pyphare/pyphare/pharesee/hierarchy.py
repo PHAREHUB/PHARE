@@ -644,7 +644,7 @@ class PatchHierarchy:
 
         return fig
 
-    def plot(self, **kwargs):
+    def plot1d(self, **kwargs):
         """
         plot
         """
@@ -689,6 +689,67 @@ class PatchHierarchy:
 
         if "filename" in kwargs:
             fig.savefig(kwargs["filename"])
+
+
+    def plot2d(self, **kwargs):
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        lvl = kwargs.get("level", 0)
+        qty = kwargs.get("qty", None)
+        time = kwargs.get("time", self.times()[0])
+        if "ax" not in kwargs:
+            fig, ax = plt.subplots()
+        else:
+            ax = kwargs["ax"]
+            fig = ax.figure
+
+        for patch in self.level(lvl, time).patches:
+            pdat = patch.patch_datas[qty]
+            data = pdat.dataset[:]
+            nbrGhosts = pdat.ghosts_nbr
+            x = pdat.x
+            y = pdat.y
+            nx,ny =x.size, y.size
+            data = data.reshape((nx,ny))
+            data = data[nbrGhosts[0]:-nbrGhosts[0], nbrGhosts[1]:-nbrGhosts[1]]
+            x = x[nbrGhosts[0]:-nbrGhosts[0]]
+            y = y[nbrGhosts[1]:-nbrGhosts[1]]
+            dx,dy = pdat.layout.dl
+            x -= dx*0.5
+            y -= dy*0.5
+            x = np.append(x, x[-1]+dx)
+            y = np.append(y, y[-1]+dy)
+            im = ax.pcolormesh(x, y, data.T,
+                               cmap=kwargs.get("cmap","Spectral_r"),
+                               vmin=kwargs.get("vmin", None),
+                               vmax=kwargs.get("vmax", None))
+
+        ax.set_aspect("equal")
+        ax.set_title(kwargs.get("title", ""))
+        ax.set_xlabel(kwargs.get("xlabel", "x"))
+        ax.set_ylabel(kwargs.get("ylabel", "y"))
+        if "xlim" in kwargs:
+            ax.set_xlim(kwargs["xlim"])
+        if "ylim" in kwargs:
+            ax.set_ylim(kwargs["ylim"])
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.08)
+        cb = plt.colorbar( im, ax=ax, cax=cax )
+
+        if kwargs.get("legend", None) is not None:
+            ax.legend()
+
+        if "filename" in kwargs:
+            fig.savefig(kwargs["filename"])
+
+        return fig,ax
+
+    def plot(self, **kwargs):
+        if self.ndim == 1:
+            return self.plot1d(**kwargs)
+        elif self.ndim==2:
+            return self.plot2d(**kwargs)
+
 
     def dist_plot(self, **kwargs):
         """

@@ -35,7 +35,7 @@ def _compute_current(patch):
             {"name":"Jz", "data":Jz,"centering":"primal"})
 
 
-def make_interpolator(data, coords, interp, domain, dl):
+def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
     """
     :param data: the values of the data that will be used for making
     the interpolator, defined on coords
@@ -45,7 +45,7 @@ def make_interpolator(data, coords, interp, domain, dl):
     finest_coords will be the structured coordinates defined on the
     finest grid.
     """
-
+    from pyphare.core.gridlayout import yeeCoordsFor
     dim = coords.ndim
 
     if dim == 1:
@@ -57,8 +57,8 @@ def make_interpolator(data, coords, interp, domain, dl):
                                 assume_sorted=False)
 
         nx = 1+int(domain[0]/dl[0])
-        x = dl[0]*np.arange(0, nx)
 
+        x = yeeCoordsFor([0]*dim, [nbrGhosts]*dim, dl, [nx],  qty, "x")
         finest_coords = (x,)
 
     elif dim == 2:
@@ -72,8 +72,11 @@ def make_interpolator(data, coords, interp, domain, dl):
         else:
             raise ValueError("interp can only be 'nearest' or 'bilinear'")
 
-        x = np.arange(0, domain[0]+dl[0], dl[0])
-        y = np.arange(0, domain[1]+dl[1], dl[1])
+        nCells = [1+int(d/dl) for d,dl in zip(domain, dl)]
+        x = yeeCoordsFor([0]*dim, [5]*dim, dl, nCells,  qty, "x")
+        y = yeeCoordsFor([0]*dim, [5]*dim, dl, nCells,  qty, "y")
+        #x = np.arange(0, domain[0]+dl[0], dl[0])
+        #y = np.arange(0, domain[1]+dl[1], dl[1])
         finest_coords = (x, y)
 
     else:
@@ -101,11 +104,14 @@ class Run:
             domain = self.GetDomainSize()
             dl = self.GetDl()
 
+            # assumes all qties in the hierarchy have the same ghost width
+            # so take the first patch data of the first patch of the first level....
+            nbrGhosts = list(hierarchy.level(0).patches[0].patch_datas.values())[0].ghosts_nbr
             merged_qties = {}
             for qty in hierarchy.quantities():
                 data, coords = flat_finest_field(hierarchy, qty, time=time)
                 merged_qties[qty] = make_interpolator(data, coords,\
-                                                      interp, domain, dl)
+                                                      interp, domain, dl, qty, nbrGhosts)
             return merged_qties
         else:
             return hierarchy

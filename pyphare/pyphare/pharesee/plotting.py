@@ -218,6 +218,7 @@ def finest_field_plot(run_path, qty, **kwargs):
     from pyphare.pharesee.hierarchy import get_times_from_h5
     from pyphare.pharesee.run import Run
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    import pyphare.core.gridlayout as gridlayout
 
     r = Run(run_path)
 
@@ -270,14 +271,28 @@ def finest_field_plot(run_path, qty, **kwargs):
         ax.plot(finest_coords[0], interpolator(finest_coords[0]),\
                 drawstyle=drawstyle)
     elif dim == 2:
-        X, Y = np.meshgrid(finest_coords[0], finest_coords[1])
+
+
+        x = finest_coords[0]
+        y = finest_coords[1]
+        dx = x[1] - x[0]
+        dy = y[1] - y[0]
+
+        # pcolormesh considers DATA_ij to be the center of the pixel
+        # and X,Y are the corners so XY need to be made 1 value larger
+        # and shifted around DATA_ij
+        x -= dx/2
+        x= np.append(x, x[-1]+dx)
+        y -= dy/2
+        y= np.append(y, y[-1]+dy)
+
+        X, Y = np.meshgrid(x, y)
         DATA = interpolator(X, Y)
 
         vmin = kwargs.get("vmin", np.nanmin(DATA))
         vmax = kwargs.get("vmax", np.nanmax(DATA))
         cmap = kwargs.get("cmap", 'Spectral_r')
-
-        im = ax.pcolormesh(finest_coords[0], finest_coords[1],
+        im = ax.pcolormesh(x,y,
                    DATA,
                    cmap = cmap,
                    vmin = vmin,
