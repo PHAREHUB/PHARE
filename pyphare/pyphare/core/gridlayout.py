@@ -40,8 +40,8 @@ yee_centering = {
 }
 yee_centering_lower = {
   direction : {
-    key.lower() : prumal
-    for key, prumal in key_dict.items()
+    key.lower() : centering
+    for key, centering in key_dict.items()
   }
   for direction, key_dict in yee_centering.items()
 }
