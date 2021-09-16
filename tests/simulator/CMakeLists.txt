@@ -14,8 +14,10 @@ phare_python3_exec(9 sim-refineParticlNbr refined_particle_nbr.py ${CMAKE_CURREN
 if(HighFive)
   ## These test use dump diagnostics so require HighFive!
   phare_python3_exec(9       diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
-  phare_mpi_python3_exec(9 3 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
-  phare_mpi_python3_exec(9 4 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
+  if(testMPI)
+    phare_mpi_python3_exec(9 3 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(9 4 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
+  endif(testMPI)
 
   phare_python3_exec(11, test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()
