@@ -644,10 +644,10 @@ namespace amr
          * needed, at t_coarse. These are typically internal variables of the messenger, like
          * Eold or Bold.
          */
+        template<typename RefinerT, RefinerT RefineType>
         void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
                            VecFieldDescriptor const& modelVec,
-                           VecFieldDescriptor const& oldModelVec,
-                           RefinerPool<RefinerType::GhostField>& refiners,
+                           VecFieldDescriptor const& oldModelVec, RefinerPool<RefineType>& refiners,
                            std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp)
         {
             for (auto const& ghostVec : ghostVecs)
@@ -658,10 +658,10 @@ namespace amr
         }
 
 
+        template<typename RefinerT, RefinerT RefineType>
         void fillRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
                            VecFieldDescriptor const& modelVec,
-                           VecFieldDescriptor const& oldModelVec,
-                           RefinerPool<RefinerType::GhostField>& refiners)
+                           VecFieldDescriptor const& oldModelVec, RefinerPool<RefineType>& refiners)
         {
             fillRefiners_(ghostVecs, modelVec, oldModelVec, refiners, fieldRefineOp_);
         }
@@ -734,14 +734,14 @@ namespace amr
 
 
         //! store communicators for magnetic fields that need ghosts to be filled
-        RefinerPool<RefinerType::GhostField> magneticSharedNodes_;
+        RefinerPool<RefinerType::SharedBorder> magneticSharedNodes_;
         RefinerPool<RefinerType::GhostField> magneticGhosts_;
 
         //! store communicators for magnetic fields that need to be initialized
         RefinerPool<RefinerType::InitField> magneticInit_;
 
         //! store refiners for electric fields that need ghosts to be filled
-        RefinerPool<RefinerType::GhostField> electricSharedNodes_;
+        RefinerPool<RefinerType::SharedBorder> electricSharedNodes_;
         RefinerPool<RefinerType::GhostField> electricGhosts_;
 
         //! store communicators for electric fields that need to be initializes

@@ -21,6 +21,12 @@ using core::dirZ;
 template<typename GridLayoutT, typename FieldT>
 class FieldLinearTimeInterpolate : public SAMRAI::hier::TimeInterpolateOperator
 {
+    static std::size_t constexpr dim = GridLayoutT::dimension;
+    static_assert(dim > 0 && dim <= 3);
+
+    using PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity());
+    using FieldDataT       = FieldData<GridLayoutT, FieldT>;
+
 public:
     using GridLayoutImpl = typename GridLayoutT::implT;
 
@@ -30,51 +36,34 @@ public:
     }
 
 
-
-
     virtual ~FieldLinearTimeInterpolate() = default;
 
 
-
-
     void timeInterpolate(SAMRAI::hier::PatchData& destData, SAMRAI::hier::Box const& where,
-                         SAMRAI::hier::BoxOverlap const& /*overlap*/,
+                         SAMRAI::hier::BoxOverlap const& /*overlap_*/,
                          SAMRAI::hier::PatchData const& srcDataOld,
                          SAMRAI::hier::PatchData const& srcDataNew) const override
     {
-        //
-
         auto& fieldDataDest = dynamic_cast<FieldDataT&>(destData);
 
         auto const& fieldDataSrcOld = dynamic_cast<FieldDataT const&>(srcDataOld);
         auto const& fieldDataSrcNew = dynamic_cast<FieldDataT const&>(srcDataNew);
 
         double const interpTime = fieldDataDest.getTime();
-
-        double const oldTime = fieldDataSrcOld.getTime();
-        double const newTime = fieldDataSrcNew.getTime();
-
-
-        double const alpha = (interpTime - oldTime) / (newTime - oldTime);
-
-        auto const& layout = fieldDataDest.gridLayout;
-
-
-
-        auto& fieldDest = fieldDataDest.field;
+        double const oldTime    = fieldDataSrcOld.getTime();
+        double const newTime    = fieldDataSrcNew.getTime();
+        double const alpha      = (interpTime - oldTime) / (newTime - oldTime);
 
         auto const& fieldSrcOld = fieldDataSrcOld.field;
         auto const& fieldSrcNew = fieldDataSrcNew.field;
+        auto& fieldDest         = fieldDataDest.field;
 
-
-
-        auto qty = fieldDest.physicalQuantity();
-
-
+        auto const& layout = fieldDataDest.gridLayout;
         auto const whereLayout
             = FieldGeometry<GridLayoutT, PhysicalQuantity>::layoutFromBox(where, layout);
 
         bool const withGhost{true};
+        auto qty                  = fieldDest.physicalQuantity();
         auto const interpolateBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             where, qty, whereLayout, !withGhost);
 
@@ -86,12 +75,8 @@ public:
         auto srcGhostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
             fieldDataSrcNew.getBox(), qty, fieldDataSrcNew.gridLayout, withGhost);
 
-        auto const localDestBox
-            = AMRToLocal(static_cast<std::add_const_t<decltype(finalBox)>>(finalBox), ghostBox);
-
-        auto const localSrcBox
-            = AMRToLocal(static_cast<std::add_const_t<decltype(finalBox)>>(finalBox), srcGhostBox);
-
+        auto const localDestBox = AMRToLocal(finalBox, ghostBox);
+        auto const localSrcBox  = AMRToLocal(finalBox, srcGhostBox);
 
         if constexpr (dim == 1)
         {
@@ -149,20 +134,7 @@ public:
                 }
             }
         }
-        else
-        {
-            static_assert(dim > 0 && dim <= 3);
-        }
     }
-
-
-
-
-private:
-    static std::size_t constexpr dim = GridLayoutImpl::dimension;
-
-    using PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity());
-    using FieldDataT       = FieldData<GridLayoutT, FieldT>;
 };
 
 } // namespace PHARE::amr

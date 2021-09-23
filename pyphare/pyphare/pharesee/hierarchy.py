@@ -80,8 +80,9 @@ class FieldData(PatchData):
 
         overlap = box * gbox
         if overlap is not None:
-            lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
-            upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
+            lower = self.layout.AMRToLocal(overlap.lower)
+            upper = self.layout.AMRToLocal(overlap.upper)
+
             if box.ndim == 1:
                 return self.dataset[lower[0] : upper[0] + 1]
             if box.ndim == 2:

@@ -80,6 +80,7 @@ class AdvanceTest(AdvanceTestBase):
     )
     @unpack
     def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, interp_order, refinement_boxes):
+        print(f"{self._testMethodName}_{ndim}d")
         self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(ndim, interp_order, refinement_boxes)
 
 

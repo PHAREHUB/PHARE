@@ -314,7 +314,7 @@ namespace solver
                 }
             }
 
-            if (oldLevel != nullptr)
+            if (isRegridding)
             {
                 // regriding the current level has broken schedules for which
                 // this level is the source or destination

@@ -68,7 +68,11 @@ public:
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
-
+    ~Simulator()
+    {
+        if (coutbuf != nullptr)
+            std::cout.rdbuf(coutbuf);
+    }
 
     static constexpr std::size_t dimension     = _dimension;
     static constexpr std::size_t interp_order  = _interp_order;
@@ -97,7 +101,7 @@ private:
     auto find_model(std::string name);
 
     std::ofstream log_out{".log/" + std::to_string(core::mpi::rank()) + ".out"};
-    std::streambuf* coutbuf;
+    std::streambuf* coutbuf = nullptr;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
 
