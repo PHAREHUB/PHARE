@@ -17,6 +17,9 @@ if(HighFive)
   if(testMPI)
     phare_mpi_python3_exec(9 3 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 4 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
+
+    phare_mpi_python3_exec(9 2  complex_2_refinement refinement/test_2d_2_core.py  ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(11 10 complex_10_refinement refinement/test_2d_10_core.py  ${CMAKE_CURRENT_BINARY_DIR})
   endif(testMPI)
 
   phare_python3_exec(11, test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
