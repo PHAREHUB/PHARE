@@ -141,7 +141,7 @@ def get_hier(path):
 from tests.simulator.test_advance import AdvanceTestBase
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
-test = AdvanceTestBase(rethrow=False)
+test = AdvanceTestBase(rethrow=True) # change to False for debugging images
 L0_diags = "phare_outputs/test_homo_0"
 L0L1_diags = "phare_outputs/test_homo_1"
 
@@ -154,6 +154,7 @@ def post_advance_1(new_time):
         L0_datahier = get_hier(L0_diags)
         L0L1_datahier = get_hier(L0L1_diags)
         extra_collections = []
+        errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)
         errors = test.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier)
         if isinstance(errors, list):
             extra_collections += [{
@@ -167,11 +168,6 @@ def main():
     startMPI()
     rando = random.randint(0, 1e10)
 
-    # refinement_boxes={"L0": {"B0": [( 11, 10), ( 16, 15)]}}
-    # refinement_boxes={"L0": {"B0": [( 10, 11), ( 15, 16)]}}
-    # refinement_boxes={"L0": {"B0": [( 15, 15), ( 19, 19)]}}
-    # refinement_boxes={"L0": [Box((10, 10),(14, 14)), Box((10, 15),(14, 19))]}
-    # refinement_boxes={"L0": [Box((0, 0),(4, 4)), ]}
     refinement_boxes={"L0": {"B0": [( 10, 10), ( 14, 14)]}}
 
     Simulator(config(L0_diags, {"seed": rando}), post_advance=post_advance_0).run().reset()

@@ -441,9 +441,7 @@ class AdvanceTestBase(unittest.TestCase):
     def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, L0_datahier, L0L1_datahier, quantities=None):
 
         if quantities is None:
-            quantities = [f"{EM}{xyz}" for EM in ["B", "E"] for xyz in ["x", "y", "z"]]
-
-        print("quantities", quantities)
+            quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
         from tests.amr.data.field.refine.test_refine_field import refine_time_interpolate
         from pyphare.pharein import global_vars
@@ -470,7 +468,6 @@ class AdvanceTestBase(unittest.TestCase):
             fine_subcycle_times += [fine_subcycle_time]
 
 
-
         interpolated_fields = refine_time_interpolate(
           L0_datahier, quantities, coarse_ilvl, coarsest_time_before, coarsest_time_after, fine_subcycle_times
         )
@@ -481,6 +478,7 @@ class AdvanceTestBase(unittest.TestCase):
             fine_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time)
             for qty in quantities:
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
+
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
 
                     for fine_level_ghost_box_info in fine_level_ghost_box_data["boxes"]:
@@ -500,10 +498,9 @@ class AdvanceTestBase(unittest.TestCase):
                                 lvlOverlap = refinedInterpolatedField.box * fine_level_ghost_box
                                 if lvlOverlap is not None:
                                     box = lvlOverlap
-                                    # print("box", box, 'overlap["offset"]', fine_level_ghost_box_data["offset"])
                                     fine_ghostbox_data = fine_subcycle_pd[box]
                                     refinedInterpGhostBox_data = refinedInterpolatedField[box]
-                                    # assert fine_ghostbox_data.shape == refinedInterpGhostBox_data.shape
+                                    assert fine_ghostbox_data.shape == refinedInterpGhostBox_data.shape
 
                                     fine_ds = fine_subcycle_pd.dataset
                                     if ndim == 1: # verify selecting start/end of L1 dataset from ghost box

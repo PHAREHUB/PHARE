@@ -2,6 +2,7 @@
 
 import os
 import numpy as np
+from copy import deepcopy
 
 from .particles import Particles
 
@@ -30,6 +31,19 @@ class PatchData:
         self.origin   = layout.origin
         self.layout   = layout
 
+
+    def __deepcopy__(self, memo):
+        # some objects are not picklable eg. h5py datasets
+        no_copy_keys = ["dataset"] # do not copy these things
+        clazz = self.__class__
+        that = clazz.__new__(clazz)
+        memo[id(self)] = that
+        for key, value in self.__dict__.items():
+            if key in no_copy_keys:
+                setattr(that, key, value)
+            else:
+                setattr(that, key, deepcopy(value, memo))
+        return that
 
 
 
@@ -197,6 +211,11 @@ class Patch:
         return f"Patch: box( {self.box}), id({self.id})"
     def __repr__(self):
         return self.__str__()
+
+
+    def copy(self):
+        return deepcopy(self)
+
 
 
 class PatchLevel:

@@ -16,7 +16,6 @@ import matplotlib as mpl
 mpl.use('Agg')
 
 
-
 def config(diag_outputs, model_init={}, refinement_boxes=None):
     ph.global_vars.sim = None
 
@@ -149,7 +148,7 @@ def get_hier(path):
 from tests.simulator.test_advance import AdvanceTestBase
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
-test = AdvanceTestBase(rethrow=False)
+test = AdvanceTestBase(rethrow=True) # change to False for debugging images
 L0_diags = "phare_outputs/test_x_homo_0"
 L0L1_diags = "phare_outputs/test_x_homo_1"
 
@@ -183,7 +182,7 @@ def post_advance(new_time):
         L0L1_datahier = check_hier(get_hier(L0L1_diags))
         extra_collections = []
         errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)
-        # errors = test.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier)
+        errors = test.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier)
         print(f"errors {type(errors)}")
         if isinstance(errors, list):
             extra_collections += [{

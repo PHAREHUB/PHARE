@@ -298,7 +298,7 @@ def get_periodic_list(patches, domain_box, n_ghosts):
 
             if in_sides in shifts: # in_sides might be empty, so no borders
                 for shift in shifts[in_sides]:
-                    patch_copy = copy(patch)
+                    patch_copy = patch.copy()
                     shift_patch(patch_copy, shift)
                     sorted_patches.append(patch_copy)
 
