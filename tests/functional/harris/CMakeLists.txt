@@ -7,7 +7,7 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-if(HighFive)
+if(HighFive AND testMPI)
   ## These test use dump diagnostics so require HighFive!
   # exec level 11
   # mpirun -n 10
