@@ -2,7 +2,6 @@
 
 import os
 import numpy as np
-from copy import deepcopy
 
 from .particles import Particles
 
@@ -10,7 +9,7 @@ from ..core import box as boxm
 from ..core.box import Box
 from ..core.gridlayout import GridLayout
 import matplotlib.pyplot as plt
-from ..core.phare_utilities import refinement_ratio
+from ..core.phare_utilities import refinement_ratio, deep_copy
 
 
 
@@ -33,17 +32,8 @@ class PatchData:
 
 
     def __deepcopy__(self, memo):
-        # some objects are not picklable eg. h5py datasets
         no_copy_keys = ["dataset"] # do not copy these things
-        clazz = self.__class__
-        that = clazz.__new__(clazz)
-        memo[id(self)] = that
-        for key, value in self.__dict__.items():
-            if key in no_copy_keys:
-                setattr(that, key, value)
-            else:
-                setattr(that, key, deepcopy(value, memo))
-        return that
+        return deep_copy(self, memo, no_copy_keys)
 
 
 
@@ -214,6 +204,8 @@ class Patch:
 
 
     def copy(self):
+        """does not copy patchdatas.datasets (see class PatchData)"""
+        from copy import deepcopy
         return deepcopy(self)
 
 

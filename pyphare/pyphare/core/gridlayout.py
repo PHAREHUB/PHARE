@@ -3,7 +3,7 @@
 import math
 import numpy as np
 
-from .phare_utilities import is_scalar, listify, np_array_ify
+from .phare_utilities import is_scalar, listify
 from .box import Box
 
 directions = ["x", "y", "z"]

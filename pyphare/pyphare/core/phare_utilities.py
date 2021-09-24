@@ -143,3 +143,19 @@ def print_trace():
     import sys, traceback
     _, _, tb = sys.exc_info()
     traceback.print_tb(tb)
+
+
+def deep_copy(item, memo, excludes=[]):
+    from copy import deepcopy
+
+    clazz = item.__class__
+    that = clazz.__new__(clazz)
+    memo[id(item)] = that
+    for key, value in item.__dict__.items():
+        # some objects are not picklable so cannot be deepcopied eg. h5py datasets
+        if key in excludes:
+            setattr(that, key, value)
+        else:
+            setattr(that, key, deepcopy(value, memo))
+    return that
+
