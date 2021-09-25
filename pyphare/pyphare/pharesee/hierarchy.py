@@ -208,6 +208,9 @@ class Patch:
         from copy import deepcopy
         return deepcopy(self)
 
+    def __copy__(self):
+        return self.copy()
+
 
 
 class PatchLevel:

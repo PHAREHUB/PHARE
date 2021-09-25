@@ -40,7 +40,7 @@ public:
 
 
     void timeInterpolate(SAMRAI::hier::PatchData& destData, SAMRAI::hier::Box const& where,
-                         SAMRAI::hier::BoxOverlap const& /*overlap_*/,
+                         SAMRAI::hier::BoxOverlap const& /*overlap*/,
                          SAMRAI::hier::PatchData const& srcDataOld,
                          SAMRAI::hier::PatchData const& srcDataNew) const override
     {

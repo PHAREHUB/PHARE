@@ -73,9 +73,8 @@ class AdvanceTest(AdvanceTestBase):
     @data( # only supports a hierarchy with 2 levels
        *per_interp(({"L0": [Box2D(0, 4)]})),
        *per_interp(({"L0": [Box2D(10, 14)]})),
-       # can't handle box on periodic boundary, to fix
-       #*per_interp(({"L0": [Box2D(0, 4), Box2D(10, 14)]})),
-       #*per_interp(({"L0": [Box2D(0, 4), Box2D(5, 9), Box2D(10, 14)]})),
+       *per_interp(({"L0": [Box2D(0, 4), Box2D(10, 14)]})),
+       *per_interp(({"L0": [Box2D(0, 4), Box2D(5, 9), Box2D(10, 14)]})),
        *per_interp(({"L0": [Box2D(20, 24)]})),
     )
     @unpack

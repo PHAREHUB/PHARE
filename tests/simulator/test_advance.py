@@ -17,6 +17,7 @@ import numpy as np
 import unittest
 from ddt import ddt, data, unpack
 from tests.diagnostic import all_timestamps
+from tests.simulator import diff_boxes
 
 @ddt
 class AdvanceTestBase(unittest.TestCase):
@@ -250,7 +251,7 @@ class AdvanceTestBase(unittest.TestCase):
                         print("AssertionError", pd1.name, e)
                         if self.rethrow_:
                             raise e
-                        return self._diffBoxes(slice1, slice2, box)
+                        return diff_boxes(slice1, slice2, box)
 
         return checks
 
@@ -410,6 +411,7 @@ class AdvanceTestBase(unittest.TestCase):
                                     afterCoarse = np.copy(coarse_pdDataset)
 
                                     # change values that should be updated to make failure obvious
+                                    assert(dim < 3) # update
                                     if dim == 1:
                                         afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = -144123
                                     if dim == 2:
@@ -419,23 +421,7 @@ class AdvanceTestBase(unittest.TestCase):
                                     coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
                                     np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-16, rtol=0)
 
-    def _diffBoxes(self, slice1, slice2, box, atol=None):
-        if atol is not None:
-            ignore = np.isclose(slice1, slice2, atol=atol, rtol=0)
-            def _diff(slice0):
-                slice0[ignore] = 0 # set values which are within atol range to 0
-                return slice0
-            diff = np.abs(_diff(slice1.copy()) - _diff(slice2.copy()))
-        else:
-            diff = np.abs(slice1 - slice2)
-        where = np.where(diff != 0)
-        boxes = []
-        x1, y1 = where
-        for x, y in zip(x1, y1):
-            x = x+box.lower[0]
-            y = y+box.lower[1]
-            boxes += [Box([x, y], [x, y])]
-        return boxes
+
 
 
     def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, L0_datahier, L0L1_datahier, quantities=None):
@@ -463,7 +449,7 @@ class AdvanceTestBase(unittest.TestCase):
 
         fine_subcycle_times = []
         for fine_subcycle in range(global_vars.sim.level_step_nbr[fine_ilvl] + 1):
-            fine_subcycle_time   = coarsest_time_before + (lvl_steps[fine_ilvl] * fine_subcycle)
+            fine_subcycle_time = coarsest_time_before + (lvl_steps[fine_ilvl] * fine_subcycle)
             assert_time_in_hier(fine_subcycle_time)
             fine_subcycle_times += [fine_subcycle_time]
 
@@ -517,7 +503,7 @@ class AdvanceTestBase(unittest.TestCase):
                                         print(f"FAIL level ghost subcycle_coarsening qty {qty}", e)
                                         if self.rethrow_:
                                             raise e
-                                        error_boxes += self._diffBoxes(fine_ghostbox_data, refinedInterpGhostBox_data, box, atol=1e-15)
+                                        error_boxes += diff_boxes(fine_ghostbox_data, refinedInterpGhostBox_data, box, atol=1e-15)
                                     checks += 1
         if len(error_boxes): return error_boxes
         return checks
