@@ -155,15 +155,17 @@ def phase_speed(run_path, ampl, xmax):
 
 
 def main():
-    from pybindlibs.cpp import mpi_rank
+    from pyphare.cpp import cpp_lib
+    cpp = cpp_lib()
+
     from pyphare.pharesee.run import Run
     from pyphare.pharesee.hierarchy import flat_finest_field
 
 
     config()
-    Simulator(gv.sim).initialize().run()
+    Simulator(gv.sim).run()
 
-    if mpi_rank() == 0:
+    if cpp.mpi_rank() == 0:
 
         vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)
 
