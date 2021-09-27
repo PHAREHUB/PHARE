@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+  Complex test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
+    grouping of quantity components with distinct geometries.
+
+  Should be run with 10 cores
+    mpirun -n 10 tests/simulator/refinement/test_2d_10_core.py
+"""
+
+
 import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
@@ -19,8 +28,6 @@ mpl.use('Agg')
 def config(diag_outputs, model_init={}, refinement_boxes=None):
     ph.global_vars.sim = None
 
-    L=1.5
-
     Simulation(
         smallest_patch_size=10,
         largest_patch_size=20,
@@ -38,16 +45,13 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
                       "options": {"dir": diag_outputs,
                                   "mode":"overwrite", "fine_dump_lvl_max": 10}}
     )
-
     def density(x, y):
         from pyphare.pharein.global_vars import sim
         Lx = sim.simulation_domain()[0]
         return 1.
 
-
     def bx(x, y):
         return 0.1
-
 
     def by(x, y):
         from pyphare.pharein.global_vars import sim
@@ -55,38 +59,29 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
         Ly = sim.simulation_domain()[1]
         return 0.2
 
-
     def bz(x, y):
         return 1.
-
 
     def T(x, y):
         return 1.
 
-
     def vx(x, y):
         return 1.0
-
 
     def vy(x, y):
         return 0.
 
-
     def vz(x, y):
         return 0.
-
 
     def vthx(x, y):
         return np.sqrt(T(x, y))
 
-
     def vthy(x, y):
         return np.sqrt(T(x, y))
 
-
     def vthz(x, y):
         return np.sqrt(T(x, y))
-
 
     vvv = {
         "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
@@ -101,15 +96,10 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
     )
 
     ElectronModel(closure="isothermal", Te=0.0)
-
-
-
     sim = ph.global_vars.sim
     dt =  1*sim.time_step
     nt = sim.final_time/dt+1
     timestamps = dt * np.arange(nt)
-    print(timestamps)
-
 
     for quantity in ["E", "B"]:
         ElectromagDiagnostics(
@@ -118,7 +108,6 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
             compute_timestamps=timestamps,
         )
 
-
     for quantity in ["density", "bulkVelocity"]:
         FluidDiagnostics(
             quantity=quantity,
@@ -126,13 +115,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
             compute_timestamps=timestamps,
             )
 
-   #for popname in ("protons",):
-   #    for name in ["domain", "levelGhost", "patchGhost"]:
-   #        ParticleDiagnostics(quantity=name,
-   #                            compute_timestamps=timestamps,
-   #                            write_timestamps=timestamps,
-   #                            population_name=popname)
-    return gv.sim
+    return sim
 
 def get_time(path, time=None, datahier = None):
     if time is not None:
@@ -191,14 +174,11 @@ def post_advance(new_time):
             }]
         make_fig(L0L1_datahier, L0L1_diags.split("/")[-1], 1, extra_collections)
 
-
 def main():
     import random
     startMPI()
     rando = random.randint(0, 1e10)
-
     Simulator(config(L0_diags, {"seed": rando})).run().reset()
-
     refinement_boxes={"L0": {"B0": [( 7,  40), ( 20, 60)]}}
     sim = config(L0L1_diags, {"seed": rando}, refinement_boxes)
     Simulator(sim, post_advance=post_advance).run()

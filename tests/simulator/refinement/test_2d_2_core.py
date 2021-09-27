@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+  Simple test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
+    grouping of quantity components with distinct geometries.
+
+  Should be run with 2 cores
+    mpirun -n 2 tests/simulator/refinement/test_2d_2_core.py
+"""
+
+
 import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
@@ -18,7 +27,6 @@ mpl.use('Agg')
 
 def config(diag_outputs, model_init={}, refinement_boxes=None):
     ph.global_vars.sim = None
-    L=1.5
 
     Simulation(
         # smallest_patch_size=6,
@@ -78,10 +86,12 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
         "nbr_part_per_cell":100,
         "init": model_init,
     }
+
     MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
         protons={"charge": 1, "density": density,  **vvv}
     )
+
     ElectronModel(closure="isothermal", Te=0.0)
     sim = ph.global_vars.sim
     dt =  1*sim.time_step
@@ -101,12 +111,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
             )
-   #for popname in ("protons",):
-   #    for name in ["domain", "levelGhost", "patchGhost"]:
-   #        ParticleDiagnostics(quantity=name,
-   #                            compute_timestamps=timestamps,
-   #                            write_timestamps=timestamps,
-   #                            population_name=popname)
+
     return sim
 
 
