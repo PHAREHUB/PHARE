@@ -973,6 +973,7 @@ def compute_hier_from(h, compute):
 
      caveat: routine only works in 1D so far.
     """
+    assert(len(h.time_hier) == 1) # only single time hierarchies now
     patch_levels = {}
     for ilvl, lvl in h.patch_levels.items():
         patches = {}
@@ -991,7 +992,9 @@ def compute_hier_from(h, compute):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio)
+    t = list(h.time_hier.keys())[0]
+    return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio,
+                          time=t)
 
 
 

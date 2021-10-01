@@ -24,16 +24,70 @@ def _current1d(by, bz, xby, xbz):
     jz[-1]=jz[-2]
     return jy, jz
 
+def _current2d(bx, by, bz, dx, dy):
+    # jx = dyBz
+    # jy = -dxBz
+    # jz = dxBy - dyBx
+    # the following hard-codes yee layout
+    # which is not true in general
+    # we should at some point provide proper
+    # derivation routines in the gridlayout
+    jx = np.zeros(by.shape)
+    jy = np.zeros(bx.shape)
+    jz = np.zeros((bx.shape[0], by.shape[1]))
+
+    jx[:,1:-1] = (bz[:,1:] - bz[:,:-1])/dy
+    jy[1:-1,:] = -(bz[1:,:] - bz[:-1,:])/dx
+    jz[1:-1,1:-1] = (by[1:, 1:-1] - by[:-1 , 1:-1])/dx - (bx[1:-1 , 1:] - bx[1:-1, :-1])/dy
+
+    jy[0,:]  = jy[1,:]
+    jy[:,0]  = jy[:,1]
+    jy[-1,:] = jy[-2,:]
+    jy[:,-1] = jy[:,-2]
+
+    jz[0,:]  = jz[1,:]
+    jz[:,0]  = jz[:,1]
+    jz[-1,:] = jz[-2,:]
+    jz[:,-1] = jz[:,-2]
+
+    jx[0,:]  = jx[1,:]
+    jx[:,0]  = jx[:,1]
+    jx[-1,:] = jx[-2,:]
+    jx[:,-1] = jx[:,-2]
+
+    return jx, jy, jz
+
+
 
 def _compute_current(patch):
-    By = patch.patch_datas["By"].dataset[:]
-    xby  = patch.patch_datas["By"].x
-    Bz = patch.patch_datas["Bz"].dataset[:]
-    xbz  = patch.patch_datas["Bz"].x
-    Jy, Jz =  _current1d(By, Bz, xby, xbz)
-    return ({"name":"Jy", "data":Jy,"centering":"primal"},
-            {"name":"Jz", "data":Jz,"centering":"primal"})
+    if patch.box.ndim ==1 : 
+        By = patch.patch_datas["By"].dataset[:]
+        xby  = patch.patch_datas["By"].x
+        Bz = patch.patch_datas["Bz"].dataset[:]
+        xbz  = patch.patch_datas["Bz"].x
+        Jy, Jz =  _current1d(By, Bz, xby, xbz)
+        return ({"name":"Jy", "data":Jy,"centering":"primal"},
+                {"name":"Jz", "data":Jz,"centering":"primal"})
 
+    elif patch.box.ndim ==2 :
+        Bx = patch.patch_datas["Bx"].dataset[:]
+        By = patch.patch_datas["By"].dataset[:]
+        Bz = patch.patch_datas["Bz"].dataset[:]
+
+        dx,dy  = patch.dl
+
+        Jx, Jy, Jz =  _current2d(Bx, By, Bz, dx, dy)
+        #return ({"name":"Jx", "data":Jx,"centering":"primal"},
+        #        {"name":"Jy", "data":Jy,"centering":"primal"},
+        #        {"name":"Jz", "data":Jz,"centering":"primal"})
+
+
+        components = ("Jx", "Jy", "Jz")
+        centering = {component:[patch.layout.centering[direction][component] for direction in ("X", "Y")] for component in components}
+
+        return ({"name":"Jx", "data":Jx, "centering":centering["Jx"]},
+                {"name":"Jy", "data":Jy, "centering":centering["Jy"]},
+                {"name":"Jz", "data":Jz,"centering":centering["Jz"]})
 
 def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
     """
