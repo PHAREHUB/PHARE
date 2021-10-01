@@ -17,10 +17,15 @@
 #    execute exe identified by target in directory
 #      if level >= PHARE_EXEC_LEVEL_MIN AND level <= PHARE_EXEC_LEVEL_MAX
 #
-#  phare_python3_exec(level target file directory)
+#  phare_python3_exec(level target file directory $ARGS)
 #    execute file identified by target in directory
 #      if level >= PHARE_EXEC_LEVEL_MIN AND level <= PHARE_EXEC_LEVEL_MAX
 #
+#  Note to developers - do not use cmake variable function arguments for functions
+#      phare_python3_exec
+#      phare_mpi_python3_exec
+#   if these function calls are to files executing python unit tests as they will interfere
+
 
 
 if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
@@ -121,27 +126,35 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   function(phare_python3_exec level target file directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
-      add_test(NAME py3_${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+      string (REPLACE ";" " " CLI_ARGS "${ARGN}")
+      add_test(NAME py3_${target} COMMAND python3 -u ${file} ${CLI_ARGS} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${target})
     endif()
   endfunction(phare_python3_exec)
   # use
-  #  phare_python3_exec(1 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
+  #  phare_python3_exec(1 test_id script.py ${CMAKE_CURRENT_BINARY_DIR} $ARGS)
 
 
   function(phare_mpi_python3_exec level N target file directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+      string (REPLACE ";" " " CLI_ARGS "${ARGN}")
       if(${N} EQUAL 1)
-        add_test(NAME py3_${target} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+        add_test(
+            NAME py3_${target}
+            COMMAND python3 -u ${file} ${CLI_ARGS}
+            WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target})
       else()
-        add_test(NAME py3_${target}_mpi_n_${N} COMMAND mpirun -n ${N} python3 -u ${file} WORKING_DIRECTORY ${directory})
+        add_test(
+            NAME py3_${target}_mpi_n_${N}
+            COMMAND mpirun -n ${N} python3 -u ${file} ${CLI_ARGS}
+            WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target}_mpi_n_${N})
       endif()
     endif()
   endfunction(phare_mpi_python3_exec)
   # use
-  #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR})
+  #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR} $ARGS)
 
   set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIRS} ${PHARE_PROJECT_DIR})
 
