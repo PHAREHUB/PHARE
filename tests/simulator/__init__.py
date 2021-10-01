@@ -3,6 +3,14 @@
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
+
+def parse_cli_args(pop_from_sys = True):
+    import sys
+    r = sys.argv[1:].copy()
+    if pop_from_sys: # args can interfere with other things
+        sys.argv = [sys.argv[0]]
+    return r
+
 # Block accidental dictionary key rewrites
 class NoOverwriteDict(dict):
     def __init__(self, dict):
