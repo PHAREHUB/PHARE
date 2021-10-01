@@ -143,3 +143,38 @@ def populate_simulation(dim, interp, **input):
     ElectronModel(closure="isothermal", Te=0.12)
 
     return simulation
+
+
+
+
+def diff_boxes(self, slice1, slice2, box, atol=None):
+    if atol is not None:
+        ignore = np.isclose(slice1, slice2, atol=atol, rtol=0)
+        def _diff(slice0):
+            slice0[ignore] = 0 # set values which are within atol range to 0
+            return slice0
+        diff = np.abs(_diff(slice1.copy()) - _diff(slice2.copy()))
+    else:
+        diff = np.abs(slice1 - slice2)
+
+    boxes = []
+    if box.ndim == 1:
+        x1 = np.where(diff != 0)
+        for x in zip(x1):
+            x = x+box.lower[0]
+            boxes += [Box([x], [x])]
+    elif box.ndim == 2:
+        x1, y1 = np.where(diff != 0)
+        for x, y in zip(x1, y1):
+            x = x+box.lower[0]
+            y = y+box.lower[1]
+            boxes += [Box([x, y], [x, y])]
+    elif box.ndim == 3:
+        x1, y1, z1 = np.where(diff != 0)
+        for x, y, z in zip(x1, y1, z1):
+            x = x+box.lower[0]
+            y = y+box.lower[1]
+            z = z+box.lower[2]
+            boxes += [Box([x, y, z], [x, y, z])]
+    return boxes
+

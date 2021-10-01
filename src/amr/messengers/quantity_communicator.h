@@ -30,53 +30,6 @@ namespace PHARE
 {
 namespace amr
 {
-    /* When determining which DataFactory to use to create the correct geometry
-     *  Samrai compares existing items within the RefinerPool
-     *   See: SAMRAI::xfer::RefineClasses::getEquivalenceClassIndex"
-     *   If we do not specify a separate VariableFillPattern for each item sent to
-     *    Algo->registerRefine : we run the risk of all items only using the first registered
-     *    DataFactory, thus all items will receive the Geometry of that item.
-     *    We "hack" this as there is a typeid()== check on the variablefill pattern types
-     */
-    class XVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
-    {
-    };
-
-    class YVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
-    {
-    };
-
-    class ZVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
-    {
-    };
-
-    class XFieldFillPattern : public FieldFillPattern
-    {
-    public:
-        XFieldFillPattern(std::optional<bool> overwrite_interior)
-            : FieldFillPattern{overwrite_interior}
-        {
-        }
-    };
-
-    class YFieldFillPattern : public FieldFillPattern
-    {
-    public:
-        YFieldFillPattern(std::optional<bool> overwrite_interior)
-            : FieldFillPattern{overwrite_interior}
-        {
-        }
-    };
-
-    class ZFieldFillPattern : public FieldFillPattern
-    {
-    public:
-        ZFieldFillPattern(std::optional<bool> overwrite_interior)
-            : FieldFillPattern{overwrite_interior}
-        {
-        }
-    };
-
     struct Refiner
     {
         using schedule_type  = SAMRAI::xfer::RefineSchedule;
@@ -90,10 +43,10 @@ namespace amr
     };
 
     template<typename ComType>
-    using is_refiner = std::enable_if_t<std::is_same_v<ComType, Refiner>>;
+    static constexpr auto is_refiner = std::is_same_v<ComType, Refiner>;
 
     template<typename ComType>
-    using is_synchronizer = std::enable_if_t<std::is_same_v<ComType, Synchronizer>>;
+    static constexpr auto is_synchronizer = std::is_same_v<ComType, Synchronizer>;
 
 
 
@@ -104,46 +57,36 @@ namespace amr
     private:
         using Schedule  = typename ComType::schedule_type;
         using Algorithm = typename ComType::algorithm_type;
-        std::map<int, std::shared_ptr<Schedule>> schedules_;
+        std::map<int, std::map<Algorithm* const, std::shared_ptr<Schedule>>> schedules_;
 
 
     public:
-        std::unique_ptr<Algorithm> algo;
+        std::vector<std::unique_ptr<Algorithm>> algos;
 
-
-
-        template<typename U = ComType, typename = is_refiner<U>>
-        Communicator()
-            : algo{std::make_unique<SAMRAI::xfer::RefineAlgorithm>()}
+        auto& add_algorithm()
         {
+            if constexpr (is_refiner<ComType>)
+                return algos.emplace_back(std::make_unique<SAMRAI::xfer::RefineAlgorithm>());
+
+            if constexpr (is_synchronizer<ComType>)
+                return algos.emplace_back(std::make_unique<SAMRAI::xfer::CoarsenAlgorithm>(
+                    SAMRAI::tbox::Dimension{dimension}));
         }
-
-
-
-        template<typename Dummy = ComType, typename = is_synchronizer<Dummy>, typename = Dummy>
-        Communicator()
-            : algo{std::make_unique<SAMRAI::xfer::CoarsenAlgorithm>(
-                SAMRAI::tbox::Dimension{dimension})}
-
-        {
-        }
-
 
 
         /**
          * @brief findSchedule returns the schedule at a given level number if there is one
          * (optional).
          */
-        std::optional<std::shared_ptr<Schedule>> findSchedule(int levelNumber) const
+        auto& findSchedule(std::unique_ptr<Algorithm> const& algo, int levelNumber) const
         {
-            if (auto mapIter = schedules_.find(levelNumber); mapIter != std::end(schedules_))
-            {
-                return mapIter->second;
-            }
-            else
-            {
-                return std::nullopt;
-            }
+            if (!schedules_.count(levelNumber))
+                throw std::runtime_error("no schedule for level " + std::to_string(levelNumber));
+
+            if (!schedules_.at(levelNumber).count(algo.get()))
+                throw std::runtime_error("Algorithm has not been registered with Communicator");
+
+            return schedules_.at(levelNumber).at(algo.get());
         }
 
 
@@ -152,12 +95,19 @@ namespace amr
          * @brief add is used to add a refine schedule for the given level number.
          * Note that already existing schedules at this level number are overwritten.
          */
-        void add(std::shared_ptr<Schedule> schedule, int levelNumber)
+        void add(std::unique_ptr<Algorithm> const& algo, std::shared_ptr<Schedule>& schedule,
+                 int levelNumber)
         {
             // for shared border node value sync
             schedule->setDeterministicUnpackOrderingFlag(true);
 
-            schedules_[levelNumber] = std::move(schedule);
+            schedules_[levelNumber][algo.get()] = schedule;
+        }
+
+        void add(std::unique_ptr<Algorithm> const& algo, std::shared_ptr<Schedule>&& schedule,
+                 int levelNumber)
+        {
+            add(algo, schedule, levelNumber);
         }
     };
 
@@ -191,12 +141,7 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = FieldFillPattern::make_shared<XFieldFillPattern>(refineOp);
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = FieldFillPattern::make_shared<YFieldFillPattern>(refineOp);
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = FieldFillPattern::make_shared<ZFieldFillPattern>(refineOp);
+        auto variableFillPattern = FieldFillPattern::make_shared(refineOp);
 
         Communicator<Refiner> com;
 
@@ -210,20 +155,19 @@ namespace amr
 
                   if (src_id && dest_id && old_id)
                   {
-                      // dest, src, old, new, scratch
-                      com.algo->registerRefine(*dest_id, // dest
-                                               *src_id,  // source at same time
-                                               *old_id,  // source at past time (for time interp)
-                                               *new_id,  // source at future time (for time interp)
-                                               *dest_id, // scratch
-                                               refineOp, timeOp, fillPattern);
+                      com.add_algorithm()->registerRefine(
+                          *dest_id, // dest
+                          *src_id,  // source at same time
+                          *old_id,  // source at past time (for time interp)
+                          *new_id,  // source at future time (for time interp)
+                          *dest_id, // scratch
+                          refineOp, timeOp, fillPattern);
                   }
               };
 
-        // register refine operators for each component of the vecfield
-        registerRefine(ghost.xName, model.xName, oldModel.xName, xVariableFillPattern);
-        registerRefine(ghost.yName, model.yName, oldModel.yName, yVariableFillPattern);
-        registerRefine(ghost.zName, model.zName, oldModel.zName, zVariableFillPattern);
+        registerRefine(ghost.xName, model.xName, oldModel.xName, variableFillPattern);
+        registerRefine(ghost.yName, model.yName, oldModel.yName, variableFillPattern);
+        registerRefine(ghost.zName, model.zName, oldModel.zName, variableFillPattern);
 
         return com;
     }
@@ -240,24 +184,18 @@ namespace amr
                                       std::shared_ptr<ResourcesManager> const& rm,
                                       std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
     {
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XVariableFillPattern>();
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YVariableFillPattern>();
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZVariableFillPattern>();
         Communicator<Refiner> com;
 
-        auto registerRefine = [&com, &rm, &refineOp](std::string name, auto& fillPattern) {
+        auto registerRefine = [&com, &rm, &refineOp](std::string name) {
             auto id = rm->getID(name);
             if (id)
             {
-                com.algo->registerRefine(*id, *id, *id, refineOp, fillPattern);
+                com.add_algorithm()->registerRefine(*id, *id, *id, refineOp);
             }
         };
-        registerRefine(descriptor.xName, xVariableFillPattern);
-        registerRefine(descriptor.yName, yVariableFillPattern);
-        registerRefine(descriptor.zName, zVariableFillPattern);
+        registerRefine(descriptor.xName);
+        registerRefine(descriptor.yName);
+        registerRefine(descriptor.zName);
 
         return com;
     }
@@ -274,15 +212,14 @@ namespace amr
                                       std::shared_ptr<ResourcesManager> const& rm,
                                       std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
     {
-        Communicator<Refiner> communicator;
+        Communicator<Refiner> com;
 
         auto id = rm->getID(name);
         if (id)
         {
-            communicator.algo->registerRefine(*id, *id, *id, refineOp);
+            com.add_algorithm()->registerRefine(*id, *id, *id, refineOp);
         }
-
-        return communicator;
+        return com;
     }
 
 
@@ -297,27 +234,19 @@ namespace amr
                      std::shared_ptr<ResourcesManager> const& rm,
                      std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp)
     {
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-            = std::make_shared<XVariableFillPattern>();
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-            = std::make_shared<YVariableFillPattern>();
-        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-            = std::make_shared<ZVariableFillPattern>();
-
         Communicator<Synchronizer, dimension> com;
 
-        auto registerCoarsen = [&com, &rm, &coarsenOp](std::string name, auto& fillpattern) //
-        {
+        auto registerCoarsen = [&com, &rm, &coarsenOp](std::string name) {
             auto id = rm->getID(name);
             if (id)
             {
-                com.algo->registerCoarsen(*id, *id, coarsenOp, fillpattern);
+                com.add_algorithm()->registerCoarsen(*id, *id, coarsenOp);
             }
         };
 
-        registerCoarsen(descriptor.xName, xVariableFillPattern);
-        registerCoarsen(descriptor.yName, yVariableFillPattern);
-        registerCoarsen(descriptor.zName, zVariableFillPattern);
+        registerCoarsen(descriptor.xName);
+        registerCoarsen(descriptor.yName);
+        registerCoarsen(descriptor.zName);
 
         return com;
     }
@@ -334,8 +263,9 @@ namespace amr
 
         auto id = rm->getID(name);
         if (id)
-            com.algo->registerCoarsen(*id, *id, coarsenOp);
-
+        {
+            com.add_algorithm()->registerCoarsen(*id, *id, coarsenOp);
+        }
         return com;
     }
 

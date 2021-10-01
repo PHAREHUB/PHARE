@@ -29,22 +29,20 @@ namespace PHARE::amr
 // This class is mostly a copy of BoxGeometryVariableFillPattern
 class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
-protected:
+public:
     FieldFillPattern(std::optional<bool> overwrite_interior)
         : opt_overwrite_interior_{overwrite_interior}
     {
     }
 
-public:
-    template<typename Subclass>
     static auto make_shared(std::shared_ptr<SAMRAI::hier::RefineOperator> const& samrai_op)
     {
         auto const& op = dynamic_cast<AFieldRefineOperator const&>(*samrai_op);
 
         if (op.node_only)
-            return std::make_shared<Subclass>(std::nullopt);
+            return std::make_shared<FieldFillPattern>(std::nullopt);
 
-        return std::make_shared<Subclass>(false);
+        return std::make_shared<FieldFillPattern>(false);
     }
 
 

@@ -412,18 +412,18 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
 
                 for gabox in ghostAreaBoxes:
 
-                    remaining = boxm.remove(gabox, check_patches[0].box)
+                    remaining = gabox - check_patches[0].box
 
                     for patch in check_patches[1:]:
-                        tmp = remaining
+                        tmp = []
                         remove = []
                         for i, rem in enumerate(remaining):
                             if rem * patch.box is not None:
-                                tmp += boxm.remove(rem, patch.box)
                                 remove.append(i)
-                        for rm in remove:
-                            del tmp[rm]
-                        remaining = tmp
+                                tmp += rem - patch.box
+                        for rm in reversed(remove):
+                            del remaining[rm]
+                        remaining += tmp
 
                     if ilvl not in lvl_gaboxes:
                         lvl_gaboxes[ilvl] = {}

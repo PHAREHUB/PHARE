@@ -17,9 +17,22 @@ import numpy as np
 import unittest
 from ddt import ddt, data, unpack
 from tests.diagnostic import all_timestamps
+from tests.simulator import diff_boxes
 
 @ddt
 class AdvanceTestBase(unittest.TestCase):
+    def pop(kwargs):
+        keys = ["rethrow"]
+        for key in keys:
+            if key in kwargs:
+                kwargs.pop(key)
+        return kwargs
+
+    def __init__(self, *args, **kwargs):
+        super(AdvanceTestBase, self).__init__(*args, **AdvanceTestBase.pop(kwargs.copy()))
+        self.rethrow_ = True
+        if "rethrow" in kwargs:
+            self.rethrow_ = kwargs["rethrow"]
 
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
@@ -194,11 +207,8 @@ class AdvanceTestBase(unittest.TestCase):
             return mom_hier
 
 
-
-
     def base_test_overlaped_fields_are_equal(self, datahier, coarsest_time):
         checks = 0
-
         for ilvl, overlaps in hierarchy_overlaps(datahier, coarsest_time).items():
             for overlap in overlaps:
                 pd1, pd2 = overlap["pdatas"]
@@ -233,9 +243,15 @@ class AdvanceTestBase(unittest.TestCase):
                         slice1 = data1[loc_b1.lower[0]:loc_b1.upper[0] + 1, loc_b1.lower[1]:loc_b1.upper[1] + 1]
                         slice2 = data2[loc_b2.lower[0]:loc_b2.upper[0] + 1, loc_b2.lower[1]:loc_b2.upper[1] + 1]
 
-                    assert slice1.dtype == np.float64
-                    np.testing.assert_equal(slice1, slice2)
-                    checks += 1
+                    try:
+                        assert slice1.dtype == np.float64
+                        np.testing.assert_equal(slice1, slice2)
+                        checks += 1
+                    except AssertionError as e:
+                        print("AssertionError", pd1.name, e)
+                        if self.rethrow_:
+                            raise e
+                        return diff_boxes(slice1, slice2, box)
 
         return checks
 
@@ -395,6 +411,7 @@ class AdvanceTestBase(unittest.TestCase):
                                     afterCoarse = np.copy(coarse_pdDataset)
 
                                     # change values that should be updated to make failure obvious
+                                    assert(dim < 3) # update
                                     if dim == 1:
                                         afterCoarse[dataBox.lower[0] : dataBox.upper[0] + 1] = -144123
                                     if dim == 2:
@@ -404,6 +421,92 @@ class AdvanceTestBase(unittest.TestCase):
                                     coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
                                     np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-16, rtol=0)
 
+
+
+
+    def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, L0_datahier, L0L1_datahier, quantities=None):
+
+        if quantities is None:
+            quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
+
+        from tests.amr.data.field.refine.test_refine_field import refine_time_interpolate
+        from pyphare.pharein import global_vars
+
+        def assert_time_in_hier(*ts):
+            for t in ts:
+                self.assertIn(L0L1_datahier.format_timestamp(t), L0L1_datahier.times())
+
+        checks = 0
+        ndim = global_vars.sim.ndim
+        lvl_steps = global_vars.sim.level_time_steps
+        assert len(lvl_steps) == 2, "this test is only configured for L0 -> L1 refinement comparisons"
+
+        coarse_ilvl = 0
+        fine_ilvl   = 1
+        coarsest_time_before = 0 # init
+        coarsest_time_after = coarsest_time_before + lvl_steps[coarse_ilvl]
+        assert_time_in_hier(coarsest_time_before, coarsest_time_after)
+
+        fine_subcycle_times = []
+        for fine_subcycle in range(global_vars.sim.level_step_nbr[fine_ilvl] + 1):
+            fine_subcycle_time = coarsest_time_before + (lvl_steps[fine_ilvl] * fine_subcycle)
+            assert_time_in_hier(fine_subcycle_time)
+            fine_subcycle_times += [fine_subcycle_time]
+
+
+        interpolated_fields = refine_time_interpolate(
+          L0_datahier, quantities, coarse_ilvl, coarsest_time_before, coarsest_time_after, fine_subcycle_times
+        )
+
+        error_boxes = []
+        checks = 0
+        for fine_subcycle_time in fine_subcycle_times:
+            fine_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time)
+            for qty in quantities:
+                for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
+
+                    fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
+
+                    for fine_level_ghost_box_info in fine_level_ghost_box_data["boxes"]:
+
+                        # trim the border level ghost nodes from the primal fields to ignore them in comparison checks
+                        fine_level_ghost_boxes = fine_level_ghost_box_info - boxm.grow(fine_subcycle_pd.box, fine_subcycle_pd.primal_directions())
+
+                        if ndim == 1:
+                            self.assertEqual(len(fine_level_ghost_boxes), 1) # should not be possibly > 1 in 1d
+                            np.testing.assert_equal(fine_level_ghost_boxes[0].shape, fine_level_ghost_box_info.shape - fine_subcycle_pd.primal_directions())
+
+                        for fine_level_ghost_box in fine_level_ghost_boxes:
+
+                            upper_dims = fine_level_ghost_box.lower > fine_subcycle_pd.box.upper
+                            for refinedInterpolatedField in interpolated_fields[qty][fine_subcycle_time]:
+
+                                lvlOverlap = refinedInterpolatedField.box * fine_level_ghost_box
+                                if lvlOverlap is not None:
+                                    box = lvlOverlap
+                                    fine_ghostbox_data = fine_subcycle_pd[box]
+                                    refinedInterpGhostBox_data = refinedInterpolatedField[box]
+                                    assert fine_ghostbox_data.shape == refinedInterpGhostBox_data.shape
+
+                                    fine_ds = fine_subcycle_pd.dataset
+                                    if ndim == 1: # verify selecting start/end of L1 dataset from ghost box
+                                        if upper_dims[0]:
+                                            assert all(fine_ghostbox_data == fine_ds[-fine_ghostbox_data.shape[0]:])
+                                        else:
+                                            assert all(fine_ghostbox_data == fine_ds[:fine_ghostbox_data.shape[0]])
+                                        assert refinedInterpGhostBox_data.shape == fine_subcycle_pd.ghosts_nbr
+                                        assert fine_ghostbox_data.shape == fine_subcycle_pd.ghosts_nbr
+
+                                    try:
+                                        np.testing.assert_allclose(fine_ghostbox_data, refinedInterpGhostBox_data, atol=1e-15, rtol=0)
+                                    except AssertionError as e:
+                                        print(f"FAIL level ghost subcycle_coarsening qty {qty}", e)
+                                        if self.rethrow_:
+                                            raise e
+                                        error_boxes += diff_boxes(fine_ghostbox_data, refinedInterpGhostBox_data, box, atol=1e-15)
+                                    checks += 1
+        if len(error_boxes): return error_boxes
+        return checks
 
 
 
@@ -421,91 +524,22 @@ class AdvanceTestBase(unittest.TestCase):
         """
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(ndim, interp_order))
 
-        from tests.amr.data.field.refine.test_refine_field import refine_time_interpolate
-        from pyphare.pharein import global_vars
-
         import random
         rando = random.randint(0, 1e10)
 
         def _getHier(diag_dir, boxes=[]):
-            return self.getHierarchy(interp_order, boxes, "eb", cells=60,
+            return self.getHierarchy(interp_order, boxes, "eb", cells=30,
                 time_step_nbr=1, largest_patch_size=15,
                 diag_outputs=diag_dir, extra_diag_options={"fine_dump_lvl_max": 10}, time_step=0.001,
                 model_init={"seed": rando}, ndim=ndim
             )
 
-        def assert_time_in_hier(*ts):
-            for t in ts:
-                self.assertIn(L0L1_datahier.format_timestamp(t), L0L1_datahier.times())
-
         L0_datahier = _getHier(f"phare_lvl_ghost_interpolation_L0_diags/{ndim}/{interp_order}/{self.ddt_test_id()}")
         L0L1_datahier = _getHier(
           f"phare_lvl_ghost_interpolation_L0L1_diags/{ndim}/{interp_order}/{self.ddt_test_id()}", refinement_boxes
         )
-
-        lvl_steps = global_vars.sim.level_time_steps
-        assert len(lvl_steps) == 2, "this test is only configured for L0 -> L1 refinement comparisons"
-
-        coarse_ilvl = 0
-        fine_ilvl   = 1
-        coarsest_time_before = 0 # init
-        coarsest_time_after = coarsest_time_before + lvl_steps[coarse_ilvl]
-        assert_time_in_hier(coarsest_time_before, coarsest_time_after)
-
-        fine_subcycle_times = []
-        for fine_subcycle in range(global_vars.sim.level_step_nbr[fine_ilvl] + 1):
-            fine_subcycle_time   = coarsest_time_before + (lvl_steps[fine_ilvl] * fine_subcycle)
-            assert_time_in_hier(fine_subcycle_time)
-            fine_subcycle_times += [fine_subcycle_time]
-
         quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
-
-        interpolated_fields = refine_time_interpolate(
-          L0_datahier, quantities, coarse_ilvl, coarsest_time_before, coarsest_time_after, fine_subcycle_times
-        )
-
-        checks = 0
-        for fine_subcycle_time in fine_subcycle_times:
-            fine_level_qty_ghost_boxes = level_ghost_boxes(L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time)
-            for qty in quantities:
-                for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
-                    fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
-
-                    for fine_level_ghost_box_info in fine_level_ghost_box_data["boxes"]:
-
-                        # trim the border level ghost nodes from the primal fields to ignore them in comparison checks
-                        fine_level_ghost_boxes = fine_level_ghost_box_info - boxm.grow(fine_subcycle_pd.box, fine_subcycle_pd.primal_directions())
-
-                        if ndim == 1:
-                            self.assertEqual(len(fine_level_ghost_boxes), 1) # should not be possibly > 1 in 1d
-                            np.testing.assert_equal(fine_level_ghost_boxes[0].shape, fine_level_ghost_box_info.shape - fine_subcycle_pd.primal_directions())
-
-                        for fine_level_ghost_box in fine_level_ghost_boxes:
-
-                            upper_dims = fine_level_ghost_box.lower > fine_subcycle_pd.box.upper
-                            for refinedInterpolatedField in interpolated_fields[qty][fine_subcycle_time]:
-
-                                # level_ghost_boxes() includes periodic shifts, which we want to ignore here I think
-                                is_periodic_shifted = refinedInterpolatedField.box * fine_subcycle_pd.box is None
-                                lvlOverlap = refinedInterpolatedField.ghost_box * fine_level_ghost_box
-                                if lvlOverlap is not None and not is_periodic_shifted:
-
-                                    fine_ghostbox_data = fine_subcycle_pd[fine_level_ghost_box]
-                                    refinedInterpGhostBox_data = refinedInterpolatedField[fine_level_ghost_box]
-
-                                    fine_ds = fine_subcycle_pd.dataset
-                                    if ndim == 1: # verify selecting start/end of L1 dataset from ghost box
-                                        if upper_dims[0]:
-                                            assert all(fine_ghostbox_data == fine_ds[-fine_ghostbox_data.shape[0]:])
-                                        else:
-                                            assert all(fine_ghostbox_data == fine_ds[:fine_ghostbox_data.shape[0]])
-                                        assert refinedInterpGhostBox_data.shape == fine_subcycle_pd.ghosts_nbr
-                                        assert fine_ghostbox_data.shape == fine_subcycle_pd.ghosts_nbr
-
-
-                                    np.testing.assert_allclose(fine_ghostbox_data, refinedInterpGhostBox_data, atol=1e-15, rtol=0)
-                                    checks += 1
-
+        checks = self.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier, quantities)
         self.assertGreater(checks, len(refinement_boxes["L0"]) * len(quantities))
 
 

@@ -266,19 +266,19 @@ def make_figure():
 
 
 def main():
-    from pybindlibs.cpp import mpi_rank
+    from pyphare.cpp import cpp_lib
+    cpp = cpp_lib()
+
     withTagging(diagdir="withTagging")
-    simulator = Simulator(gv.sim)
-    simulator.initialize().run()
+    Simulator(gv.sim).run()
     gv.sim = None
 
     noRefinement(diagdir="noRefinement")
-    simulator = Simulator(gv.sim)
-    simulator.initialize().run()
+    Simulator(gv.sim).run()
     gv.sim = None
 
 
-    if mpi_rank() == 0:
+    if cpp.mpi_rank() == 0:
         make_figure()
 
 

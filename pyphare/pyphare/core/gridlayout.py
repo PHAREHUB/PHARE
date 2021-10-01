@@ -3,7 +3,7 @@
 import math
 import numpy as np
 
-from .phare_utilities import listify
+from .phare_utilities import is_scalar, listify
 from .box import Box
 
 directions = ["x", "y", "z"]
@@ -204,7 +204,23 @@ class GridLayout(object):
         return size
 
 
+    def AMRPointToLocal(self, point):
+        return point - self.box.lower + self.physicalStartIndex(self.interp_order, "dual")
+
+    def AMRBoxToLocal(self, box):
+        local = box.copy()
+        local.lower = self.AMRPointToLocal(local.lower)
+        local.upper = self.AMRPointToLocal(local.upper)
+        return local
+
+    def AMRToLocal(self, toLocal):
+        assert not is_scalar(toLocal)
+        if isinstance(toLocal, Box):
+            return self.AMRBoxToLocal(toLocal)
+        return self.AMRPointToLocal(toLocal)
+
     def AMRIndexToLocal(self, dim, index):
+        assert is_scalar(index)
         dualStart = self.physicalStartIndex(self.interp_order, "dual")
         return index - self.box.lower[dim] + dualStart
 

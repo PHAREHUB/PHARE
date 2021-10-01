@@ -9,7 +9,7 @@ from ..core import box as boxm
 from ..core.box import Box
 from ..core.gridlayout import GridLayout
 import matplotlib.pyplot as plt
-from ..core.phare_utilities import refinement_ratio
+from ..core.phare_utilities import refinement_ratio, deep_copy
 
 
 
@@ -30,6 +30,10 @@ class PatchData:
         self.origin   = layout.origin
         self.layout   = layout
 
+
+    def __deepcopy__(self, memo):
+        no_copy_keys = ["dataset"] # do not copy these things
+        return deep_copy(self, memo, no_copy_keys)
 
 
 
@@ -80,8 +84,9 @@ class FieldData(PatchData):
 
         overlap = box * gbox
         if overlap is not None:
-            lower = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.lower)
-            upper  = self.layout.AMRIndexToLocal(dim=box.ndim - 1, index=overlap.upper)
+            lower = self.layout.AMRToLocal(overlap.lower)
+            upper = self.layout.AMRToLocal(overlap.upper)
+
             if box.ndim == 1:
                 return self.dataset[lower[0] : upper[0] + 1]
             if box.ndim == 2:
@@ -196,6 +201,16 @@ class Patch:
         return f"Patch: box( {self.box}), id({self.id})"
     def __repr__(self):
         return self.__str__()
+
+
+    def copy(self):
+        """does not copy patchdatas.datasets (see class PatchData)"""
+        from copy import deepcopy
+        return deepcopy(self)
+
+    def __copy__(self):
+        return self.copy()
+
 
 
 class PatchLevel:

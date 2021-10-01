@@ -366,14 +366,10 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                     Box([10, -1], [10, 3]),
                     Box([10, 14], [10, 23]),
                     Box([10, 34], [10, 40]),
-                    Box([0, -1], [9, -1]),
-                    Box([0, 40], [9, 40]),
                     Box([19, -1], [19, 3]),
                     Box([19, 14], [19, 23]),
                     Box([19, 34], [19, 40]),
                     Box([30, -1], [30, 40]),
-                    Box([20, -1], [29, -1]),
-                    Box([20, 40], [29, 40]),
                     Box([10, 3], [19, 3]),
                     Box([10, 14], [19, 14]),
                     Box([10, 23], [19, 23]),
@@ -400,8 +396,6 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                 [actual["boxes"] for actual in lvl_gaboxes[ilvl][key]], []
             )
 
-            self.assertEqual(expected[ilvl], ghost_area_box_list)
-
             fig = hierarchy.plot_2d_patches(
                 ilvl,
                 collections=[
@@ -419,6 +413,9 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                 ),
             )
             fig.savefig(f"{type(self).__name__}_lvl_{ilvl}_{self._testMethodName}.png")
+            self.assertEqual(expected[ilvl], ghost_area_box_list)
+
+
 
     @data(
         (

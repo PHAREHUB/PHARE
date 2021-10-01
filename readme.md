@@ -66,7 +66,7 @@ PhD, PostDoc, [contact us](mailto:phare@lpp.polytechnique.fr).
 ### Active core team
 
 - [Nicolas Aunai](https://github.com/nicolasaunai)
-- [Philip Deegan](https://github.com/Dekken)
+- [Philip Deegan](https://github.com/PhilipDeegan)
 - [Roch Smets](https://github.com/rochsmets)
 - [Andrea Ciardi](https://sites.google.com/site/andreaciardihomepage/home)
 
