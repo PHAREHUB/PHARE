@@ -251,7 +251,7 @@ def overlap_mask_1d(x, dl, level, qty):
             overlaped_idx = np.where( (x > xmin) & (x < xmax) )[0]
 
             is_overlaped[overlaped_idx] = True
- 
+
         else:
             raise ValueError("level needs to have finer grid resolution than that of x")
 
@@ -526,10 +526,14 @@ class PatchHierarchy:
         return self.levels(time)[level_number]
 
 
-    def levelNbr(self, time):
+    def levelNbr(self, time=None):
+        if time is None:
+            time = self._default_time()
         return len(self.levels(time).items())
 
-    def levelNbrs(self, time):
+    def levelNbrs(self, time=None):
+        if time is None:
+            time = self._default_time()
         return list(self.levels(time).keys())
 
     def is_homogeneous(self):
@@ -693,35 +697,49 @@ class PatchHierarchy:
 
     def plot2d(self, **kwargs):
         from mpl_toolkits.axes_grid1 import make_axes_locatable
-        lvl = kwargs.get("level", 0)
+        from matplotlib.patches import Rectangle
+        time = kwargs.get("time", self._default_time())
+        usr_lvls = kwargs.get("levels",self.levelNbrs(time))
         qty = kwargs.get("qty", None)
-        time = kwargs.get("time", self.times()[0])
+
         if "ax" not in kwargs:
             fig, ax = plt.subplots()
         else:
             ax = kwargs["ax"]
             fig = ax.figure
 
-        for patch in self.level(lvl, time).patches:
-            pdat = patch.patch_datas[qty]
-            data = pdat.dataset[:]
-            nbrGhosts = pdat.ghosts_nbr
-            x = pdat.x
-            y = pdat.y
-            nx,ny =x.size, y.size
-            data = data.reshape((nx,ny))
-            data = data[nbrGhosts[0]:-nbrGhosts[0], nbrGhosts[1]:-nbrGhosts[1]]
-            x = x[nbrGhosts[0]:-nbrGhosts[0]]
-            y = y[nbrGhosts[1]:-nbrGhosts[1]]
-            dx,dy = pdat.layout.dl
-            x -= dx*0.5
-            y -= dy*0.5
-            x = np.append(x, x[-1]+dx)
-            y = np.append(y, y[-1]+dy)
-            im = ax.pcolormesh(x, y, data.T,
-                               cmap=kwargs.get("cmap","Spectral_r"),
-                               vmin=kwargs.get("vmin", None),
-                               vmax=kwargs.get("vmax", None))
+        for lvl_nbr, lvl  in self.levels(time).items():
+            if lvl_nbr not in usr_lvls:
+                continue
+            for patch in self.level(lvl_nbr, time).patches:
+                pdat = patch.patch_datas[qty]
+                data = pdat.dataset[:]
+                nbrGhosts = pdat.ghosts_nbr
+                x = pdat.x
+                y = pdat.y
+                nx,ny =x.size, y.size
+                data = data.reshape((nx,ny))
+                data = data[nbrGhosts[0]:-nbrGhosts[0], nbrGhosts[1]:-nbrGhosts[1]]
+                x = x[nbrGhosts[0]:-nbrGhosts[0]]
+                y = y[nbrGhosts[1]:-nbrGhosts[1]]
+                dx,dy = pdat.layout.dl
+                x -= dx*0.5
+                y -= dy*0.5
+                x = np.append(x, x[-1]+dx)
+                y = np.append(y, y[-1]+dy)
+                im = ax.pcolormesh(x, y, data.T,
+                                   cmap=kwargs.get("cmap","Spectral_r"),
+                                   vmin=kwargs.get("vmin", None),
+                                   vmax=kwargs.get("vmax", None))
+
+                if kwargs.get("plot_patches", False) is True:
+                    r = Rectangle((patch.box.lower[0]*dx,
+                                   patch.box.lower[1]*dy),
+                                  patch.box.shape[0]*dx,
+                                  patch.box.shape[1]*dy,
+                                  fc="none", ec="k",
+                                  alpha=0.4, lw=0.8)
+                    ax.add_patch(r)
 
         ax.set_aspect("equal")
         ax.set_title(kwargs.get("title", ""))
@@ -734,7 +752,7 @@ class PatchHierarchy:
 
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.08)
-        cb = plt.colorbar( im, ax=ax, cax=cax )
+        plt.colorbar( im, ax=ax, cax=cax )
 
         if kwargs.get("legend", None) is not None:
             ax.legend()
