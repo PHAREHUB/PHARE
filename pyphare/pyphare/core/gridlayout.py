@@ -58,6 +58,34 @@ class YeeCentering(object):
         self.centerY = yee_centering["y"]
         self.centerZ = yee_centering["z"]
 
+
+def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts=False):
+
+    assert direction in direction_to_dim, f"direction ({direction} not supported)"
+    assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
+    if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
+        qty = qty[0].upper() + qty[1:]
+
+    centering = yee_centering[direction][qty]
+
+    offset = 0
+    dim = direction_to_dim[direction]
+    if withGhosts:
+        size = nbrCells[dim] + (nbrGhosts * 2)
+    else:
+        size = nbrCells[dim]
+
+    if centering == 'dual':
+        offset = 0.5*dl[dim]
+    else:
+        size += 1
+
+    if withGhosts:
+        return origin[dim] - nbrGhosts * dl[dim] + np.arange(size) * dl[dim] + offset
+    else:
+        return origin[dim] + np.arange(size) * dl[dim] + offset
+
+
 class GridLayout(object):
 
     def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1):
@@ -256,24 +284,12 @@ class GridLayout(object):
         :param direction: can only be a single one
         """
 
-        assert direction in direction_to_dim, f"direction ({direction} not supported)"
-        assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
         if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
             qty = qty[0].upper() + qty[1:]
 
-        centering = yee_centering[direction][qty]
-        nbrGhosts = self.nbrGhosts(self.interp_order, centering)
+        return yeeCoordsFor(self.origin, self.nbrGhosts(self.interp_order, yee_centering[direction][qty]),
+                            self.dl, self.box.shape, qty, direction, withGhosts=True)
 
-        offset = 0
-        dim = direction_to_dim[direction]
-        size = self.box.shape[dim] + (nbrGhosts * 2)
-
-        if centering == 'dual':
-            offset = 0.5*self.dl[dim]
-        else:
-            size += 1
-
-        return self.origin[dim] - nbrGhosts * self.dl[dim] + np.arange(size) * self.dl[dim] + offset
 
 
 
