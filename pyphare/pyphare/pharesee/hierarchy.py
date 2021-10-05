@@ -735,8 +735,8 @@ class PatchHierarchy:
                 nx,ny =x.size, y.size
                 data = data.reshape((nx,ny))
                 data = data[nbrGhosts[0]:-nbrGhosts[0], nbrGhosts[1]:-nbrGhosts[1]]
-                x = x[nbrGhosts[0]:-nbrGhosts[0]]
-                y = y[nbrGhosts[1]:-nbrGhosts[1]]
+                x = np.copy(x[nbrGhosts[0]:-nbrGhosts[0]])
+                y = np.copy(y[nbrGhosts[1]:-nbrGhosts[1]])
                 dx,dy = pdat.layout.dl
                 x -= dx*0.5
                 y -= dy*0.5
