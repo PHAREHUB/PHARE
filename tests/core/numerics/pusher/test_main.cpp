@@ -71,18 +71,22 @@ Trajectory readExpectedTrajectory()
 class Interpolator
 {
 public:
-    template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const&, GridLayout&)
+    template<typename Particle_t, typename Electromag, typename GridLayout>
+    auto meshToParticle(Particle_t& particle, Electromag const& Em, GridLayout const& layout)
     {
+        return std::array<std::tuple<double, double, double>, 2>{std::make_tuple(.01, -0.05, 0.05),
+                                                                 std::make_tuple(1, 1, 1)};
+    }
+
+    template<typename PartIterator, typename Electromag, typename GridLayout>
+    auto operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+                    GridLayout const& layout)
+    {
+        std::vector<std::array<std::tuple<double, double, double>, 2>> ebs;
+        ebs.reserve(std::distance(begin, end));
         for (auto currPart = begin; currPart != end; ++currPart)
-        {
-            currPart->Ex = 0.01;
-            currPart->Ey = -0.05;
-            currPart->Ez = 0.05;
-            currPart->Bx = 1.;
-            currPart->By = 1.;
-            currPart->Bz = 1.;
-        }
+            ebs.emplace_back(meshToParticle(*currPart, Em, layout));
+        return ebs;
     }
 };
 
@@ -118,9 +122,11 @@ struct DummyLayout
 template<std::size_t dim>
 class APusher : public ::testing::Test
 {
+    using ParticleArray_t = ParticleArray<dim>;
+
 public:
-    using Pusher_ = BorisPusher<dim, typename ParticleArray<dim>::iterator, Electromag,
-                                Interpolator, BoundaryCondition<dim, 1>, DummyLayout<dim>>;
+    using Pusher_ = BorisPusher<dim, typename ParticleArray_t::iterator, Electromag, Interpolator,
+                                BoundaryCondition<dim, 1>, DummyLayout<dim>>;
 
     APusher()
         : expectedTrajectory{readExpectedTrajectory()}
@@ -145,8 +151,8 @@ public:
 
 protected:
     Trajectory expectedTrajectory;
-    ParticleArray<dim> particlesIn;
-    ParticleArray<dim> particlesOut;
+    ParticleArray_t particlesIn;
+    ParticleArray_t particlesOut;
     std::unique_ptr<Pusher_> pusher;
     double mass;
     double dt;
@@ -246,13 +252,15 @@ TEST_F(APusher1D, trajectoryIsOk)
 // and those that stay.
 class APusherWithLeavingParticles : public ::testing::Test
 {
+    using ParticleArray_t = ParticleArray<1>;
+
 public:
     APusherWithLeavingParticles()
         : particlesIn(1000)
         , particlesOut1(1000)
         , particlesOut2(1000)
         , pusher{std::make_unique<
-              BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+              BorisPusher<1, ParticleArray_t::iterator, Electromag, Interpolator,
                           BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
@@ -279,10 +287,10 @@ public:
 
 
 protected:
-    ParticleArray<1> particlesIn;
-    ParticleArray<1> particlesOut1;
-    ParticleArray<1> particlesOut2;
-    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+    ParticleArray_t particlesIn;
+    ParticleArray_t particlesOut1;
+    ParticleArray_t particlesOut2;
+    std::unique_ptr<BorisPusher<1, ParticleArray_t::iterator, Electromag, Interpolator,
                                 BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
     double mass;

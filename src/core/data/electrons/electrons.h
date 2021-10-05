@@ -11,8 +11,35 @@
 #include <memory>
 
 
+
 namespace PHARE::core
 {
+template<typename GridLayout, typename... Args>
+void computeBulkVelocity(GridLayout const& layout, Args&... args)
+{
+    constexpr auto dimension = GridLayout::dimension;
+    auto tuple               = std::forward_as_tuple(args...);
+
+    auto _compute = [&](auto const&& arr) {
+        auto const& [Ni, Vi, Ve, J] = tuple;
+        auto const& [Vix, Viy, Viz] = Vi();
+        auto const& [Vex, Vey, Vez] = Ve();
+        auto const& [Jx, Jy, Jz]    = J();
+
+        auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
+        auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
+        auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
+
+        Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
+        Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
+        Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
+    };
+
+    for (auto const& idx : layout.physicalStartToEndIndices(QtyCentering::primal))
+        std::apply([&](auto&... args) { _compute(std::array{args...}); }, idx);
+}
+
+
 template<typename Ions>
 class StandardHybridElectronFluxComputer
 {
@@ -93,63 +120,7 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
-        constexpr auto dimension = GridLayout::dimension;
-
-        auto const& Ni = ions_.density();
-        auto const& Vi = ions_.velocity();
-
-        auto& Vex = Ve_.getComponent(Component::X);
-        auto& Vey = Ve_.getComponent(Component::Y);
-        auto& Vez = Ve_.getComponent(Component::Z);
-
-        auto& Vix = Vi.getComponent(Component::X);
-        auto& Viy = Vi.getComponent(Component::Y);
-        auto& Viz = Vi.getComponent(Component::Z);
-
-        auto& Jx = J_.getComponent(Component::X);
-        auto& Jy = J_.getComponent(Component::Y);
-        auto& Jz = J_.getComponent(Component::Z);
-
-        // from Vex because all components defined on primal
-
-        auto _compute = [&](auto&& arr) {
-            auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
-            auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
-            auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
-
-            Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
-            Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
-            Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
-        };
-
-        auto lowerX = layout.physicalStartIndex(Vex, Direction::X);
-        auto upperX = layout.physicalEndIndex(Vex, Direction::X);
-
-        if constexpr (dimension == 1)
-            for (auto ix = lowerX; ix <= upperX; ++ix)
-                _compute(std::array{ix});
-
-        if constexpr (dimension >= 2)
-        {
-            auto lowerY = layout.physicalStartIndex(Vex, Direction::Y);
-            auto upperY = layout.physicalEndIndex(Vex, Direction::Y);
-
-            if constexpr (dimension == 2)
-                for (auto ix = lowerX; ix <= upperX; ++ix)
-                    for (auto iy = lowerY; iy <= upperY; ++iy)
-                        _compute(std::array{ix, iy});
-
-            if constexpr (dimension == 3)
-            {
-                auto lowerZ = layout.physicalStartIndex(Vex, Direction::Z);
-                auto upperZ = layout.physicalEndIndex(Vex, Direction::Z);
-
-                for (auto ix = lowerX; ix <= upperX; ++ix)
-                    for (auto iy = lowerY; iy <= upperY; ++iy)
-                        for (auto iz = lowerZ; iz <= upperZ; ++iz)
-                            _compute(std::array{ix, iy, iz});
-            }
-        }
+        core::computeBulkVelocity(layout, ions_.density(), ions_.velocity(), Ve_, J_);
     }
 
 

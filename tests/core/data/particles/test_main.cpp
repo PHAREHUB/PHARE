@@ -39,17 +39,6 @@ TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
     EXPECT_DOUBLE_EQ(1., part.charge);
 }
 
-TEST_F(AParticle, ParticleFieldsAreInitializedToZero)
-{
-    EXPECT_DOUBLE_EQ(0.0, part.Ex);
-    EXPECT_DOUBLE_EQ(0.0, part.Ey);
-    EXPECT_DOUBLE_EQ(0.0, part.Ez);
-
-    EXPECT_DOUBLE_EQ(0.0, part.Bx);
-    EXPECT_DOUBLE_EQ(0.0, part.By);
-    EXPECT_DOUBLE_EQ(0.0, part.Bz);
-}
-
 
 TEST_F(AParticle, ParticleVelocityIsInitializedOk)
 {
@@ -92,7 +81,7 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
                                                Box{Point{40, 60, 80}, Point{59, 89, 119}}};
 
-    auto iCell            = layout.AMRToLocal(Point{part.iCell});
+    auto iCell            = layout.AMRToLocal(cellAsPoint(part));
     auto p                = positionAsPoint(part, layout);
     auto startIndexes     = layout.physicalStartIndex(QtyCentering::primal);
     auto expectedPosition = Point<double, 3>{};

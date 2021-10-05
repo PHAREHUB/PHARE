@@ -29,6 +29,7 @@ template<std::size_t dim>
 struct AParticlesData
 {
     static constexpr auto dimension = dim;
+    using Particle_t                = Particle<dim>;
 
     SAMRAI::tbox::Dimension amr_dimension{dim};
     SAMRAI::hier::BlockId blockId{0};
@@ -73,7 +74,7 @@ struct AParticlesData
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
 
-    Particle<dim> particle;
+    Particle_t particle;
 
 
     AParticlesData()
@@ -226,12 +227,6 @@ TYPED_TEST(StreamPackTest,
     EXPECT_THAT(destData.domainParticles[0].delta, Eq(particle.delta));
     EXPECT_THAT(destData.domainParticles[0].weight, Eq(particle.weight));
     EXPECT_THAT(destData.domainParticles[0].charge, Eq(particle.charge));
-    EXPECT_DOUBLE_EQ(destData.domainParticles[0].Ex, particle.Ex);
-    EXPECT_DOUBLE_EQ(destData.domainParticles[0].Ey, particle.Ey);
-    EXPECT_DOUBLE_EQ(destData.domainParticles[0].Ez, particle.Ez);
-    EXPECT_DOUBLE_EQ(destData.domainParticles[0].Bx, particle.Bx);
-    EXPECT_DOUBLE_EQ(destData.domainParticles[0].By, particle.By);
-    EXPECT_DOUBLE_EQ(destData.domainParticles[0].Bz, particle.Bz);
 }
 
 
@@ -269,12 +264,6 @@ TYPED_TEST(StreamPackTest,
     EXPECT_THAT(destData.patchGhostParticles[0].delta, Eq(particle.delta));
     EXPECT_THAT(destData.patchGhostParticles[0].weight, Eq(particle.weight));
     EXPECT_THAT(destData.patchGhostParticles[0].charge, Eq(particle.charge));
-    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ex, particle.Ex);
-    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ey, particle.Ey);
-    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Ez, particle.Ez);
-    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bx, particle.Bx);
-    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].By, particle.By);
-    EXPECT_DOUBLE_EQ(destData.patchGhostParticles[0].Bz, particle.Bz);
 }
 
 

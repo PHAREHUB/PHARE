@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
 
+
 #include <stdexcept>
 #include <array>
 #include <cstdint>
@@ -8,14 +9,13 @@
 #include <tuple>
 #include <numeric>
 
-
 namespace PHARE::core
 {
 template<std::size_t dim, typename DataType = double>
 struct NdArrayViewer
 {
-    template<typename NCells, typename... Indexes>
-    static DataType const& at(DataType const* data, NCells const& nCells, Indexes const&... indexes)
+    template<typename Array, typename NCells, typename... Indexes>
+    static auto& at(Array* data, NCells const& nCells, Indexes const&... indexes)
     {
         auto params = std::forward_as_tuple(indexes...);
         static_assert(sizeof...(Indexes) == dim);
@@ -120,22 +120,26 @@ private:
 
 
 
-template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*>
+template<std::size_t dim, typename DataType = double, typename Ptr_ = double*>
 class NdArrayView : NdArrayViewer<dim, DataType>
 {
 public:
-    static constexpr bool is_contiguous = 1;
+    static constexpr bool is_contiguous = true;
     static const std::size_t dimension  = dim;
     using type                          = DataType;
+    using pointer_type                  = Ptr_;
 
-    explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
+    NdArrayView(pointer_type ptr, std::array<std::uint32_t, dim> const nCells)
         : ptr_{ptr}
         , nCells_{nCells}
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v,
-                         std::array<std::uint32_t, dim> const& nbCell)
+    NdArrayView(std::vector<DataType>& v, std::array<std::uint32_t, dim> const& nbCell)
+        : NdArrayView{v.data(), nbCell}
+    {
+    }
+    NdArrayView(std::vector<DataType> const& v, std::array<std::uint32_t, dim> const& nbCell)
         : NdArrayView{v.data(), nbCell}
     {
     }
@@ -149,7 +153,7 @@ public:
     template<typename... Indexes>
     DataType& operator()(Indexes... indexes)
     {
-        return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes...));
+        return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes...);
     }
 
     template<typename Index>
@@ -164,7 +168,9 @@ public:
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes));
     }
 
-    auto data() const { return ptr_; }
+    auto& data() { return ptr_; }
+    auto& data() const { return ptr_; }
+
     std::size_t size() const
     {
         return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
@@ -172,16 +178,19 @@ public:
     auto shape() const { return nCells_; }
 
 private:
-    Pointer ptr_ = nullptr;
+    pointer_type ptr_ = nullptr;
     std::array<std::uint32_t, dim> nCells_;
 };
-
-
 
 
 template<std::size_t dim, typename DataType = double>
 class NdArrayVector
 {
+    static std::uint32_t accumulate(std::array<std::uint32_t, dim> const& ncells)
+    {
+        return std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<std::uint32_t>());
+    }
+
 public:
     static constexpr bool is_contiguous = 1;
     static const std::size_t dimension  = dim;
@@ -191,23 +200,27 @@ public:
 
     template<typename... Nodes>
     explicit NdArrayVector(Nodes... nodes)
-        : nCells_{nodes...}
-        , data_((... * nodes))
+        : size_{(... * nodes)}
+        , nCells_{nodes...}
+        , data_(size_)
     {
         static_assert(sizeof...(Nodes) == dim);
     }
 
     explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells)
-        : nCells_{ncells}
-        , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<int>()))
+        : size_{accumulate(ncells)}
+        , nCells_{ncells}
+        , data_(size_)
     {
     }
 
     NdArrayVector(NdArrayVector const& source) = default;
     NdArrayVector(NdArrayVector&& source)      = default;
 
+    auto size() const { return size_; }
+
+    auto data() { return data_.data(); }
     auto data() const { return data_.data(); }
-    auto size() const { return data_.size(); }
 
     auto begin() const { return std::begin(data_); }
     auto begin() { return std::begin(data_); }
@@ -215,35 +228,33 @@ public:
     auto end() const { return std::end(data_); }
     auto end() { return std::end(data_); }
 
-    void zero() { data_ = std::vector<DataType>(data_.size(), {0}); }
+    void zero() { std::fill(data_.begin(), data_.end(), 0); }
 
 
     NdArrayVector& operator=(NdArrayVector const& source)
     {
         if (nCells_ != source.nCells_)
-        {
             throw std::runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
-        }
 
         this->data_ = source.data_;
+
         return *this;
     }
 
     NdArrayVector& operator=(NdArrayVector&& source)
     {
         if (nCells_ != source.nCells_)
-        {
             throw std::runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
-        }
 
         this->data_ = std::move(source.data_);
+
         return *this;
     }
 
     template<typename... Indexes>
     DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dim, DataType>::at(data_.data(), nCells_, indexes...);
+        return NdArrayViewer<dim, DataType>::at(data(), nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -255,7 +266,7 @@ public:
     template<typename Index>
     DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, DataType>::at(data_.data(), nCells_, indexes);
+        return NdArrayViewer<dim, DataType>::at(data(), nCells_, indexes);
     }
 
     template<typename Index>
@@ -273,9 +284,13 @@ public:
         return MaskedView{*this, std::forward<Mask>(mask)};
     }
 
+    auto as_view() const { return NdArrayView<dim, DataType, decltype(data())>{data(), nCells_}; }
+    auto as_view() { return NdArrayView<dim, DataType, decltype(data())>{data(), nCells_}; }
 
 private:
+    std::size_t size_;
     std::array<std::uint32_t, dim> nCells_;
+
     std::vector<DataType> data_;
 };
 

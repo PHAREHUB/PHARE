@@ -11,7 +11,44 @@
 
 #include "core/data/ndarray/ndarray_vector.h"
 
+namespace PHARE::core
+{
+template<typename View, typename PhysicalQuantity>
+class FieldView : public View
+{
+public:
+    static constexpr bool is_contiguous = true;
+    static const std::size_t dimension  = View::dimension;
+    using type                          = typename View::type;
+    using Super                         = View;
+    using pointer_type                  = typename Super::pointer_type;
+    using Super::shape;
+    using Super::size;
 
+    FieldView(pointer_type ptr, std::array<std::uint32_t, dimension> shape, PhysicalQuantity qty)
+        : Super{ptr, shape}
+        , qty_{qty}
+    {
+    }
+
+    FieldView(View&& view, PhysicalQuantity qty)
+        : Super{view}
+        , qty_{qty}
+    {
+    }
+
+    FieldView(View& view, PhysicalQuantity qty)
+        : Super{view}
+        , qty_{qty}
+    {
+    }
+
+    constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
+
+private:
+    PhysicalQuantity qty_;
+};
+} // namespace PHARE::core
 
 
 namespace PHARE
@@ -31,6 +68,7 @@ namespace core
         using impl_type              = NdArrayImpl;
         using type                   = typename NdArrayImpl::type;
         using physical_quantity_type = PhysicalQuantity;
+
         using NdArrayImpl::dimension;
 
 
@@ -65,6 +103,17 @@ namespace core
         void copyData(Field const& source)
         {
             static_cast<NdArrayImpl&>(*this) = static_cast<NdArrayImpl const&>(source);
+        }
+
+        auto as_view() const
+        {
+            return FieldView<decltype(NdArrayImpl::as_view()), PhysicalQuantity>{
+                NdArrayImpl::as_view(), qty_};
+        }
+        auto as_view()
+        {
+            return FieldView<decltype(NdArrayImpl::as_view()), PhysicalQuantity>{
+                NdArrayImpl::as_view(), qty_};
         }
 
 

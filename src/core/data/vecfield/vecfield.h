@@ -6,9 +6,68 @@
 #include <algorithm>
 #include <unordered_map>
 
+
 #include "core/data/field/field.h"
 #include "vecfield_component.h"
 #include "core/utilities/meta/meta_utilities.h"
+
+namespace PHARE::core
+{
+template<typename FieldView_>
+class VecFieldView
+{
+public:
+    using field_type                       = FieldView_;
+    static constexpr std::size_t dimension = field_type::dimension;
+
+    template<typename VecField>
+    VecFieldView(VecField& vecfield)
+        : views{field_type{vecfield[0].data(), vecfield[0].shape(), vecfield[0].physicalQuantity()},
+                field_type{vecfield[1].data(), vecfield[1].shape(), vecfield[1].physicalQuantity()},
+                field_type{vecfield[2].data(), vecfield[2].shape(), vecfield[2].physicalQuantity()}}
+    {
+    }
+
+    auto& getComponent(Component component)
+    {
+        switch (component)
+        {
+            case Component::X: return views[0];
+            case Component::Y: return views[1];
+            case Component::Z: return views[2];
+        }
+        throw std::runtime_error("Error - VecFieldView not usable");
+    }
+
+    auto& getComponent(Component component) const
+    {
+        switch (component)
+        {
+            case Component::X: return views[0];
+            case Component::Y: return views[1];
+            case Component::Z: return views[2];
+        }
+        throw std::runtime_error("Error - VecFieldView not usable");
+    }
+
+    auto& operator()(Component component) { return getComponent(component); }
+    auto& operator()(Component component) const { return getComponent(component); }
+
+
+    auto getComponents() { return std::forward_as_tuple(views[0], views[1], views[2]); }
+    auto getComponents() const { return std::forward_as_tuple(views[0], views[1], views[2]); }
+
+    auto operator()() { return getComponents(); }
+    auto operator()() const { return getComponents(); }
+
+    auto& operator[](size_t i) { return views[i]; }
+    auto& operator[](size_t i) const { return views[i]; }
+
+private:
+    std::array<field_type, 3> views;
+};
+
+} // namespace PHARE::core
 
 namespace PHARE
 {
@@ -27,6 +86,8 @@ namespace core
     class VecField
     {
     public:
+        using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
+
         VecField()                                 = delete;
         VecField& Vecfield(VecField const& source) = delete;
         VecField(VecField&& source)                = default;
@@ -48,8 +109,6 @@ namespace core
         {
         }
 
-
-
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
@@ -61,8 +120,6 @@ namespace core
         };
 
         using resources_properties = std::vector<VecFieldProperties>;
-
-        using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
         resources_properties getFieldNamesAndQuantities() const
         {
@@ -135,9 +192,6 @@ namespace core
             throw std::runtime_error("Error - VecField not usable");
         }
 
-
-
-
         Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
         getComponent(Component component) const
         {
@@ -152,6 +206,22 @@ namespace core
             }
             throw std::runtime_error("Error - VecField not usable");
         }
+
+        auto& operator()(Component component) { return getComponent(component); }
+        auto& operator()(Component component) const { return getComponent(component); }
+
+
+        auto getComponents()
+        {
+            return std::forward_as_tuple(*components_[0], *components_[1], *components_[2]);
+        }
+        auto getComponents() const
+        {
+            return std::forward_as_tuple(*components_[0], *components_[1], *components_[2]);
+        }
+
+        auto operator()() { return getComponents(); }
+        auto operator()() const { return getComponents(); }
 
 
 
@@ -192,7 +262,11 @@ namespace core
 
         auto cend() const { return std::cend(components_); }
 
+        auto& operator[](size_t i) { return *components_[i]; }
+        auto& operator[](size_t i) const { return *components_[i]; }
 
+        auto as_view() { return VecFieldView<decltype(components_[0]->as_view())>{*this}; }
+        auto as_view() const { return VecFieldView<decltype(components_[0]->as_view())>{*this}; }
 
     private:
         std::string name_ = "No Name";
@@ -223,5 +297,6 @@ namespace core
 
 } // namespace core
 } // namespace PHARE
+
 
 #endif

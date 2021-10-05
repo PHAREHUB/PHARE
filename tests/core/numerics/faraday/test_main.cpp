@@ -15,48 +15,13 @@
 #include "core/utilities/index/index.h"
 #include "core/utilities/point/point.h"
 
+#include "tests/core/data/field/test_field.h"
+#include "tests/core/data/vecfield/test_vecfield.h"
+#include "tests/core/data/gridlayout/gridlayout_test.h"
+
 using namespace PHARE::core;
 
-template<std::size_t dim>
-struct FieldMock
-{
-    static auto constexpr dimension = dim;
-    double data;
-    double& operator()([[maybe_unused]] std::uint32_t i) { return data; }
-    double const& operator()([[maybe_unused]] std::uint32_t i) const { return data; }
-    double& operator()([[maybe_unused]] std::uint32_t i, [[maybe_unused]] std::uint32_t j)
-    {
-        return data;
-    }
-    double const& operator()([[maybe_unused]] std::uint32_t i,
-                             [[maybe_unused]] std::uint32_t j) const
-    {
-        return data;
-    }
-    double& operator()([[maybe_unused]] std::uint32_t i, [[maybe_unused]] std::uint32_t j,
-                       [[maybe_unused]] std::uint32_t k)
-    {
-        return data;
-    }
-    double const& operator()([[maybe_unused]] std::uint32_t i, [[maybe_unused]] std::uint32_t j,
-                             [[maybe_unused]] std::uint32_t k) const
-    {
-        return data;
-    }
-    QtyCentering physicalQuantity() { return QtyCentering::dual; }
-    std::string name() const { return "FieldMock"; }
-};
 
-template<typename Field>
-struct VecFieldMock
-{
-    using field_type                = Field;
-    static auto constexpr dimension = Field::dimension;
-    Field fm;
-    Field& getComponent([[maybe_unused]] Component comp) { return fm; }
-    Field const& getComponent([[maybe_unused]] Component comp) const { return fm; }
-    bool isUsable() const { return true; }
-};
 
 
 struct GridLayoutMock1D
@@ -154,26 +119,32 @@ TEST(Faraday, canBe3D)
 
 TEST(Faraday, shouldBeGivenAGridLayoutPointerToBeOperational)
 {
-    VecFieldMock<FieldMock<1>> B_1, E_1, Bnew_1;
+    {
+        using GridLayout = GridLayout<GridLayoutImplYee<1, 1>>;
+        VecFieldMock<FieldMock<1>> B_1, E_1, Bnew_1;
+        Faraday<GridLayout> faraday1d;
+        auto layout1d = std::make_unique<TestGridLayout<GridLayout>>();
+        EXPECT_ANY_THROW(faraday1d(B_1, E_1, Bnew_1, 1.));
+        faraday1d.setLayout(layout1d.get());
+    }
 
-    Faraday<GridLayoutMock1D> faraday1d;
-    auto layout1d = std::make_unique<GridLayoutMock1D>();
-    EXPECT_ANY_THROW(faraday1d(B_1, E_1, Bnew_1, 1.));
-    faraday1d.setLayout(layout1d.get());
+    {
+        using GridLayout = GridLayout<GridLayoutImplYee<2, 1>>;
+        VecFieldMock<FieldMock<2>> B_2, E_2, Bnew_2;
+        Faraday<GridLayout> faraday2d;
+        auto layout2d = std::make_unique<TestGridLayout<GridLayout>>();
+        EXPECT_ANY_THROW(faraday2d(B_2, E_2, Bnew_2, 1.));
+        faraday2d.setLayout(layout2d.get());
+    }
 
-    VecFieldMock<FieldMock<2>> B_2, E_2, Bnew_2;
-
-    Faraday<GridLayoutMock2D> faraday2d;
-    auto layout2d = std::make_unique<GridLayoutMock2D>();
-    EXPECT_ANY_THROW(faraday2d(B_2, E_2, Bnew_2, 1.));
-    faraday2d.setLayout(layout2d.get());
-
-    VecFieldMock<FieldMock<3>> B_3, E_3, Bnew_3;
-
-    Faraday<GridLayoutMock3D> faraday3d;
-    auto layout3d = std::make_unique<GridLayoutMock3D>();
-    EXPECT_ANY_THROW(faraday3d(B_3, E_3, Bnew_3, 1.));
-    faraday3d.setLayout(layout3d.get());
+    {
+        using GridLayout = GridLayout<GridLayoutImplYee<3, 1>>;
+        VecFieldMock<FieldMock<3>> B_3, E_3, Bnew_3;
+        Faraday<GridLayout> faraday3d;
+        auto layout3d = std::make_unique<TestGridLayout<GridLayout>>();
+        EXPECT_ANY_THROW(faraday3d(B_3, E_3, Bnew_3, 1.));
+        faraday3d.setLayout(layout3d.get());
+    }
 }
 
 

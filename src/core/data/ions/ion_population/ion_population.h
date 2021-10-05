@@ -77,7 +77,7 @@ namespace core
 
 
 
-        ParticleArray& domainParticles()
+        ParticleArray const& domainParticles() const
         {
             if (isUsable())
             {
@@ -87,6 +87,13 @@ namespace core
             {
                 throw std::runtime_error("Error - cannot provide access to particle buffers");
             }
+        }
+
+
+        ParticleArray& domainParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<const IonPopulation*>(this)->domainParticles());
         }
 
 

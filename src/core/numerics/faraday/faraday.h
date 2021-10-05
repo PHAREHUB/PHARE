@@ -2,258 +2,114 @@
 #define PHARE_FARADAY_H
 
 #include <cstddef>
-#include <iostream>
 
 #include "core/data/grid/gridlayoutdefs.h"
 #include "core/data/grid/gridlayout_utils.h"
 #include "core/data/vecfield/vecfield_component.h"
-#include "core/utilities/index/index.h"
 
-namespace PHARE
+
+namespace PHARE::core
 {
-namespace core
+template<typename GridLayout>
+struct StandardFaradayComputer
 {
-    template<typename GridLayout>
-    class Faraday : public LayoutHolder<GridLayout>
+    constexpr static auto dimension = GridLayout::dimension;
+
+    template<typename VecField, typename Field, typename... Indexes>
+    void bx(Field const& Bx, VecField const& E, Field& Bxnew, Indexes const&... ijk) const
     {
-    private:
-        template<typename VecField, std::enable_if_t<VecField::dimension == 1, int> = 0>
-        void compute_(VecField const& B, VecField const& E, VecField& Bnew, double dt)
-        {
-            // dBxdt =  0
-            // dBydt =  dxEz
-            // dBzdt = -dxEy
+        auto const& [_, Ey, Ez] = E();
 
-            auto const& Bx = B.getComponent(Component::X);
-            auto const& By = B.getComponent(Component::Y);
-            auto const& Bz = B.getComponent(Component::Z);
+        if constexpr (dimension == 1)
+            Bxnew(ijk...) = Bx(ijk...);
 
-            auto const& Ey = E.getComponent(Component::Y);
-            auto const& Ez = E.getComponent(Component::Z);
+        if constexpr (dimension == 2)
+            Bxnew(ijk...)
+                = Bx(ijk...)
+                  - dt * layout.deriv(E(Component::Z), {ijk...}, DirectionTag<Direction::Y>{});
 
-            auto& Bxnew = Bnew.getComponent(Component::X);
-            auto& Bynew = Bnew.getComponent(Component::Y);
-            auto& Bznew = Bnew.getComponent(Component::Z);
+        if constexpr (dimension == 3)
+            Bxnew(ijk...) = Bx(ijk...)
+                            - dt * layout.deriv(Ez, {ijk...}, DirectionTag<Direction::Y>{})
+                            + dt * layout.deriv(Ey, {ijk...}, DirectionTag<Direction::Z>{});
+    }
 
+    template<typename VecField, typename Field, typename... Indexes>
+    void by(Field const& By, VecField const& E, Field& Bynew, Indexes const&... ijk) const
+    {
+        auto const& [Ex, _, Ez] = E();
 
-            auto start = this->layout_->physicalStartIndex(Bxnew, Direction::X);
-            auto end   = this->layout_->physicalEndIndex(Bxnew, Direction::X);
+        if constexpr (dimension == 1)
+            Bynew(ijk...)
+                = By(ijk...)
+                  + dt * layout.deriv(E(Component::Z), {ijk...}, DirectionTag<Direction::X>{});
 
-            for (auto ix = start; ix <= end; ++ix)
-            {
-                Bxnew(ix) = Bx(ix);
-            }
+        if constexpr (dimension == 2)
+            Bynew(ijk...)
+                = By(ijk...)
+                  + dt * layout.deriv(E(Component::Z), {ijk...}, DirectionTag<Direction::X>{});
 
+        if constexpr (dimension == 3)
+            Bynew(ijk...) = By(ijk...)
+                            - dt * layout.deriv(Ex, {ijk...}, DirectionTag<Direction::Z>{})
+                            + dt * layout.deriv(Ez, {ijk...}, DirectionTag<Direction::X>{});
+    }
 
-            // Direction should not be in gridlayoutdef but in utilities somehow
-            start = this->layout_->physicalStartIndex(Bynew, Direction::X);
-            end   = this->layout_->physicalEndIndex(Bynew, Direction::X);
+    template<typename VecField, typename Field, typename... Indexes>
+    void bz(Field const& Bz, VecField const& E, Field& Bznew, Indexes const&... ijk) const
+    {
+        auto const& [Ex, Ey, _] = E();
 
-            for (auto ix = start; ix <= end; ++ix)
-            {
-                Bynew(ix)
-                    = By(ix) + dt * this->layout_->deriv(Ez, {ix}, DirectionTag<Direction::X>{});
-            }
+        if constexpr (dimension == 1)
+            Bznew(ijk...)
+                = Bz(ijk...) - dt * layout.deriv(Ey, {ijk...}, DirectionTag<Direction::X>{});
 
-            start = this->layout_->physicalStartIndex(Bznew, Direction::X);
-            end   = this->layout_->physicalEndIndex(Bznew, Direction::X);
+        else
+            Bznew(ijk...) = Bz(ijk...)
+                            - dt * layout.deriv(Ey, {ijk...}, DirectionTag<Direction::X>{})
+                            + dt * layout.deriv(Ex, {ijk...}, DirectionTag<Direction::Y>{});
+    }
 
-            for (auto ix = start; ix <= end; ++ix)
-            {
-                Bznew(ix)
-                    = Bz(ix) - dt * this->layout_->deriv(Ey, {ix}, DirectionTag<Direction::X>{});
-            }
-        }
-
-
-
-        template<typename VecField, std::enable_if_t<VecField::dimension == 2, int> = 0>
-        void compute_(VecField const& B, VecField const& E, VecField& Bnew, double dt)
-        {
-            // dBxdt =  -dyEz
-            // dBydt =  dxEz
-            // dBzdt = -dxEy + dyEx
-
-            auto const& Bx = B.getComponent(Component::X);
-            auto const& By = B.getComponent(Component::Y);
-            auto const& Bz = B.getComponent(Component::Z);
-
-            auto const& Ex = E.getComponent(Component::X);
-            auto const& Ey = E.getComponent(Component::Y);
-            auto const& Ez = E.getComponent(Component::Z);
-
-            auto& Bxnew = Bnew.getComponent(Component::X);
-            auto& Bynew = Bnew.getComponent(Component::Y);
-            auto& Bznew = Bnew.getComponent(Component::Z);
-
-            auto psi_X = this->layout_->physicalStartIndex(Bxnew, Direction::X);
-            auto pei_X = this->layout_->physicalEndIndex(Bxnew, Direction::X);
-            auto psi_Y = this->layout_->physicalStartIndex(Bxnew, Direction::Y);
-            auto pei_Y = this->layout_->physicalEndIndex(Bxnew, Direction::Y);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    Bxnew(ix, iy)
-                        = Bx(ix, iy)
-                          - dt * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::Y>{});
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Bynew, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Bynew, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Bynew, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Bynew, Direction::Y);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    Bynew(ix, iy)
-                        = By(ix, iy)
-                          + dt * this->layout_->deriv(Ez, {ix, iy}, DirectionTag<Direction::X>{});
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Bznew, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Bznew, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Bznew, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Bznew, Direction::Y);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    Bznew(ix, iy)
-                        = Bz(ix, iy)
-                          - dt * this->layout_->deriv(Ey, {ix, iy}, DirectionTag<Direction::X>{})
-                          + dt * this->layout_->deriv(Ex, {ix, iy}, DirectionTag<Direction::Y>{});
-                }
-            }
-        }
+    double dt;
+    GridLayout& layout;
+};
 
 
 
-        template<typename VecField, std::enable_if_t<VecField::dimension == 3, int> = 0>
-        void compute_(VecField const& B, VecField const& E, VecField& Bnew, double dt)
-        {
-            // dBxdt = -dyEz + dzEy
-            // dBydt = -dzEx + dxEz
-            // dBzdt = -dxEy + dyEx
+template<typename GridLayout, typename Computer = StandardFaradayComputer<GridLayout>>
+class Faraday : public LayoutHolder<GridLayout>
+{
+    using LayoutHolder<GridLayout>::layout_;
 
-            auto const& Bx = B.getComponent(Component::X);
-            auto const& By = B.getComponent(Component::Y);
-            auto const& Bz = B.getComponent(Component::Z);
+public:
+    template<typename VecField>
+    void operator()(VecField const& B_, VecField const& E_, VecField& Bnew_, double dt)
+    {
+        if (!this->hasLayout())
+            throw std::runtime_error(
+                "Error - Faraday - GridLayout not set, cannot proceed to calculate faraday()");
 
-            auto const& Ex = E.getComponent(Component::X);
-            auto const& Ey = E.getComponent(Component::Y);
-            auto const& Ez = E.getComponent(Component::Z);
+        if (!(B_.isUsable() && E_.isUsable() && Bnew_.isUsable()))
+            throw std::runtime_error("Error - Faraday - not all VecField parameters are usable");
 
-            auto& Bxnew = Bnew.getComponent(Component::X);
-            auto& Bynew = Bnew.getComponent(Component::Y);
-            auto& Bznew = Bnew.getComponent(Component::Z);
+        auto B    = B_.as_view();
+        auto E    = E_.as_view();
+        auto Bnew = Bnew_.as_view();
 
-            auto psi_X = this->layout_->physicalStartIndex(Bxnew, Direction::X);
-            auto pei_X = this->layout_->physicalEndIndex(Bxnew, Direction::X);
-            auto psi_Y = this->layout_->physicalStartIndex(Bxnew, Direction::Y);
-            auto pei_Y = this->layout_->physicalEndIndex(Bxnew, Direction::Y);
-            auto psi_Z = this->layout_->physicalStartIndex(Bxnew, Direction::Z);
-            auto pei_Z = this->layout_->physicalEndIndex(Bxnew, Direction::Z);
+        Computer op{dt, *this->layout_};
+        layout_->scan(Bnew_(Component::X), [=](auto const&... args) mutable {
+            op.bx(B(Component::X), E, Bnew(Component::X), args...);
+        });
+        layout_->scan(Bnew_(Component::Y), [=](auto const&... args) mutable {
+            op.by(B(Component::Y), E, Bnew(Component::Y), args...);
+        });
+        layout_->scan(Bnew_(Component::Z), [=](auto const&... args) mutable {
+            op.bz(B(Component::Z), E, Bnew(Component::Z), args...);
+        });
+    }
+};
 
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                    {
-                        Bxnew(ix, iy, iz)
-                            = Bx(ix, iy, iz)
-                              - dt
-                                    * this->layout_->deriv(Ez, {ix, iy, iz},
-                                                           DirectionTag<Direction::Y>{})
-                              + dt
-                                    * this->layout_->deriv(Ey, {ix, iy, iz},
-                                                           DirectionTag<Direction::Z>{});
-                    }
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Bynew, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Bynew, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Bynew, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Bynew, Direction::Y);
-            psi_Z = this->layout_->physicalStartIndex(Bynew, Direction::Z);
-            pei_Z = this->layout_->physicalEndIndex(Bynew, Direction::Z);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                    {
-                        Bynew(ix, iy, iz)
-                            = By(ix, iy, iz)
-                              - dt
-                                    * this->layout_->deriv(Ex, {ix, iy, iz},
-                                                           DirectionTag<Direction::Z>{})
-                              + dt
-                                    * this->layout_->deriv(Ez, {ix, iy, iz},
-                                                           DirectionTag<Direction::X>{});
-                    }
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Bznew, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Bznew, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Bznew, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Bznew, Direction::Y);
-            psi_Z = this->layout_->physicalStartIndex(Bznew, Direction::Z);
-            pei_Z = this->layout_->physicalEndIndex(Bznew, Direction::Z);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                    {
-                        Bznew(ix, iy, iz)
-                            = Bz(ix, iy, iz)
-                              - dt
-                                    * this->layout_->deriv(Ey, {ix, iy, iz},
-                                                           DirectionTag<Direction::X>{})
-                              + dt
-                                    * this->layout_->deriv(Ex, {ix, iy, iz},
-                                                           DirectionTag<Direction::Y>{});
-                    }
-                }
-            }
-        }
-
-
-    public:
-        template<typename VecField>
-        void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
-        {
-            if (!this->hasLayout())
-            {
-                throw std::runtime_error(
-                    "Error - Faraday - GridLayout not set, cannot proceed to calculate faraday()");
-            }
-            if (B.isUsable() && E.isUsable() && Bnew.isUsable())
-            {
-                compute_(B, E, Bnew, dt);
-            }
-            else
-            {
-                throw std::runtime_error(
-                    "Error - Faraday - not all VecField parameters are usable");
-            }
-        }
-    };
-} // namespace core
-} // namespace PHARE
-
+} // namespace PHARE::core
 
 
 #endif
