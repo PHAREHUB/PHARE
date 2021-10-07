@@ -68,7 +68,7 @@ public:
 
     std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
 
-    static auto getPatchProperties(GridLayout const& grid)
+    auto getPatchProperties(std::string patchID, GridLayout const& grid) const
     {
         PatchProperties dict;
         dict["origin"]   = grid.origin().toVector();
@@ -76,6 +76,11 @@ public:
         dict["lower"]    = grid.AMRBox().lower.toVector();
         dict["upper"]    = grid.AMRBox().upper.toVector();
         dict["mpi_rank"] = static_cast<std::size_t>(core::mpi::rank());
+
+        dict["tags"] = std::vector<int>{};
+        if (model_.tags.count(patchID))
+            dict["tags"] = model_.tags[patchID];
+
         return dict;
     }
 
@@ -88,6 +93,7 @@ public:
         dict["lower"]    = std::vector<int>{};
         dict["upper"]    = std::vector<int>{};
         dict["mpi_rank"] = std::size_t{0};
+        dict["tags"]     = std::vector<int>{};
         return dict;
     }
 
