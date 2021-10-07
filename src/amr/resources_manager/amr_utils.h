@@ -209,6 +209,12 @@ namespace amr
         return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
     }
 
+    inline auto to_string(SAMRAI::hier::GlobalId const& id)
+    {
+        std::stringstream patchID;
+        patchID << id;
+        return patchID.str();
+    }
 
     template<typename GridLayout, typename ResMan, typename Action, typename... Args>
     void visitLevel(SAMRAI_Types::level_t& level, ResMan& resman, Action&& action, Args&&... args)
@@ -217,9 +223,8 @@ namespace amr
         {
             auto guard        = resman.setOnPatch(*patch, args...);
             GridLayout layout = layoutFromPatch<GridLayout>(*patch);
-            std::stringstream patchID;
-            patchID << patch->getGlobalId();
-            action(layout, patchID.str(), static_cast<std::size_t>(level.getLevelNumber()));
+            action(layout, to_string(patch->getGlobalId()),
+                   static_cast<std::size_t>(level.getLevelNumber()));
         }
     }
 

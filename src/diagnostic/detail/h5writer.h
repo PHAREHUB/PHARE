@@ -423,7 +423,8 @@ void Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> const&
         if (!patchAttributes.count(iLevel))
             patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
         patchPath_ = getPatchPathAddTimestamp(iLevel, patchID);
-        patchAttributes[iLevel].emplace_back(patchID, modelView_.getPatchProperties(gridLayout));
+        patchAttributes[iLevel].emplace_back(patchID,
+                                             modelView_.getPatchProperties(patchID, gridLayout));
         for (auto* diagnostic : diagnostics)
             writers.at(diagnostic->type)->write(*diagnostic);
         maxLocalLevel = iLevel;

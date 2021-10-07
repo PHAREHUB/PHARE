@@ -62,6 +62,9 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
         auto pd   = dynamic_cast<SAMRAI::pdat::CellData<int>*>(patch.getPatchData(tag_index).get());
         auto tags = pd->getPointer();
         strat_->tag(hybridModel, layout, tags);
+
+        hybridModel.tags[amr::to_string(patch.getGlobalId())]
+            = std::vector<int>(tags, tags + layout.nbrCellsFlat());
     }
     else
         throw std::runtime_error("invalid tagging strategy");
