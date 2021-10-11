@@ -11,7 +11,7 @@
 
 namespace PHARE::core
 {
-template<std::size_t dim, typename DataType = double>
+template<std::size_t dim, bool c_ordering = true, typename DataType = double>
 struct NdArrayViewer
 {
     template<typename NCells, typename... Indexes>
@@ -34,7 +34,10 @@ struct NdArrayViewer
             auto i = std::get<0>(params);
             auto j = std::get<1>(params);
 
-            return data[j + i * nCells[1]];
+            if constexpr (c_ordering)
+                return data[j + i * nCells[1]];
+            else
+                return data[i + j * nCells[0]];
         }
 
         if constexpr (dim == 3)
@@ -43,7 +46,10 @@ struct NdArrayViewer
             auto j = std::get<1>(params);
             auto k = std::get<2>(params);
 
-            return data[k + j * nCells[2] + i * nCells[1] * nCells[2]];
+            if constexpr (c_ordering)
+                return data[k + j * nCells[2] + i * nCells[1] * nCells[2]];
+            else
+                return data[i + j * nCells[0] + k * nCells[1] * nCells[0]];
         }
     }
 
@@ -90,7 +96,7 @@ public:
     template<typename... Indexes>
     DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dimension, DataType>::at(array_.data(), shape_, indexes...);
+        return NdArrayViewer<dimension, true, DataType>::at(array_.data(), shape_, indexes...);
     }
 
     template<typename... Indexes>
@@ -119,9 +125,9 @@ private:
 
 
 
-
-template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*>
-class NdArrayView : NdArrayViewer<dim, DataType>
+template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*,
+         bool c_ordering = true>
+class NdArrayView : NdArrayViewer<dim, c_ordering, DataType>
 {
 public:
     static constexpr bool is_contiguous = 1;
@@ -143,7 +149,7 @@ public:
     template<typename... Indexes>
     DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes...);
+        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -155,7 +161,7 @@ public:
     template<typename Index>
     DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes);
+        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
@@ -179,7 +185,7 @@ private:
 
 
 
-template<std::size_t dim, typename DataType = double>
+template<std::size_t dim, typename DataType = double, bool c_ordering = true>
 class NdArrayVector
 {
 public:
@@ -245,7 +251,7 @@ public:
     template<typename... Indexes>
     DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dim, DataType>::at(data_.data(), nCells_, indexes...);
+        return NdArrayViewer<dim, c_ordering, DataType>::at(data_.data(), nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -257,7 +263,7 @@ public:
     template<typename Index>
     DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, DataType>::at(data_.data(), nCells_, indexes);
+        return NdArrayViewer<dim, c_ordering, DataType>::at(data_.data(), nCells_, indexes);
     }
 
     template<typename Index>

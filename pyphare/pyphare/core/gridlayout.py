@@ -276,7 +276,7 @@ class GridLayout(object):
         return x
 
 
-    def yeeCoordsFor(self, qty, direction):
+    def yeeCoordsFor(self, qty, direction, withGhosts=True):
         """
         from a qty and a direction, returns a 1d array containing
         the coordinates where the qty is defined, including the ghost nodes
@@ -289,7 +289,7 @@ class GridLayout(object):
             qty = qty[0].upper() + qty[1:]
 
         return yeeCoordsFor(self.origin, self.nbrGhosts(self.interp_order, yee_centering[direction][qty]),
-                            self.dl, self.box.shape, qty, direction, withGhosts=True)
+                            self.dl, self.box.shape, qty, direction, withGhosts=withGhosts)
 
 
 

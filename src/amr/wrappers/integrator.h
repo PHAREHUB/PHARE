@@ -75,8 +75,11 @@ Integrator<_dimension>::Integrator(
         "StandardTagAndInitialize", tagAndInitStrategy.get(), refineDB);
 
 
-    auto clustering
-        = std::make_shared<SAMRAI::mesh::BergerRigoutsos>(SAMRAI::tbox::Dimension{dimension});
+    std::shared_ptr<SAMRAI::tbox::Database> bergerDB
+        = std::make_shared<SAMRAI::tbox::MemoryDatabase>("Bergerdb");
+    bergerDB->putIntegerVector("max_box_size", std::vector<int>(dimension, 10));
+    auto clustering = std::make_shared<SAMRAI::mesh::BergerRigoutsos>(
+        SAMRAI::tbox::Dimension{dimension}, bergerDB);
 
     auto gridding = std::make_shared<SAMRAI::mesh::GriddingAlgorithm>(
         hierarchy, "GriddingAlgorithm", std::shared_ptr<SAMRAI::tbox::Database>{}, standardTag,

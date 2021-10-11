@@ -6,6 +6,7 @@
 #include "hybrid_tagger_strategy.h"
 #include "amr/physical_models/hybrid_model.h"
 #include "amr/types/amr_types.h"
+#include "core/data/ndarray/ndarray_vector.h"
 
 #include <SAMRAI/pdat/CellData.h>
 
@@ -80,7 +81,23 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
                 = std::make_shared<typename Map_value_type::element_type>(layout.nbrCells());
         }
 
-        std::copy(tags, tags + layout.nbrCellsFlat(), hybridModel.tags[key]->data());
+        auto nbrCells = layout.nbrCells();
+        auto tagsv = core::NdArrayView<HybridModel::dimension, int>(hybridModel.tags[key]->data(),
+                                                                    layout.nbrCells());
+        auto tagsvF
+            = core::NdArrayView<HybridModel::dimension, int, int*, false>(tags, layout.nbrCells());
+        if constexpr (HybridModel::dimension == 2)
+        {
+            for (auto iTag_x = 0u; iTag_x < nbrCells[0]; ++iTag_x)
+            {
+                for (auto iTag_y = 0u; iTag_y < nbrCells[1]; ++iTag_y)
+                {
+                    tagsv(iTag_x, iTag_y) = tagsvF(iTag_x, iTag_y);
+                    std::cout << "debugModel : " << iTag_x << "," << iTag_y
+                              << ") =" << tagsv(iTag_x, iTag_y) << "\n";
+                }
+            }
+        }
     }
     else
         throw std::runtime_error("invalid tagging strategy");

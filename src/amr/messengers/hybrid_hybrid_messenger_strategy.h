@@ -185,7 +185,15 @@ namespace amr
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            // we now call only levelGhostParticlesOld.fill() and not .regrid()
+            // regrid() would refine from next coarser in regions of level not overlaping
+            // oldLevel, but copy from domain particles of oldLevel where there is an overlap
+            // while we do not a priori see why this could be wrong,but this led to occasional
+            // failures of the SAMRAI MPI module. See https://github.com/PHAREHUB/PHARE/issues/604
+            // calling .fill() ensures that levelGhostParticlesOld particles are filled
+            // exclusively from spliting next coarser domain ones like when a new finest level
+            // is created.
+            levelGhostParticlesOld_.fill(levelNumber, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
 
             // computeIonMoments_(*level, model);
@@ -544,7 +552,6 @@ namespace amr
         {
             auto levelNumber  = level.getLevelNumber();
             auto& hybridModel = static_cast<HybridModel&>(model);
-
             magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, time);
 

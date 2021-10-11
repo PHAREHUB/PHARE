@@ -230,24 +230,9 @@ namespace amr
                 {
                     auto const& level = hierarchy->getPatchLevel(levelNumber);
 
-                    if constexpr (Type == RefinerType::LevelBorderParticles)
-                    {
-                        std::cout << "regriding adding levelghostparticles on level " << levelNumber
-                                  << " " << key << "\n";
-                        auto schedule = algo->createSchedule(
-                            std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                            oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-                        schedule->fillData(initDataTime);
-                    }
-                    else
-                    {
-                        std::cout << "regriding adding " << key << " on level " << levelNumber
-                                  << " \n";
-                        auto schedule = algo->createSchedule(
-                            level, oldLevel, level->getNextCoarserHierarchyLevelNumber(),
-                            hierarchy);
-                        schedule->fillData(initDataTime);
-                    }
+                    auto schedule = algo->createSchedule(
+                        level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    schedule->fillData(initDataTime);
                 }
             }
         }
