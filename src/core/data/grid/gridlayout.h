@@ -16,12 +16,27 @@
 #include <cmath>
 #include <tuple>
 #include <cstddef>
+#include <functional>
 #include <type_traits>
 
 namespace PHARE
 {
 namespace core
 {
+    template<typename T, typename Attempt = void>
+    struct has_physicalQuantity : std::false_type
+    {
+    };
+
+    template<typename T>
+    struct has_physicalQuantity<
+        T, core::tryToInstanciate<decltype(std::declval<T>().physicalQuantity())>> : std::true_type
+    {
+    };
+    template<typename T>
+    constexpr bool has_physicalQuantity_v = has_physicalQuantity<T>::value;
+
+
     constexpr int centering2int(QtyCentering c) { return static_cast<int>(c); }
 
     template<typename T, std::size_t s>
@@ -65,9 +80,13 @@ namespace core
     template<typename GridLayoutImpl>
     class GridLayout
     {
+    protected:
+        GridLayout() = default;
+
     public:
         static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
         static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+        using This                                = GridLayout<GridLayoutImpl>;
         using implT                               = GridLayoutImpl;
 
 
@@ -172,9 +191,8 @@ namespace core
                                    ghostEndIndex(centering, direction));
         }
 
-        template<typename NdArrayImpl>
-        auto ghostStartToEnd(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                             Direction direction) const
+        template<typename Field, std::enable_if_t<has_physicalQuantity_v<Field>, bool> = 0>
+        auto ghostStartToEnd(Field const& field, Direction direction) const
         {
             return ghostStartToEnd(field.physicalQuantity(), direction);
         }
@@ -186,9 +204,9 @@ namespace core
                                    physicalEndIndex(centering, direction));
         }
 
-        template<typename NdArrayImpl>
-        auto physicalStartToEnd(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                                Direction direction) const
+
+        template<typename Field, std::enable_if_t<has_physicalQuantity_v<Field>, bool> = 0>
+        auto physicalStartToEnd(Field const& field, Direction direction) const
         {
             return physicalStartToEnd(field.physicalQuantity(), direction);
         }
@@ -1103,7 +1121,53 @@ namespace core
 
 
 
+
+        template<typename Field, typename Fn>
+        void evalOnBox(Field& field, Fn&& fn)
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            };
+
+            evalOnBox_(field, fn, indices);
+        }
+
+
+
     private:
+        template<typename Field, typename IndicesFn, typename Fn>
+        void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd) const
+        {
+            auto const [ix0, ix1] = startToEnd(field, Direction::X);
+            for (auto ix = ix0; ix <= ix1; ++ix)
+            {
+                if constexpr (dimension == 1)
+                {
+                    fn(ix);
+                }
+                else
+                {
+                    auto const [iy0, iy1] = startToEnd(field, Direction::Y);
+
+                    for (auto iy = iy0; iy <= iy1; ++iy)
+                    {
+                        if constexpr (dimension == 2)
+                        {
+                            fn(ix, iy);
+                        }
+                        else
+                        {
+                            auto const [iz0, iz1] = startToEnd(field, Direction::Z);
+
+                            for (auto iz = iz0; iz <= iz1; ++iz)
+                                fn(ix, iy, iz);
+                        }
+                    }
+                }
+            }
+        }
+
+
         template<typename Centering, typename StartToEnd>
         auto StartToEndIndices_(Centering const& centering, StartToEnd const&& startToEnd,
                                 bool const includeEnd = false) const

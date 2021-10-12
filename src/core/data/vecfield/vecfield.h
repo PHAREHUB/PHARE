@@ -167,6 +167,21 @@ namespace core
         }
 
 
+        auto getComponents() const
+        {
+            return std::forward_as_tuple((*this)[0], (*this)[1], (*this)[2]);
+        }
+        auto getComponents() { return std::forward_as_tuple((*this)[0], (*this)[1], (*this)[2]); }
+
+        auto& operator()(Component component) const { return getComponent(component); }
+        auto& operator()(Component component) { return getComponent(component); }
+
+        auto operator()() const { return getComponents(); }
+        auto operator()() { return getComponents(); }
+
+        auto& operator[](std::size_t i) { return *components_[i]; }
+        auto& operator[](std::size_t i) const { return *components_[i]; }
+
 
         void copyData(VecField const& source)
         {
