@@ -25,7 +25,7 @@ if venv_path is not None:
 from .uniform_model import UniformModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .electron_model import ElectronModel
-from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics
+from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics, MetaDiagnostics
 from .simulation import Simulation
 
 

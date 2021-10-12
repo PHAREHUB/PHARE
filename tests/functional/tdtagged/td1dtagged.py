@@ -110,6 +110,11 @@ def withTagging(**kwargs):
 
     timestamps = all_timestamps(sim)
 
+    ph.MetaDiagnostics(
+        quantity="tags",
+        write_timestamps=timestamps,
+        compute_timestamps=timestamps,
+    )
 
     for quantity in ["E", "B"]:
         ElectromagDiagnostics(
