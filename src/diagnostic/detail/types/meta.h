@@ -1,5 +1,5 @@
-#ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_AMR_INFO_H
-#define PHARE_DIAGNOSTIC_DETAIL_TYPES_AMR_INFO_H
+#ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_META_H
+#define PHARE_DIAGNOSTIC_DETAIL_TYPES_META_H
 
 #include "diagnostic/detail/h5typewriter.h"
 
@@ -146,4 +146,4 @@ void MetaDiagnosticWriter<H5Writer>::writeAttributes(
 
 } // namespace PHARE::diagnostic::h5
 
-#endif /* PHARE_DIAGNOSTIC_DETAIL_TYPES_AMR_INFO_H */
+#endif /* PHARE_DIAGNOSTIC_DETAIL_TYPES_META_H */

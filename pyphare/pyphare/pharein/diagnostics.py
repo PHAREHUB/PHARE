@@ -249,6 +249,7 @@ class ParticleDiagnostics(Diagnostics):
 
 class MetaDiagnostics(Diagnostics):
 
+    meta_quantities = ['tags']
     type = "info"
 
 
@@ -259,6 +260,10 @@ class MetaDiagnostics(Diagnostics):
 
 
     def _setSubTypeAttributes(self, **kwargs):
+
+        if kwargs['quantity'] not in MetaDiagnostics.meta_quantities:
+            error_msg = "Error: '{}' not a valid meta diagnostics : " + ', '.join(MetaDiagnostics.meta_quantities)
+            raise ValueError(error_msg.format(kwargs['quantity']))
 
         self.quantity = f"/{kwargs['quantity']}"
         print("MetaDiagnostics self.quantity", self.quantity)
