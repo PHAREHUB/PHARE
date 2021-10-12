@@ -27,9 +27,17 @@ public:
         if (!(B.isUsable() && E.isUsable() && Bnew.isUsable()))
             throw std::runtime_error("Error - Faraday - not all VecField parameters are usable");
 
-        this->dt_                         = dt;
-        auto const& [Bx, By, Bz]          = B();
-        auto const& [Bxnew, Bynew, Bznew] = Bnew();
+        this->dt_ = dt;
+
+        // can't use structured bindings because
+        //   "reference to local binding declared in enclosing function"
+        auto const& Bx = B(Component::X);
+        auto const& By = B(Component::Y);
+        auto const& Bz = B(Component::Z);
+
+        auto& Bxnew = Bnew(Component::X);
+        auto& Bynew = Bnew(Component::Y);
+        auto& Bznew = Bnew(Component::Z);
 
         layout_->evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
         layout_->evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });

@@ -26,7 +26,11 @@ public:
             throw std::runtime_error(
                 "Error - Ampere - GridLayout not set, cannot proceed to calculate ampere()");
 
-        auto const& [Jx, Jy, Jz] = J();
+        // can't use structured bindings because
+        //   "reference to local binding declared in enclosing function"
+        auto& Jx = J(Component::X);
+        auto& Jy = J(Component::Y);
+        auto& Jz = J(Component::Z);
 
         layout_->evalOnBox(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
         layout_->evalOnBox(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
