@@ -17,6 +17,7 @@ if (HighFive)
    ${PROJECT_SOURCE_DIR}/detail/types/particle.h
    ${PROJECT_SOURCE_DIR}/detail/types/electromag.h
    ${PROJECT_SOURCE_DIR}/detail/types/fluid.h
+   ${PROJECT_SOURCE_DIR}/detail/types/meta.h
  )
 endif()
 

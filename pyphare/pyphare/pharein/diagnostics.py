@@ -74,7 +74,7 @@ class Diagnostics(object):
     cpp_dep_vers = try_cpp_dep_vers()
 
     @diagnostics_checker
-    def __init__(self,name, **kwargs):
+    def __init__(self, name, **kwargs):
 
         if global_vars.sim is None:
             raise RuntimeError("A simulation must be created before adding diagnostics")
@@ -242,3 +242,40 @@ class ParticleDiagnostics(Diagnostics):
                 "path": self.path,
                 "extent": ", ".join([str(x) for x in self.extent]),
                 "population_name":self.population_name}
+
+
+# ------------------------------------------------------------------------------
+
+
+class MetaDiagnostics(Diagnostics):
+
+    meta_quantities = ['tags']
+    type = "info"
+
+
+    def __init__(self, **kwargs):
+        super(MetaDiagnostics, self).__init__(MetaDiagnostics.type \
+                                                  + str(global_vars.sim.count_diagnostics(MetaDiagnostics.type)),
+                                                  **kwargs)
+
+
+    def _setSubTypeAttributes(self, **kwargs):
+
+        if kwargs['quantity'] not in MetaDiagnostics.meta_quantities:
+            error_msg = "Error: '{}' not a valid meta diagnostics : " + ', '.join(MetaDiagnostics.meta_quantities)
+            raise ValueError(error_msg.format(kwargs['quantity']))
+
+        self.quantity = f"/{kwargs['quantity']}"
+        print("MetaDiagnostics self.quantity", self.quantity)
+
+
+    def to_dict(self):
+        print("MetaDiagnostics to_dict", self.quantity)
+        return {"name": self.name,
+                "type": MetaDiagnostics.type,
+                "quantity": self.quantity,
+                "write_timestamps": self.write_timestamps,
+                "compute_timestamps": self.compute_timestamps,
+                "path": self.path
+               }
+

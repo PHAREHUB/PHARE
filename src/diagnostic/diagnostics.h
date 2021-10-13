@@ -31,6 +31,7 @@
 #include "diagnostic/detail/types/electromag.h"
 #include "diagnostic/detail/types/particle.h"
 #include "diagnostic/detail/types/fluid.h"
+#include "diagnostic/detail/types/meta.h"
 
 #endif
 

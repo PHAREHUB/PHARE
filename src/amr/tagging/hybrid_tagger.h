@@ -63,8 +63,17 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
         auto tags = pd->getPointer();
         strat_->tag(hybridModel, layout, tags);
 
-        hybridModel.tags[amr::to_string(patch.getGlobalId())]
-            = std::vector<int>(tags, tags + layout.nbrCellsFlat());
+
+        // These tags will be saved even if they are not used in diags during this advance
+        // hybridModel.tags may contain vectors for patches and levels that no longer exist
+        auto key = std::to_string(patch.getPatchLevelNumber()) + "_"
+                   + amr::to_string(patch.getGlobalId());
+        bool item_exists_and_valid
+            = hybridModel.tags.count(key) and hybridModel.tags[key].size() == layout.nbrCellsFlat();
+        if (item_exists_and_valid)
+            hybridModel.tags[key].assign(tags, tags + layout.nbrCellsFlat());
+        else
+            hybridModel.tags[key] = std::vector<int>(tags, tags + layout.nbrCellsFlat());
     }
     else
         throw std::runtime_error("invalid tagging strategy");

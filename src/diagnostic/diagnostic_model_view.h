@@ -52,12 +52,12 @@ public:
     auto& getIons() const { return model_.state.ions; }
 
 
-    template<typename Action, typename... Args>
+    template<typename Action>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
     {
-        auto& resMan = *model_.resourcesManager;
-        PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, resMan, std::forward<Action>(action),
-                                               minLevel, maxLevel, model_);
+        PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
+                                               std::forward<Action>(action), minLevel, maxLevel,
+                                               model_);
     }
 
     auto domainBox() const { return hierarchy_.domainBox(); }
@@ -76,11 +76,6 @@ public:
         dict["lower"]    = grid.AMRBox().lower.toVector();
         dict["upper"]    = grid.AMRBox().upper.toVector();
         dict["mpi_rank"] = static_cast<std::size_t>(core::mpi::rank());
-
-        dict["tags"] = std::vector<int>{};
-        if (model_.tags.count(patchID))
-            dict["tags"] = model_.tags[patchID];
-
         return dict;
     }
 
@@ -93,8 +88,18 @@ public:
         dict["lower"]    = std::vector<int>{};
         dict["upper"]    = std::vector<int>{};
         dict["mpi_rank"] = std::size_t{0};
-        dict["tags"]     = std::vector<int>{};
         return dict;
+    }
+
+    bool hasTagsVectorFor(int ilevel, std::string patch_id) const
+    {
+        auto key = std::to_string(ilevel) + "_" + patch_id;
+        return model_.tags.count(key);
+    }
+    auto& getTagsVectorFor(int ilevel, std::string patch_id) const
+    {
+        auto key = std::to_string(ilevel) + "_" + patch_id;
+        return model_.tags.at(key);
     }
 
 

@@ -148,7 +148,7 @@ namespace core
          * @brief nbrCells returns the number of cells in the physical domain
          * described by the gridlayout
          */
-        std::array<std::uint32_t, dimension> nbrCells() const { return nbrPhysicalCells_; }
+        auto& nbrCells() const { return nbrPhysicalCells_; }
 
         std::uint32_t nbrCellsFlat() const
         {

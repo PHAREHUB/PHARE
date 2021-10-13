@@ -18,6 +18,12 @@ def dump_all_diags(pops=[], flush_every=100):
 
     timestamps = all_timestamps(sim)
 
+    ph.MetaDiagnostics(
+        quantity="tags",
+        write_timestamps=timestamps,
+        compute_timestamps=timestamps,
+    )
+
     for quantity in ["density", "bulkVelocity"]:
         ph.FluidDiagnostics(
             quantity=quantity,

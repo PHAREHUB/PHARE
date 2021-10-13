@@ -19,7 +19,7 @@ enum class Mode { LIGHT, FULL };
 template<typename DiagManager>
 void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
-    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle"};
+    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle", "info"};
 
     for (auto& diagType : diagTypes)
     {
@@ -32,7 +32,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
         {
             const std::string diagName = diagType + std::to_string(diagBlockID);
             dMan.addDiagDict(diagsParams[diagType][diagName]);
-            diagBlockID++;
+            ++diagBlockID;
         }
     }
 }

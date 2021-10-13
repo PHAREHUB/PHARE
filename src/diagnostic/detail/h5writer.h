@@ -31,6 +31,8 @@ template<typename H5Writer>
 class FluidDiagnosticWriter;
 template<typename H5Writer>
 class ParticlesDiagnosticWriter;
+template<typename H5Writer>
+class MetaDiagnosticWriter;
 
 
 
@@ -65,8 +67,7 @@ public:
     ~Writer() {}
 
     template<typename Hierarchy, typename Model>
-    static decltype(auto) make_unique(Hierarchy& hier, Model& model,
-                                      initializer::PHAREDict const& dict)
+    static auto make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
         std::string filePath = dict["filePath"].template to<std::string>();
         unsigned flags       = READ_WRITE;
@@ -167,9 +168,11 @@ private:
     std::unordered_map<std::string, unsigned> file_flags;
 
     std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> writers{
+        {"info", make_writer<MetaDiagnosticWriter<This>>()},
         {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
         {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
-        {"particle", make_writer<ParticlesDiagnosticWriter<This>>()}};
+        {"particle", make_writer<ParticlesDiagnosticWriter<This>>()} //
+    };
 
     template<typename Writer>
     std::shared_ptr<H5TypeWriter<This>> make_writer()
@@ -184,10 +187,10 @@ private:
     void initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
     void writeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
 
-    Writer(const Writer&)             = delete;
-    Writer(const Writer&&)            = delete;
-    Writer& operator&(const Writer&)  = delete;
-    Writer& operator&(const Writer&&) = delete;
+    Writer(Writer const&)            = delete;
+    Writer(Writer&&)                 = delete;
+    Writer& operator&(Writer const&) = delete;
+    Writer& operator&(Writer&&)      = delete;
 
 
     //  State of this class is controlled via "dump()"
@@ -195,6 +198,7 @@ private:
     friend class FluidDiagnosticWriter<This>;
     friend class ElectromagDiagnosticWriter<This>;
     friend class ParticlesDiagnosticWriter<This>;
+    friend class MetaDiagnosticWriter<This>;
     friend class H5TypeWriter<This>;
 
     // used by friends start
@@ -205,7 +209,7 @@ private:
     }
 
 
-    const auto& patchPath() const { return patchPath_; }
+    auto& patchPath() const { return patchPath_; }
     // used by friends end
 };
 
