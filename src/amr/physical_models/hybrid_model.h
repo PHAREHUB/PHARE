@@ -96,7 +96,7 @@ public:
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    std::unordered_map<std::string, std::vector<int>> tags;
+    std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
 };
 
 

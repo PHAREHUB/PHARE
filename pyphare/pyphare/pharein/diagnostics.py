@@ -266,11 +266,9 @@ class MetaDiagnostics(Diagnostics):
             raise ValueError(error_msg.format(kwargs['quantity']))
 
         self.quantity = f"/{kwargs['quantity']}"
-        print("MetaDiagnostics self.quantity", self.quantity)
 
 
     def to_dict(self):
-        print("MetaDiagnostics to_dict", self.quantity)
         return {"name": self.name,
                 "type": MetaDiagnostics.type,
                 "quantity": self.quantity,

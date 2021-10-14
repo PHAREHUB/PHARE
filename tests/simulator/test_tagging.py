@@ -144,19 +144,29 @@ class TaggingTest(unittest.TestCase):
 
             self.assertTrue(any([diagInfo.quantity.endswith("tags") for diagInfo in ph.global_vars.sim.diagnostics]))
 
+            checks = 0
+            found = 0
             for diagInfo in ph.global_vars.sim.diagnostics:
                 h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
                 self.assertTrue(os.path.exists(h5_filepath))
 
                 h5_file = h5py.File(h5_filepath, "r")
+                self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key]) # init dump
+                n_patches = len(list(h5_file[h5_time_grp_key]["0.0000000000"]["pl0"].keys()))
+
                 if h5_filepath.endswith("tags.h5"):
+                    found = 1
                     hier = hierarchy_from(h5_filename=h5_filepath)
-                    for patch in hier.level(0).patches:
+                    patches = hier.level(0).patches
+                    for patch in patches:
                         self.assertTrue(len(patch.patch_datas.items()))
                         for qty_name, pd in patch.patch_datas.items():
                             self.assertTrue((pd.dataset[:] >= 0).all())
                             self.assertTrue((pd.dataset[:] <  2).all())
+                        checks += 1
 
+            self.assertEqual(found, 1)
+            self.assertEqual(checks, n_patches)
             self.simulator = None
             ph.global_vars.sim = None
 
