@@ -207,6 +207,8 @@ public:
     NdArrayVector(NdArrayVector&& source)      = default;
 
     auto data() const { return data_.data(); }
+    auto data() { return data_.data(); }
+
     auto size() const { return data_.size(); }
 
     auto begin() const { return std::begin(data_); }
@@ -265,7 +267,7 @@ public:
     }
 
 
-    auto shape() const { return nCells_; }
+    auto& shape() const { return nCells_; }
 
     template<typename Mask>
     auto operator[](Mask&& mask)
