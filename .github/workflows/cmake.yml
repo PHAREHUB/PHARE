@@ -46,6 +46,8 @@ jobs:
         submodules: 'recursive'
 
     - uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.6' # 3.10 is possibly too new
 
     - name: Install system deps (openmpi, hdf5, ccache,...)
       run: |
