@@ -179,7 +179,6 @@ void test(GridLayout const& layout,
           PHARE::core::NdArrayView<dim, T> const& field1, FF const ff = FF{})
 {
     static_assert(NdArrayImpl::dimension == dim);
-    static_assert(std::is_same_v<typename NdArrayImpl::type, T>);
     test_fields(layout, field0, field1, ff);
 }
 
@@ -190,10 +189,8 @@ void test(GridLayout const& layout,
           PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
           std::vector<T> const& fieldV, FF const ff = FF{})
 {
-    static_assert(std::is_same_v<typename NdArrayImpl::type, T>);
     EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T, T const* const> const field1{fieldV.data(),
-                                                                             field0.shape()};
+    core::NdArrayView<GridLayout::dimension, T> const field1{fieldV.data(), field0.shape()};
     test_fields(layout, field0, field1, ff);
 }
 

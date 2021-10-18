@@ -20,9 +20,11 @@ constexpr unsigned NEW_HI5_FILE
     = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
 
 
-template<std::size_t dim, typename GridLayout, typename Field, typename Data>
+template<typename Field, typename GridLayout, typename Data>
 void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const& field)
 {
+    auto constexpr dim = GridLayout::dimension;
+
     using Filter = FieldDomainPlusNFilter;
     auto filter  = Filter{1}; // include one ghost on each side
 
@@ -37,7 +39,7 @@ void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const
         ASSERT_TRUE(end[d] > beg[d]);
     }
 
-    core::NdArrayView<dim, double, double const* const> const view(data.data(), field.shape());
+    core::NdArrayView<dim, typename Data::value_type> const view(data.data(), field.shape());
 
     {
         std::size_t nans = 0;
@@ -95,9 +97,7 @@ auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field cons
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto fieldV = hifile.read_data_set_flat<double, dim>(path);
-    EXPECT_EQ(fieldV.size(), field.size());
-
+    auto fieldV = hifile.read_data_set_flat<float, dim>(path);
     PHARE::core::test(layout, field, fieldV, ff);
     return fieldV; // possibly unused
 }
@@ -107,9 +107,7 @@ void checkVecField(HighFiveFile const& file, GridLayout const& layout, VecField 
                    std::string const path, FieldFilter const ff = FieldFilter{})
 {
     for (auto& [id, type] : core::Components::componentMap)
-    {
         checkField(file, layout, vecField.getComponent(type), path + "_" + id, ff);
-    }
 }
 
 
@@ -182,7 +180,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
           Validate ghost of first border node is equal to border node
           see fixMomentGhosts() in src/core/data/ions/ions.h
         */
-        validateFluidGhosts<GridLayout::dimension>(data, layout, field);
+        validateFluidGhosts(data, layout, field);
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
