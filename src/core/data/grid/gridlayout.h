@@ -1123,7 +1123,7 @@ namespace core
 
 
         template<typename Field, typename Fn>
-        void evalOnBox(Field& field, Fn&& fn)
+        void evalOnBox(Field& field, Fn&& fn) const
         {
             auto indices = [&](auto const& centering, auto const direction) {
                 return this->physicalStartToEnd(centering, direction);
@@ -1136,7 +1136,7 @@ namespace core
 
     private:
         template<typename Field, typename IndicesFn, typename Fn>
-        void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd) const
+        static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
         {
             auto const [ix0, ix1] = startToEnd(field, Direction::X);
             for (auto ix = ix0; ix <= ix1; ++ix)

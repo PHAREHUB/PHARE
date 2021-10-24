@@ -93,11 +93,20 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
-        auto _compute = [&](auto const&& arr) {
-            auto const& [Vix, Viy, Viz] = ions_.velocity()();
-            auto const& [Vex, Vey, Vez] = Ve_();
-            auto const& [Jx, Jy, Jz]    = J_();
-            auto const& Ni              = ions_.density();
+        auto const& Jx  = J_(Component::X);
+        auto const& Jy  = J_(Component::Y);
+        auto const& Jz  = J_(Component::Z);
+        auto const& Vix = ions_.velocity()(Component::X);
+        auto const& Viy = ions_.velocity()(Component::Y);
+        auto const& Viz = ions_.velocity()(Component::Z);
+        auto const& Ni  = ions_.density();
+
+        auto& Vex = Ve_(Component::X);
+        auto& Vey = Ve_(Component::Y);
+        auto& Vez = Ve_(Component::Z);
+
+        layout.evalOnBox(Jx, [&](auto const&... args) {
+            auto arr = std::array{args...};
 
             auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
             auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
@@ -106,10 +115,7 @@ public:
             Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
             Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
             Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
-        };
-
-        for (auto const& idx : layout.physicalStartToEndIndices(QtyCentering::primal))
-            std::apply([&](auto&... args) { _compute(std::array{args...}); }, idx);
+        });
     }
 
 
