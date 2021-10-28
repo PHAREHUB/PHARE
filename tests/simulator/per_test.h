@@ -3,6 +3,7 @@
 
 #include "phare/phare.h"
 #include "initializer/python_data_provider.h"
+#include "tests/core/data/field/test_field.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -122,61 +123,5 @@ TYPED_TEST_SUITE(Simulator2dTest, Simulators2d);
 
 
 
-
-namespace PHARE
-{
-class FieldNullFilter
-{
-public:
-    template<typename Field, typename GridLayout>
-    std::size_t start(GridLayout const& layout, Field const& field, core::Direction const direction)
-    {
-        return layout.ghostStartIndex(field, direction);
-    }
-
-    template<typename Field, typename GridLayout>
-    std::size_t end(GridLayout const& layout, Field const& field, core::Direction const direction)
-    {
-        return layout.ghostEndIndex(field, direction);
-    }
-
-    template<typename Field, typename GridLayout>
-    std::size_t size(GridLayout const& layout, Field const& field, core::Direction const direction)
-    {
-        return end(layout, field, direction) - start(layout, field, direction) + 1;
-    }
-};
-
-class FieldDomainPlusNFilter
-{
-public:
-    FieldDomainPlusNFilter(std::size_t n = 0)
-        : n_{n}
-    {
-    }
-
-    template<typename Field, typename GridLayout>
-    std::size_t start(GridLayout const& layout, Field const& field, core::Direction const direction)
-    {
-        return layout.physicalStartIndex(field, direction) - n_;
-    }
-
-    template<typename Field, typename GridLayout>
-    std::size_t end(GridLayout const& layout, Field const& field, core::Direction const direction)
-    {
-        return layout.physicalEndIndex(field, direction) + n_;
-    }
-
-private:
-    std::size_t n_;
-};
-
-
-struct FieldDomainFilter : public FieldDomainPlusNFilter
-{
-};
-
-
-} // namespace PHARE
 
 #endif /* PHARE_TEST_SIMULATOR_PER_TEST_H */

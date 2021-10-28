@@ -19,28 +19,12 @@ using namespace PHARE::diagnostic::h5;
 constexpr unsigned NEW_HI5_FILE
     = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
 
-template<typename FieldFilter, typename Func, typename GridLayout, typename Field>
-std::array<std::uint32_t, GridLayout::dimension> fieldIndices(FieldFilter ff, Func&& func,
-                                                              GridLayout& layout, Field& field)
-{
-    constexpr auto dim = GridLayout::dimension;
-    static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto get = [&](auto dir) { return static_cast<std::uint32_t>(func(ff, layout, field, dir)); };
-
-    if constexpr (dim == 1)
-        return {get(core::Direction::X)};
-    if constexpr (dim == 2)
-        return {get(core::Direction::X), get(core::Direction::Y)};
-    if constexpr (dim == 3)
-        return {get(core::Direction::X), get(core::Direction::Y), get(core::Direction::Z)};
-}
-
-
-
-template<std::size_t dim, typename GridLayout, typename Field, typename Data>
+template<typename Field, typename GridLayout, typename Data>
 void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const& field)
 {
+    auto constexpr dim = GridLayout::dimension;
+
     using Filter = FieldDomainPlusNFilter;
     auto filter  = Filter{1}; // include one ghost on each side
 
@@ -48,18 +32,14 @@ void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const
                             field);
     auto end = fieldIndices(filter, std::mem_fn(&Filter::template end<Field, GridLayout>), layout,
                             field);
-    auto siz = fieldIndices(FieldNullFilter{},
-                            std::mem_fn(&FieldNullFilter::template size<Field, GridLayout>), layout,
-                            field);
 
     for (std::size_t d = 0; d < dim; d++)
     {
         ASSERT_TRUE(beg[d] > 0);
         ASSERT_TRUE(end[d] > beg[d]);
-        ASSERT_TRUE(siz[d] > end[d]);
     }
 
-    core::NdArrayView<dim, float> view{data, siz};
+    core::NdArrayView<dim, typename Data::value_type> const view(data.data(), field.shape());
 
     {
         std::size_t nans = 0;
@@ -118,59 +98,7 @@ auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field cons
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
     auto fieldV = hifile.read_data_set_flat<float, dim>(path);
-    EXPECT_EQ(fieldV.size(), field.size());
-
-    auto siz = fieldIndices(FieldNullFilter{},
-                            std::mem_fn(&FieldNullFilter::template size<Field, GridLayout>), layout,
-                            field);
-
-    std::size_t items
-        = std::accumulate(std::begin(siz), std::end(siz), 1., std::multiplies<std::size_t>());
-    EXPECT_EQ(items, field.size());
-
-    auto beg = fieldIndices(ff, std::mem_fn(&FieldFilter::template start<Field, GridLayout>),
-                            layout, field);
-    auto end = fieldIndices(ff, std::mem_fn(&FieldFilter::template end<Field, GridLayout>), layout,
-                            field);
-
-    core::NdArrayView<dim, float> view{fieldV, siz};
-    if constexpr (dim == 1)
-    {
-        for (std::size_t i = beg[0]; i < end[0]; i++)
-        {
-            if (std::isnan(view(i)) || std::isnan(field(i)))
-                throw std::runtime_error("This field should not be NaN");
-            EXPECT_FLOAT_EQ(view(i), field(i));
-        }
-    }
-    else if constexpr (dim == 2)
-    {
-        for (std::size_t i = beg[0]; i < end[0]; i++)
-        {
-            for (std::size_t j = beg[1]; j < end[1]; j++)
-            {
-                if (std::isnan(view(i, j)) || std::isnan(field(i, j)))
-                    throw std::runtime_error("This field should not be NaN");
-                EXPECT_FLOAT_EQ(view(i, j), field(i, j));
-            }
-        }
-    }
-    else if constexpr (dim == 3)
-    {
-        for (std::size_t i = beg[0]; i < end[0]; i++)
-        {
-            for (std::size_t j = beg[1]; j < end[1]; j++)
-            {
-                for (std::size_t k = beg[2]; k < end[2]; k++)
-                {
-                    if (std::isnan(view(i, j, k)) || std::isnan(field(i, j, k)))
-                        throw std::runtime_error("This field should not be NaN");
-                    EXPECT_FLOAT_EQ(view(i, j, k), field(i, j, k));
-                }
-            }
-        }
-    }
-
+    PHARE::core::test(layout, field, fieldV, ff);
     return fieldV; // possibly unused
 }
 
@@ -179,9 +107,7 @@ void checkVecField(HighFiveFile const& file, GridLayout const& layout, VecField 
                    std::string const path, FieldFilter const ff = FieldFilter{})
 {
     for (auto& [id, type] : core::Components::componentMap)
-    {
         checkField(file, layout, vecField.getComponent(type), path + "_" + id, ff);
-    }
 }
 
 
@@ -254,7 +180,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
           Validate ghost of first border node is equal to border node
           see fixMomentGhosts() in src/core/data/ions/ions.h
         */
-        validateFluidGhosts<GridLayout::dimension>(data, layout, field);
+        validateFluidGhosts(data, layout, field);
     };
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);

@@ -43,6 +43,12 @@ namespace core
         }
 
         static std::unordered_map<std::string, Component> const componentMap;
+
+        template<typename Tag_t, Tag_t Tag>
+        constexpr static bool check(ComponentTag<Tag> tag)
+        {
+            return Tag == Component::X || Tag == Component::Y || Tag == Component::Z;
+        }
     };
     inline std::unordered_map<std::string, Component> const Components::componentMap{
         {"x", Component::X}, {"y", Component::Y}, {"z", Component::Z}};

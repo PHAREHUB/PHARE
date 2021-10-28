@@ -9,195 +9,77 @@
 #include "core/data/vecfield/vecfield_component.h"
 #include "core/utilities/index/index.h"
 
-namespace PHARE
+
+namespace PHARE::core
 {
-namespace core
+template<typename GridLayout>
+class Ampere : public LayoutHolder<GridLayout>
 {
-    template<typename GridLayout>
-    class Ampere : public LayoutHolder<GridLayout>
+    constexpr static auto dimension = GridLayout::dimension;
+    using LayoutHolder<GridLayout>::layout_;
+
+public:
+    template<typename VecField>
+    void operator()(VecField const& B, VecField& J)
     {
-    private:
-        template<typename VecField, std::enable_if_t<VecField::dimension == 1, int> = 0>
-        void compute_(VecField const& B, VecField& J)
-        {
-            // auto &Jx = J.getComponent(Component::X); // =  0
-            auto& Jy = J.getComponent(Component::Y); // = -dxBz
-            auto& Jz = J.getComponent(Component::Z); // =  dxBy
+        if (!this->hasLayout())
+            throw std::runtime_error(
+                "Error - Ampere - GridLayout not set, cannot proceed to calculate ampere()");
 
-            // auto const &Bx = B.getComponent(Component::X);
-            auto const& By = B.getComponent(Component::Y);
-            auto const& Bz = B.getComponent(Component::Z);
+        // can't use structured bindings because
+        //   "reference to local binding declared in enclosing function"
+        auto& Jx = J(Component::X);
+        auto& Jy = J(Component::Y);
+        auto& Jz = J(Component::Z);
 
-            // TODO Direction should not be in gridlayoutdef but in utilities somehow
-            // TODO 1st arg of physicalStartIndex( could be QtyCentering::primal ?
-            auto start = this->layout_->physicalStartIndex(Jy, Direction::X);
-            auto end   = this->layout_->physicalEndIndex(Jy, Direction::X);
+        layout_->evalOnBox(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
+        layout_->evalOnBox(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
+        layout_->evalOnBox(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
+    }
 
-            for (auto ix = start; ix <= end; ++ix)
-            {
-                Jy(ix) = -this->layout_->deriv(Bz, {ix}, DirectionTag<Direction::X>{});
-            }
+private:
+    template<typename VecField, typename Field, typename... Indexes>
+    void JxEq_(Field& Jx, VecField const& B, Indexes const&... ijk) const
+    {
+        auto const& [_, By, Bz] = B();
 
-            start = this->layout_->physicalStartIndex(Jz, Direction::X);
-            end   = this->layout_->physicalEndIndex(Jz, Direction::X);
+        if constexpr (dimension == 2)
+            Jx(ijk...) = layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::Y>{});
 
-            for (auto ix = start; ix <= end; ++ix)
-            {
-                Jz(ix) = this->layout_->deriv(By, {ix}, DirectionTag<Direction::X>{});
-            }
-        }
+        if constexpr (dimension == 3)
+            Jx(ijk...) = layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::Y>{})
+                         - layout_->deriv(By, {ijk...}, DirectionTag<Direction::Z>{});
+    }
 
+    template<typename VecField, typename Field, typename... Indexes>
+    void JyEq_(Field& Jy, VecField const& B, Indexes const&... ijk) const
+    {
+        auto const& [Bx, By, Bz] = B();
 
+        if constexpr (dimension == 1)
+            Jy(ijk...) = -layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::X>{});
 
+        if constexpr (dimension == 2)
+            Jy(ijk...) = -layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::X>{});
 
-        template<typename VecField, std::enable_if_t<VecField::dimension == 2, int> = 0>
-        void compute_(VecField const& B, VecField& J)
-        {
-            auto& Jx = J.getComponent(Component::X); // =  dyBz
-            auto& Jy = J.getComponent(Component::Y); // = -dxBz
-            auto& Jz = J.getComponent(Component::Z); // =  dxBy - dyBx
+        if constexpr (dimension == 3)
+            Jy(ijk...) = layout_->deriv(Bx, {ijk...}, DirectionTag<Direction::Z>{})
+                         - layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::X>{});
+    }
 
-            auto const& Bx = B.getComponent(Component::X);
-            auto const& By = B.getComponent(Component::Y);
-            auto const& Bz = B.getComponent(Component::Z);
+    template<typename VecField, typename Field, typename... Indexes>
+    void JzEq_(Field& Jz, VecField const& B, Indexes const&... ijk) const
+    {
+        auto const& [Bx, By, Bz] = B();
 
-            auto psi_X = this->layout_->physicalStartIndex(Jx, Direction::X);
-            auto pei_X = this->layout_->physicalEndIndex(Jx, Direction::X);
-            auto psi_Y = this->layout_->physicalStartIndex(Jx, Direction::Y);
-            auto pei_Y = this->layout_->physicalEndIndex(Jx, Direction::Y);
+        if constexpr (dimension == 1)
+            Jz(ijk...) = layout_->deriv(By, {ijk...}, DirectionTag<Direction::X>{});
 
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    Jx(ix, iy) = this->layout_->deriv(Bz, {ix, iy}, DirectionTag<Direction::Y>{});
-                }
-            }
+        else
+            Jz(ijk...) = layout_->deriv(By, {ijk...}, DirectionTag<Direction::X>{})
+                         - layout_->deriv(Bx, {ijk...}, DirectionTag<Direction::Y>{});
+    }
+};
 
-            psi_X = this->layout_->physicalStartIndex(Jy, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Jy, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Jy, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Jy, Direction::Y);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    Jy(ix, iy) = -this->layout_->deriv(Bz, {ix, iy}, DirectionTag<Direction::X>{});
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Jz, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Jz, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Jz, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Jz, Direction::Y);
-
-            for (std::uint32_t ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (std::uint32_t iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    Jz(ix, iy) = this->layout_->deriv(By, {ix, iy}, DirectionTag<Direction::X>{})
-                                 - this->layout_->deriv(Bx, {ix, iy}, DirectionTag<Direction::Y>{});
-                }
-            }
-        }
-
-
-
-
-        template<typename VecField, std::enable_if_t<VecField::dimension == 3, int> = 0>
-        void compute_(VecField const& B, VecField& J)
-        {
-            auto& Jx = J.getComponent(Component::X); // =  dyBz - dzBx
-            auto& Jy = J.getComponent(Component::Y); // =  dzBx - dxBz
-            auto& Jz = J.getComponent(Component::Z); // =  dxBy - dyBx
-
-            auto const& Bx = B.getComponent(Component::X);
-            auto const& By = B.getComponent(Component::Y);
-            auto const& Bz = B.getComponent(Component::Z);
-
-            auto psi_X = this->layout_->physicalStartIndex(Jx, Direction::X);
-            auto pei_X = this->layout_->physicalEndIndex(Jx, Direction::X);
-            auto psi_Y = this->layout_->physicalStartIndex(Jx, Direction::Y);
-            auto pei_Y = this->layout_->physicalEndIndex(Jx, Direction::Y);
-            auto psi_Z = this->layout_->physicalStartIndex(Jx, Direction::Z);
-            auto pei_Z = this->layout_->physicalEndIndex(Jx, Direction::Z);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                    {
-                        Jx(ix, iy, iz)
-                            = this->layout_->deriv(Bz, {ix, iy, iz}, DirectionTag<Direction::Y>{})
-                              - this->layout_->deriv(By, {ix, iy, iz},
-                                                     DirectionTag<Direction::Z>{});
-                    }
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Jy, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Jy, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Jy, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Jy, Direction::Y);
-            psi_Z = this->layout_->physicalStartIndex(Jy, Direction::Z);
-            pei_Z = this->layout_->physicalEndIndex(Jy, Direction::Z);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                    {
-                        Jy(ix, iy, iz)
-                            = this->layout_->deriv(Bx, {ix, iy, iz}, DirectionTag<Direction::Z>{})
-                              - this->layout_->deriv(Bz, {ix, iy, iz},
-                                                     DirectionTag<Direction::X>{});
-                    }
-                }
-            }
-
-            psi_X = this->layout_->physicalStartIndex(Jz, Direction::X);
-            pei_X = this->layout_->physicalEndIndex(Jz, Direction::X);
-            psi_Y = this->layout_->physicalStartIndex(Jz, Direction::Y);
-            pei_Y = this->layout_->physicalEndIndex(Jz, Direction::Y);
-            psi_Z = this->layout_->physicalStartIndex(Jz, Direction::Z);
-            pei_Z = this->layout_->physicalEndIndex(Jz, Direction::Z);
-
-            for (auto ix = psi_X; ix <= pei_X; ++ix)
-            {
-                for (auto iy = psi_Y; iy <= pei_Y; ++iy)
-                {
-                    for (auto iz = psi_Z; iz <= pei_Z; ++iz)
-                    {
-                        Jz(ix, iy, iz)
-                            = this->layout_->deriv(By, {ix, iy, iz}, DirectionTag<Direction::X>{})
-                              - this->layout_->deriv(Bx, {ix, iy, iz},
-                                                     DirectionTag<Direction::Y>{});
-                    }
-                }
-            }
-        }
-
-
-
-
-    public:
-        template<typename VecField>
-        void operator()(VecField const& B, VecField& J)
-        {
-            if (!this->hasLayout())
-            {
-                throw std::runtime_error(
-                    "Error - Ampere - GridLayout not set, cannot proceed to calculate ampere()");
-            }
-            compute_(B, J);
-        }
-    };
-} // namespace core
-} // namespace PHARE
-
-
-
+} // namespace PHARE::core
 #endif

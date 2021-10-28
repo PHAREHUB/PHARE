@@ -93,26 +93,22 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
-        constexpr auto dimension = GridLayout::dimension;
+        auto const& Jx  = J_(Component::X);
+        auto const& Jy  = J_(Component::Y);
+        auto const& Jz  = J_(Component::Z);
+        auto const& Vix = ions_.velocity()(Component::X);
+        auto const& Viy = ions_.velocity()(Component::Y);
+        auto const& Viz = ions_.velocity()(Component::Z);
+        auto const& Ni  = ions_.density();
 
-        auto const& Ni = ions_.density();
-        auto const& Vi = ions_.velocity();
+        auto& Vex = Ve_(Component::X);
+        auto& Vey = Ve_(Component::Y);
+        auto& Vez = Ve_(Component::Z);
 
-        auto& Vex = Ve_.getComponent(Component::X);
-        auto& Vey = Ve_.getComponent(Component::Y);
-        auto& Vez = Ve_.getComponent(Component::Z);
+        // from Ni because all components defined on primal
+        layout.evalOnBox(Ni, [&](auto const&... args) {
+            auto arr = std::array{args...};
 
-        auto& Vix = Vi.getComponent(Component::X);
-        auto& Viy = Vi.getComponent(Component::Y);
-        auto& Viz = Vi.getComponent(Component::Z);
-
-        auto& Jx = J_.getComponent(Component::X);
-        auto& Jy = J_.getComponent(Component::Y);
-        auto& Jz = J_.getComponent(Component::Z);
-
-        // from Vex because all components defined on primal
-
-        auto _compute = [&](auto&& arr) {
             auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
             auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
             auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
@@ -120,36 +116,7 @@ public:
             Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
             Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
             Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
-        };
-
-        auto lowerX = layout.physicalStartIndex(Vex, Direction::X);
-        auto upperX = layout.physicalEndIndex(Vex, Direction::X);
-
-        if constexpr (dimension == 1)
-            for (auto ix = lowerX; ix <= upperX; ++ix)
-                _compute(std::array{ix});
-
-        if constexpr (dimension >= 2)
-        {
-            auto lowerY = layout.physicalStartIndex(Vex, Direction::Y);
-            auto upperY = layout.physicalEndIndex(Vex, Direction::Y);
-
-            if constexpr (dimension == 2)
-                for (auto ix = lowerX; ix <= upperX; ++ix)
-                    for (auto iy = lowerY; iy <= upperY; ++iy)
-                        _compute(std::array{ix, iy});
-
-            if constexpr (dimension == 3)
-            {
-                auto lowerZ = layout.physicalStartIndex(Vex, Direction::Z);
-                auto upperZ = layout.physicalEndIndex(Vex, Direction::Z);
-
-                for (auto ix = lowerX; ix <= upperX; ++ix)
-                    for (auto iy = lowerY; iy <= upperY; ++iy)
-                        for (auto iz = lowerZ; iz <= upperZ; ++iz)
-                            _compute(std::array{ix, iy, iz});
-            }
-        }
+        });
     }
 
 

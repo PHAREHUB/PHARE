@@ -14,27 +14,13 @@
 #include "core/utilities/box/box.h"
 #include "core/utilities/index/index.h"
 
+#include "tests/core/data/field/test_field.h"
+#include "tests/core/data/vecfield/test_vecfield.h"
+#include "tests/core/data/gridlayout/gridlayout_test.h"
+
+
 using namespace PHARE::core;
 
-template<std::size_t dim>
-struct FieldMock
-{
-    static auto constexpr dimension = dim;
-    double data;
-    double& operator()([[maybe_unused]] std::uint32_t i) { return data; }
-    double const& operator()([[maybe_unused]] std::uint32_t i) const { return data; }
-    QtyCentering physicalQuantity() { return QtyCentering::dual; }
-};
-
-template<typename Field>
-struct VecFieldMock
-{
-    using field_type                = Field;
-    static auto constexpr dimension = Field::dimension;
-    Field fm;
-    Field& getComponent([[maybe_unused]] Component comp) { return fm; }
-    Field const& getComponent([[maybe_unused]] Component comp) const { return fm; }
-};
 
 
 struct GridLayoutMock1D
@@ -129,22 +115,22 @@ TEST(Ampere, canBe3D)
 
 TEST(Ampere, shouldBeGivenAGridLayoutPointerToBeOperational)
 {
-    VecFieldMock<FieldMock<1>> B, J;
+    std::size_t constexpr interp = 1;
 
-    Ampere<GridLayoutMock1D> ampere1d;
-    auto layout1d = std::make_unique<GridLayoutMock1D>();
-    EXPECT_ANY_THROW(ampere1d(B, J));
-    ampere1d.setLayout(layout1d.get());
+    auto constexpr check = [](auto ic) {
+        auto constexpr dim = ic();
 
-    Ampere<GridLayoutMock2D> ampere2d;
-    auto layout2d = std::make_unique<GridLayoutMock2D>();
-    // EXPECT_ANY_THROW(ampere2d(B2, J2));
-    ampere2d.setLayout(layout2d.get());
+        VecFieldMock<FieldMock<dim>> B, J;
+        using GridLayout = GridLayout<GridLayoutImplYee<dim, interp>>;
+        Ampere<GridLayout> ampere;
+        auto layout = std::make_unique<TestGridLayout<GridLayout>>();
+        EXPECT_ANY_THROW(ampere(B, J));
+        ampere.setLayout(layout.get());
+    };
 
-    Ampere<GridLayoutMock3D> ampere3d;
-    auto layout3d = std::make_unique<GridLayoutMock3D>();
-    // EXPECT_ANY_THROW(ampere3d(B3, J3));
-    ampere3d.setLayout(layout3d.get());
+    check(std::integral_constant<std::size_t, 1>{});
+    check(std::integral_constant<std::size_t, 2>{});
+    check(std::integral_constant<std::size_t, 3>{});
 }
 
 
