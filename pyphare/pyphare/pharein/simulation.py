@@ -518,34 +518,118 @@ def checker(func):
 
 class Simulation(object):
     """
-    1D run example: Simulation(time_step_nbr = 100, boundary_types="periodic", cells=80)
-    2D run example: Simulation(time_step_nbr = 100, boundary_types=("periodic","periodic"), cells=(80,20))
-    3D run example: Simulation(time_step_nbr = 100, boundary_types=("periodic","periodic","periodic"), cells=(80,20,40))
+    .. code-block:: python
 
-    optional parameters:
-    -------------------
+        from pyphare.pharein import Simulation
 
-    dl                   : grid spacing dx, (dx,dy) or (dx,dy,dz) in 1D, 2D or 3D
-    domain_size          : size of the physical domain Lx, (Lx,Ly), (Lx,Ly,Lz) in 1D, 2D or 3D
-    cells                : number of cells nx or (nx, ny) or (nx, ny, nz) in 1, 2 and 3D.
-    final_time           : final simulation time. Must be set if 'time_step' is not
-    time_step            : simulation time step. Must be specified if 'final_time' is not
-    interp_order         : order of the particle/mesh interpolation. Either 1, 2 or 3 (default=1)
-    layout               : layout of the physical quantities on the mesh (default = "yee")
-    origin               : origin of the physical domain, (default (0,0,0) in 3D)
-    refined_particle_nbr : number of refined particles for particle splitting ( TODO default hard-coded to 2)
-    particle_pusher      : algo to push particles (default = "modifiedBoris")
-    path                 : path for outputs (default : './')
-    boundary_types       : type of boundary conditions (default is "periodic" for each direction)
-    diag_export_format   : format of the output diagnostics (default= "phareh5")
-    nesting_buffer       : [default=0] minimum gap in coarse cells from border between coarse and refined patch
-    refinement_boxes     : [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
-    smallest_patch_size  :
-    largest_patch_size   :
-    max_nbr_levels       : [default=1] max number of levels in the hierarchy if refinement_boxes != "boxes"
-    init_time            : unused for now, will be time for restarts someday
-    strict               : bool, turns warnings into errors (default False)
 
+        # This declares a 2D simulation of 100x100 cells
+        # with an isotropic mesh size of 0.2. The simulation will run
+        # 1000 time steps of dt=0.001 and so will stop at t=1
+        # there is no refinement boxes set and since max_nbr_levels defaults to 1
+        # this simulation will consists of only 1 level with no refinement.
+        # diagnostics, if declared, will be saved as native PHARE HDF5
+        # in the directory 'diag_outputs' and will overwrite any existing h5 files there
+        # the resistivity and hyper-resistivity are set to constant custom values
+        # the smallest and largest patch sizes are set to 15 and 25 cells, respectively
+        Simulation(smallest_patch_size=15,
+                   largest_patch_size=25,
+                   time_step_nbr=1000,
+                   time_step=0.001,
+                   # boundary_types="periodic",
+                   cells=(100,100),
+                   dl=(0.2, 0.2),
+                   refinement_boxes={},
+                   hyper_resistivity=0.001,
+                   resistivity=0.001,
+                   diag_options={"format": "phareh5",
+                                 "options": {"dir": diag_outputs,
+                                             "mode":"overwrite"}},
+                   strict=True,
+                  )
+
+
+Setting time parameters:
+
+    :Keyword Arguments:
+        * *final_time* (``float``)--
+          final simulation time. Use with time_step OR time_step_nbr
+        * *time_step* (``float``)--
+          simulation time step. Use with time_step_nbr OR final_time
+        * *time_step_nbr* (``int``) -- number of time step to perform.
+          Use with final_time OR time_step
+        * *init_time* (``float`` )--
+          unused for now, will be time for restarts someday
+
+
+Setting domain/grid parameters:
+
+    The number of dimensions of the simulation is deduced from the length
+    of these parameters.
+
+    :Keyword Arguments:
+        * *dl* (``float``, ``tuple``) --
+          grid spacing dx, (dx,dy) or (dx,dy,dz) in 1D, 2D or 3D.
+          A single float value in 2D or 3D are assumed equal for each dimension.
+          Use this parameter with either domain_size OR cells
+        * *domain_size* (``float`` or ``tuple``) --
+          size of the physical domain Lx, (Lx,Ly), (Lx,Ly,Lz) in 1D, 2D or 3D
+          Single float is assumed equal for each direction.
+          Use this parameter with either cells or dl
+        * *cells* (``int`` or ``tuple``) --
+          number of cells nx or (nx, ny) or (nx, ny, nz) in 1, 2 and 3D.
+          Single int is assumed equal for each direction
+          Use this parameter with either domain_size or dl
+        * *layout* (``str``)--
+          layout of the physical quantities on the mesh (default = "yee")
+        * *origin* (``int`` or ``tuple``) --
+          origin of the physical domain, (default (0,0,0) in 3D)
+
+
+Setting particle parameters:
+
+    :Keyword Arguments:
+        * *interp_order* (``int``)--
+          1, 2 or 3 (default=1) particle b-spline order
+        * *particle_pusher* (``str``) --
+          algo to push particles (default = "modifiedBoris")
+
+
+Setting diagnostics output parameters:
+
+    :Keyword Arguments:
+        * *path* (``str``)
+          path for outputs (default : './')
+        * *boundary_types* (``str`` or ``tuple``)
+          type of boundary conditions (default is "periodic" for each direction)
+        * *diag_export_format* (``str``)
+          format of the output diagnostics (default= "phareh5")
+
+
+Misc:
+
+    :Keyword Arguments:
+        * *strict* (``bool``)--
+          turns warnings into errors (default False)
+
+
+
+Adaptive Mesh Refinement (AMR) parameters
+
+    :Keyword Arguments:
+        * *nesting_buffer* (``ìnt``)--
+          [default=0] minimum gap in coarse cells from the border of a level and any refined patch border
+        * *refinement_boxes* --
+          [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
+        * *smallest_patch_size* (``int`` or ``tuple``)--
+          minimum number of cells in a patch in each direction
+          This parameter cannot be smaller than the number of field ghost nodes
+        * *largest_patch_size* (``int`` or ``tuple``)--
+          maximum size of a patch in each direction
+        * *max_nbr_levels* (``int``)--
+          [default=1] max number of levels in the hierarchy. Used if no refinement_boxes are set
+        * *refined_particle_nbr* (``ìnt``) --
+          number of refined particle per coarse particle.
     """
 
     @checker

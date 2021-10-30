@@ -21,9 +21,6 @@ option(testMPI "Run tests in parallel with mpiriun" OFF)
 option(coverage "Generate coverage" OFF)
 # Enables coverage and generation of coverage from tests via gcovr
 
-# -Ddocumentation=ON
-option(documentation "Add doxygen target to generate documentation" OFF)
-#
 
 # -DdevMode=ON
 option(devMode "Build with Werror/etc" OFF)
@@ -93,7 +90,6 @@ function(print_phare_options)
   message("Run test with MPI                           : " ${testMPI})
   message("Generate coverage                           : " ${coverage})
   message("Enable cppcheck xml report                  : " ${cppcheck})
-  message("Add doxygen target to generate documentation: " ${documentation})
   message("force the test to be serial under MPI mode  : " ${forceSerialTest})
   message("Enable IPO/LTO if system supported          : " ${withIPO})
   message("build with ubsan support                    : " ${ubsan})

@@ -1,5 +1,4 @@
 ddt
-mpi4py
 h5py
 pyyaml
 numpy
