@@ -11,7 +11,7 @@ from ..core.gridlayout import GridLayout
 import matplotlib.pyplot as plt
 from ..core.phare_utilities import refinement_ratio, deep_copy
 
-
+from ..core.ipython import add_h5_weak_ref
 
 
 class PatchData:
@@ -1108,6 +1108,9 @@ h5_time_grp_key = "t"
 def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     import h5py
     data_file = h5py.File(h5_filename, "r")
+
+    # ADD ref only for jupyter to close file handles without killing kernel
+    add_h5_weak_ref(h5_filename, data_file)
     basename = os.path.basename(h5_filename)
 
     root_cell_width = np.asarray(data_file.attrs["cell_width"])
