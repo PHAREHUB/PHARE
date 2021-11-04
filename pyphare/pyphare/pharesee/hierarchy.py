@@ -688,12 +688,19 @@ class PatchHierarchy:
                 if qty is None:
                     qty = list(patch.patch_datas.keys())[0]
 
-                val = patch.patch_datas[qty].dataset[:]
-                x   = patch.patch_datas[qty].x
+                layout  = patch.patch_data[qty].layout
+                nbrGhosts = layout.nbrGhostsFor(qty)
+                val = patch.patch_datas[qty].dataset[nbrGhosts:-nbrGhosts]
+                x   = patch.patch_datas[qty].x[nbrGhosts:-nbrGhosts]
                 label = "L{level}P{patch}".format(level=lvl_nbr,patch=ip)
                 marker=kwargs.get("marker", "")
                 ls = kwargs.get("ls","--")
-                ax.plot(x, val, label=label, marker=marker, ls=ls)
+                color = kwargs.get("color", "k")
+                ax.plot(x, val,
+                        label=label,
+                        marker=marker,
+                        ls=ls,
+                        color=color)
 
         ax.set_title(kwargs.get("title",""))
         ax.set_xlabel(kwargs.get("xlabel","x"))
