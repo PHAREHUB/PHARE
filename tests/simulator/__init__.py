@@ -1,5 +1,6 @@
 
-
+import unittest
+from datetime import datetime
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
@@ -178,3 +179,70 @@ def diff_boxes(self, slice1, slice2, box, atol=None):
             boxes += [Box([x, y, z], [x, y, z])]
     return boxes
 
+
+
+
+
+class SimulatorTest(unittest.TestCase):
+
+    test_kwargs = ["rethrow"]
+
+    def tearDown(self):
+        self.clean_up_diags_dirs()
+
+    def datetime_now(self):
+        return datetime.now()
+
+    def datetime_diff(self, then):
+        return (datetime.now() - then).total_seconds()
+
+    def ddt_test_id(self):
+        return self._testMethodName.split("_")[-1]
+
+    def pop(kwargs):
+        for key in SimulatorTest.test_kwargs:
+            if key in kwargs:
+                kwargs.pop(key)
+        return kwargs
+
+
+
+    old_failureException = unittest.TestCase.failureException
+    @property # intercept test failure to not delete diags in case
+    def failureException(self):
+        self.success = False
+        return self.old_failureException
+
+
+    def register_diag_dir_for_cleanup(self, diag_dir):
+        self.diag_dirs += [diag_dir]
+
+
+    def __init__(self, *args, **kwargs):
+        super(SimulatorTest, self).__init__(*args, **SimulatorTest.pop(kwargs.copy()))
+        self.rethrow_ = True
+        for key in SimulatorTest.test_kwargs:
+            if key in kwargs:
+                super().__setattr__(f"{key}_", kwargs[key])
+        self.diag_dirs = [] # cleanup after tests
+        self.success = True
+
+
+    def run(self, result=None):
+        self._outcome = result
+        super().run(result)
+
+
+    def clean_up_diags_dirs(self):
+        from pyphare.simulator.simulator import startMPI
+        from pyphare.cpp import cpp_lib
+        startMPI()
+        if cpp_lib().mpi_rank() > 0:
+            return # only delete h5 files for rank 0
+
+        if self.success:
+            import os
+            import shutil
+            for diag_dir in self.diag_dirs:
+                if os.path.exists(diag_dir):
+                    shutil.rmtree(diag_dir)

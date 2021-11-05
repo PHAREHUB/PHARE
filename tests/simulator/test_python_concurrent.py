@@ -24,6 +24,7 @@ from tests.simulator.advance.test_particles_advance_2d import AdvanceTest as Adv
 
 N_CORES = int(os.environ["N_CORES"]) if "N_CORES" in os.environ else multiprocessing.cpu_count()
 MPI_RUN = int(os.environ["MPI_RUN"]) if "MPI_RUN" in os.environ else 1
+PRINT   = int(os.environ["PRINT"]) if "PRINT" in os.environ else 0
 
 def test_cmd(clazz, test_id):
     return f"mpirun -n {MPI_RUN} python3 -m {clazz.__module__} {clazz.__name__}.{test_id}"
@@ -49,4 +50,8 @@ if __name__ == "__main__":
             tests += [test_cmd(type(suite), suite._testMethodName)]
 
     from tools.python3 import run_mp
-    run_mp(tests, N_CORES, check=True)
+    if PRINT:
+        for test in tests:
+            print(test)
+    else:
+        run_mp(tests, N_CORES, check=True)

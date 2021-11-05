@@ -1,21 +1,40 @@
 
-from scipy.signal import bspline
+import os
+import sys
 import numpy as np
 
-import sys
-import os
 
-from pyphare.core.phare_utilities import FloatingPoint_comparator as FP_cmp
+def start_index(pos, order, centering="primal"):
+    cell = int(pos)
+    delta = pos - cell
+    if order == 1:
+        if centering == "primal":
+            return cell
+        else:
+            less = 1 if delta < .5 else 0
+            return cell - less
 
+    if order == 2:
+        if centering == "primal":
+            less = 1 if delta < .5 else 0
+            return cell - less
+        else:
+            return cell - 1
 
-def start_index(pos, order):
-    return int(pos - (float(order)-1.)/2.)
+    if order == 3:
+        if centering == "primal":
+            return cell - 1
+        else:
+            less = 2 if delta < .5 else 1
+            return cell - less
+
 
 def get_nodes(pos, order):
     return start_index(pos, order) + np.arange(order+1)
 
 
 def main():
+    from scipy.signal import bspline
 
     orders = [1,2,3]
     particle_positions = 3. + np.arange(0,1.,0.1)
@@ -25,7 +44,7 @@ def main():
     path = sys.argv[1]
 
     for order in orders:
-        filename = path+os.path.sep + "bsplines_{}.dat".format(order)
+        filename = path + os.path.sep + f"bsplines_{order}.dat"
 
         node_splines = np.zeros((order+1, particle_positions.size), dtype=np.int32)
         splines_val  = np.zeros((order+1, particle_positions.size), dtype=np.float64)
@@ -46,6 +65,8 @@ def main():
 
 
 def time_interpolate(before_time, after_time, interp_time, before_data, after_data):
+    from pyphare.core.phare_utilities import FloatingPoint_comparator as FP_cmp
+
     assert before_data.shape == after_data.shape
     assert before_time < after_time
     assert FP_cmp(before_time) <= FP_cmp(interp_time) <= FP_cmp(after_time)

@@ -390,6 +390,7 @@ class GeometryTest(unittest.TestCase):
             lower_ds, upper_ds = pdata[lower_gb], pdata[upper_gb]
 
             qty_is_primal = yee_element_is_primal(qty)
+
             assert lower_ds.shape[0] == pdata.ghosts_nbr[0] + qty_is_primal
             assert upper_ds.shape[0] == pdata.ghosts_nbr[0] + qty_is_primal
 

@@ -2,48 +2,55 @@
 #define PHARE_CORE_HYBRID_HYBRID_QUANTITIES_H
 
 
-#include <stdexcept>
 #include <array>
+#include <tuple>
+#include <stdexcept>
 
-namespace PHARE
+
+namespace PHARE::core
 {
-namespace core
+class HybridQuantity
 {
-    class HybridQuantity
+public:
+    enum class Scalar { Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, rho, Vx, Vy, Vz, P, count };
+    enum class Vector { B, E, J, V };
+
+    static constexpr auto B() { return componentsQuantities(Vector::B); }
+    static constexpr auto E() { return componentsQuantities(Vector::E); }
+    static constexpr auto J() { return componentsQuantities(Vector::J); }
+    static constexpr auto V() { return componentsQuantities(Vector::V); }
+
+    static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
     {
-    public:
-        enum class Scalar { Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, rho, Vx, Vy, Vz, P, count };
+        if (qty == Vector::B)
+            return {{Scalar::Bx, Scalar::By, Scalar::Bz}};
 
-        enum class Vector { B, E, J, V };
+        if (qty == Vector::E)
+            return {{Scalar::Ex, Scalar::Ey, Scalar::Ez}};
 
-        static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
-        {
-            if (qty == Vector::B)
-            {
-                return {{Scalar::Bx, Scalar::By, Scalar::Bz}};
-            }
+        if (qty == Vector::J)
+            return {{Scalar::Jx, Scalar::Jy, Scalar::Jz}};
 
-            else if (qty == Vector::E)
-            {
-                return {{Scalar::Ex, Scalar::Ey, Scalar::Ez}};
-            }
+        if (qty == Vector::V)
+            return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
 
-            else if (qty == Vector::J)
-            {
-                return {{Scalar::Jx, Scalar::Jy, Scalar::Jz}};
-            }
+        throw std::runtime_error("Error - invalid Vector");
+    }
 
-            else if (qty == Vector::V)
-            {
-                return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
-            }
-            else
-            {
-                throw std::runtime_error("Error - invalid Vector");
-            }
-        }
-    };
-} // namespace core
-} // namespace PHARE
+    static constexpr auto B_items()
+    {
+        auto const& [Bx, By, Bz] = B();
+        return std::make_tuple(std::make_pair("Bx", Bx), std::make_pair("By", By),
+                               std::make_pair("Bz", Bz));
+    }
+    static constexpr auto E_items()
+    {
+        auto const& [Ex, Ey, Ez] = E();
+        return std::make_tuple(std::make_pair("Ex", Ex), std::make_pair("Ey", Ey),
+                               std::make_pair("Ez", Ez));
+    }
+};
+
+} // namespace PHARE::core
 
 #endif

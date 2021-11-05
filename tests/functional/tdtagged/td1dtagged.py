@@ -82,8 +82,6 @@ vvv = {"vbulkx": vx, "vbulky": vy, "vbulkz": vz,
 def withTagging(**kwargs):
 
     Simulation(
-        smallest_patch_size=20,
-        largest_patch_size=20,
         time_step_nbr=2000,
         final_time=20.,
         boundary_types="periodic",

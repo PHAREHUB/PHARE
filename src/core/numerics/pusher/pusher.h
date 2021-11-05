@@ -66,6 +66,11 @@ namespace core
              GridLayout const& layout)
             = 0;
 
+        virtual ParticleIterator // decltype(std::declval<ParticleRange>().end())
+        move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
+             double mass, Interpolator& interpolator, ParticleSelector const&,
+             ParticleSelector const&, GridLayout const& layout)
+            = 0;
 
         /**
          * @brief setMeshAndTimeStep allows to let the pusher know what is the mesh

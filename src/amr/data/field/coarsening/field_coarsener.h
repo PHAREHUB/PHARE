@@ -43,7 +43,7 @@ namespace amr
 
         /** @brief apply the coarsening operation of the fineField to the coarseField
          *   at the amr indexes coarseIndex. it is assumed that the fineField will have
-         * enought ghost cell for the operation(ghostStencil should be in accordance to
+         * enough ghost cells for the operation(ghostStencil should be in accordance to
          * the number of ghost for a fineField quantities.
          */
         template<typename FieldT>

@@ -15,7 +15,7 @@ import numpy as np
 mpl.use('Agg')
 
 
-
+diag_outputs="phare_outputs/shock_20dx_dx02_refined"
 
 def config():
     """ Configure the simulation
@@ -26,15 +26,15 @@ def config():
     Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
+        time_step=.005,
         time_step_nbr=6000,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=30,             # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=2500,                # integer or tuple length == dimension
         dl=0.2,                  # mesh size of the root level, float or tuple
         #max_nbr_levels=1,          # (default=1) max nbr of levels in the AMR hierarchy
         nesting_buffer=0,
         refinement_boxes = {"L0":{"B0":[(125,), (750,)]}},
-        diag_options={"format": "phareh5", "options": {"dir": "shock_20dx_dx02_refined","mode":"overwrite"}}
+        diag_options={"format": "phareh5", "options": {"dir": diag_outputs,"mode":"overwrite"}},
     )
 
 
@@ -137,8 +137,8 @@ def config():
 def plot(bhier):
     times = np.sort(np.asarray(list(bhier.time_hier.keys())))
 
-    components  =("B_y", "B_z")
-    ylims = ((0.0, 2.),(0.,1.0))
+    components  =("By", "Bz")
+    ylims = ((0.0, 10.),(0.,1.0))
 
     for component,ylim in zip(components,ylims):
         for it,t in enumerate(times):
@@ -155,18 +155,27 @@ def plot(bhier):
                     ls='none'
 
                 for ip, patch in enumerate(patches):
-                    val   = patch.patch_datas["EM_"+component].dataset[:]
-                    x_val = patch.patch_datas["EM_"+component].x
+                    val   = patch.patch_datas[component].dataset[:]
+                    x_val = patch.patch_datas[component].x
                     label="${}$ level {} patch {}".format(component,il,ip)
                     ax.plot(x_val, val, label=label,
                             marker=marker, alpha=alpha, ls=ls)
                     ax.set_ylim(ylim)
 
             ax.legend(ncol=4)
+
             ax.set_title("t = {:05.2f}".format(t))
-            fig.savefig("{}_{:04d}.png".format(component,it))
+            fig.savefig(diag_outputs+"/{}_{:04d}.png".format(component,it))
             plt.close(fig)
 
+
+def do_plot():
+    from pyphare.cpp import cpp_lib
+    cpp = cpp_lib()
+    if cpp.mpi_rank() == 0:
+        from pyphare.pharesee.hierarchy import hierarchy_from
+        b = hierarchy_from(h5_filename=f"{diag_outputs}/EM_B.h5")
+        plot(b)
 
 
 def main():
@@ -174,11 +183,8 @@ def main():
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
+    do_plot()
 
-
-    #if cpp.mpi_rank() == 0:
-    #    b = hierarchy_from(h5_filename="phare_outputs/EM_B.h5")
-    #    plot(b)
 
 if __name__=="__main__":
     main()

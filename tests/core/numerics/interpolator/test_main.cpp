@@ -31,6 +31,11 @@ template<typename Weighter>
 class AWeighter : public ::testing::Test
 {
 public:
+    auto static constexpr dimension    = Weighter::interp_order;
+    auto static constexpr interp_order = Weighter::interp_order;
+    // All tests using this class are 1D and should remain that way or update this.
+    using GridLayout_t = GridLayout<GridLayoutImplYee<dimension, interp_order>>;
+
     AWeighter()
     {
         std::random_device rd;  // Will be used to obtain a seed for the random number engine
@@ -47,7 +52,12 @@ public:
         // the start index and the N(interp_order) weights
         for (auto i = 0u; i < nbr_tests; ++i)
         {
-            auto startIndex = computeStartIndex<Weighter::interp_order>(normalizedPositions[i]);
+            auto icell = static_cast<int>(normalizedPositions[i]);
+            auto delta = normalizedPositions[i] - icell;
+            auto startIndex
+                = icell
+                  - GridLayout_t::template computeStartLeftShift<QtyCentering, QtyCentering::dual,
+                                                                 Weighter::interp_order>(delta);
             this->weighter.computeWeight(normalizedPositions[i], startIndex, weights_[i]);
         }
 
@@ -138,34 +148,36 @@ BSpline readFromFile(std::size_t order)
 
 TYPED_TEST(AWeighter, computesBSplineWeightsForAnyParticlePosition)
 {
-    auto data = readFromFile(TypeParam::interp_order);
+    using AWeighter_t           = TestFixture;
+    using GridLayout_t          = typename AWeighter_t::GridLayout_t;
+    constexpr auto interp_order = TypeParam::interp_order;
 
-    std::array<double, nbrPointsSupport(TypeParam::interp_order)> weights;
+    auto data = readFromFile(interp_order);
+
+    std::array<double, nbrPointsSupport(interp_order)> weights;
 
     // python file hard-codes 10 particle positions
     // that start at x = 3 every 0.1
-    const int particlePositionNbr = 10;
-    const double startPosition    = 3.;
-    std::vector<double> particle_positions(particlePositionNbr);
-    double dx = 0.1;
 
-    for (auto i = 0u; i < particlePositionNbr; ++i)
+    std::size_t const n_particles = 10;
+    double const icell            = 3.;
+    double const dx               = 0.1;
+
+    for (auto ipos = 0u; ipos < n_particles; ++ipos)
     {
-        particle_positions[i] = startPosition + i * dx;
-    }
+        auto delta = static_cast<double>(ipos) * dx;
 
-    for (auto ipos = 0u; ipos < particlePositionNbr; ++ipos)
-    {
-        auto pos = particle_positions[ipos];
-
-        auto startIndex = computeStartIndex<TypeParam::interp_order>(pos);
-        this->weighter.computeWeight(pos, startIndex, weights);
+        auto startIndex
+            = icell
+              - GridLayout_t::template computeStartLeftShift<QtyCentering, QtyCentering::primal,
+                                                             interp_order>(delta);
+        this->weighter.computeWeight(icell + delta, startIndex, weights);
 
         for (auto inode = 0u; inode < weights.size(); ++inode)
         {
-            EXPECT_DOUBLE_EQ(data.weights[ipos][inode], weights[inode]);
             std::cout << inode << " " << ipos << " " << data.weights[ipos][inode] << " =? "
                       << weights[inode] << "\n";
+            EXPECT_DOUBLE_EQ(data.weights[ipos][inode], weights[inode]);
         }
     }
 }
@@ -530,7 +542,8 @@ template<typename Interpolator>
 class ACollectionOfParticles_1d : public ::testing::Test
 {
 public:
-    static constexpr std::uint32_t nx = 40;
+    static constexpr std::uint32_t ng = 3;
+    static constexpr std::uint32_t nx = 30 + (ng * 2);
     GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
     static constexpr std::uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
     static constexpr std::uint32_t numOfPart = Interpolator::interp_order + 2;
@@ -675,11 +688,14 @@ TYPED_TEST_SUITE_P(ACollectionOfParticles_1d);
 
 TYPED_TEST_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d)
 {
-    // node 25 because assume 5 ghosts
-    EXPECT_DOUBLE_EQ(this->rho(25), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(25), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(25), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(25), 1.0);
+    constexpr auto interp = TypeParam::interp_order;
+
+    auto idx = 20 + this->layout.nbrGhosts(QtyCentering::dual);
+
+    EXPECT_DOUBLE_EQ(this->rho(idx), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(idx), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(idx), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(idx), 1.0);
 }
 REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d);
 
@@ -690,7 +706,8 @@ INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_1d, MyTy
 template<typename Interpolator>
 struct ACollectionOfParticles_2d : public ::testing::Test
 {
-    static constexpr std::size_t dim  = 2;
+    static constexpr auto interp_order = Interpolator::interp_order;
+    static constexpr std::size_t dim   = 2;
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
 
@@ -733,12 +750,13 @@ TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);
 
 TYPED_TEST_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d)
 {
-    // 7 is non-zero particles are in _AMR_ cells 0..4
-    // and there are 5 ghosts.
-    EXPECT_DOUBLE_EQ(this->rho(7, 7), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(7, 7), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(7, 7), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(7, 7), 1.0);
+    constexpr auto interp = TypeParam::interp_order;
+
+    auto idx = 2 + this->layout.nbrGhosts(QtyCentering::dual);
+    EXPECT_DOUBLE_EQ(this->rho(idx, idx), 1.0);
+    EXPECT_DOUBLE_EQ(this->vx(idx, idx), 2.0);
+    EXPECT_DOUBLE_EQ(this->vy(idx, idx), -1.0);
+    EXPECT_DOUBLE_EQ(this->vz(idx, idx), 1.0);
 }
 REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d);
 
