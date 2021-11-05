@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-
-
-
 import pyphare.pharein as ph #lgtm [py/import-and-import-from]
 from pyphare.pharein import Simulation
 from pyphare.pharein import MaxwellianFluidModel
@@ -17,17 +14,9 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.use('Agg')
 
-
-
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 startMPI()
-if cpp.mpi_rank() == 0:
-    # log per mpi proc
-    import os
-    from pathlib import Path
-    os.environ["PHARE_LOG"] = "RANK_FILES"
-    Path(".log").mkdir(exist_ok=True)
 
 diag_outputs="phare_outputs/test/harris/2d"
 from datetime import datetime
