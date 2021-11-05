@@ -10,6 +10,7 @@ from pyphare.pharein import global_vars as gv
 
 #from pyphare.pharesee.hierarchy import finest_field
 import os
+import sys
 from pyphare.pharesee.run import Run
 from pyphare.pharesee.hierarchy import get_times_from_h5
 
@@ -33,16 +34,16 @@ def omega(k, p):
 
 
 
-def setOfModes(polarization, modes, b_amplitudes, seed):
+def setOfModes(polarization, modes, b_amplitudes, seed, time_step_nbr, cells, dl):
 
     Simulation(
         smallest_patch_size=20,
         largest_patch_size=50,
-        time_step_nbr=300000,
+        time_step_nbr=time_step_nbr,
         final_time=200.,
         boundary_types="periodic",
-        cells=2000,
-        dl=0.2,
+        cells=cells,
+        dl=dl,
         diag_options={"format": "phareh5",
                       "options": {"dir": "setOfModes1d",
                                   "mode":"overwrite"}}
@@ -186,7 +187,7 @@ def get_all_w(run_path, wave_numbers, polarization):
 
 
 
-def main():
+def main(time_step_nbr, cells, dl):
     # list of modes : m = 1 is for 1 wavelength in the whole domain
     modes = [4, 8, 16, 32, 64, 128, 256, 512]
 
@@ -194,7 +195,7 @@ def main():
     b_amplitudes = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
     # polarization : -1 for L mode
-    wave_nums, b1 = setOfModes(-1, modes, b_amplitudes, cpp.mpi_rank()+1)
+    wave_nums, b1 = setOfModes(-1, modes, b_amplitudes, cpp.mpi_rank()+1, time_step_nbr, cells, dl)
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
@@ -225,7 +226,7 @@ def main():
     b_amplitudes = [0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005]
 
     # polarization : +1 for R mode
-    wave_nums, b1 = setOfModes(+1, modes, b_amplitudes, cpp.mpi_rank()+1)
+    wave_nums, b1 = setOfModes(+1, modes, b_amplitudes, cpp.mpi_rank()+1, time_step_nbr, cells, dl)
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
@@ -290,5 +291,26 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    try:
+        len(sys.argv) == 2
+    except BaseException:
+        print('you need to provide an arg, which has to be "low" or "high"')
+
+    resolution = sys.argv[1]
+
+    try:
+        resolution in ['low', 'high']
+    except ValueError:
+        print('arg should be "low" or "high"')
+
+    if sys.argv[1] == 'low':
+        time_step_nbr=300000
+        cells=2000
+        dl=0.2
+    elif sys.argv[1] == 'high':
+        time_step_nbr=800000
+        cells=4000
+        dl=0.1
+
+    main(time_step_nbr, cells, dl)
 

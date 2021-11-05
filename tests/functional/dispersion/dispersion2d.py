@@ -8,7 +8,6 @@ from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharein import global_vars as gv
 
-#from pyphare.pharesee.hierarchy import finest_field
 import os
 from pyphare.pharesee.run import Run
 from pyphare.pharesee.hierarchy import get_times_from_h5
@@ -25,7 +24,6 @@ cpp = cpp_lib()
 startMPI()
 
 
-
 def omega(k, p):
     k2 = k*k
     return 0.5*k2*(np.sqrt(1+4/k2)+p)
@@ -33,18 +31,18 @@ def omega(k, p):
 
 
 
-def setOfModes(polarization, modes, b_amplitudes, seed):
+def setOfModes(polarization, modes, b_amplitudes, theta, seed):
 
     Simulation(
-        smallest_patch_size=20,
-        largest_patch_size=50,
-        time_step_nbr=300000,
-        final_time=200.,
-        boundary_types="periodic",
-        cells=2000,
-        dl=0.2,
+        smallest_patch_size=10,
+        largest_patch_size=10,
+        time_step_nbr=150000,   # 40000
+        final_time=100.,        # 40.
+        boundary_types=("periodic", "periodic"),
+        cells=(200, 10),
+        dl=(0.2, 0.2),
         diag_options={"format": "phareh5",
-                      "options": {"dir": "setOfModes1d",
+                      "options": {"dir": "setOfModes2d",
                                   "mode":"overwrite"}}
     )
 
@@ -55,53 +53,48 @@ def setOfModes(polarization, modes, b_amplitudes, seed):
     L = sim.simulation_domain()[0]
     wave_numbers = [2*np.pi*m/L for m in modes]
 
-    # using faraday : v1 = -w b1 / (k . B0)
-    #v_amplitudes = [-b*omega(k, p)/k for (k, b, p) in zip(wave_numbers, b_amplitudes, polarizations)]
+    wave_num_x = [k*np.cos(theta) for k in wave_numbers]
+    wave_num_y = [k*np.sin(theta) for k in wave_numbers]
 
 
-    def density(x):
+    def density(x, y):
         # no density fluctuations as whistler and AIC are not compressional
         return 1.
 
-    def by(x):
-        modes = 0.0
-        for (k, b) in zip(wave_numbers, b_amplitudes):
-            modes += b*np.cos(k*x)
+    def bx(x, y):
+        modes = np.cos(theta) # DC magnetic field of amplitude 1
+        for (kx, ky, b) in zip(wave_num_x, wave_num_y, b_amplitudes):
+            modes -= b*np.cos(kx*x+ky*y)*np.sin(theta)
         return modes
 
-    def bz(x):
-        modes = 0.0
-        for (k, b) in zip(wave_numbers, b_amplitudes):
-            modes += b*np.sin(k*x)*polarization
+    def by(x, y):
+        modes = np.sin(theta) # DC magnetic field of amplitude 1
+        for (kx, ky, b) in zip(wave_num_x, wave_num_y, b_amplitudes):
+            modes += b*np.cos(kx*x+ky*y)*np.cos(theta)
         return modes
 
-    def bx(x):
-        return 1.
+    def bz(x, y):
+        modes = 0.0
+        for (kx, ky, b) in zip(wave_num_x, wave_num_y, b_amplitudes):
+            modes += b*np.sin(kx*x+ky*y)*polarization
+        return modes
 
-    def vx(x):
-        return 0.
-
-    def vy(x):
-        #modes = 0.0
-        #for (k, v, f) in zip(wave_numbers, v_amplitudes, phases):
-        #    modes += v*np.cos(k*x+f)
-        #return modes
+    def vx(x, y):
         return 0.0
 
-    def vz(x):
-        #modes = 0.0
-        #for (k, v, f) in zip(wave_numbers, b_amplitudes, phases):
-        #    modes += v*np.sin(k*x+f)
-        #return modes
+    def vy(x, y):
         return 0.0
 
-    def vthx(x):
+    def vz(x, y):
+        return 0.0
+
+    def vthx(x, y):
         return 0.01
 
-    def vthy(x):
+    def vthy(x, y):
         return 0.01
 
-    def vthz(x):
+    def vthz(x, y):
         return 0.01
 
 
@@ -143,7 +136,7 @@ def setOfModes(polarization, modes, b_amplitudes, seed):
 
 
 # ___ post-processing functions
-def get_all_w(run_path, wave_numbers, polarization):
+def get_all_w(run_path, wave_numbers, polarization, theta):
     file = os.path.join(run_path, "EM_B.h5")
     times = get_times_from_h5(file)
 
@@ -151,50 +144,66 @@ def get_all_w(run_path, wave_numbers, polarization):
     print('number of modes : {}'.format(nm))
 
     r = Run(run_path)
-    byz = np.array([])
+    blz = np.array([])
 
     for time in times:
+        interp_bx, xy = r.GetB(time, merged=True, interp='bilinear')['Bx']
+        interp_by, xy = r.GetB(time, merged=True, interp='bilinear')['By']
+        interp_bz, xy = r.GetB(time, merged=True, interp='bilinear')['Bz']
 
-        interp_by, x = r.GetB(time, merged=True, interp='nearest')['By']
-        interp_bz, x = r.GetB(time, merged=True, interp='nearest')['Bz']
-        by = interp_by(x[0])
-        bz = interp_bz(x[0])
+        X, Y = (xy[0], xy[0]*np.tan(theta))
+
+        # the 1d space sampling is then of size nx
+        # the (l, t) image will then be of size (nx, nt)
+        bx = interp_bx(X, Y)
+        by = interp_by(X, Y)
+        bz = interp_bz(X, Y)
+
+        # the "l" direction is then at +pi/2 from the theta, normal to B0
+        bl = by*np.cos(theta)-bx*np.sin(theta)
 
         # polarization = +1 for R mode, -1 for L mode
-        byz = np.concatenate((byz, by+polarization*1j*bz))
+        blz = np.concatenate((blz, bl+polarization*1j*bz))
 
-    nx = x[0].shape[0]
+    nx = xy[0].shape[0]
     nt = times.shape[0]
-    byz = np.reshape(byz, (nt, nx))
+    blz = np.reshape(blz, (nt, nx))
 
-    BYZ = np.absolute(np.fft.fft2(byz)[:(nt+1)//2, :(nx+1)//2])
-    BYZ_4_all_W = np.sum(BYZ, axis=0)
+    BLZ = np.absolute(np.fft.fft2(blz)[:(nt+1)//2, :(nx+1)//2])
+    BLZ_4_all_W = np.sum(BLZ, axis=0)
 
-    idx = np.argsort(BYZ_4_all_W)
+    idx = np.argsort(BLZ_4_all_W)
     kmodes = idx[-nm:]
 
+    #wmodes = []
     wmodes = np.array([])
     for i in range(nm):
-        wmodes = np.append(wmodes, np.argmax(BYZ[:,idx[-nm+i]]))
-        #wmodes.append(np.argmax(BYZ[:,idx[-nm+i]]))
+        #wmodes.append(np.argmax(BLZ[1:,idx[-nm+i]]))
+        wmodes = np.append(wmodes, np.argmax(BLZ[1:,idx[-nm+i]]))
 
     idx = np.argsort(kmodes)
 
+    #print(kmodes, wmodes)
     print(kmodes[idx], wmodes[idx])
 
-    return kmodes[idx], wmodes[idx], BYZ
+    #return kmodes, np.array(wmodes), BLZ
+    return kmodes[idx], wmodes[idx], BLZ
 
 
 
 def main():
+
+    # angle of the oblique mode (in radians) : has to be arctan2(L[1], L[0])
+    theta = np.arctan2(10, 200)
+
     # list of modes : m = 1 is for 1 wavelength in the whole domain
-    modes = [4, 8, 16, 32, 64, 128, 256, 512]
+    modes = [4, 8, 16, 32, 64]
 
     # lists of amplitudes of the magnetic field amplitudes
-    b_amplitudes = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    b_amplitudes = [0.002, 0.002, 0.002, 0.002, 0.002]
 
     # polarization : -1 for L mode
-    wave_nums, b1 = setOfModes(-1, modes, b_amplitudes, cpp.mpi_rank()+1)
+    wave_nums, b1 = setOfModes(-1, modes, b_amplitudes, theta, cpp.mpi_rank()+1)
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
@@ -205,27 +214,31 @@ def main():
     if mpi_rank() == 0:
         sim = ph.global_vars.sim
 
+        # hmmm... because theta has to be set before simulator !
+        np.testing.assert_allclose(np.tan(theta) , sim.simulation_domain()[1]/sim.simulation_domain()[0], atol=1e-15)
+
         L = sim.simulation_domain()[0]
         T = sim.final_time
 
         #for the left mode
-        ki, wi, byz = get_all_w(os.path.join(os.curdir, "setOfModes1d"), wave_nums, -1)
+        ki, wi, blz = get_all_w(os.path.join(os.curdir, "setOfModes2d"), wave_nums, -1, theta)
 
-        np.save('left1d.npy', byz)
+        np.save('left2d.npy', blz)
 
-        k_numL = 2*np.pi*ki/L
+        k_numL = 2*np.pi*ki*np.cos(theta)/L
         w_numL = 2*np.pi*wi/T
 
+    #because the simulation is already set
     ph.global_vars.sim = None
 
     # list of modes : m = 1 is for 1 wavelength in the whole domain
-    modes = [4, 8, 16, 32, 64, 128, 256, 512]
+    modes = [4, 8, 16, 32, 64]
 
     # lists of amplitudes of the magnetic field amplitudes
-    b_amplitudes = [0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005]
+    b_amplitudes = [0.005, 0.005, 0.005, 0.005, 0.005]
 
     # polarization : +1 for R mode
-    wave_nums, b1 = setOfModes(+1, modes, b_amplitudes, cpp.mpi_rank()+1)
+    wave_nums, b1 = setOfModes(+1, modes, b_amplitudes, theta, cpp.mpi_rank()+1)
     simulator = Simulator(gv.sim)
     simulator.initialize()
     simulator.run()
@@ -237,21 +250,22 @@ def main():
         T = sim.final_time
 
         #for the riht mode
-        ki, wi, byz = get_all_w(os.path.join(os.curdir, "setOfModes1d"), wave_nums, +1)
+        ki, wi, blz = get_all_w(os.path.join(os.curdir, "setOfModes2d"), wave_nums, +1, theta)
 
-        np.save('right1d.npy', byz)
+        np.save('right2d.npy', blz)
 
-        k_numR = 2*np.pi*ki/L
+        k_numR = 2*np.pi*ki*np.cos(theta)/L
         w_numR = 2*np.pi*wi/T
 
         rc('text', usetex = True)
 
         fig, ax = plt.subplots(figsize=(4,3), nrows=1)
 
-        k_the = np.arange(0.04, 10, 0.001)
+        k_the = np.arange(0.2, 20, 0.001)
         w_thR = omega(k_the, +1)
         w_thL = omega(k_the, -1)
 
+        #ax.imshow(zobi, origin='lower', cmap='viridis_r')
         ax.plot(k_the, w_thR, '-k')
         ax.plot(k_the, w_thL, '-k')
         ax.plot(k_numR, w_numR, 'b+', label='$R \ mode$', markersize=8)
@@ -265,7 +279,7 @@ def main():
         ax.legend(loc='upper left', frameon=False)
 
         fig.tight_layout()
-        fig.savefig("dispersion1d.pdf", dpi=200)
+        fig.savefig("dispersion2d.pdf", dpi=200)
 
         w_theR = omega(k_numR, +1)
         w_theL = omega(k_numL, -1)
@@ -273,22 +287,22 @@ def main():
         errorL = 100*np.fabs(w_numL-w_theL)/w_theL
         errorR = 100*np.fabs(w_numR-w_theR)/w_theR
 
-        with open('dispersion1d.txt', 'w') as f:
+        with open('dispersion2d.txt', 'w') as f:
             print(*('error Left ... k = {:.4f}   w_the = {:.4f}   w_num = {:.4f}   err = {:.4f}'.\
                     format(k, W, w, e) for (k, W, w, e) in zip(k_numL, w_theL, w_numL, errorL)), sep="\n", file=f)
             print(*('error Right... k = {:.4f}   w_the = {:.4f}   w_num = {:.4f}   err = {:.4f}'.\
                     format(k, W, w, e) for (k, W, w, e) in zip(k_numR, w_theR, w_numR, errorR)), sep="\n", file=f)
 
-        targetL = np.array([ 3.,  6.,  1.,  4.,  1.,  2.,  4.,  1.])
-        targetR = np.array([ 3.,  6.,  1.,  3.,  0.,  3.,  6., 20.])
+        targetL = np.array([18.,  9.,  7.,  9.,  6.])
+        targetR = np.array([ 4.,  3.,  3.,  9., 29.])
 
         np.testing.assert_allclose(errorL, targetL, rtol=1e-2, atol=8)
         np.testing.assert_allclose(errorR, targetR, rtol=1e-2, atol=8)
 
-        #assert errorL.max() < 10.0
-        #assert errorR.max() < 30.0
 
 
 if __name__=="__main__":
     main()
+
+
 
