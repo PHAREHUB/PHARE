@@ -1,3 +1,4 @@
+
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 
@@ -360,11 +361,9 @@ class InitializationTest(SimulatorTest):
 
     def _test_density_is_as_provided_by_user(self, dim, interp_order):
 
-        empirical_devs = {
-        #dim{interp1:value,...}
-          1:{ 1 : 6e-2, 2 : 7e-3, 3 : 4e-1 },
-          2:{ 1 : 1e-1, 2 : 2e-2, 3 : 3e-2 },
-          #3:{}
+        empirical_dim_devs = {
+              1: 6e-3,
+              2: 3e-2,
         }
 
         nbParts = {1 : 10000, 2: 1000}
@@ -424,7 +423,7 @@ class InitializationTest(SimulatorTest):
 
                 for name, dev in devs.items():
                     print(f"sigma(user density - {name} density) = {dev}")
-                    self.assertLess(dev, empirical_devs[dim][interp_order], f'{name} has dev = {dev}')
+                    self.assertLess(dev, empirical_dim_devs[dim], f'{name} has dev = {dev}')
 
 
 
@@ -492,7 +491,7 @@ class InitializationTest(SimulatorTest):
         plt.legend()
         plt.savefig("noise_nppc_minus_theory_interp_{}_{}.png".format(dim, interp_order))
         plt.close("all")
-        self.assertGreater(4e-2, noiseMinusTheory[1:].mean())
+        self.assertGreater(3e-2, noiseMinusTheory[1:].mean())
 
 
 

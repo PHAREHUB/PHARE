@@ -503,9 +503,6 @@ namespace core
     template<std::size_t dim, std::size_t interpOrder>
     class Interpolator : private Weighter<interpOrder>
     {
-        // dual weights require -.5 to take the correct position weight
-        auto static constexpr dual_offset = .5;
-
         // this calculates the startIndex and the nbrPointsSupport() weights for
         // dual field interpolation and puts this at the corresponding location
         // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
@@ -513,13 +510,14 @@ namespace core
         template<typename CenteringT, CenteringT centering, typename GridLayout, typename Particle>
         void indexAndWeights_(GridLayout const& layout, Particle const& part)
         {
+            // dual weights require -.5 to take the correct position weight
+            auto constexpr dual_offset = .5;
+
             auto iCell = layout.AMRToLocal(Point{part.iCell});
             for (auto iDim = 0u; iDim < dimension; ++iDim)
             {
                 startIndex_[centering2int(centering)][iDim]
-                    = iCell[iDim]
-                      - GridLayout::template computeStartLeftShift<CenteringT, centering,
-                                                                   interpOrder>(part.delta[iDim]);
+                    = iCell[iDim] - computeStartLeftShift<CenteringT, centering>(part.delta[iDim]);
 
                 double normalizedPos = iCell[iDim] + part.delta[iDim];
 
@@ -589,6 +587,7 @@ namespace core
 
 
 
+
         /**\brief interpolate electromagnetic fields on all particles in the range
          *
          * For each particle :
@@ -627,6 +626,43 @@ namespace core
                                 *currPart, startIndex_, weights_, coef);
             }
             PHARE_LOG_STOP("ParticleToMesh::operator()");
+        }
+
+
+        /**
+         * @brief Given a delta and an interpolation order, deduce which lower index to start
+         * traversing from
+         */
+        template<typename CenteringT, CenteringT Centering>
+        static int computeStartLeftShift([[maybe_unused]] double delta)
+        {
+            static_assert(interpOrder > 0 and interpOrder < 4);
+
+            // If this is no longer true, it should be handled here via if constexpr/etc
+
+            if constexpr (interpOrder == 1)
+            {
+                if constexpr (Centering == QtyCentering::primal)
+                    return 0;
+                else
+                    return (delta < .5 ? 1 : 0);
+            }
+
+            else if constexpr (interpOrder == 2)
+            {
+                if constexpr (Centering == QtyCentering::primal)
+                    return (delta < .5 ? 1 : 0);
+                else
+                    return 1;
+            }
+
+            else if constexpr (interpOrder == 3)
+            {
+                if constexpr (Centering == QtyCentering::primal)
+                    return 1;
+                else
+                    return (delta < .5 ? 2 : 1);
+            }
         }
 
 

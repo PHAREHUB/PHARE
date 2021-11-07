@@ -106,6 +106,9 @@ namespace core
         }
 
         /** see Pusher::move() documentation*/
+        // This function used used during particle ghost push, so that any particles outside the
+        //  ghostbox after first pushStep are ignored, and only particles in the ghostLayer are
+        //  kept after second pushStep
         ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
                               Electromag const& emFields, double mass, Interpolator& interpolator,
                               ParticleSelector const& particleIsNotLeaving0,

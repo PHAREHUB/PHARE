@@ -124,7 +124,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
     auto ghostBox{domainBox};
     ghostBox.grow(partGhostWidth);
 
-    auto ghostSelector = [&ghostBox, &domainBox](auto const& part) {
+    auto inGhostLayer = [&ghostBox, &domainBox](auto const& part) {
         auto cell = cellAsPoint(part);
         return core::isIn(cell, ghostBox) and !core::isIn(cell, domainBox);
     };
@@ -159,7 +159,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
             outRange = makeRange(outputArray);
 
             auto firstGhostOut = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
-                                               inGhostBox, ghostSelector, layout);
+                                               inGhostBox, inGhostLayer, layout);
 
             auto endInDomain = std::partition(firstGhostOut, std::end(outputArray), inDomainBox);
 
@@ -199,7 +199,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
     auto ghostBox{domainBox};
     ghostBox.grow(partGhostWidth);
 
-    auto ghostSelector = [&ghostBox, &domainBox](auto const& part) {
+    auto inGhostLayer = [&ghostBox, &domainBox](auto const& part) {
         auto cell = cellAsPoint(part);
         return core::isIn(cell, ghostBox) and !core::isIn(cell, domainBox);
     };
@@ -228,7 +228,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto pushAndCopyInDomain = [&](auto& particleArray) {
             auto range            = makeRange(particleArray);
             auto firstOutGhostBox = pusher_->move(range, range, em, pop.mass(), interpolator_,
-                                                  inGhostBox, ghostSelector, layout);
+                                                  inGhostBox, inGhostLayer, layout);
 
             std::copy_if(firstOutGhostBox, std::end(particleArray),
                          std::back_inserter(domainParticles), inDomainSelector);

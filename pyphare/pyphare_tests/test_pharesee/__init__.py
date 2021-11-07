@@ -2,7 +2,7 @@ import numpy as np
 
 import pyphare.core.box as boxm
 from pyphare.core.box import Box, nDBox
-from pyphare.core.phare_utilities import listify, np_array_ify
+from pyphare.core.phare_utilities import listify
 from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 
 from pyphare.pharesee.particles import Particles

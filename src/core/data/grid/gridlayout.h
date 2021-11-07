@@ -43,9 +43,6 @@ namespace core
     template<std::size_t interpOrder>
     std::uint32_t constexpr ghostWidthForParticles()
     {
-        // interpOrder1 = 1
-        // interpOrder2 = 2
-        // interpOrder3 = 2
         return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
     }
 
@@ -549,29 +546,24 @@ namespace core
         /**
          * @brief the number of ghost nodes on each side of the mesh for a given centering
          */
-        std::uint32_t static nbrGhosts(QtyCentering centering)
-        {
-            if (centering == QtyCentering::dual)
-                return nbrDualGhosts_();
+        auto static nbrGhosts(QtyCentering /*centering*/ = QtyCentering::primal)
+        { // Both dual and primal ghosts are the same!
+            static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
 
             return nbrPrimalGhosts_();
         }
 
         template<typename Quantity>
-        static std::array<std::uint32_t, dimension> nDNbrGhosts(Quantity quantity)
-        {
-            auto centerings = centering(quantity);
-            std::array<std::uint32_t, dimension> ghosts;
-            for (std::size_t i = 0; i < dimension; i++)
-                ghosts[i] = nbrGhosts(centerings[i]);
-            return ghosts;
+        auto static nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
+        { // Both dual and primal ghosts are the same!
+            return ConstArray<std::uint32_t, dimension>(nbrGhosts());
         }
 
 
         /**
          * @brief changeCentering changes primal into dual and vice versa.
          */
-        QtyCentering changeCentering(QtyCentering centering) const
+        auto static changeCentering(QtyCentering centering)
         {
             QtyCentering newCentering = QtyCentering::primal;
 
@@ -1142,42 +1134,6 @@ namespace core
         }
 
 
-        /**
-         * @brief Given a delta and an interpolation order, deduce which lower index to start
-         * traversing from
-         */
-        template<typename CenteringT, CenteringT Centering, std::size_t interpOrder>
-        static int computeStartLeftShift([[maybe_unused]] double delta)
-        {
-            static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
-            static_assert(interpOrder > 0 and interpOrder < 4);
-            // If this is no longer true, it should be handled here via if constexpr/etc
-
-            if constexpr (interpOrder == 1)
-            {
-                if constexpr (Centering == QtyCentering::primal)
-                    return 0;
-                else
-                    return (delta < .5 ? 1 : 0);
-            }
-
-            else if constexpr (interpOrder == 2)
-            {
-                if constexpr (Centering == QtyCentering::primal)
-                    return (delta < .5 ? 1 : 0);
-                else
-                    return 1;
-            }
-
-            else if constexpr (interpOrder == 3)
-            {
-                if constexpr (Centering == QtyCentering::primal)
-                    return 1;
-                else
-                    return (delta < .5 ? 2 : 1);
-            }
-        }
-
 
     private:
         template<typename Field, typename IndicesFn, typename Fn>
@@ -1321,8 +1277,6 @@ namespace core
                 return -1;
             }
         }
-
-
 
 
         /**
