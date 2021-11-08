@@ -35,6 +35,13 @@ class Simulator:
         self.cpp_sim  = None   # BE
         self.cpp_dw   = None   # DRAGONS, i.e. use weakrefs if you have to ref these.
         self.post_advance = kwargs.get("post_advance", None)
+
+        self.print_eol = "\n"
+        if kwargs.get("print_one_line", True):
+            self.print_eol = "\r"
+        self.print_eol = kwargs.get("print_eol", self.print_eol)
+        self.log_to_file = kwargs.get("log_to_file", True)
+
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
         _simulator.obj = self
@@ -51,6 +58,8 @@ class Simulator:
             from pyphare.cpp import cpp_lib
             from pyphare.pharein import populateDict
             startMPI()
+            if self.log_to_file:
+                self._log_to_file()
             populateDict()
             self.cpp_hier = cpp_lib().make_hierarchy()
 
@@ -109,7 +118,8 @@ class Simulator:
             perf.append(ticktock)
             t = self.cpp_sim.currentTime()
             if cpp_lib().mpi_rank() == 0:
-                print("t = {:8.5f}  -  {:6.5f}sec  - total {:7.4}sec".format(t, ticktock, np.sum(perf)))
+                out = f"t = {t:8.5f}  -  {ticktock:6.5f}sec  - total {np.sum(perf):7.4}sec"
+                print(out, end = self.print_eol)
 
         print("mean advance time = {}".format(np.mean(perf)))
         print("total advance time = {}".format(np.sum(perf)))
@@ -168,3 +178,13 @@ class Simulator:
     def _check_init(self):
         if self.cpp_sim is None:
             self.initialize()
+
+    def _log_to_file(self):
+        import os
+        # log per mpi proc
+        if "PHARE_LOG" not in os.environ:
+            from pyphare.cpp import cpp_lib
+            os.environ["PHARE_LOG"] = "RANK_FILES"
+            if cpp_lib().mpi_rank() == 0:
+                from pathlib import Path
+                Path(".log").mkdir(exist_ok=True)
