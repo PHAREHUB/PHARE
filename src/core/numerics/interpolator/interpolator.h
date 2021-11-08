@@ -24,15 +24,6 @@ namespace core
     constexpr int nbrPointsSupport(int interpOrder) { return interpOrder + 1; }
 
 
-    //! return the number of points on which to interpolate at order InterpOrder
-    template<std::size_t interpOrder>
-    int computeStartIndex(double normalizedPos)
-    {
-        return static_cast<int>(normalizedPos - (static_cast<double>(interpOrder) - 1.) / 2.);
-    }
-
-
-
 
     /** \brief the class Weight aims at computing the weight coefficient for
      *  interpolation at a specific order
@@ -68,7 +59,7 @@ namespace core
             weights[0] = 1. - weights[1];
         }
 
-        static const int interp_order = 1;
+        static constexpr int interp_order = 1;
     };
 
 
@@ -93,7 +84,7 @@ namespace core
             weights[2] = 0.5 * coef3 * coef3;
         }
 
-        static const int interp_order = 2;
+        static constexpr int interp_order = 2;
     };
 
 
@@ -107,25 +98,27 @@ namespace core
         inline void computeWeight(double normalizedPos, int startIndex,
                                   std::array<double, nbrPointsSupport(3)>& weights)
         {
-            double coef1, coef2, coef3, coef4;
-            auto index = static_cast<double>(startIndex) - normalizedPos;
-            coef1      = 1. + 0.5 * index;
-            coef2      = index + 1;
-            coef3      = index + 2;
-            coef4      = 1. - 0.5 * (index + 3);
+            constexpr double _4_over_3 = 4. / 3.;
+            constexpr double _2_over_3 = 2. / 3.;
+
+            auto index   = static_cast<double>(startIndex) - normalizedPos;
+            double coef1 = 1. + 0.5 * index;
+            double coef2 = index + 1;
+            double coef3 = index + 2;
+            double coef4 = 1. - 0.5 * (index + 3);
 
             double coef2_sq  = coef2 * coef2;
             double coef2_cub = coef2_sq * coef2;
             double coef3_sq  = coef3 * coef3;
             double coef3_cub = coef3_sq * coef3;
 
-            weights[0] = (4. / 3.) * coef1 * coef1 * coef1;
-            weights[1] = 2. / 3. - coef2_sq - 0.5 * coef2_cub;
-            weights[2] = 2. / 3. - coef3_sq + 0.5 * coef3_cub;
-            weights[3] = (4. / 3.) * coef4 * coef4 * coef4;
+            weights[0] = _4_over_3 * coef1 * coef1 * coef1;
+            weights[1] = _2_over_3 - coef2_sq - 0.5 * coef2_cub;
+            weights[2] = _2_over_3 - coef3_sq + 0.5 * coef3_cub;
+            weights[3] = _4_over_3 * coef4 * coef4 * coef4;
         }
 
-        static const int interp_order = 3;
+        static constexpr int interp_order = 3;
     };
 
 
@@ -510,6 +503,33 @@ namespace core
     template<std::size_t dim, std::size_t interpOrder>
     class Interpolator : private Weighter<interpOrder>
     {
+        // this calculates the startIndex and the nbrPointsSupport() weights for
+        // dual field interpolation and puts this at the corresponding location
+        // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
+        // is offseted compared to primal ones.
+        template<typename CenteringT, CenteringT centering, typename GridLayout, typename Particle>
+        void indexAndWeights_(GridLayout const& layout, Particle const& part)
+        {
+            // dual weights require -.5 to take the correct position weight
+            auto constexpr dual_offset = .5;
+
+            auto iCell = layout.AMRToLocal(Point{part.iCell});
+            for (auto iDim = 0u; iDim < dimension; ++iDim)
+            {
+                startIndex_[centering2int(centering)][iDim]
+                    = iCell[iDim] - computeStartLeftShift<CenteringT, centering>(part.delta[iDim]);
+
+                double normalizedPos = iCell[iDim] + part.delta[iDim];
+
+                if constexpr (centering == QtyCentering::dual)
+                    normalizedPos -= dual_offset;
+
+                weightComputer_.computeWeight(normalizedPos,
+                                              startIndex_[centering2int(centering)][iDim],
+                                              weights_[centering2int(centering)][iDim]);
+            }
+        }
+
     public:
         auto static constexpr interp_order = interpOrder;
         auto static constexpr dimension    = dim;
@@ -526,41 +546,6 @@ namespace core
                                GridLayout const& layout)
         {
             PHARE_LOG_SCOPE("Interpolator::operator()");
-
-            // this lambda calculates the startIndex and the nbrPointsSupport() weights for
-            // dual field interpolation and puts this at the corresponding location
-            // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
-            // is offseted compared to primal ones.
-            auto indexAndWeightDual = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
-
-                    startIndex_[centering2int(QtyCentering::dual)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::dual)][iDim],
-                        weights_[centering2int(QtyCentering::dual)][iDim]);
-                }
-            };
-
-            // does the same as above but for a primal field
-            auto indexAndWeightPrimal = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim];
-
-                    startIndex_[centering2int(QtyCentering::primal)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
-                        weights_[centering2int(QtyCentering::primal)][iDim]);
-                }
-            };
 
             auto const& Ex = Em.E.getComponent(Component::X);
             auto const& Ey = Em.E.getComponent(Component::Y);
@@ -587,8 +572,8 @@ namespace core
             PHARE_LOG_START("MeshToParticle::operator()");
             for (auto currPart = begin; currPart != end; ++currPart)
             {
-                indexAndWeightPrimal(*currPart);
-                indexAndWeightDual(*currPart);
+                indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, *currPart);
+                indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, *currPart);
 
                 currPart->Ex = meshToParticle_(Ex, ExCentering, startIndex_, weights_);
                 currPart->Ey = meshToParticle_(Ey, EyCentering, startIndex_, weights_);
@@ -616,41 +601,6 @@ namespace core
         inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux,
                                GridLayout const& layout, double coef = 1.)
         {
-            // this lambda calculates the startIndex and the order+1 weights for
-            // dual field interpolation and puts this at the corresponding location
-            // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
-            // is offseted compared to primal ones.
-            auto indexAndWeightDual = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim] + dualOffset(interpOrder);
-
-                    startIndex_[centering2int(QtyCentering::dual)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::dual)][iDim],
-                        weights_[centering2int(QtyCentering::dual)][iDim]);
-                }
-            };
-
-            // does the same as above but for a primal field
-            auto indexAndWeightPrimal = [this, &layout](auto const& part) {
-                for (auto iDim = 0u; iDim < dimension; ++iDim)
-                {
-                    auto iCell           = layout.AMRToLocal(Point{part.iCell});
-                    double normalizedPos = iCell[iDim] + part.delta[iDim];
-
-                    startIndex_[centering2int(QtyCentering::primal)][iDim]
-                        = computeStartIndex<interpOrder>(normalizedPos);
-
-                    weightComputer_.computeWeight(
-                        normalizedPos, startIndex_[centering2int(QtyCentering::primal)][iDim],
-                        weights_[centering2int(QtyCentering::primal)][iDim]);
-                }
-            };
-
             auto& xFlux = flux.getComponent(Component::X);
             auto& yFlux = flux.getComponent(Component::Y);
             auto& zFlux = flux.getComponent(Component::Z);
@@ -670,8 +620,7 @@ namespace core
             for (auto currPart = begin; currPart != end; ++currPart)
             {
                 // TODO #3375
-                indexAndWeightPrimal(*currPart);
-                indexAndWeightDual(*currPart);
+                indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, *currPart);
 
                 particleToMesh_(density, xFlux, yFlux, zFlux, densityCentering, fluxCentering,
                                 *currPart, startIndex_, weights_, coef);
@@ -680,6 +629,41 @@ namespace core
         }
 
 
+        /**
+         * @brief Given a delta and an interpolation order, deduce which lower index to start
+         * traversing from
+         */
+        template<typename CenteringT, CenteringT Centering>
+        static int computeStartLeftShift([[maybe_unused]] double delta)
+        {
+            static_assert(interpOrder > 0 and interpOrder < 4);
+
+            // If this is no longer true, it should be handled here via if constexpr/etc
+
+            if constexpr (interpOrder == 1)
+            {
+                if constexpr (Centering == QtyCentering::primal)
+                    return 0;
+                else
+                    return (delta < .5 ? 1 : 0);
+            }
+
+            else if constexpr (interpOrder == 2)
+            {
+                if constexpr (Centering == QtyCentering::primal)
+                    return (delta < .5 ? 1 : 0);
+                else
+                    return 1;
+            }
+
+            else if constexpr (interpOrder == 3)
+            {
+                if constexpr (Centering == QtyCentering::primal)
+                    return 1;
+                else
+                    return (delta < .5 ? 2 : 1);
+            }
+        }
 
 
     private:
@@ -694,16 +678,6 @@ namespace core
         std::array<std::array<int, dimension>, 2> startIndex_;
         std::array<std::array<std::array<double, nbrPointsSupport(interpOrder)>, dimension>, 2>
             weights_;
-
-        /**
-         * @brief dualOffset returns the offset by which changing the
-         * startIndex for dual node interpolation. This offset depends on
-         * interpolation order. */
-        inline constexpr double dualOffset(int order)
-        {
-            std::array<double, 3> offsets = {{-0.5, -0.5, 0.5}};
-            return offsets[static_cast<std::array<double, 3>::size_type>(order - 1)];
-        }
     };
 
 

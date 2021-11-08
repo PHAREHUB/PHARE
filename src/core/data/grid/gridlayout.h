@@ -39,6 +39,15 @@ namespace core
 
     constexpr int centering2int(QtyCentering c) { return static_cast<int>(c); }
 
+
+    template<std::size_t interpOrder>
+    std::uint32_t constexpr ghostWidthForParticles()
+    {
+        return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
+    }
+
+
+
     template<typename T, std::size_t s>
     auto boxFromNbrCells(std::array<T, s> nbrCells)
     {
@@ -179,9 +188,9 @@ namespace core
 
 
 
-        static std::size_t constexpr ghostWidthForParticles()
+        static std::size_t constexpr nbrParticleGhosts()
         {
-            return (interp_order % 2 == 0 ? interp_order / 2 + 1 : (interp_order + 1) / 2);
+            return ghostWidthForParticles<interp_order>();
         }
 
         template<typename Centering, typename Direction>
@@ -537,32 +546,24 @@ namespace core
         /**
          * @brief the number of ghost nodes on each side of the mesh for a given centering
          */
-        std::uint32_t static nbrGhosts(QtyCentering centering)
-        {
-            std::uint32_t nbrGhosts = nbrPrimalGhosts_();
+        auto static nbrGhosts(QtyCentering /*centering*/ = QtyCentering::primal)
+        { // Both dual and primal ghosts are the same!
+            static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
 
-            if (centering == QtyCentering::dual)
-            {
-                nbrGhosts = nbrDualGhosts_();
-            }
-            return nbrGhosts;
+            return nbrPrimalGhosts_();
         }
 
         template<typename Quantity>
-        static std::array<std::uint32_t, dimension> nDNbrGhosts(Quantity quantity)
-        {
-            auto centerings = centering(quantity);
-            std::array<std::uint32_t, dimension> ghosts;
-            for (std::size_t i = 0; i < dimension; i++)
-                ghosts[i] = nbrGhosts(centerings[i]);
-            return ghosts;
+        auto static nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
+        { // Both dual and primal ghosts are the same!
+            return ConstArray<std::uint32_t, dimension>(nbrGhosts());
         }
 
 
         /**
          * @brief changeCentering changes primal into dual and vice versa.
          */
-        QtyCentering changeCentering(QtyCentering centering) const
+        auto static changeCentering(QtyCentering centering)
         {
             QtyCentering newCentering = QtyCentering::primal;
 
@@ -877,7 +878,7 @@ namespace core
 
 
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::allocSize_
+         * @brief GridLayout<GridLayoutImpl::dim>::allocSize
          * @return An std::array<std::uint32_t, dim> object, containing the size to which allocate
          * arrays of an HybridQuantity::Quantity 'qty' in every directions.
          */
@@ -1283,11 +1284,9 @@ namespace core
          * The formula is based only on the interpolation order, whch means only particle-mesh
          * interactions constrain the number of dual ghost nodes.
          */
-        auto constexpr static nbrDualGhosts_()
+        std::uint32_t constexpr static nbrDualGhosts_()
         {
-            std::uint32_t constexpr nbrMinGhost{5};
-
-            return max<static_cast<std::uint32_t>((interp_order + 1) / 2.), nbrMinGhost>();
+            return (interp_order + 1) / 2 + nbrParticleGhosts();
         }
 
 
@@ -1300,18 +1299,7 @@ namespace core
          * (e.g. laplacian of J for a yee lattice). Dual ghosts don't have this issue since they
          * always have at least 1 ghost.
          */
-        auto constexpr static nbrPrimalGhosts_()
-        {
-            std::uint32_t constexpr nbrMinGhost{5};
-            if constexpr (interp_order == 1)
-            {
-                return max<nbrDualGhosts_(), nbrMinGhost>();
-            }
-            else if constexpr (interp_order == 2 || interp_order == 3)
-            {
-                return max<static_cast<std::uint32_t>(interp_order / 2.), nbrMinGhost>();
-            }
-        }
+        std::uint32_t constexpr static nbrPrimalGhosts_() { return nbrDualGhosts_(); }
 
 
 

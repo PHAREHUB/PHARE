@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import math
+
 import numpy as np
 
 from .phare_utilities import is_scalar, listify
@@ -90,8 +90,11 @@ def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts=Fal
 
 
 class GridLayout(object):
+    """
+      field_ghosts_nbr is a parameter to support pyphare geometry tests having hard coded 5 ghosts
+    """
 
-    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1):
+    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1, field_ghosts_nbr=None):
         self.box = box
 
         self.dl = listify(dl)
@@ -117,10 +120,13 @@ class GridLayout(object):
                           'Y' : self.yeeCentering.centerY,
                           'Z' : self.yeeCentering.centerZ
                          }
+        self.field_ghosts_nbr = field_ghosts_nbr # allows override
+
 
     @property
     def ndim(self):
         return self.box.ndim
+
 
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]
@@ -129,23 +135,15 @@ class GridLayout(object):
     def particleGhostNbr(self, interp_order):
         return 1 if interp_order == 1 else 2
 
+
     def nbrGhosts(self, interpOrder, centering):
-        minNbrGhost = 5
-        if centering == 'primal':
-            if interpOrder == 1:
-                return max(math.floor((interpOrder+1)/2), minNbrGhost)
-            else:
-                return max(math.floor( interpOrder/2 ), minNbrGhost)
-        else:
-            return max(math.floor( (interpOrder +1)/2 ), minNbrGhost)
+        if self.field_ghosts_nbr is None:
+            return int((interpOrder + 1) / 2) + self.particleGhostNbr(interpOrder)
+        return self.field_ghosts_nbr
 
 
     def nbrGhostsPrimal(self, interpOrder):
-        minNbrGhost = 5
-        if interpOrder == 1:
-            return max(math.floor( (interpOrder+1)/2 ), minNbrGhost)
-        else:
-            return max(math.floor( interpOrder/2 ), minNbrGhost)
+        return self.nbrGhosts(interpOrder, 'primal')
 
 
 

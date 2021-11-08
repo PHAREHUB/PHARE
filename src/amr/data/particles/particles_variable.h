@@ -1,6 +1,7 @@
 #ifndef PHARE_PARTICLES_VARIABLE_H
 #define PHARE_PARTICLES_VARIABLE_H
 
+#include "core/data/grid/gridlayout.h" // particle ghost width
 #include "particles_data_factory.h"
 #include <SAMRAI/hier/Variable.h>
 #include <SAMRAI/tbox/Dimension.h>
@@ -21,7 +22,7 @@ namespace amr
         ParticlesVariable(std::string const& name, bool fineBoundaryRepresentsVariable = false,
                           SAMRAI::hier::IntVector ghost
                           = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
-                                                    ghostWidthForParticles<interp>()})
+                                                    core::ghostWidthForParticles<interp>()})
             : SAMRAI::hier::Variable{name, std::make_shared<ParticlesDataFactory<ParticleArray>>(
                                                ghost, fineBoundaryRepresentsVariable)}
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}

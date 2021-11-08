@@ -12,6 +12,12 @@ from pyphare.pharesee.hierarchy import ParticleData
 from pyphare.pharesee.hierarchy import PatchHierarchy
 from pyphare.pharesee.hierarchy import Patch, PatchLevel
 
+"""
+number of ghosts is hard coded to 5
+"""
+
+GHOST_NBR = 5
+
 
 def init(ghost_box, layout, L, qty, fn):
 
@@ -181,9 +187,9 @@ def build_patch_datas(domain_box, boxes, **kwargs):
 
         for box in lvl_box:
 
-            ghost_box = boxm.grow(box, [5] * ndim)
+            ghost_box = boxm.grow(box, [GHOST_NBR] * ndim)
             origin = box.lower * lvl_cell_width
-            layout = GridLayout(box, origin, lvl_cell_width, interp_order)
+            layout = GridLayout(box, origin, lvl_cell_width, interp_order, field_ghosts_nbr=GHOST_NBR)
 
             datas = {
                 qty: globals()[qty](ghost_box, layout, domain_size)

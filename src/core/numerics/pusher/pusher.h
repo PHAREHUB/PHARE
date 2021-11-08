@@ -60,12 +60,21 @@ namespace core
          * This overload is typically used to push particles outside the domain, like
          * ghost particles.
          */
-        virtual ParticleIterator // decltype(std::declval<ParticleRange>().end())
+        virtual ParticleIterator
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
              GridLayout const& layout)
             = 0;
 
+        /** this overload of move() is used for particles for which one knows that
+         *   they will not need a boundary condition treatment and require two selectors for
+         *   distinguishing between different sets of particles during different phases
+         */
+        virtual ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
+                                      Electromag const& emFields, double mass,
+                                      Interpolator& interpolator, ParticleSelector const&,
+                                      ParticleSelector const&, GridLayout const& layout)
+            = 0;
 
         /**
          * @brief setMeshAndTimeStep allows to let the pusher know what is the mesh

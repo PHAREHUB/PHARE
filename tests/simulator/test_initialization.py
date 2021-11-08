@@ -15,23 +15,12 @@ from pyphare.core.box import nDBox
 import numpy as np
 import unittest
 from ddt import ddt, data, unpack
+from tests.simulator import SimulatorTest
 
-
-from datetime import datetime
 
 
 @ddt
-class InitializationTest(unittest.TestCase):
-
-    def datetime_now(self):
-        return datetime.now()
-
-    def datetime_diff(self, then):
-        return (datetime.now() - then).total_seconds()
-
-
-    def ddt_test_id(self):
-        return self._testMethodName.split("_")[-1]
+class InitializationTest(SimulatorTest):
 
 
     def _density(*xyz):
@@ -44,11 +33,10 @@ class InitializationTest(unittest.TestCase):
 
     def getHierarchy(self, interp_order, refinement_boxes, qty,
                      diag_outputs, nbr_part_per_cell=100,
-                     density = _density,
+                     density = _density, extra_diag_options={},
                      beam = False, time_step_nbr=1,
                      smallest_patch_size=None, largest_patch_size=10,
-                     cells=120,
-                     dl=0.1, ndim=1):
+                     cells=120, dl=0.1, ndim=1):
         diag_outputs = f"phare_outputs/init/{diag_outputs}"
         from pyphare.pharein import global_vars
         global_vars.sim =None
@@ -57,6 +45,9 @@ class InitializationTest(unittest.TestCase):
             from pyphare.pharein.simulation import check_patch_size
             _, smallest_patch_size = check_patch_size(ndim, interp_order=interp_order, cells=cells)
 
+        extra_diag_options["mode"] = "overwrite"
+        extra_diag_options["dir"]  = diag_outputs
+        self.register_diag_dir_for_cleanup(diag_outputs)
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
@@ -68,7 +59,7 @@ class InitializationTest(unittest.TestCase):
             interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5",
-                          "options": {"dir": diag_outputs, "mode":"overwrite"}},
+                          "options": extra_diag_options},
             strict=True,
         )
 
@@ -369,6 +360,12 @@ class InitializationTest(unittest.TestCase):
 
 
     def _test_density_is_as_provided_by_user(self, dim, interp_order):
+
+        empirical_dim_devs = {
+              1: 6e-3,
+              2: 3e-2,
+        }
+
         nbParts = {1 : 10000, 2: 1000}
         print("test_density_is_as_provided_by_user : interp_order : {}".format(interp_order))
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}},
@@ -403,15 +400,6 @@ class InitializationTest(unittest.TestCase):
                     beam_actual    = beam_density[nbrGhosts:-nbrGhosts]
                     protons_actual = proton_density[nbrGhosts:-nbrGhosts]
 
-                    names    = ("ions", "protons", "beam")
-                    expected = (ion_expected, protons_expected, beam_expected)
-                    actual   = (ion_actual, protons_actual, beam_actual)
-                    devs = {name:np.std(expected-actual) for name, expected, actual in zip(names, expected, actual)}
-
-                    for name,dev in devs.items():
-                        print("sigma(user density - {} density) = {}".format(name, dev))
-                        self.assertTrue(dev < 6e-3, '{} has dev = {}'.format(name, dev))  # empirical value obtained from test prints
-
                 if dim == 2:
                     y   = patch.patch_datas["rho"].y
                     xx, yy = np.meshgrid(x, y, indexing="ij")
@@ -427,14 +415,15 @@ class InitializationTest(unittest.TestCase):
                     beam_actual    = beam_density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
                     protons_actual = proton_density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
 
-                    names    = ("ions", "protons", "beam")
-                    expected = (ion_expected, protons_expected, beam_expected)
-                    actual   = (ion_actual, protons_actual, beam_actual)
-                    devs = {name:np.std(expected-actual) for name, expected, actual in zip(names, expected, actual)}
 
-                    for name,dev in devs.items():
-                        print("sigma(user density - {} density) = {}".format(name, dev))
-                        self.assertLess(dev, 3e-2, '{} has dev = {}'.format(name, dev))  # empirical value obtained from test prints
+                names    = ("ions", "protons", "beam")
+                expected = (ion_expected, protons_expected, beam_expected)
+                actual   = (ion_actual, protons_actual, beam_actual)
+                devs = {name:np.std(expected-actual) for name, expected, actual in zip(names, expected, actual)}
+
+                for name, dev in devs.items():
+                    print(f"sigma(user density - {name} density) = {dev}")
+                    self.assertLess(dev, empirical_dim_devs[dim], f'{name} has dev = {dev}')
 
 
 

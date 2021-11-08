@@ -9,7 +9,6 @@ from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, E
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import Simulation, supported_dimensions
 from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
-from pyphare.core.gridlayout import yee_element_is_primal
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 import pyphare.core.box as boxm
 from pyphare.core.box import Box
@@ -17,25 +16,10 @@ import numpy as np
 import unittest
 from ddt import ddt, data, unpack
 from tests.diagnostic import all_timestamps
-from tests.simulator import diff_boxes
+from tests.simulator import diff_boxes, SimulatorTest
 
 @ddt
-class AdvanceTestBase(unittest.TestCase):
-    def pop(kwargs):
-        keys = ["rethrow"]
-        for key in keys:
-            if key in kwargs:
-                kwargs.pop(key)
-        return kwargs
-
-    def __init__(self, *args, **kwargs):
-        super(AdvanceTestBase, self).__init__(*args, **AdvanceTestBase.pop(kwargs.copy()))
-        self.rethrow_ = True
-        if "rethrow" in kwargs:
-            self.rethrow_ = kwargs["rethrow"]
-
-    def ddt_test_id(self):
-        return self._testMethodName.split("_")[-1]
+class AdvanceTestBase(SimulatorTest):
 
 
     def _density(*xyz):
@@ -43,7 +27,6 @@ class AdvanceTestBase(unittest.TestCase):
         hL = np.array(sim.simulation_domain()) / 2
         _ = lambda i: -(xyz[i]-hL[i]) ** 2
         return .3 + np.exp(sum([_(i) for i,v in enumerate(xyz)]))
-
 
 
     def getHierarchy(self, interp_order, refinement_boxes, qty,
@@ -54,14 +37,14 @@ class AdvanceTestBase(unittest.TestCase):
         diag_outputs = f"phare_outputs/advance/{diag_outputs}"
         from pyphare.pharein import global_vars
         global_vars.sim = None
-
         if smallest_patch_size is None:
             from pyphare.pharein.simulation import check_patch_size
             _, smallest_patch_size = check_patch_size(ndim, interp_order=interp_order, cells=cells)
 
         startMPI()
         extra_diag_options["mode"] = "overwrite"
-        extra_diag_options["dir"] = diag_outputs
+        extra_diag_options["dir"]  = diag_outputs
+        self.register_diag_dir_for_cleanup(diag_outputs)
         Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
@@ -76,6 +59,7 @@ class AdvanceTestBase(unittest.TestCase):
                           "options": extra_diag_options},
             strict=True,
         )
+
 
 
         def S(x,x0,l):
@@ -527,6 +511,7 @@ class AdvanceTestBase(unittest.TestCase):
         import random
         rando = random.randint(0, 1e10)
 
+
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(interp_order, boxes, "eb", cells=30,
                 time_step_nbr=1, largest_patch_size=15,
@@ -538,6 +523,7 @@ class AdvanceTestBase(unittest.TestCase):
         L0L1_datahier = _getHier(
           f"phare_lvl_ghost_interpolation_L0L1_diags/{ndim}/{interp_order}/{self.ddt_test_id()}", refinement_boxes
         )
+
         quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
         checks = self.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier, quantities)
         self.assertGreater(checks, len(refinement_boxes["L0"]) * len(quantities))

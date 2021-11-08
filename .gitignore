@@ -13,4 +13,6 @@ data_out
 compile_commands.json
 .clangd
 phare_outputs*
+CMakeLists.txt.user
 .log
+
