@@ -17,7 +17,7 @@ option(testMPI "Run tests in parallel with mpiriun" OFF)
 # Configures all tests to run via "mpirun -n $PHARE_MPI_PROCS"
 # PHARE_MPI_PROCS is a cmake argument which if unset default is "2"
 
-# -Dtest=ON
+# -Dcoverage=ON
 option(coverage "Generate coverage" OFF)
 # Enables coverage and generation of coverage from tests via gcovr
 
@@ -108,6 +108,7 @@ function(print_phare_options)
     message("PHARE_BASE_LIBS                             : " ${PHARE_BASE_LIBS})
     message("Exclude heavier tests                       : " ${lowResourceTests})
     message("PHARE_MPI_PROCS                             : " ${PHARE_MPI_PROCS})
+    message("Selected Compiler                           : " ${CMAKE_CXX_COMPILER_ID})
   endif()
 
 endfunction(print_phare_options)
