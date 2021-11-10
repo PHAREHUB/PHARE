@@ -43,17 +43,11 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     {
         for (auto iCell = 0u, ix = start; iCell <= endCell; ++ix, ++iCell)
         {
-            auto Byavgm2 = 0.2 * (By(ix - 4) + By(ix - 3) + By(ix - 2) + By(ix - 1) + By(ix));
-            auto Byavgm1 = 0.2 * (By(ix - 3) + By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1));
             auto Byavg   = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
             auto Byavgp1 = 0.2 * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
-            auto Byavgp2 = 0.2 * (By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3) + By(ix + 4));
 
-            auto Bzavgm2 = 0.2 * (Bz(ix - 4) + Bz(ix - 3) + Bz(ix - 2) + Bz(ix - 1) + Bz(ix));
-            auto Bzavgm1 = 0.2 * (Bz(ix - 3) + Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1));
             auto Bzavg   = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
             auto Bzavgp1 = 0.2 * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
-            auto Bzavgp2 = 0.2 * (Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3) + Bz(ix + 4));
 
             auto Navgp1 = 0.2 * (N(ix - 1) + N(ix) + N(ix + 1) + N(ix + 2) + N(ix + 3));
             auto Navg   = 0.2 * (N(ix - 2) + N(ix - 1) + N(ix) + N(ix + 1) + N(ix + 2));
