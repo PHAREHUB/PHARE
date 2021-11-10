@@ -234,3 +234,11 @@ PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
 
 
 } // namespace PHARE::pydata
+
+
+// https://stackoverflow.com/a/51061314/795574
+// ASAN detects leaks by default, even in system/third party libraries
+const char* __asan_default_options()
+{
+    return "detect_leaks=0";
+}
