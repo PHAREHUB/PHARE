@@ -43,15 +43,27 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     {
         for (auto iCell = 0u, ix = start; iCell <= endCell; ++ix, ++iCell)
         {
-            auto Byavg   = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
-            auto Byavgp1 = 0.2 * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
+            double Byavgp1, Bzavgp1, Navgp1;
+            double Byavg, Bzavg, Navg;
 
-            auto Bzavg   = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
-            auto Bzavgp1 = 0.2 * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
-
-            auto Navgp1 = 0.2 * (N(ix - 1) + N(ix) + N(ix + 1) + N(ix + 2) + N(ix + 3));
-            auto Navg   = 0.2 * (N(ix - 2) + N(ix - 1) + N(ix) + N(ix + 1) + N(ix + 2));
-
+            if (iCell < endCell)
+            {
+                Byavg   = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
+                Bzavg   = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
+                Navg    = 0.2 * (N(ix - 2) + N(ix - 1) + N(ix) + N(ix + 1) + N(ix + 2));
+                Byavgp1 = 0.2 * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
+                Bzavgp1 = 0.2 * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
+                Navgp1  = 0.2 * (N(ix - 1) + N(ix) + N(ix + 1) + N(ix + 2) + N(ix + 3));
+            }
+            else
+            {
+                Byavg   = 1. / 3. * (By(ix - 1) + By(ix) + By(ix + 1));
+                Bzavg   = 1. / 3. * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1));
+                Navg    = 1. / 3. * (N(ix - 1) + N(ix) + N(ix + 1));
+                Byavgp1 = 1. / 3. * (By(ix) + By(ix + 1) + By(ix + 2));
+                Bzavgp1 = 1. / 3. * (Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
+                Navgp1  = 1. / 3. * (N(ix) + N(ix + 1) + N(ix + 2));
+            }
             auto criter_by = std::abs(Byavgp1 - Byavg) / (1 + std::abs(Byavg));
             auto criter_bz = std::abs(Bzavgp1 - Bzavg) / (1 + std::abs(Bzavg));
             auto criter_b  = std::sqrt(criter_by * criter_by + criter_bz * criter_bz);
