@@ -64,7 +64,7 @@ namespace amr
 
 
 
-        bool computeDataLivesOnPatchBorder_(PhysicalQuantity qty)
+        bool static computeDataLivesOnPatchBorder_(PhysicalQuantity qty)
         {
             auto const& centering = GridLayoutT::centering(qty);
 

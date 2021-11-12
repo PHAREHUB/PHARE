@@ -60,7 +60,7 @@ private:
 template<std::size_t _dimension>
 class DimHierarchy : public Hierarchy
 {
-    auto shapeToBox(std::array<int, _dimension> const domainBoxShape)
+    auto static shapeToBox(std::array<int, _dimension> const domainBoxShape)
     {
         auto box = domainBoxShape;
         std::for_each(std::begin(box), std::end(box), [](auto& v) { v--; });

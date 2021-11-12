@@ -52,7 +52,7 @@ function(phare_sanitize_ san cflags )
 endfunction(phare_sanitize_)
 
 if (asan)   # -Dasan=ON
-  phare_sanitize_("-fsanitize=address" "-fno-omit-frame-pointer" )
+  phare_sanitize_("-fsanitize=address -shared-libsan" "-fno-omit-frame-pointer" )
 endif(asan)
 
 if (ubsan)  # -Dubsan=ON

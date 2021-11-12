@@ -19,7 +19,7 @@ public:
 
     bool any() { return errors.size() > 0; }
 
-    void log(std::string const& key, std::string const& val)
+    void log(std::string const key, std::string const val)
     {
         if (!errors.count(key))
         {
@@ -29,8 +29,6 @@ public:
         }
         error_count[key] = error_count[key] + 1;
     }
-
-    void log(std::string&& key, std::string&& val) { log(key, val); }
 
 
 private:
