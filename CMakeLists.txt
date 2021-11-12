@@ -53,7 +53,5 @@ add_subdirectory(src/python3)
 add_subdirectory(src/phare)
 #*******************************************************************************
 
-#* Documentation option
-include("${PHARE_PROJECT_DIR}/res/cmake/doc.cmake")
 
 print_phare_options()
