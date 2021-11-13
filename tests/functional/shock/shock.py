@@ -141,6 +141,7 @@ def config(interp_order):
 
 
 def main():
+    import os
     import subprocess
     import glob
     import shlex
@@ -167,7 +168,7 @@ def main():
                 ax.set_xlim((0,250))
                 fig.savefig("shock_{}/shock_By_{}_{:04d}.png".format(interp_order, interp_order, it))
                 plt.close(fig)
-            cmd = shlex.split('ffmpeg -r 10 -y -i shock_By_{}_%04d.png -c:v libx264 -crf 0 shock_interp{}.mp4'.format(interp_order, interp_order))
+            cmd = shlex.split("ffmpeg -r 10 -y -pattern_type glob -i 'shock_{}/shock_By_{}_*.png' -c:v libx264 -crf 0 shock_interp{}.mp4".format(interp_order, interp_order, interp_order))
             subprocess.call(cmd)
 
         gv.sim = None
