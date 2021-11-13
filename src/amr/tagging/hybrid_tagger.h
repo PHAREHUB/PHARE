@@ -93,8 +93,6 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
                 for (auto iTag_y = 0u; iTag_y < nbrCells[1]; ++iTag_y)
                 {
                     tagsv(iTag_x, iTag_y) = tagsvF(iTag_x, iTag_y);
-                    std::cout << "debugModel : " << iTag_x << "," << iTag_y
-                              << ") =" << tagsv(iTag_x, iTag_y) << "\n";
                 }
             }
         }
