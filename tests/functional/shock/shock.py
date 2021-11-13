@@ -146,7 +146,7 @@ def main():
     import shlex
     for interp_order in (1,2,3):
         config(interp_order)
-        #Simulator(gv.sim).run()
+        Simulator(gv.sim).run()
 
         if cpp.mpi_rank() == 0:
             from pyphare.pharein.global_vars import sim
