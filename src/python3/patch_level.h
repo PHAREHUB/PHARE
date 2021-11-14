@@ -12,7 +12,7 @@
 namespace PHARE::pydata
 {
 template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
-class PatchLevel
+class __attribute__((visibility("hidden"))) PatchLevel
 {
 public:
     static constexpr std::size_t dimension     = dim;

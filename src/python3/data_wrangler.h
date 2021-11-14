@@ -22,7 +22,7 @@
 namespace PHARE::pydata
 {
 template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
-class SimulatorCaster
+class __attribute__((visibility("hidden"))) SimulatorCaster
 {
 public:
     using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart>;
@@ -58,7 +58,7 @@ private:
 
 
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-class DataWrangler
+class __attribute__((visibility("hidden"))) DataWrangler
 {
 public:
     static constexpr std::size_t dimension     = _dimension;

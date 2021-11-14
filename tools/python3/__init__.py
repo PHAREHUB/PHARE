@@ -13,8 +13,11 @@ def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwa
     try:
         return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check, **kwargs)
     except subprocess.CalledProcessError as e: # only triggers on failure if check=True
-        print(f"run failed with error: {e}\n\t{e.stdout}\n\t{e.stderr} ")
-        raise RuntimeError(decode_bytes(e.stderr))
+        what = f"run failed with error: {e}"
+        print(what)
+        if capture_output:
+            raise RuntimeError(decode_bytes(e.stderr))
+        raise RuntimeError(what)
 
 def run_mp(cmds, N_CORES=None, **kwargs):
     """

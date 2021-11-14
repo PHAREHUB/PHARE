@@ -2,11 +2,12 @@
 #ifndef PHARE_PHARE_INCLUDE_H
 #define PHARE_PHARE_INCLUDE_H
 
-#include "simulator/simulator.h"
-#include "core/utilities/algorithm.h"
-
 #include <memory>
 #include <iostream>
+
+#include "simulator/simulator.h"
+#include "core/utilities/algorithm.h"
+#include "initializer/python_data_provider.h"
 
 namespace PHARE
 {
@@ -52,6 +53,29 @@ public:
     }
 };
 
+
+
+std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
+{
+    using dataProvider [[maybe_unused]] = std::unique_ptr<PHARE::initializer::DataProvider>;
+
+    switch (argc)
+    {
+        case 1: return nullptr;
+        case 2:
+            std::string arg = argv[1];
+            auto moduleName = arg.substr(0, arg.find_last_of("."));
+            if (arg.substr(arg.find_last_of(".") + 1) == "py")
+            {
+                std::replace(moduleName.begin(), moduleName.end(), '/', '.');
+                std::cout << "python input detected, building with python provider...\n";
+                return std::make_unique<PHARE::initializer::PythonDataProvider>(moduleName);
+            }
+
+            break;
+    }
+    return nullptr;
+}
 
 } // namespace PHARE
 

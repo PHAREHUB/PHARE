@@ -15,4 +15,6 @@ compile_commands.json
 phare_outputs*
 CMakeLists.txt.user
 .log
-
+.cmake.*
+perf.data
+tools/bench/functional/generated

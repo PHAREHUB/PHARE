@@ -15,6 +15,7 @@ set(PYBIND11_CPP_STANDARD -std=c++17)
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_CPP} ${SOURCE_INC})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PHARE_BASE_LIBS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
 
@@ -24,7 +25,7 @@ target_include_directories(${PROJECT_NAME}  PUBLIC
 
 # this is the python module that wraps the add() method
 pybind11_add_module(dictator dictator.cpp)
-target_link_libraries(dictator PUBLIC phare_initializer pybind11::embed)
+target_link_libraries(dictator PUBLIC phare_initializer pybind11::embed ${PHARE_BASE_LIBS})
 set_property(TARGET dictator PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_target_properties(dictator
     PROPERTIES

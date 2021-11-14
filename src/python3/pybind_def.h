@@ -35,7 +35,7 @@ std::size_t ndSize(PyArrayInfo const& ar_info)
 
 
 template<typename T>
-class PyArrayWrapper : public core::Span<T>
+class __attribute__((visibility("hidden"))) PyArrayWrapper : public core::Span<T>
 {
 public:
     PyArrayWrapper(PHARE::pydata::py_array_t<T> const& array)
