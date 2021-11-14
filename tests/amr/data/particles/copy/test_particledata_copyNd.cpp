@@ -93,7 +93,7 @@ TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoGhostForDomainSrcOver
 
 
 TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoDomainDestForDomainOverlapCells)
-{ // this test makes no sense
+{
     static constexpr auto dim = TypeParam{}();
 
     // this set of particles is in the domain of the source patchdata
