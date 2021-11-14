@@ -246,10 +246,14 @@ namespace amr
             // already fill the patch ghost box from the neighbor interior box.
             // so ghost nodes are already filled .
 
+            PHARE_LOG_START("hybhybmessengerStrat::initLevel : interior part fill schedule");
             interiorParticles_.fill(levelNumber, initDataTime);
+            PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : interior part fill schedule");
             // however we need to call the ghost communicator for patch ghost particles
             // since the interior schedules have a restriction to the interior of the patch.
+            PHARE_LOG_START("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
             patchGhostParticles_.fill(levelNumber, initDataTime);
+            PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
 
 
             levelGhostParticlesOld_.fill(levelNumber, initDataTime);

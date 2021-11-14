@@ -32,6 +32,7 @@ public:
     }
 
     std::size_t size() const { return particles.size(); }
+    std::size_t capacity() const { return particles.capacity(); }
 
     void clear() { return particles.clear(); }
     void reserve(std::size_t newSize) { return particles.reserve(newSize); }
