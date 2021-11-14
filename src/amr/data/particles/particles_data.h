@@ -1,6 +1,7 @@
 #ifndef PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_H
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_H
 
+#include <cstddef>
 #include <numeric>
 #include <stdexcept>
 
@@ -433,6 +434,9 @@ namespace amr
             // if it is, is it in my domain box ?
             //      - if so, let's add it to my domain particle array
             //      - if not, let's add it to my ghost particle array
+            std::cout << "size of particle arrays...\n";
+            std::size_t domainSize     = domainParticles.size();
+            std::size_t patchGhostSize = patchGhostParticles.size();
             for (auto const& sourceParticlesArray : particlesArrays)
             {
                 for (auto const& particle : *sourceParticlesArray)
@@ -441,15 +445,44 @@ namespace amr
                     {
                         if (isInBox(myDomainBox, particle))
                         {
-                            domainParticles.push_back(particle);
+                            domainSize++;
                         }
                         else
                         {
-                            patchGhostParticles.push_back(particle);
+                            patchGhostSize++;
                         }
                     }
                 }
             }
+            std::cout << "domain size : " << domainParticles.size() << "\n";
+            std::cout << "patchGhost size : " << patchGhostParticles.size() << "\n";
+            domainParticles.resize(domainSize);
+            patchGhostParticles.resize(patchGhostSize);
+            std::cout << "domain size after resize : " << domainParticles.size() << "\n";
+            std::cout << "patchGhost size after resize : " << patchGhostParticles.size() << "\n";
+            for (auto const& sourceParticlesArray : particlesArrays)
+            {
+                for (auto const& particle : *sourceParticlesArray)
+                {
+                    if (isInBox(intersectionBox, particle))
+                    {
+                        if (isInBox(myDomainBox, particle))
+                        {
+                            PHARE_LOG_START("copy patch ghost pushback");
+                            domainParticles.push_back(particle);
+                            PHARE_LOG_STOP("copy patch ghost pushback");
+                        }
+                        else
+                        {
+                            PHARE_LOG_START("copy patch ghost pushback");
+                            patchGhostParticles.push_back(particle);
+                            PHARE_LOG_STOP("copy patch ghost pushback");
+                        }
+                    }
+                }
+            }
+            std::cout << "domain size after pushbacks : " << domainParticles.size() << "\n";
+            std::cout << "patchGhost size after pushbacks : " << patchGhostParticles.size() << "\n";
         }
 
 
