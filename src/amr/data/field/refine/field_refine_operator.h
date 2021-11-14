@@ -61,7 +61,7 @@ namespace amr
         int getOperatorPriority() const override { return 0; }
 
         /**
-         * @brief This operator need to have at least 1 ghost cell to work properly
+         * @brief This operator needs to have at least 1 ghost cell to work properly
          *
          */
         SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override

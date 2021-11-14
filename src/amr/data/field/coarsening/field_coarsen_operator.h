@@ -28,10 +28,12 @@ namespace amr
      */
     class FieldCoarsenOperator : public SAMRAI::hier::CoarsenOperator
     {
+        static constexpr std::size_t n_ghosts
+            = GridLayoutT::template nbrGhosts<core::QtyCentering, core::QtyCentering::dual>();
+
     public:
         static constexpr std::size_t dimension = GridLayoutT::dimension;
-        static constexpr std::size_t maxRafinement{10};
-        using FieldDataT = FieldData<GridLayoutT, FieldT>;
+        using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
 
         FieldCoarsenOperator()
             : SAMRAI::hier::CoarsenOperator("FieldDataCoarsenOperator")
@@ -69,7 +71,7 @@ namespace amr
          */
         SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
         {
-            return SAMRAI::hier::IntVector{dim, maxRafinement / 2};
+            return SAMRAI::hier::IntVector{dim, 2};
         }
 
 

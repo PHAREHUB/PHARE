@@ -553,6 +553,18 @@ namespace core
             return nbrPrimalGhosts_();
         }
 
+
+        template<typename Centering, Centering centering>
+        auto static constexpr nbrGhosts()
+        {
+            if constexpr (centering == QtyCentering::dual)
+                return nbrDualGhosts_();
+            else
+                return nbrPrimalGhosts_();
+        }
+
+
+
         template<typename Quantity>
         auto static nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
