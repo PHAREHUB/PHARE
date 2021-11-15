@@ -434,38 +434,7 @@ namespace amr
             // if it is, is it in my domain box ?
             //      - if so, let's add it to my domain particle array
             //      - if not, let's add it to my ghost particle array
-            std::cout << "size of particle arrays...\n";
-            std::size_t domainSize     = domainParticles.capacity();
-            std::size_t patchGhostSize = patchGhostParticles.capacity();
-            PHARE_LOG_START("count loop");
-            for (auto const& sourceParticlesArray : particlesArrays)
-            {
-                for (auto const& particle : *sourceParticlesArray)
-                {
-                    if (isInBox(intersectionBox, particle))
-                    {
-                        if (isInBox(myDomainBox, particle))
-                        {
-                            domainSize++;
-                        }
-                        else
-                        {
-                            patchGhostSize++;
-                        }
-                    }
-                }
-            }
-            PHARE_LOG_STOP("count loop");
-            std::cout << "domain size : " << domainParticles.capacity() << "\n";
-            std::cout << "patchGhost size : " << patchGhostParticles.capacity() << "\n";
-            // domainParticles.reserve(domainSize);
-            // patchGhostParticles.reserve(patchGhostSize);
-            std::cout << "domain size after resize : " << domainParticles.capacity() << "\n";
-            std::cout << "patchGhost size after resize : " << patchGhostParticles.capacity()
-                      << "\n";
             PHARE_LOG_START("copy loop");
-            auto lastDomain     = domainParticles.end();
-            auto lastPatchGhost = patchGhostParticles.end();
             for (auto const& sourceParticlesArray : particlesArrays)
             {
                 for (auto const& particle : *sourceParticlesArray)
@@ -488,8 +457,6 @@ namespace amr
                 }
             }
             PHARE_LOG_STOP("copy loop");
-            std::cout << "domain size after pushbacks : " << domainParticles.size() << "\n";
-            std::cout << "patchGhost size after pushbacks : " << patchGhostParticles.size() << "\n";
         }
 
 
