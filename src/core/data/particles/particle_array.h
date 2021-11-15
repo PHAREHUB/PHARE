@@ -65,6 +65,7 @@ public:
 
     Particle_t& emplace_back() { return particles.emplace_back(); }
     Particle_t& emplace_back(Particle_t&& p) { return particles.emplace_back(p); }
+    Particle_t& emplace_back(Particle_t const& p) { return particles.emplace_back(p); }
 
     void push_back(Particle_t const& p) { particles.push_back(p); }
     void push_back(Particle_t&& p) { particles.push_back(p); }

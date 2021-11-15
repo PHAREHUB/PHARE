@@ -64,18 +64,9 @@ TYPED_TEST(AParticlesDataND, copiesSourceGhostParticleIntoDomainForGhostSrcOverD
 
     // particle is in the first ghost of the source patchdata
     // and in domain of the destination patchdata
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{2}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{2, 2}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{2, 2, 2}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(2);
+
     this->sourceData.patchGhostParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
@@ -90,18 +81,9 @@ TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoGhostForDomainSrcOver
 
     // particle is in the domain of the source patchdata
     // and in first ghost of the destination patchdata
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{6}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{6, 6}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{6, 6, 6}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(6);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
@@ -118,18 +100,7 @@ TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoDomainDestForDomainOv
     // and in domain of the destination patchdata
     for (auto iCell = 3; iCell <= 5; ++iCell)
     {
-        if constexpr (dim == 1)
-        {
-            this->particle.iCell = {{iCell}};
-        }
-        else if constexpr (dim == 2)
-        {
-            this->particle.iCell = {{iCell, iCell}};
-        }
-        else if constexpr (dim == 3)
-        {
-            this->particle.iCell = {{iCell, iCell, iCell}};
-        }
+        this->particle.iCell = ConstArray<int, dim>(iCell);
 
         this->sourceData.domainParticles.push_back(this->particle);
         this->destData.copy(this->sourceData);
@@ -151,18 +122,9 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
 
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{3}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{3, 3}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{3, 3, 3}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(3);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
@@ -181,18 +143,9 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
 
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{6}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{6, 6}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{6, 6, 6}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(6);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
@@ -237,21 +190,17 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // particle is in the first ghost of the source patchdata
     // and in domain of the destination patchdata
     // and also in the overlap
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{2}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{2, 2}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{2, 2, 2}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(2);
+
     this->sourceData.patchGhostParticles.push_back(this->particle);
+    EXPECT_THAT(this->sourceData.domainParticles.size(), Eq(0));
+    EXPECT_THAT(this->sourceData.patchGhostParticles.size(), Eq(1));
+
+    EXPECT_THAT(this->destData.domainParticles.size(), Eq(0));
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
+
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
 
     this->sourceData.domainParticles.clear();
@@ -262,18 +211,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
     // and also in the overlap
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{3}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{3, 3}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{3, 3, 3}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(3);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     this->particle.iCell = {{6}};
@@ -288,18 +228,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
     // and also in the overlap
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{6}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{6, 6}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{6, 6, 6}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(6);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(1));
@@ -313,18 +244,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // particle is in the domain of the source patchdata
     // and in the domain of the destination patchdata
     // but not in the overlap... should not be copied in dest
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{4}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{4, 4}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{4, 4, 4}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(4);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
@@ -354,18 +276,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // particle is in the first ghost of the source patchdata
     // and in domain of the destination patchdata
     // and also in the overlap
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{4}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{4, 4}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{4, 4, 4}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(4);
+
     this->sourceData.patchGhostParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
@@ -380,18 +293,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
     // and also in the overlap
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{7}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{7, 7}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{7, 7, 7}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(7);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
@@ -406,18 +310,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
     // and also in the overlap
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{8}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{8, 8}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{8, 8, 8}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(8);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(1));
@@ -432,18 +327,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // particle is in the domain of the source patchdata
     // and in the domain of the destination patchdata
     // but not in the overlap... should not be copied in dest
-    if constexpr (dim == 1)
-    {
-        this->particle.iCell = {{6}};
-    }
-    else if constexpr (dim == 2)
-    {
-        this->particle.iCell = {{6, 6}};
-    }
-    else if constexpr (dim == 3)
-    {
-        this->particle.iCell = {{6, 6, 6}};
-    }
+
+    this->particle.iCell = ConstArray<int, dim>(6);
+
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(0));
