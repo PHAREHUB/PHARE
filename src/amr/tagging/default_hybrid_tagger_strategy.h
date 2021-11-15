@@ -85,6 +85,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
         // for interp order 2 and 3 this is ok
         auto constexpr doLastCell = gridlayout_type::nbrGhosts() > 2;
         std::size_t oneOrZero     = doLastCell ? 1 : 0;
+        oneOrZero                 = 0;
         for (auto iTag_x = 0u, ix = start_x; iTag_x < endCell_x + oneOrZero; ++ix, ++iTag_x)
         {
             for (auto iTag_y = 0u, iy = start_y; iTag_y < endCell_y + oneOrZero; ++iy, ++iTag_y)
@@ -145,6 +146,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
                 }
             }
         }
+        tagsv(endCell_x, endCell_y) = 0;
     }
 }
 } // namespace PHARE::amr

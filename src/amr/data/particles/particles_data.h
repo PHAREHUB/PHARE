@@ -458,8 +458,8 @@ namespace amr
             PHARE_LOG_STOP("count loop");
             std::cout << "domain size : " << domainParticles.capacity() << "\n";
             std::cout << "patchGhost size : " << patchGhostParticles.capacity() << "\n";
-            domainParticles.reserve(domainSize);
-            patchGhostParticles.reserve(patchGhostSize);
+            // domainParticles.reserve(domainSize);
+            // patchGhostParticles.reserve(patchGhostSize);
             std::cout << "domain size after resize : " << domainParticles.capacity() << "\n";
             std::cout << "patchGhost size after resize : " << patchGhostParticles.capacity()
                       << "\n";
