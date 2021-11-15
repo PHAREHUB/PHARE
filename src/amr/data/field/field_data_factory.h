@@ -23,6 +23,9 @@ namespace amr
      */
     class FieldDataFactory : public SAMRAI::hier::PatchDataFactory
     {
+        static constexpr std::size_t n_ghosts
+            = GridLayoutT::template nbrGhosts<core::QtyCentering, core::QtyCentering::dual>();
+
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
@@ -31,7 +34,7 @@ namespace amr
         FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
                          std::string const& name, PhysicalQuantity qty)
             : SAMRAI::hier::PatchDataFactory(
-                SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), 5})
+                SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), n_ghosts})
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{dataLivesOnPatchBorder}
             , quantity_{qty}
@@ -69,8 +72,8 @@ namespace amr
             // We finally make the FieldData with the correct parameter
 
             return std::make_shared<FieldData<GridLayoutT, FieldImpl>>(
-                domain, SAMRAI::hier::IntVector{dim, 5}, name_, layoutFromPatch<GridLayoutT>(patch),
-                quantity_);
+                domain, SAMRAI::hier::IntVector{dim, n_ghosts}, name_,
+                layoutFromPatch<GridLayoutT>(patch), quantity_);
         }
 
 
