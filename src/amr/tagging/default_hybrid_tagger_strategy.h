@@ -146,7 +146,14 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
                 }
             }
         }
-        tagsv(endCell_x, endCell_y) = 0;
+        for (auto iTag_x = 0u; iTag_x <= endCell_x; ++iTag_x)
+        {
+            tagsv(iTag_x, endCell_y) = tagsv(iTag_x, endCell_y - 1);
+        }
+        for (auto iTag_y = 0u; iTag_y <= endCell_y; ++iTag_y)
+        {
+            tagsv(endCell_x, iTag_y) = tagsv(endCell_x - 1, iTag_y);
+        }
     }
 }
 } // namespace PHARE::amr
