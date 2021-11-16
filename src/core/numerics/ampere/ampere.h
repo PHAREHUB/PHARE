@@ -19,12 +19,14 @@ class Ampere : public LayoutHolder<GridLayout>
     using LayoutHolder<GridLayout>::layout_;
 
 public:
-    template<typename VecField>
-    void operator()(VecField const& B, VecField& J)
+    template<typename VecField, typename... Boxes>
+    void operator()(VecField const& B, VecField& J, Boxes&... boxes)
     {
         if (!this->hasLayout())
             throw std::runtime_error(
                 "Error - Ampere - GridLayout not set, cannot proceed to calculate ampere()");
+
+        auto const& [b0, b1, b2] = std::forward_as_tuple(boxes...);
 
         // can't use structured bindings because
         //   "reference to local binding declared in enclosing function"
@@ -32,10 +34,29 @@ public:
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);
 
-        layout_->evalOnBox(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
-        layout_->evalOnBox(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
-        layout_->evalOnBox(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
+        layout_->evalOnBox(b0, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
+        layout_->evalOnBox(b1, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
+        layout_->evalOnBox(b2, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
     }
+
+    template<typename VecField>
+    void operator()(VecField const& B, VecField& J)
+    {
+        auto const& [Jx, Jy, Jz] = J();
+
+        (*this)(B, J, Jx, Jy, Jz);
+    }
+
+    template<typename VecField, typename Box>
+    static void op(GridLayout& layout, VecField const& B, VecField& J,
+                   std::array<Box, 3> const& boxes)
+    {
+        Ampere self;
+        self.setLayout(&layout);
+        self(B, J, boxes[0], boxes[1], boxes[2]);
+    }
+
+
 
 private:
     template<typename VecField, typename Field, typename... Indexes>

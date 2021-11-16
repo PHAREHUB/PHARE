@@ -31,10 +31,15 @@ if (bench)
   endif()
 
   function(add_phare_cpp_benchmark_ exec_level target file directory)
-    add_executable(${target} ${file})
+    string (REPLACE ";" " " FILES "${ARGN}")
+    add_executable(${target} ${FILES} ${file})
     target_compile_options(${target} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
     set_property(TARGET ${target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
-    target_include_directories(${target} PUBLIC ${PHARE_PROJECT_DIR}/subprojects/googlebench/include)
+    target_include_directories(${target} PRIVATE
+        ${PHARE_PROJECT_DIR}/src
+        ${PHARE_PROJECT_DIR}/tools
+        ${PHARE_PROJECT_DIR}/subprojects/googlebench/include
+    )
     add_phare_test(${target} ${directory}) # using this function means benchmarks can be run with MPI, not sure this is good.
   endfunction(add_phare_cpp_benchmark_)
 
@@ -48,6 +53,8 @@ if (bench)
 
   add_subdirectory(tools/bench/core/data/particles)
   add_subdirectory(tools/bench/core/numerics/pusher)
+
+  add_subdirectory(tools/bench/amr/solver)
 
   add_subdirectory(tools/bench/hi5)
 

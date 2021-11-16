@@ -44,7 +44,7 @@ namespace core
     };
 
     template<typename Iterator>
-    Range<Iterator> makeRange(Iterator&& begin, Iterator&& last)
+    Range<Iterator> makeRange(Iterator begin, Iterator last)
     {
         return Range<Iterator>{std::forward<Iterator>(begin), std::forward<Iterator>(last)};
     }

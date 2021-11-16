@@ -226,4 +226,87 @@ namespace core
 } // namespace PHARE
 
 
+
+namespace PHARE::core
+{
+template<typename Container, typename Multiplies = typename Container::value_type>
+Multiplies product(Container const& container, Multiplies mul = 1)
+{
+    // std accumulate doesn't exist on GPU
+    for (auto const& v : container)
+        mul *= v;
+    return mul;
+}
+
+template<typename Container, typename Return = typename Container::value_type>
+Return sum(Container const& container, Return r = 0)
+{
+    return std::accumulate(container.begin(), container.end(), r);
+}
+
+
+template<typename Type>
+auto& deref(Type& type)
+{
+    if constexpr (std::is_pointer_v<Type>)
+        return *type;
+    else
+        return type;
+}
+
+
+template<typename F>
+auto generate(F&& f, std::size_t count)
+{
+    using value_type = std::decay_t<std::result_of_t<F const&(std::size_t const&)>>;
+    std::vector<value_type> v;
+    if (count > 0)
+        v.reserve(count);
+    for (std::size_t i = 0; i < count; ++i)
+        v.emplace_back(f(i));
+    return v;
+}
+
+
+template<typename F, typename T>
+auto generate(F&& f, std::vector<T> const& v0)
+{
+    using value_type = std::decay_t<std::result_of_t<F const&(T const&)>>;
+    std::vector<value_type> v1;
+    if (v0.size() > 0)
+        v1.reserve(v0.size());
+    for (auto const& v : v0)
+        v1.emplace_back(f(v));
+    return v1;
+}
+
+template<typename F, typename T>
+auto generate(F&& f, std::vector<T> const&& v)
+{
+    return generate(std::forward<F>(f), v);
+}
+
+template<std::size_t Idx, typename F, typename Type, std::size_t Size>
+auto constexpr generate_array__(F& f, std::array<Type, Size> const& arr)
+{
+    return f(arr[Idx]);
+}
+
+template<typename Type, std::size_t Size, typename F, std::size_t... Is>
+auto constexpr generate_array_(F& f, std::array<Type, Size> const& arr,
+                               std::integer_sequence<std::size_t, Is...>)
+{
+    return std::array{generate_array__<Is>(f, arr)...};
+}
+
+template<typename F, typename Type, std::size_t Size>
+auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+{
+    return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
+}
+
+
+} // namespace PHARE::core
+
+
 #endif // TYPES_H

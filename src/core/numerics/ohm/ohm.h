@@ -20,16 +20,24 @@ class Ohm : public LayoutHolder<GridLayout>
     constexpr static auto dimension = GridLayout::dimension;
     using LayoutHolder<GridLayout>::layout_;
 
+
+
 public:
-    explicit Ohm(PHARE::initializer::PHAREDict const& dict)
-        : eta_{dict["resistivity"].template to<double>()}
-        , nu_{dict["hyper_resistivity"].template to<double>()}
+    explicit Ohm(double eta, double nu)
+        : eta_{eta}
+        , nu_{nu}
     {
     }
 
-    template<typename VecField, typename Field>
+    explicit Ohm(PHARE::initializer::PHAREDict const& dict)
+        : Ohm{dict["resistivity"].template to<double>(),
+              dict["hyper_resistivity"].template to<double>()}
+    {
+    }
+
+    template<typename VecField, typename Field, typename... Boxes>
     void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
-                    VecField const& J, VecField& Enew)
+                    VecField const& J, VecField& Enew, Boxes&... boxes)
     {
         using Pack = OhmPack<VecField, Field>;
 
@@ -37,23 +45,46 @@ public:
             throw std::runtime_error(
                 "Error - Ohm - GridLayout not set, cannot proceed to calculate ohm()");
 
-        auto const& [Exnew, Eynew, Eznew] = Enew();
+        auto const& [b0, b1, b2] = std::forward_as_tuple(boxes...);
 
-        layout_->evalOnBox(Exnew, [&](auto&... args) mutable {
+        layout_->evalOnBox(b0, [&](auto&... args) mutable {
             this->template E_Eq_<Component, Component::X>(Pack{Enew, n, Pe, Ve, B, J}, args...);
         });
-        layout_->evalOnBox(Eynew, [&](auto&... args) mutable {
+        layout_->evalOnBox(b1, [&](auto&... args) mutable {
             this->template E_Eq_<Component, Component::Y>(Pack{Enew, n, Pe, Ve, B, J}, args...);
         });
-        layout_->evalOnBox(Eznew, [&](auto&... args) mutable {
+        layout_->evalOnBox(b2, [&](auto&... args) mutable {
             this->template E_Eq_<Component, Component::Z>(Pack{Enew, n, Pe, Ve, B, J}, args...);
         });
     }
 
+
+    template<typename VecField, typename Field>
+    void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
+                    VecField const& J, VecField& Enew)
+    {
+        auto const& [Exnew, Eynew, Eznew] = Enew();
+
+        (*this)(n, Ve, Pe, B, J, Enew, Exnew, Eynew, Eznew);
+    }
+
+    template<typename VecField, typename Field, typename Box>
+    static void op(GridLayout& layout, Field const& n, VecField const& Ve, Field const& Pe,
+                   VecField const& B, VecField const& J, VecField& Enew,
+                   std::array<Box, 3> const& boxes)
+    {
+        Ohm self{.001, .001};
+        self.setLayout(&layout);
+        self(n, Ve, Pe, B, J, Enew, boxes[0], boxes[1], boxes[2]);
+    }
+
+
+
+
+private:
     double const eta_;
     double const nu_;
 
-private:
     template<typename VecField, typename Field>
     struct OhmPack
     {

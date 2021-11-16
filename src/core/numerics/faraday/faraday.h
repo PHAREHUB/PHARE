@@ -17,8 +17,9 @@ class Faraday : public LayoutHolder<GridLayout>
     using LayoutHolder<GridLayout>::layout_;
 
 public:
-    template<typename VecField>
-    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+    template<typename VecField, typename... Boxes>
+    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt,
+                    Boxes&... boxes)
     {
         if (!this->hasLayout())
             throw std::runtime_error(
@@ -39,9 +40,33 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        layout_->evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        layout_->evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        layout_->evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
+        auto const& [b0, b1, b2] = std::forward_as_tuple(boxes...);
+
+        layout_->evalOnBox(b0, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
+        layout_->evalOnBox(b1, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
+        layout_->evalOnBox(b2, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
+    }
+
+    template<typename VecField>
+    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+    {
+        if (!Bnew.isUsable())
+            throw std::runtime_error("Error - Faraday - not all VecField parameters are usable");
+
+        auto& Bxnew = Bnew(Component::X);
+        auto& Bynew = Bnew(Component::Y);
+        auto& Bznew = Bnew(Component::Z);
+
+        (*this)(B, E, Bnew, dt, Bxnew, Bynew, Bznew);
+    }
+
+    template<typename VecField, typename Box>
+    static void op(GridLayout& layout, VecField const& B, VecField const& E, VecField& Bnew,
+                   double dt, std::array<Box, 3> const& boxes)
+    {
+        Faraday self;
+        self.setLayout(&layout);
+        self(B, E, Bnew, dt, boxes[0], boxes[1], boxes[2]);
     }
 
 

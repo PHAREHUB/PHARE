@@ -53,4 +53,12 @@ public:
 
 } // namespace PHARE::core
 
+namespace std
+{
+auto inline to_string(PHARE::core::HybridQuantity::Scalar v)
+{
+    return std::to_string(static_cast<int>(v));
+}
+}
+
 #endif

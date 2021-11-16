@@ -132,6 +132,24 @@ namespace core
         auto end() const { return r.end(); }
 
 
+        auto operator+(Type value)
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] += value;
+            return copy;
+        }
+
+
+        auto operator-(Type value)
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] -= value;
+            return copy;
+        }
+
+
     private:
         std::array<Type, dim> r{};
     };

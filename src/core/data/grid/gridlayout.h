@@ -798,7 +798,7 @@ namespace core
         auto AMRToLocal(Point<T, dimension> AMRPoint) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            Point<T, dimension> localPoint;
+            Point<std::uint32_t, dimension> localPoint;
 
             // any direction, it's the same because we want cells
             auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
@@ -806,7 +806,9 @@ namespace core
             //
             for (auto i = 0u; i < dimension; ++i)
             {
-                localPoint[i] = AMRPoint[i] - (AMRBox_.lower[i] - localStart);
+                int local = AMRPoint[i] - (AMRBox_.lower[i] - localStart);
+                assert(local >= 0);
+                localPoint[i] = local;
             }
             return localPoint;
         }
@@ -820,7 +822,7 @@ namespace core
         auto AMRToLocal(Box<T, dimension> AMRBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            auto localBox = Box<T, dimension>{};
+            auto localBox = Box<std::uint32_t, dimension>{};
 
             localBox.lower = AMRToLocal(AMRBox.lower);
             localBox.upper = AMRToLocal(AMRBox.upper);
@@ -975,6 +977,18 @@ namespace core
             }
 
             return this->physicalNodeNbrFromCentering_(centerings);
+        }
+
+        auto primal_directions(HybridQuantity::Scalar hybQty) const
+        {
+            std::array<bool, dimension> is_primal;
+
+            for (std::size_t iDir = 0; iDir < dimension; ++iDir)
+                is_primal[iDir]
+                    = GridLayoutImpl::hybridQtyCentering_[static_cast<std::uint32_t>(hybQty)][iDir]
+                      == QtyCentering::primal;
+
+            return is_primal;
         }
 
 
@@ -1145,9 +1159,43 @@ namespace core
             evalOnBox_(field, fn, indices);
         }
 
+        template<typename Fn, typename Type>
+        void evalOnBox(core::Box<Type, dimension> box, Fn&& fn) const
+        {
+            evalOnBox_(box, fn);
+        }
+
 
 
     private:
+        template<typename Fn, typename Type>
+        static void evalOnBox_(core::Box<Type, dimension> box, Fn& fn)
+        {
+            for (auto ix = box.lower[0]; ix <= box.upper[0]; ++ix)
+            {
+                if constexpr (dimension == 1)
+                {
+                    fn(ix);
+                }
+                else
+                {
+                    for (auto iy = box.lower[1]; iy <= box.upper[1]; ++iy)
+                    {
+                        if constexpr (dimension == 2)
+                        {
+                            fn(ix, iy);
+                        }
+                        else
+                        {
+                            for (auto iz = box.lower[2]; iz <= box.upper[2]; ++iz)
+                                fn(ix, iy, iz);
+                        }
+                    }
+                }
+            }
+        }
+
+
         template<typename Field, typename IndicesFn, typename Fn>
         static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
         {
