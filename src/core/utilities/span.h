@@ -34,6 +34,8 @@ class VectorSpan : private StackVar<std::vector<T>>, public core::Span<T, SIZE>
     using Span_  = Span<T, SIZE>;
 
 public:
+    using Vector::var;
+
     VectorSpan(std::size_t size, T value)
         : Vector{std::vector<T>(size, value)}
         , Span_{Vector::var.data(), Vector::var.size()}

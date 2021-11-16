@@ -75,8 +75,8 @@ namespace core
                         density, v, vth, charge, nbrPartPerCell, seed);
                 }
             }
-            // TODO throw?
-            return nullptr;
+            throw std::runtime_error("ParticleInitializerFactory: no initializer for key "
+                                     + initializerName);
         }
     };
 

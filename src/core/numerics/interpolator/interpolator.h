@@ -503,6 +503,9 @@ namespace core
     template<std::size_t dim, std::size_t interpOrder>
     class Interpolator : private Weighter<interpOrder>
     {
+        using ParticleVecField = tuple_fixed_type<double, 3>;
+        using ParticleEBs      = std::vector<tuple_fixed_type<ParticleVecField, 2>>;
+
         // this calculates the startIndex and the nbrPointsSupport() weights for
         // dual field interpolation and puts this at the corresponding location
         // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
@@ -543,7 +546,7 @@ namespace core
          */
         template<typename PartIterator, typename Electromag, typename GridLayout>
         inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
-                               GridLayout const& layout)
+                               GridLayout const& layout, ParticleEBs& particleEBs)
         {
             PHARE_LOG_SCOPE("Interpolator::operator()");
 
@@ -570,21 +573,33 @@ namespace core
             // twice, and not for each E,B component.
 
             PHARE_LOG_START("MeshToParticle::operator()");
+            std::size_t eb_idx = 0;
             for (auto currPart = begin; currPart != end; ++currPart)
             {
                 indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, *currPart);
                 indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, *currPart);
 
-                currPart->Ex = meshToParticle_(Ex, ExCentering, startIndex_, weights_);
-                currPart->Ey = meshToParticle_(Ey, EyCentering, startIndex_, weights_);
-                currPart->Ez = meshToParticle_(Ez, EzCentering, startIndex_, weights_);
-                currPart->Bx = meshToParticle_(Bx, BxCentering, startIndex_, weights_);
-                currPart->By = meshToParticle_(By, ByCentering, startIndex_, weights_);
-                currPart->Bz = meshToParticle_(Bz, BzCentering, startIndex_, weights_);
+                auto& [pE, pB]        = particleEBs[eb_idx++];
+                auto& [pEx, pEy, pEz] = pE;
+                auto& [pBx, pBy, pBz] = pB;
+
+                pEx = meshToParticle_(Ex, ExCentering, startIndex_, weights_);
+                pEy = meshToParticle_(Ey, EyCentering, startIndex_, weights_);
+                pEz = meshToParticle_(Ez, EzCentering, startIndex_, weights_);
+                pBx = meshToParticle_(Bx, BxCentering, startIndex_, weights_);
+                pBy = meshToParticle_(By, ByCentering, startIndex_, weights_);
+                pBz = meshToParticle_(Bz, BzCentering, startIndex_, weights_);
             }
             PHARE_LOG_STOP("MeshToParticle::operator()");
         }
 
+        // container version of above
+        template<typename Particles, typename Electromag, typename GridLayout>
+        inline void operator()(Particles& particles, Electromag const& Em, GridLayout const& layout,
+                               ParticleEBs& particleEBs)
+        {
+            (*this)(particles.begin(), particles.end(), Em, layout, particleEBs);
+        }
 
 
 
@@ -626,6 +641,15 @@ namespace core
                                 *currPart, startIndex_, weights_, coef);
             }
             PHARE_LOG_STOP("ParticleToMesh::operator()");
+        }
+
+        // container version of above
+        template<typename Particles, typename VecField, typename GridLayout,
+                 typename Field = typename VecField::field_type>
+        inline void operator()(Particles const& particles, Field& density, VecField& flux,
+                               GridLayout const& layout, double coef = 1.)
+        {
+            (*this)(particles.begin(), particles.end(), density, flux, layout, coef);
         }
 
 

@@ -104,7 +104,10 @@ std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
 getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
 {
     auto const& refinement = amr["refinement"];
-    auto maxLevelNumber    = amr["max_nbr_levels"].template to<int>();
+
+    assert(refinement.contains("tagging"));
+
+    auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
     if (refinement.contains("boxes"))
     {
         auto& refDict = refinement["boxes"];

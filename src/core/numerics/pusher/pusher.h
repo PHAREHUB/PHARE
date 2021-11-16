@@ -17,6 +17,9 @@ namespace core
     class Pusher
     {
     protected:
+        using ParticleVecField = tuple_fixed_type<double, 3>;
+        using ParticleEBs      = std::vector<tuple_fixed_type<ParticleVecField, 2>>;
+
         using ParticleRange             = Range<ParticleIterator>;
         static auto constexpr dimension = GridLayout::dimension;
         using ParticleSelector          = std::function<bool(Particle<dimension> const&)>;
@@ -49,7 +52,7 @@ namespace core
         virtual ParticleIterator
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-             BoundaryCondition& bc, GridLayout const& layout)
+             BoundaryCondition& bc, GridLayout const& layout, ParticleEBs& particle_EBs)
             = 0;
 
 
@@ -63,17 +66,17 @@ namespace core
         virtual ParticleIterator
         move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
              double mass, Interpolator& interpolator, ParticleSelector const& particleIsNotLeaving,
-             GridLayout const& layout)
+             GridLayout const& layout, ParticleEBs& particle_EBs)
             = 0;
 
         /** this overload of move() is used for particles for which one knows that
          *   they will not need a boundary condition treatment and require two selectors for
          *   distinguishing between different sets of particles during different phases
          */
-        virtual ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                                      Electromag const& emFields, double mass,
-                                      Interpolator& interpolator, ParticleSelector const&,
-                                      ParticleSelector const&, GridLayout const& layout)
+        virtual ParticleIterator
+        move(ParticleRange const& rangeIn, ParticleRange& rangeOut, Electromag const& emFields,
+             double mass, Interpolator& interpolator, ParticleSelector const&,
+             ParticleSelector const&, GridLayout const& layout, ParticleEBs& particle_EBs)
             = 0;
 
         /**

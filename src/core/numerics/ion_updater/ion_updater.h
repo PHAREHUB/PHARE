@@ -48,14 +48,23 @@ private:
     std::unique_ptr<Pusher> pusher_;
     Interpolator interpolator_;
 
+    std::size_t operating_particle_size(PHARE::initializer::PHAREDict const& dict)
+    {
+        if (dict.contains("operating_particle_size"))
+            return dict["operating_particle_size"].template to<std::size_t>();
+        return 1e6;
+    }
+
 public:
-    IonUpdater(std::string pusher_name)
+    IonUpdater(std::string pusher_name, std::size_t operating_particle_size = 1e6)
         : pusher_{makePusher(pusher_name)}
+        , particle_EBs(operating_particle_size)
     {
     }
 
     IonUpdater(PHARE::initializer::PHAREDict const& dict)
-        : IonUpdater{dict["pusher"]["name"].template to<std::string>()}
+        : IonUpdater{dict["pusher"]["name"].template to<std::string>(),
+                     operating_particle_size(dict)}
     {
     }
 
@@ -70,6 +79,17 @@ private:
     void updateAndDepositDomain_(Ions& ions, Electromag const& em, GridLayout const& layout);
 
     void updateAndDepositAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
+
+    template<typename Population, typename Selector>
+    void push_domain_wrap(Population& pop, Selector& selector, Electromag const& em,
+                          GridLayout const& layout);
+
+    // std::vector<tuple_fixed_type<
+    using EB = tuple_fixed_type<double, 3>;
+    std::vector<tuple_fixed_type<EB, 2>> particle_EBs;
+
+    std::size_t partition_idx = 0;
+    std::vector<std::pair<std::size_t, std::size_t>> partition_from_to;
 };
 
 
@@ -106,6 +126,42 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions, GridLayout
 }
 
 
+template<typename Ions, typename Electromag, typename GridLayout>
+template<typename Population, typename Selector>
+void IonUpdater<Ions, Electromag, GridLayout>::push_domain_wrap(Population& pop, Selector& selector,
+                                                                Electromag const& em,
+                                                                GridLayout const& layout)
+{
+    auto& particles = pop.domainParticles();
+
+    std::size_t remaining = particles.size();
+    auto curr_iter        = std::begin(particles);
+    auto& ebs             = particle_EBs;
+
+    std::size_t needs = remaining / ebs.size();
+    if (partition_from_to.size() < needs)
+        partition_from_to.resize(needs + 1);
+
+    partition_idx = 0;
+    while (remaining > 0)
+    {
+        std::size_t operate = remaining >= ebs.size() ? ebs.size() : remaining;
+        auto range          = makeRange(curr_iter, curr_iter + operate);
+        auto newEnd
+            = pusher_->move(range, range, em, pop.mass(), interpolator_, selector, layout, ebs);
+        interpolator_(curr_iter, newEnd, pop.density(), pop.flux(), layout);
+        curr_iter += operate;
+        remaining -= operate;
+
+        partition_from_to[partition_idx]
+            = {std::distance(range.begin(), newEnd), std::distance(newEnd, range.end())};
+
+        // KLOG(INF) << partition_from_to[partition_idx].first << " "
+        //           << partition_from_to[partition_idx].second;
+        ++partition_idx;
+    }
+}
+
 
 template<typename Ions, typename Electromag, typename GridLayout>
 /**
@@ -136,21 +192,18 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
     auto inGhostBox = [&ghostBox](auto& part) { return core::isIn(cellAsPoint(part), ghostBox); };
 
 
+
+    // first push all domain particles
+    // push them while still inDomainBox
+    // accumulate those inDomainBox
+
+    for (auto& pop : ions)
+        push_domain_wrap(pop, inDomainBox, em, layout);
+
+
     for (auto& pop : ions)
     {
         ParticleArray& domain = pop.domainParticles();
-
-        // first push all domain particles
-        // push them while still inDomainBox
-        // accumulate those inDomainBox
-
-        auto inRange  = makeRange(domain);
-        auto outRange = makeRange(domain);
-
-        auto newEnd
-            = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_, inDomainBox, layout);
-
-        interpolator_(std::begin(domain), newEnd, pop.density(), pop.flux(), layout);
 
         // then push patch and level ghost particles
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
@@ -160,11 +213,11 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto pushAndAccumulateGhosts = [&](auto& inputArray, bool copyInDomain = false) {
             ParticleArray outputArray(inputArray.size());
 
-            inRange  = makeRange(inputArray);
-            outRange = makeRange(outputArray);
+            auto inRange  = makeRange(inputArray);
+            auto outRange = makeRange(outputArray);
 
             auto firstGhostOut = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
-                                               inGhostBox, inGhostLayer, layout);
+                                               inGhostBox, inGhostLayer, layout, particle_EBs);
 
             auto endInDomain = std::partition(firstGhostOut, std::end(outputArray), inDomainBox);
 
@@ -226,14 +279,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto domainPartRange = makeRange(domainParticles);
 
         auto firstOutside = pusher_->move(domainPartRange, domainPartRange, em, pop.mass(),
-                                          interpolator_, inDomainSelector, layout);
+                                          interpolator_, inDomainSelector, layout, particle_EBs);
 
         domainParticles.erase(firstOutside, std::end(domainParticles));
 
         auto pushAndCopyInDomain = [&](auto& particleArray) {
             auto range            = makeRange(particleArray);
             auto firstOutGhostBox = pusher_->move(range, range, em, pop.mass(), interpolator_,
-                                                  inGhostBox, inGhostLayer, layout);
+                                                  inGhostBox, inGhostLayer, layout, particle_EBs);
 
             std::copy_if(firstOutGhostBox, std::end(particleArray),
                          std::back_inserter(domainParticles), inDomainSelector);

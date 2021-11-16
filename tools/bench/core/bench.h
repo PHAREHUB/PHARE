@@ -1,13 +1,13 @@
 #ifndef PHARE_BENCH_CORE_BENCH_H
 #define PHARE_BENCH_CORE_BENCH_H
 
+#include "mkn/kul/dbg.hpp"
+#include "mkn/kul/log.hpp"
+
 #include "benchmark/benchmark.h"
 
 #include "phare_core.h"
 #include "core/utilities/types.h"
-
-#include "mkn/kul/dbg.hpp"
-#include "mkn/kul/log.hpp"
 
 namespace PHARE::core::bench
 {
@@ -352,6 +352,8 @@ struct HybridPatch
         std::vector<double> masses;
     };
 };
+
+
 
 
 } // namespace PHARE::core::bench
