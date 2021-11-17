@@ -183,6 +183,15 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // level border nodes will receive contributions from levelghost old and new particles
         pushAndAccumulateGhosts(pop.patchGhostParticles(), true);
         pushAndAccumulateGhosts(pop.levelGhostParticles());
+
+        // in this phase we do not need to map
+        // other particles than domain particles
+        // because ghost particles were only pushed to
+        // maybe enter domain array and contribute to the deposit.
+        // these temporary patch ghost will never be searched for in a
+        // copy/stream operation, but domain particles will.
+        domain.empty_map();
+        domain.map_particles();
     }
 }
 
@@ -246,6 +255,12 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
 
         interpolator_(std::begin(domainParticles), std::end(domainParticles), pop.density(),
                       pop.flux(), layout);
+
+        // we just need to map domain particles
+        // since 1/ levelghost do not need mapping
+        // 2/ patchghost will now be refilled anyway
+        domainParticles.empty_map();
+        domainParticles.map_particles();
     }
 }
 

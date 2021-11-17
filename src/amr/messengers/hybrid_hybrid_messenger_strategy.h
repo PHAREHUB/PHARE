@@ -320,6 +320,15 @@ namespace amr
             }
 
             patchGhostParticles_.fill(level.getLevelNumber(), fillTime);
+
+            for (auto patch : level)
+            {
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                for (auto& pop : ions)
+                {
+                    pop.patchGhostParticles().map_particles();
+                }
+            }
         }
 
 
