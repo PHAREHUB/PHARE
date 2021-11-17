@@ -4,7 +4,6 @@
 #include <cstddef>
 
 #include "core/utilities/box/box.h"
-#include "core/utilities/partitionner/partitionner.h"
 
 
 namespace PHARE
@@ -24,14 +23,15 @@ namespace core
         ParticleIterator applyOutgoingParticleBC(ParticleIterator begin, ParticleIterator end)
         {
             // TODO loop while last partition not equel to begin.
-            auto partitions = partitionner(begin, end, boundaryBoxes_);
+            //            auto partitions = partitionner(begin, end, boundaryBoxes_);
 
             // applyBC for each box.
             // end while loop
 
             // particles to delete are between te last iterator
             // of 'partitions' and the end.
-            return partitions[boundaryBoxes_.size()];
+            //          return partitions[boundaryBoxes_.size()];
+            return ParticleIterator{};
         }
 
 

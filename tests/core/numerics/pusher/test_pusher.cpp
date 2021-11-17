@@ -133,10 +133,11 @@ public:
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
     {
-        particlesIn[0].charge = 1;
-        particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].iCell.fill(5);
-        particlesIn[0].delta.fill(0.0);
+        auto first    = std::begin(particlesIn);
+        first->charge = 1;
+        first->v      = {{0, 10., 0}};
+        first->iCell.fill(5);
+        first->delta.fill(0.0);
         dxyz.fill(0.05);
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
@@ -327,7 +328,8 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 }
 
 
-
+// removed boundary condition partitioner, fix that when BCs are implemented
+#if 0
 TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
@@ -364,7 +366,7 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
     auto d2 = std::distance(std::begin(particlesOut2), newEndWithoutBC);
     EXPECT_EQ(d1, d2);
 }
-
+#endif
 
 
 

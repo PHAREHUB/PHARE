@@ -123,7 +123,7 @@ namespace core
             }
             else
             {
-                if (!sameSize(AMRBox, boxFromNbrCells(nbrCells)))
+                if (AMRBox.size() != boxFromNbrCells(nbrCells).size())
                 {
                     throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
                 }
