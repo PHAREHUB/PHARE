@@ -119,8 +119,9 @@ template<std::size_t dim>
 class APusher : public ::testing::Test
 {
 public:
-    using Pusher_ = BorisPusher<dim, typename ParticleArray<dim>::iterator, Electromag,
-                                Interpolator, BoundaryCondition<dim, 1>, DummyLayout<dim>>;
+    using Pusher_ = BorisPusher<dim, typename ParticleArray<dim>::iterator,
+                                typename ParticleArray<dim>::Particle_t, Electromag, Interpolator,
+                                BoundaryCondition<dim, 1>, DummyLayout<dim>>;
 
     APusher()
         : expectedTrajectory{readExpectedTrajectory()}
@@ -133,10 +134,11 @@ public:
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
     {
-        particlesIn[0].charge = 1;
-        particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].iCell.fill(5);
-        particlesIn[0].delta.fill(0.0);
+        auto first    = std::begin(particlesIn);
+        first->charge = 1;
+        first->v      = {{0, 10., 0}};
+        first->iCell.fill(5);
+        first->delta.fill(0.0);
         dxyz.fill(0.05);
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
@@ -252,8 +254,8 @@ public:
         , particlesOut1(1000)
         , particlesOut2(1000)
         , pusher{std::make_unique<
-              BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                          BoundaryCondition<1, 1>, DummyLayout<1>>>()}
+              BorisPusher<1, ParticleArray<1>::iterator, typename ParticleArray<1>::Particle_t,
+                          Electromag, Interpolator, BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
         , tstart{0}
@@ -282,8 +284,9 @@ protected:
     ParticleArray<1> particlesIn;
     ParticleArray<1> particlesOut1;
     ParticleArray<1> particlesOut2;
-    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                                BoundaryCondition<1, 1>, DummyLayout<1>>>
+    std::unique_ptr<
+        BorisPusher<1, ParticleArray<1>::iterator, typename ParticleArray<1>::Particle_t,
+                    Electromag, Interpolator, BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
     double mass;
     double dt;
@@ -306,7 +309,7 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
     auto rangeIn = makeRange(std::begin(particlesIn), std::end(particlesIn));
     auto newEnd  = std::end(particlesIn);
     auto selector
-        = [this](Particle<1> const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
+        = [this](auto const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
 
 
     for (decltype(nt) i = 0; i < nt; ++i)
@@ -316,9 +319,6 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 
         if (newEnd != std::end(particlesIn))
         {
-            std::cout << "stopping integration at i = " << i << "\n";
-            std::cout << std::distance(std::begin(particlesIn), newEnd) << " in domain\n";
-            std::cout << std::distance(newEnd, std::end(particlesIn)) << " leaving\n";
             break;
         }
     }
@@ -327,7 +327,8 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 }
 
 
-
+// removed boundary condition partitioner, fix that when BCs are implemented
+#if 0
 TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
@@ -364,15 +365,16 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
     auto d2 = std::distance(std::begin(particlesOut2), newEndWithoutBC);
     EXPECT_EQ(d1, d2);
 }
-
+#endif
 
 
 
 TEST(APusherFactory, canReturnABorisPusher)
 {
     auto pusher
-        = PusherFactory::makePusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                                    BoundaryCondition<1, 1>, DummyLayout<1>>("modified_boris");
+        = PusherFactory::makePusher<1, ParticleArray<1>::iterator, ParticleArray<1>::Particle_t,
+                                    Electromag, Interpolator, BoundaryCondition<1, 1>,
+                                    DummyLayout<1>>("modified_boris");
 
     EXPECT_NE(nullptr, pusher);
 }

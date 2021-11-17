@@ -1,5 +1,6 @@
 
 
+#include "core/utilities/bucketlist.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -15,7 +16,8 @@ struct ParticleListTest : public ::testing::Test
 {
 };
 
-using ParticleList = testing::Types<Particle<1>, Particle<2>, Particle<3>>;
+using ParticleList = testing::Types<Particle<1, BucketListItem>, Particle<2, BucketListItem>,
+                                    Particle<3, BucketListItem>>;
 
 TYPED_TEST_SUITE(ParticleListTest, ParticleList);
 

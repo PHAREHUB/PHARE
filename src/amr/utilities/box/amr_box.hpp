@@ -18,7 +18,7 @@ auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId 
                              SAMRAI::hier::Index{dimension, (*box.upper).data()}, blockId};
 }
 
-template<typename Type, std::size_t dim>
+template<std::size_t dim, typename Type = int>
 auto phare_box_from(SAMRAI::hier::Box const& box)
 {
     std::array<Type, dim> lower = *reinterpret_cast<std::array<int, dim> const*>(&box.lower()[0]);
@@ -52,7 +52,7 @@ struct Box : public PHARE::core::Box<Type, dim>
     }
 
     Box(SAMRAI::hier::Box const& box)
-        : Super{phare_box_from<Type, dim>(box)}
+        : Super{phare_box_from<dim, Type>(box)}
     {
     }
 

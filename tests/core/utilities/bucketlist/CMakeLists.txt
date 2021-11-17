@@ -1,8 +1,9 @@
+
 cmake_minimum_required (VERSION 3.9)
 
-project(test-partitionner)
+project(test-bucketlist)
 
-set(SOURCES test_main.cpp)
+set(SOURCES test_bucketlist.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

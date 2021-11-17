@@ -19,7 +19,8 @@ public:
     {
     }
 
-    static auto get(Particle<dim> const& particle)
+    template<typename Base, template<std::size_t, typename> typename particle_t>
+    static auto get(particle_t<dim, Base> const& particle)
     {
         return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
                                      particle.delta, particle.v);

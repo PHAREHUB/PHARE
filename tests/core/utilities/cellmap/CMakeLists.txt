@@ -1,8 +1,10 @@
+
+
 cmake_minimum_required (VERSION 3.9)
 
-project(test-box)
+project(test-cellmap)
 
-set(SOURCES test_box.cpp)
+set(SOURCES test_cellmap.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -15,5 +17,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${GTEST_LIBS})
 
 add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
-
 

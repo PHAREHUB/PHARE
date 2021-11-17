@@ -17,14 +17,14 @@ namespace PHARE
 {
 namespace core
 {
-    template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename BoundaryCondition, typename GridLayout>
-    class BorisPusher : public Pusher<dim, ParticleIterator, Electromag, Interpolator,
+    template<std::size_t dim, typename ParticleIterator, typename Particle_t, typename Electromag,
+             typename Interpolator, typename BoundaryCondition, typename GridLayout>
+    class BorisPusher : public Pusher<dim, ParticleIterator, Particle_t, Electromag, Interpolator,
                                       BoundaryCondition, GridLayout>
     {
     public:
-        using Super = Pusher<dim, ParticleIterator, Electromag, Interpolator, BoundaryCondition,
-                             GridLayout>;
+        using Super            = Pusher<dim, ParticleIterator, Particle_t, Electromag, Interpolator,
+                             BoundaryCondition, GridLayout>;
         using ParticleSelector = typename Super::ParticleSelector;
         using ParticleRange    = Range<ParticleIterator>;
 
@@ -88,11 +88,11 @@ namespace core
             //   particles consistent. see: https://github.com/PHAREHUB/PHARE/issues/571
             pushStep_(rangeIn, rangeOut, PushStep::PrePush);
 
-            // get electromagnetic fields interpolated on the particles of rangeOut
-            // stop at newEnd.
+            //  get electromagnetic fields interpolated on the particles of rangeOut
+            //  stop at newEnd.
             interpolator(rangeOut.begin(), rangeOut.end(), emFields, layout);
 
-            // get the particle velocity from t=n to t=n+1
+            //  get the particle velocity from t=n to t=n+1
             accelerate_(rangeOut, rangeOut, mass);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
@@ -156,9 +156,10 @@ namespace core
 
         /** move the particle partIn of half a time step and store it in partOut
          */
-        template<typename ParticleIter>
-        void advancePosition_(ParticleIter const& partIn, ParticleIter& partOut)
+        template<typename Particle, typename ParticleIter>
+        void advancePosition_(Particle const& partIn, ParticleIter& partOut)
         {
+            std::array<int, dim> outCell;
             // push the particle
             for (std::size_t iDim = 0; iDim < dim; ++iDim)
             {
@@ -170,9 +171,10 @@ namespace core
                 {
                     PHARE_LOG_ERROR("Error, particle moves more than 1 cell, delta >2");
                 }
-                partOut.delta[iDim] = delta - iCell;
-                partOut.iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);
+                partOut->delta[iDim] = delta - iCell;
+                partOut->iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);
             }
+            // partOut.change_icell(outCell);
         }
 
 
@@ -203,8 +205,7 @@ namespace core
                     currentOut->weight = currentIn.weight;
                     currentOut->v      = currentIn.v;
                 }
-                // push the particle
-                advancePosition_(currentIn, *currentOut);
+                advancePosition_(currentIn, currentOut);
                 ++currentOut;
             }
         }
