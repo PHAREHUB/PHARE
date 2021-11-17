@@ -35,7 +35,7 @@ namespace core
     {
     public:
         static constexpr std::size_t dimension = dim;
-        using type                             = Type;
+        using value_type                       = Type;
 
         template<typename... Indexes>
         constexpr Point(Indexes... index)
@@ -63,9 +63,8 @@ namespace core
 
         constexpr Point() { core::fill(Type{0}, r); }
 
-        type& operator[](std::size_t i) { return r[i]; }
-
-        type const& operator[](std::size_t i) const { return r[i]; }
+        auto& operator[](std::size_t i) { return r[i]; }
+        auto const& operator[](std::size_t i) const { return r[i]; }
 
 
         bool operator==(Point const& p) const
@@ -80,6 +79,9 @@ namespace core
             }
             return areEqual;
         }
+
+        bool operator!=(Point const& other) const { return !(*this == other); }
+
 
         template<typename DestType>
         auto toArray() const
@@ -174,7 +176,7 @@ namespace core
 
     template<typename... Indexes>
     Point(Indexes... indexes)
-        ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+        -> Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
 
 

@@ -11,6 +11,7 @@
 #include <list>
 #include <random>
 
+#include "core/utilities/range/range.hpp"
 #include "phare_core.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/field/field.hpp"
@@ -295,7 +296,7 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(
         std::all_of(std::begin(this->particles), std::end(this->particles),
@@ -417,7 +418,7 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(
         std::all_of(std::begin(this->particles), std::end(this->particles),
@@ -544,7 +545,7 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(
         std::all_of(std::begin(this->particles), std::end(this->particles),
@@ -598,7 +599,7 @@ class ACollectionOfParticles_1d : public ::testing::Test
     using NdArray_t       = typename PHARE_TYPES::Array_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
     using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using Particle_t      = Particle<1>;
+    using Particle_t      = typename ParticleArray_t::Particle_t;
 
 public:
     static constexpr std::uint32_t nx        = 30;
@@ -735,8 +736,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
         }
-
-        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, v, layout);
     }
 
 
@@ -798,8 +798,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
                 part.v[1]   = -1.;
                 part.v[2]   = +1.;
             }
-
-        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, v, layout);
     }
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};

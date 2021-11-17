@@ -46,17 +46,17 @@ namespace core
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
             {
                 auto& partArray = pop.domainParticles();
-                interpolate(std::begin(partArray), std::end(partArray), density, flux, layout);
+                interpolate(partArray, density, flux, layout);
             }
             else if constexpr (std::is_same_v<DepositTag, PatchGhostDeposit>)
             {
                 auto& partArray = pop.patchGhostParticles();
-                interpolate(std::begin(partArray), std::end(partArray), density, flux, layout);
+                interpolate(partArray, density, flux, layout);
             }
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
             {
                 auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(std::begin(partArray), std::end(partArray), density, flux, layout);
+                interpolate(partArray, density, flux, layout);
             }
         }
     }
