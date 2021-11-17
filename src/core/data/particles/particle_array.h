@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "particle.h"
+#include "core/utilities/cellmap.h"
 
 namespace PHARE::core
 {
@@ -13,12 +14,13 @@ template<std::size_t dim>
 class ParticleArray
 {
 public:
-    static constexpr bool is_contiguous = false;
-    static constexpr auto dimension     = dim;
-    using Particle_t                    = Particle<dim>;
-    using Vector                        = std::vector<Particle_t>;
-    using iterator                      = typename Vector::iterator;
-    using value_type                    = Particle_t;
+    static constexpr bool is_contiguous              = false;
+    static constexpr auto dimension                  = dim;
+    static constexpr std::size_t cellmap_bucket_size = 100;
+    using Particle_t                                 = Particle<dim>;
+    using Vector                                     = std::vector<Particle_t>;
+    using iterator                                   = typename Vector::iterator;
+    using value_type                                 = Particle_t;
 
     ParticleArray() {}
     ParticleArray(std::size_t size)
@@ -72,8 +74,13 @@ public:
 
     void swap(ParticleArray<dim>& that) { std::swap(this->particles, that.particles); }
 
+    void map_particles() { cell_map.add(particles); }
+    void map_particles(iterator begin, iterator end) { cell_map.add(begin, end); }
+    void empty_map() { cell_map.empty(); }
+
 private:
     Vector particles;
+    CellMap<dim, Particle_t, cellmap_bucket_size, int> cell_map;
 };
 
 } // namespace PHARE::core

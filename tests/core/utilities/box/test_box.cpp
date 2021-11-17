@@ -100,6 +100,143 @@ TEST(PointInBox, returnFalseIfIsNoBox)
 }
 
 
+TEST(BoxConstructor, worksWithPointTemplateDeduction)
+{
+    Box b{Point{1, 2}, Point{2, 4}};
+}
+
+TEST(BoxConstructor, worksWithArrays)
+{
+    Box<int, 2> b{{1, 2}, {2, 4}};
+}
+
+
+TEST(BoxIntersectionOp, innerOther2D)
+{
+    Box b1{Point{1, 4}, Point{10, 20}};
+    Box b2{Point{2, 5}, Point{8, 10}};
+    auto expected = Box{Point{2, 5}, Point{8, 10}};
+    auto actual   = b1 * b2;
+    EXPECT_EQ(actual, expected);
+}
+
+
+TEST(BoxIntersectionOp, innerOther1D)
+{
+    Box<int, 1> b1{{1}, {10}};
+    Box<int, 1> b2{{2}, {8}};
+    auto expected = Box<int, 1>{{2}, {8}};
+    auto actual   = b1 * b2;
+    EXPECT_EQ(actual, expected);
+}
+
+
+
+TEST(BoxSize, isCalculatedOK)
+{
+    Box<int, 1> b{{1}, {10}};
+    EXPECT_EQ(b.size(), 10);
+    Box b2{Point{1, 4}, Point{10, 20}};
+    EXPECT_EQ(b2.size(), 170);
+    Box b3{Point{1, 4, 2}, Point{10, 20, 4}};
+    EXPECT_EQ(b3.size(), 510);
+}
+
+
+
+TEST(BoxIterator, hasBegin)
+{
+    Box<int, 1> b1{{1}, {10}};
+    const Box<int, 1> cb1{{1}, {10}};
+    Box<int, 2> b2{{1, 4}, {10, 12}};
+    Box<int, 3> b3{{1, 4, 9}, {10, 12, 24}};
+
+    auto expected = Point{1};
+    auto actual   = std::begin(b1);
+    EXPECT_EQ(expected, *actual);
+
+    const auto cexpected = Point{1};
+    auto cactual         = std::begin(cb1);
+    EXPECT_EQ(cexpected, *cactual);
+
+    auto expected2 = Point{1, 4};
+    auto actual2   = std::begin(b2);
+    EXPECT_EQ(expected2, *actual2);
+
+    auto expected3 = Point{1, 4, 9};
+    auto actual3   = std::begin(b3);
+    EXPECT_EQ(expected3, *actual3);
+}
+
+
+TEST(BoxIterator, hasEnd)
+{
+    Box<int, 1> b1{{1}, {10}};
+    const Box<int, 1> cb1{{1}, {10}};
+    Box<int, 2> b2{{1, 4}, {10, 12}};
+    Box<int, 3> b3{{1, 4, 9}, {10, 12, 24}};
+
+    auto expected = Point{11};
+    auto actual   = std::end(b1);
+    EXPECT_EQ(expected, *actual);
+
+    const auto cexpected = Point{11};
+    auto cactual         = std::end(cb1);
+    EXPECT_EQ(cexpected, *cactual);
+
+    auto expected2 = Point{10, 13};
+    auto actual2   = std::end(b2);
+    EXPECT_EQ(expected2, *actual2);
+
+    auto expected3 = Point{10, 12, 25};
+    auto actual3   = std::end(b3);
+    EXPECT_EQ(expected3, *actual3);
+}
+
+
+TEST(BoxIterator, iterates)
+{
+    Box<int, 1> b1{{1}, {10}};
+    const Box<int, 1> cb1{{1}, {10}};
+    Box<int, 2> b2{{1, 4}, {10, 12}};
+    Box<int, 3> b3{{1, 4, 9}, {10, 12, 24}};
+
+    auto expected = Point{2};
+    auto actual   = std::begin(b1);
+    EXPECT_EQ(expected, *(++actual));
+
+    const auto cexpected = Point{2};
+    auto cactual         = std::begin(cb1);
+    EXPECT_EQ(cexpected, *(++cactual));
+
+    auto expected2 = Point{1, 5};
+    auto actual2   = std::begin(b2);
+    EXPECT_EQ(expected2, *(++actual2));
+
+    auto expected3 = Point{1, 4, 10};
+    auto actual3   = std::begin(b3);
+    EXPECT_EQ(expected3, *(++actual3));
+
+    Box<int, 2> small{{2, 1}, {3, 2}};
+    auto it = std::begin(small);
+    ++it;
+    expected = Point{2, 2};
+    EXPECT_EQ(expected, *it);
+    ++it;
+    expected = Point{3, 1};
+    EXPECT_EQ(expected, *it);
+
+    auto dummy = Point<int, 2>{};
+    for (auto const& point : b2)
+    {
+        dummy = point;
+    }
+    expected = *std::end(b2);
+    EXPECT_EQ(expected, dummy);
+}
+
+
+
 /*
 
 TEST(HollowBox2d, box2dSetGhosts)

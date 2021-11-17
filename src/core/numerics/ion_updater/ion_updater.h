@@ -142,11 +142,13 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto inRange  = makeRange(domain);
         auto outRange = makeRange(domain);
 
+
         auto newEnd
             = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_, inDomainBox, layout);
 
-        domain.erase(newEnd, std::end(domain));
         interpolator_(std::begin(domain), newEnd, pop.density(), pop.flux(), layout);
+
+        domain.erase(newEnd, std::end(domain));
 
         // then push patch and level ghost particles
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)

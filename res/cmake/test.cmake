@@ -178,6 +178,8 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/utilities/partitionner)
   add_subdirectory(tests/core/utilities/range)
   add_subdirectory(tests/core/utilities/index)
+  add_subdirectory(tests/core/utilities/bucketlist)
+  add_subdirectory(tests/core/utilities/cellmap)
   add_subdirectory(tests/core/numerics/boundary_condition)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/core/numerics/pusher)
