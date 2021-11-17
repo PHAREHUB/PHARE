@@ -12,14 +12,16 @@ namespace PHARE
 {
 namespace core
 {
-    template<std::size_t dim, typename ParticleIterator, typename Electromag, typename Interpolator,
-             typename BoundaryCondition, typename GridLayout>
+    template<std::size_t dim, typename ParticleIterator, typename Particle_t, typename Electromag,
+             typename Interpolator, typename BoundaryCondition, typename GridLayout,
+             typename CellMap = void>
     class Pusher
     {
     protected:
         using ParticleRange             = Range<ParticleIterator>;
         static auto constexpr dimension = GridLayout::dimension;
-        using ParticleSelector          = std::function<bool(Particle<dimension> const&)>;
+
+        using ParticleSelector = std::function<bool(Particle_t const&)>;
 
     public:
         /** Move all particles in rangeIn from t=n to t=n+1 and store their new

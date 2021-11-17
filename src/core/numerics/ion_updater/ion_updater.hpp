@@ -35,15 +35,16 @@ public:
     using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
     using VecField          = typename Ions::vecfield_type;
     using ParticleArray     = typename Ions::particle_array_type;
+    using Particle_t        = typename ParticleArray::Particle_t;
     using PartIterator      = typename ParticleArray::iterator;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
-    using Pusher            = PHARE::core::Pusher<dimension, PartIterator, Electromag, Interpolator,
-                                       BoundaryCondition, GridLayout>;
+    using Pusher            = PHARE::core::Pusher<dimension, PartIterator, Particle_t, Electromag,
+                                       Interpolator, BoundaryCondition, GridLayout>;
 
 private:
     constexpr static auto makePusher
-        = PHARE::core::PusherFactory::makePusher<dimension, PartIterator, Electromag, Interpolator,
-                                                 BoundaryCondition, GridLayout>;
+        = PHARE::core::PusherFactory::makePusher<dimension, PartIterator, Particle_t, Electromag,
+                                                 Interpolator, BoundaryCondition, GridLayout>;
 
     std::unique_ptr<Pusher> pusher_;
     Interpolator interpolator_;
@@ -142,11 +143,13 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto inRange  = makeRange(domain);
         auto outRange = makeRange(domain);
 
+
         auto newEnd
             = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_, inDomainBox, layout);
 
-        domain.erase(newEnd, std::end(domain));
         interpolator_(std::begin(domain), newEnd, pop.density(), pop.flux(), layout);
+
+        domain.erase(newEnd, std::end(domain));
 
         // then push patch and level ghost particles
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)

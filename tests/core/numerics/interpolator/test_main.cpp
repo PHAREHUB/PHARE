@@ -598,7 +598,7 @@ class ACollectionOfParticles_1d : public ::testing::Test
     using NdArray_t       = typename PHARE_TYPES::Array_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
     using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using Particle_t      = Particle<1>;
+    using Particle_t      = typename ParticleArray_t::Particle_t;
 
 public:
     static constexpr std::uint32_t nx        = 30;

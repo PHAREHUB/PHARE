@@ -1,0 +1,5 @@
+- init the cellmap once after loading particles, in init level data I guess
+- add a function that updates the cell map if particles are added to the particle array, for instance in copy and unpack
+- then if the cellmap is updated after each 2nd advance position, it's updated so there is no point in having this clean/unclean and in remaking the cell map from scratch
+- think about aprticles that are going to be deleted. should they be removed from the cellmap ? if not then the cellmap contains particles that don't exist... 
+- actually if aprticles are mapped after advance() and they exited the patch, they belong to a cell that is not in the patch... so they're there but it does not really matter.
