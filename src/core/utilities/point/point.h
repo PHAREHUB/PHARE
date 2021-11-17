@@ -81,6 +81,9 @@ namespace core
             return areEqual;
         }
 
+        bool operator!=(Point const& other) const { return !(*this == other); }
+
+
         template<typename DestType>
         auto toArray() const
         {
@@ -174,7 +177,7 @@ namespace core
 
     template<typename... Indexes>
     Point(Indexes... indexes)
-        ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+        -> Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
 
 

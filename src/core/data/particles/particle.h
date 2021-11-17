@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <type_traits>
+#include <iostream>
 
 #include "core/utilities/point/point.h"
 #include "core/utilities/span.h"
@@ -65,7 +66,35 @@ struct Particle
                (this->By == that.By) &&         //
                (this->Bz == that.Bz);
     }
+
+    template<std::size_t dimension>
+    friend std::ostream& operator<<(std::ostream& out, const Particle<dimension>& particle);
 };
+
+template<std::size_t dim>
+std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
+{
+    out << "iCell(";
+    for (auto c : particle.iCell)
+    {
+        out << c << ",";
+    }
+    out << "), delta(";
+    for (auto d : particle.delta)
+    {
+        out << d << ",";
+    }
+    out << "), v(";
+    for (auto v : particle.v)
+    {
+        out << v << ",";
+    }
+    out << "), charge : " << particle.charge << ", weight : " << particle.weight;
+    out << ", Exyz : " << particle.Ex << "," << particle.Ey << "," << particle.Ez;
+    out << ", Bxyz : " << particle.Bx << "," << particle.By << "," << particle.Bz;
+    out << '\n';
+    return out;
+}
 
 
 template<std::size_t dim>
