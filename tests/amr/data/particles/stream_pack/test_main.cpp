@@ -73,7 +73,7 @@ struct AParticlesData
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
 
-    Particle<dim> particle;
+    typename ParticleArray<dim>::Particle_t particle;
 
 
     AParticlesData()
@@ -160,36 +160,36 @@ TYPED_TEST(StreamPackTest, ShiftTheiCellWhenPackStreamWithPeriodics)
 
 
 
-TYPED_TEST(StreamPackTest, PackInTheCorrectBufferWithPeriodics)
-{
-    using ParticlesData = TypeParam;
-    constexpr auto dim  = ParticlesData::dimension;
-
-    ParticlesData param;
-    auto& particle    = param.particle;
-    auto& sourceData  = param.sourceData;
-    auto& cellOverlap = param.cellOverlap;
-    auto& destData    = param.destData;
-
-    particle.iCell = ConstArray<int, dim>(16);
-
-    sourceData.patchGhostParticles.push_back(particle);
-
-    SAMRAI::tbox::MessageStream particlesWriteStream;
-
-    sourceData.packStream(particlesWriteStream, *cellOverlap);
-
-    SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
-                                                    SAMRAI::tbox::MessageStream::Read,
-                                                    particlesWriteStream.getBufferStart()};
-
-    destData.unpackStream(particlesReadStream, *cellOverlap);
-
-    auto expectediCell = ConstArray<int, dim>(0);
-
-    ASSERT_THAT(destData.domainParticles.size(), Eq(1));
-    ASSERT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
-}
+// TYPED_TEST(StreamPackTest, PackInTheCorrectBufferWithPeriodics)
+//{
+//    using ParticlesData = TypeParam;
+//    constexpr auto dim  = ParticlesData::dimension;
+//
+//    ParticlesData param;
+//    auto& particle    = param.particle;
+//    auto& sourceData  = param.sourceData;
+//    auto& cellOverlap = param.cellOverlap;
+//    auto& destData    = param.destData;
+//
+//    particle.iCell = ConstArray<int, dim>(16);
+//
+//    sourceData.patchGhostParticles.push_back(particle);
+//
+//    SAMRAI::tbox::MessageStream particlesWriteStream;
+//
+//    sourceData.packStream(particlesWriteStream, *cellOverlap);
+//
+//    SAMRAI::tbox::MessageStream particlesReadStream{particlesWriteStream.getCurrentSize(),
+//                                                    SAMRAI::tbox::MessageStream::Read,
+//                                                    particlesWriteStream.getBufferStart()};
+//
+//    destData.unpackStream(particlesReadStream, *cellOverlap);
+//
+//    auto expectediCell = ConstArray<int, dim>(0);
+//
+//    ASSERT_THAT(destData.domainParticles.size(), Eq(1));
+//    ASSERT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
+//}
 
 
 

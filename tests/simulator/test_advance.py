@@ -154,7 +154,7 @@ class AdvanceTestBase(SimulatorTest):
                                     write_timestamps=timestamps,
                                     population_name=pop)
 
-        Simulator(global_vars.sim).run()
+        Simulator(global_vars.sim, print_one_line=False).run()
 
         eb_hier = None
         if qty in ["e", "eb", "fields"]:
@@ -335,6 +335,7 @@ class AdvanceTestBase(SimulatorTest):
                                       diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
                                       time_step_nbr=time_step_nbr,
+                                     model_init={"seed":12},
                                       largest_patch_size=30, ndim=dim, **kwargs)
 
         lvl_steps = global_vars.sim.level_time_steps
