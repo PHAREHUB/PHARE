@@ -15,13 +15,13 @@ namespace core
     class PusherFactory
     {
     public:
-        template<std::size_t dim, typename ParticleIterator, typename Electromag,
+        template<std::size_t dim, typename ParticleRange, typename Electromag,
                  typename Interpolator, typename BoundaryCondition, typename GridLayout>
         static auto makePusher(std::string pusherName)
         {
             if (pusherName == "modified_boris")
             {
-                return std::make_unique<BorisPusher<dim, ParticleIterator, Electromag, Interpolator,
+                return std::make_unique<BorisPusher<dim, ParticleRange, Electromag, Interpolator,
                                                     BoundaryCondition, GridLayout>>();
             }
 
