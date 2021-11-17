@@ -71,8 +71,8 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
 
         auto nCells = core::product(layout.nbrCells());
 
-        bool item_exists_and_valid = hybridModel.tags.count(key)
-                                     and hybridModel.tags[key]->size() == nCells;
+        bool item_exists_and_valid
+            = hybridModel.tags.count(key) and hybridModel.tags[key]->size() == nCells;
 
         if (!item_exists_and_valid)
         {
@@ -83,7 +83,21 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
                 = std::make_shared<typename Map_value_type::element_type>(layout.nbrCells());
         }
 
-        std::copy(tags, tags + nCells, hybridModel.tags[key]->data());
+        auto nbrCells = layout.nbrCells();
+        auto tagsv = core::NdArrayView<HybridModel::dimension, int>(hybridModel.tags[key]->data(),
+                                                                    layout.nbrCells());
+        auto tagsvF
+            = core::NdArrayView<HybridModel::dimension, int, int*, false>(tags, layout.nbrCells());
+        if constexpr (HybridModel::dimension == 2)
+        {
+            for (auto iTag_x = 0u; iTag_x < nbrCells[0]; ++iTag_x)
+            {
+                for (auto iTag_y = 0u; iTag_y < nbrCells[1]; ++iTag_y)
+                {
+                    tagsv(iTag_x, iTag_y) = tagsvF(iTag_x, iTag_y);
+                }
+            }
+        }
     }
     else
         throw std::runtime_error("invalid tagging strategy");

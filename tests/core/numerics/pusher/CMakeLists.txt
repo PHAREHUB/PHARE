@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.9)
 
 project(test-pusher)
 
-set(SOURCES test_main.cpp)
+set(SOURCES test_pusher.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

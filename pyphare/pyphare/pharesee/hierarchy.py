@@ -45,20 +45,23 @@ class FieldData(PatchData):
 
     @property
     def x(self):
+        withGhost= self.field_name != "tags"
         if self._x is None:
-            self._x = self.layout.yeeCoordsFor(self.field_name, "x")
+            self._x = self.layout.yeeCoordsFor(self.field_name, "x", withGhosts=withGhost)
         return self._x
 
     @property
     def y(self):
+        withGhosts = self.field_name != "tags"
         if self._y is None:
-            self._y = self.layout.yeeCoordsFor(self.field_name, "y")
+            self._y = self.layout.yeeCoordsFor(self.field_name, "y", withGhosts=withGhosts)
         return self._y
 
     @property
     def z(self):
+        withGhosts = self.field_name != "tags"
         if self._z is None:
-            self._z = self.layout.yeeCoordsFor(self.field_name, "z")
+            self._z = self.layout.yeeCoordsFor(self.field_name, "z", withGhosts=withGhosts)
         return self._z
 
     def primal_directions(self):
@@ -128,8 +131,9 @@ class FieldData(PatchData):
         else:
             raise ValueError("centering not specified and cannot be inferred from field name")
 
-        for i, centering in enumerate(centerings):
-            self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        if self.field_name != "tags":
+            for i, centering in enumerate(centerings):
+                self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
 
@@ -701,10 +705,10 @@ class PatchHierarchy:
                 if qty is None:
                     qty = list(patch.patch_datas.keys())[0]
 
-                layout  = patch.patch_data[qty].layout
-                nbrGhosts = layout.nbrGhostsFor(qty)
-                val = patch.patch_datas[qty].dataset[nbrGhosts:-nbrGhosts]
-                x   = patch.patch_datas[qty].x[nbrGhosts:-nbrGhosts]
+                layout  = patch.patch_datas[qty].layout
+                nbrGhosts = layout.nbrGhostFor(qty)
+                val = patch.patch_datas[qty].dataset[nbrGhosts[0]:-nbrGhosts[0]]
+                x   = patch.patch_datas[qty].x[nbrGhosts[0]:-nbrGhosts[0]]
                 label = "L{level}P{patch}".format(level=lvl_nbr,patch=ip)
                 marker=kwargs.get("marker", "")
                 ls = kwargs.get("ls","--")
@@ -743,6 +747,13 @@ class PatchHierarchy:
             ax = kwargs["ax"]
             fig = ax.figure
 
+        # assumes max 5 levels...
+        patchcolors = ["k"]*len(usr_lvls)
+        patchcolors = kwargs.get("patchcolors", patchcolors)
+        linewidths = [1]*len(usr_lvls)
+        linewidths = kwargs.get("lw", linewidths)
+        linestyles = ['-']*len(usr_lvls)
+        linestyles = kwargs.get("ls", linestyles)
         for lvl_nbr, lvl  in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
                 continue
@@ -752,11 +763,15 @@ class PatchHierarchy:
                 nbrGhosts = pdat.ghosts_nbr
                 x = pdat.x
                 y = pdat.y
-                nx,ny =x.size, y.size
-                data = data.reshape((nx,ny))
-                data = data[nbrGhosts[0]:-nbrGhosts[0], nbrGhosts[1]:-nbrGhosts[1]]
-                x = np.copy(x[nbrGhosts[0]:-nbrGhosts[0]])
-                y = np.copy(y[nbrGhosts[1]:-nbrGhosts[1]])
+
+                # if nbrGhosts is 0, we cannot do array[0,-0]
+                if np.all(nbrGhosts==np.zeros_like(nbrGhosts)):
+                    x = np.copy(x)
+                    y = np.copy(y)
+                else:
+                    data = data[nbrGhosts[0]:-nbrGhosts[0], nbrGhosts[1]:-nbrGhosts[1]]
+                    x = np.copy(x[nbrGhosts[0]:-nbrGhosts[0]])
+                    y = np.copy(y[nbrGhosts[1]:-nbrGhosts[1]])
                 dx,dy = pdat.layout.dl
                 x -= dx*0.5
                 y -= dy*0.5
@@ -772,8 +787,8 @@ class PatchHierarchy:
                                    patch.box.lower[1]*dy),
                                   patch.box.shape[0]*dx,
                                   patch.box.shape[1]*dy,
-                                  fc="none", ec="k",
-                                  alpha=0.4, lw=0.8)
+                                  fc="none", ec=patchcolors[lvl_nbr],
+                                  alpha=0.4, lw=linewidths[lvl_nbr],ls=linestyles[lvl_nbr])
                     ax.add_patch(r)
 
         ax.set_aspect(kwargs.get("aspect", "equal"))
@@ -793,7 +808,7 @@ class PatchHierarchy:
             ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(kwargs["filename"])
+            fig.savefig(kwargs["filename"], dpi=kwargs.get("dpi",200))
 
         return fig,ax
 

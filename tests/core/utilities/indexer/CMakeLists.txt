@@ -1,8 +1,9 @@
+
 cmake_minimum_required (VERSION 3.9)
 
-project(test-box)
+project(test-indexer)
 
-set(SOURCES test_box.cpp)
+set(SOURCES test_indexer.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
