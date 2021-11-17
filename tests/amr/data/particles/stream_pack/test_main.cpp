@@ -73,7 +73,7 @@ struct AParticlesData
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
 
-    Particle<dim> particle;
+    typename ParticleArray<dim>::Particle_t particle;
 
 
     AParticlesData()
@@ -171,9 +171,9 @@ TYPED_TEST(StreamPackTest, PackInTheCorrectBufferWithPeriodics)
     auto& cellOverlap = param.cellOverlap;
     auto& destData    = param.destData;
 
-    particle.iCell = ConstArray<int, dim>(16);
+    particle.iCell = ConstArray<int, dim>(15);
 
-    sourceData.patchGhostParticles.push_back(particle);
+    sourceData.domainParticles.push_back(particle);
 
     SAMRAI::tbox::MessageStream particlesWriteStream;
 
@@ -185,10 +185,10 @@ TYPED_TEST(StreamPackTest, PackInTheCorrectBufferWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    auto expectediCell = ConstArray<int, dim>(0);
+    auto expectediCell = ConstArray<int, dim>(-1);
 
-    ASSERT_THAT(destData.domainParticles.size(), Eq(1));
-    ASSERT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
+    ASSERT_THAT(destData.patchGhostParticles[0].iCell, Eq(expectediCell));
 }
 
 

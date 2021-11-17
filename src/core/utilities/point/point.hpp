@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <sstream>
+#include <ostream>
 
 #include "core/utilities/meta/meta_utilities.hpp"
 
@@ -35,7 +36,7 @@ namespace core
     {
     public:
         static constexpr std::size_t dimension = dim;
-        using type                             = Type;
+        using value_type                       = Type;
 
         template<typename... Indexes>
         constexpr Point(Indexes... index)
@@ -63,9 +64,8 @@ namespace core
 
         constexpr Point() { core::fill(Type{0}, r); }
 
-        type& operator[](std::size_t i) { return r[i]; }
-
-        type const& operator[](std::size_t i) const { return r[i]; }
+        auto& operator[](std::size_t i) { return r[i]; }
+        auto const& operator[](std::size_t i) const { return r[i]; }
 
 
         bool operator==(Point const& p) const
@@ -80,6 +80,9 @@ namespace core
             }
             return areEqual;
         }
+
+        bool operator!=(Point const& other) const { return !(*this == other); }
+
 
         template<typename DestType>
         auto toArray() const
@@ -161,7 +164,7 @@ namespace core
         auto operator-(Point<Type, dim> const& value) const { return (*this) - value.r; }
 
 
-
+        constexpr auto size() const { return dim; }
         auto begin() { return r.begin(); }
         auto begin() const { return r.begin(); }
         auto end() { return r.end(); }
@@ -174,9 +177,17 @@ namespace core
 
     template<typename... Indexes>
     Point(Indexes... indexes)
-        ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+        -> Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
-
+    template<typename Type, std::size_t dim>
+    auto& operator<<(std::ostream& os, Point<Type, dim> const& p)
+    {
+        os << "( ";
+        for (auto& v : p)
+            os << v << " ";
+        os << ")";
+        return os;
+    }
 
 } // namespace core
 } // namespace PHARE

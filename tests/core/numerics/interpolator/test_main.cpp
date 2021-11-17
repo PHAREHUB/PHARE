@@ -11,6 +11,8 @@
 #include <list>
 #include <random>
 
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/range/range.hpp"
 #include "phare_core.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/field/field.hpp"
@@ -228,9 +230,10 @@ public:
     using VF              = VecField<NdArray_t, HybridQuantity>;
 
     Electromag<VF> em;
+    GridLayout_t layout{{0.1}, {nx}, {0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
-    GridLayout_t layout{{0.1}, {nx}, {0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx1d_;
@@ -249,7 +252,7 @@ public:
 
     A1DInterpolator()
         : em{"EM"}
-        , particles(1)
+        , particles{grow(layout.AMRBox(), safeLayer), 1}
         , bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
         , by1d_{"field", HybridQuantity::Scalar::By, nx}
         , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
@@ -295,7 +298,7 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(
         std::all_of(std::begin(this->particles), std::end(this->particles),
@@ -349,9 +352,10 @@ public:
     using VF              = VecField<NdArray_t, HybridQuantity>;
 
     Electromag<VF> em;
+    GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
-    GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
     Field<NdArray_t, typename HybridQuantity::Scalar> by_;
@@ -369,7 +373,7 @@ public:
 
     A2DInterpolator()
         : em{"EM"}
-        , particles(1)
+        , particles{grow(layout.AMRBox(), safeLayer), 1}
         , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny}
         , by_{"field", HybridQuantity::Scalar::By, nx, ny}
         , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny}
@@ -417,7 +421,7 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(
         std::all_of(std::begin(this->particles), std::end(this->particles),
@@ -472,10 +476,11 @@ public:
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
     using VF              = VecField<NdArray_t, HybridQuantity>;
 
+    GridLayout<GridLayoutImpl> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
     Electromag<VF> em;
     ParticleArray_t particles;
     InterpolatorT interp;
-    GridLayout<GridLayoutImpl> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
     Field<NdArray_t, typename HybridQuantity::Scalar> by_;
@@ -493,7 +498,7 @@ public:
 
     A3DInterpolator()
         : em{"EM"}
-        , particles(1)
+        , particles{grow(layout.AMRBox(), safeLayer), 1}
         , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny, nz}
         , by_{"field", HybridQuantity::Scalar::By, nx, ny, nz}
         , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny, nz}
@@ -544,7 +549,7 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
     EXPECT_TRUE(
         std::all_of(std::begin(this->particles), std::end(this->particles),
@@ -598,12 +603,15 @@ class ACollectionOfParticles_1d : public ::testing::Test
     using NdArray_t       = typename PHARE_TYPES::Array_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
     using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using Particle_t      = Particle<1>;
+    using Particle_t      = typename ParticleArray_t::Particle_t;
 
 public:
     static constexpr std::uint32_t nx        = 30;
     static constexpr std::uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
     static constexpr std::uint32_t numOfPart = Interpolator::interp_order + 2;
+
+    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     Particle_t part;
     ParticleArray_t particles;
@@ -614,13 +622,12 @@ public:
     Field<NdArray_t, typename HybridQuantity::Scalar> vz;
     VecField<NdArray_t, HybridQuantity> v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
-    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
 
 
 
     ACollectionOfParticles_1d()
         : part{}
-        , particles{}
+        , particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
         , vx{"v_x", HybridQuantity::Scalar::Vx, nx}
         , vy{"v_y", HybridQuantity::Scalar::Vy, nx}
@@ -735,8 +742,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
         }
-
-        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, v, layout);
     }
 
 
@@ -771,13 +777,15 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
+    using PHARE_TYPES               = PHARE::core::PHARE_Types<dim, interp_order>;
+    using NdArray_t                 = typename PHARE_TYPES::Array_t;
+    using ParticleArray_t           = typename PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t              = typename PHARE_TYPES::GridLayout_t;
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     ACollectionOfParticles_2d()
-        : rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        : particles{grow(layout.AMRBox(), safeLayer)}
+        , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
         , vx{"v_x", HybridQuantity::Scalar::Vx, nx, ny}
         , vy{"v_y", HybridQuantity::Scalar::Vy, nx, ny}
         , vz{"v_z", HybridQuantity::Scalar::Vz, nx, ny}
@@ -798,8 +806,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
                 part.v[1]   = -1.;
                 part.v[2]   = +1.;
             }
-
-        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, v, layout);
     }
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};

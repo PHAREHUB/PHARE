@@ -200,8 +200,15 @@ void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, Ions& ions, R
         auto _ = rm.setOnPatch(*patch, ions);
         for (auto& pop : ions)
         {
-            tmpDomain[ss.str() + "_" + pop.name()]  = pop.domainParticles();
-            patchGhost[ss.str() + "_" + pop.name()] = pop.patchGhostParticles();
+            auto key = ss.str() + "_" + pop.name();
+            if (!tmpDomain.count(key))
+                tmpDomain.emplace(key, pop.domainParticles());
+            else
+                tmpDomain.at(key) = pop.domainParticles();
+            if (!patchGhost.count(key))
+                patchGhost.emplace(key, pop.patchGhostParticles());
+            else
+                patchGhost.at(key) = pop.patchGhostParticles();
         }
     }
 }
@@ -218,8 +225,8 @@ void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, Ions& ions
         auto _ = rm.setOnPatch(*patch, ions);
         for (auto& pop : ions)
         {
-            pop.domainParticles()     = std::move(tmpDomain[ss.str() + "_" + pop.name()]);
-            pop.patchGhostParticles() = std::move(patchGhost[ss.str() + "_" + pop.name()]);
+            pop.domainParticles()     = std::move(tmpDomain.at(ss.str() + "_" + pop.name()));
+            pop.patchGhostParticles() = std::move(patchGhost.at(ss.str() + "_" + pop.name()));
         }
     }
 }

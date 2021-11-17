@@ -16,7 +16,7 @@ endif(withIPO)
 
 set (PHARE_WITH_CCACHE FALSE)
 if(devMode) # -DdevMode=ON
-  set(testDuringBuild ON)
+    #set(testDuringBuild ON)
 
   # Having quotes on strings here has lead to quotes being added to the compile string, so avoid.
 

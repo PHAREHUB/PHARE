@@ -39,7 +39,7 @@ struct AParticlesDataND : public testing::Test
 
     ParticlesData<ParticleArray<dim>> destData{destDomain, ghost};
     ParticlesData<ParticleArray<dim>> sourceData{sourceDomain, ghost};
-    Particle<dim> particle;
+    typename ParticleArray<dim>::Particle_t particle;
 
 
     AParticlesDataND()
@@ -56,23 +56,6 @@ using WithAllDim = testing::Types<DimConst<1>, DimConst<2>, DimConst<3>>;
 
 TYPED_TEST_SUITE(AParticlesDataND, WithAllDim);
 
-
-
-TYPED_TEST(AParticlesDataND, copiesSourceGhostParticleIntoDomainForGhostSrcOverDomainDest)
-{
-    static constexpr auto dim = TypeParam{}();
-
-    // particle is in the first ghost of the source patchdata
-    // and in domain of the destination patchdata
-
-    this->particle.iCell = ConstArray<int, dim>(2);
-
-    this->sourceData.patchGhostParticles.push_back(this->particle);
-    this->destData.copy(this->sourceData);
-
-    ASSERT_THAT(this->destData.domainParticles.size(), Eq(1));
-    ASSERT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-}
 
 
 TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoGhostForDomainSrcOverGhostDest)
@@ -187,26 +170,6 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     SAMRAI::hier::Transformation transfo{SAMRAI::hier::IntVector::getZero(dimension)};
     SAMRAI::pdat::CellOverlap overlap(container, transfo);
 
-    // particle is in the first ghost of the source patchdata
-    // and in domain of the destination patchdata
-    // and also in the overlap
-
-    this->particle.iCell = ConstArray<int, dim>(2);
-
-    this->sourceData.patchGhostParticles.push_back(this->particle);
-    EXPECT_THAT(this->sourceData.domainParticles.size(), Eq(0));
-    EXPECT_THAT(this->sourceData.patchGhostParticles.size(), Eq(1));
-
-    EXPECT_THAT(this->destData.domainParticles.size(), Eq(0));
-    this->destData.copy(this->sourceData, overlap);
-    EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
-
-    EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-
-    this->sourceData.domainParticles.clear();
-    this->sourceData.patchGhostParticles.clear();
-    this->destData.patchGhostParticles.clear();
-    this->destData.domainParticles.clear();
 
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
@@ -272,23 +235,6 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // but then we consider an offset of -2 for the overlap (& no rotation)
     SAMRAI::hier::Transformation transfo{SAMRAI::hier::IntVector(dimension, -2)};
     SAMRAI::pdat::CellOverlap overlap(container, transfo);
-
-    // particle is in the first ghost of the source patchdata
-    // and in domain of the destination patchdata
-    // and also in the overlap
-
-    this->particle.iCell = ConstArray<int, dim>(4);
-
-    this->sourceData.patchGhostParticles.push_back(this->particle);
-    this->destData.copy(this->sourceData, overlap);
-    EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
-    EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-    EXPECT_EQ(2, this->destData.domainParticles[0].iCell[0]);
-
-    this->sourceData.domainParticles.clear();
-    this->sourceData.patchGhostParticles.clear();
-    this->destData.patchGhostParticles.clear();
-    this->destData.domainParticles.clear();
 
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
