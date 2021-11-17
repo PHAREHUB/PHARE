@@ -60,7 +60,7 @@ struct twoParticlesDataNDTouchingPeriodicBorders : public testing::Test
         std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
-    Particle<dim> particle;
+    typename ParticleArray<dim>::Particle_t particle;
 
     twoParticlesDataNDTouchingPeriodicBorders()
     {
@@ -141,31 +141,6 @@ TYPED_TEST(twoParticlesDataNDTouchingPeriodicBorders, preserveParticleAttributes
     EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Bx, this->particle.Bx);
     EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].By, this->particle.By);
     EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Bz, this->particle.Bz);
-}
-
-
-TYPED_TEST(twoParticlesDataNDTouchingPeriodicBorders,
-           CopyGhostSourceParticlesIntoInteriorDestWithPeriodics)
-{
-    static constexpr auto dim = TypeParam{}();
-
-    auto rightSourceGhostCell = 16;
-    auto leftDestCell         = 0;
-
-    this->particle.iCell = ConstArray<int, dim>(rightSourceGhostCell);
-    this->sourcePdat.patchGhostParticles.push_back(this->particle);
-    this->destPdat.copy(this->sourcePdat, *(this->cellOverlap));
-
-    EXPECT_THAT(this->destPdat.domainParticles.size(), Eq(1));
-    EXPECT_EQ(leftDestCell, this->destPdat.domainParticles[0].iCell[0]);
-    if constexpr (dim > 1)
-    {
-        EXPECT_EQ(leftDestCell, this->destPdat.domainParticles[0].iCell[1]);
-    }
-    if constexpr (dim > 2)
-    {
-        EXPECT_EQ(leftDestCell, this->destPdat.domainParticles[0].iCell[2]);
-    }
 }
 
 

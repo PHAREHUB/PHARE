@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.9)
 
-project(PHARE VERSION 0.1)
+project(PHARE VERSION 0.1 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
@@ -36,6 +36,7 @@ include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #### post deps config
 if(PHARE_WITH_CCACHE)

@@ -238,6 +238,7 @@ struct IonsBuffers
     Field Vx;
     Field Vy;
     Field Vz;
+    static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
 
     ParticleArray protonDomain;
     ParticleArray protonPatchGhost;
@@ -276,7 +277,16 @@ struct IonsBuffers
         , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
         , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
         , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
-
+        , protonDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
     {
         protonPack.domainParticles        = &protonDomain;
         protonPack.patchGhostParticles    = &protonPatchGhost;
@@ -476,20 +486,6 @@ struct IonUpdaterTest : public ::testing::Test
                 auto& patchGhostPart    = pop.patchGhostParticles();
 
 
-                std::copy_if(std::begin(domainPart), std::end(domainPart),
-                             std::back_inserter(levelGhostPartOld),
-                             [&firstAMRCell](auto const& particle) {
-                                 if constexpr (interp_order == 1)
-                                 {
-                                     return particle.iCell[0] == firstAMRCell[0];
-                                 }
-                                 else if constexpr (interp_order == 2 or interp_order == 3)
-                                 {
-                                     return (particle.iCell[0] == firstAMRCell[0])
-                                            || (particle.iCell[0] == firstAMRCell[0] + 1);
-                                 }
-                             });
-
                 // copies need to be put in the ghost cell
                 // we have copied particles be now their iCell needs to be udpated
                 // our choice is :
@@ -510,18 +506,29 @@ struct IonUpdaterTest : public ::testing::Test
                 //     |      |       |     |
                 //     -------|-------|     |
                 //            ---------------
-                std::transform(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
-                               std::begin(levelGhostPartOld), [](auto& part) {
-                                   if constexpr (interp_order == 2 or interp_order == 3)
-                                   {
-                                       part.iCell[0] = part.iCell[0] - 2;
-                                   }
-                                   else if constexpr (interp_order == 1)
-                                   {
-                                       part.iCell[0] = part.iCell[0] - 1;
-                                   }
-                                   return part;
-                               });
+                for (auto const& part : domainPart)
+                {
+                    if constexpr (interp_order == 2 or interp_order == 3)
+                    {
+                        if (part.iCell[0] == firstAMRCell[0]
+                            or part.iCell[0] == firstAMRCell[0] + 1)
+                        {
+                            auto p{part};
+                            p.iCell[0] -= 2;
+                            levelGhostPartOld.push_back(p);
+                        }
+                    }
+                    else if constexpr (interp_order == 1)
+                    {
+                        if (part.iCell[0] == firstAMRCell[0])
+                        {
+                            auto p{part};
+                            p.iCell[0] -= 1;
+                            levelGhostPartOld.push_back(p);
+                        }
+                    }
+                }
+
 
 
                 std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
@@ -535,34 +542,28 @@ struct IonUpdaterTest : public ::testing::Test
                 // now let's create patchGhostParticles on the right of the domain
                 // by copying those on the last cell
 
-                std::copy_if(std::begin(domainPart), std::end(domainPart),
-                             std::back_inserter(patchGhostPart),
-                             [&lastAMRCell](auto const& particle) {
-                                 if constexpr (interp_order == 1)
-                                 {
-                                     return particle.iCell[0] == lastAMRCell[0];
-                                 }
-                                 else if constexpr (interp_order == 2 or interp_order == 3)
-                                 {
-                                     return (particle.iCell[0] == lastAMRCell[0])
-                                            || (particle.iCell[0] == lastAMRCell[0] - 1);
-                                 }
-                             });
 
-
-                std::transform(std::begin(patchGhostPart), std::end(patchGhostPart),
-                               std::begin(patchGhostPart), [](auto& part) {
-                                   if constexpr (interp_order == 2 or interp_order == 3)
-                                   {
-                                       part.iCell[0] = part.iCell[0] + 2;
-                                   }
-                                   else if constexpr (interp_order == 1)
-                                   {
-                                       part.iCell[0] = part.iCell[0] + 1;
-                                   }
-                                   return part;
-                               });
-
+                for (auto const& part : domainPart)
+                {
+                    if constexpr (interp_order == 2 or interp_order == 3)
+                    {
+                        if (part.iCell[0] == lastAMRCell[0] or part.iCell[0] == lastAMRCell[0] - 1)
+                        {
+                            auto p{part};
+                            p.iCell[0] += 2;
+                            patchGhostPart.push_back(p);
+                        }
+                    }
+                    else if constexpr (interp_order == 1)
+                    {
+                        if (part.iCell[0] == lastAMRCell[0])
+                        {
+                            auto p{part};
+                            p.iCell[0] += 1;
+                            patchGhostPart.push_back(p);
+                        }
+                    }
+                }
 
             } // end 1D
         }     // end pop loop
@@ -589,17 +590,17 @@ struct IonUpdaterTest : public ::testing::Test
 
         for (auto& pop : this->ions)
         {
-            interpolate(std::begin(pop.patchGhostParticles()), std::end(pop.patchGhostParticles()),
-                        pop.density(), pop.flux(), layout);
+            interpolate(makeIndexRange(pop.patchGhostParticles()), pop.density(), pop.flux(),
+                        layout);
 
             double alpha = 0.5;
-            interpolate(std::begin(pop.levelGhostParticlesNew()),
-                        std::end(pop.levelGhostParticlesNew()), pop.density(), pop.flux(), layout,
+            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.density(), pop.flux(),
+                        layout,
                         /*coef = */ alpha);
 
 
-            interpolate(std::begin(pop.levelGhostParticlesOld()),
-                        std::end(pop.levelGhostParticlesOld()), pop.density(), pop.flux(), layout,
+            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.density(), pop.flux(),
+                        layout,
                         /*coef = */ (1. - alpha));
         }
     }

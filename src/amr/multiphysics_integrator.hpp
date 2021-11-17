@@ -307,6 +307,7 @@ namespace solver
 
             std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
                       << "\n";
+            PHARE_LOG_START("initializeLevelData::allocate block");
             if (allocateData)
             {
                 for (auto patch : *level)
@@ -317,6 +318,7 @@ namespace solver
                 }
             }
 
+            PHARE_LOG_STOP("initializeLevelData::allocate block");
             if (isRegridding)
             {
                 // regriding the current level has broken schedules for which

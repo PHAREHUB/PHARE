@@ -71,10 +71,10 @@ Trajectory readExpectedTrajectory()
 class Interpolator
 {
 public:
-    template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const&, GridLayout&)
+    template<typename ParticleRange, typename Electromag, typename GridLayout>
+    void operator()(ParticleRange particles, Electromag const&, GridLayout&)
     {
-        for (auto currPart = begin; currPart != end; ++currPart)
+        for (auto currPart = std::begin(particles); currPart != std::end(particles); ++currPart)
         {
             currPart->Ex = 0.01;
             currPart->Ey = -0.05;
@@ -98,10 +98,10 @@ class Electromag
 class DummySelector
 {
 public:
-    template<typename Particle>
-    bool operator()(Particle) const
+    template<typename Range>
+    Range operator()(Range& particles) const
     {
-        return true;
+        return particles;
     }
 };
 
@@ -112,20 +112,20 @@ struct DummyLayout
     static constexpr std::size_t dimension = dimension_;
     std::array<unsigned int, dimension> nbrCells_;
     auto nbrCells() const { return nbrCells_; }
-    auto AMRBox() const { return PHARE::core::Box<int, 1>{}; }
+    auto AMRBox() const { return PHARE::core::emptyBox<int, dimension>(); }
 };
 
 template<std::size_t dim>
 class APusher : public ::testing::Test
 {
 public:
-    using Pusher_ = BorisPusher<dim, typename ParticleArray<dim>::iterator, Electromag,
-                                Interpolator, BoundaryCondition<dim, 1>, DummyLayout<dim>>;
+    using Pusher_ = BorisPusher<dim, IndexRange<ParticleArray<dim>>, Electromag, Interpolator,
+                                BoundaryCondition<dim, 1>, DummyLayout<dim>>;
 
     APusher()
         : expectedTrajectory{readExpectedTrajectory()}
-        , particlesIn(1)
-        , particlesOut(1)
+        , particlesIn{layout.AMRBox()}
+        , particlesOut(layout.AMRBox())
         , pusher{std::make_unique<Pusher_>()}
         , mass{1}
         , dt{0.0001}
@@ -133,10 +133,10 @@ public:
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
     {
-        particlesIn[0].charge = 1;
-        particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].iCell.fill(5);
-        particlesIn[0].delta.fill(0.0);
+        particlesIn.emplace_back(
+            Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
+        particlesOut.emplace_back(
+            Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
         dxyz.fill(0.05);
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
@@ -144,7 +144,9 @@ public:
     }
 
 protected:
+    using Particle = typename ParticleArray<dim>::Particle_t;
     Trajectory expectedTrajectory;
+    DummyLayout<dim> layout;
     ParticleArray<dim> particlesIn;
     ParticleArray<dim> particlesOut;
     std::unique_ptr<Pusher_> pusher;
@@ -155,7 +157,6 @@ protected:
     Electromag em;
     Interpolator interpolator;
     DummySelector selector;
-    DummyLayout<dim> layout;
     // BoundaryCondition bc;
 
     std::array<std::vector<float>, dim> actual;
@@ -169,8 +170,8 @@ using APusher3D = APusher<3>;
 
 TEST_F(APusher3D, trajectoryIsOk)
 {
-    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
     std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
 
     for (decltype(nt) i = 0; i < nt; ++i)
@@ -182,7 +183,9 @@ TEST_F(APusher3D, trajectoryIsOk)
         actual[2][i]
             = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dxyz[2]);
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
+        pusher->move(
+            rangeIn, rangeOut, em, mass, interpolator, layout,
+            [](decltype(rangeIn)& rge) { return rge; }, selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -197,8 +200,8 @@ TEST_F(APusher3D, trajectoryIsOk)
 
 TEST_F(APusher2D, trajectoryIsOk)
 {
-    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
     std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
 
     for (decltype(nt) i = 0; i < nt; ++i)
@@ -208,7 +211,9 @@ TEST_F(APusher2D, trajectoryIsOk)
         actual[1][i]
             = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
+        pusher->move(
+            rangeIn, rangeOut, em, mass, interpolator, layout, [](auto& rge) { return rge; },
+            selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -221,8 +226,8 @@ TEST_F(APusher2D, trajectoryIsOk)
 
 TEST_F(APusher1D, trajectoryIsOk)
 {
-    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
     std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
 
     for (decltype(nt) i = 0; i < nt; ++i)
@@ -230,7 +235,7 @@ TEST_F(APusher1D, trajectoryIsOk)
         actual[0][i]
             = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -248,12 +253,9 @@ class APusherWithLeavingParticles : public ::testing::Test
 {
 public:
     APusherWithLeavingParticles()
-        : particlesIn(1000)
-        , particlesOut1(1000)
-        , particlesOut2(1000)
-        , pusher{std::make_unique<
-              BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
-                          BoundaryCondition<1, 1>, DummyLayout<1>>>()}
+        : pusher{std::make_unique<
+            BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+                        BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
         , tstart{0}
@@ -261,28 +263,26 @@ public:
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
         , domain{Point<double, 1>{0.}, Point<double, 1>{1.}}
         , cells{Point{0}, Point{9}}
+        , particlesIn{grow(cells, 1)}
+        , particlesOut1{grow(cells, 1), 1000}
+        , particlesOut2{grow(cells, 1), 1000}
     {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(0, 9);
         std::uniform_real_distribution<float> delta(0, 1);
 
-        for (auto& part : particlesIn)
+        for (std::size_t iPart = 0; iPart < 1000; ++iPart)
         {
-            part.charge = 1;
-            part.v      = {{5., 0., 0.}};
-            part.iCell  = {{dis(gen)}};
-            part.delta  = {{delta(gen)}};
+            particlesIn.emplace_back(
+                Particle<1>{1., 1., {{dis(gen)}}, {{delta(gen)}}, {{5., 0., 0.}}});
         }
         pusher->setMeshAndTimeStep({{dx}}, dt);
     }
 
 
 protected:
-    ParticleArray<1> particlesIn;
-    ParticleArray<1> particlesOut1;
-    ParticleArray<1> particlesOut2;
-    std::unique_ptr<BorisPusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+    std::unique_ptr<BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
                                 BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
     double mass;
@@ -296,6 +296,9 @@ protected:
     Box<double, 1> domain;
     Box<int, 1> cells;
     BoundaryCondition<1, 1> bc;
+    ParticleArray<1> particlesIn;
+    ParticleArray<1> particlesOut1;
+    ParticleArray<1> particlesOut2;
 };
 
 
@@ -303,31 +306,39 @@ protected:
 
 TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 {
-    auto rangeIn = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto newEnd  = std::end(particlesIn);
-    auto selector
-        = [this](Particle<1> const& part) { return PHARE::core::isIn(cellAsPoint(part), cells); };
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto inDomain = rangeIn;
 
+    auto selector = [this](auto& particleRange) //
+    {
+        auto& box = this->cells;
+        return particleRange.array().partition(
+            [&](auto const& cell) { return PHARE::core::isIn(Point{cell}, box); });
+    };
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
         auto layout = DummyLayout<1>{};
-        newEnd      = pusher->move(rangeIn, rangeIn, em, mass, interpolator, selector, layout);
+        inDomain
+            = pusher->move(rangeIn, rangeIn, em, mass, interpolator, layout, selector, selector);
 
-        if (newEnd != std::end(particlesIn))
+        if (inDomain.end() != std::end(particlesIn))
         {
-            std::cout << "stopping integration at i = " << i << "\n";
-            std::cout << std::distance(std::begin(particlesIn), newEnd) << " in domain\n";
-            std::cout << std::distance(newEnd, std::end(particlesIn)) << " leaving\n";
+            std::cout << inDomain.iend() << " and " << particlesIn.size() << "\n";
             break;
         }
     }
-    EXPECT_TRUE(std::none_of(newEnd, std::end(particlesIn), selector));
-    EXPECT_TRUE(std::all_of(std::begin(particlesIn), newEnd, selector));
+    EXPECT_TRUE(std::none_of(inDomain.end(), std::end(particlesIn), [this](auto const& particle) {
+        return PHARE::core::isIn(Point{particle.iCell}, cells);
+    }));
+    EXPECT_TRUE(std::all_of(std::begin(inDomain), std::end(inDomain), [this](auto const& particle) {
+        return PHARE::core::isIn(Point{particle.iCell}, cells);
+    }));
 }
 
 
-
+// removed boundary condition partitioner, fix that when BCs are implemented
+#if 0
 TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
@@ -364,14 +375,14 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
     auto d2 = std::distance(std::begin(particlesOut2), newEndWithoutBC);
     EXPECT_EQ(d1, d2);
 }
-
+#endif
 
 
 
 TEST(APusherFactory, canReturnABorisPusher)
 {
     auto pusher
-        = PusherFactory::makePusher<1, ParticleArray<1>::iterator, Electromag, Interpolator,
+        = PusherFactory::makePusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
                                     BoundaryCondition<1, 1>, DummyLayout<1>>("modified_boris");
 
     EXPECT_NE(nullptr, pusher);

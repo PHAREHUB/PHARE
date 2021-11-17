@@ -464,11 +464,14 @@ public:
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
-    template<typename PartIterator, typename Electromag, typename GridLayout>
-    inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+    template<typename ParticleRange, typename Electromag, typename GridLayout>
+    inline void operator()(ParticleRange&& particleRange, Electromag const& Em,
                            GridLayout const& layout)
     {
         PHARE_LOG_SCOPE("Interpolator::operator()");
+
+        auto begin = particleRange.begin();
+        auto end   = particleRange.end();
 
         using Scalar             = HybridQuantity::Scalar;
         auto const& [Ex, Ey, Ez] = Em.E();
@@ -516,10 +519,12 @@ public:
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
-    template<typename PartIterator, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(PartIterator begin, PartIterator end, Field& density, VecField& flux,
+    template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
+    inline void operator()(ParticleRange&& particleRange, Field& density, VecField& flux,
                            GridLayout const& layout, double coef = 1.)
     {
+        auto begin        = particleRange.begin();
+        auto end          = particleRange.end();
         auto& startIndex_ = primal_startIndex_;
         auto& weights_    = primal_weights_;
 

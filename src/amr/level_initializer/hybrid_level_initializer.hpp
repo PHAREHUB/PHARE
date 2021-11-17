@@ -62,19 +62,25 @@ namespace solver
 
             if (isRootLevel(levelNumber))
             {
+                PHARE_LOG_START("hybridLevelInitializer::initialize : root level init");
                 model.initialize(level);
                 messenger.fillRootGhosts(model, level, initDataTime);
+                PHARE_LOG_STOP("hybridLevelInitializer::initialize : root level init");
             }
 
             else
             {
                 if (isRegridding)
                 {
+                    PHARE_LOG_START("hybridLevelInitializer::initialize : regriding block");
                     messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
+                    PHARE_LOG_STOP("hybridLevelInitializer::initialize : regriding block");
                 }
                 else
                 {
+                    PHARE_LOG_START("hybridLevelInitializer::initialize : initlevel");
                     messenger.initLevel(model, level, initDataTime);
+                    PHARE_LOG_STOP("hybridLevelInitializer::initialize : initlevel");
                     messenger.prepareStep(model, level, initDataTime);
                 }
             }
