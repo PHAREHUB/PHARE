@@ -170,6 +170,10 @@ class Run:
         else:
             return hierarchy
 
+    def GetTags(self, time, merged=False):
+        hier = self._get_hierarchy(time, "tags.h5")
+        return self._get(hier, time, merged, "nearest")
+
     def GetB(self, time, merged=False, interp='nearest'):
         hier = self._get_hierarchy(time, "EM_B.h5")
         return self._get(hier, time, merged, interp)

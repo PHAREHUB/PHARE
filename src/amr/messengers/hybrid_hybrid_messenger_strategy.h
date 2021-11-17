@@ -185,7 +185,15 @@ namespace amr
             magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            levelGhostParticlesOld_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            // we now call only levelGhostParticlesOld.fill() and not .regrid()
+            // regrid() would refine from next coarser in regions of level not overlaping
+            // oldLevel, but copy from domain particles of oldLevel where there is an overlap
+            // while we do not a priori see why this could be wrong,but this led to occasional
+            // failures of the SAMRAI MPI module. See https://github.com/PHAREHUB/PHARE/issues/604
+            // calling .fill() ensures that levelGhostParticlesOld particles are filled
+            // exclusively from spliting next coarser domain ones like when a new finest level
+            // is created.
+            levelGhostParticlesOld_.fill(levelNumber, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
 
             // computeIonMoments_(*level, model);
@@ -238,10 +246,14 @@ namespace amr
             // already fill the patch ghost box from the neighbor interior box.
             // so ghost nodes are already filled .
 
+            PHARE_LOG_START("hybhybmessengerStrat::initLevel : interior part fill schedule");
             interiorParticles_.fill(levelNumber, initDataTime);
+            PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : interior part fill schedule");
             // however we need to call the ghost communicator for patch ghost particles
             // since the interior schedules have a restriction to the interior of the patch.
+            PHARE_LOG_START("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
             patchGhostParticles_.fill(levelNumber, initDataTime);
+            PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
 
 
             levelGhostParticlesOld_.fill(levelNumber, initDataTime);
@@ -544,7 +556,6 @@ namespace amr
         {
             auto levelNumber  = level.getLevelNumber();
             auto& hybridModel = static_cast<HybridModel&>(model);
-
             magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, time);
 

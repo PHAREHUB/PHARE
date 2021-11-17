@@ -180,7 +180,8 @@ namespace core
 
         std::uint32_t nbrCellsFlat() const
         {
-            return std::accumulate(nbrPhysicalCells_.begin(), nbrPhysicalCells_.end(), 0);
+            return std::accumulate(nbrPhysicalCells_.begin(), nbrPhysicalCells_.end(), 1,
+                                   std::multiplies<int>());
         }
 
 
@@ -546,7 +547,7 @@ namespace core
         /**
          * @brief the number of ghost nodes on each side of the mesh for a given centering
          */
-        auto static nbrGhosts(QtyCentering /*centering*/ = QtyCentering::primal)
+        auto static constexpr nbrGhosts(QtyCentering /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
             static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
 
@@ -566,7 +567,7 @@ namespace core
 
 
         template<typename Quantity>
-        auto static nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
+        auto static constexpr nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
             return ConstArray<std::uint32_t, dimension>(nbrGhosts());
         }

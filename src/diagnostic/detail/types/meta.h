@@ -2,7 +2,8 @@
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_META_H
 
 #include "diagnostic/detail/h5typewriter.h"
-
+#include "core/data/ndarray/ndarray_vector.h"
+#include "core/utilities/mpi_utils.h"
 
 namespace PHARE::diagnostic::h5
 {

@@ -32,7 +32,7 @@ public:
         SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
         SAMRAI::tbox::SAMRAIManager::initialize();
         SAMRAI::tbox::SAMRAIManager::startup();
-
+        SAMRAI::tbox::SAMRAI_MPI::setCallAbortInParallelInsteadOfMPIAbort();
         std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
             = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
         SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
