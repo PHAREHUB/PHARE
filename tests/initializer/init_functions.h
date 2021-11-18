@@ -61,21 +61,6 @@ Return bz(Param x)
     return std::make_shared<core::VectorSpan<double>>(x);
 }
 
-Return ex(Param x)
-{
-    return std::make_shared<core::VectorSpan<double>>(x);
-}
-
-Return ey(Param x)
-{
-    return std::make_shared<core::VectorSpan<double>>(x);
-}
-
-Return ez(Param x)
-{
-    return std::make_shared<core::VectorSpan<double>>(x);
-}
-
 
 } // namespace PHARE::initializer::test_fn::func_1d
 
@@ -135,20 +120,6 @@ Return bz(Param x, Param y)
     return std::make_shared<core::VectorSpan<double>>(x);
 }
 
-Return ex(Param x, Param y)
-{
-    return std::make_shared<core::VectorSpan<double>>(x);
-}
-
-Return ey(Param x, Param y)
-{
-    return std::make_shared<core::VectorSpan<double>>(x);
-}
-
-Return ez(Param x, Param y)
-{
-    return std::make_shared<core::VectorSpan<double>>(x);
-}
 
 } // namespace PHARE::initializer::test_fn::func_2d
 
