@@ -1,4 +1,6 @@
 
+#include <cmath>
+#include <algorithm>
 
 #include "phare/phare.h"
 #include "amr/tagging/tagger.h"
@@ -12,11 +14,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <algorithm>
-#include <cmath>
+#include "tests/core/data/gridlayout/gridlayout_test.h"
 
 using namespace PHARE::amr;
-
 
 
 
@@ -32,10 +32,10 @@ TEST(test_tagger, fromFactory)
 
 
 
-using Param   = std::vector<double> const;
+using Param   = std::vector<double>;
 using RetType = std::shared_ptr<PHARE::core::Span<double>>;
 
-RetType step(Param& x)
+RetType step1(Param const& x)
 {
     std::vector<double> values(x.size());
     std::transform(std::begin(x), std::end(x), std::begin(values),
@@ -43,11 +43,27 @@ RetType step(Param& x)
     return std::make_shared<PHARE::core::VectorSpan<double>>(std::move(values));
 }
 
+RetType step2(Param const& x, Param const& y)
+{
+    throw std::runtime_error("fix me");
+}
 
-using InitFunctionT = PHARE::initializer::InitFunction<1>;
+template<std::size_t dim>
+auto constexpr step_fn()
+{
+    if constexpr (dim == 1)
+        return &step1;
+    if constexpr (dim == 2)
+        return &step2;
+}
 
+
+template<std::size_t dim>
 PHARE::initializer::PHAREDict createDict()
 {
+    using InitFunctionT        = PHARE::initializer::InitFunction<dim>;
+    auto static constexpr step = step_fn<dim>();
+
     PHARE::initializer::PHAREDict dict;
     dict["ions"]["nbrPopulations"] = int{2};
     dict["ions"]["pop0"]["name"]   = std::string{"protons"};
@@ -125,12 +141,21 @@ PHARE::initializer::PHAREDict createDict()
 
 
 
+template<std::size_t dim_, std::size_t interp_, std::size_t refinedPartNbr_>
+struct TaggingTestInfo
+{
+    auto static constexpr dim            = dim_;
+    auto static constexpr interp         = interp_;
+    auto static constexpr refinedPartNbr = refinedPartNbr_;
+};
 
+
+template<typename TaggingTestInfo_t>
 struct TestTagger : public ::testing::Test
 {
-    static constexpr auto dim            = 1;
-    static constexpr auto interp_order   = 1;
-    static constexpr auto refinedPartNbr = 2;
+    auto static constexpr dim            = TaggingTestInfo_t::dim;
+    auto static constexpr interp_order   = TaggingTestInfo_t::interp;
+    auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
 
     using phare_types = PHARE::PHARE_Types<dim, interp_order, refinedPartNbr>;
     using Electromag  = typename phare_types::Electromag_t;
@@ -146,7 +171,6 @@ struct TestTagger : public ::testing::Test
         HybridState<Electromag, Ions, Electrons> state;
     };
 
-
     GridLayoutT layout;
     Field Bx, By, Bz;
     Field Ex, Ey, Ez;
@@ -155,14 +179,14 @@ struct TestTagger : public ::testing::Test
     std::vector<int> tags;
 
     TestTagger()
-        : layout{{0.05}, {20}, {0.}}
+        : layout{TestGridLayout<GridLayoutT>::make(20)}
         , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
         , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
         , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
         , Ex{"Ex", HybridQuantity::Scalar::Ex, layout.allocSize(HybridQuantity::Scalar::Ex)}
         , Ey{"Ey", HybridQuantity::Scalar::Ey, layout.allocSize(HybridQuantity::Scalar::Ey)}
         , Ez{"Ez", HybridQuantity::Scalar::Ez, layout.allocSize(HybridQuantity::Scalar::Ez)}
-        , model{createDict()}
+        , model{createDict<dim>()}
         , tags(20 + layout.nbrGhosts(PHARE::core::QtyCentering::dual))
     {
         model.state.electromag.E.setBuffer("EM_E_x", &Ex);
@@ -175,42 +199,46 @@ struct TestTagger : public ::testing::Test
     }
 };
 
-/* TODOmaybe find a way to test the tagging?
-TEST_F(TestTagger, scaledAvg)
+using TaggingTestInfos = testing::Types<TaggingTestInfo<1, 1, 2> /*, TaggingTestInfo<2, 1, 4>*/>;
+TYPED_TEST_SUITE(TestTagger, TaggingTestInfos);
+
+// TODOmaybe find a way to test the tagging?
+TYPED_TEST(TestTagger, scaledAvg)
 {
-    auto strat = DefaultHybridTaggerStrategy<SinglePatchHybridModel>();
-    strat.tag(model, layout, tags.data());
-    {
-        auto start
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
-        auto end
-            = layout.physicalEndIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
+    /*
+      auto strat = DefaultHybridTaggerStrategy<SinglePatchHybridModel>();
+      strat.tag(model, layout, tags.data());
+      {
+          auto start
+              = layout.physicalStartIndex(PHARE::core::QtyCentering::dual,
+      PHARE::core::Direction::X); auto end =
+      layout.physicalEndIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
 
-        auto endCell     = layout.nbrCells()[0] - 1;
-        double threshold = 0.1;
+          auto endCell     = layout.nbrCells()[0] - 1;
+          double threshold = 0.1;
 
 
-        for (auto iCell = 0u, ix = start; iCell <= endCell; ++ix, ++iCell)
-        {
-            auto Bxavg = (Bx(ix - 1) + Bx(ix) + Bx(ix + 1)) / 3.;
-            auto Byavg = (By(ix - 1) + By(ix) + By(ix + 1)) / 3.;
-            auto Bzavg = (Bz(ix - 1) + Bz(ix) + Bz(ix + 1)) / 3.;
+          for (auto iCell = 0u, ix = start; iCell <= endCell; ++ix, ++iCell)
+          {
+              auto Bxavg = (Bx(ix - 1) + Bx(ix) + Bx(ix + 1)) / 3.;
+              auto Byavg = (By(ix - 1) + By(ix) + By(ix + 1)) / 3.;
+              auto Bzavg = (Bz(ix - 1) + Bz(ix) + Bz(ix + 1)) / 3.;
 
-            auto diffx = std::abs(Bxavg - Bx(ix));
-            auto diffy = std::abs(Byavg - By(ix));
-            auto diffz = std::abs(Bzavg - Bz(ix));
+              auto diffx = std::abs(Bxavg - Bx(ix));
+              auto diffy = std::abs(Byavg - By(ix));
+              auto diffz = std::abs(Bzavg - Bz(ix));
 
-            auto max = std::max({diffx, diffy, diffz});
-            if (max > threshold)
-            {
-                tags[iCell] = 1;
-            }
-            else
-                tags[iCell] = 0;
-        }
-    }
+              auto max = std::max({diffx, diffy, diffz});
+              if (max > threshold)
+              {
+                  tags[iCell] = 1;
+              }
+              else
+                  tags[iCell] = 0;
+          }
+      }
+  */
 }
-*/
 
 
 
