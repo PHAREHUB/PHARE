@@ -1,4 +1,9 @@
 
+#  TO activate caliper with PHARE
+#   1. configure cmake -DwithCaliper=ON
+#   2. export CALI_CONFIG=runtime-report
+##
+
 if(DEFINED CALIPER_ROOT)
   set(withCaliper ON)
 endif()

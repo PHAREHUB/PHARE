@@ -82,7 +82,7 @@ namespace amr
          */
         void copy(const SAMRAI::hier::PatchData& source) final
         {
-            PHARE_LOG_SCOPE("copy");
+            PHARE_LOG_SCOPE("FieldData::copy");
 
             // After checking that source and *this have the same number of dimension
             // We will try to cast source as a FieldData, if it succeed we can continue
@@ -146,7 +146,7 @@ namespace amr
         void copy(const SAMRAI::hier::PatchData& source,
                   const SAMRAI::hier::BoxOverlap& overlap) final
         {
-            PHARE_LOG_SCOPE("copy");
+            PHARE_LOG_SCOPE("FieldData::copy");
 
             // casts throw on failure
             auto& fieldSource  = dynamic_cast<FieldData const&>(source);
