@@ -28,8 +28,7 @@ namespace core
         using ParticleSelector = typename Super::ParticleSelector;
         using ParticleRange    = Range<ParticleIterator>;
 
-    private:
-    public:
+
         // This move function should be considered when being used so that all particles are pushed
         // twice - see: https://github.com/PHAREHUB/PHARE/issues/571
         /** see Pusher::move() documentation*/
@@ -41,8 +40,7 @@ namespace core
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/Z
             // get a pointer on the first particle of rangeOut that leaves the patch
-            auto firstLeaving
-                = pushStep_(rangeIn, rangeOut, particleIsNotLeaving, PushStep::PrePush);
+            auto firstLeaving = pushStep_(rangeIn, rangeOut, particleIsNotLeaving);
 
             // apply boundary condition on the particles in [firstLeaving, rangeOut.end[
             // that actually leave through a physical boundary condition
@@ -62,7 +60,7 @@ namespace core
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
-            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving, PushStep::PostPush);
+            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving);
 
             // apply BC on the leaving particles that leave through physical BC
             // and get pointer on new End, discarding particles leaving elsewhere
@@ -86,7 +84,7 @@ namespace core
             // rangeIn : t=n, rangeOut : t=n+1/2
             // Do not partition on this step - this is to keep all domain and ghost
             //   particles consistent. see: https://github.com/PHAREHUB/PHARE/issues/571
-            pushStep_(rangeIn, rangeOut, PushStep::PrePush);
+            pushStep_(rangeIn, rangeOut);
 
             // get electromagnetic fields interpolated on the particles of rangeOut
             // stop at newEnd.
@@ -97,8 +95,7 @@ namespace core
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
-            auto firstLeaving
-                = pushStep_(rangeOut, rangeOut, particleIsNotLeaving, PushStep::PostPush);
+            auto firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving);
 
             rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
 
@@ -120,7 +117,7 @@ namespace core
             // push the particles of half a step
             // rangeIn : t=n, rangeOut : t=n+1/2
             auto firstLeaving
-                = pushStep_(rangeIn, rangeOut, particleIsNotLeaving0, PushStep::PrePush);
+                = pushStep_(rangeIn, rangeOut, particleIsNotLeaving0);
 
             rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
 
@@ -132,7 +129,7 @@ namespace core
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
-            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving1, PushStep::PostPush);
+            firstLeaving = pushStep_(rangeOut, rangeOut, particleIsNotLeaving1);
 
             rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
 
@@ -152,8 +149,6 @@ namespace core
 
 
     private:
-        enum class PushStep { PrePush, PostPush };
-
         /** move the particle partIn of half a time step and store it in partOut
          */
         template<typename ParticleIter>
@@ -183,26 +178,11 @@ namespace core
          * detected by the ParticleSelector
          */
         template<typename ParticleRangeIn, typename ParticleRangeOut>
-        void pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut, PushStep step)
+        void pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut)
         {
             auto currentOut = rangeOut.begin();
             for (auto& currentIn : rangeIn)
             {
-                // in the first push, this is the first time
-                // we push to rangeOut, which contains crap
-                // the push will only touch the particle position
-                // but the next step being the acceleration of
-                // rangeOut, we need to copy rangeIn weights, charge
-                // and velocity. This is done here although
-                // not strictly speaking this function's business
-                // to take advantage that we're already looping
-                // over rangeIn particles.
-                if (step == PushStep::PrePush)
-                {
-                    currentOut->charge = currentIn.charge;
-                    currentOut->weight = currentIn.weight;
-                    currentOut->v      = currentIn.v;
-                }
                 // push the particle
                 advancePosition_(currentIn, *currentOut);
                 ++currentOut;
@@ -211,9 +191,9 @@ namespace core
 
         template<typename ParticleRangeIn, typename ParticleRangeOut>
         auto pushStep_(ParticleRangeIn const& rangeIn, ParticleRangeOut& rangeOut,
-                       ParticleSelector const& particleIsNotLeaving, PushStep step)
+                       ParticleSelector const& particleIsNotLeaving)
         {
-            pushStep_(rangeIn, rangeOut, step);
+            pushStep_(rangeIn, rangeOut);
 
             // now all particles have been pushed
             // those not satisfying the predicate after the push

@@ -154,7 +154,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // deposit moments on those which leave to go inDomainBox
 
         auto pushAndAccumulateGhosts = [&](auto& inputArray, bool copyInDomain = false) {
-            ParticleArray outputArray(inputArray.size());
+            auto outputArray = inputArray;
 
             inRange  = makeRange(inputArray);
             outRange = makeRange(outputArray);
