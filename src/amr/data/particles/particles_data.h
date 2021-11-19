@@ -133,7 +133,7 @@ namespace amr
          */
         void copy(SAMRAI::hier::PatchData const& source) override
         {
-            PHARE_LOG_SCOPE("copy");
+            PHARE_LOG_SCOPE("ParticlesData::copy");
 
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
@@ -170,7 +170,7 @@ namespace amr
         void copy(SAMRAI::hier::PatchData const& source,
                   SAMRAI::hier::BoxOverlap const& overlap) override
         {
-            PHARE_LOG_SCOPE("copy");
+            PHARE_LOG_SCOPE("ParticlesData::copy with overlap");
 
             // casts throw on failure
             auto& pSource  = dynamic_cast<ParticlesData const&>(source);
