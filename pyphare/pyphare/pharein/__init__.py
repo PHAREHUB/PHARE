@@ -63,10 +63,10 @@ class fn_wrapper(py_fn_wrapper):
     def __init__(self, fn):
         super().__init__(fn)
     def __call__(self, *xyz):
-        from pyphare.cpp import cpp_lib
+        from pyphare.cpp import cpp_etc_lib
         # convert numpy array to C++ SubSpan
         # couples vector init functions to C++
-        return cpp_lib().makePyArrayWrapper(super().__call__(*xyz))
+        return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 
 

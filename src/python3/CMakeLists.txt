@@ -22,3 +22,14 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   )
   set_property(TARGET cpp_dbg PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+
+pybind11_add_module(cpp_etc cpp_etc.cpp)
+target_link_libraries(cpp_etc PUBLIC phare_simulator)
+target_compile_options(cpp_etc PRIVATE ${PHARE_FLAGS}) # pybind fails with Werror
+set_target_properties(cpp_etc
+    PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
+)
+# this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
+set_property(TARGET cpp_etc PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
