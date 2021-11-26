@@ -126,6 +126,42 @@ namespace core
         }
 
 
+
+        auto operator+(Type value) const
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] += value;
+            return copy;
+        }
+        auto operator+(std::array<Type, dim> value) const
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] += value[iDim];
+            return copy;
+        }
+
+
+        auto operator-(Type value) const
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] -= value;
+            return copy;
+        }
+
+        auto operator-(std::array<Type, dim> value) const
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] -= value[iDim];
+            return copy;
+        }
+
+
+        auto& operator*() const { return r; }
+
         auto begin() { return r.begin(); }
         auto begin() const { return r.begin(); }
         auto end() { return r.end(); }

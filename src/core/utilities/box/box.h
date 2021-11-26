@@ -4,6 +4,7 @@
 
 #include <cstddef>
 
+#include "core/utilities/types.h"
 #include "core/utilities/point/point.h"
 #include "core/utilities/meta/meta_utilities.h"
 
@@ -50,6 +51,9 @@ namespace core
             }
         }
 
+        auto shape() const { return *(upper - (*lower) + 1); }
+        auto size() const { return core::product(shape()); }
+
         using type = Type;
     };
 
@@ -62,13 +66,10 @@ namespace core
     {
         static_assert(std::is_integral_v<T>,
                       "this function is only valid for integral type of Point");
-        bool same = true;
-        for (auto i = 0u; i < dim; ++i)
-        {
-            same &= ((box1.upper[i] - box1.lower[i]) == (box2.upper[i] - box2.lower[i]));
-        }
-        return same;
+
+        return box1.shape() == box2.shape();
     }
+
 
 
 

@@ -25,11 +25,15 @@ PHARE::core::Particle<dim> particle(int icell = 15)
             /*.v      = */ {{.00001, .00001, .00001}}};
 }
 
-template<typename Particles>
-void disperse(Particles& particles, std::size_t lo, std::size_t up,
-              std::optional<int> seed = std::nullopt)
+template<std::size_t dim>
+auto make_particles(std::size_t n_particles)
 {
-    std::uniform_int_distribution<> distrib(lo, up);
+    return PHARE::core::ParticleArray<dim>{n_particles, particle<dim>()};
+}
+
+template<typename Particles, typename Point>
+void disperse(Particles& particles, Point lo, Point up, std::optional<int> seed = std::nullopt)
+{
     auto gen = [&]() {
         if (!seed.has_value())
         {
@@ -39,10 +43,30 @@ void disperse(Particles& particles, std::size_t lo, std::size_t up,
         }
         return std::mt19937_64(*seed);
     }();
-    for (auto& particle : particles)
-        for (std::size_t i = 0; i < Particles::dimension; i++)
+    for (std::size_t i = 0; i < Particles::dimension; i++)
+    {
+        std::uniform_int_distribution<> distrib(lo[i], up[i]);
+        for (auto& particle : particles)
             particle.iCell[i] = distrib(gen);
+    }
 }
+template<typename Particles>
+void disperse(Particles& particles, std::size_t lo, std::size_t up,
+              std::optional<int> seed = std::nullopt)
+{
+    auto constexpr static dim = Particles::dimension;
+
+    disperse(particles, core::ConstArray<int, dim>(lo), core::ConstArray<int, dim>(up), seed);
+}
+
+template<std::size_t dim, typename Box>
+auto make_particles(std::size_t ppc, Box disperse_in, std::optional<int> seed = std::nullopt)
+{
+    auto particles = make_particles<dim>(ppc * disperse_in.size());
+    disperse(particles, disperse_in.lower, disperse_in.upper, seed);
+    return particles;
+}
+
 
 template<typename GridLayout, typename Quantity, std::size_t dim = GridLayout::dimension>
 Field<dim> field(std::string key, Quantity type, GridLayout const& layout)
