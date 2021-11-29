@@ -127,40 +127,40 @@ namespace core
 
 
 
-        auto operator+(Type value) const
+        auto operator+(Type const& value) const
         {
             auto copy = *this;
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 copy[iDim] += value;
             return copy;
         }
-        auto operator+(std::array<Type, dim> value) const
+        auto operator+(std::array<Type, dim> const& value) const
         {
             auto copy = *this;
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 copy[iDim] += value[iDim];
             return copy;
         }
+        auto operator+(Point<Type, dim> const& value) const { return (*this) + value.r; }
 
 
-        auto operator-(Type value) const
+        auto operator-(Type const& value) const
         {
             auto copy = *this;
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 copy[iDim] -= value;
             return copy;
         }
-
-        auto operator-(std::array<Type, dim> value) const
+        auto operator-(std::array<Type, dim> const& value) const
         {
             auto copy = *this;
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 copy[iDim] -= value[iDim];
             return copy;
         }
+        auto operator-(Point<Type, dim> const& value) const { return (*this) - value.r; }
 
 
-        auto& operator*() const { return r; }
 
         auto begin() { return r.begin(); }
         auto begin() const { return r.begin(); }

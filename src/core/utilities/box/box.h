@@ -38,7 +38,7 @@ namespace core
         auto nbrItems(std::size_t dir) const { return upper[dir] - lower[dir]; }
 
 
-        void grow(Type size)
+        void grow(Type const& size)
         {
             assert(size >= 0);
             for (auto& c : lower)
@@ -51,7 +51,7 @@ namespace core
             }
         }
 
-        auto shape() const { return *(upper - (*lower) + 1); }
+        auto shape() const { return upper - lower + 1; }
         auto size() const { return core::product(shape()); }
 
         using type = Type;
