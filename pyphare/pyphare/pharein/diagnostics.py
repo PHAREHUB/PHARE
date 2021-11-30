@@ -63,8 +63,8 @@ def validate_timestamps(clazz, **kwargs):
 
 def try_cpp_dep_vers():
     try:
-        from pyphare.cpp import cpp_lib
-        return cpp_lib().phare_deps()
+        from pyphare.cpp import cpp_etc_lib
+        return cpp_etc_lib().phare_deps()
     except ImportError:
         return {}
 
