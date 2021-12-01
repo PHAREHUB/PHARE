@@ -49,6 +49,8 @@ if (bench)
   add_subdirectory(tools/bench/core/data/particles)
   add_subdirectory(tools/bench/core/numerics/pusher)
 
+  add_subdirectory(tools/bench/amr/data/particles)
+
   add_subdirectory(tools/bench/hi5)
   add_subdirectory(tools/bench/real)
 

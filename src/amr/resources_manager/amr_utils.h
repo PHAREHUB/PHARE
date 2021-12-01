@@ -10,10 +10,10 @@
 
 
 #include "amr/types/amr_types.h"
-#include "core/utilities/box/box.h"
 #include "core/utilities/constants.h"
 #include "core/utilities/point/point.h"
 
+#include "amr/utilities/box/amr_box.h"
 
 namespace PHARE
 {
@@ -128,33 +128,6 @@ namespace amr
     }
 
 
-    template<std::size_t dim>
-    auto toPHAREBox(SAMRAI::hier::Box const& b)
-    {
-        if constexpr (dim == 1)
-        {
-            auto lower = core::Point{b.lower()[0]};
-            auto upper = core::Point{b.upper()[0]};
-            return core::Box{lower, upper};
-        }
-
-        else if constexpr (dim == 2)
-        {
-            auto lower = core::Point{b.lower()[0], b.lower()[1]};
-            auto upper = core::Point{b.upper()[0], b.upper()[1]};
-            return core::Box{lower, upper};
-        }
-
-        else if constexpr (dim == 3)
-        {
-            auto lower = core::Point{b.lower()[0], b.lower()[1], b.lower()[2]};
-            auto upper = core::Point{b.upper()[0], b.upper()[1], b.upper()[2]};
-            return core::Box{lower, upper};
-        }
-    }
-
-
-
     template<typename GridLayoutT>
     GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
     {
@@ -206,7 +179,7 @@ namespace amr
             nbrCell[iDim] = static_cast<std::uint32_t>(domain.numberCells(iDim));
         }
 
-        return GridLayoutT{dl, nbrCell, origin, toPHAREBox<dimension>(domain)};
+        return GridLayoutT{dl, nbrCell, origin, amr::Box<int, dimension>{domain}};
     }
 
     inline auto to_string(SAMRAI::hier::GlobalId const& id)

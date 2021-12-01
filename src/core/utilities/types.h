@@ -226,4 +226,20 @@ namespace core
 } // namespace PHARE
 
 
+namespace PHARE::core
+{
+template<typename Container, typename Multiplies = typename Container::value_type>
+Multiplies product(Container const& container, Multiplies mul = 1)
+{
+    return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
+}
+
+template<typename Container, typename Return = typename Container::value_type>
+Return sum(Container const& container, Return r = 0)
+{
+    return std::accumulate(container.begin(), container.end(), r);
+}
+} // namespace PHARE::core
+
+
 #endif // TYPES_H
