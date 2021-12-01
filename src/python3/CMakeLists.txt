@@ -26,7 +26,7 @@ endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 pybind11_add_module(cpp_etc cpp_etc.cpp)
 target_link_libraries(cpp_etc PUBLIC phare_simulator)
-target_compile_options(cpp_etc PRIVATE ${PHARE_FLAGS}) # pybind fails with Werror
+target_compile_options(cpp_etc PRIVATE ${PHARE_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}) # pybind fails with Werror
 set_target_properties(cpp_etc
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
