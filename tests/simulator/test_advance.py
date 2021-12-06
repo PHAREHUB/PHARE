@@ -122,7 +122,7 @@ class AdvanceTestBase(SimulatorTest):
                                       "init": model_init,
                                       })
 
-        ElectronModel(closure="isothermal", Te=0)#0.12)
+        ElectronModel(closure="isothermal", Te=0.12)
 
         if timestamps is None:
             timestamps = all_timestamps(global_vars.sim)
