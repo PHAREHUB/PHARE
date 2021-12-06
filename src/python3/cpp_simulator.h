@@ -179,6 +179,7 @@ void declare_essential(py::module& m)
 
     m.def("mpi_size", []() { return core::mpi::size(); });
     m.def("mpi_rank", []() { return core::mpi::rank(); });
+    m.def("mpi_barrier", []() { return core::mpi::barrier(); });
 }
 
 

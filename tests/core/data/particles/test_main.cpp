@@ -39,17 +39,6 @@ TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
     EXPECT_DOUBLE_EQ(1., part.charge);
 }
 
-TEST_F(AParticle, ParticleFieldsAreInitializedToZero)
-{
-    EXPECT_DOUBLE_EQ(0.0, part.Ex);
-    EXPECT_DOUBLE_EQ(0.0, part.Ey);
-    EXPECT_DOUBLE_EQ(0.0, part.Ez);
-
-    EXPECT_DOUBLE_EQ(0.0, part.Bx);
-    EXPECT_DOUBLE_EQ(0.0, part.By);
-    EXPECT_DOUBLE_EQ(0.0, part.Bz);
-}
-
 
 TEST_F(AParticle, ParticleVelocityIsInitializedOk)
 {

@@ -190,7 +190,8 @@ void test(GridLayout const& layout,
           std::vector<T> const& fieldV, FF const ff = FF{})
 {
     EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T> const field1{fieldV.data(), field0.shape()};
+
+    auto field1 = core::make_array_view(fieldV, field0.shape());
     test_fields(layout, field0, field1, ff);
 }
 
@@ -200,7 +201,7 @@ void test(GridLayout const& layout, PHARE::core::Field<NdArrayImpl, Qty> field0,
           std::vector<T>&& fieldV, FF const ff = FF{})
 {
     EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T> field1{fieldV, field0.shape()};
+    auto field1 = core::make_array_view(fieldV, field0.shape());
     test_fields(layout, field0, field1, ff);
 }
 

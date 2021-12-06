@@ -135,12 +135,6 @@ TYPED_TEST(twoParticlesDataNDTouchingPeriodicBorders, preserveParticleAttributes
     EXPECT_THAT(this->destPdat.patchGhostParticles[0].delta, Eq(this->particle.delta));
     EXPECT_THAT(this->destPdat.patchGhostParticles[0].weight, Eq(this->particle.weight));
     EXPECT_THAT(this->destPdat.patchGhostParticles[0].charge, Eq(this->particle.charge));
-    EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Ex, this->particle.Ex);
-    EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Ey, this->particle.Ey);
-    EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Ez, this->particle.Ez);
-    EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Bx, this->particle.Bx);
-    EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].By, this->particle.By);
-    EXPECT_DOUBLE_EQ(this->destPdat.patchGhostParticles[0].Bz, this->particle.Bz);
 }
 
 

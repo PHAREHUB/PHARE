@@ -1,6 +1,15 @@
 def decode_bytes(input):
     return input.decode("ascii", errors="ignore")
 
+class RunTimer:
+    def __init__(self, stmt, **kwargs):
+        import time
+        import subprocess
+        self.stmt = stmt
+        start = time.time()
+        subprocess.run(self.stmt, **kwargs)
+        self.t = time.time() - start
+
 
 def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwargs):
     """
@@ -11,7 +20,7 @@ def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwa
     if print_cmd:
         print(f"running: {cmd}")
     try:
-        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check, **kwargs)
+        return RunTimer(cmd, shell=shell, capture_output=capture_output, check=check, **kwargs)
     except subprocess.CalledProcessError as e: # only triggers on failure if check=True
         print(f"run failed with error: {e}\n\t{e.stdout}\n\t{e.stderr} ")
         raise RuntimeError(decode_bytes(e.stderr))
@@ -31,9 +40,11 @@ def run_mp(cmds, N_CORES=None, **kwargs):
         results = []
         for future in concurrent.futures.as_completed(jobs):
             try:
-                results += [future.result()]
+                proc = future.result()
+                results += [proc]
                 if future.exception() is not None:
                     raise future.exception()
+                print(proc.stmt, f"finished in {proc.t:.2f} seconds")
             except Exception as exc:
                 if kwargs.get("check", False):
                     executor.shutdown(wait=False, cancel_futures=True)

@@ -450,7 +450,7 @@ def checker(func):
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity', 'strict' ]
+                             'resistivity', 'hyper_resistivity', 'strict' , 'threads']
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -467,6 +467,7 @@ def checker(func):
         kwargs["refinement_ratio"] = 2
 
         kwargs["init_time"] = kwargs.get('init_time', 0)
+        kwargs["threads"] = kwargs.get('threads', 1)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr

@@ -13,7 +13,6 @@
 #include "core/data/particles/particle_array.h"
 #include "core/data/vecfield/vecfield.h"
 #include "core/models/physical_state.h"
-#include "core/models/physical_state.h"
 #include "core/utilities/meta/meta_utilities.h"
 #include "core/utilities/algorithm.h"
 #include "core/logger.h"

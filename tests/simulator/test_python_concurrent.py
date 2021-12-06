@@ -54,4 +54,4 @@ if __name__ == "__main__":
         for test in tests:
             print(test)
     else:
-        run_mp(tests, N_CORES, check=True)
+        run_mp(tests, N_CORES, print_cmd=False, check=True)

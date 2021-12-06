@@ -4,7 +4,10 @@ set (PHARE_FLAGS ${PHARE_FLAGS})
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 
-set (PHARE_BASE_LIBS )
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+set (PHARE_BASE_LIBS Threads::Threads)
 
 # Link Time Optimisation flags - is disabled if coverage is enabled
 set (PHARE_INTERPROCEDURAL_OPTIMIZATION FALSE)
@@ -52,7 +55,11 @@ function(phare_sanitize_ san cflags )
 endfunction(phare_sanitize_)
 
 if (asan)   # -Dasan=ON
-  phare_sanitize_("-fsanitize=address -shared-libsan" "-fno-omit-frame-pointer" )
+  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    phare_sanitize_("-fsanitize=address" "-fno-omit-frame-pointer" )
+  elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "llvl")
+    phare_sanitize_("-fsanitize=address -shared-libsan" "-fno-omit-frame-pointer" )
+  endif()
 endif(asan)
 
 if (ubsan)  # -Dubsan=ON

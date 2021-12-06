@@ -39,7 +39,7 @@ void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const
         ASSERT_TRUE(end[d] > beg[d]);
     }
 
-    core::NdArrayView<dim, typename Data::value_type> const view(data.data(), field.shape());
+    auto view = core::make_array_view(data, field.shape());
 
     {
         std::size_t nans = 0;

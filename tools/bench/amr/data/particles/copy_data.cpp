@@ -1,6 +1,8 @@
 
-
+#ifndef PHARE_HAS_HIGHFIVE
 #define PHARE_HAS_HIGHFIVE 0
+#endif
+
 
 #include "bench/core/bench.h"
 

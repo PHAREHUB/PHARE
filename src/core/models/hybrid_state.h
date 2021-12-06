@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 
+
 namespace PHARE
 {
 namespace core
@@ -26,9 +27,12 @@ namespace core
     template<typename Electromag, typename Ions, typename Electrons>
     class HybridState : public IPhysicalState
     {
-        using VecField = typename Electromag::vecfield_type;
+        using This = HybridState<Electromag, Ions, Electrons>;
 
     public:
+        using VecField        = typename Electromag::vecfield_type;
+        using ParticleArray_t = typename Ions::particle_array_type;
+
         static constexpr auto dimension = Ions::dimension;
 
         HybridState(PHARE::initializer::PHAREDict const& dict)
@@ -79,6 +83,7 @@ namespace core
         }
 
 
+
         //-------------------------------------------------------------------------
         //                  ends the ResourcesUser interface
         //-------------------------------------------------------------------------
@@ -88,6 +93,8 @@ namespace core
 
 } // namespace core
 } // namespace PHARE
+
+
 
 
 #endif // PHARE_HYBRID_STATE_H

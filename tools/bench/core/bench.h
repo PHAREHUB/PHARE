@@ -1,8 +1,12 @@
 #ifndef PHARE_BENCH_CORE_BENCH_H
 #define PHARE_BENCH_CORE_BENCH_H
 
-#include "phare_core.h"
+
 #include "benchmark/benchmark.h"
+
+#include "phare_core.h"
+#include "core/utilities/types.h"
+
 
 
 namespace PHARE::core::bench
@@ -14,21 +18,24 @@ template<std::size_t dim>
 using VecField
     = PHARE::core::VecField<PHARE::core::NdArrayVector<dim>, typename PHARE::core::HybridQuantity>;
 
-
+// clang-format off
 template<std::size_t dim>
 PHARE::core::Particle<dim> particle(int icell = 15)
 {
-    return {/*.weight = */ 0,
-            /*.charge = */ 1,
-            /*.iCell  = */ PHARE::core::ConstArray<int, dim>(icell),
-            /*.delta  = */ PHARE::core::ConstArray<double, dim>(.5),
-            /*.v      = */ {{.00001, .00001, .00001}}};
+    return {
+        /*.weight = */ .00001,
+        /*.charge = */ .00001,
+        /*.iCell  = */ PHARE::core::ConstArray<int, dim>(icell),
+        /*.delta  = */ PHARE::core::ConstArray<double, dim>(.5),
+        /*.v      = */ {{.00001, .00001, .00001}},
+    };
 }
+// clang-format on
 
 template<std::size_t dim>
-auto make_particles(std::size_t n_particles)
+PHARE::core::ParticleArray<dim> make_particles(std::size_t ppc)
 {
-    return PHARE::core::ParticleArray<dim>{n_particles, particle<dim>()};
+    return {ppc, particle<dim>()};
 }
 
 template<typename Particles, typename Point>
@@ -77,38 +84,6 @@ Field<dim> field(std::string key, Quantity type, GridLayout const& layout)
 }
 
 
-template<typename Fn, typename Tuple, size_t... Is>
-constexpr auto make_tuple_from_(Fn& f, Tuple const& t, std::integer_sequence<size_t, Is...> const&)
-{
-    return std::make_tuple(f(std::get<Is>(t))...);
-}
-
-
-template<typename Fn, typename Tuple>
-constexpr auto make_tuple_from(Fn&& f, Tuple const& t)
-{
-    return make_tuple_from_(f, t, std::make_integer_sequence<size_t, std::tuple_size_v<Tuple>>{});
-}
-
-
-template<typename GridLayout, typename Tuple>
-auto EB(GridLayout const& layout, Tuple const& tuple)
-{
-    return make_tuple_from(
-        [&](auto const& pair) {
-            return std::apply([&](auto k, auto v) { return field(k, v, layout); }, pair);
-        },
-        tuple);
-}
-
-template<typename GridLayout, std::size_t dim = GridLayout::dimension>
-auto EM(GridLayout const& layout)
-{
-    return std::make_tuple(EB(layout, HybridQuantity::E_items()),
-                           EB(layout, HybridQuantity::B_items()));
-}
-
-
 template<typename GridLayout, std::size_t dim = GridLayout::dimension>
 auto rho(GridLayout const& layout)
 {
@@ -116,22 +91,35 @@ auto rho(GridLayout const& layout)
 }
 
 
-
 template<typename GridLayout>
-class Flux : public VecField<GridLayout::dimension>
+class _VF_ : public VecField<GridLayout::dimension>
 {
 public:
     using Super = VecField<GridLayout::dimension>;
 
-    Flux(GridLayout const& layout)
-        : Super{"F", HybridQuantity::Vector::V}
-        , xyz{field("Fx", HybridQuantity::Scalar::Vx, layout),
-              field("Fy", HybridQuantity::Scalar::Vy, layout),
-              field("Fz", HybridQuantity::Scalar::Vz, layout)}
+    _VF_(_VF_ const&) = delete;
+    _VF_(_VF_&&)      = delete;
+    auto& operator=(_VF_ const&) = delete;
+    auto& operator=(_VF_&&) = delete;
+
+    _VF_(GridLayout const& layout, HybridQuantity::Vector v_id, std::string id,
+         std::array<HybridQuantity::Scalar, 3> quantities)
+        : Super{id, v_id}
+        , xyz{field(id + "x", quantities[0], layout), field(id + "y", quantities[1], layout),
+              field(id + "z", quantities[2], layout)}
     {
-        Super::setBuffer("F_x", &xyz[0]);
-        Super::setBuffer("F_y", &xyz[1]);
-        Super::setBuffer("F_z", &xyz[2]);
+        Super::setBuffer(id + "_x", &xyz[0]);
+        Super::setBuffer(id + "_y", &xyz[1]);
+        Super::setBuffer(id + "_z", &xyz[2]);
+    }
+
+
+    _VF_(GridLayout const& layout, HybridQuantity::Vector v_id, std::string id)
+        : _VF_{layout,
+               v_id,
+               id,
+               {HybridQuantity::Scalar::Vx, HybridQuantity::Scalar::Vy, HybridQuantity::Scalar::Vz}}
+    {
     }
 
 private:
@@ -139,30 +127,53 @@ private:
 };
 
 template<typename GridLayout>
-class Electromag : public PHARE::core::Electromag<VecField<GridLayout::dimension>>
+class Flux : public _VF_<GridLayout>
 {
 public:
-    using Super = PHARE::core::Electromag<VecField<GridLayout::dimension>>;
+    using Super = _VF_<GridLayout>;
+
+    Flux(GridLayout const& layout)
+        : Super{layout, HybridQuantity::Vector::V, "F"}
+    {
+    }
+};
+
+template<typename GridLayout>
+class J : public _VF_<GridLayout>
+{
+public:
+    using Super = _VF_<GridLayout>;
+
+    J(GridLayout const& layout)
+        : Super{layout, HybridQuantity::Vector::J, "J"}
+    {
+    }
+};
+
+
+template<typename GridLayout>
+struct Electromag
+{
+    Electromag(Electromag const&) = delete;
 
     Electromag(GridLayout const& layout)
-        : Super{"EM"}
-        , emFields{EM(layout)}
+        : E{layout,
+            HybridQuantity::Vector::E,
+            "E",
+            {HybridQuantity::Scalar::Ex, HybridQuantity::Scalar::Ey, HybridQuantity::Scalar::Ez}}
+        , B{layout,
+            HybridQuantity::Vector::B,
+            "B",
+            {HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By, HybridQuantity::Scalar::Bz}}
     {
-        auto& [E, B]       = emFields;
-        auto& [ex, ey, ez] = E;
-        auto& [bx, by, bz] = B;
-
-        Super::B.setBuffer("EM_B_x", &bx);
-        Super::B.setBuffer("EM_B_y", &by);
-        Super::B.setBuffer("EM_B_z", &bz);
-        Super::E.setBuffer("EM_E_x", &ex);
-        Super::E.setBuffer("EM_E_y", &ey);
-        Super::E.setBuffer("EM_E_z", &ez);
     }
 
-private:
-    decltype(EM(*static_cast<GridLayout*>(0))) emFields;
+    auto operator()() { return std::forward_as_tuple(E, B); }
+
+    _VF_<GridLayout> E, B;
 };
+
+
 
 } // namespace PHARE::core::bench
 

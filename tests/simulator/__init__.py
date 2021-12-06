@@ -237,6 +237,9 @@ class SimulatorTest(unittest.TestCase):
         from pyphare.simulator.simulator import startMPI
         from pyphare.cpp import cpp_lib
         startMPI()
+
+        # wait for all ranks to finish using the files
+        cpp_lib().mpi_barrier()
         if cpp_lib().mpi_rank() > 0:
             return # only delete h5 files for rank 0
 

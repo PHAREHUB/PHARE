@@ -62,7 +62,7 @@ class AdvanceTest(AdvanceTestBase):
        *per_interp(({"L0": {"B0": Box2D(6, 23)}})),
        *per_interp(({"L0": {"B0": Box2D( 2, 12), "B1": Box2D(13, 25)}})),
        *per_interp(({"L0": {"B0": Box2D( 5, 20)}, "L1": {"B0": Box2D(15, 19)}})),
-       *per_interp(({"L0": {"B0": Box2D( 5, 20)}, "L1": {"B0": Box2D(12, 38)}, "L2": {"B0": Box2D(30, 52)} })),
+       *per_interp(({"L0": {"B0": Box2D( 5, 20)}, "L1": {"B0": Box2D(15, 39)}, "L2": {"B0": Box2D(35, 49)} })),
     )
     @unpack
     def test_field_coarsening_via_subcycles(self, interp_order, refinement_boxes):

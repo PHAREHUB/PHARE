@@ -1,6 +1,8 @@
 
 #include "benchmark/benchmark.h"
+#ifndef PHARE_DIAG_DOUBLES
 #define PHARE_DIAG_DOUBLES 0
+#endif
 #include "diagnostic/detail/h5writer.h"
 #include "diagnostic/detail/h5_utils.h"
 #include "diagnostic/diagnostic_manager.h"

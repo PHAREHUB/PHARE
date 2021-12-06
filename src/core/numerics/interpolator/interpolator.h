@@ -10,7 +10,9 @@
 #include "core/data/vecfield/vecfield_component.h"
 #include "core/utilities/point/point.h"
 
+#include "core/def.h"
 #include "core/logger.h"
+#include "core/operators.h"
 
 namespace PHARE
 {
@@ -256,7 +258,7 @@ namespace core
 
 
     //! ParticleToMesh projects a particle density and flux to given grids
-    template<std::size_t dim>
+    template<std::size_t dim, typename Operator = core::Operators<double>>
     class ParticleToMesh
     {
     };
@@ -265,8 +267,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 1D interpolation
      */
-    template<>
-    class ParticleToMesh<1>
+    template<typename Op>
+    class ParticleToMesh<1, Op>
     {
     public: /** Performs the 1D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -306,11 +308,11 @@ namespace core
 
             for (auto ik = 0u; ik < order_size; ++ik)
             {
-                density(xDenStartIndex + ik) += partRho * xDenWeights[ik] * coef;
+                Op{density(xDenStartIndex + ik)} += partRho * xDenWeights[ik] * coef;
 
-                xFlux(xXFluxStartIndex + ik) += xPartFlux * xXFluxWeights[ik] * coef;
-                yFlux(xYFluxStartIndex + ik) += yPartFlux * xYFluxWeights[ik] * coef;
-                zFlux(xZFluxStartIndex + ik) += zPartFlux * xZFluxWeights[ik] * coef;
+                Op{xFlux(xXFluxStartIndex + ik)} += xPartFlux * xXFluxWeights[ik] * coef;
+                Op{yFlux(xYFluxStartIndex + ik)} += yPartFlux * xYFluxWeights[ik] * coef;
+                Op{zFlux(xZFluxStartIndex + ik)} += zPartFlux * xZFluxWeights[ik] * coef;
             }
         }
     };
@@ -320,8 +322,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 2D interpolation
      */
-    template<>
-    class ParticleToMesh<2>
+    template<typename Op>
+    class ParticleToMesh<2, Op>
     {
     public: /** Performs the 2D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -379,17 +381,17 @@ namespace core
             {
                 for (auto iy = 0u; iy < order_size; ++iy)
                 {
-                    density(xDenStartIndex + ix, yDenStartIndex + iy)
-                        += partRho * xDenWeights[ix] * yDenWeights[iy];
+                    Op{density(xDenStartIndex + ix, yDenStartIndex + iy)}
+                    += partRho * xDenWeights[ix] * yDenWeights[iy];
 
-                    xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy)
-                        += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy];
+                    Op{xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy)}
+                    += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy];
 
-                    yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy)
-                        += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy];
+                    Op{yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy)}
+                    += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy];
 
-                    zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy)
-                        += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy];
+                    Op{zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy)}
+                    += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy];
                 }
             }
         }
@@ -400,8 +402,8 @@ namespace core
 
     /** \brief specialization of ParticleToMesh for 3D interpolation
      */
-    template<>
-    class ParticleToMesh<3>
+    template<typename Op>
+    class ParticleToMesh<3, Op>
     {
     public: /** Performs the 3D interpolation
              * \param[in] density is the field that will be interpolated from the particle Particle
@@ -474,20 +476,20 @@ namespace core
                 {
                     for (auto iz = 0u; iz < order_size; ++iz)
                     {
-                        density(xDenStartIndex + ix, yDenStartIndex + iy, zDenStartIndex + iz)
-                            += partRho * xDenWeights[ix] * yDenWeights[iy] * zDenWeights[iz];
+                        Op{density(xDenStartIndex + ix, yDenStartIndex + iy, zDenStartIndex + iz)}
+                        += partRho * xDenWeights[ix] * yDenWeights[iy] * zDenWeights[iz];
 
-                        xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy, zXFluxStartIndex + iz)
-                            += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy]
-                               * zXFluxWeights[iz];
+                        Op{xFlux(xXFluxStartIndex + ix, yXFluxStartIndex + iy,
+                                 zXFluxStartIndex + iz)}
+                        += xPartFlux * xXFluxWeights[ix] * yXFluxWeights[iy] * zXFluxWeights[iz];
 
-                        yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy, zYFluxStartIndex + iz)
-                            += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy]
-                               * zYFluxWeights[iz];
+                        Op{yFlux(xYFluxStartIndex + ix, yYFluxStartIndex + iy,
+                                 zYFluxStartIndex + iz)}
+                        += yPartFlux * xYFluxWeights[ix] * yYFluxWeights[iy] * zYFluxWeights[iz];
 
-                        zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy, zZFluxStartIndex + iz)
-                            += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy]
-                               * zZFluxWeights[iz];
+                        Op{zFlux(xZFluxStartIndex + ix, yZFluxStartIndex + iy,
+                                 zZFluxStartIndex + iz)}
+                        += zPartFlux * xZFluxWeights[ix] * yZFluxWeights[iy] * zZFluxWeights[iz];
                     }
                 }
             }
@@ -500,9 +502,14 @@ namespace core
     /** \brief Interpolator is used to perform particle-mesh interpolations using
      * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
      */
-    template<std::size_t dim, std::size_t interpOrder>
+    template<std::size_t dim, std::size_t interpOrder, bool atomic_ops = false>
     class Interpolator : private Weighter<interpOrder>
     {
+        using P2MOperator = core::Operators<double, atomic_ops>;
+
+        using ParticleVecField = tuple_fixed_type<double, 3>;
+        using ParticleEBs      = std::vector<tuple_fixed_type<ParticleVecField, 2>>;
+
         // this calculates the startIndex and the nbrPointsSupport() weights for
         // dual field interpolation and puts this at the corresponding location
         // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
@@ -543,7 +550,7 @@ namespace core
          */
         template<typename PartIterator, typename Electromag, typename GridLayout>
         inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
-                               GridLayout const& layout)
+                               GridLayout const& layout, ParticleEBs& particleEBs)
         {
             PHARE_LOG_SCOPE("Interpolator::operator()");
 
@@ -570,21 +577,33 @@ namespace core
             // twice, and not for each E,B component.
 
             PHARE_LOG_START("MeshToParticle::operator()");
+            std::size_t eb_idx = 0;
             for (auto currPart = begin; currPart != end; ++currPart)
             {
                 indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, *currPart);
                 indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, *currPart);
 
-                currPart->Ex = meshToParticle_(Ex, ExCentering, startIndex_, weights_);
-                currPart->Ey = meshToParticle_(Ey, EyCentering, startIndex_, weights_);
-                currPart->Ez = meshToParticle_(Ez, EzCentering, startIndex_, weights_);
-                currPart->Bx = meshToParticle_(Bx, BxCentering, startIndex_, weights_);
-                currPart->By = meshToParticle_(By, ByCentering, startIndex_, weights_);
-                currPart->Bz = meshToParticle_(Bz, BzCentering, startIndex_, weights_);
+                auto& [pE, pB]        = particleEBs[eb_idx++];
+                auto& [pEx, pEy, pEz] = pE;
+                auto& [pBx, pBy, pBz] = pB;
+
+                pEx = meshToParticle_(Ex, ExCentering, startIndex_, weights_);
+                pEy = meshToParticle_(Ey, EyCentering, startIndex_, weights_);
+                pEz = meshToParticle_(Ez, EzCentering, startIndex_, weights_);
+                pBx = meshToParticle_(Bx, BxCentering, startIndex_, weights_);
+                pBy = meshToParticle_(By, ByCentering, startIndex_, weights_);
+                pBz = meshToParticle_(Bz, BzCentering, startIndex_, weights_);
             }
             PHARE_LOG_STOP("MeshToParticle::operator()");
         }
 
+        // container version of above
+        template<typename Particles, typename Electromag, typename GridLayout>
+        inline void meshToParticle(Particles& particles, Electromag const& Em,
+                                   GridLayout const& layout, ParticleEBs& particleEBs)
+        {
+            (*this)(particles.begin(), particles.end(), Em, layout, particleEBs);
+        }
 
 
 
@@ -626,6 +645,15 @@ namespace core
                                 *currPart, startIndex_, weights_, coef);
             }
             PHARE_LOG_STOP("ParticleToMesh::operator()");
+        }
+
+        // container version of above
+        template<typename Particles, typename VecField, typename GridLayout,
+                 typename Field = typename VecField::field_type>
+        inline void particleToMesh(Particles const& particles, Field& density, VecField& flux,
+                                   GridLayout const& layout, double coef = 1.)
+        {
+            (*this)(particles.begin(), particles.end(), density, flux, layout, coef);
         }
 
 
@@ -672,7 +700,7 @@ namespace core
 
         Weighter<interpOrder> weightComputer_;
         MeshToParticle<dimension> meshToParticle_;
-        ParticleToMesh<dimension> particleToMesh_;
+        ParticleToMesh<dimension, P2MOperator> particleToMesh_;
 
         // array[dual/primal][dim]
         std::array<std::array<int, dimension>, 2> startIndex_;

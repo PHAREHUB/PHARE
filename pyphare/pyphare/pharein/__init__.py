@@ -155,6 +155,7 @@ def populateDict():
     else:
         add_string("simulation/AMR/refinement/tagging/method","none") # integrator.h might want some looking at
 
+    add_size_t("simulation/algo/threads", simulation.threads)
     add_string("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
     add_double("simulation/algo/ohm/resistivity", simulation.resistivity)
     add_double("simulation/algo/ohm/hyper_resistivity", simulation.hyper_resistivity)

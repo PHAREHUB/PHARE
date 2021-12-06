@@ -335,7 +335,7 @@ class AdvanceTestBase(SimulatorTest):
         datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", cells=60,
                                       diag_outputs=diag_outputs, time_step=0.001,
                                       extra_diag_options={"fine_dump_lvl_max": 10},
-                                      time_step_nbr=time_step_nbr,
+                                      time_step_nbr=time_step_nbr, model_init={"seed": 222},
                                       largest_patch_size=30, ndim=dim, **kwargs)
 
         lvl_steps = global_vars.sim.level_time_steps

@@ -2,6 +2,7 @@
 
 #include "phare_core.h"
 
+#include "core/numerics/ion_updater/ion_range.h"
 #include "core/numerics/ion_updater/ion_updater.h"
 
 using namespace PHARE::core;
@@ -396,8 +397,24 @@ struct IonUpdaterTest : public ::testing::Test
     using ParticleArray = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
-    using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using Field    = typename PHARETypes::Field_t;
+    using VecField = typename PHARETypes::VecField_t;
 
+    using IonUpdater =
+        typename PHARE::core::IonUpdater<typename Electromag::view_t, ParticleArray, GridLayout>;
+
+    using IonPopView = IonPopulationView<ParticleArray, VecField, GridLayout>;
+    using PatchView  = std::tuple<GridLayout, typename Electromag::view_t,
+                                 std::vector<std::shared_ptr<IonPopView>>>;
+    std::vector<PatchView> views_;
+    auto& make_patch_views()
+    {
+        resetMoments(this->ions);                        // this can't be in updater anymore
+        views_ = std::vector<PatchView>{std::make_tuple( // needs to be kept alive
+            this->layout, this->EM.view(), IonPopView::make_shared(this->ions))};
+        abort_if(views_.size() != 1);
+        return views_;
+    }
 
     double dt{0.01};
 
@@ -407,15 +424,12 @@ struct IonUpdaterTest : public ::testing::Test
 
 
     // data for electromagnetic fields
-    using Field    = typename PHARETypes::Field_t;
-    using VecField = typename PHARETypes::VecField_t;
 
     ElectromagBuffers<dim, interp_order> emBuffers;
     IonsBuffers<dim, interp_order> ionsBuffers;
 
     Electromag EM{init_dict["electromag"]};
     Ions ions{init_dict["ions"]};
-
 
 
     IonUpdaterTest()
@@ -830,13 +844,14 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
+    typename TestFixture::IonUpdater ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::domain_only);
+    {
+        auto units = PHARE::core::updater_ranges_per_thread(this->make_patch_views());
+        ionUpdater.updatePopulations(units[0], this->dt, UpdaterMode::domain_only);
+    }
 
     this->fillIonsMomentsGhosts();
 
@@ -906,7 +921,10 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt, UpdaterMode::all);
+    {
+        auto units = PHARE::core::updater_ranges_per_thread(this->make_patch_views());
+        ionUpdater.updatePopulations(units[0], this->dt, UpdaterMode::all);
+    }
 
     this->fillIonsMomentsGhosts();
 
@@ -926,8 +944,11 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::domain_only);
+    {
+        auto units = PHARE::core::updater_ranges_per_thread(this->make_patch_views());
+        ionUpdater.updatePopulations(units[0], this->dt, UpdaterMode::domain_only);
+    }
+
 
     this->fillIonsMomentsGhosts();
 
@@ -944,8 +965,10 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::domain_only);
+    {
+        auto units = PHARE::core::updater_ranges_per_thread(this->make_patch_views());
+        ionUpdater.updatePopulations(units[0], this->dt, UpdaterMode::domain_only);
+    }
 
     this->fillIonsMomentsGhosts();
 
@@ -980,8 +1003,10 @@ TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::domain_only);
+    {
+        auto units = PHARE::core::updater_ranges_per_thread(this->make_patch_views());
+        ionUpdater.updatePopulations(units[0], this->dt, UpdaterMode::domain_only);
+    }
 
     this->fillIonsMomentsGhosts();
 

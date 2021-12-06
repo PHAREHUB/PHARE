@@ -36,6 +36,7 @@ namespace core
     public:
         static constexpr std::size_t dimension = dim;
         using type                             = Type;
+        using value_type                       = Type;
 
         template<typename... Indexes>
         constexpr Point(Indexes... index)
@@ -167,7 +168,6 @@ namespace core
         auto end() { return r.end(); }
         auto end() const { return r.end(); }
 
-
     private:
         std::array<Type, dim> r{};
     };
@@ -191,6 +191,14 @@ PHARE::core::Point<Type, dim> abs(PHARE::core::Point<Type, dim> const& point)
         postive[i] = std::abs(point[i]);
     return postive;
 }
+
+
+template<typename Type, std::size_t dim>
+auto to_string(PHARE::core::Point<Type, dim> const& point)
+{
+    return point.str();
+}
+
 
 } // namespace std
 
