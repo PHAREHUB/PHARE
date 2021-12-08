@@ -70,7 +70,7 @@ struct Box
         return std::accumulate(std::begin(shape), std::end(shape), 1, std::multiplies<Type>{});
     }
 
-    void grow(Type size)
+    void grow(Type const& size)
     {
         assert(size >= 0);
         for (auto& c : lower)
@@ -86,133 +86,119 @@ struct Box
     auto shape() const { return upper - lower + 1; }
     auto size() const { return core::product(shape()); }
 
+
+    using iterator = box_iterator<Type, dim>;
+    auto begin() { return iterator{this, lower}; }
+
+    //   // since the 1D scan of the multidimensional box is done assuming C ordering
+    //   // the end (in the sense of container.end()) is one beyond last for the last
+    //   // direction only, previous dimensions have not reached the end.
+    auto begin() const { return iterator{this, lower}; }
+    auto end()
+    {
+        static_assert(dim <= 3 and dim > 0);
+        // following could maybe be a one liner?
+        if constexpr (dim == 1)
+        {
+            return iterator{this, {upper[0] + 1}};
+        }
+        else if constexpr (dim == 2)
+        {
+            return iterator{this, {upper[0] + 1, upper[1] + 1}};
+        }
+        else
+        {
+            return iterator{this, {upper[0] + 1, upper[1] + 1, upper[2] + 1}};
+        }
+    }
+
+    auto end() const
+    {
+        static_assert(dim <= 3 and dim > 0);
+        if constexpr (dim == 1)
+        {
+            return iterator{this, {upper[0] + 1}};
+        }
+        else if constexpr (dim == 2)
+        {
+            return iterator{this, {upper[0] + 1, upper[1] + 1}};
+        }
+        else
+        {
+            return iterator{this, {upper[0] + 1, upper[1] + 1, upper[2] + 1}};
+        }
+    }
     using type = Type;
-};
-
-template<typename T, std::size_t s>
-Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;
-using iterator = box_iterator<Type, dim>;
-
-//   // since the 1D scan of the multidimensional box is done assuming C ordering
-//   // the end (in the sense of container.end()) is one beyond last for the last
-//   // direction only, previous dimensions have not reached the end.
-auto begin() const
-{
-    return iterator{this, lower};
-}
-auto end()
-{
-    static_assert(dim <= 3 and dim > 0);
-    // following could maybe be a one liner?
-    if constexpr (dim == 1)
-    {
-        return iterator{this, {upper[0] + 1}};
-    }
-    else if constexpr (dim == 2)
-    {
-        return iterator{this, {upper[0] + 1, upper[1] + 1}};
-    }
-    else
-    {
-        return iterator{this, {upper[0] + 1, upper[1] + 1, upper[2] + 1}};
-    }
-}
-
-auto end() const
-{
-    static_assert(dim <= 3 and dim > 0);
-    if constexpr (dim == 1)
-    {
-        return iterator{this, {upper[0] + 1}};
-    }
-    else if constexpr (dim == 2)
-    {
-        return iterator{this, {upper[0] + 1, upper[1] + 1}};
-    }
-    else
-    {
-        return iterator{this, {upper[0] + 1, upper[1] + 1, upper[2] + 1}};
-    }
-}
 
 
-constexpr static std::size_t nbrRemainBoxes()
-{
-    if constexpr (dim == 1)
+    constexpr static std::size_t nbrRemainBoxes()
     {
-        return 2;
+        if constexpr (dim == 1)
+        {
+            return 2;
+        }
+        else if constexpr (dim == 2)
+        {
+            return 4;
+        }
+        else
+            return 6;
     }
-    else if constexpr (dim == 2)
-    {
-        return 4;
-    }
-    else
-        return 6;
-}
 
-<<<<<<< HEAD
 
-/** this overload of isIn takes a Point and a Container of boxes
- * and returns true if the Point is at least in one of the boxes.
- * Returns occurs at the first box the point is in.
- */
-template<typename Point, typename BoxContainer, is_iterable<BoxContainer> = dummy::value>
-bool isIn(Point const& point, BoxContainer const& boxes)
-=======
-auto remove_inside(Box const& to_remove) const
->>>>>>> fef24556 (add cellmaps and bucketlists)
-{
-    if constexpr (dim == 1)
+    auto remove_inside(Box const& to_remove) const
     {
-        std::array<Box, nbrRemainBoxes()> remains;
-        auto intersection = *this * to_remove;
-        assert(intersection == to_remove);
+        if constexpr (dim == 1)
+        {
+            std::array<Box, nbrRemainBoxes()> remains;
+            auto intersection = *this * to_remove;
+            assert(intersection == to_remove);
 
-        remains[0] = Box{{lower[0]}, {to_remove.lower[0] - 1}};
-        remains[1] = Box{{to_remove.upper[0] + 1}, upper};
-        return remains;
-    }
-    else if constexpr (dim == 2)
-    {
-        std::array<Box, nbrRemainBoxes()> remains;
-        remains[0] = Box{lower, {to_remove.lower[0] - 1, upper[1]}}; // vertical left full
-        remains[1] = Box{{to_remove.upper[0] + 1, lower[1]}, upper}; // vertical right full
-        remains[2] = Box{{to_remove.lower[0], lower[1]},
-                         {to_remove.upper[0], to_remove.lower[1] - 1}}; // bottom partial
-        remains[3] = Box{{to_remove.lower[0], to_remove.upper[1] + 1},
-                         {to_remove.upper[0], upper[1]}}; // top partial
-        return remains;
-    }
-    else
-    {
-        std::array<Box, nbrRemainBoxes()> remains;
-        static_assert(dim == 3);
-        remains[0] = Box{{lower[0], lower[1], lower[3]},
-                         {to_remove.lower[0] - 1, upper[1], upper[2]}}; // leftSlab
-        remains[1] = Box{{to_remove.upper[0] + 1, lower[1], lower[3]},
-                         {upper[0], upper[1], upper[2]}}; // rightSlab
-        remains[2] = Box{{to_remove.lower[0], lower[1], lower[2]},
-                         {to_remove.upper[0], to_remove.lower[1] - 1, upper[2]}}; // bottomSlab
-        remains[3] = Box{{to_remove.lower[0], to_remove.upper[1] + 1, lower[2]},
-                         {to_remove.upper[0], upper[1], upper[2]}}; // topSlab
-        remains[4]
-            = Box{{to_remove.lower[0], to_remove.lower[1], lower[2]},
-                  {to_remove.upper[0], to_remove.upper[1], to_remove.lower[2] - 1}}; // frontSlab
-        remains[5] = Box{{to_remove.lower[0], to_remove.lower[1], to_remove.upper[2] + 1},
-                         {to_remove.upper[0], to_remove.upper[1], upper[2]}}; // backSlab
+            remains[0] = Box{{lower[0]}, {to_remove.lower[0] - 1}};
+            remains[1] = Box{{to_remove.upper[0] + 1}, upper};
+            return remains;
+        }
+        else if constexpr (dim == 2)
+        {
+            std::array<Box, nbrRemainBoxes()> remains;
+            remains[0] = Box{lower, {to_remove.lower[0] - 1, upper[1]}}; // vertical left full
+            remains[1] = Box{{to_remove.upper[0] + 1, lower[1]}, upper}; // vertical right full
+            remains[2] = Box{{to_remove.lower[0], lower[1]},
+                             {to_remove.upper[0], to_remove.lower[1] - 1}}; // bottom partial
+            remains[3] = Box{{to_remove.lower[0], to_remove.upper[1] + 1},
+                             {to_remove.upper[0], upper[1]}}; // top partial
+            return remains;
+        }
+        else
+        {
+            std::array<Box, nbrRemainBoxes()> remains;
+            static_assert(dim == 3);
+            remains[0] = Box{{lower[0], lower[1], lower[3]},
+                             {to_remove.lower[0] - 1, upper[1], upper[2]}}; // leftSlab
+            remains[1] = Box{{to_remove.upper[0] + 1, lower[1], lower[3]},
+                             {upper[0], upper[1], upper[2]}}; // rightSlab
+            remains[2] = Box{{to_remove.lower[0], lower[1], lower[2]},
+                             {to_remove.upper[0], to_remove.lower[1] - 1, upper[2]}}; // bottomSlab
+            remains[3] = Box{{to_remove.lower[0], to_remove.upper[1] + 1, lower[2]},
+                             {to_remove.upper[0], upper[1], upper[2]}}; // topSlab
+            remains[4] = Box{
+                {to_remove.lower[0], to_remove.lower[1], lower[2]},
+                {to_remove.upper[0], to_remove.upper[1], to_remove.lower[2] - 1}}; // frontSlab
+            remains[5] = Box{{to_remove.lower[0], to_remove.lower[1], to_remove.upper[2] + 1},
+                             {to_remove.upper[0], to_remove.upper[1], upper[2]}}; // backSlab
 
-        return remains;
+            return remains;
+        }
     }
-}
 
 
 
 private:
-void make_shape_()
-{ //
-    std::transform(std::begin(lower), std::end(lower), std::begin(upper), std::begin(shape),
-                   [](auto const& lo, auto const& up) { return up - lo + 1; });
-}
+    void make_shape_()
+    { //
+        std::transform(std::begin(lower), std::end(lower), std::begin(upper), std::begin(shape),
+                       [](auto const& lo, auto const& up) { return up - lo + 1; });
+    }
 };
 
 template<typename Type, std::size_t dim>
@@ -333,4 +319,3 @@ bool isIn(Point const& point, Box<typename Point::type, Point::dimension> const&
 } // namespace PHARE::core
 
 #endif
-

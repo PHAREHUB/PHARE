@@ -736,6 +736,7 @@ class PatchHierarchy:
 
         # assumes max 5 levels...
         patchcolors = ["black", "dimgray", "darkgray", "lightgrey", "white"]
+        patchcolors = ["black", "red", "blue", "lightgrey", "white"]
         patchcolors = kwargs.get("patchcolors", patchcolors)
         for lvl_nbr, lvl  in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
@@ -791,7 +792,7 @@ class PatchHierarchy:
             ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(kwargs["filename"])
+            fig.savefig(kwargs["filename"], dpi=kwargs.get("dpi",200))
 
         return fig,ax
 
