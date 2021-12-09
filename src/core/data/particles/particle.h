@@ -12,6 +12,7 @@
 #include "core/utilities/point/point.h"
 #include "core/utilities/span.h"
 #include "core/utilities/types.h"
+#include "core/utilities/bucketlist.h"
 
 
 namespace PHARE::core
@@ -37,7 +38,7 @@ auto cellAsPoint(Particle const& particle)
 
 
 template<size_t dim>
-struct Particle
+struct Particle : BucketListItem
 {
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static const size_t dimension = dim;

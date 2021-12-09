@@ -36,7 +36,7 @@ public:
 
 
     template<typename CellIndex>
-    void addToCell(CellIndex const& cell, Type const& obj)
+    void addToCell(CellIndex const& cell, Type& obj)
     {
         bucketsLists_[cell].add(obj);
     }
@@ -45,10 +45,10 @@ public:
     using DefaultExtractor                  = decltype(default_extractor);
 
     template<typename Array, typename CellExtractor = DefaultExtractor>
-    void add(Array const& items, CellExtractor extract = default_extractor)
+    void add(Array& items, CellExtractor extract = default_extractor)
     {
         PHARE_LOG_SCOPE("CellMap::add (array)");
-        for (auto const& item : items)
+        for (auto& item : items)
         {
             addToCell(extract(item), item);
         }
@@ -152,9 +152,8 @@ public:
         // TODO consider building the particleArray from a box to have the keys
         // already and not need for the find.
         if (auto it = bucketsLists_.find(cell); it != bucketsLists_.end())
-            return std::make_optional<std::reference_wrapper<bucketlist_t const>>(
-                std::ref(it->second));
-        return std::optional<std::reference_wrapper<bucketlist_t const>>(std::nullopt);
+            return std::make_optional<std::reference_wrapper<bucketlist_t>>(std::ref(it->second));
+        return std::optional<std::reference_wrapper<bucketlist_t>>(std::nullopt);
     }
 
     template<typename CellIndex>
@@ -198,6 +197,19 @@ public:
         for (auto& [_, blist] : bucketsLists_)
         {
             blist.trim(max_empty);
+        }
+    }
+
+    template<typename CellIndex, typename CellExtractor = DefaultExtractor>
+    void update(Type& item, CellIndex const& oldCell, CellExtractor extract = default_extractor)
+    {
+        auto oldlist = list_at(oldCell);
+        auto newlist = list_at(extract(item));
+
+        if (oldlist and newlist)
+        {
+            oldlist->get().remove(item);
+            newlist->get().add(item);
         }
     }
 

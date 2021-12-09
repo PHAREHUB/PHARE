@@ -1,14 +1,32 @@
 #ifndef PHARE_BUCKETLIST_H
 #define PHARE_BUCKETLIST_H
 
+#include "core/utilities/meta/meta_utilities.h"
+#include <cstdint>
 #include <iostream>
 #include <cstddef>
 #include <iterator>
 #include <array>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 namespace PHARE::core
 {
+struct BucketListIndex
+{
+    std::uint_fast16_t bucket_idx = 0;
+    std::uint_fast16_t pos        = 0;
+};
+
+
+struct BucketListItem
+{
+    BucketListIndex index;
+};
+
+
+
+
 template<std::size_t bucket_size, typename T>
 class BucketList
 {
@@ -38,7 +56,9 @@ public:
     {
     }
 
-    void add(T const& t);
+    void add(T& t);
+
+    void remove(T& t);
 
     std::size_t size() const { return bucket_size * (bucket_idx) + curr; }
 
@@ -50,6 +70,8 @@ public:
 
     auto end() const;
 
+    BucketListIndex last_idx() const;
+
     void empty()
     {
         if (capacity() > 3 * size())
@@ -58,6 +80,13 @@ public:
         }
         bucket_idx = 0;
         curr       = 0;
+    }
+
+
+    bool in_bucket(BucketListItem const& t)
+    {
+        auto const& index = t.index;
+        return index.bucket_idx <= bucket_idx and index.pos <= curr;
     }
 
     bool is_empty() const { return bucket_idx == 0 and curr == 0; }
@@ -70,6 +99,19 @@ public:
 
 
 private:
+    void decrement_()
+    {
+        if (curr == 0)
+        {
+            bucket_idx--;
+            curr = bucket_size - 1;
+        }
+        else
+        {
+            curr--;
+        }
+    }
+
     using bucket_t         = std::array<const T*, bucket_size>;
     std::size_t bucket_idx = 0;
     std::size_t curr       = 0;
@@ -99,12 +141,33 @@ inline bool BucketList<bucket_size, T>::iterator::operator!=(iterator const& oth
 }
 
 
+template<typename BucketListItem, typename Attempt = void>
+struct has_index : std::false_type
+{
+};
+
+template<typename BucketListItem>
+struct has_index<BucketListItem,
+                 core::tryToInstanciate<decltype(std::declval<BucketListItem>().index)>>
+    : std::true_type
+{
+};
+
+
+template<typename BucketListItem>
+static auto constexpr inline has_index_v = has_index<BucketListItem>::value;
+
 
 template<std::size_t bucket_size, typename T>
-void BucketList<bucket_size, T>::add(T const& t)
+void BucketList<bucket_size, T>::add(T& t)
 {
     if (curr != bucket_size)
     {
+        if constexpr (has_index_v<T>)
+        {
+            t.index.bucket_idx = bucket_idx;
+            t.index.pos        = curr;
+        }
         buckets_[bucket_idx][curr++] = &t;
     }
     else
@@ -119,6 +182,38 @@ void BucketList<bucket_size, T>::add(T const& t)
         add(t);
     }
 }
+
+template<std::size_t bucket_size, typename T>
+BucketListIndex BucketList<bucket_size, T>::last_idx() const
+{
+    if (curr == 0)
+        return {bucket_idx - 1, bucket_size};
+    else
+        return {bucket_idx, curr - 1};
+}
+
+
+
+
+template<std::size_t bucket_size, typename T>
+void BucketList<bucket_size, T>::remove(T& t)
+{
+    if constexpr (has_index_v<T>)
+    {
+        if (!in_bucket(t))
+            throw std::runtime_error("not in bucket " + std::to_string(t.index.bucket_idx) + " "
+                                     + std::to_string(t.index.pos));
+
+        auto& to_remove = buckets_[t.index.bucket_idx][t.index.pos];
+        auto idx        = last_idx();
+        auto last       = buckets_[idx.bucket_idx][idx.pos];
+        to_remove       = last;
+        decrement_();
+    }
+    else
+        throw std::runtime_error("cannot remove this type");
+}
+
 
 
 template<std::size_t bucket_size, typename T>
