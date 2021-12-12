@@ -247,6 +247,22 @@ private:
 };
 
 
+template<typename CellMap, typename Box, typename ParticleArray>
+void get_sorted(CellMap const& cm, Box const& box, ParticleArray& dest)
+{
+    std::size_t pidx = 0;
+    for (auto const& cell : box)
+    {
+        auto bucketlist = cm.list_at(cell);
+        if (bucketlist)
+        {
+            for (auto const& part_ptr : bucketlist->get())
+            {
+                dest[pidx++] = *part_ptr;
+            }
+        }
+    }
+}
 
 
 } // namespace PHARE::core

@@ -314,6 +314,68 @@ TEST(CellMap, trackParticle)
     }
 }
 
+
+template<std::size_t dim>
+auto make_random_particles_in(Box<int, dim> const& box, std::size_t nppc)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::array<std::uniform_int_distribution<int>, dim> celldists;
+
+    for (std::size_t idim = 0; idim < dim; ++idim)
+        celldists[idim] = std::uniform_int_distribution<int>{box.lower[idim], box.upper[idim]};
+
+    std::uniform_real_distribution<double> distdelta(0, 0.999999999999);
+
+    std::vector<Particle<dim>> particles(nppc * box.size());
+    for (std::size_t ip = 0; ip < particles.size(); ++ip)
+    {
+        for (std::size_t idim = 0; idim < dim; ++idim)
+        {
+            particles[ip].iCell[idim] = celldists[idim](gen);
+        }
+        particles[ip].delta = distdelta(gen);
+    }
+    return particles;
+}
+
+
+TEST(CellMap, sortArray)
+{
+    auto constexpr dim         = 3u;
+    auto constexpr bucket_size = 100;
+    using cellmap_t            = CellMap<dim, Particle<dim>, bucket_size, int, Point<int, dim>>;
+    Box<int, 3> patchbox{{10, 20, 30}, {25, 42, 54}};
+    cellmap_t cm;
+    auto nppc      = 100u;
+    auto particles = make_random_particles_in(patchbox, nppc);
+    cm.add(particles);
+    EXPECT_EQ(cm.size(), particles.size());
+
+    std::size_t cell_jumps = 0;
+    for (std::size_t ipart = 1; ipart < particles.size(); ++ipart)
+    {
+        if (particles[ipart].iCell > particles[ipart - 1].iCell)
+        {
+            cell_jumps++;
+        }
+    }
+    EXPECT_NE(patchbox.size() - 1, cell_jumps);
+    std::vector<Particle<3>> sorted(particles.size());
+    get_sorted(cm, patchbox, sorted);
+
+    cell_jumps = 0;
+    for (std::size_t ipart = 1; ipart < sorted.size(); ++ipart)
+    {
+        if (sorted[ipart].iCell > sorted[ipart - 1].iCell)
+        {
+            cell_jumps++;
+        }
+    }
+    EXPECT_EQ(patchbox.size() - 1, cell_jumps);
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
