@@ -13,7 +13,7 @@ import os
 import numpy as np
 import pyphare
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import get_times_from_h5
+from pyphare.pharesee.hppierarchy import get_times_from_h5
 from glob import glob
 
 

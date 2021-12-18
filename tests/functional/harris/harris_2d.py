@@ -148,7 +148,7 @@ def config():
 
 def get_time(path, time, datahier = None):
     time = "{:.10f}".format(time)
-    from pyphare.pharesee.hierarchy import hierarchy_from
+    from pyphare.pharesee.hppierarchy import hierarchy_from
     datahier = hierarchy_from(h5_filename=path+"/EM_E.h5", time=time, hier=datahier)
     datahier = hierarchy_from(h5_filename=path+"/EM_B.h5", time=time, hier=datahier)
     return datahier

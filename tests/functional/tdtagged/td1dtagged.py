@@ -179,7 +179,7 @@ def noRefinement(**kwargs):
 
 def make_figure():
     from scipy.optimize import curve_fit
-    from pyphare.pharesee.hierarchy import flat_finest_field
+    from pyphare.pharesee.hppierarchy import flat_finest_field
 
     rwT    = Run("./withTagging")
     rNoRef = Run("./noRefinement")

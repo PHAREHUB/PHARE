@@ -7,10 +7,10 @@ from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
 from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
-from pyphare.pharesee.hierarchy import get_times_from_h5
+from pyphare.pharesee.hppierarchy import get_times_from_h5
 from tests.diagnostic import all_timestamps
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import flat_finest_field
+from pyphare.pharesee.hppierarchy import flat_finest_field
 
 
 import matplotlib.pyplot as plt
@@ -159,7 +159,7 @@ def main():
     cpp = cpp_lib()
 
     from pyphare.pharesee.run import Run
-    from pyphare.pharesee.hierarchy import flat_finest_field
+    from pyphare.pharesee.hppierarchy import flat_finest_field
 
 
     config()
