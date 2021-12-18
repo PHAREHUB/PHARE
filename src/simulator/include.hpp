@@ -7,4 +7,4 @@
 #include "initializer/data_provider.hpp"
 #include "diagnostic/diagnostics.hpp"
 
-#endif /*PHARE_SIMULATOR_INCLUDE_H*/
+#endif /*PHARE_SIMULATOR_INCLUDE_HPP*/
