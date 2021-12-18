@@ -16,7 +16,7 @@ if (withCaliper)
     set(CALIPER_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/caliper)
     set(CALIPER_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/caliper)
 
-    if (NOT EXISTS ${c})
+    if (NOT EXISTS ${CALIPER_SRCDIR})
       execute_process(
         COMMAND ${Git} clone https://github.com/LLNL/Caliper ${CALIPER_SRCDIR} -b master --recursive --depth 10
       )
@@ -32,6 +32,14 @@ if (withCaliper)
 
     option(CALIPER_WITH_MPI ON)
     set(CALIPER_WITH_MPI ON)
+
+    # caliper shared libs fail to link on glibc 3.34
+    #  this does not appear to be prefixable yet and we
+    #  build most things statically so it's not a big deal
+    #   maybe make an issue with caliper folks
+    #  https://github.com/PHAREHUB/PHARE/issues/632
+    option(BUILD_SHARED_LIBS OFF)
+    set(BUILD_SHARED_LIBS OFF)
 
     option(ENABLE_TESTS "Enable Caliper Test" OFF )
 
