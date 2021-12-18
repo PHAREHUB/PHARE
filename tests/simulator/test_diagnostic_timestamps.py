@@ -8,7 +8,7 @@ from tests.simulator import populate_simulation
 from pyphare.pharein import ElectronModel
 from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics, ParticleDiagnostics
 from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
+from pyphare.pharesee.hppierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
 import pyphare.pharein as ph
 import unittest
 import os

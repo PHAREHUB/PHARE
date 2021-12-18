@@ -1,5 +1,5 @@
 
-#include "benchmark/benchmark.h"
+#include "benchmark/benchmark.hpp"
 
 #include "bench/core/bench.hpp"
 #include "core/data/particles/particle.hpp"
