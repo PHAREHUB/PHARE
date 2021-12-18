@@ -4,7 +4,7 @@
 #include <random>
 #include <string>
 
-#include "core/data/ndarray/ndarray_vector.h"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
 
 using namespace PHARE::core;

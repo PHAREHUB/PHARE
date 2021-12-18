@@ -1,7 +1,7 @@
-#include "gridlayout_allocsize.h"
-#include "core/data/grid/gridlayoutimplyee.h"
-#include "gridlayout_params.h"
-#include "gridlayout_test.h"
+#include "gridlayout_allocsize.hpp"
+#include "core/data/grid/gridlayoutimplyee.hpp"
+#include "gridlayout_params.hpp"
+#include "gridlayout_test.hpp"
 
 using namespace PHARE::core;
 

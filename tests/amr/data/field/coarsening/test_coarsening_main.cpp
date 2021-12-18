@@ -3,7 +3,7 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 
-#include "amr/data/field/coarsening/field_coarsen_index_weight.h"
+#include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -13,8 +13,8 @@
 #include <numeric>
 
 
-#include "test_linear_coarsen.h"
-#include "test_weighter_coarsen.h"
+#include "test_linear_coarsen.hpp"
+#include "test_weighter_coarsen.hpp"
 
 
 

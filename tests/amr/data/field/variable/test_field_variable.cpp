@@ -4,11 +4,11 @@
 
 #include "gtest/gtest.h"
 
-#include "core/data/field/field.h"
-#include "amr/data/field/field_variable.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ndarray/ndarray_vector.h"
+#include "core/data/field/field.hpp"
+#include "amr/data/field/field_variable.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
 #include <string>
 #include <map>

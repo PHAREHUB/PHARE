@@ -1,4 +1,4 @@
-#include "test_stream_pack_centered_ex.h"
+#include "test_stream_pack_centered_ex.hpp"
 
 using testing::Eq;
 

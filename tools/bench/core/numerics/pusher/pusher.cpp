@@ -1,9 +1,9 @@
 
-#include "benchmark/benchmark.h"
+#include "benchmark/benchmark.hpp"
 
-#include "phare_core.h"
-#include "core/numerics/pusher/boris.h"
-#include "core/numerics/ion_updater/ion_updater.h"
+#include "phare_core.hpp"
+#include "core/numerics/pusher/boris.hpp"
+#include "core/numerics/ion_updater/ion_updater.hpp"
 
 template<std::size_t dim>
 using Field = PHARE::core::Field<PHARE::core::NdArrayVector<dim>,

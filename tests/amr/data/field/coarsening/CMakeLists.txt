@@ -10,8 +10,8 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 set(SOURCES_INC
-  test_linear_coarsen.h
-  test_weighter_coarsen.h
+  test_linear_coarsen.hpp
+  test_weighter_coarsen.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
   )
 

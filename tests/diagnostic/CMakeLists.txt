@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.9)
 project(test-diagnostics)
 
 set(SOURCES_INC
-    ${PROJECT_SOURCE_DIR}/test_diagnostics.h
+    ${PROJECT_SOURCE_DIR}/test_diagnostics.hpp
 )
 
 if(HighFive)

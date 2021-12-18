@@ -1,6 +1,6 @@
 
 
-#include "python3/cpp_simulator.h"
+#include "python3/cpp_simulator.hpp"
 
 namespace PHARE::pydata
 {

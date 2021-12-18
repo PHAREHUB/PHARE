@@ -8,13 +8,13 @@
 #include "gtest/gtest.h"
 
 
-#include "amr/data/field/time_interpolate/field_linear_time_interpolate.h"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
-#include "core/data/field/field.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/hybrid/hybrid_quantities.h"
-#include "amr/resources_manager/amr_utils.h"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 
 

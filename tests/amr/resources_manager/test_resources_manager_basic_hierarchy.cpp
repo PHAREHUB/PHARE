@@ -1,4 +1,4 @@
-#include "test_resources_manager_basic_hierarchy.h"
+#include "test_resources_manager_basic_hierarchy.hpp"
 
 BasicHierarchy::BasicHierarchy(std::string const& inputFile)
     : inputDatabase{SAMRAI::tbox::InputManager::getManager()->parseInputFile(inputFile)}

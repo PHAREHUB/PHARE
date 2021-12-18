@@ -11,17 +11,17 @@
 #include <list>
 #include <random>
 
-#include "phare_core.h"
-#include "core/data/electromag/electromag.h"
-#include "core/data/field/field.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/data/particles/particle.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/vecfield/vecfield.h"
-#include "core/hybrid/hybrid_quantities.h"
-#include "core/numerics/interpolator/interpolator.h"
+#include "phare_core.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
 
 
 using namespace PHARE::core;

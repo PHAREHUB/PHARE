@@ -5,10 +5,10 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 
-#include "amr/data/field/field_geometry.h"
-#include "amr/data/field/field_variable.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_variable.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

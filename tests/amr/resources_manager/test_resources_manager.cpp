@@ -1,12 +1,12 @@
 
-#include "test_resources_manager.h"
-#include "core/data/electromag/electromag.h"
-#include "core/data/electrons/electrons.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "initializer/data_provider.h"
-#include "core/models/hybrid_state.h"
+#include "test_resources_manager.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "initializer/data_provider.hpp"
+#include "core/models/hybrid_state.hpp"
 
 
 #include <string>
@@ -22,7 +22,7 @@
 
 
 
-#include "tests/initializer/init_functions.h"
+#include "tests/initializer/init_functions.hpp"
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 static constexpr std::size_t dim         = 1;

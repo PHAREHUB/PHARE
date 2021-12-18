@@ -3,8 +3,8 @@
 #include <memory>
 #include <cstdint>
 
-#include "amr/data/particles/particles_data.h"
-#include "amr/data/particles/particles_data_factory.h"
+#include "amr/data/particles/particles_data.hpp"
+#include "amr/data/particles/particles_data_factory.hpp"
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDescriptor.h>
@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 
 
-#include "core/utilities/types.h"
+#include "core/utilities/types.hpp"
 
 using testing::Eq;
 

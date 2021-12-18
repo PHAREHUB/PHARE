@@ -4,10 +4,10 @@
 #include <string>
 #include <vector>
 
-#include "core/data/particles/particle_array.h"
-#include "core/utilities/box/box.h"
-#include "core/utilities/partitionner/partitionner.h"
-#include "core/utilities/point/point.h"
+#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/partitionner/partitionner.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

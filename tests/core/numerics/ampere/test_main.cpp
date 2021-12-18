@@ -5,18 +5,18 @@
 #include <memory>
 
 
-#include "core/data/field/field.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/grid/gridlayoutdefs.h"
-#include "core/data/vecfield/vecfield.h"
-#include "core/numerics/ampere/ampere.h"
-#include "core/utilities/box/box.h"
-#include "core/utilities/index/index.h"
+#include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/index/index.hpp"
 
-#include "tests/core/data/field/test_field.h"
-#include "tests/core/data/vecfield/test_vecfield.h"
-#include "tests/core/data/gridlayout/gridlayout_test.h"
+#include "tests/core/data/field/test_field.hpp"
+#include "tests/core/data/vecfield/test_vecfield.hpp"
+#include "tests/core/data/gridlayout/gridlayout_test.hpp"
 
 
 using namespace PHARE::core;

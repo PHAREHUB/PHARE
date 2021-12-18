@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.9)
 project(phare_simulator)
 
 set( SOURCES_INC
-    simulator.h
+    simulator.hpp
     simulator.cpp
-    phare_types.h
+    phare_types.hpp
    )
 
 add_library(${PROJECT_NAME} ${SOURCES_INC} )

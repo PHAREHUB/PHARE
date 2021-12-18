@@ -1,5 +1,5 @@
 
-#include "python3/cpp_simulator.h"
+#include "python3/cpp_simulator.hpp"
 
 #if !defined(PHARE_CPP_MOD_NAME)
 #define PHARE_CPP_MOD_NAME cpp

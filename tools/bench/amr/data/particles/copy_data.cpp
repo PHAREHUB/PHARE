@@ -2,13 +2,13 @@
 
 #define PHARE_HAS_HIGHFIVE 0
 
-#include "bench/core/bench.h"
+#include "bench/core/bench.hpp"
 
-#include "amr/data/particles/particles_data.h"
+#include "amr/data/particles/particles_data.hpp"
 
-#include "amr/utilities/box/amr_box.h"
+#include "amr/utilities/box/amr_box.hpp"
 
-#include "phare/phare.h" // samrai lifecycle
+#include "phare/phare.hpp" // samrai lifecycle
 
 namespace PHARE::amr::bench
 {

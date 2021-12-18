@@ -2,18 +2,18 @@
 #include <type_traits>
 
 
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/particles/particle_utilities.h"
-#include "core/utilities/box/box.h"
-#include "core/utilities/point/point.h"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_utilities.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "tests/initializer/init_functions.h"
+#include "tests/initializer/init_functions.hpp"
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 using namespace PHARE::core;
