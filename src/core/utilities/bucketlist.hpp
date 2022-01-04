@@ -14,8 +14,9 @@ namespace PHARE::core
 {
 struct BucketListIndex
 {
-    std::uint_fast16_t bucket_idx = 0;
-    std::uint_fast16_t pos        = 0;
+    using Bindex      = std::uint_fast16_t;
+    Bindex bucket_idx = 0;
+    Bindex pos        = 0;
 };
 
 
@@ -32,13 +33,16 @@ class BucketList
 {
     class iterator : public std::iterator<std::forward_iterator_tag, T>
     {
+    private:
+        using Bindex = typename BucketListIndex::Bindex;
+
     public:
         auto operator*() const { return bucketsList_.buckets_[curr_bucket_][curr_pos_]; }
         auto operator*() { return bucketsList_.buckets_[curr_bucket_][curr_pos_]; }
         iterator operator++();
         bool operator!=(iterator const& other) const;
 
-        iterator(BucketList const& blist, std::size_t curr_bucket = 0, std::size_t curr_pos = 0)
+        iterator(BucketList const& blist, Bindex curr_bucket = 0, Bindex curr_pos = 0)
             : curr_bucket_{curr_bucket}
             , curr_pos_{curr_pos}
             , bucketsList_{blist}
@@ -112,9 +116,9 @@ private:
         }
     }
 
-    using bucket_t         = std::array<const T*, bucket_size>;
-    std::size_t bucket_idx = 0;
-    std::size_t curr       = 0;
+    using bucket_t                              = std::array<const T*, bucket_size>;
+    typename BucketListIndex::Bindex bucket_idx = 0;
+    typename BucketListIndex::Bindex curr       = 0;
     std::vector<bucket_t> buckets_;
 };
 
