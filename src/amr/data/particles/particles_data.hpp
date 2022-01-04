@@ -323,17 +323,17 @@ namespace amr
                         // interior array or ghost array
                         auto const intersect = getGhostBox() * overlapBox;
 
-                        for (auto const& particle : particleArray)
+                        for (auto& particle : particleArray)
                         {
                             if (isInBox(intersect, particle))
                             {
                                 if (isInBox(myBox, particle))
                                 {
-                                    domainParticles.push_back(std::move(particle));
+                                    domainParticles.push_back(particle);
                                 }
                                 else
                                 {
-                                    patchGhostParticles.push_back(std::move(particle));
+                                    patchGhostParticles.push_back(particle);
                                 }
                             }
                         } // end species loop

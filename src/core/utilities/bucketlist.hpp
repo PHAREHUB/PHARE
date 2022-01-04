@@ -14,9 +14,10 @@ namespace PHARE::core
 {
 struct BucketListIndex
 {
-    using Bindex      = std::uint_fast16_t;
-    Bindex bucket_idx = 0;
-    Bindex pos        = 0;
+    using Bindex                          = std::uint_fast16_t;
+    static constexpr Bindex default_idx_v = 0;
+    Bindex bucket_idx                     = default_idx_v;
+    Bindex pos                            = default_idx_v;
 };
 
 
@@ -213,6 +214,12 @@ void BucketList<bucket_size, T>::remove(T& t)
         auto last       = buckets_[idx.bucket_idx][idx.pos];
         to_remove       = last;
         decrement_();
+
+        if constexpr (has_index_v<T>)
+        {
+            t.index.bucket_idx = BucketListIndex::default_idx_v;
+            t.index.pos        = BucketListIndex::default_idx_v;
+        }
     }
     else
         throw std::runtime_error("cannot remove this type");

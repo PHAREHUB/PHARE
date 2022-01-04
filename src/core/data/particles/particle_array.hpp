@@ -83,19 +83,11 @@ public:
 
     void clear()
     {
-        clean_ = false;
-        return particles_.clear();
+        particles_.clear();
+        cell_map_.clear();
     }
-    void reserve(std::size_t newSize)
-    {
-        clean_ = false;
-        return particles_.reserve(newSize);
-    }
-    void resize(std::size_t newSize)
-    {
-        clean_ = false;
-        return particles_.resize(newSize);
-    }
+    void reserve(std::size_t newSize) { return particles_.reserve(newSize); }
+    void resize(std::size_t newSize) { return particles_.resize(newSize); }
 
     auto const& operator[](std::size_t i) const { return particles_[i]; }
 
@@ -105,80 +97,67 @@ public:
     }
 
     auto begin() const { return const_iterator{particles_.begin(), *this, cell_map_}; }
-    auto begin()
-    {
-        clean_ = false;
-        return iterator{particles_.begin(), *this, cell_map_};
-    }
+    auto begin() { return iterator{particles_.begin(), *this, cell_map_}; }
 
     auto end() const { return const_iterator{particles_.end(), *this, cell_map_}; }
-    auto end()
-    {
-        clean_ = false;
-        return iterator{particles_.end(), *this, cell_map_};
-    }
+    auto end() { return iterator{particles_.end(), *this, cell_map_}; }
 
     template<class InputIterator>
     void insert(iterator position, InputIterator first, InputIterator last)
     {
-        clean_ = false;
         particles_.insert(position, first, last);
     }
 
-    auto back()
-    {
-        clean_ = false;
-        return particles_.back();
-    }
-    auto front()
-    {
-        clean_ = false;
-        return particles_.front();
-    }
+    auto back() { return particles_.back(); }
+    auto front() { return particles_.front(); }
 
     iterator erase(iterator position)
     {
-        clean_ = false;
         return iterator{particles_.erase(position), *this, cell_map_};
     }
     iterator erase(iterator first, iterator last)
     {
-        clean_ = false;
+        // TODO erase particles from cellmap as well
         return iterator{particles_.erase(first.it, last.it), *this, cell_map_};
     }
 
-    Particle_t& emplace_back()
+    Particle_t& emplace_back(bool mapping = true)
     {
-        clean_ = false;
-        return particles_.emplace_back();
+        auto& part = particles_.emplace_back();
+        if (mapping)
+            cell_map_.add(part);
+        return part;
     }
-    Particle_t& emplace_back(Particle_t&& p)
+    Particle_t& emplace_back(Particle_t&& p, bool mapping = true)
     {
-        clean_ = false;
-        return particles_.emplace_back(p);
+        auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
+        if (mapping)
+            cell_map_.add(part);
+        return part;
     }
-    Particle_t& emplace_back(Particle_t const& p)
+    Particle_t& emplace_back(Particle_t const& p, bool mapping = true)
     {
-        clean_ = false;
-        return particles_.emplace_back(p);
+        auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
+        if (mapping)
+            cell_map_.add(p);
+        return part;
     }
 
-    void push_back(Particle_t const& p)
+    void push_back(Particle_t const& p, bool mapping = true)
     {
-        clean_ = false;
         particles_.push_back(p);
+        if (mapping)
+            cell_map_.add(particles_.back());
+        std::cout << "added " << particles_.back() << " to the cellmap\n";
     }
-    void push_back(Particle_t&& p)
+    void push_back(Particle_t&& p, bool mapping = true)
     {
-        clean_ = false;
         particles_.push_back(std::forward<Particle_t>(p));
+        if (mapping)
+            cell_map_.add(particles_.back());
     }
 
-    void swap(ParticleArray<dim>& that)
-    {
-        clean_ = false;
-        std::swap(this->particles_, that.particles_);
-    }
+    void swap(ParticleArray<dim>& that) { std::swap(this->particles_, that.particles_); }
 
     void map_particles() const
     {
@@ -200,6 +179,8 @@ public:
     }
 
 
+    // TORM?
+    /*
     auto select(box_t const& box) const
     {
         if (!clean_)
@@ -209,7 +190,7 @@ public:
         }
         return cell_map_.select(box);
     }
-
+*/
 
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
