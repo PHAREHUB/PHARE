@@ -16,6 +16,7 @@
 #include "core/utilities/bucketlist.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/iterators.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
 
 namespace PHARE::core
 {
@@ -45,7 +46,8 @@ public:
     static auto constexpr default_extractor = [](auto const& item) { return item.iCell; };
     using DefaultExtractor                  = decltype(default_extractor);
 
-    template<typename Array, typename CellExtractor = DefaultExtractor>
+    template<typename Array, typename CellExtractor = DefaultExtractor,
+             typename = std::enable_if_t<is_iterable_v<Array>, void>>
     void add(Array& items, CellExtractor extract = default_extractor)
     {
         PHARE_LOG_SCOPE("CellMap::add (array)");
@@ -65,7 +67,30 @@ public:
         }
     }
 
+    template<typename Item, typename CellExtractor = DefaultExtractor,
+             typename = std::enable_if_t<!is_iterable_v<Item>>, int = 0>
+    void add(Item& item, CellExtractor extract = default_extractor)
+    {
+        PHARE_LOG_SCOPE("CellMap::add (array)");
+        addToCell(extract(item), item);
+    }
+
     std::size_t size(cell_t cell) { return bucketsLists_[cell].size(); }
+
+    template<typename Item, typename CellExtractor = DefaultExtractor>
+    void erase(Item& item, CellExtractor extract = default_extractor)
+    {
+        auto blist = list_at(extract(item));
+        if (blist)
+        {
+            std::cout << "removed one item\n";
+            blist->get().remove(item);
+        }
+        else
+        {
+            std::cout << "item cannot be found\n";
+        }
+    }
 
     auto size() const
     {
@@ -176,6 +201,10 @@ public:
         }
         return tot;
     }
+
+    void clear() { bucketsLists_.clear(); }
+
+
 
 
     void empty()

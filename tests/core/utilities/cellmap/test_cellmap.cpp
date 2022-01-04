@@ -61,7 +61,43 @@ TEST(CellMap, sizeIsNbrOfElements)
 }
 
 
+struct RemovableObj : BucketListItem
+{
+    RemovableObj(std::array<int, 2> cell)
+        : iCell{cell}
+    {
+    }
+    std::array<int, 2> iCell;
+};
 
+TEST(CellMap, itemCanBeRemoved)
+{
+    auto constexpr dim         = 2u;
+    auto constexpr bucket_size = 99u;
+    CellMap<dim, RemovableObj, bucket_size, int, Point<int, 2>> cm;
+    RemovableObj o1{{14, 27}}, o2{{14, 26}};
+    cm.addToCell(std::array<int, 2>{14, 27}, o1);
+    EXPECT_EQ(cm.size(), 1);
+    cm.addToCell(Point{14, 26}, o2);
+    EXPECT_EQ(cm.size(), 2);
+    cm.erase(o2);
+    EXPECT_EQ(1, cm.size());
+}
+
+
+
+
+TEST(CellMap, clearMakesSizeToZero)
+{
+    auto constexpr dim         = 2u;
+    auto constexpr bucket_size = 99u;
+    CellMap<dim, Obj, bucket_size, int, Point<int, 2>> cm;
+    Obj o1, o2;
+    cm.addToCell(std::array<int, 2>{14, 27}, o1);
+    cm.addToCell(Point{14, 26}, o2);
+    cm.clear();
+    EXPECT_EQ(0, cm.size());
+}
 
 template<std::size_t dim>
 auto make_particles_in(PHARE::core::Box<int, dim> box, std::size_t nppc)
