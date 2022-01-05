@@ -85,6 +85,7 @@ public:
     {
         particles_.clear();
         cell_map_.clear();
+        clean_ = false;
     }
     void reserve(std::size_t newSize) { return particles_.reserve(newSize); }
     void resize(std::size_t newSize) { return particles_.resize(newSize); }
