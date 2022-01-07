@@ -83,7 +83,7 @@ def uniform(vth, dl, cells, nbr_steps):
         protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.)
+    ElectronModel(closure="isothermal", Te=0.1)
 
     sim = ph.global_vars.sim
 
