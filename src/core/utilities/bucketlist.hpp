@@ -29,10 +29,10 @@ struct BucketListItem
 
 
 
-template<std::size_t bucket_size, typename T>
+template<std::size_t bucket_size>
 class BucketList
 {
-    class iterator : public std::iterator<std::forward_iterator_tag, T>
+    class iterator : public std::iterator<std::forward_iterator_tag, std::size_t>
     {
     private:
         using Bindex = typename BucketListIndex::Bindex;
@@ -52,7 +52,7 @@ class BucketList
 
     private:
         std::size_t curr_bucket_ = 0, curr_pos_ = 0;
-        BucketList<bucket_size, T> const& bucketsList_;
+        BucketList<bucket_size> const& bucketsList_;
     };
 
 public:
@@ -61,9 +61,9 @@ public:
     {
     }
 
-    void add(T& t);
+    void add(std::size_t itemIndex);
 
-    void remove(T& t);
+    void remove(std::size_t itemIndex);
 
     std::size_t size() const { return bucket_size * (bucket_idx) + curr; }
 
@@ -88,9 +88,10 @@ public:
     }
 
 
-    bool in_bucket(BucketListItem const& t)
+    // TODO
+    bool in_bucket(std::size_t itemIndex)
     {
-        auto const& index = t.index;
+        auto const& index = indexes_[itemIndex];
         return index.bucket_idx <= bucket_idx and index.pos <= curr;
     }
 
@@ -117,16 +118,16 @@ private:
         }
     }
 
-    using bucket_t                              = std::array<const T*, bucket_size>;
+    using bucket_t                              = std::array<std::size_t, bucket_size>;
     typename BucketListIndex::Bindex bucket_idx = 0;
     typename BucketListIndex::Bindex curr       = 0;
     std::vector<bucket_t> buckets_;
+    std::unordered_map<std::size_t, BucketListIndex> indexes_;
 };
 
 
-template<std::size_t bucket_size, typename T>
-inline typename BucketList<bucket_size, T>::iterator
-BucketList<bucket_size, T>::iterator::operator++()
+template<std::size_t bucket_size>
+inline typename BucketList<bucket_size>::iterator BucketList<bucket_size>::iterator::operator++()
 {
     curr_pos_++;
     if (curr_pos_ == bucket_size)
@@ -138,42 +139,24 @@ BucketList<bucket_size, T>::iterator::operator++()
 }
 
 
-template<std::size_t bucket_size, typename T>
-inline bool BucketList<bucket_size, T>::iterator::operator!=(iterator const& other) const
+template<std::size_t bucket_size>
+inline bool BucketList<bucket_size>::iterator::operator!=(iterator const& other) const
 {
     return (other.curr_bucket_ != curr_bucket_ or other.curr_pos_ != curr_pos_)
            or &bucketsList_ != &other.bucketsList_;
 }
 
 
-template<typename BucketListItem, typename Attempt = void>
-struct has_index : std::false_type
-{
-};
-
-template<typename BucketListItem>
-struct has_index<BucketListItem,
-                 core::tryToInstanciate<decltype(std::declval<BucketListItem>().index)>>
-    : std::true_type
-{
-};
 
 
-template<typename BucketListItem>
-static auto constexpr inline has_index_v = has_index<BucketListItem>::value;
-
-
-template<std::size_t bucket_size, typename T>
-void BucketList<bucket_size, T>::add(T& t)
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::add(std::size_t itemIndex)
 {
     if (curr != bucket_size)
     {
-        if constexpr (has_index_v<T>)
-        {
-            t.index.bucket_idx = bucket_idx;
-            t.index.pos        = curr;
-        }
-        buckets_[bucket_idx][curr++] = &t;
+        indexes_[itemIndex].bucket_idx = bucket_idx;
+        indexes_[itemIndex].pos        = curr;
+        buckets_[bucket_idx][curr++]   = itemIndex;
     }
     else
     {
@@ -184,12 +167,12 @@ void BucketList<bucket_size, T>::add(T& t)
         }
         bucket_idx++;
         curr = 0;
-        add(t);
+        add(itemIndex);
     }
 }
 
-template<std::size_t bucket_size, typename T>
-BucketListIndex BucketList<bucket_size, T>::last_idx() const
+template<std::size_t bucket_size>
+BucketListIndex BucketList<bucket_size>::last_idx() const
 {
     if (curr == 0)
         return {bucket_idx - 1, bucket_size};
@@ -200,35 +183,23 @@ BucketListIndex BucketList<bucket_size, T>::last_idx() const
 
 
 
-template<std::size_t bucket_size, typename T>
-void BucketList<bucket_size, T>::remove(T& t)
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::remove(std::size_t itemIndex)
 {
-    if constexpr (has_index_v<T>)
-    {
-        if (!in_bucket(t))
-            throw std::runtime_error("not in bucket " + std::to_string(t.index.bucket_idx) + " "
-                                     + std::to_string(t.index.pos));
+    if (!in_bucket(itemIndex))
+        throw std::runtime_error("not in bucket");
 
-        auto& to_remove = buckets_[t.index.bucket_idx][t.index.pos];
-        auto idx        = last_idx();
-        auto last       = buckets_[idx.bucket_idx][idx.pos];
-        to_remove       = last;
-        decrement_();
-
-        if constexpr (has_index_v<T>)
-        {
-            t.index.bucket_idx = BucketListIndex::default_idx_v;
-            t.index.pos        = BucketListIndex::default_idx_v;
-        }
-    }
-    else
-        throw std::runtime_error("cannot remove this type");
+    auto& to_remove = buckets_[indexes_[itemIndex].bucket_idx][indexes_[itemIndex].pos];
+    auto idx        = last_idx();
+    auto last       = buckets_[idx.bucket_idx][idx.pos];
+    to_remove       = last;
+    decrement_();
 }
 
 
 
-template<std::size_t bucket_size, typename T>
-auto BucketList<bucket_size, T>::end()
+template<std::size_t bucket_size>
+auto BucketList<bucket_size>::end()
 {
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
@@ -246,8 +217,8 @@ auto BucketList<bucket_size, T>::end()
 }
 
 
-template<std::size_t bucket_size, typename T>
-auto BucketList<bucket_size, T>::end() const
+template<std::size_t bucket_size>
+auto BucketList<bucket_size>::end() const
 {
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
@@ -264,8 +235,8 @@ auto BucketList<bucket_size, T>::end() const
     }
 }
 
-template<std::size_t bucket_size, typename T>
-void BucketList<bucket_size, T>::trim(std::size_t max_empty)
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::trim(std::size_t max_empty)
 {
     auto nbr_elem         = size();
     auto nbr_full_buckets = nbr_elem / bucket_size;

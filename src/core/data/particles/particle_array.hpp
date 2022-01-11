@@ -28,7 +28,7 @@ public:
     using Vector                                     = std::vector<Particle_t>;
 
 private:
-    using cell_map_t = CellMap<dim, Particle_t, cellmap_bucket_size, int, Point<int, dim>>;
+    using cell_map_t = CellMap<dim, cellmap_bucket_size, int, Point<int, dim>>;
 
     template<typename T>
     struct ParticleArrayIterator : wrapped_iterator<T, Vector>
@@ -125,55 +125,49 @@ public:
     {
         auto& part = particles_.emplace_back();
         if (mapping)
-            cell_map_.add(part);
+            cell_map_.add(particles_, particles_.size() - 1);
         return part;
     }
     Particle_t& emplace_back(Particle_t&& p, bool mapping = true)
     {
         auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
         if (mapping)
-            cell_map_.add(part);
+            cell_map_.add(particles_, particles_.size());
         return part;
     }
+    /*
     Particle_t& emplace_back(Particle_t const& p, bool mapping = true)
     {
         auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
         if (mapping)
             cell_map_.add(p);
         return part;
-    }
+    }*/
 
     void push_back(Particle_t const& p, bool mapping = true)
     {
         particles_.push_back(p);
         if (mapping)
-            cell_map_.add(particles_.back());
-        std::cout << "added " << particles_.back() << " to the cellmap\n";
+            cell_map_.add(particles_, particles_.size() - 1);
     }
+
     void push_back(Particle_t&& p, bool mapping = true)
     {
         particles_.push_back(std::forward<Particle_t>(p));
         if (mapping)
-            cell_map_.add(particles_.back());
+            cell_map_.add(particles_, particles_.size());
     }
 
     void swap(ParticleArray<dim>& that) { std::swap(this->particles_, that.particles_); }
 
-    void map_particles() const
-    {
-        cell_map_.add(particles_);
-        clean_ = true;
-    }
+    void map_particles() const { cell_map_.add(particles_); }
     void empty_map() { cell_map_.empty(); }
 
 
     auto nbr_particles_in(box_t const& box) const
     {
-        if (!clean_)
-        {
-            cell_map_.empty();
-            map_particles();
-        }
+        cell_map_.empty();
+        map_particles();
         auto s = cell_map_.size(box);
         return s;
     }
@@ -195,36 +189,21 @@ public:
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles");
-        if (!clean_)
-        {
-            cell_map_.empty();
-            map_particles();
-        }
-        cell_map_.export_to(box, dest.particles_);
+        cell_map_.export_to(box, particles_, dest.particles_);
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, ParticleArray<dim>& dest, Fn&& fn) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn)");
-        if (!clean_)
-        {
-            cell_map_.empty();
-            map_particles();
-        }
-        cell_map_.export_to(box, dest.particles_, std::forward<Fn>(fn));
+        cell_map_.export_to(box, particles_, dest.particles_, std::forward<Fn>(fn));
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, std::vector<Particle_t>& dest, Fn&& fn) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn,vector)");
-        if (!clean_)
-        {
-            cell_map_.empty();
-            map_particles();
-        }
-        cell_map_.export_to(box, dest, std::forward<Fn>(fn));
+        cell_map_.export_to(box, particles_, dest, std::forward<Fn>(fn));
     }
 
     template<typename CellIndex>
@@ -234,8 +213,7 @@ public:
     }
 
 private:
-    bool mutable clean_{false};
-    mutable Vector particles_;
+    Vector particles_;
     mutable cell_map_t cell_map_;
 };
 

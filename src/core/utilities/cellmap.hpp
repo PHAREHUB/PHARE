@@ -20,12 +20,12 @@
 
 namespace PHARE::core
 {
-template<std::size_t dim, typename Type, std::size_t bucket_size, typename cell_index_t = int,
+template<std::size_t dim, std::size_t bucket_size, typename cell_index_t = int,
          typename key_t = std::array<cell_index_t, dim>>
 class CellMap
 {
 private:
-    using bucketlist_t = BucketList<bucket_size, Type>;
+    using bucketlist_t = BucketList<bucket_size>;
     using cell_t       = std::array<cell_index_t, dim>;
     using box_t        = Box<cell_index_t, dim>;
 
@@ -38,9 +38,9 @@ public:
 
 
     template<typename CellIndex>
-    void addToCell(CellIndex const& cell, Type& obj)
+    void addToCell(CellIndex const& cell, std::size_t itemIndex)
     {
-        bucketsLists_[cell].add(obj);
+        bucketsLists_[cell].add(itemIndex);
     }
 
     static auto constexpr default_extractor = [](auto const& item) { return item.iCell; };
@@ -48,43 +48,46 @@ public:
 
     template<typename Array, typename CellExtractor = DefaultExtractor,
              typename = std::enable_if_t<is_iterable_v<Array>, void>>
-    void add(Array& items, CellExtractor extract = default_extractor)
+    void add(Array const& items, CellExtractor extract = default_extractor)
     {
         PHARE_LOG_SCOPE("CellMap::add (array)");
-        for (auto& item : items)
+        for (std::size_t itemIndex = 0; itemIndex < items.size(); ++itemIndex)
         {
-            addToCell(extract(item), item);
+            addToCell(extract(items[itemIndex]), itemIndex);
         }
     }
 
-    template<typename Iterator, typename CellExtractor = DefaultExtractor>
-    void add(Iterator const& begin, Iterator const& end, CellExtractor extract = default_extractor)
+    template<typename Array, typename CellExtractor = DefaultExtractor,
+             typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    void add(Array const& items, std::size_t first, std::size_t last,
+             CellExtractor extract = default_extractor)
     {
         PHARE_LOG_SCOPE("CellMap::add (iterator)");
-        for (auto it = begin; it != end; ++it)
+        for (auto itemIndex = first; itemIndex <= last; ++itemIndex)
         {
-            addToCell(extract(*it), *it);
+            addToCell(extract(items[itemIndex]), itemIndex);
         }
     }
 
-    template<typename Item, typename CellExtractor = DefaultExtractor,
-             typename = std::enable_if_t<!is_iterable_v<Item>>, int = 0>
-    void add(Item& item, CellExtractor extract = default_extractor)
+    template<typename Array, typename CellExtractor = DefaultExtractor,
+             typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    void add(Array const& items, std::size_t itemIndex, CellExtractor extract = default_extractor)
     {
         PHARE_LOG_SCOPE("CellMap::add (array)");
-        addToCell(extract(item), item);
+        addToCell(extract(items[itemIndex]), itemIndex);
     }
 
     std::size_t size(cell_t cell) { return bucketsLists_[cell].size(); }
 
-    template<typename Item, typename CellExtractor = DefaultExtractor>
-    void erase(Item& item, CellExtractor extract = default_extractor)
+    template<typename Array, typename CellExtractor = DefaultExtractor,
+             typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    void erase(Array const& items, std::size_t itemIndex, CellExtractor extract = default_extractor)
     {
-        auto blist = list_at(extract(item));
+        auto blist = list_at(extract(items[itemIndex]));
         if (blist)
         {
             std::cout << "removed one item\n";
-            blist->get().remove(item);
+            blist->get().remove(itemIndex);
         }
         else
         {
@@ -117,57 +120,54 @@ public:
     }
 
 
-    auto select(box_t const& box) const
+    template<typename Array>
+    auto select(box_t const& box, Array const& from) const
     {
         // count all items
         std::size_t nbrTot = size(box);
-        std::vector<Type> selection(nbrTot);
+        std::vector<typename Array::value_type> selection(nbrTot);
         if (nbrTot == 0)
             return selection;
 
-        std::size_t item_idx = 0;
+        std::size_t selected_idx = 0;
         for (auto const& cell : box)
         {
             auto blist = list_at(cell);
             if (blist)
-                for (Type const* item : blist->get())
+                for (auto itemIndex : blist->get())
                 {
-                    selection[item_idx++] = *item;
+                    selection[selected_idx++] = from[itemIndex];
                 }
         }
         return selection;
     }
 
-    template<typename Container>
-    void export_to(box_t const& box, Container& dest) const
+    template<typename Array>
+    void export_to(box_t const& box, Array const& from, Array& dest) const
     {
         for (auto const& cell : box)
         {
             auto blist = list_at(cell);
             if (blist)
-                for (Type const* item : blist->get())
+                for (auto itemIndex : blist->get())
                 {
-                    dest.push_back(*item);
+                    dest.push_back(from[itemIndex]);
                 }
             // TODO does not work but would be better
             // dest.insert(std::end(dest), std::begin(blist->get()), std::end(blist->get()));
         }
     }
 
-    template<typename Container, typename Transformation>
-    void export_to(box_t const& box, Container& dest, Transformation&& Fn) const
+    template<typename Array, typename Transformation>
+    void export_to(box_t const& box, Array const& from, Array& dest, Transformation&& Fn) const
     {
         for (auto const& cell : box)
         {
             auto blist = list_at(cell);
             if (blist)
-                for (Type const* item : blist->get())
+                for (auto itemIndex : blist->get())
                 {
-                    // TODO if particleArray this does clean_=false
-                    // for each element... but cannot do insert()
-                    // since there is no insert with Op
-                    // a bit silly....
-                    dest.push_back(Fn(*item));
+                    dest.push_back(Fn(from[itemIndex]));
                 }
         }
     }
@@ -230,16 +230,17 @@ public:
         }
     }
 
-    template<typename CellIndex, typename CellExtractor = DefaultExtractor>
-    void update(Type& item, CellIndex const& oldCell, CellExtractor extract = default_extractor)
+    template<typename Array, typename CellIndex, typename CellExtractor = DefaultExtractor>
+    void update(Array const& items, std::size_t itemIndex, CellIndex const& oldCell,
+                CellExtractor extract = default_extractor)
     {
         auto oldlist = list_at(oldCell);
-        auto newlist = list_at(extract(item));
+        auto newlist = list_at(extract(items[itemIndex]));
 
         if (oldlist and newlist)
         {
-            oldlist->get().remove(item);
-            newlist->get().add(item);
+            oldlist->get().remove(itemIndex);
+            newlist->get().add(itemIndex);
         }
     }
 
@@ -249,9 +250,9 @@ public:
     {
         auto blist = list_at(cell);
         if (blist)
-            for (auto const& item : blist->get())
+            for (auto itemIndex : blist->get())
             {
-                std::cout << *item << "\n";
+                std::cout << itemIndex << "\n";
             }
     }
 
@@ -276,7 +277,7 @@ private:
     std::unordered_map<key_t, bucketlist_t, CellHasher> bucketsLists_;
 };
 
-
+#if 0
 template<typename CellMap, typename Box, typename ParticleArray>
 void get_sorted(CellMap const& cm, Box const& box, ParticleArray& dest)
 {
@@ -293,7 +294,7 @@ void get_sorted(CellMap const& cm, Box const& box, ParticleArray& dest)
         }
     }
 }
-
+#endif
 
 } // namespace PHARE::core
 
