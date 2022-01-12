@@ -1,5 +1,5 @@
-#ifndef H5FILE_HPP
-#define H5FILE_HPP
+#ifndef PHARE_H5FILE_HPP
+#define PHARE_H5FILE_HPP
 
 #include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
