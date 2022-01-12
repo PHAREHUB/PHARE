@@ -172,9 +172,10 @@ namespace core
                     PHARE_LOG_ERROR("Error, particle moves more than 1 cell, delta >2");
                 }
                 partOut->delta[iDim] = delta - iCell;
-                partOut->iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);
+                outCell[iDim]        = static_cast<int>(iCell + partIn.iCell[iDim]);
+                // partOut->iCell[iDim] = static_cast<int>(iCell + partIn.iCell[iDim]);
             }
-            // partOut.change_icell(outCell);
+            partOut.change_icell(outCell);
         }
 
 

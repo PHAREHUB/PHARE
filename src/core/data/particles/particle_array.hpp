@@ -45,7 +45,8 @@ private:
         template<typename Cell>
         void change_icell(Cell const& newCell)
         {
-            // cm->update(*(this->it), newCell);
+            auto particleIndex = std::distance(this->container->begin(), *this);
+            cm->update(*(this->container), particleIndex, newCell);
             this->it->iCell = newCell;
         }
 
@@ -115,11 +116,22 @@ public:
     {
         return iterator{particles_.erase(position), *this, cell_map_};
     }
+
+
     iterator erase(iterator first, iterator last)
     {
-        // TODO erase particles from cellmap as well
+        // should we erase particles indexes associated with these iterators from the cellmap?
+        // probably it does not matter if not. The reason is that
+        // particles erased from the particlearray are so because they leaved
+        // the patch cells to an outside cell.
+        // But in principle that cell will never be accessed because it is outside the patch.
+        // The only thing "bad" if these indexes are not deleted is that the
+        // size of the cellmap becomes unequal to the size of the particleArray.
+        // but  ¯\_(ツ)_/¯
         return iterator{particles_.erase(first.it, last.it), *this, cell_map_};
     }
+
+
 
     Particle_t& emplace_back(bool mapping = true)
     {
@@ -128,6 +140,9 @@ public:
             cell_map_.add(particles_, particles_.size() - 1);
         return part;
     }
+
+
+
     Particle_t& emplace_back(Particle_t&& p, bool mapping = true)
     {
         auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
