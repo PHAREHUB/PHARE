@@ -1,6 +1,6 @@
 
-#ifndef PHARE_HYBRID_TAGGER_H
-#define PHARE_HYBRID_TAGGER_H
+#ifndef PHARE_HYBRID_TAGGER_HPP
+#define PHARE_HYBRID_TAGGER_HPP
 
 #include "tagger.hpp"
 #include "hybrid_tagger_strategy.hpp"

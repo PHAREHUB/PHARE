@@ -1,5 +1,5 @@
-#ifndef DATA_PROVIDER_H
-#define DATA_PROVIDER_H
+#ifndef DATA_PROVIDER_HPP
+#define DATA_PROVIDER_HPP
 
 #include <string>
 #include <vector>
@@ -88,4 +88,4 @@ namespace initializer
 } // namespace initializer
 } // namespace PHARE
 
-#endif // DATA_PROVIDER_H
+#endif // DATA_PROVIDER_HPP

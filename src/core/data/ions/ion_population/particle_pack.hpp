@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_H
-#define PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_H
+#ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_HPP
+#define PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_HPP
 
 #include "core/data/particles/particle_array.hpp"
 
@@ -27,4 +27,4 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
-#endif // PARTICLE_PACK_H
+#endif // PARTICLE_PACK_HPP

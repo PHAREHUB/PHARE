@@ -1,5 +1,5 @@
-#ifndef PHARE_TEST_LINEAR_COARSEN_H
-#define PHARE_TEST_LINEAR_COARSEN_H
+#ifndef PHARE_TEST_LINEAR_COARSEN_HPP
+#define PHARE_TEST_LINEAR_COARSEN_HPP
 
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"

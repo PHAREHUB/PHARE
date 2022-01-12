@@ -1,5 +1,5 @@
-#ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
-#define PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H
+#ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_HPP
+#define PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_HPP
 
 #include "diagnostic/detail/h5typewriter.hpp"
 #include "diagnostic/detail/h5_utils.hpp"

@@ -1,5 +1,5 @@
-#ifndef PHARE_PYTHON_PATCH_LEVEL_H
-#define PHARE_PYTHON_PATCH_LEVEL_H
+#ifndef PHARE_PYTHON_PATCH_LEVEL_HPP
+#define PHARE_PYTHON_PATCH_LEVEL_HPP
 
 #include <array>
 #include <cstring>

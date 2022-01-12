@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_RESOURCE_H
-#define PHARE_FIELD_RESOURCE_H
+#ifndef PHARE_FIELD_RESOURCE_HPP
+#define PHARE_FIELD_RESOURCE_HPP
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_variable.hpp"
@@ -24,4 +24,4 @@ namespace amr
 } // namespace PHARE
 
 
-#endif // FIELD_RESOURCE_H
+#endif // FIELD_RESOURCE_HPP

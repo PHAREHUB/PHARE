@@ -1,5 +1,5 @@
-#ifndef DIAGNOSTIC_WRITER_H
-#define DIAGNOSTIC_WRITER_H
+#ifndef DIAGNOSTIC_WRITER_HPP
+#define DIAGNOSTIC_WRITER_HPP
 
 #include "diagnostic_props.hpp"
 
@@ -18,4 +18,4 @@ public:
 
 } // namespace PHARE::diagnostic
 
-#endif // DIAGNOSTIC_WRITER_H
+#endif // DIAGNOSTIC_WRITER_HPP

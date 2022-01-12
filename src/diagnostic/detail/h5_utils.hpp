@@ -1,5 +1,5 @@
-#ifndef H5_UTILS_H
-#define H5_UTILS_H
+#ifndef H5_UTILS_HPP
+#define H5_UTILS_HPP
 
 #include "core/utilities/types.hpp"
 
@@ -11,4 +11,4 @@ inline constexpr auto is_array_dataset
 
 } // namespace PHARE::diagnostic::h5
 
-#endif // H5_UTILS_H
+#endif // H5_UTILS_HPP

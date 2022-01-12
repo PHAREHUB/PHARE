@@ -1,5 +1,5 @@
-#ifndef MOMENTS_H
-#define MOMENTS_H
+#ifndef MOMENTS_HPP
+#define MOMENTS_HPP
 
 #include <iterator>
 
@@ -66,4 +66,4 @@ namespace core
 
 
 
-#endif // MOMENTS_H
+#endif // MOMENTS_HPP

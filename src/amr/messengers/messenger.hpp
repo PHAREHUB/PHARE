@@ -1,6 +1,6 @@
 
-#ifndef PHARE_MESSENGER_H
-#define PHARE_MESSENGER_H
+#ifndef PHARE_MESSENGER_HPP
+#define PHARE_MESSENGER_HPP
 
 #include <string>
 

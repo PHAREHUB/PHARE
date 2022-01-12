@@ -1,5 +1,5 @@
-#ifndef PHARE_ELECTRONS_H
-#define PHARE_ELECTRONS_H
+#ifndef PHARE_ELECTRONS_HPP
+#define PHARE_ELECTRONS_HPP
 
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"

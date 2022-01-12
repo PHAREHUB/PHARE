@@ -1,6 +1,6 @@
 
-#ifndef PHARE_SIMULATOR_INCLUDE_H
-#define PHARE_SIMULATOR_INCLUDE_H
+#ifndef PHARE_SIMULATOR_INCLUDE_HPP
+#define PHARE_SIMULATOR_INCLUDE_HPP
 
 
 #include "phare_solver.hpp"

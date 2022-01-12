@@ -1,5 +1,5 @@
-#ifndef PHARE_PRAGMA_DISABLE_H
-#define PHARE_PRAGMA_DISABLE_H
+#ifndef PHARE_PRAGMA_DISABLE_HPP
+#define PHARE_PRAGMA_DISABLE_HPP
 
 // Lovingly stolen from https://stackoverflow.com/a/36175016/795574
 #define DIAG_STR(s) #s
@@ -36,4 +36,4 @@
 #endif
 #endif
 
-#endif  //  PHARE_PRAGMA_DISABLE_H
+#endif  //  PHARE_PRAGMA_DISABLE_HPP

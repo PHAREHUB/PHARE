@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERIC_PUSHER_PUSHER_FACTORY_H
-#define PHARE_CORE_NUMERIC_PUSHER_PUSHER_FACTORY_H
+#ifndef PHARE_CORE_NUMERIC_PUSHER_PUSHER_FACTORY_HPP
+#define PHARE_CORE_NUMERIC_PUSHER_PUSHER_FACTORY_HPP
 
 #include <cstddef>
 #include <memory>
@@ -31,4 +31,4 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
-#endif // PUSHER_FACTORY_H
+#endif // PUSHER_FACTORY_HPP

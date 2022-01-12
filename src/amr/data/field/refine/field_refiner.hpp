@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_REFINER_H
-#define PHARE_FIELD_REFINER_H
+#ifndef PHARE_FIELD_REFINER_HPP
+#define PHARE_FIELD_REFINER_HPP
 
 
 #include "core/data/grid/gridlayoutdefs.hpp"

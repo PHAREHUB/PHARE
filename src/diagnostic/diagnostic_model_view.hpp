@@ -1,5 +1,5 @@
-#ifndef DIAGNOSTIC_MODEL_VIEW_H
-#define DIAGNOSTIC_MODEL_VIEW_H
+#ifndef DIAGNOSTIC_MODEL_VIEW_HPP
+#define DIAGNOSTIC_MODEL_VIEW_HPP
 
 #include "core/utilities/mpi_utils.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
@@ -114,4 +114,4 @@ protected:
 
 
 
-#endif // DIAGNOSTIC_MODEL_VIEW_H
+#endif // DIAGNOSTIC_MODEL_VIEW_HPP

@@ -1,6 +1,6 @@
 
-#ifndef PHARE_TAGGER_H
-#define PHARE_TAGGER_H
+#ifndef PHARE_TAGGER_HPP
+#define PHARE_TAGGER_HPP
 
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/types/amr_types.hpp"

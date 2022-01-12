@@ -1,6 +1,6 @@
 
-#ifndef PHARE_CORE_LOGGER_H
-#define PHARE_CORE_LOGGER_H
+#ifndef PHARE_CORE_LOGGER_HPP
+#define PHARE_CORE_LOGGER_HPP
 
 #if PHARE_WITH_CALIPER
 #include "caliper/cali.h"

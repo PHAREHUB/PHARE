@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_REFINE_OPERATOR_H
-#define PHARE_FIELD_REFINE_OPERATOR_H
+#ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
+#define PHARE_FIELD_REFINE_OPERATOR_HPP
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"

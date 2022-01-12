@@ -1,5 +1,5 @@
-#ifndef PHARE_QUANTITY_REFINER_H
-#define PHARE_QUANTITY_REFINER_H
+#ifndef PHARE_QUANTITY_REFINER_HPP
+#define PHARE_QUANTITY_REFINER_HPP
 
 
 #include "amr/messengers/hybrid_messenger_info.hpp"

@@ -1,6 +1,6 @@
 
-#ifndef PHARE_SOLVER_H
-#define PHARE_SOLVER_H
+#ifndef PHARE_SOLVER_HPP
+#define PHARE_SOLVER_HPP
 
 #include <string>
 

@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_LINEAR_REFINE_H
-#define PHARE_FIELD_LINEAR_REFINE_H
+#ifndef PHARE_FIELD_LINEAR_REFINE_HPP
+#define PHARE_FIELD_LINEAR_REFINE_HPP
 
 
 #include "core/data/grid/gridlayoutdefs.hpp"

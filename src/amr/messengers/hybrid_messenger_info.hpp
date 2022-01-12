@@ -1,6 +1,6 @@
 
-#ifndef PHARE_HYBRID_MESSENGER_INFO_H
-#define PHARE_HYBRID_MESSENGER_INFO_H
+#ifndef PHARE_HYBRID_MESSENGER_INFO_HPP
+#define PHARE_HYBRID_MESSENGER_INFO_HPP
 
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "messenger_info.hpp"

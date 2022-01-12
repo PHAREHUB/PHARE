@@ -1,8 +1,8 @@
 
 
 
-#ifndef PHARE_MHD_MODEL_H
-#define PHARE_MHD_MODEL_H
+#ifndef PHARE_MHD_MODEL_HPP
+#define PHARE_MHD_MODEL_HPP
 
 #include <string>
 

@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_PUSHER_BORIS_H
-#define PHARE_CORE_PUSHER_BORIS_H
+#ifndef PHARE_CORE_PUSHER_BORIS_HPP
+#define PHARE_CORE_PUSHER_BORIS_HPP
 
 #include <array>
 #include <cmath>

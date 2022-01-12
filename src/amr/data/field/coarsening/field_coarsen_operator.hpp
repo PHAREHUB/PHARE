@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_DATA_COARSEN_H
-#define PHARE_FIELD_DATA_COARSEN_H
+#ifndef PHARE_FIELD_DATA_COARSEN_HPP
+#define PHARE_FIELD_DATA_COARSEN_HPP
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"

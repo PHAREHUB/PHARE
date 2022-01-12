@@ -1,5 +1,5 @@
-#ifndef PHARE_AMR_HIERARCHY_H
-#define PHARE_AMR_HIERARCHY_H
+#ifndef PHARE_AMR_HIERARCHY_HPP
+#define PHARE_AMR_HIERARCHY_HPP
 
 #include <algorithm>
 

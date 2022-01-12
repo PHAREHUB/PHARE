@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_GRID_GridLayout_H
-#define PHARE_CORE_GRID_GridLayout_H
+#ifndef PHARE_CORE_GRID_GridLayout_HPP
+#define PHARE_CORE_GRID_GridLayout_HPP
 
 
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -1495,4 +1495,4 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
-#endif // GridLayout_H
+#endif // GridLayout_HPP

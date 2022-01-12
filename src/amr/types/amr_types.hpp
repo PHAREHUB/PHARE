@@ -1,5 +1,5 @@
-#ifndef PHARE_AMR_TYPES_H
-#define PHARE_AMR_TYPES_H
+#ifndef PHARE_AMR_TYPES_HPP
+#define PHARE_AMR_TYPES_HPP
 
 
 #include "SAMRAI/hier/Patch.h"

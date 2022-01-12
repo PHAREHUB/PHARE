@@ -1,5 +1,5 @@
-#ifndef PHARE_FARADAY_H
-#define PHARE_FARADAY_H
+#ifndef PHARE_FARADAY_HPP
+#define PHARE_FARADAY_HPP
 
 #include <cstddef>
 

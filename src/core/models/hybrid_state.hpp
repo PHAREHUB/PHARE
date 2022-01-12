@@ -1,5 +1,5 @@
-#ifndef HYBRID_HYBRID_STATE_H
-#define HYBRID_HYBRID_STATE_H
+#ifndef HYBRID_HYBRID_STATE_HPP
+#define HYBRID_HYBRID_STATE_HPP
 
 
 #include "core/models/physical_state.hpp"
@@ -90,4 +90,4 @@ namespace core
 } // namespace PHARE
 
 
-#endif // PHARE_HYBRID_STATE_H
+#endif // PHARE_HYBRID_STATE_HPP

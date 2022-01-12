@@ -1,5 +1,5 @@
-#ifndef H5FILE_H
-#define H5FILE_H
+#ifndef H5FILE_HPP
+#define H5FILE_HPP
 
 #include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
@@ -118,4 +118,4 @@ struct HighFiveFile
 } // namespace PHARE::diagnostic::h5
 
 
-#endif // H5FILE_H
+#endif // H5FILE_HPP

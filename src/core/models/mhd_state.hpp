@@ -1,5 +1,5 @@
-#ifndef PHARE_MHD_STATE_H
-#define PHARE_MHD_STATE_H
+#ifndef PHARE_MHD_STATE_HPP
+#define PHARE_MHD_STATE_HPP
 
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/models/physical_state.hpp"
@@ -49,4 +49,4 @@ namespace core
 
 
 
-#endif // PHARE_MHD_STATE_H
+#endif // PHARE_MHD_STATE_HPP

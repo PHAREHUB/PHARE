@@ -1,5 +1,5 @@
-#ifndef PHARE_TYPES_H
-#define PHARE_TYPES_H
+#ifndef PHARE_TYPES_HPP
+#define PHARE_TYPES_HPP
 
 #include "include.hpp"
 
@@ -49,4 +49,4 @@ struct PHARE_Types
 
 } // namespace PHARE
 
-#endif // PHARE_TYPES_H
+#endif // PHARE_TYPES_HPP

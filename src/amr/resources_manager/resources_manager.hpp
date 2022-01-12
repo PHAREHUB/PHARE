@@ -1,5 +1,5 @@
-#ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
-#define PHARE_AMR_TOOLS_RESOURCES_MANAGER_H
+#ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
+#define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
 #include "field_resource.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"

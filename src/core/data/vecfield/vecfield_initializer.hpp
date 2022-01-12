@@ -1,5 +1,5 @@
-#ifndef VECFIELD_INITIALIZER_H
-#define VECFIELD_INITIALIZER_H
+#ifndef VECFIELD_INITIALIZER_HPP
+#define VECFIELD_INITIALIZER_HPP
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -67,4 +67,4 @@ namespace core
 
 } // namespace PHARE
 
-#endif // VECFIELD_INITIALIZER_H
+#endif // VECFIELD_INITIALIZER_HPP

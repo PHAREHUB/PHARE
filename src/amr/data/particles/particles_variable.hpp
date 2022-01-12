@@ -1,5 +1,5 @@
-#ifndef PHARE_PARTICLES_VARIABLE_H
-#define PHARE_PARTICLES_VARIABLE_H
+#ifndef PHARE_PARTICLES_VARIABLE_HPP
+#define PHARE_PARTICLES_VARIABLE_HPP
 
 #include "core/data/grid/gridlayout.hpp" // particle ghost width
 #include "particles_data_factory.hpp"

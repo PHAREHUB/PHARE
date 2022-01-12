@@ -2,8 +2,8 @@
 // this file includes python which has conflicting #defines with SAMRAI
 //  so include it last
 
-#ifndef PHARE_PYTHON_DATA_PROVIDER_H
-#define PHARE_PYTHON_DATA_PROVIDER_H
+#ifndef PHARE_PYTHON_DATA_PROVIDER_HPP
+#define PHARE_PYTHON_DATA_PROVIDER_HPP
 
 #include "initializer/data_provider.hpp"
 
@@ -13,7 +13,7 @@
 DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 
 #undef HAVE_SYS_TIMES_H // included in python again, possibly with different value
-#undef HAVE_UNISTD_H
+#undef HAVE_UNISTD_HPP
 
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/functional.h>
@@ -57,4 +57,4 @@ namespace initializer
 
 } // namespace PHARE
 
-#endif // DATA_PROVIDER_H
+#endif // DATA_PROVIDER_HPP

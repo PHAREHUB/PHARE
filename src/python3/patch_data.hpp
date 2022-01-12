@@ -1,5 +1,5 @@
-#ifndef PHARE_PYTHON_PATCH_DATA_H
-#define PHARE_PYTHON_PATCH_DATA_H
+#ifndef PHARE_PYTHON_PATCH_DATA_HPP
+#define PHARE_PYTHON_PATCH_DATA_HPP
 
 #include <array>
 #include <string>

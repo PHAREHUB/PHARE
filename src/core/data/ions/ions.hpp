@@ -1,5 +1,5 @@
-#ifndef PHARE_IONS_H
-#define PHARE_IONS_H
+#ifndef PHARE_IONS_HPP
+#define PHARE_IONS_HPP
 
 #include <algorithm>
 #include <functional>

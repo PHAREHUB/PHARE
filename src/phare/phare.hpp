@@ -1,6 +1,6 @@
 
-#ifndef PHARE_PHARE_INCLUDE_H
-#define PHARE_PHARE_INCLUDE_H
+#ifndef PHARE_PHARE_INCLUDE_HPP
+#define PHARE_PHARE_INCLUDE_HPP
 
 #include "simulator/simulator.hpp"
 #include "core/utilities/algorithm.hpp"

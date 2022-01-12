@@ -1,5 +1,5 @@
-#ifndef PHARE_ALGORITHM_H
-#define PHARE_ALGORITHM_H
+#ifndef PHARE_ALGORITHM_HPP
+#define PHARE_ALGORITHM_HPP
 
 #include "core/utilities/types.hpp"
 

@@ -3,8 +3,8 @@ Splitting reference material can be found @
   https://github.com/PHAREHUB/PHARE/wiki/SplitPattern
 */
 
-#ifndef PHARE_SPLIT_1D_H
-#define PHARE_SPLIT_1D_H
+#ifndef PHARE_SPLIT_1D_HPP
+#define PHARE_SPLIT_1D_HPP
 
 #include <array>
 #include "core/utilities/point/point.hpp"

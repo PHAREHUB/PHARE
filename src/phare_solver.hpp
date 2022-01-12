@@ -1,6 +1,6 @@
 
-#ifndef PHARE_SOLVER_INCLUDE_H
-#define PHARE_SOLVER_INCLUDE_H
+#ifndef PHARE_SOLVER_INCLUDE_HPP
+#define PHARE_SOLVER_INCLUDE_HPP
 
 #include "phare_amr.hpp"
 
@@ -55,4 +55,4 @@ struct PHARE_Types
 
 } // namespace PHARE::solver
 
-#endif // PHARE_SOLVER_INCLUDE_H
+#endif // PHARE_SOLVER_INCLUDE_HPP

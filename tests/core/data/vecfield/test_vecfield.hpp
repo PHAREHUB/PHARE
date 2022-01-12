@@ -1,7 +1,7 @@
 
 
-#ifndef PHARE_TEST_CORE_VECFIELD_TEST_H
-#define PHARE_TEST_CORE_VECFIELD_TEST_H
+#ifndef PHARE_TEST_CORE_VECFIELD_TEST_HPP
+#define PHARE_TEST_CORE_VECFIELD_TEST_HPP
 
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"

@@ -1,7 +1,7 @@
 // C++11 version of https://en.cppreference.com/w/cpp/container/span
 
-#ifndef PHARE_CORE_UTILITIES_SPAN_H
-#define PHARE_CORE_UTILITIES_SPAN_H
+#ifndef PHARE_CORE_UTILITIES_SPAN_HPP
+#define PHARE_CORE_UTILITIES_SPAN_HPP
 
 #include <vector>
 #include <cstddef>
@@ -115,4 +115,4 @@ struct SpanSet
 };
 } // namespace PHARE::core
 
-#endif // PHARE_CORE_UTILITIES_SPAN_H
+#endif // PHARE_CORE_UTILITIES_SPAN_HPP

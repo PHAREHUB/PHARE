@@ -1,5 +1,5 @@
-#ifndef PHARE_LEVEL_INITIALIZER_FACTORY_H
-#define PHARE_LEVEL_INITIALIZER_FACTORY_H
+#ifndef PHARE_LEVEL_INITIALIZER_FACTORY_HPP
+#define PHARE_LEVEL_INITIALIZER_FACTORY_HPP
 
 #include "hybrid_level_initializer.hpp"
 #include "level_initializer.hpp"

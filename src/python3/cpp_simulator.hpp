@@ -1,5 +1,5 @@
-#ifndef PHARE_PYTHON_CPP_SIMULATOR_H
-#define PHARE_PYTHON_CPP_SIMULATOR_H
+#ifndef PHARE_PYTHON_CPP_SIMULATOR_HPP
+#define PHARE_PYTHON_CPP_SIMULATOR_HPP
 
 #include <vector>
 #include <cstddef>

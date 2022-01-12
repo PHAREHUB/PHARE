@@ -1,6 +1,6 @@
 
-#ifndef PHARE_TAGGER_FACTORY_H
-#define PHARE_TAGGER_FACTORY_H
+#ifndef PHARE_TAGGER_FACTORY_HPP
+#define PHARE_TAGGER_FACTORY_HPP
 
 #include <string>
 #include <memory>

@@ -1,5 +1,5 @@
-#ifndef TESTS_REFINE_INPUT_CONFIG_H
-#define TESTS_REFINE_INPUT_CONFIG_H
+#ifndef TESTS_REFINE_INPUT_CONFIG_HPP
+#define TESTS_REFINE_INPUT_CONFIG_HPP
 
 #include <iostream>
 #include <string>

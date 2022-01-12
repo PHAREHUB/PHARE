@@ -1,5 +1,5 @@
-#ifndef PHARE_ION_POPULATION_H
-#define PHARE_ION_POPULATION_H
+#ifndef PHARE_ION_POPULATION_HPP
+#define PHARE_ION_POPULATION_HPP
 
 #include <memory>
 #include <sstream>

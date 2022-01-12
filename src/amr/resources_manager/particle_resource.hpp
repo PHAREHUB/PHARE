@@ -1,5 +1,5 @@
-#ifndef PHARE_PARTICLE_RESOURCES_H
-#define PHARE_PARTICLE_RESOURCES_H
+#ifndef PHARE_PARTICLE_RESOURCES_HPP
+#define PHARE_PARTICLE_RESOURCES_HPP
 
 
 #include "amr/data/particles/particles_data.hpp"
@@ -28,4 +28,4 @@ namespace amr
 } // namespace PHARE
 
 
-#endif // PARTICLE_RESOURCES_H
+#endif // PARTICLE_RESOURCES_HPP

@@ -1,5 +1,5 @@
-#ifndef PHARE_TEST_SIMULATOR_PER_TEST_H
-#define PHARE_TEST_SIMULATOR_PER_TEST_H
+#ifndef PHARE_TEST_SIMULATOR_PER_TEST_HPP
+#define PHARE_TEST_SIMULATOR_PER_TEST_HPP
 
 #include "phare/phare.hpp"
 #include "initializer/python_data_provider.hpp"

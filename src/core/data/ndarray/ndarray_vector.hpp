@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
-#define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
+#ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
+#define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
 #include <stdexcept>
 #include <array>
@@ -458,4 +458,4 @@ void operator>>(MaskedView<Array, Mask>&& inner, MaskedView<Array, Mask>&& outer
 
 } // namespace PHARE::core
 
-#endif // PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_H
+#endif // PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP

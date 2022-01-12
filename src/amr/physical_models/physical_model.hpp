@@ -1,8 +1,8 @@
 
 
 
-#ifndef PHARE_PHYSICAL_MODEL_H
-#define PHARE_PHYSICAL_MODEL_H
+#ifndef PHARE_PHYSICAL_MODEL_HPP
+#define PHARE_PHYSICAL_MODEL_HPP
 
 #include <memory>
 #include <string>

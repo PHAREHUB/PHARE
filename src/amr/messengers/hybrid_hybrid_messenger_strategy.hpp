@@ -1,6 +1,6 @@
 
-#ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
-#define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_H
+#ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
+#define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
 #include "communicators.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"

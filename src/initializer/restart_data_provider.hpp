@@ -1,5 +1,5 @@
-#ifndef PHARE_RESTART_DATA_PROVIDER_H
-#define PHARE_RESTART_DATA_PROVIDER_H
+#ifndef PHARE_RESTART_DATA_PROVIDER_HPP
+#define PHARE_RESTART_DATA_PROVIDER_HPP
 
 #include "initializer/data_provider.hpp"
 
@@ -22,4 +22,4 @@ namespace initializer
 
 } // namespace PHARE
 
-#endif // DATA_PROVIDER_H
+#endif // DATA_PROVIDER_HPP

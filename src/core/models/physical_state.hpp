@@ -1,5 +1,5 @@
-#ifndef PHARE_PHYSICAL_STATE_H
-#define PHARE_PHYSICAL_STATE_H
+#ifndef PHARE_PHYSICAL_STATE_HPP
+#define PHARE_PHYSICAL_STATE_HPP
 
 
 
@@ -28,4 +28,4 @@ namespace core
 
 
 
-#endif // PHYSICAL_STATE_H
+#endif // PHYSICAL_STATE_HPP

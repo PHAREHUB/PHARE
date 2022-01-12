@@ -1,5 +1,5 @@
-#ifndef HYBRID_TAGGER_STRATEGY_H
-#define HYBRID_TAGGER_STRATEGY_H
+#ifndef HYBRID_TAGGER_STRATEGY_HPP
+#define HYBRID_TAGGER_STRATEGY_HPP
 
 namespace PHARE::amr
 {
@@ -20,4 +20,4 @@ HybridTaggerStrategy<HybridModel>::~HybridTaggerStrategy()
 }
 }
 
-#endif // HYBRID_TAGGER_STRATEGY_H
+#endif // HYBRID_TAGGER_STRATEGY_HPP

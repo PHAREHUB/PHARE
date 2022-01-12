@@ -1,6 +1,6 @@
 
-#ifndef PHARE_AMR_INCLUDE_H
-#define PHARE_AMR_INCLUDE_H
+#ifndef PHARE_AMR_INCLUDE_HPP
+#define PHARE_AMR_INCLUDE_HPP
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -48,4 +48,4 @@ struct PHARE_Types
 } // namespace PHARE::amr
 
 
-#endif // PHARE_AMR_INCLUDE_H
+#endif // PHARE_AMR_INCLUDE_HPP

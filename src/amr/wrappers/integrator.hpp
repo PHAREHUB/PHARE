@@ -1,5 +1,5 @@
-#ifndef INTEGRATOR_H
-#define INTEGRATOR_H
+#ifndef INTEGRATOR_HPP
+#define INTEGRATOR_HPP
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -175,4 +175,4 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
 } // namespace PHARE::amr
 
 
-#endif // INTEGRATOR_H
+#endif // INTEGRATOR_HPP

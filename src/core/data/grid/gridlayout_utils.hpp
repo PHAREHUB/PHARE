@@ -1,5 +1,5 @@
-#ifndef PHARE_GRIDLAYOUT_UTILS_H
-#define PHARE_GRIDLAYOUT_UTILS_H
+#ifndef PHARE_GRIDLAYOUT_UTILS_HPP
+#define PHARE_GRIDLAYOUT_UTILS_HPP
 
 #include <tuple>
 #include <stdexcept>

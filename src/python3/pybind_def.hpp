@@ -1,5 +1,5 @@
-#ifndef PHARE_PYTHON_PYBIND_DEF_H
-#define PHARE_PYTHON_PYBIND_DEF_H
+#ifndef PHARE_PYTHON_PYBIND_DEF_HPP
+#define PHARE_PYTHON_PYBIND_DEF_HPP
 
 #include <tuple>
 #include <cassert>

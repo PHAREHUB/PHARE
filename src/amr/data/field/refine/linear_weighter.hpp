@@ -1,5 +1,5 @@
-#ifndef PHARE_LINEAR_WEIGHTER_H
-#define PHARE_LINEAR_WEIGHTER_H
+#ifndef PHARE_LINEAR_WEIGHTER_HPP
+#define PHARE_LINEAR_WEIGHTER_HPP
 
 
 #include "core/data/grid/gridlayoutdefs.hpp"

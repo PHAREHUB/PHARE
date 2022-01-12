@@ -1,7 +1,7 @@
 
 
-#ifndef PHARE_SPLITTER_H
-#define PHARE_SPLITTER_H
+#ifndef PHARE_SPLITTER_HPP
+#define PHARE_SPLITTER_HPP
 
 #include <array>
 #include <cmath>
@@ -133,4 +133,4 @@ struct PinkDispatcher
 
 } // namespace PHARE::amr
 
-#endif // endif PHARE_SPLITTER_H
+#endif // endif PHARE_SPLITTER_HPP

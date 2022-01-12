@@ -1,5 +1,5 @@
-#ifndef HIGHFIVEDIAGNOSTICWRITER_H
-#define HIGHFIVEDIAGNOSTICWRITER_H
+#ifndef HIGHFIVEDIAGNOSTICWRITER_HPP
+#define HIGHFIVEDIAGNOSTICWRITER_HPP
 
 #include <string>
 #include <algorithm>
@@ -144,4 +144,4 @@ protected:
 
 } // namespace PHARE::diagnostic::h5
 
-#endif // HIGHFIVEDIAGNOSTICWRITER_H
+#endif // HIGHFIVEDIAGNOSTICWRITER_HPP

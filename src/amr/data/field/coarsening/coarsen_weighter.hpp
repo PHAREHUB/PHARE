@@ -1,5 +1,5 @@
-#ifndef PHARE_COARSEN_WEIGHTER_H
-#define PHARE_COARSEN_WEIGHTER_H
+#ifndef PHARE_COARSEN_WEIGHTER_HPP
+#define PHARE_COARSEN_WEIGHTER_HPP
 
 #include <array>
 #include <cassert>

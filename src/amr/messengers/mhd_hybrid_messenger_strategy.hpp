@@ -1,6 +1,6 @@
 
-#ifndef PHARE_MHD_HYBRID_MESSENGER_STRATEGY_H
-#define PHARE_MHD_HYBRID_MESSENGER_STRATEGY_H
+#ifndef PHARE_MHD_HYBRID_MESSENGER_STRATEGY_HPP
+#define PHARE_MHD_HYBRID_MESSENGER_STRATEGY_HPP
 
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"

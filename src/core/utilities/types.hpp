@@ -1,5 +1,5 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef TYPES_HPP
+#define TYPES_HPP
 
 #include <array>
 #include <optional>
@@ -242,4 +242,4 @@ Return sum(Container const& container, Return r = 0)
 } // namespace PHARE::core
 
 
-#endif // TYPES_H
+#endif // TYPES_HPP

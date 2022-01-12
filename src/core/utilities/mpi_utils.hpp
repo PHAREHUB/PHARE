@@ -1,6 +1,6 @@
 
-#ifndef PHARE_CORE_UTILITIES_MPI_H
-#define PHARE_CORE_UTILITIES_MPI_H
+#ifndef PHARE_CORE_UTILITIES_MPI_HPP
+#define PHARE_CORE_UTILITIES_MPI_HPP
 
 #include <vector>
 #include <string>

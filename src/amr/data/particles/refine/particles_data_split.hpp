@@ -1,5 +1,5 @@
-#ifndef PHARE_PARTICLES_DATA_SPLIT_H
-#define PHARE_PARTICLES_DATA_SPLIT_H
+#ifndef PHARE_PARTICLES_DATA_SPLIT_HPP
+#define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
 #include "amr/data/particles/particles_data.hpp"

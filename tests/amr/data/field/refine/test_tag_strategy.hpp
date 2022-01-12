@@ -1,5 +1,5 @@
-#ifndef PHARE_TEST_TAG_STRATEGY_H
-#define PHARE_TEST_TAG_STRATEGY_H
+#ifndef PHARE_TEST_TAG_STRATEGY_HPP
+#define PHARE_TEST_TAG_STRATEGY_HPP
 
 
 #include <SAMRAI/hier/RefineOperator.h>

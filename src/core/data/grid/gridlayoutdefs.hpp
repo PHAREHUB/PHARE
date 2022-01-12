@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_GRID_GRIDLAYOUTDEFS_H
-#define PHARE_CORE_GRID_GRIDLAYOUTDEFS_H
+#ifndef PHARE_CORE_GRID_GRIDLAYOUTDEFS_HPP
+#define PHARE_CORE_GRID_GRIDLAYOUTDEFS_HPP
 
 #include <cstddef>
 
@@ -102,4 +102,4 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
-#endif // GRIDLAYOUTDEFS_H
+#endif // GRIDLAYOUTDEFS_HPP

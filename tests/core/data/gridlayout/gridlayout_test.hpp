@@ -1,5 +1,5 @@
-#ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_TEST_H
-#define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_TEST_H
+#ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_TEST_HPP
+#define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_TEST_HPP
 
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"

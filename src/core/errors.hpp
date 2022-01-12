@@ -1,6 +1,6 @@
 
-#ifndef PHARE_CORE_ERRORS_H
-#define PHARE_CORE_ERRORS_H
+#ifndef PHARE_CORE_ERRORS_HPP
+#define PHARE_CORE_ERRORS_HPP
 
 #include <vector>
 #include <unordered_map>

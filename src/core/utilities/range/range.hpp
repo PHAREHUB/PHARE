@@ -1,5 +1,5 @@
-#ifndef RANGE_H
-#define RANGE_H
+#ifndef RANGE_HPP
+#define RANGE_HPP
 
 #include <iterator>
 
@@ -58,4 +58,4 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
-#endif // RANGE_H
+#endif // RANGE_HPP

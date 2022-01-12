@@ -1,5 +1,5 @@
-#ifndef PHARE_COMMUNICATORS_H
-#define PHARE_COMMUNICATORS_H
+#ifndef PHARE_COMMUNICATORS_HPP
+#define PHARE_COMMUNICATORS_HPP
 
 #include "quantity_communicator.hpp"
 

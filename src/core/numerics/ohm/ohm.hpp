@@ -1,5 +1,5 @@
-#ifndef PHARE_OHM_H
-#define PHARE_OHM_H
+#ifndef PHARE_OHM_HPP
+#define PHARE_OHM_HPP
 
 #include <cstddef>
 #include <iostream>

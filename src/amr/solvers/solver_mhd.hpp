@@ -1,6 +1,6 @@
 
-#ifndef PHARE_SOLVER_MHD_H
-#define PHARE_SOLVER_MHD_H
+#ifndef PHARE_SOLVER_MHD_HPP
+#define PHARE_SOLVER_MHD_HPP
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"

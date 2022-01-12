@@ -1,6 +1,6 @@
 
-#ifndef DIAGNOSTIC_DIAGNOSTICS_H
-#define DIAGNOSTIC_DIAGNOSTICS_H
+#ifndef DIAGNOSTIC_DIAGNOSTICS_HPP
+#define DIAGNOSTIC_DIAGNOSTICS_HPP
 
 #include <memory>
 
@@ -68,4 +68,4 @@ struct DiagnosticsManagerResolver
 
 } // namespace PHARE::diagnostic
 
-#endif // DIAGNOSTIC_DIAGNOSTICS_H
+#endif // DIAGNOSTIC_DIAGNOSTICS_HPP

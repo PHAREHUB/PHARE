@@ -1,5 +1,5 @@
-#ifndef PHARE_AMR_UTILS_H
-#define PHARE_AMR_UTILS_H
+#ifndef PHARE_AMR_UTILS_HPP
+#define PHARE_AMR_UTILS_HPP
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -217,4 +217,4 @@ namespace amr
 } // namespace amr
 } // namespace PHARE
 
-#endif // UTILS_H
+#endif // UTILS_HPP

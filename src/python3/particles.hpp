@@ -1,5 +1,5 @@
-#ifndef PHARE_PYTHON_PARTICLES_H
-#define PHARE_PYTHON_PARTICLES_H
+#ifndef PHARE_PYTHON_PARTICLES_HPP
+#define PHARE_PYTHON_PARTICLES_HPP
 
 #include <cassert>
 #include <cstddef>

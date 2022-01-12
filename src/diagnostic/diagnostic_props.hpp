@@ -1,5 +1,5 @@
-#ifndef DIAGNOSTIC_DAO_H
-#define DIAGNOSTIC_DAO_H
+#ifndef DIAGNOSTIC_DAO_HPP
+#define DIAGNOSTIC_DAO_HPP
 
 #include <string>
 #include <vector>
@@ -35,4 +35,4 @@ struct DiagnosticProperties
 
 } // namespace PHARE::diagnostic
 
-#endif // DIAGNOSTIC_DAO_H
+#endif // DIAGNOSTIC_DAO_HPP

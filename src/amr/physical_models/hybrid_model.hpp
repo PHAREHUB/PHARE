@@ -1,8 +1,8 @@
 
 
 
-#ifndef PHARE_HYBRID_MODEL_H
-#define PHARE_HYBRID_MODEL_H
+#ifndef PHARE_HYBRID_MODEL_HPP
+#define PHARE_HYBRID_MODEL_HPP
 
 #include <string>
 

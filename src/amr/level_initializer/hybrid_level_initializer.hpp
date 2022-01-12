@@ -1,7 +1,7 @@
 
 
-#ifndef PHARE_HYBRID_LEVEL_INITIALIZER_H
-#define PHARE_HYBRID_LEVEL_INITIALIZER_H
+#ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
+#define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/messenger.hpp"

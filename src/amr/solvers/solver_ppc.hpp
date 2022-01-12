@@ -1,7 +1,7 @@
 
 
-#ifndef PHARE_SOLVER_PPC_H
-#define PHARE_SOLVER_PPC_H
+#ifndef PHARE_SOLVER_PPC_HPP
+#define PHARE_SOLVER_PPC_HPP
 
 #include <SAMRAI/hier/Patch.h>
 

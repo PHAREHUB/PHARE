@@ -1,5 +1,5 @@
-#ifndef PHARE_ION_UPDATER_H
-#define PHARE_ION_UPDATER_H
+#ifndef PHARE_ION_UPDATER_HPP
+#define PHARE_ION_UPDATER_HPP
 
 
 #include "core/utilities/box/box.hpp"
@@ -251,4 +251,4 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
 } // namespace PHARE::core
 
 
-#endif // ION_UPDATER_H
+#endif // ION_UPDATER_HPP

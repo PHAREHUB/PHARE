@@ -1,5 +1,5 @@
-#ifndef PHARE_LEVEL_INITIALIZER_H
-#define PHARE_LEVEL_INITIALIZER_H
+#ifndef PHARE_LEVEL_INITIALIZER_HPP
+#define PHARE_LEVEL_INITIALIZER_HPP
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/physical_models/physical_model.hpp"

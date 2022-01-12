@@ -1,5 +1,5 @@
-#ifndef PHARE_TEST_BASIC_HIERARCHY_H
-#define PHARE_TEST_BASIC_HIERARCHY_H
+#ifndef PHARE_TEST_BASIC_HIERARCHY_HPP
+#define PHARE_TEST_BASIC_HIERARCHY_HPP
 
 
 #include "amr/data/particles/particles_variable.hpp"

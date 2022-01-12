@@ -1,6 +1,6 @@
 
-#ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H
-#define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H
+#ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
+#define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
 #include "highfive/H5DataSet.hpp"
 #include "highfive/H5DataSpace.hpp"

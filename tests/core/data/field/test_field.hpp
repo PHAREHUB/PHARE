@@ -1,5 +1,5 @@
-#ifndef PHARE_TEST_CORE_FIELD_TEST_H
-#define PHARE_TEST_CORE_FIELD_TEST_H
+#ifndef PHARE_TEST_CORE_FIELD_TEST_HPP
+#define PHARE_TEST_CORE_FIELD_TEST_HPP
 
 #include <cassert>
 #include <functional>

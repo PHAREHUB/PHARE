@@ -1,6 +1,6 @@
 
-#ifndef PHARE_CORE_INCLUDE_H
-#define PHARE_CORE_INCLUDE_H
+#ifndef PHARE_CORE_INCLUDE_HPP
+#define PHARE_CORE_INCLUDE_HPP
 
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"
@@ -67,4 +67,4 @@ struct PHARE_Sim_Types
 
 } // namespace PHARE::core
 
-#endif // PHARE_CORE_INCLUDE_H
+#endif // PHARE_CORE_INCLUDE_HPP

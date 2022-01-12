@@ -1,5 +1,5 @@
-#ifndef AMR_CONSTANTS_H
-#define AMR_CONSTANTS_H
+#ifndef AMR_CONSTANTS_HPP
+#define AMR_CONSTANTS_HPP
 
 #include <cstddef>
 namespace PHARE::amr {
@@ -7,4 +7,4 @@ static std::size_t constexpr refinementRatio = 2;
 }
 
 
-#endif // AMR_CONSTANTS_H
+#endif // AMR_CONSTANTS_HPP
