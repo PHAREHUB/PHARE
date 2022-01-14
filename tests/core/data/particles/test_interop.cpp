@@ -16,8 +16,7 @@ struct ParticleListTest : public ::testing::Test
 {
 };
 
-using ParticleList = testing::Types<Particle<1, BucketListItem>, Particle<2, BucketListItem>,
-                                    Particle<3, BucketListItem>>;
+using ParticleList = testing::Types<Particle<1>, Particle<2>, Particle<3>>;
 
 TYPED_TEST_SUITE(ParticleListTest, ParticleList);
 

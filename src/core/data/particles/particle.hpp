@@ -34,16 +34,12 @@ auto cellAsPoint(Particle const& particle)
     return Point<int, Particle::dimension>{particle.iCell};
 }
 
-struct DummyParticleBase
-{
-};
 
-template<size_t dim, typename SuperT = DummyParticleBase>
-struct Particle : SuperT
+template<size_t dim>
+struct Particle
 {
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static const size_t dimension = dim;
-    using Super                   = SuperT;
 
     Particle(double a_weight, double a_charge, std::array<int, dim> cell,
              std::array<double, dim> a_delta, std::array<double, 3> a_v)
@@ -67,7 +63,7 @@ struct Particle : SuperT
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
 
-    bool operator==(Particle<dim, SuperT> const& that) const
+    bool operator==(Particle<dim> const& that) const
     {
         return (this->weight == that.weight) && //
                (this->charge == that.charge) && //
@@ -86,8 +82,8 @@ struct Particle : SuperT
     friend std::ostream& operator<<(std::ostream& out, const Particle<dimension>& particle);
 };
 
-template<std::size_t dim, typename ParticleBase>
-std::ostream& operator<<(std::ostream& out, Particle<dim, ParticleBase> const& particle)
+template<std::size_t dim>
+std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
 {
     out << "iCell(";
     for (auto c : particle.iCell)
@@ -112,7 +108,7 @@ std::ostream& operator<<(std::ostream& out, Particle<dim, ParticleBase> const& p
 }
 
 
-template<std::size_t dim, typename Dummy = DummyParticleBase>
+template<std::size_t dim>
 struct ParticleView
 {
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
@@ -128,22 +124,17 @@ struct ParticleView
 
 
 
-template<std::size_t dim, typename Base, typename T>
+template<std::size_t dim, typename T>
 inline constexpr auto is_phare_particle_type
-    = std::is_same_v<Particle<dim, Base>, T> or std::is_same_v<ParticleView<dim, Base>, T>;
+    = std::is_same_v<Particle<dim>, T> or std::is_same_v<ParticleView<dim>, T>;
 
 
-template<std::size_t dim, typename ParticleBase, template<std::size_t, typename> typename ParticleA,
-         template<std::size_t, typename> typename ParticleB>
+template<std::size_t dim, template<std::size_t> typename ParticleA,
+         template<std::size_t> typename ParticleB>
 typename std::enable_if_t<
-    is_phare_particle_type<
-        dim, ParticleBase,
-        ParticleA<
-            dim,
-            ParticleBase>> and is_phare_particle_type<dim, ParticleBase, ParticleB<dim, ParticleBase>>,
+    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
     bool>
-operator==(ParticleA<dim, ParticleBase> const& particleA,
-           ParticleB<dim, ParticleBase> const& particleB)
+operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //
            particleA.charge == particleB.charge and //
@@ -158,10 +149,10 @@ operator==(ParticleA<dim, ParticleBase> const& particleA,
 namespace std
 {
 
-template<size_t dim, typename Base, template<std::size_t, typename> typename Particle_t>
-typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Base, Particle_t<dim, Base>>,
-                          PHARE::core::Particle<dim, Base>>
-copy(Particle_t<dim, Base> const& from)
+template<size_t dim, template<std::size_t> typename Particle_t>
+typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
+                          PHARE::core::Particle<dim>>
+copy(Particle_t<dim> const& from)
 {
     return {from.weight, from.charge, from.iCell, from.delta, from.v};
 }

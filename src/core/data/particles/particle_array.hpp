@@ -24,7 +24,7 @@ public:
     static constexpr auto dimension                  = dim;
     static constexpr std::size_t cellmap_bucket_size = 100;
     using This                                       = ParticleArray<dim>;
-    using Particle_t                                 = Particle<dim, BucketListItem>;
+    using Particle_t                                 = Particle<dim>;
     using Vector                                     = std::vector<Particle_t>;
 
 private:
@@ -91,6 +91,7 @@ public:
     void resize(std::size_t newSize) { return particles_.resize(newSize); }
 
     auto const& operator[](std::size_t i) const { return particles_[i]; }
+    auto& operator[](std::size_t i) { return particles_[i]; }
 
     bool operator==(ParticleArray<dim> const& that) const
     {
@@ -304,8 +305,8 @@ namespace core
             };
         }
 
-        auto copy(std::size_t i) { return _to<Particle<dim, BucketListItem>>(i); }
-        auto view(std::size_t i) { return _to<ParticleView<dim, BucketListItem>>(i); }
+        auto copy(std::size_t i) { return _to<Particle<dim>>(i); }
+        auto view(std::size_t i) { return _to<ParticleView<dim>>(i); }
 
         auto operator[](std::size_t i) const { return view(i); }
         auto operator[](std::size_t i) { return view(i); }
@@ -329,7 +330,7 @@ namespace core
             auto& operator*() const { return views[curr_pos]; }
 
             std::size_t curr_pos = 0;
-            std::vector<ParticleView<dim, BucketListItem>> views;
+            std::vector<ParticleView<dim>> views;
         };
 
         auto begin() { return iterator(this); }

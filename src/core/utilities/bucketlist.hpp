@@ -92,7 +92,12 @@ public:
     bool in_bucket(std::size_t itemIndex)
     {
         auto const& index = indexes_[itemIndex];
-        return index.bucket_idx <= bucket_idx and index.pos <= curr;
+        if (index.bucket_idx < bucket_idx)
+            return index.pos < bucket_size;
+        else if (index.bucket_idx == bucket_idx)
+            return index.pos < curr;
+        else
+            return false;
     }
 
     bool is_empty() const { return bucket_idx == 0 and curr == 0; }
@@ -101,8 +106,13 @@ public:
 
     void trim(std::size_t max_empty);
 
-
-
+    void updateIndex(std::size_t oldIndex, std::size_t newIndex)
+    {
+        auto bidx                           = indexes_.at(oldIndex);
+        buckets_[bidx.bucket_idx][bidx.pos] = newIndex;
+        indexes_[newIndex]                  = bidx;
+        // should I erase the key oldIndex from indexes_?
+    }
 
 private:
     void decrement_()
@@ -204,7 +214,10 @@ auto BucketList<bucket_size>::end()
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
     // bucket at cursor 0
-    if (curr != bucket_size)
+    if (bucket_idx == 0 and curr == 0) // never added
+        return iterator{*this, bucket_idx, curr + 1};
+
+    else if (curr != bucket_size)
     {
         auto it = iterator{*this, bucket_idx, curr};
         return it;
@@ -252,5 +265,7 @@ void BucketList<bucket_size>::trim(std::size_t max_empty)
         buckets_.swap(new_buckets_);
     }
 }
+
+
 } // namespace PHARE::core
 #endif

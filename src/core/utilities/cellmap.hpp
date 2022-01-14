@@ -86,7 +86,6 @@ public:
         auto blist = list_at(extract(items[itemIndex]));
         if (blist)
         {
-            std::cout << "removed one item\n";
             blist->get().remove(itemIndex);
         }
         else
@@ -230,17 +229,41 @@ public:
         }
     }
 
-    template<typename Array, typename CellIndex, typename CellExtractor = DefaultExtractor>
-    void update(Array const& items, std::size_t itemIndex, CellIndex const& oldCell,
-                CellExtractor extract = default_extractor)
+    template<typename Array, typename CellIndex>
+    void update(Array const& items, std::size_t itemIndex, CellIndex const& oldCell)
     {
         auto oldlist = list_at(oldCell);
-        auto newlist = list_at(extract(items[itemIndex]));
-
-        if (oldlist and newlist)
+        if (oldlist)
         {
             oldlist->get().remove(itemIndex);
-            newlist->get().add(itemIndex);
+            add(items, itemIndex);
+        }
+    }
+
+
+    template<typename Array, typename CellIndex, typename CellExtractor = DefaultExtractor>
+    void remove(CellIndex index, Array& items, CellExtractor extract = default_extractor)
+    {
+        auto lastIndex     = items.size() - 1;
+        auto itemsToRemove = list_at(index);
+        if (itemsToRemove)
+        {
+            for (auto itemIndex : itemsToRemove->get())
+            {
+                auto lastItemCell = extract(items[lastIndex]);
+                std::swap(items[itemIndex], items[lastIndex]);
+
+                // item previously found at lastIndex
+                // is now at itemIndex
+                // we need to update the index stored in
+                // the bucketlist it is in
+                auto lastItemList = list_at(lastItemCell);
+
+                lastItemList->get().updateIndex(lastIndex, itemIndex);
+                lastIndex--;
+            }
+            itemsToRemove->get().empty();
+            items.erase(std::begin(items) + lastIndex + 1, std::end(items));
         }
     }
 
@@ -255,6 +278,9 @@ public:
                 std::cout << itemIndex << "\n";
             }
     }
+
+    auto begin() { return bucketsLists_.begin(); }
+    auto end() { return bucketsLists_.end(); }
 
 private:
     struct CellHasher

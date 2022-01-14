@@ -15,12 +15,13 @@
 
 using namespace PHARE::core;
 
+
 struct Obj
 {
 };
 
 template<std::size_t dim>
-struct Particle : BucketListItem
+struct Particle
 {
     std::array<int, dim> iCell;
     double delta;
@@ -324,8 +325,8 @@ TEST(CellMap, trackParticle)
 
     EXPECT_EQ(cm.size(), particles.size());
     // pretends the particle change cell in x
-    auto oldcell = particles[200].iCell;
-    particles[200].iCell[0]++;
+    auto oldcell            = particles[200].iCell;
+    particles[200].iCell[0] = 100;
 
     cm.update(particles, 200, oldcell);
     EXPECT_EQ(cm.size(), particles.size());
@@ -367,6 +368,75 @@ auto make_random_particles_in(Box<int, dim> const& box, std::size_t nppc)
     }
     return particles;
 }
+
+TEST(CellMap, removeOutOfBoxParticles)
+{
+    //
+    auto constexpr dim         = 3u;
+    auto constexpr bucket_size = 100;
+    using cellmap_t            = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    Box<int, 3> patchbox{{10, 20, 30}, {25, 42, 54}};
+    cellmap_t cm;
+    auto nppc         = 100u;
+    auto particles    = make_random_particles_in(patchbox, nppc);
+    auto originalSize = particles.size();
+    cm.add(particles);
+    EXPECT_EQ(cm.size(), particles.size());
+
+
+    // now make some particles leaving the box
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> randPartIdxDist{0, static_cast<int>(particles.size()) - 1};
+
+    std::vector<int> leavingIndexes(25);
+    std::generate(std::begin(leavingIndexes), std::end(leavingIndexes),
+                  [&]() { return randPartIdxDist(gen); });
+
+
+    // make those leaving particle leave
+    auto cpt = 0;
+    for (auto particleIdx : leavingIndexes)
+    {
+        auto oldCell                    = particles[particleIdx].iCell;
+        particles[particleIdx].iCell[0] = 100; // outside the patchBox
+        cm.update(particles, particleIdx, oldCell);
+    }
+
+
+    for (auto& [cell, cellParticles] : cm)
+    {
+        if (!isIn(cell, patchbox))
+        {
+            cm.remove(cell, particles);
+        }
+    }
+
+    EXPECT_EQ(particles.size(), originalSize - leavingIndexes.size());
+    EXPECT_EQ(particles.size(), cm.size());
+
+
+    cpt = 0;
+    for (auto& [cell, cellParticles] : cm)
+    {
+        for (auto partIdx : cellParticles)
+        {
+            EXPECT_LT(partIdx, particles.size());
+            if (!isIn(Point(particles[partIdx].iCell), patchbox))
+            {
+                cpt++;
+            }
+            EXPECT_TRUE(isIn(Point(particles[partIdx].iCell), patchbox));
+        }
+    }
+    EXPECT_EQ(0, cpt);
+    cpt = 0;
+    for (auto const& particle : particles)
+    {
+        EXPECT_TRUE(isIn(Point(particle.iCell), patchbox));
+    }
+}
+
 
 #if 0
 TEST(CellMap, sortArray)
