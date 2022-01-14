@@ -1,5 +1,5 @@
-#include <SAMRAI/tbox/SAMRAIManager.h>
-#include <SAMRAI/tbox/SAMRAI_MPI.h>
+#include <SAMRAI/tbox/SAMRAIManager.hpp>
+#include <SAMRAI/tbox/SAMRAI_MPI.hpp>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

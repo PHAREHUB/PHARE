@@ -1,6 +1,6 @@
 
 
-#include "core/utilities/point/point.h"
+#include "core/utilities/point/point.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

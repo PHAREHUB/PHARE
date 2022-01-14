@@ -2,7 +2,7 @@
 #include <array>
 #include <random>
 
-#include "core/utilities/types.h"
+#include "core/utilities/types.hpp"
 
 
 namespace PHARE

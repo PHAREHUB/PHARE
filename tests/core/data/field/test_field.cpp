@@ -2,9 +2,9 @@
 #include <ctype.h>
 #include <string>
 
-#include "core/data/field/field.h"
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/field/field.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

@@ -1,7 +1,0 @@
-#ifndef PHARE_CORE_DATA_GRID_GRIDLAYOUT_IMPL_H
-#define PHARE_CORE_DATA_GRID_GRIDLAYOUT_IMPL_H
-
-#include "gridlayoutimplyee.h"
-
-
-#endif // PHARE_CORE_DATA_GRID_GRIDLAYOUT_IMPL_H

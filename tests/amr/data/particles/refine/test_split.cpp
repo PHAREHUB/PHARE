@@ -1,7 +1,7 @@
 #include <cstdint>
 
-#include "core/utilities/types.h"
-#include "amr/data/particles/refine/split.h"
+#include "core/utilities/types.hpp"
+#include "amr/data/particles/refine/split.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

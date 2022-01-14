@@ -4,10 +4,10 @@
 
 
 
-#include "core/data/ions/ion_population/ion_population.h"
-#include "core/data/particles/particle_array.h"
-#include "initializer/data_provider.h"
-#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "initializer/data_provider.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

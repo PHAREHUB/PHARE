@@ -1,15 +1,15 @@
 
-#include "benchmark/benchmark.h"
+#include "benchmark/benchmark.hpp"
 #define PHARE_DIAG_DOUBLES 0
-#include "diagnostic/detail/h5writer.h"
-#include "diagnostic/detail/h5_utils.h"
-#include "diagnostic/diagnostic_manager.h"
+#include "diagnostic/detail/h5writer.hpp"
+#include "diagnostic/detail/h5_utils.hpp"
+#include "diagnostic/diagnostic_manager.hpp"
 
-#include "core/data/particles/particle.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/particles/particle_packer.h"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_packer.hpp"
 
-#include "phare/phare.h"
+#include "phare/phare.hpp"
 
 constexpr std::size_t dim = 1;
 

@@ -5,8 +5,8 @@ project(test-particles-data-refine)
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
-  test_particledata_refine_basic_hierarchy.h
-  test_particle_data_refine_tag_strategy.h
+  test_particledata_refine_basic_hierarchy.hpp
+  test_particle_data_refine_tag_strategy.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 

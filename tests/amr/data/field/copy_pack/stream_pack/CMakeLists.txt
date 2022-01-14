@@ -4,8 +4,8 @@ project(test-field-data-stream-pack)
 
 
 set(SOURCES_INC
-  test_stream_pack_centered_ex.h
-  test_stream_pack_centered_ey.h
+  test_stream_pack_centered_ex.hpp
+  test_stream_pack_centered_ey.hpp
    )
 
 set(SOURCES_CPP

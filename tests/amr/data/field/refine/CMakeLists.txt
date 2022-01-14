@@ -10,8 +10,8 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 set(SOURCES_INC
-  test_field_refinement_on_hierarchy.h
-  test_tag_strategy.h
+  test_field_refinement_on_hierarchy.hpp
+  test_tag_strategy.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
 

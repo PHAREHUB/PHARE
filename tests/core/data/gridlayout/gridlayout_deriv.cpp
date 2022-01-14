@@ -1,9 +1,9 @@
 
 #include <math.h>
 
-#include "gridlayout_deriv.h"
-#include "gridlayout_params.h"
-#include "gridlayout_test.h"
+#include "gridlayout_deriv.hpp"
+#include "gridlayout_params.hpp"
+#include "gridlayout_test.hpp"
 
 
 std::vector<double> read(std::string filename)

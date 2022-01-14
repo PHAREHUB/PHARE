@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
 
-#include "phare_core.h"
+#include "phare_core.hpp"
 
-#include "core/numerics/ion_updater/ion_updater.h"
+#include "core/numerics/ion_updater/ion_updater.hpp"
 
 using namespace PHARE::core;
 

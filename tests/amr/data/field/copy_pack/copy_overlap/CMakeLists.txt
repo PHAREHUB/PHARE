@@ -4,8 +4,8 @@ project(test-field-data-copy-with-overlap)
 
 
 set(SOURCES_INC
-  test_copy_overlap_centered_ex.h
-  test_copy_overlap_centered_ey.h
+  test_copy_overlap_centered_ex.hpp
+  test_copy_overlap_centered_ey.hpp
    )
 
 set(SOURCES_CPP

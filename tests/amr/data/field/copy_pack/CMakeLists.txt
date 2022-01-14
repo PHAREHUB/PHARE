@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.9)
 project(test-field-data)
 
 set( SOURCES_INC
-  field_data_test_param.h
+  field_data_test_param.hpp
   )
 set ( SOURCES_CPP
     field_data_test_param.cpp

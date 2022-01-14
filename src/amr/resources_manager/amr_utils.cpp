@@ -1,5 +1,5 @@
 
-#include "amr/resources_manager/amr_utils.h"
+#include "amr/resources_manager/amr_utils.hpp"
 
 namespace PHARE
 {

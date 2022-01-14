@@ -1,4 +1,4 @@
-#include "field_coarsen_index_weight.h"
+#include "field_coarsen_index_weight.hpp"
 
 namespace PHARE::amr
 {

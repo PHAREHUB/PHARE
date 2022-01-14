@@ -1,19 +1,19 @@
 
-#include "amr/types/amr_types.h"
-#include "core/data/electromag/electromag.h"
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ions/ion_population/ion_population.h"
-#include "core/data/ions/ions.h"
-#include "core/data/electrons/electrons.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "core/data/vecfield/vecfield.h"
-#include "initializer/data_provider.h"
-#include "amr/messengers/hybrid_messenger.h"
-#include "amr/messengers/messenger.h"
-#include "amr/physical_models/hybrid_model.h"
-#include "amr/physical_models/mhd_model.h"
-#include "amr/resources_manager/resources_manager.h"
+#include "amr/types/amr_types.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/ions.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "initializer/data_provider.hpp"
+#include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/messengers/messenger.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
@@ -26,7 +26,7 @@ using namespace PHARE::core;
 using namespace PHARE::solver;
 using namespace PHARE::amr;
 
-#include "tests/initializer/init_functions.h"
+#include "tests/initializer/init_functions.hpp"
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 

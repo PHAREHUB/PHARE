@@ -1,7 +1,7 @@
 
-#include "gridlayout_field_centered_coord.h"
-#include "gridlayout_params.h"
-#include "gridlayout_test.h"
+#include "gridlayout_field_centered_coord.hpp"
+#include "gridlayout_params.hpp"
+#include "gridlayout_test.hpp"
 
 
 using namespace PHARE::core;

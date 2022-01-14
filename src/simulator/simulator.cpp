@@ -1,4 +1,4 @@
-#include "simulator.h"
+#include "simulator.hpp"
 
 
 namespace PHARE

@@ -1,14 +1,14 @@
-#include "test_field_refinement_on_hierarchy.h"
+#include "test_field_refinement_on_hierarchy.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
-#include "core/data/field/field.h"
-#include "amr/data/field/field_geometry.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/grid/gridlayoutdefs.h"
-#include "amr/resources_manager/amr_utils.h"
+#include "core/data/field/field.hpp"
+#include "amr/data/field/field_geometry.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 
 

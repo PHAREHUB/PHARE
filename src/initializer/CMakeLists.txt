@@ -4,9 +4,9 @@ project(phare_initializer)
 
 
 
-set(SOURCE_INC data_provider.h
-               python_data_provider.h
-               restart_data_provider.h)
+set(SOURCE_INC data_provider.hpp
+               python_data_provider.hpp
+               restart_data_provider.hpp)
 
 
 set(SOURCE_CPP data_provider.cpp)

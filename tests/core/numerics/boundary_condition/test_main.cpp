@@ -3,9 +3,9 @@
 
 #include <vector>
 
-#include "core/data/particles/particle_array.h"
-#include "core/numerics/boundary_condition/boundary_condition.h"
-#include "core/utilities/box/box.h"
+#include "core/data/particles/particle_array.hpp"
+#include "core/numerics/boundary_condition/boundary_condition.hpp"
+#include "core/utilities/box/box.hpp"
 
 
 

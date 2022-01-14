@@ -1,5 +1,5 @@
 
-#include "test_linear_combinaisons_yee.h"
+#include "test_linear_combinaisons_yee.hpp"
 
 using GridLayout1DO1 = GridLayout<GridLayoutImplYee<1, 1>>;
 using GridLayout1DO2 = GridLayout<GridLayoutImplYee<1, 2>>;

@@ -1,6 +1,6 @@
 
-#include "python3/pybind_def.h"
-#include "simulator/simulator.h"
+#include "python3/pybind_def.hpp"
+#include "simulator/simulator.hpp"
 
 namespace py = pybind11;
 

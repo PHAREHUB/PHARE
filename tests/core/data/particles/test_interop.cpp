@@ -1,9 +1,9 @@
 
 
-#include "core/utilities/types.h"
-#include "core/data/particles/particle.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/particles/particle_packer.h"
+#include "core/utilities/types.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_packer.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

@@ -1,8 +1,8 @@
 
 #include "benchmark/benchmark.h"
 
-#include "bench/core/bench.h"
-#include "core/data/particles/particle.h"
+#include "bench/core/bench.hpp"
+#include "core/data/particles/particle.hpp"
 
 constexpr std::size_t dim  = 3;
 constexpr std::size_t size = 100000;

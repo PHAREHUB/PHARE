@@ -5,12 +5,12 @@
 #include "gtest/gtest.h"
 
 
-#include "amr/data/field/refine/field_linear_refine.h"
-#include "amr/data/field/refine/field_refine_operator.h"
-#include "amr/data/field/refine/field_refiner.h"
-#include "core/data/grid/gridlayout.h"
+#include "amr/data/field/refine/field_linear_refine.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/field_refiner.hpp"
+#include "core/data/grid/gridlayout.hpp"
 
-#include "test_field_refinement_on_hierarchy.h"
+#include "test_field_refinement_on_hierarchy.hpp"
 
 
 #include <functional>

@@ -2,19 +2,19 @@
 #include <cmath>
 #include <algorithm>
 
-#include "phare/phare.h"
-#include "amr/tagging/tagger.h"
-#include "amr/tagging/tagger_factory.h"
-#include "amr/resources_manager/resources_manager.h"
+#include "phare/phare.hpp"
+#include "amr/tagging/tagger.hpp"
+#include "amr/tagging/tagger_factory.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/models/hybrid_state.h"
-#include "core/utilities/span.h"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/models/hybrid_state.hpp"
+#include "core/utilities/span.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "tests/core/data/gridlayout/gridlayout_test.h"
+#include "tests/core/data/gridlayout/gridlayout_test.hpp"
 
 using namespace PHARE::amr;
 

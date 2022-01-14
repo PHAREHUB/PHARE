@@ -1,7 +1,7 @@
 
 #include <mpi.h>
 
-#include "tests/simulator/per_test.h"
+#include "tests/simulator/per_test.hpp"
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

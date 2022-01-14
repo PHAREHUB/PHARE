@@ -3,23 +3,23 @@
 
 
 
-#include "core/data/ions/ion_population/ion_population.h"
-#include "core/data/ions/ions.h"
-#include "core/data/ndarray/ndarray_vector.h"
-#include "core/data/particles/particle_array.h"
-#include "core/data/vecfield/vecfield.h"
-#include "core/hybrid/hybrid_quantities.h"
+#include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/ions.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
 
-#include "core/data/grid/gridlayout.h"
-#include "core/data/grid/gridlayout_impl.h"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.h"
-#include "initializer/data_provider.h"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "tests/initializer/init_functions.h"
+#include "tests/initializer/init_functions.hpp"
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 using namespace PHARE::core;

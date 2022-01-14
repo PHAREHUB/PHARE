@@ -1,4 +1,4 @@
-#include "mpi_utils.h"
+#include "mpi_utils.hpp"
 
 namespace PHARE::core::mpi
 {

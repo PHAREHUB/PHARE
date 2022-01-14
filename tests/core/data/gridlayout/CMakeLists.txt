@@ -3,17 +3,17 @@ cmake_minimum_required (VERSION 3.9)
 project(test-GridLayout)
 
 set(SOURCES_INC
-  gridlayout_allocsize.h
-  gridlayout_base_params.h
-  gridlayout_cell_centered_coord.h
-  gridlayout_deriv.h
-  gridlayout_laplacian.h
-  gridlayout_field_centered_coord.h
-  gridlayout_indexing.h
-  gridlayout_params.h
-  gridlayout_test.h
-  gridlayout_utilities.h
-  test_linear_combinaisons_yee.h
+  gridlayout_allocsize.hpp
+  gridlayout_base_params.hpp
+  gridlayout_cell_centered_coord.hpp
+  gridlayout_deriv.hpp
+  gridlayout_laplacian.hpp
+  gridlayout_field_centered_coord.hpp
+  gridlayout_indexing.hpp
+  gridlayout_params.hpp
+  gridlayout_test.hpp
+  gridlayout_utilities.hpp
+  test_linear_combinaisons_yee.hpp
    )
 
 set(SOURCES_CPP

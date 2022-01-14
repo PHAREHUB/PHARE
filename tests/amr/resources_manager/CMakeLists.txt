@@ -5,9 +5,9 @@ project(test-resource)
 configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
 
 set(SOURCES_INC
-  test_resources_manager_basic_hierarchy.h
+  test_resources_manager_basic_hierarchy.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
-  test_resources_manager.h
+  test_resources_manager.hpp
    )
 
 set(SOURCES_CPP

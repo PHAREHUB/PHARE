@@ -1,6 +1,6 @@
 
-#include "bench/core/bench.h"
-#include "core/numerics/interpolator/interpolator.h"
+#include "bench/core/bench.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
 
 template<std::size_t dim, std::size_t interp>
 void interpolate(benchmark::State& state)
