@@ -198,34 +198,6 @@ TEST(CellMap, emptyLeavesCapacityButZeroSize)
 
 
 
-TEST(CellMap, selectParticleInSubsetBox)
-{
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 100u;
-    Box<int, 2> patchbox{{10, 20}, {25, 42}};
-    CellMap<dim, bucket_size, int, Point<int, 2>> cm;
-    auto nppc      = 100u;
-    auto particles = make_particles_in(patchbox, nppc);
-    cm.add(particles);
-
-    Box<int, 2> selection_box{{12, 22}, {17, 23}};
-    auto selected = cm.select(selection_box, particles);
-    for (auto const& particle : selected)
-    {
-        EXPECT_TRUE(isIn(Point{particle.iCell}, selection_box));
-    }
-    std::size_t isInCounter = 0;
-    for (auto const& particle : particles)
-    {
-        if (isIn(Point{particle.iCell}, selection_box))
-        {
-            isInCounter++;
-        }
-    }
-    EXPECT_EQ(isInCounter, selected.size());
-}
-
-
 TEST(CellMap, trimMemory)
 {
     auto constexpr dim         = 2u;
@@ -371,7 +343,6 @@ auto make_random_particles_in(Box<int, dim> const& box, std::size_t nppc)
 
 TEST(CellMap, removeOutOfBoxParticles)
 {
-    //
     auto constexpr dim         = 3u;
     auto constexpr bucket_size = 100;
     using cellmap_t            = CellMap<dim, bucket_size, int, Point<int, dim>>;

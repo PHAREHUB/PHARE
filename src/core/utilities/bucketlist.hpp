@@ -21,17 +21,11 @@ struct BucketListIndex
 };
 
 
-struct BucketListItem
-{
-    BucketListIndex index;
-};
-
-
-
 
 template<std::size_t bucket_size>
 class BucketList
 {
+    // ----------------- BucketList Iterator ----------------------------------
     class iterator : public std::iterator<std::forward_iterator_tag, std::size_t>
     {
     private:
@@ -54,6 +48,10 @@ class BucketList
         std::size_t curr_bucket_ = 0, curr_pos_ = 0;
         BucketList<bucket_size> const& bucketsList_;
     };
+    // ----------------- END BucketList Iterator ------------------------------
+
+
+
 
 public:
     BucketList(std::size_t min_bucket_nbr = 1)
@@ -62,59 +60,33 @@ public:
     }
 
     void add(std::size_t itemIndex);
-
     void remove(std::size_t itemIndex);
+    bool in_bucket(std::size_t itemIndex);
 
-    std::size_t size() const { return bucket_size * (bucket_idx) + curr; }
-
-    auto begin() { return iterator{*this}; }
-
-    auto begin() const { return iterator{*this}; }
-
-    auto end();
-
-    auto end() const;
-
-    BucketListIndex last_idx() const;
-
-    void empty()
-    {
-        if (capacity() > 3 * size())
-        {
-            trim(1);
-        }
-        bucket_idx = 0;
-        curr       = 0;
-    }
-
-
-    // TODO
-    bool in_bucket(std::size_t itemIndex)
-    {
-        auto const& index = indexes_[itemIndex];
-        if (index.bucket_idx < bucket_idx)
-            return index.pos < bucket_size;
-        else if (index.bucket_idx == bucket_idx)
-            return index.pos < curr;
-        else
-            return false;
-    }
-
-    bool is_empty() const { return bucket_idx == 0 and curr == 0; }
-
-    std::size_t capacity() const { return buckets_.capacity() * bucket_size; }
-
+    // reallocate bucketlist memory if more empty space than max_empty
     void trim(std::size_t max_empty);
 
-    void updateIndex(std::size_t oldIndex, std::size_t newIndex)
-    {
-        auto bidx                           = indexes_.at(oldIndex);
-        buckets_[bidx.bucket_idx][bidx.pos] = newIndex;
-        indexes_[newIndex]                  = bidx;
-        // should I erase the key oldIndex from indexes_?
-    }
+    // to use if an item in an indexed array is moved at another index
+    void updateIndex(std::size_t oldIndex, std::size_t newIndex);
+
+    // empty the bucketlist, but leaves the capacity untouched
+    void empty();
+    bool is_empty() const { return bucket_idx == 0 and curr == 0; }
+
+    std::size_t size() const { return bucket_size * (bucket_idx) + curr; }
+    std::size_t capacity() const { return buckets_.capacity() * bucket_size; }
+
+    auto begin() { return iterator{*this}; }
+    auto begin() const { return iterator{*this}; }
+    auto end();
+    auto end() const;
+
+
 
 private:
+    BucketListIndex lastIdx_() const;
+
+
     void decrement_()
     {
         if (curr == 0)
@@ -136,6 +108,7 @@ private:
 };
 
 
+// ----------------- BucketList Iterator ----------------------------------
 template<std::size_t bucket_size>
 inline typename BucketList<bucket_size>::iterator BucketList<bucket_size>::iterator::operator++()
 {
@@ -156,6 +129,7 @@ inline bool BucketList<bucket_size>::iterator::operator!=(iterator const& other)
            or &bucketsList_ != &other.bucketsList_;
 }
 
+// ----------------- BucketList Iterator ----------------------------------
 
 
 
@@ -182,7 +156,7 @@ void BucketList<bucket_size>::add(std::size_t itemIndex)
 }
 
 template<std::size_t bucket_size>
-BucketListIndex BucketList<bucket_size>::last_idx() const
+BucketListIndex BucketList<bucket_size>::lastIdx_() const
 {
     if (curr == 0)
         return {bucket_idx - 1, bucket_size};
@@ -190,6 +164,40 @@ BucketListIndex BucketList<bucket_size>::last_idx() const
         return {bucket_idx, curr - 1};
 }
 
+
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::empty()
+{
+    if (capacity() > 3 * size())
+    {
+        trim(1);
+    }
+    bucket_idx = 0;
+    curr       = 0;
+}
+
+
+template<std::size_t bucket_size>
+bool BucketList<bucket_size>::in_bucket(std::size_t itemIndex)
+{
+    auto const& index = indexes_[itemIndex];
+    if (index.bucket_idx < bucket_idx)
+        return index.pos < bucket_size;
+    else if (index.bucket_idx == bucket_idx)
+        return index.pos < curr;
+    else
+        return false;
+}
+
+
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::updateIndex(std::size_t oldIndex, std::size_t newIndex)
+{
+    auto bidx                           = indexes_.at(oldIndex);
+    buckets_[bidx.bucket_idx][bidx.pos] = newIndex;
+    indexes_[newIndex]                  = bidx;
+    // should I erase the key oldIndex from indexes_?
+}
 
 
 
@@ -200,7 +208,7 @@ void BucketList<bucket_size>::remove(std::size_t itemIndex)
         throw std::runtime_error("not in bucket");
 
     auto& to_remove = buckets_[indexes_[itemIndex].bucket_idx][indexes_[itemIndex].pos];
-    auto idx        = last_idx();
+    auto idx        = lastIdx_();
     auto last       = buckets_[idx.bucket_idx][idx.pos];
     to_remove       = last;
     decrement_();
