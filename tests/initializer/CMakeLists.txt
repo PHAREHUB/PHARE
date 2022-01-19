@@ -17,6 +17,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)
 
+add_dependencies(${PROJECT_NAME} cpp_etc)
+
 add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 

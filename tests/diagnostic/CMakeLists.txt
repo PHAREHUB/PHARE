@@ -26,6 +26,8 @@ if(HighFive)
       ${GTEST_LIBS}
       ${HDF5_LIBRARIES})
 
+    add_dependencies(${src_name} cpp_etc)
+
     add_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
 
   endfunction(_add_diagnostics_test)

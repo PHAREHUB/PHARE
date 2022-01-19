@@ -15,4 +15,9 @@ compile_commands.json
 phare_outputs*
 CMakeLists.txt.user
 .log
+tools/cmake.sh
+.cmake.*
+perf.*
+**/*.h5
+.vscode
 

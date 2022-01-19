@@ -11,6 +11,7 @@ set(SOURCES_CPP
 
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
+add_dependencies(${PROJECT_NAME} cpp_etc)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
