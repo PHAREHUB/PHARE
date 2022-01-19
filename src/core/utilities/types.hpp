@@ -203,7 +203,7 @@ namespace core
 
 
     template<typename T, std::size_t... Is>
-    constexpr auto gft_helper(std::index_sequence<Is...> const&&)
+    constexpr auto gft_helper(std::index_sequence<Is...> const &&)
         -> decltype(std::make_tuple((Is, std::declval<T>())...));
 
     template<typename T, std::size_t N>
@@ -239,6 +239,52 @@ Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
+
+
+template<typename Container, typename F>
+auto sum_from(Container const& container, F fn)
+{
+    using value_type  = typename Container::value_type;
+    using return_type = std::decay_t<std::result_of_t<F(value_type const&)>>;
+    return_type sum   = 0;
+    for (auto const& el : container)
+        sum += fn(el);
+    return sum;
+}
+
+
+template<typename F>
+auto generate(F&& f, std::size_t from, std::size_t to)
+{
+    using value_type = std::decay_t<std::result_of_t<F(std::size_t const&)>>;
+    std::vector<value_type> vec;
+    std::size_t count = to - from;
+    vec.reserve(count);
+    for (std::size_t i = from; i < to; ++i)
+        vec.emplace_back(f(i));
+    return vec;
+}
+
+template<typename F>
+auto generate(F&& f, std::size_t count)
+{
+    return generate(std::forward<F>(f), 0, count);
+}
+
+
+template<typename F, typename Container>
+auto generate(F&& f, Container& container)
+{
+    using T          = typename Container::value_type;
+    using value_type = std::decay_t<std::result_of_t<F(T&)>>;
+    std::vector<value_type> vec;
+    vec.reserve(container.size());
+    for (auto& v : container)
+        vec.emplace_back(f(v));
+    return vec;
+}
+
+
 } // namespace PHARE::core
 
 
