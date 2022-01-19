@@ -7,6 +7,7 @@ from .particles import Particles
 
 from ..core import box as boxm
 from ..core.box import Box
+from ..core.box import icells_is_in_box
 from ..core.gridlayout import GridLayout
 import matplotlib.pyplot as plt
 from ..core.phare_utilities import refinement_ratio, deep_copy
@@ -490,15 +491,16 @@ def finest_part_data(hierarchy, time=None):
                     create = True
                     for finerBox in lvlPatchBoxes[ilvl+1]:
                         coarseFinerBox = boxm.coarsen(finerBox, refinement_ratio)
-                        within = np.where((icells >= coarseFinerBox.lower[0]) &\
-                                                 (icells <= coarseFinerBox.upper[0]))[0]
+                        within = icells_is_in_box(icells, coarseFinerBox)
+
                         if create:
                             toRemove = within
                             create=False
                         else:
-                            toRemove = np.concatenate((toRemove, within))
+                            toRemove = toRemove | within
 
                     parts = remove(parts, toRemove)
+
                     if parts is not None:
                         particles[popname].add(parts)
     return particles

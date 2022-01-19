@@ -131,7 +131,7 @@ def shrink(box, size):
 
 def remove(box, to_remove):
     """
-    removes "remove" from the box
+    removes "to_remove" from the box
     this operation returns the list of the boxes
     that are not part of the intersection box*remove
     """
@@ -185,3 +185,18 @@ def remove(box, to_remove):
 
 def amr_to_local(box, ref_box):
     return Box(box.lower - ref_box.lower, box.upper - ref_box.lower)
+
+
+def icells_is_in_box(icells, box):
+
+    idx0 = (icells[:,0] > box.lower[0]) & (icells[:,0] < box.upper[0])
+    idx1 = np.ones_like(idx0)*True
+    idx2 = np.ones_like(idx0)*True
+
+    if box.ndim > 1:
+        idx1 = (icells[:,1] > box.lower[1]) & (icells[:,1] < box.upper[1])
+        if box.ndim > 2:
+            idx2 = (icells[:,2] > box.lower[2]) & (icells[:,2] < box.upper[2])
+
+    return idx0 & idx1 & idx2
+

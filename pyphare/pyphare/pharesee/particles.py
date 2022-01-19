@@ -1,11 +1,14 @@
 
 import numpy as np
 from ..core.phare_utilities import refinement_ratio, print_trace
+from ..core.box import icells_is_in_box
+
 
 class Particles:
     """
     this class represent a set of particles
-    particles can either be loaded randomly in a given box or have there attribute set from caller
+    particles can either be loaded randomly in a given box or have there
+    attribute set from caller
     """
     def __init__(self, **kwargs):
         if "box" in kwargs:
@@ -39,9 +42,8 @@ class Particles:
 
 
     def xyz(self, i=0):
-        if self.ndim == 1:
-            return self.dl[:,0]*(self.iCells[:] + self.deltas[:])
         return self.dl[:,i]*(self.iCells[:,i] + self.deltas[:,i])
+
 
 
     @property
@@ -56,10 +58,18 @@ class Particles:
             self._y = self.xyz(1)
         return self._y
 
+    @property
+    def z(self):
+        if self._z is None:
+            self._z = self.xyz(2)
+        return self._z
+
+
 
     def _reset(self):
         self._x = None
         self._y = None
+        self._z = None
 
 
 
@@ -73,13 +83,17 @@ class Particles:
         self._reset()
 
 
+
     def shift_icell(self, offset):
         self.iCells += offset
         self._reset()
         return self
 
+
+
     def size(self):
           return len(self.weights)
+
 
 
     def __eq__(self, that):
@@ -99,21 +113,24 @@ class Particles:
         return False
 
 
+
     def select(self, box, box_type="cell"):
         """
         select particles from the given box
-        assumption, box has AMR indexes of the same level as the data that the current instance is created from
+        assumption, box has AMR indexes of the same level as the data that
+        the current instance is created from
         """
         assert len(box.lower) == self.ndim
 
         if box_type=="cell":
+            idx_out_of_box = np.invert(icells_is_in_box(self.iCells, box))
 
-            if self.ndim == 1:
-                idx = np.where((self.iCells >= box.lower) & (self.iCells <= box.upper))[0]
-            else:
-                def isin(p, b):
-                    return p in b
-                idx = np.where(np.apply_along_axis(isin, 1, self.iCells, box))[0]
+            icells = np.delete(self.iCells, idx_out_of_box, axis=0)
+            deltas = np.delete(self.deltas, idx_out_of_box, axis=0)
+            v = np.delete(self.v, idx_out_of_box, axis=0)
+            weights = np.delete(self.weights, idx_out_of_box, axis=0)
+            dl = np.delete(self.dl, idx_out_of_box, axis=0)
+            charges = np.delete(self.charges, idx_out_of_box, axis=0)
 
         elif box_type=="pos":
             assert self.ndim == 1 # unhandled otherwise
@@ -122,15 +139,19 @@ class Particles:
         else:
             raise ValueError("unsupported box type ({})".format(box_type))
 
-        return Particles(icells=self.iCells[idx],
-                         deltas=self.deltas[idx],
-                         v = self.v[idx,:],
-                         weights=self.weights[idx],
-                         charges=self.charges[idx],
-                         dl = self.dl[idx])
+        return Particles(icells=icells,
+                         deltas=deltas,
+                         v=v,
+                         weights=weights,
+                         charges=charges,
+                         dl=dl
+                        )
+
+
 
     def __getitem__(self, box):
         return self.select(box)
+
 
 
     def erase(self, idx):
@@ -140,6 +161,7 @@ class Particles:
         self.weights = np.delete(self.weights,idx, axis=0)
         self.charges = np.delete(self.charges,idx, axis=0)
         self.dl      = np.delete(self.dl,idx, axis=0)
+
 
 
     def pop(self, idx):
@@ -172,6 +194,7 @@ class Particles:
         )
 
 
+
     def as_tuples(self):
         return [
             ( *self.iCells[i],
@@ -182,7 +205,6 @@ class Particles:
               *self.charges[i]
             ) for i in range(self.size())
         ]
-
 
 
 
@@ -217,8 +239,6 @@ def any_assert(part1, part2):
 
 
 
-
-
 def aggregate(particles_in):
     assert all([isinstance(particles, Particles) for particles in particles_in])
 
@@ -235,33 +255,32 @@ def aggregate(particles_in):
 
 def remove(particles, idx):
     """
-    returns a Particles object where particles indexed "idx"
-    have been removed from "particles"
+    returns a Particles object where particles labelled True in "idx"
+    have been removed from "particles" (idx is a boolean numpy array
+    which size equals the number of particles
     """
-    if len(idx) == particles.size():
+
+    num_to_remove = np.count_nonzero(idx)
+
+    if num_to_remove == 0:
+        return particles
+
+    if num_to_remove == particles.size():
         return None
 
-    icells = np.delete(particles.iCells, idx)
-    deltas = np.delete(particles.deltas, idx)
-    vx = np.delete(particles.v[:,0], idx)
-    vy = np.delete(particles.v[:,1], idx)
-    vz = np.delete(particles.v[:,2], idx)
-    v = np.zeros((vx.size, 3))
-    v[:,0] = vx
-    v[:,1] = vy
-    v[:,2] = vz
-    weights = np.delete(particles.weights, idx)
-    dl = np.zeros((len(weights),particles.ndim))
-    for i in range(particles.ndim):
-        dl[:,i] = np.delete(particles.dl[:,i], idx)
+    icells = np.delete(particles.iCells, idx, axis=0)
+    deltas = np.delete(particles.deltas, idx, axis=0)
+    v = np.delete(particles.v, idx, axis=0)
+    weights = np.delete(particles.weights, idx, axis=0)
+    dl = np.delete(particles.dl, idx, axis=0)
+    charges = np.delete(particles.charges, idx, axis=0)
 
-    charges = np.delete(particles.charges, idx)
     return Particles(icells=icells,
                      deltas=deltas,
-                     v = v,
+                     v=v,
                      weights=weights,
                      charges=charges,
-                     dl = dl
+                     dl=dl
                     )
 
 def _arg_sort(particles):
@@ -277,6 +296,4 @@ def _arg_sort(particles):
     if particles.ndim == 3:
         z1 = particles.iCells[:,2] + particles.deltas[:,2]
         return np.argsort(np.sqrt((x1 ** 2 + y1 ** 2 + z1 ** 2)) / (x1 / y1 / z1))
-
-
 
