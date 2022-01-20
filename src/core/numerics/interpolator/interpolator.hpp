@@ -296,7 +296,7 @@ public: /** Performs the 1D interpolation
         auto const& [xWeights]            = weights;
         auto const& order_size            = xWeights.size();
 
-        auto const partRho   = particle.weight;
+        auto const partRho   = particle.weight * coef;
         auto const xPartFlux = particle.v[0] * particle.weight * coef;
         auto const yPartFlux = particle.v[1] * particle.weight * coef;
         auto const zPartFlux = particle.v[2] * particle.weight * coef;
