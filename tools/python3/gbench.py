@@ -1,6 +1,4 @@
-from tools.python3 import decode_bytes
 
-import os
 import rapidjson
 
 """ # sample Run data
@@ -19,45 +17,6 @@ import rapidjson
       "time_unit": "ns"
     }
 """
-
-import contextlib
-@contextlib.contextmanager
-def runs_resetter(run):
-    try:
-        yield
-    finally:
-        run.curr = run.data
-# class Runs:
-#     def __init__(self, n):
-#         self.data = {}
-#         self.curr = self.data
-#         self.n = n
-#     def __getitem__(self, key): return self.curr[key]
-#     def __setitem__(self, idx, value):
-#         if idx not in self.curr:
-#             self.curr[idx] = value
-#         self.curr = self.curr[idx]
-#     def keys(self): return self.data.keys()
-
-
-# def parse(json, keys, key_manips = {}, split_adder = lambda x: {}):
-#     runs = Runs(len(json["benchmarks"]))
-#     json2 = []
-#     for run in json["benchmarks"]:
-#         json2 += [run]
-#         name = run["name"]
-#         bits = name.split("/")
-#         len_bits = len(bits)
-#         name_split_parts = len_bits - len(keys)
-#         with runs_resetter(runs):
-#             for ki, i in enumerate(range(name_split_parts, len_bits - 1)):
-#                 runs[int(bits[i])] = {}
-#                 json2[-1][keys[ki]] = int(bits[i])
-#             runs[int(bits[-1])] = ("/".join(bits[-(len_bits - name_split_parts)]), run)
-#             json2[-1][keys[-1]] = int(bits[-1])
-#             for k, v in split_adder(bits).items():
-#                 json2[-1][k] = v
-#     return runs, json2
 
 
 def process_key(json, keys, i, manips, x):
@@ -128,7 +87,7 @@ def main():
         df["real_time"].plot(linewidth=.5)
 
         from pandasgui import show
-        gui = show(df)
+        show(df)
 
         import matplotlib.pyplot as plt
         plt.show()

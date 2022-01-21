@@ -31,12 +31,11 @@ def test_cmd(clazz, test_id, mpi_run):
     return f"mpirun {MPI_RUN_EXTRA} -n {mpi_run} python3 -m {clazz.__module__} {clazz.__name__}.{test_id}"
 
 test_classes_to_run = [
-  # SimulatorValidation, DiagnosticsTest,
-  # InitField1d,         InitParticles1d,
-  # AdvanceField1d,      AdvanceParticles1d,
-  # InitField2d,         InitParticles2d,
-  # AdvanceField2d,
-  AdvanceParticles2d
+  SimulatorValidation, DiagnosticsTest,
+  InitField1d,         InitParticles1d,
+  AdvanceField1d,      AdvanceParticles1d,
+  InitField2d,         InitParticles2d,
+  AdvanceField2d,      AdvanceParticles2d
 ]
 
 class TestBatch:

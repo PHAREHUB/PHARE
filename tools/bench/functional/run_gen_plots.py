@@ -363,17 +363,16 @@ def run_caliper(test_cases, cli_args, git_hash, mode=0):
                 dill.dump(module.params, write_file)
             exe = phare_exec_job_string(cli_args, py_file_module + file_ext)
             env = os.environ.copy()
-            # env["CALI_SERVICES_ENABLE"] = modes[mode]
-            # env["CALI_REPORT_FILENAME"] = caliper_func_times_json(tmpdata_dir)
-            # env["CALI_REPORT_CONFIG"] = "SELECT function,time.duration ORDER BY time.duration FORMAT json"
-            # env["CALI_RECORDER_FILENAME"] = caliper_recorder_cali(tmpdata_dir)
+            env["CALI_SERVICES_ENABLE"] = modes[mode]
+            env["CALI_REPORT_FILENAME"] = caliper_func_times_json(tmpdata_dir)
+            env["CALI_REPORT_CONFIG"] = "SELECT function,time.duration ORDER BY time.duration FORMAT json"
+            env["CALI_RECORDER_FILENAME"] = caliper_recorder_cali(tmpdata_dir)
+            # env["CALI_SERVICES_ENABLE"]="aggregate,event,report,timestamp"
 
-            env["CALI_SERVICES_ENABLE"]="aggregate,event,report,timestamp"
             env["CALI_AGGREGATE_KEY"]="function,loop"
             env["CALI_TIMER_SNAPSHOT_DURATION"]="true"
-            env["CALI_REPORT_CONFIG"]="select sum#time.duration format tree"
+            #env["CALI_REPORT_CONFIG"]="select sum#time.duration format tree"
 
-            print("env", env)
             usage_start = resource.getrusage(resource.RUSAGE_CHILDREN)
             mpirun(exe, module.params.get("mpirun_n", 1), check=True, env=env, #stdout=subprocess.DEVNULL,
                 stderr=open(os.path.join(str(bindata_dir), "cali.err"), "w"))

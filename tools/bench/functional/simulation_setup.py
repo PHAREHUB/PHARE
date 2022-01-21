@@ -26,7 +26,7 @@ def setup(**kwargs):
     largest_patch_size, smallest_patch_size = ph.simulation.check_patch_size(**kwargs)
     _, time_step, final_time = ph.simulation.check_time(**kwargs)
 
-    sim = ph.Simulation(
+    ph.Simulation(
         threads=kwargs.get("threads", 1),
         interp_order=kwargs.get("interp_order", 1),
         smallest_patch_size=smallest_patch_size,
@@ -42,7 +42,6 @@ def setup(**kwargs):
         },
         **kwargs.get("kwargs", {})
     )
-    # ph.simulation._print(sim)
 
     ph.MaxwellianFluidModel(
         bx=getFn("bx"),
