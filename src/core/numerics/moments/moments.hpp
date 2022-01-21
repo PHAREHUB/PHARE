@@ -38,6 +38,8 @@ namespace core
                           Interpolator<GridLayout::dimension, GridLayout::interp_order> interpolate,
                           DepositTag)
     {
+        auto constexpr is_contiguous = Ions::particle_array_type::is_contiguous;
+
         for (auto& pop : ions)
         {
             auto& density = pop.density();

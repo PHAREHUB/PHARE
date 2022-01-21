@@ -1,13 +1,16 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
-#include <stdexcept>
 #include <array>
-#include <cstdint>
-#include <vector>
 #include <tuple>
+#include <vector>
+#include <cstdint>
 #include <numeric>
+#include <stdexcept>
 
+
+#include "core/def/types.h"
+#include "core/utilities/types.hpp"
 
 namespace PHARE::core
 {
@@ -15,12 +18,10 @@ template<std::size_t dim, typename DataType = double>
 struct NdArrayViewer
 {
     template<typename NCells, typename... Indexes>
-    static DataType const& at(DataType const* data, NCells const& nCells, Indexes const&... indexes)
+    static auto& at(DataType const* data, NCells const& nCells,
+                    std::tuple<Indexes...> const& params) _PHARE_ALL_FN_
     {
-        auto params = std::forward_as_tuple(indexes...);
-        static_assert(sizeof...(Indexes) == dim);
-        // static_assert((... && std::is_unsigned_v<decltype(indexes)>)); TODO : manage later if
-        // this test should be included
+        static_assert(std::tuple_size_v<std::tuple<Indexes...>> == dim);
 
         if constexpr (dim == 1)
         {
@@ -47,9 +48,17 @@ struct NdArrayViewer
         }
     }
 
+    template<typename NCells, typename... Indexes>
+    static auto& at(DataType const* data, NCells const& nCells,
+                    Indexes const&... indexes) _PHARE_ALL_FN_
+    {
+        auto params = std::forward_as_tuple(indexes...);
+        return at(data, nCells, params);
+    }
+
     template<typename NCells, typename Index>
     static DataType const& at(DataType const* data, NCells const& nCells,
-                              std::array<Index, dim> const& indexes)
+                              std::array<Index, dim> const& indexes) _PHARE_ALL_FN_
 
     {
         if constexpr (dim == 1)
@@ -120,154 +129,169 @@ private:
 
 
 
-template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*>
-class NdArrayView : NdArrayViewer<dim, DataType>
+template<std::size_t dim, typename DataType = double, bool is_host_mem_ = true>
+class NdArrayView
 {
 public:
-    static constexpr bool is_contiguous = 1;
+    static constexpr auto is_contiguous = true;
+    static constexpr auto is_host_mem   = is_host_mem_;
     static const std::size_t dimension  = dim;
     using type                          = DataType;
+    using pointer_type                  = DataType* const;
+    using This                          = NdArrayView<dim, DataType>;
+    using view_t                        = This;
 
-    explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
-        : ptr_{ptr}
-        , nCells_{nCells}
+    NdArrayView(pointer_type ptr, std::array<std::uint32_t, dim> const nCells) _PHARE_ALL_FN_
+        : ptr_{ptr},
+          size_{core::product(nCells)},
+          nCells_{nCells}
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v,
-                         std::array<std::uint32_t, dim> const& nbCell)
-        : NdArrayView{v.data(), nbCell}
-    {
-    }
-
-    template<typename... Indexes>
-    DataType const& operator()(Indexes... indexes) const
-    {
-        return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes...);
-    }
-
-    template<typename... Indexes>
-    DataType& operator()(Indexes... indexes)
-    {
-        return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes...));
-    }
 
     template<typename Index>
-    DataType const& operator()(std::array<Index, dim> const& indexes) const
+    DataType const& operator()(std::array<Index, dim> const& indexes) const _PHARE_ALL_FN_
     {
         return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
-    DataType& operator()(std::array<Index, dim> const& indexes)
+    DataType& operator()(std::array<Index, dim> const& indexes) _PHARE_ALL_FN_
     {
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes));
     }
 
-    auto data() const { return ptr_; }
-    std::size_t size() const
+    template<typename... Indexes>
+    DataType const& operator()(Indexes const... indexes) const _PHARE_ALL_FN_
     {
-        return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
+        return NdArrayViewer<dim, DataType>::at(ptr_, nCells_, indexes...);
     }
-    auto shape() const { return nCells_; }
+
+    template<typename... Indexes>
+    DataType& operator()(Indexes const... indexes) _PHARE_ALL_FN_
+    {
+        return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes...));
+    }
+
+
+    auto& data() const _PHARE_ALL_FN_ { return ptr_; }
+    auto& data() _PHARE_ALL_FN_ { return ptr_; }
+
+    auto& size() const _PHARE_ALL_FN_ { return size_; }
+    auto& shape() const _PHARE_ALL_FN_ { return nCells_; }
+
+    auto begin() const _PHARE_ALL_FN_ { return ptr_; }
+    auto begin() _PHARE_ALL_FN_ { return ptr_; }
+
+    auto end() const _PHARE_ALL_FN_ { return ptr_ + size_; }
+    auto end() _PHARE_ALL_FN_ { return ptr_ + size_; }
 
 private:
-    Pointer ptr_ = nullptr;
+    pointer_type ptr_ = nullptr;
+    std::size_t size_;
     std::array<std::uint32_t, dim> nCells_;
 };
 
+template<bool is_host_mem = true, typename DataType, std::size_t dim>
+auto make_array_view(std::vector<DataType>& vec, std::array<std::uint32_t, dim> shape)
+{
+    return NdArrayView<dim, DataType, is_host_mem>{vec.data(), shape};
+}
+
+template<bool is_host_mem = true, typename DataType, std::size_t dim>
+auto make_array_view(std::vector<DataType> const& vec, std::array<std::uint32_t, dim> shape)
+{
+    return NdArrayView<dim, DataType const, is_host_mem>{vec.data(), shape};
+}
 
 
-
-template<std::size_t dim, typename DataType = double>
+template<std::size_t dim, typename DataType = double,
+         typename Allocator_ = typename std::vector<DataType>::allocator_type>
 class NdArrayVector
+    : public StackVar<std::vector<DataType, Allocator_>>,
+      public NdArrayView<dim, DataType, PHARE::Vector<DataType>::template is_host_mem<Allocator_>()>
 {
 public:
+    static const auto dimension         = dim;
     static constexpr bool is_contiguous = 1;
-    static const std::size_t dimension  = dim;
-    using type                          = DataType;
+    static constexpr bool is_host_mem = PHARE::Vector<DataType>::template is_host_mem<Allocator_>();
 
-    NdArrayVector() = delete;
+    using Allocator   = Allocator_;
+    using vector_impl = std::vector<DataType, Allocator>;
+    using Vector      = StackVar<std::vector<DataType, Allocator_>>;
+    using Super       = NdArrayView<dim, DataType, is_host_mem>;
+    using type        = DataType;
+    using view_t      = Super;
+
+    using Super::data;
+    using Super::shape;
+    using Super::size;
+    using Vector::var;
+
+    explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells)
+        : Vector{PHARE::Vector<DataType>::template make<Allocator_>(core::product(ncells))}
+        , Super{Vector::var.data(), ncells}
+    {
+    }
 
     template<typename... Nodes>
     explicit NdArrayVector(Nodes... nodes)
-        : nCells_{nodes...}
-        , data_((... * nodes))
+        : NdArrayVector{std::array{nodes...}}
     {
         static_assert(sizeof...(Nodes) == dim);
     }
 
-    explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells)
-        : nCells_{ncells}
-        , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<int>()))
+
+    NdArrayVector(NdArrayVector const& that)
+        : Vector{PHARE::Vector<DataType>::from(that.var)}
+        , Super{Vector::var.data(), that.shape()}
     {
     }
 
-    NdArrayVector(NdArrayVector const& source) = default;
-    NdArrayVector(NdArrayVector&& source)      = default;
-
-    auto data() const { return data_.data(); }
-    auto data() { return data_.data(); }
-
-    auto size() const { return data_.size(); }
-
-    auto begin() const { return std::begin(data_); }
-    auto begin() { return std::begin(data_); }
-
-    auto end() const { return std::end(data_); }
-    auto end() { return std::end(data_); }
-
-    void zero() { std::fill(data_.begin(), data_.end(), 0); }
-
-
-    NdArrayVector& operator=(NdArrayVector const& source)
+    NdArrayVector(NdArrayVector&& that)
+        : Vector{PHARE::Vector<DataType>::from(std::move(that.var))}
+        , Super{Vector::var.data(), that.shape()}
     {
-        if (nCells_ != source.nCells_)
+    }
+
+
+    NdArrayVector& operator=(NdArrayVector const& that)
+    {
+        if (shape() != that.shape())
+            throw_runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
+
+
+
+        if constexpr (is_host_mem)
+            this->var = that.var;
+        else
         {
-            throw std::runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
+            PHARE::Vector<DataType>::copy(this->var, that.var);
         }
 
-        this->data_ = source.data_;
         return *this;
     }
 
-    NdArrayVector& operator=(NdArrayVector&& source)
+    NdArrayVector& operator=(NdArrayVector&& that)
     {
-        if (nCells_ != source.nCells_)
-        {
-            throw std::runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
-        }
+        if (shape() != that.shape())
+            throw_runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
 
-        this->data_ = std::move(source.data_);
+
+
+        if constexpr (is_host_mem)
+            this->var = std::move(that.var);
+        else
+        {
+            PHARE::Vector<DataType>::copy(this->var, that.var);
+        }
         return *this;
     }
 
-    template<typename... Indexes>
-    DataType const& operator()(Indexes... indexes) const
-    {
-        return NdArrayViewer<dim, DataType>::at(data_.data(), nCells_, indexes...);
-    }
 
-    template<typename... Indexes>
-    DataType& operator()(Indexes... indexes)
-    {
-        return const_cast<DataType&>(static_cast<NdArrayVector const&>(*this)(indexes...));
-    }
+    Super const& view() const { return *this; }
+    Super& view() { return *this; }
 
-    template<typename Index>
-    DataType const& operator()(std::array<Index, dim> const& indexes) const
-    {
-        return NdArrayViewer<dim, DataType>::at(data_.data(), nCells_, indexes);
-    }
-
-    template<typename Index>
-    DataType& operator()(std::array<Index, dim> const& indexes)
-    {
-        return const_cast<DataType&>(static_cast<NdArrayVector const&>(*this)(indexes));
-    }
-
-
-    auto& shape() const { return nCells_; }
 
     template<typename Mask>
     auto operator[](Mask&& mask)
@@ -275,10 +299,13 @@ public:
         return MaskedView{*this, std::forward<Mask>(mask)};
     }
 
+    void zero()
+    {
+        if (size() == 0)
+            return;
 
-private:
-    std::array<std::uint32_t, dim> nCells_;
-    std::vector<DataType> data_;
+        PHARE::Vector<DataType>::fill(this->var, 0);
+    }
 };
 
 
@@ -353,7 +380,7 @@ public:
     template<typename Array>
     void fill3D(Array& array, typename Array::type val) const
     {
-        throw std::runtime_error("3d not implemented");
+        throw_runtime_error("3d not implemented");
     }
 
     template<typename Array>
@@ -372,7 +399,7 @@ public:
                 cells += (shape[0] - (i * 2) - 2) * 2 + (shape[1] - (i * 2) - 2) * 2 + 4;
 
         if constexpr (Array::dimension == 3)
-            throw std::runtime_error("Not implemented dimension");
+            throw_runtime_error("Not implemented dimension");
 
         return cells;
     }
@@ -452,7 +479,7 @@ void operator>>(MaskedView<Array, Mask>&& inner, MaskedView<Array, Mask>&& outer
 
     if constexpr (MaskedView_t::dimension == 3)
     {
-        throw std::runtime_error("3d not implemented");
+        throw_runtime_error("3d not implemented");
     }
 }
 

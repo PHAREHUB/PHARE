@@ -30,8 +30,6 @@ set(SOURCES_CPP
    )
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 
-
-
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${GTEST_INCLUDE_DIRS}
   )

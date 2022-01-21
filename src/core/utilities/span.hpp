@@ -17,12 +17,13 @@ struct Span
 
     auto& operator[](SIZE i) { return ptr[i]; }
     auto& operator[](SIZE i) const { return ptr[i]; }
-    T const* const& data() const { return ptr; }
-    T const* const& begin() const { return ptr; }
-    T* end() const { return ptr + s; }
+    auto data() const { return ptr; }
+    auto data() { return ptr; }
+    auto begin() const { return ptr; }
+    auto end() const { return ptr + s; }
     SIZE const& size() const { return s; }
 
-    T const* ptr = nullptr;
+    T* const ptr = nullptr;
     SIZE s       = 0;
 };
 
@@ -77,12 +78,14 @@ struct SpanSet
     {
     }
 
+    Span<T, SIZE> operator[](SIZE i) { return {this->vec.data() + displs[i], this->sizes[i]}; }
     Span<T, SIZE> operator[](SIZE i) const
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
     }
 
     T* data() const { return const_cast<T*>(vec.data()); }
+    T* data() { return const_cast<T*>(vec.data()); }
 
     struct iterator
     {

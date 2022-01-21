@@ -20,4 +20,3 @@ tools/cmake.sh
 perf.*
 **/*.h5
 .vscode
-

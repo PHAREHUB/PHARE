@@ -9,7 +9,7 @@ constexpr std::size_t size = 100000;
 
 auto makeContiguous()
 {
-    PHARE::core::ContiguousParticles<dim> contiguous{size};
+    PHARE::core::ParticleArray_SOA<dim> contiguous{size};
     for (std::size_t i = 0; i < size; i++)
     {
         auto view   = contiguous[i];

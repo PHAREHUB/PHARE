@@ -80,13 +80,16 @@ void push(benchmark::State& state)
     BorisPusher_t pusher;
     pusher.setMeshAndTimeStep(layout.meshSize(), .001);
 
+    using EB = PHARE::core::tuple_fixed_type<double, 3>;
+    std::vector<PHARE::core::tuple_fixed_type<EB, 2>> particle_EBs(parts);
+
     while (state.KeepRunning())
     {
         pusher.move(
             /*ParticleRange const&*/ rangeIn, /*ParticleRange&*/ rangeOut,
             /*Electromag const&*/ emFields, /*double mass*/ 1, /*Interpolator&*/ interpolator,
             /*ParticleSelector const&*/ [](auto const& /*part*/) { return true; },
-            /*GridLayout const&*/ layout);
+            /*GridLayout const&*/ layout, particle_EBs);
     }
 }
 BENCHMARK_TEMPLATE(push, /*dim=*/1, /*interp=*/1)->Unit(benchmark::kMicrosecond);

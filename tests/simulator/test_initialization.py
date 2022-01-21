@@ -172,6 +172,7 @@ class InitializationTest(SimulatorTest):
 
         Simulator(global_vars.sim).initialize().reset()
 
+
         eb_hier = None
         if qty in ["e", "eb"]:
             eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_E.h5", hier=eb_hier)
@@ -215,6 +216,7 @@ class InitializationTest(SimulatorTest):
         print("test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(dim, interp_order))
         hier = self.getHierarchy(interp_order, refinement_boxes=None, qty="b", ndim=dim,
                                   diag_outputs=f"test_b/{dim}/{interp_order}/{self.ddt_test_id()}", **kwargs)
+        if cpp.mpi_rank() > 0: return
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -270,6 +272,7 @@ class InitializationTest(SimulatorTest):
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 19)}},
                                  "moments", nbr_part_per_cell=100, beam=True, ndim=dim,  # ppc needs to be 10000?
                                   diag_outputs=f"test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}")
+        if cpp.mpi_rank() > 0: return
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -371,6 +374,7 @@ class InitializationTest(SimulatorTest):
         hier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}},
                                  qty="moments", nbr_part_per_cell=nbParts[dim], beam=True, ndim=dim,
                                  diag_outputs=f"test_density/{dim}/{interp_order}/{self.ddt_test_id()}")
+        if cpp.mpi_rank() > 0: return
 
         from pyphare.pharein import global_vars
         model = global_vars.sim.model
@@ -447,32 +451,35 @@ class InitializationTest(SimulatorTest):
                                      cells=960,
                                      dl=0.0125)
 
-            from pyphare.pharein import global_vars
-            model   = global_vars.sim.model
-            protons = model.model_dict["protons"]
-            density_fn = protons["density"]
+            if cpp.mpi_rank() == 0:
 
-            patch       =  hier.level(0).patches[0]
-            ion_density = patch.patch_datas["rho"].dataset[:]
-            x           = patch.patch_datas["rho"].x
+                from pyphare.pharein import global_vars
+                model   = global_vars.sim.model
+                protons = model.model_dict["protons"]
+                density_fn = protons["density"]
 
-            layout = patch.patch_datas["rho"].layout
-            centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
-            nbrGhosts = layout.nbrGhosts(interp_order, centering)
+                patch       =  hier.level(0).patches[0]
+                ion_density = patch.patch_datas["rho"].dataset[:]
+                x           = patch.patch_datas["rho"].x
 
-            expected = density_fn(x[nbrGhosts:-nbrGhosts])
-            actual  = ion_density[nbrGhosts:-nbrGhosts]
-            noise[inbr] = np.std(expected-actual)
-            print("noise is {} for {} particles per cell".format(noise[inbr], nbrpart))
+                layout = patch.patch_datas["rho"].layout
+                centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
+                nbrGhosts = layout.nbrGhosts(interp_order, centering)
 
-            plt.figure()
-            plt.plot(x[nbrGhosts:-nbrGhosts], actual, label="actual")
-            plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
-            plt.legend()
-            plt.title(r"$\sigma =$ {}".format(noise[inbr]))
-            plt.savefig("noise_{}_interp_{}_{}.png".format(nbrpart, dim, interp_order))
-            plt.close("all")
+                expected = density_fn(x[nbrGhosts:-nbrGhosts])
+                actual  = ion_density[nbrGhosts:-nbrGhosts]
+                noise[inbr] = np.std(expected-actual)
+                print("noise is {} for {} particles per cell".format(noise[inbr], nbrpart))
 
+                plt.figure()
+                plt.plot(x[nbrGhosts:-nbrGhosts], actual, label="actual")
+                plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
+                plt.legend()
+                plt.title(r"$\sigma =$ {}".format(noise[inbr]))
+                plt.savefig("noise_{}_interp_{}_{}.png".format(nbrpart, dim, interp_order))
+                plt.close("all")
+
+        if cpp.mpi_rank() > 0: return
 
 
         plt.figure()
@@ -501,6 +508,7 @@ class InitializationTest(SimulatorTest):
         ddt_test_id = self.ddt_test_id()
         datahier = self.getHierarchy(interp_order, {"L0": {"B0": nDBox(dim, 10, 20)}}, "particles", ndim=dim,
                       diag_outputs=f"ppc/{dim}/{interp_order}/{ddt_test_id}")
+        if cpp.mpi_rank() > 0: return
 
         for patch in datahier.level(0).patches:
             pd = patch.patch_datas["protons_particles"]
@@ -534,6 +542,8 @@ class InitializationTest(SimulatorTest):
         ddt_test_id = self.ddt_test_id()
         datahier = self.getHierarchy(interp_order, refinement_boxes, "particles", ndim=ndim,
            diag_outputs=f"coarser_split/{ndim}/{interp_order}/{ddt_test_id}", cells=30, **kwargs)
+
+        if cpp.mpi_rank() > 0: return
 
         from pyphare.pharein.global_vars import sim
         assert sim is not None and len(sim.cells) == ndim
@@ -576,6 +586,7 @@ class InitializationTest(SimulatorTest):
         local_out = f"{out}/dim{dim}_interp{kwargs['interp_order']}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
         kwargs["diag_outputs"] = local_out
         datahier = self.getHierarchy(refinement_boxes=refinement_boxes, qty="particles_patch_ghost", ndim=dim, **kwargs)
+        if cpp.mpi_rank() > 0: return
 
         self.assertTrue(any([diagInfo.quantity.endswith("patchGhost") for diagInfo in ph.global_vars.sim.diagnostics]))
         self.assertTrue((1 in datahier.levels()) == has_patch_ghost)

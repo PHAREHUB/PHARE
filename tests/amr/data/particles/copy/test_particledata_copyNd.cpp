@@ -14,10 +14,13 @@ using namespace PHARE::core;
 using namespace PHARE::amr;
 
 
-template<typename dimType>
-struct AParticlesDataND : public testing::Test
+
+
+template<std::size_t dim_, bool SOA = false>
+struct AParticlesData
 {
-    static constexpr auto dim = dimType{}();
+    static constexpr auto dim = dim_;
+    using ParticleArray_t     = ParticleArray<dim, SOA>;
 
     SAMRAI::tbox::Dimension dimension{dim};
     SAMRAI::hier::BlockId blockId{0};
@@ -37,52 +40,59 @@ struct AParticlesDataND : public testing::Test
 
     SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
 
-    ParticlesData<ParticleArray<dim>> destData{destDomain, ghost};
-    ParticlesData<ParticleArray<dim>> sourceData{sourceDomain, ghost};
+    ParticlesData<ParticleArray_t> destData{destDomain, ghost};
+    ParticlesData<ParticleArray_t> sourceData{sourceDomain, ghost};
     Particle<dim> particle;
 
 
-    AParticlesDataND()
+    AParticlesData()
     {
-        particle.weight = 1.0;
-        particle.charge = 1.0;
-        particle.v      = {1.0, 1.0, 1.0};
+        particle.weight_ = 1.0;
+        particle.charge_ = 1.0;
+        particle.v_      = {1.0, 1.0, 1.0};
     }
 };
 
-
-
-using WithAllDim = testing::Types<DimConst<1>, DimConst<2>, DimConst<3>>;
-
-TYPED_TEST_SUITE(AParticlesDataND, WithAllDim);
-
-
-
-TYPED_TEST(AParticlesDataND, copiesSourceGhostParticleIntoDomainForGhostSrcOverDomainDest)
+template<typename ParticlesData>
+struct CopyTest : public ::testing::Test, public ParticlesData
 {
-    static constexpr auto dim = TypeParam{}();
-
-    // particle is in the first ghost of the source patchdata
-    // and in domain of the destination patchdata
-
-    this->particle.iCell = ConstArray<int, dim>(2);
-
-    this->sourceData.patchGhostParticles.push_back(this->particle);
-    this->destData.copy(this->sourceData);
-
-    ASSERT_THAT(this->destData.domainParticles.size(), Eq(1));
-    ASSERT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-}
+};
 
 
-TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoGhostForDomainSrcOverGhostDest)
+using ParticlesDatas
+    = testing::Types<AParticlesData<1>, AParticlesData<2>, AParticlesData<3>,
+                     AParticlesData<1, true>, AParticlesData<2, true>, AParticlesData<3, true>>;
+
+
+TYPED_TEST_SUITE(CopyTest, ParticlesDatas);
+
+
+
+// TYPED_TEST(CopyTest, copiesSourceGhostParticleIntoDomainForGhostSrcOverDomainDest)
+//{
+//    static constexpr auto dim = TypeParam::dim;
+//
+//    // particle is in the first ghost of the source patchdata
+//    // and in domain of the destination patchdata
+//
+//    this->particle.iCell_ = ConstArray<int, dim>(2);
+//
+//    this->sourceData.patchGhostParticles.push_back(this->particle);
+//    this->destData.copy(this->sourceData);
+//
+//    ASSERT_THAT(this->destData.domainParticles.size(), Eq(1));
+//    ASSERT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
+//}
+
+
+TYPED_TEST(CopyTest, copiesSourceDomainParticleIntoGhostForDomainSrcOverGhostDest)
 {
-    static constexpr auto dim = TypeParam{}();
+    static constexpr auto dim = TypeParam::dim;
 
     // particle is in the domain of the source patchdata
     // and in first ghost of the destination patchdata
 
-    this->particle.iCell = ConstArray<int, dim>(6);
+    this->particle.iCell_ = ConstArray<int, dim>(6);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
@@ -92,15 +102,15 @@ TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoGhostForDomainSrcOver
 }
 
 
-TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoDomainDestForDomainOverlapCells)
+TYPED_TEST(CopyTest, copiesSourceDomainParticleIntoDomainDestForDomainOverlapCells)
 {
-    static constexpr auto dim = TypeParam{}();
+    static constexpr auto dim = TypeParam::dim;
 
     // this set of particles is in the domain of the source patchdata
     // and in domain of the destination patchdata
     for (auto iCell = 3; iCell <= 5; ++iCell)
     {
-        this->particle.iCell = ConstArray<int, dim>(iCell);
+        this->particle.iCell_ = ConstArray<int, dim>(iCell);
 
         this->sourceData.domainParticles.push_back(this->particle);
         this->destData.copy(this->sourceData);
@@ -116,57 +126,45 @@ TYPED_TEST(AParticlesDataND, copiesSourceDomainParticleIntoDomainDestForDomainOv
 }
 
 
-TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
+TYPED_TEST(CopyTest, PreservesAllParticleAttributesAfterCopy)
 {
-    static constexpr auto dim = TypeParam{}();
+    static constexpr auto dim = TypeParam::dim;
 
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
 
-    this->particle.iCell = ConstArray<int, dim>(3);
-
+    this->particle.iCell_ = ConstArray<int, dim>(3);
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
-    EXPECT_THAT(this->destData.domainParticles[0].v, Pointwise(DoubleEq(), this->particle.v));
-    EXPECT_THAT(this->destData.domainParticles[0].iCell, Eq(this->particle.iCell));
-    EXPECT_THAT(this->destData.domainParticles[0].delta,
-                Pointwise(DoubleEq(), this->particle.delta));
-    EXPECT_THAT(this->destData.domainParticles[0].weight, DoubleEq(this->particle.weight));
-    EXPECT_THAT(this->destData.domainParticles[0].charge, DoubleEq(this->particle.charge));
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Ex, this->particle.Ex);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Ey, this->particle.Ey);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Ez, this->particle.Ez);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Bx, this->particle.Bx);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].By, this->particle.By);
-    EXPECT_DOUBLE_EQ(this->destData.domainParticles[0].Bz, this->particle.Bz);
+    auto& destDomainParticles = this->destData.domainParticles;
+    EXPECT_THAT(destDomainParticles.iCell(0), Eq(this->particle.iCell()));
+    EXPECT_THAT(destDomainParticles.delta(0), Pointwise(DoubleEq(), this->particle.delta()));
+
+    EXPECT_THAT(destDomainParticles.v(0), Pointwise(DoubleEq(), this->particle.v()));
+    EXPECT_THAT(destDomainParticles.weight(0), DoubleEq(this->particle.weight()));
+    EXPECT_THAT(destDomainParticles.charge(0), DoubleEq(this->particle.charge()));
 
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
 
-    this->particle.iCell = ConstArray<int, dim>(6);
-
+    this->particle.iCell_ = ConstArray<int, dim>(6);
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
-    EXPECT_THAT(this->destData.patchGhostParticles[0].v, Pointwise(DoubleEq(), this->particle.v));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].iCell, Eq(this->particle.iCell));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].delta,
-                Pointwise(DoubleEq(), this->particle.delta));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].weight, DoubleEq(this->particle.weight));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].charge, DoubleEq(this->particle.charge));
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Ex, this->particle.Ex);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Ey, this->particle.Ey);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Ez, this->particle.Ez);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Bx, this->particle.Bx);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].By, this->particle.By);
-    EXPECT_DOUBLE_EQ(this->destData.patchGhostParticles[0].Bz, this->particle.Bz);
+    auto& destPatchGhostParticles = this->destData.patchGhostParticles;
+    EXPECT_THAT(destPatchGhostParticles.iCell(0), Eq(this->particle.iCell()));
+    EXPECT_THAT(destPatchGhostParticles.delta(0), Pointwise(DoubleEq(), this->particle.delta()));
+
+    EXPECT_THAT(destPatchGhostParticles.v(0), Pointwise(DoubleEq(), this->particle.v()));
+    EXPECT_THAT(destPatchGhostParticles.weight(0), DoubleEq(this->particle.weight()));
+    EXPECT_THAT(destPatchGhostParticles.charge(0), DoubleEq(this->particle.charge()));
 }
 
 
-TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
+TYPED_TEST(CopyTest, copiesDataWithOverlapNoTransform)
 {
-    static constexpr auto dim = TypeParam{}();
+    static constexpr auto dim = TypeParam::dim;
     auto dimension            = SAMRAI::tbox::Dimension{this->dim};
 
     // now, with an overlap as union of 2 boxes
@@ -191,32 +189,32 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // and in domain of the destination patchdata
     // and also in the overlap
 
-    this->particle.iCell = ConstArray<int, dim>(2);
-
-    this->sourceData.patchGhostParticles.push_back(this->particle);
-    EXPECT_THAT(this->sourceData.domainParticles.size(), Eq(0));
-    EXPECT_THAT(this->sourceData.patchGhostParticles.size(), Eq(1));
-
-    EXPECT_THAT(this->destData.domainParticles.size(), Eq(0));
-    this->destData.copy(this->sourceData, overlap);
-    EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
-
-    EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-
-    this->sourceData.domainParticles.clear();
-    this->sourceData.patchGhostParticles.clear();
-    this->destData.patchGhostParticles.clear();
-    this->destData.domainParticles.clear();
+    // this->particle.iCell_ = ConstArray<int, dim>(2);
+    //
+    //    this->sourceData.patchGhostParticles.push_back(this->particle);
+    //    EXPECT_THAT(this->sourceData.domainParticles.size(), Eq(0));
+    //    EXPECT_THAT(this->sourceData.patchGhostParticles.size(), Eq(1));
+    //
+    //    EXPECT_THAT(this->destData.domainParticles.size(), Eq(0));
+    //    this->destData.copy(this->sourceData, overlap);
+    //    EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
+    //
+    //    EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
+    //
+    //    this->sourceData.domainParticles.clear();
+    //    this->sourceData.patchGhostParticles.clear();
+    //    this->destData.patchGhostParticles.clear();
+    //    this->destData.domainParticles.clear();
 
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
     // and also in the overlap
 
-    this->particle.iCell = ConstArray<int, dim>(3);
+    this->particle.iCell_ = ConstArray<int, dim>(3);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
-    this->particle.iCell = {{6}};
+    this->particle.iCell_ = {{6}};
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
 
@@ -229,7 +227,7 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // and in last ghost of the destination patchdata
     // and also in the overlap
 
-    this->particle.iCell = ConstArray<int, dim>(6);
+    this->particle.iCell_ = ConstArray<int, dim>(6);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
@@ -245,7 +243,7 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
     // and in the domain of the destination patchdata
     // but not in the overlap... should not be copied in dest
 
-    this->particle.iCell = ConstArray<int, dim>(4);
+    this->particle.iCell_ = ConstArray<int, dim>(4);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
@@ -255,9 +253,9 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
 
 
 
-TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
+TYPED_TEST(CopyTest, copiesDataWithOverlapWithTransform)
 {
-    static constexpr auto dim = TypeParam{}();
+    static constexpr auto dim = TypeParam::dim;
     auto dimension            = SAMRAI::tbox::Dimension{dim};
 
     // using the same overlap as in previous test
@@ -277,30 +275,30 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // and in domain of the destination patchdata
     // and also in the overlap
 
-    this->particle.iCell = ConstArray<int, dim>(4);
-
-    this->sourceData.patchGhostParticles.push_back(this->particle);
-    this->destData.copy(this->sourceData, overlap);
-    EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
-    EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-    EXPECT_EQ(2, this->destData.domainParticles[0].iCell[0]);
-
-    this->sourceData.domainParticles.clear();
-    this->sourceData.patchGhostParticles.clear();
-    this->destData.patchGhostParticles.clear();
-    this->destData.domainParticles.clear();
+    //  this->particle.iCell_ = ConstArray<int, dim>(4);
+    //
+    //    this->sourceData.patchGhostParticles.push_back(this->particle);
+    //    this->destData.copy(this->sourceData, overlap);
+    //    EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
+    //    EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
+    //    EXPECT_EQ(2, this->destData.domainParticles[0].iCell[0]);
+    //
+    //    this->sourceData.domainParticles.clear();
+    //    this->sourceData.patchGhostParticles.clear();
+    //    this->destData.patchGhostParticles.clear();
+    //    this->destData.domainParticles.clear();
 
     // particle is in the domain of the source patchdata
     // and in domain of the destination patchdata
     // and also in the overlap
 
-    this->particle.iCell = ConstArray<int, dim>(7);
+    this->particle.iCell_ = ConstArray<int, dim>(7);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(1));
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(0));
-    EXPECT_EQ(5, this->destData.domainParticles[0].iCell[0]);
+    EXPECT_EQ(5, this->destData.domainParticles.iCell(0)[0]);
 
     this->sourceData.domainParticles.clear();
     this->sourceData.patchGhostParticles.clear();
@@ -311,13 +309,13 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // and in last ghost of the destination patchdata
     // and also in the overlap
 
-    this->particle.iCell = ConstArray<int, dim>(8);
+    this->particle.iCell_ = ConstArray<int, dim>(8);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);
     EXPECT_THAT(this->destData.patchGhostParticles.size(), Eq(1));
     EXPECT_THAT(this->destData.domainParticles.size(), Eq(0));
-    EXPECT_EQ(6, this->destData.patchGhostParticles[0].iCell[0]);
+    EXPECT_EQ(6, this->destData.patchGhostParticles.iCell(0)[0]);
 
     this->sourceData.domainParticles.clear();
     this->sourceData.patchGhostParticles.clear();
@@ -328,7 +326,7 @@ TYPED_TEST(AParticlesDataND, copiesDataWithOverlapWithTransform)
     // and in the domain of the destination patchdata
     // but not in the overlap... should not be copied in dest
 
-    this->particle.iCell = ConstArray<int, dim>(6);
+    this->particle.iCell_ = ConstArray<int, dim>(6);
 
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData, overlap);

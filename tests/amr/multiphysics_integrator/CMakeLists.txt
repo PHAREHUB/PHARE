@@ -27,6 +27,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
-
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py.in ${CMAKE_CURRENT_BINARY_DIR}/job.py @ONLY)

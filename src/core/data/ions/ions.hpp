@@ -25,6 +25,7 @@ namespace core
     class Ions
     {
     public:
+        using value_type          = IonPopulation;
         using field_type          = typename IonPopulation::field_type;
         using vecfield_type       = typename IonPopulation::vecfield_type;
         using particle_array_type = typename IonPopulation::particle_array_type;
@@ -225,6 +226,8 @@ namespace core
                 ss << core::to_str(pop);
             return ss.str();
         }
+
+        auto size() const { return nbrPopulations(); }
 
 
     private:

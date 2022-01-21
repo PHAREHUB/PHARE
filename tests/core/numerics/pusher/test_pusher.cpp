@@ -71,17 +71,22 @@ Trajectory readExpectedTrajectory()
 class Interpolator
 {
 public:
-    template<typename PartIterator, typename Electromag, typename GridLayout>
-    void operator()(PartIterator begin, PartIterator end, Electromag const&, GridLayout&)
+    template<typename Particles, typename Electromag, typename GridLayout, typename EBs>
+    inline void meshToParticle(Particles& particles, Electromag const& Em, GridLayout const& layout,
+                               EBs& ebs)
     {
-        for (auto currPart = begin; currPart != end; ++currPart)
+        for (auto& eb : ebs)
         {
-            currPart->Ex = 0.01;
-            currPart->Ey = -0.05;
-            currPart->Ez = 0.05;
-            currPart->Bx = 1.;
-            currPart->By = 1.;
-            currPart->Bz = 1.;
+            auto& [E, B]       = eb;
+            auto& [Ex, Ey, Ez] = E;
+            auto& [Bx, By, Bz] = B;
+
+            Ex = 0.01;
+            Ey = -0.05;
+            Ez = 0.05;
+            Bx = 1.;
+            By = 1.;
+            Bz = 1.;
         }
     }
 };
@@ -99,7 +104,7 @@ class DummySelector
 {
 public:
     template<typename Particle>
-    bool operator()(Particle) const
+    bool operator()(Particle const&) const
     {
         return true;
     }
@@ -123,7 +128,8 @@ public:
                                 Interpolator, BoundaryCondition<dim, 1>, DummyLayout<dim>>;
 
     APusher()
-        : expectedTrajectory{readExpectedTrajectory()}
+        : particle_EBs{}
+        , expectedTrajectory{readExpectedTrajectory()}
         , particlesIn(1)
         , particlesOut(1)
         , pusher{std::make_unique<Pusher_>()}
@@ -132,16 +138,23 @@ public:
         , tstart{0}
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
+
     {
-        particlesIn[0].charge = 1;
-        particlesIn[0].v      = {{0, 10., 0}};
-        particlesIn[0].iCell.fill(5);
-        particlesIn[0].delta.fill(0.0);
+        auto first     = std::begin(particlesIn);
+        first->charge_ = 1;
+        first->v_      = {{0, 10., 0}};
+        first->iCell_.fill(5);
+        first->delta_.fill(0.0);
         dxyz.fill(0.05);
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
         pusher->setMeshAndTimeStep(dxyz, dt);
+        particle_EBs.resize(100);
     }
+
+
+    using EB = tuple_fixed_type<double, 3>;
+    std::vector<tuple_fixed_type<EB, 2>> particle_EBs;
 
 protected:
     Trajectory expectedTrajectory;
@@ -169,20 +182,20 @@ using APusher3D = APusher<3>;
 
 TEST_F(APusher3D, trajectoryIsOk)
 {
-    auto rangeIn  = makeRange(std::begin(particlesIn), std::end(particlesIn));
-    auto rangeOut = makeRange(std::begin(particlesOut), std::end(particlesOut));
+    auto rangeIn  = makeRange(particlesIn);
+    auto rangeOut = makeRange(particlesOut);
     std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i]
-            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
-        actual[1][i]
-            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
-        actual[2][i]
-            = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dxyz[2]);
+        actual[0][i] = (particlesOut[0].iCell()[0] + particlesOut[0].delta()[0])
+                       * static_cast<float>(dxyz[0]);
+        actual[1][i] = (particlesOut[0].iCell()[1] + particlesOut[0].delta()[1])
+                       * static_cast<float>(dxyz[1]);
+        actual[2][i] = (particlesOut[0].iCell()[2] + particlesOut[0].delta()[2])
+                       * static_cast<float>(dxyz[2]);
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout, particle_EBs);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -203,12 +216,12 @@ TEST_F(APusher2D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i]
-            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
-        actual[1][i]
-            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
+        actual[0][i] = (particlesOut[0].iCell()[0] + particlesOut[0].delta()[0])
+                       * static_cast<float>(dxyz[0]);
+        actual[1][i] = (particlesOut[0].iCell()[1] + particlesOut[0].delta()[1])
+                       * static_cast<float>(dxyz[1]);
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout, particle_EBs);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -227,10 +240,10 @@ TEST_F(APusher1D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i]
-            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
+        actual[0][i] = (particlesOut[0].iCell()[0] + particlesOut[0].delta()[0])
+                       * static_cast<float>(dxyz[0]);
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout);
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, selector, layout, particle_EBs);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -248,7 +261,8 @@ class APusherWithLeavingParticles : public ::testing::Test
 {
 public:
     APusherWithLeavingParticles()
-        : particlesIn(1000)
+        : particle_EBs(10000)
+        , particlesIn(1000)
         , particlesOut1(1000)
         , particlesOut2(1000)
         , pusher{std::make_unique<
@@ -269,14 +283,17 @@ public:
 
         for (auto& part : particlesIn)
         {
-            part.charge = 1;
-            part.v      = {{5., 0., 0.}};
-            part.iCell  = {{dis(gen)}};
-            part.delta  = {{delta(gen)}};
+            part.charge_ = 1;
+            part.v_      = {{5., 0., 0.}};
+            part.iCell_  = {{dis(gen)}};
+            part.delta_  = {{delta(gen)}};
         }
         pusher->setMeshAndTimeStep({{dx}}, dt);
     }
 
+
+    using EB = tuple_fixed_type<double, 3>;
+    std::vector<tuple_fixed_type<EB, 2>> particle_EBs;
 
 protected:
     ParticleArray<1> particlesIn;
@@ -312,7 +329,8 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
     for (decltype(nt) i = 0; i < nt; ++i)
     {
         auto layout = DummyLayout<1>{};
-        newEnd      = pusher->move(rangeIn, rangeIn, em, mass, interpolator, selector, layout);
+        newEnd      = pusher->move(rangeIn, rangeIn, em, mass, interpolator, selector, layout,
+                              particle_EBs);
 
         if (newEnd != std::end(particlesIn))
         {
@@ -327,7 +345,8 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 }
 
 
-
+// removed boundary condition partitioner, fix that when BCs are implemented
+#if 0
 TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStayingParticles)
 {
     auto rangeIn   = makeRange(std::begin(particlesIn), std::end(particlesIn));
@@ -346,11 +365,11 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        auto layout = DummyLayout<1>{};
-        newEndWithBC
-            = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
-        newEndWithoutBC
-            = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector, layout);
+        auto layout     = DummyLayout<1>{};
+        newEndWithBC    = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc,
+                                    layout, particle_EBs);
+        newEndWithoutBC = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector, layout,
+                                       particle_EBs);
 
         if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
         {
@@ -364,7 +383,7 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
     auto d2 = std::distance(std::begin(particlesOut2), newEndWithoutBC);
     EXPECT_EQ(d1, d2);
 }
-
+#endif
 
 
 

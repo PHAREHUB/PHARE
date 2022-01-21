@@ -21,4 +21,3 @@ add_dependencies(${PROJECT_NAME} cpp_etc)
 
 add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
-

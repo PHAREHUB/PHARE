@@ -12,7 +12,7 @@
 namespace PHARE::pydata
 {
 template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
-class PatchLevel
+class __attribute__((visibility("hidden"))) PatchLevel
 {
 public:
     static constexpr std::size_t dimension     = dim;
@@ -255,13 +255,15 @@ public:
 
     auto getParticles(std::string userPopName)
     {
-        using Nested = std::vector<PatchData<core::ContiguousParticles<dimension>, dimension>>;
+        using Nested = std::vector<PatchData<core::ParticleArray<dimension, true>, dimension>>;
         using Inner  = std::unordered_map<std::string, Nested>;
 
         std::unordered_map<std::string, Inner> pop_particles;
 
         auto getParticleData = [&](Inner& inner, GridLayout& grid, std::string patchID,
                                    std::string key, auto& particles) {
+            using ParticleArray_t = std::decay_t<decltype(particles)>;
+
             if (particles.size() == 0)
                 return;
 
@@ -270,7 +272,10 @@ public:
 
             auto& patch_data = inner[key].emplace_back(particles.size());
             setPatchDataFromGrid(patch_data, grid, patchID);
-            core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
+            if constexpr (ParticleArray_t::is_contiguous)
+                patch_data.data = particles;
+            else
+                core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
         };
 
         auto& ions = model_.state.ions;

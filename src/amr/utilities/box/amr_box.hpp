@@ -14,8 +14,8 @@ auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId 
 {
     SAMRAI::tbox::Dimension dimension{dim};
     SAMRAI::hier::BlockId blockId{samrai_blockId};
-    return SAMRAI::hier::Box{SAMRAI::hier::Index{dimension, (*box.lower).data()},
-                             SAMRAI::hier::Index{dimension, (*box.upper).data()}, blockId};
+    return SAMRAI::hier::Box{SAMRAI::hier::Index{dimension, &box.lower[0]},
+                             SAMRAI::hier::Index{dimension, &box.upper[0]}, blockId};
 }
 
 template<typename Type, std::size_t dim>

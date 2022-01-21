@@ -97,7 +97,7 @@ struct HighFiveFile
     }
 
 
-    template<std::size_t dim = 1, typename Data>
+    template<typename Data>
     auto& write_data_set(std::string path, Data const& data)
     {
         file_.getDataSet(path).write(data);

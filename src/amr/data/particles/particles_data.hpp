@@ -10,13 +10,49 @@
 #include <SAMRAI/pdat/CellOverlap.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
-
+#include "core/logger.hpp"
 #include "core/data/ions/ion_population/particle_pack.hpp"
 #include "core/data/particles/particle.hpp"
+#include "core/data/particles/particles.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
-#include "core/logger.hpp"
+
+namespace PHARE::amr
+{
+template<std::size_t dim>
+inline bool isInBox(SAMRAI::hier::Box const& box, std::array<int, dim> const& iCell)
+{
+    auto const& lower = box.lower();
+    auto const& upper = box.upper();
+
+    if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
+    {
+        if constexpr (dim > 1)
+        {
+            if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
+            {
+                if constexpr (dim > 2)
+                {
+                    if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            return true;
+        }
+    }
+    return false;
+}
+} // namespace PHARE::amr
 
 namespace PHARE
 {
@@ -25,39 +61,7 @@ namespace amr
     template<typename Particle>
     inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
     {
-        constexpr auto dim = Particle::dimension;
-
-        auto const& iCell = particle.iCell;
-
-        auto const& lower = box.lower();
-        auto const& upper = box.upper();
-
-
-        if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
-        {
-            if constexpr (dim > 1)
-            {
-                if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
-                {
-                    if constexpr (dim > 2)
-                    {
-                        if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
-                        {
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-            }
-            else
-            {
-                return true;
-            }
-        }
-        return false;
+        return isInBox(box, particle.iCell_);
     }
 
 
@@ -89,9 +93,7 @@ namespace amr
     template<typename ParticleArray>
     class ParticlesData : public SAMRAI::hier::PatchData
     {
-        using Particle_t          = typename ParticleArray::Particle_t;
         static constexpr auto dim = ParticleArray::dimension;
-
 
     public:
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
@@ -241,7 +243,7 @@ namespace amr
         {
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            return countNumberParticlesIn_(pOverlap) * sizeof(Particle_t);
+            return countNumberParticlesIn_(pOverlap) * ParticleArray::size_of_particle();
         }
 
 
@@ -270,7 +272,7 @@ namespace amr
 
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            std::vector<Particle_t> specie;
+            ParticleArray specie;
 
             if (pOverlap.isOverlapEmpty())
             {
@@ -313,11 +315,22 @@ namespace amr
                 }
                 stream << specie.size();
                 stream.growBufferAsNeeded();
-                stream.pack(specie.data(), specie.size());
+                this->pack_(stream, specie);
             }
         }
 
 
+        void pack_(SAMRAI::tbox::MessageStream& stream, ParticleArray const& specie) const
+        {
+            if constexpr (ParticleArray::is_contiguous)
+                std::apply(
+                    [&](auto const&... container) {
+                        ((stream.pack(container.data(), specie.size())), ...);
+                    },
+                    specie.as_tuple());
+            else
+                stream.pack(specie.data(), specie.size());
+        }
 
 
         /**
@@ -344,8 +357,8 @@ namespace amr
                 // unpack particles into a particle array
                 std::size_t numberParticles = 0;
                 stream >> numberParticles;
-                std::vector<Particle_t> particleArray(numberParticles);
-                stream.unpack(particleArray.data(), numberParticles);
+                ParticleArray particleArray(numberParticles);
+                unpack_(stream, particleArray);
 
                 // ok now our goal is to put the particles we have just unpacked
                 // into the particleData and in the proper particleArray : interior or ghost
@@ -371,17 +384,17 @@ namespace amr
                         // interior array or ghost array
                         auto const intersect = getGhostBox() * overlapBox;
 
-                        for (auto const& particle : particleArray)
+                        for (std::size_t p_idx = 0; p_idx < particleArray.size(); ++p_idx)
                         {
-                            if (isInBox(intersect, particle))
+                            if (isInBox(intersect, particleArray.iCell(p_idx)))
                             {
-                                if (isInBox(myBox, particle))
+                                if (isInBox(myBox, particleArray.iCell(p_idx)))
                                 {
-                                    domainParticles.push_back(std::move(particle));
+                                    domainParticles.push_back(particleArray[p_idx]);
                                 }
                                 else
                                 {
-                                    patchGhostParticles.push_back(std::move(particle));
+                                    patchGhostParticles.push_back(particleArray[p_idx]);
                                 }
                             }
                         } // end species loop
@@ -390,6 +403,17 @@ namespace amr
             }             // end overlap not empty
         }
 
+        void unpack_(SAMRAI::tbox::MessageStream& stream, ParticleArray& specie) const
+        {
+            if constexpr (ParticleArray::is_contiguous)
+                std::apply(
+                    [&](auto&... container) {
+                        ((stream.unpack(container.data(), specie.size())), ...);
+                    },
+                    specie.as_tuple());
+            else
+                stream.unpack(specie.data(), specie.size());
+        }
 
 
         core::ParticlesPack<ParticleArray>* getPointer() { return &pack; }
@@ -419,12 +443,12 @@ namespace amr
 
 
 
-        void copy_([[maybe_unused]] SAMRAI::hier::Box const& sourceGhostBox,
-                   [[maybe_unused]] SAMRAI::hier::Box const& destinationGhostBox,
+        void copy_(SAMRAI::hier::Box const& /*sourceGhostBox*/,
+                   SAMRAI::hier::Box const& /*destinationGhostBox*/,
                    SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
         {
-            std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
-                &sourceData.domainParticles, &sourceData.patchGhostParticles};
+            std::array<ParticleArray const*, 2> particlesArrays{&sourceData.domainParticles,
+                                                                &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
 
@@ -435,17 +459,18 @@ namespace amr
             //      - if not, let's add it to my ghost particle array
             for (auto const& sourceParticlesArray : particlesArrays)
             {
-                for (auto const& particle : *sourceParticlesArray)
+                auto& particleArray = *sourceParticlesArray;
+                for (std::size_t p_idx = 0; p_idx < particleArray.size(); ++p_idx)
                 {
-                    if (isInBox(intersectionBox, particle))
+                    if (isInBox(intersectionBox, particleArray.iCell(p_idx)))
                     {
-                        if (isInBox(myDomainBox, particle))
+                        if (isInBox(myDomainBox, particleArray.iCell(p_idx)))
                         {
-                            domainParticles.push_back(particle);
+                            domainParticles.push_back(particleArray[p_idx]);
                         }
                         else
                         {
-                            patchGhostParticles.push_back(particle);
+                            patchGhostParticles.push_back(particleArray[p_idx]);
                         }
                     }
                 }
@@ -455,13 +480,13 @@ namespace amr
 
 
 
-        void copyWithTransform_([[maybe_unused]] SAMRAI::hier::Box const& sourceGhostBox,
+        void copyWithTransform_(SAMRAI::hier::Box const& /*sourceGhostBox*/,
                                 SAMRAI::hier::Box const& intersectionBox,
                                 SAMRAI::hier::Transformation const& transformation,
                                 ParticlesData const& sourceData)
         {
-            std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
-                &sourceData.domainParticles, &sourceData.patchGhostParticles};
+            std::array<ParticleArray const*, 2> particlesArrays{&sourceData.domainParticles,
+                                                                &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
 
@@ -469,32 +494,31 @@ namespace amr
 
             for (auto const& sourceParticlesArray : particlesArrays)
             {
-                for (auto const& particle : *sourceParticlesArray)
+                auto& particleArray = *sourceParticlesArray;
+                for (std::size_t p_idx = 0; p_idx < particleArray.size(); ++p_idx)
                 {
                     // the particle is only copied if it is in the intersectionBox
                     // but before its iCell must be shifted by the transformation offset
 
-                    auto newParticle{particle};
-                    for (auto iDir = 0u; iDir < newParticle.iCell.size(); ++iDir)
-                    {
-                        newParticle.iCell[iDir] += offset[iDir];
-                    }
+                    auto newParticleiCell{particleArray.iCell(p_idx)};
+                    for (auto iDir = 0u; iDir < newParticleiCell.size(); ++iDir)
+                        newParticleiCell[iDir] += offset[iDir];
 
-                    if (isInBox(intersectionBox, newParticle))
+                    if (isInBox(intersectionBox, newParticleiCell))
                     {
                         // now we now the particle is in the intersection
                         // we need to know whether it is in the domain part of that
                         // intersection. If it is not, then it must be in the ghost part
 
+                        auto add_update = [&](auto& array) {
+                            array.push_back(particleArray[p_idx]);
+                            array.iCell(array.size() - 1) = newParticleiCell;
+                        };
 
-                        if (isInBox(myDomainBox, newParticle))
-                        {
-                            domainParticles.push_back(newParticle);
-                        }
+                        if (isInBox(myDomainBox, newParticleiCell))
+                            add_update(domainParticles);
                         else
-                        {
-                            patchGhostParticles.push_back(newParticle);
-                        }
+                            add_update(patchGhostParticles);
                     }
                 }
             }
@@ -562,46 +586,45 @@ namespace amr
         {
             std::size_t numberParticles{0};
 
-            for (auto const& particle : domainParticles)
-            {
-                if (isInBox(box, particle))
-                {
+            for (std::size_t i = 0; i < domainParticles.size(); ++i)
+                if (isInBox(box, domainParticles.iCell(i)))
                     ++numberParticles;
-                }
-            }
+
             return numberParticles;
         }
 
 
 
 
-        void pack_(std::vector<Particle_t>& buffer, SAMRAI::hier::Box const& intersectionBox,
+        void pack_(ParticleArray& buffer, SAMRAI::hier::Box const& intersectionBox,
                    [[maybe_unused]] SAMRAI::hier::Box const& sourceBox,
                    SAMRAI::hier::Transformation const& transformation) const
         {
-            std::array<decltype(domainParticles) const*, 2> particlesArrays{&domainParticles,
-                                                                            &patchGhostParticles};
+            std::array<ParticleArray const*, 2> particlesArrays{&domainParticles,
+                                                                &patchGhostParticles};
 
             for (auto const& sourceParticlesArray : particlesArrays)
             {
-                for (auto const& particle : *sourceParticlesArray)
+                auto& particleArray = *sourceParticlesArray;
+                for (std::size_t p_idx = 0; p_idx < particleArray.size(); ++p_idx)
                 {
-                    auto shiftedParticle{particle};
+                    auto shiftediCell{particleArray.iCell(p_idx)};
                     auto offset = transformation.getOffset();
+
                     for (auto i = 0u; i < dim; ++i)
+                        shiftediCell[i] += offset[i];
+
+                    if (isInBox(intersectionBox, shiftediCell))
                     {
-                        shiftedParticle.iCell[i] += offset[i];
-                    }
-                    if (isInBox(intersectionBox, shiftedParticle))
-                    {
-                        buffer.push_back(shiftedParticle);
+                        buffer.push_back(particleArray[p_idx]);
+                        buffer.iCell(buffer.size() - 1) = shiftediCell;
                     }
                 }
             }
         }
     };
-} // namespace amr
 
+} // namespace amr
 } // namespace PHARE
 
 #endif

@@ -185,6 +185,13 @@ namespace core
     {
         using value_type = T;
 
+
+        template<typename... Args>
+        StackVar(Args&&... args)
+            : var(args...)
+        {
+        }
+
         T var;
     };
 
@@ -234,11 +241,136 @@ Multiplies product(Container const& container, Multiplies mul = 1)
     return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
 }
 
+template<typename Container, typename F>
+auto sum_from(Container const& container, F fn)
+{
+    using value_type  = typename Container::value_type;
+    using return_type = std::decay_t<std::result_of_t<F const&(value_type const&)>>;
+    return_type sum   = 0;
+    for (auto const& el : container)
+        sum += fn(el);
+    return sum;
+}
+
 template<typename Container, typename Return = typename Container::value_type>
 Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
+
+
+template<typename Type>
+auto& deref(Type& type)
+{
+    if constexpr (std::is_pointer_v<Type>)
+        return *type;
+    else
+        return type;
+}
+
+
+template<typename F>
+auto generate(F&& f, std::size_t from, std::size_t to)
+{
+    using value_type = std::decay_t<std::result_of_t<F&(std::size_t const&)>>;
+    std::vector<value_type> v;
+    std::size_t count = to - from;
+    if (count > 0)
+        v.reserve(count);
+    for (std::size_t i = from; i < to; ++i)
+        v.emplace_back(f(i));
+    return v;
+}
+
+template<typename F>
+auto generate(F&& f, std::size_t count)
+{
+    return generate(std::forward<F>(f), 0, count);
+}
+
+
+template<typename F, typename Container>
+auto generate(F&& f, Container& container)
+{
+    using T          = typename Container::value_type;
+    using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
+    std::vector<value_type> v1;
+    if (container.size() > 0)
+        v1.reserve(container.size());
+    for (auto& v : container)
+        v1.emplace_back(f(v));
+    return v1;
+}
+
+template<typename F, typename T>
+auto generate(F&& f, std::vector<T>&& v)
+{
+    return generate(std::forward<F>(f), v);
+}
+
+
+template<std::size_t Idx, typename F, typename Type, std::size_t Size>
+auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
+{
+    return f(arr[Idx]);
+}
+
+template<typename Type, std::size_t Size, typename F, std::size_t... Is>
+auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
+                               std::integer_sequence<std::size_t, Is...>)
+{
+    return std::array{generate_array__<Is>(f, arr)...};
+}
+
+template<typename F, typename Type, std::size_t Size>
+auto constexpr generate(F&& f, std::array<Type, Size>& arr)
+{
+    return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
+}
+
+void inline abort_if(bool b)
+{
+    if (b)
+        std::abort();
+}
+
+template<typename T = std::size_t>
+struct Apply
+{
+    template<size_t i>
+    constexpr auto operator()()
+    {
+        return std::integral_constant<T, i>{};
+    }
+};
+
+template<typename Apply, size_t... Is>
+constexpr auto apply_N(Apply& f, std::integer_sequence<size_t, Is...> const&)
+{
+    if constexpr (!std::is_same_v<decltype(f.template operator()<0>()), void>)
+        return std::make_tuple(f.template operator()<Is>()...);
+    (f.template operator()<Is>(), ...);
+}
+template<size_t N, typename Apply>
+constexpr auto apply_N(Apply&& f)
+{
+    return apply_N(f, std::make_integer_sequence<size_t, N>{});
+}
+
+template<size_t N, typename Fn>
+constexpr void for_N(Fn&& fn)
+{
+    /*
+        for_N<2>([](auto ic) {
+            constexpr auto i = ic();
+            // ...
+        });
+    */
+
+    std::apply([&](auto... ics) { (fn(ics), ...); }, apply_N<N>(Apply{}));
+}
+
+
 } // namespace PHARE::core
 
 

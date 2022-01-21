@@ -14,6 +14,7 @@
 #include "initializer/data_provider.hpp"
 #include "particle_pack.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/types.hpp"
 
 namespace PHARE
 {
@@ -77,7 +78,7 @@ namespace core
 
 
 
-        ParticleArray& domainParticles()
+        auto& domainParticles() const
         {
             if (isUsable())
             {
@@ -89,9 +90,15 @@ namespace core
             }
         }
 
+        auto& domainParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<IonPopulation const*>(this)->domainParticles());
+        }
 
 
-        ParticleArray& patchGhostParticles()
+
+        auto& patchGhostParticles() const
         {
             if (isUsable())
             {
@@ -103,9 +110,14 @@ namespace core
             }
         }
 
+        auto& patchGhostParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<IonPopulation const*>(this)->patchGhostParticles());
+        }
 
 
-        ParticleArray& levelGhostParticles()
+        auto& levelGhostParticles() const
         {
             if (isUsable())
             {
@@ -115,6 +127,12 @@ namespace core
             {
                 throw std::runtime_error("Error - cannot provide access to particle buffers");
             }
+        }
+
+        auto& levelGhostParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<IonPopulation const*>(this)->levelGhostParticles());
         }
 
 
@@ -264,5 +282,44 @@ namespace core
     };
 } // namespace core
 } // namespace PHARE
+
+namespace PHARE::core
+{
+template<typename ParticleArray, typename VecField, typename GridLayout_>
+struct IonPopulationView
+{
+    using This = IonPopulationView<ParticleArray, VecField, GridLayout_>;
+
+    using particle_array_type = ParticleArray;
+    using VecFieldView_t      = typename VecField::view_t;
+    using Field_t             = typename VecField::field_type;
+    using FieldView_t         = typename Field_t::view_t;
+
+    FieldView_t density;
+    VecFieldView_t flux;
+    ParticleArray* domain;
+    ParticleArray* patch_ghost;
+    ParticleArray* level_ghost;
+    double const mass;
+
+
+    auto& domainParticles() { return *domain; }
+
+
+    std::shared_ptr<This> static make_shared(
+        IonPopulation<ParticleArray, VecField, GridLayout_>& pop)
+    {
+        return std::make_shared<aggregate_adapter<This>>(
+            pop.density().view(), pop.flux().view(), &pop.domainParticles(),
+            &pop.patchGhostParticles(), &pop.levelGhostParticles(), pop.mass());
+    }
+
+    template<typename Ions>
+    auto static make_shared(Ions& ions)
+    {
+        return generate([&](auto& pop) { return make_shared(pop); }, ions);
+    }
+};
+} // namespace PHARE::core
 
 #endif

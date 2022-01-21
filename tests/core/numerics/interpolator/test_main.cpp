@@ -27,6 +27,32 @@
 using namespace PHARE::core;
 
 
+template<std::size_t dim, std::size_t interpOrder>
+struct TestablesBase
+{
+    static constexpr auto interp_order = interpOrder;
+    static constexpr auto dimension    = dim;
+
+    using Interpolator_t = Interpolator<dim, interp_order>;
+};
+
+template<std::size_t dim, std::size_t interpOrder>
+struct Testables : public TestablesBase<dim, interpOrder>
+{
+    using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interpOrder>;
+    using ParticleArray_t = typename PHARE_TYPES::ParticleAoS_t;
+};
+
+template<std::size_t dim, std::size_t interpOrder, std::size_t version_ = 0>
+struct Testables_SOA : public TestablesBase<dim, interpOrder>
+{
+    static constexpr auto version = version_;
+
+    using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interpOrder>;
+    using ParticleArray_t = typename PHARE_TYPES::ParticleSoA_t;
+};
+
+
 
 template<typename Weighter>
 class AWeighter : public ::testing::Test
@@ -212,20 +238,22 @@ TYPED_TEST(AWeighter, computesDualBSplineWeightsForAnyParticlePosition)
 }
 
 
-template<typename InterpolatorT>
+template<typename Testables>
 class A1DInterpolator : public ::testing::Test
 {
 public:
+    using InterpolatorT   = typename Testables::Interpolator_t;
+    using ParticleArray_t = typename Testables::ParticleArray_t;
+
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using PHARE_TYPES  = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayout_t = typename PHARE_TYPES::GridLayout_t;
+    using NdArray_t    = typename PHARE_TYPES::Array_t;
+    using VF           = VecField<NdArray_t, HybridQuantity>;
 
     Electromag<VF> em;
     ParticleArray_t particles;
@@ -268,10 +296,10 @@ public:
             ez1d_(ix) = ez0;
         }
 
-        for (auto& part : particles)
+        for (std::size_t i = 0; i < particles.size(); ++i)
         {
-            part.iCell[0] = 5;
-            part.delta[0] = 0.32f;
+            particles.iCell(i)[0] = 5;
+            particles.delta(i)[0] = 0.32f;
         }
     }
 };
@@ -280,7 +308,8 @@ public:
 
 
 using Interpolators1D
-    = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
+    = ::testing::Types<Testables<1, 1>, Testables<1, 2>, Testables<1, 3>, //
+                       Testables_SOA<1, 1>, Testables_SOA<1, 2>, Testables_SOA<1, 3>>;
 
 TYPED_TEST_SUITE(A1DInterpolator, Interpolators1D);
 
@@ -295,31 +324,23 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    using EB = tuple_fixed_type<double, 3>;
+    std::vector<tuple_fixed_type<EB, 2>> particle_EBs(this->particles.size());
+    this->interp.meshToParticle(this->particles, this->em, this->layout, particle_EBs);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ex - this->ex0) < 1e-8; }));
+    for (auto const& ebs : particle_EBs)
+    {
+        auto const& [E, B]       = ebs;
+        auto const& [Ex, Ey, Ez] = E;
+        auto const& [Bx, By, Bz] = B;
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ey - this->ey0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ez - this->ez0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bx - this->bx0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.By - this->by0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bz - this->bz0) < 1e-8; }));
+        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
+        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+    }
 
 
     this->em.E.setBuffer("EM_E_x", nullptr);
@@ -332,21 +353,23 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
-template<typename InterpolatorT>
+template<typename Testables>
 class A2DInterpolator : public ::testing::Test
 {
 public:
+    using InterpolatorT   = typename Testables::Interpolator_t;
+    using ParticleArray_t = typename Testables::ParticleArray_t;
+
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayoutImpl  = GridLayoutImplYee<dimension, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using PHARE_TYPES    = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayoutImpl = GridLayoutImplYee<dimension, interp_order>;
+    using NdArray_t      = typename PHARE_TYPES::Array_t;
+    using VF             = VecField<NdArray_t, HybridQuantity>;
 
     Electromag<VF> em;
     ParticleArray_t particles;
@@ -390,10 +413,10 @@ public:
             }
         }
 
-        for (auto& part : particles)
+        for (std::size_t i = 0; i < particles.size(); ++i)
         {
-            part.iCell[0] = 5;
-            part.delta[0] = 0.32f;
+            particles.iCell(i)[0] = 5;
+            particles.delta(i)[0] = 0.32f;
         }
     }
 };
@@ -402,7 +425,8 @@ public:
 
 
 using Interpolators2D
-    = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
+    = ::testing::Types<Testables<2, 1>, Testables<2, 2>, Testables<2, 3>, //
+                       Testables_SOA<2, 1>, Testables_SOA<2, 2>, Testables_SOA<2, 3>>;
 
 TYPED_TEST_SUITE(A2DInterpolator, Interpolators2D);
 
@@ -417,31 +441,23 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    using EB = tuple_fixed_type<double, 3>;
+    std::vector<tuple_fixed_type<EB, 2>> particle_EBs(this->particles.size());
+    this->interp.meshToParticle(this->particles, this->em, this->layout, particle_EBs);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ex - this->ex0) < 1e-8; }));
+    for (auto const& ebs : particle_EBs)
+    {
+        auto const& [E, B]       = ebs;
+        auto const& [Ex, Ey, Ez] = E;
+        auto const& [Bx, By, Bz] = B;
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ey - this->ey0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ez - this->ez0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bx - this->bx0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.By - this->by0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bz - this->bz0) < 1e-8; }));
+        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
+        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+    }
 
 
     this->em.E.setBuffer("EM_E_x", nullptr);
@@ -455,10 +471,13 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
-template<typename InterpolatorT>
+template<typename Testables>
 class A3DInterpolator : public ::testing::Test
 {
 public:
+    using InterpolatorT   = typename Testables::Interpolator_t;
+    using ParticleArray_t = typename Testables::ParticleArray_t;
+
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
     // arbitrary number of cells
@@ -466,11 +485,10 @@ public:
     static constexpr std::uint32_t ny = 50;
     static constexpr std::uint32_t nz = 50;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayoutImpl  = GridLayoutImplYee<dimension, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using PHARE_TYPES    = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayoutImpl = GridLayoutImplYee<dimension, interp_order>;
+    using NdArray_t      = typename PHARE_TYPES::Array_t;
+    using VF             = VecField<NdArray_t, HybridQuantity>;
 
     Electromag<VF> em;
     ParticleArray_t particles;
@@ -517,10 +535,10 @@ public:
             }
         }
 
-        for (auto& part : particles)
+        for (std::size_t i = 0; i < particles.size(); ++i)
         {
-            part.iCell[0] = 5;
-            part.delta[0] = 0.32f;
+            particles.iCell(i)[0] = 5;
+            particles.delta(i)[0] = 0.32f;
         }
     }
 };
@@ -529,7 +547,8 @@ public:
 
 
 using Interpolators3D
-    = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
+    = ::testing::Types<Testables<3, 1>, Testables<3, 2>, Testables<3, 3>, //
+                       Testables_SOA<3, 1>, Testables_SOA<3, 2>, Testables_SOA<3, 3>>;
 
 TYPED_TEST_SUITE(A3DInterpolator, Interpolators3D);
 
@@ -544,31 +563,23 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(std::begin(this->particles), std::end(this->particles), this->em, this->layout);
+    using EB = tuple_fixed_type<double, 3>;
+    std::vector<tuple_fixed_type<EB, 2>> particle_EBs(this->particles.size());
+    this->interp.meshToParticle(this->particles, this->em, this->layout, particle_EBs);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ex - this->ex0) < 1e-8; }));
+    for (auto const& ebs : particle_EBs)
+    {
+        auto const& [E, B]       = ebs;
+        auto const& [Ex, Ey, Ez] = E;
+        auto const& [Bx, By, Bz] = B;
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ey - this->ey0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ez - this->ez0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bx - this->bx0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.By - this->by0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bz - this->bz0) < 1e-8; }));
+        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
+        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+    }
 
 
     this->em.E.setBuffer("EM_E_x", nullptr);
@@ -588,17 +599,19 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
-template<typename Interpolator>
+template<typename Testables>
 class ACollectionOfParticles_1d : public ::testing::Test
 {
+    using Interpolator    = typename Testables::Interpolator_t;
+    using ParticleArray_t = typename Testables::ParticleArray_t;
+
     static constexpr auto dimension    = Interpolator::dimension;
     static constexpr auto interp_order = Interpolator::interp_order;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using Particle_t      = Particle<1>;
+    using PHARE_TYPES  = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using NdArray_t    = typename PHARE_TYPES::Array_t;
+    using GridLayout_t = typename PHARE_TYPES::GridLayout_t;
+    using Particle_t   = Particle<1>;
 
 public:
     static constexpr std::uint32_t nx        = 30;
@@ -633,106 +646,106 @@ public:
 
         if constexpr (Interpolator::interp_order == 1)
         {
-            part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 1.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 19; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 1.0;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 0.4;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 20; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 0.4;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 0.6;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 20; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 0.6;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
         }
 
         if constexpr (Interpolator::interp_order == 2)
         {
-            part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.0f;
-            part.weight   = 1.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 19; // AMR index
+            part.delta_[0] = 0.0f;
+            part.weight_   = 1.0;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.0f;
-            part.weight   = 0.2;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 20; // AMR index
+            part.delta_[0] = 0.0f;
+            part.weight_   = 0.2;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.0f;
-            part.weight   = 0.8;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 20; // AMR index
+            part.delta_[0] = 0.0f;
+            part.weight_   = 0.8;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.0f;
-            part.weight   = 1.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 21; // AMR index
+            part.delta_[0] = 0.0f;
+            part.weight_   = 1.0;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
         }
 
         if constexpr (Interpolator::interp_order == 3)
         {
-            part.iCell[0] = 18; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 1.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 18; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 1.0;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 1.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 19; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 1.0;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 1.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 20; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 1.0;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 0.1;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 21; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 0.1;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.5f;
-            part.weight   = 0.9;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell_[0] = 21; // AMR index
+            part.delta_[0] = 0.5f;
+            part.weight_   = 0.9;
+            part.v_[0]     = +2.;
+            part.v_[1]     = -1.;
+            part.v_[2]     = +1.;
             particles.push_back(part);
         }
 
@@ -759,25 +772,40 @@ TYPED_TEST_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d)
 }
 REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d);
 
-using MyTypes = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
+using MyTypes = ::testing::Types<Testables<1, 1>, Testables<1, 2>, Testables<1, 3>, //
+                                 Testables_SOA<1, 1>, Testables_SOA<1, 2>, Testables_SOA<1, 3>>;
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_1d, MyTypes);
 
 
-template<typename Interpolator>
+template<typename Testables>
 struct ACollectionOfParticles_2d : public ::testing::Test
 {
+    using Interpolator    = typename Testables::Interpolator_t;
+    using ParticleArray_t = typename Testables::ParticleArray_t;
+
     static constexpr auto interp_order = Interpolator::interp_order;
-    static constexpr std::size_t dim   = 2;
+    static constexpr std::size_t dim   = Testables::dimension;
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
+    using PHARE_TYPES  = PHARE::core::PHARE_Types<dim, interp_order>;
+    using NdArray_t    = typename PHARE_TYPES::Array_t;
+    using GridLayout_t = typename PHARE_TYPES::GridLayout_t;
+
+    static PHARE::core::Particle<dim> particle()
+    {
+        return {
+            /*.weight = */ 1,
+            /*.charge = */ 1,
+            /*.iCell  = */ ConstArray<int, dim>(),
+            /*.delta  = */ ConstArray<double, dim>(.5),
+            /*.v      = */ {{2, -1, 1}},
+        };
+    }
 
     ACollectionOfParticles_2d()
-        : rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        : particles{end * end, particle()}
+        , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
         , vx{"v_x", HybridQuantity::Scalar::Vx, nx, ny}
         , vy{"v_y", HybridQuantity::Scalar::Vy, nx, ny}
         , vz{"v_z", HybridQuantity::Scalar::Vz, nx, ny}
@@ -789,17 +817,12 @@ struct ACollectionOfParticles_2d : public ::testing::Test
 
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)
-            {
-                auto& part  = particles.emplace_back();
-                part.iCell  = {i, j};
-                part.delta  = ConstArray<double, dim>(.5);
-                part.weight = 1.;
-                part.v[0]   = +2.;
-                part.v[1]   = -1.;
-                part.v[2]   = +1.;
-            }
+                particles.iCell((i * end) + j) = {i, j};
 
-        interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+        if constexpr (!ParticleArray_t::is_contiguous)
+            interpolator(std::begin(particles), std::end(particles), rho, v, layout);
+        else
+            interpolator.template particleToMesh<Testables::version>(particles, rho, v, layout);
     }
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
@@ -825,7 +848,12 @@ TYPED_TEST_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d)
 REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d);
 
 
-using My2dTypes = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
+using My2dTypes = ::testing::Types<                                         //
+    Testables<2, 1>, Testables<2, 2>, Testables<2, 3>,                      //
+    Testables_SOA<2, 1>, Testables_SOA<2, 2>, Testables_SOA<2, 3>,          //
+    Testables_SOA<2, 1, 1>, Testables_SOA<2, 2, 1>, Testables_SOA<2, 3, 1>, //
+    Testables_SOA<2, 1, 2>, Testables_SOA<2, 2, 2>, Testables_SOA<2, 3, 2>>;
+
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_2d, My2dTypes);
 
 

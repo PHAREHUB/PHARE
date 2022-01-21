@@ -25,6 +25,8 @@ std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
 std::size_t max(std::size_t const local, int mpi_size = 0);
 
+void barrier();
+
 bool any(bool);
 
 int size();

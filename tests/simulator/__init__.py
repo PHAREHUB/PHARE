@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
+from pyphare.core.phare_utilities import np_array_ify
 
 
 def parse_cli_args(pop_from_sys = True):
@@ -25,28 +26,26 @@ class NoOverwriteDict(dict):
             return super(NoOverwriteDict, self).__setitem__(k, v)
 
 
-def basicSimulatorArgs(dim: int, interp: int, **kwargs):
+def basicSimulatorArgs(ndim: int, interp: int, **kwargs):
     from pyphare.pharein.simulation import valid_refined_particle_nbr
     from pyphare.pharein.simulation import check_patch_size
 
-    cells = kwargs.get("cells", [20 for i in range(dim)])
-    if not isinstance(cells, (list, tuple)):
-        cells = [cells] * dim
+    cells = np_array_ify(kwargs.get("cells", 20), ndim)
 
-    _, smallest_patch_size = check_patch_size(dim, interp_order=interp, cells=cells)
+    _, smallest_patch_size = check_patch_size(ndim, interp_order=interp, cells=cells)
     dl = [1.0 / v for v in cells]
-    b0 = [[3] * dim, [8] * dim]
+    b0 = [[3] * ndim, [8] * ndim]
     args = {
         "interp_order": interp,
         "smallest_patch_size": smallest_patch_size,
-        "largest_patch_size": [20] * dim,
+        "largest_patch_size": [20] * ndim,
         "time_step_nbr": 1000,
         "final_time": 1.0,
-        "boundary_types": ["periodic"] * dim,
+        "boundary_types": ["periodic"] * ndim,
         "cells": cells,
         "dl": dl,
         "refinement_boxes": {"L0": {"B0": b0}},
-        "refined_particle_nbr": valid_refined_particle_nbr[dim][interp][0],
+        "refined_particle_nbr": valid_refined_particle_nbr[ndim][interp][0],
         "diag_options": {},
         "nesting_buffer": 0,
         "strict": True,

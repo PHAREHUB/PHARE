@@ -1,6 +1,8 @@
 
-#include "benchmark/benchmark.hpp"
+#ifndef PHARE_DIAG_DOUBLES
 #define PHARE_DIAG_DOUBLES 0
+#endif
+
 #include "diagnostic/detail/h5writer.hpp"
 #include "diagnostic/detail/h5_utils.hpp"
 #include "diagnostic/diagnostic_manager.hpp"
@@ -11,16 +13,18 @@
 
 #include "phare/phare.hpp"
 
+#include "benchmark/benchmark.h"
+
 constexpr std::size_t dim = 1;
 
 namespace PHARE::diagnostic
 {
 void do_bench(benchmark::State& state)
 {
-    using HiFile              = HighFive::File;
-    using Packer              = core::ParticlePacker<dim>;
-    using ContiguousParticles = core::ContiguousParticles<dim>;
-    using ParticleArray       = core::ParticleArray<dim>;
+    using HiFile            = HighFive::File;
+    using Packer            = core::ParticlePacker<dim>;
+    using ParticleArray_SOA = core::ParticleArray_SOA<dim>;
+    using ParticleArray     = core::ParticleArray<dim>;
 
     auto getSize = [](auto const& value) -> std::size_t {
         using ValueType = std::decay_t<decltype(value)>;
@@ -56,7 +60,7 @@ void do_bench(benchmark::State& state)
         auto d = hi5.file_.createDataSet<float>("/No", 1);
         std::vector<decltype(d)> datasets;
 
-        ContiguousParticles particles{100000};
+        ParticleArray_SOA particles{100000};
         ParticleArray particleArray(100000);
         Packer{particleArray}.pack(particles);
 

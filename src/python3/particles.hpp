@@ -4,17 +4,19 @@
 #include <cassert>
 #include <cstddef>
 #include <tuple>
+
 #include "amr/data/particles/refine/particles_data_split.hpp"
 #include "core/data/particles/particle_packer.hpp"
 #include "core/data/particles/particle.hpp"
+#include "core/data/particles/particles.hpp"
 #include "core/utilities/types.hpp"
 
 #include "python3/pybind_def.hpp"
 
 namespace PHARE::pydata
 {
-template<std::size_t dim, typename PyArrayTuple>
-core::ContiguousParticlesView<dim> contiguousViewFrom(PyArrayTuple const& py_particles)
+template<std::size_t dim, bool _const_ = false, typename PyArrayTuple>
+core::ParticleArray_SOAView<dim, _const_> contiguousViewFrom(PyArrayTuple& py_particles)
 {
     return {makeSpan<int>(std::get<0>(py_particles)),     // iCell
             makeSpan<double>(std::get<1>(py_particles)),  // delta
@@ -62,20 +64,22 @@ template<typename Splitter>
 pyarray_particles_t splitPyArrayParticles(pyarray_particles_crt const& py_particles)
 {
     constexpr auto dim           = Splitter::dimension;
-    constexpr auto interp_order  = Splitter::interp_order;
     constexpr auto nbRefinedPart = Splitter::nbRefinedPart;
 
     PHARE_DEBUG_DO(assertParticlePyArraySizes<dim>(py_particles));
 
-    auto particlesInView  = contiguousViewFrom<dim>(py_particles);
+    auto particlesInView  = contiguousViewFrom<dim, true>(py_particles);
     auto particlesOut     = makePyArrayTuple<dim>(particlesInView.size() * nbRefinedPart);
     auto particlesOutView = contiguousViewFrom<dim>(particlesOut);
 
     Splitter splitter;
 
+    // for (auto it = particlesInView.begin(); it != particlesInView.end(); ++it)
     for (std::size_t i = 0; i < particlesInView.size(); i++)
-        splitter(amr::toFineGrid<interp_order>(std::copy(particlesInView[i])), particlesOutView,
-                 i * nbRefinedPart);
+    {
+        auto it = particlesInView.begin() + i;
+        splitter(amr::toFineGrid(it), it, particlesOutView, i * nbRefinedPart);
+    }
 
     return particlesOut;
 }
