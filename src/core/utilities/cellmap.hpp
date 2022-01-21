@@ -415,7 +415,7 @@ inline std::size_t CellMap<dim, bucket_size, cell_index_t, key_t>::partition(
             }
         }
     }
-    return lastIndex;
+    return lastIndex + 1;
 }
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>

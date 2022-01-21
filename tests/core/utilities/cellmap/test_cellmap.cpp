@@ -392,13 +392,13 @@ TEST(CellMap, cellPartition)
 
     std::size_t pivot = cm.partition(particles, cellSelector);
 
-    EXPECT_EQ(particles.size() - pivot - 1, leavingIndexes.size());
+    EXPECT_EQ(particles.size() - pivot, leavingIndexes.size());
 
-    for (std::size_t idx = 0; idx <= pivot; ++idx)
+    for (std::size_t idx = 0; idx < pivot; ++idx)
     {
         EXPECT_TRUE(isIn(Point{particles[idx].iCell}, patchbox));
     }
-    for (std::size_t idx = pivot + 1; idx < particles.size(); ++idx)
+    for (std::size_t idx = pivot; idx < particles.size(); ++idx)
     {
         EXPECT_FALSE(isIn(Point{particles[idx].iCell}, patchbox));
     }
