@@ -39,9 +39,6 @@ if(PHARE_WITH_CCACHE)
 endif()
 ####
 
-include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
-include("${PHARE_PROJECT_DIR}/res/cmake/bench.cmake")
-
 #*******************************************************************************
 # PHARE source code
 add_subdirectory(src/core)
@@ -53,5 +50,7 @@ add_subdirectory(src/python3)
 add_subdirectory(src/phare)
 #*******************************************************************************
 
+include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/bench.cmake")
 
 print_phare_options()
