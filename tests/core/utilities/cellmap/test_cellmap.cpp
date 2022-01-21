@@ -341,6 +341,69 @@ auto make_random_particles_in(Box<int, dim> const& box, std::size_t nppc)
     return particles;
 }
 
+
+TEST(CellMap, canReserveMemory)
+{
+    auto constexpr dim         = 3u;
+    auto constexpr bucket_size = 100;
+    using cellmap_t            = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    Box<int, 3> patchbox{{10, 20, 30}, {25, 42, 54}};
+    cellmap_t cm;
+    cm.reserve(patchbox);
+    EXPECT_EQ(cm.nbr_cells(), patchbox.size());
+}
+
+
+
+TEST(CellMap, cellPartition)
+{
+    auto constexpr dim         = 3u;
+    auto constexpr bucket_size = 100;
+    using cellmap_t            = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    Box<int, 3> patchbox{{10, 20, 30}, {25, 42, 54}};
+    cellmap_t cm;
+    auto nppc         = 100u;
+    auto particles    = make_random_particles_in(patchbox, nppc);
+    auto originalSize = particles.size();
+    cm.add(particles);
+    EXPECT_EQ(cm.size(), particles.size());
+
+
+    // now make some particles leaving the box
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> randPartIdxDist{0, static_cast<int>(particles.size()) - 1};
+
+    std::vector<int> leavingIndexes(25);
+    std::generate(std::begin(leavingIndexes), std::end(leavingIndexes),
+                  [&]() { return randPartIdxDist(gen); });
+
+
+    // make those leaving particle leave
+    auto cpt = 0;
+    for (auto particleIdx : leavingIndexes)
+    {
+        auto oldCell                    = particles[particleIdx].iCell;
+        particles[particleIdx].iCell[0] = 100; // outside the patchBox
+        cm.update(particles, particleIdx, oldCell);
+    }
+
+    auto cellSelector = [&](auto const& cell) { return !isIn(cell, patchbox); };
+
+    std::size_t pivot = cm.partition(particles, cellSelector);
+
+    EXPECT_EQ(particles.size() - pivot - 1, leavingIndexes.size());
+
+    for (std::size_t idx = 0; idx <= pivot; ++idx)
+    {
+        EXPECT_TRUE(isIn(Point{particles[idx].iCell}, patchbox));
+    }
+    for (std::size_t idx = pivot + 1; idx < particles.size(); ++idx)
+    {
+        EXPECT_FALSE(isIn(Point{particles[idx].iCell}, patchbox));
+    }
+}
+
 TEST(CellMap, removeOutOfBoxParticles)
 {
     auto constexpr dim         = 3u;

@@ -68,6 +68,8 @@ public:
              CellExtractor extract = default_extractor);
 
 
+    template<typename Cells>
+    void reserve(Cells const& cells);
 
     // number of indexes stored in that cell of the cellmap
     std::size_t size(cell_t cell) { return bucketsLists_[cell].size(); }
@@ -128,6 +130,12 @@ public:
     // new cell is obtained from the item
     template<typename Array, typename CellIndex>
     void update(Array const& items, std::size_t itemIndex, CellIndex const& oldCell);
+
+
+    template<typename Array, typename CellSelector, typename CellExtractor = DefaultExtractor>
+    std::size_t partition(Array& arr, CellSelector const& selector,
+                          CellExtractor = default_extractor);
+
 
 
     template<typename Array, typename CellIndex, typename CellExtractor = DefaultExtractor>
@@ -226,6 +234,16 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(Array const& i
     }
 }
 
+
+template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
+template<typename Cells>
+inline void CellMap<dim, bucket_size, cell_index_t, key_t>::reserve(Cells const& cells)
+{
+    for (auto const& cell : cells)
+    {
+        bucketsLists_.emplace(cell, bucketlist_t{});
+    }
+}
 
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
@@ -377,7 +395,28 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::update(Array const& 
     }
 }
 
-
+template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
+template<typename Array, typename CellSelector, typename CellExtractor>
+inline std::size_t CellMap<dim, bucket_size, cell_index_t, key_t>::partition(
+    Array& items, CellSelector const& selector, CellExtractor extract)
+{
+    auto lastIndex = items.size() - 1;
+    for (auto& [cell, itemIndexes] : bucketsLists_)
+    {
+        if (selector(cell))
+        {
+            for (auto itemIndex : itemIndexes)
+            {
+                auto lastItemCell = extract(items[lastIndex]);
+                std::swap(items[itemIndex], items[lastIndex]);
+                auto lastItemList = list_at(lastItemCell);
+                lastItemList->get().updateIndex(lastIndex, itemIndex);
+                lastIndex--;
+            }
+        }
+    }
+    return lastIndex;
+}
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 template<typename Array, typename CellIndex, typename CellExtractor>
