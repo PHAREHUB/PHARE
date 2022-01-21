@@ -396,14 +396,15 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::update(Array const& 
 }
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
-template<typename Array, typename CellSelector, typename CellExtractor>
-inline std::size_t CellMap<dim, bucket_size, cell_index_t, key_t>::partition(
-    Array& items, CellSelector const& selector, CellExtractor extract)
+template<typename Array, typename Predicate, typename CellExtractor>
+inline std::size_t CellMap<dim, bucket_size, cell_index_t, key_t>::partition(Array& items,
+                                                                             Predicate const& pred,
+                                                                             CellExtractor extract)
 {
     auto lastIndex = items.size() - 1;
     for (auto& [cell, itemIndexes] : bucketsLists_)
     {
-        if (selector(cell))
+        if (!pred(cell))
         {
             for (auto itemIndex : itemIndexes)
             {

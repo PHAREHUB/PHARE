@@ -388,7 +388,7 @@ TEST(CellMap, cellPartition)
         cm.update(particles, particleIdx, oldCell);
     }
 
-    auto cellSelector = [&](auto const& cell) { return !isIn(cell, patchbox); };
+    auto cellSelector = [&](auto const& cell) { return isIn(cell, patchbox); };
 
     std::size_t pivot = cm.partition(particles, cellSelector);
 
