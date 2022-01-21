@@ -132,9 +132,8 @@ public:
     void update(Array const& items, std::size_t itemIndex, CellIndex const& oldCell);
 
 
-    template<typename Array, typename CellSelector, typename CellExtractor = DefaultExtractor>
-    std::size_t partition(Array& arr, CellSelector const& selector,
-                          CellExtractor = default_extractor);
+    template<typename Array, typename Predicate, typename CellExtractor = DefaultExtractor>
+    std::size_t partition(Array& arr, Predicate&& pred, CellExtractor = default_extractor);
 
 
 
@@ -398,7 +397,7 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::update(Array const& 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 template<typename Array, typename Predicate, typename CellExtractor>
 inline std::size_t CellMap<dim, bucket_size, cell_index_t, key_t>::partition(Array& items,
-                                                                             Predicate const& pred,
+                                                                             Predicate&& pred,
                                                                              CellExtractor extract)
 {
     auto lastIndex = items.size() - 1;
