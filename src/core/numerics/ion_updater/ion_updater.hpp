@@ -160,14 +160,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
             outRange = makeRange(outputArray);
 
             auto firstGhostOut = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
-                                               inGhostBox, inGhostLayer, layout);
+                                               inGhostBox, inDomainBox, layout);
 
-            auto endInDomain = std::partition(firstGhostOut, std::end(outputArray), inDomainBox);
+            auto inDomain = makeRange(std::begin(outputArray), firstGhostOut);
 
-            interpolator_(firstGhostOut, endInDomain, pop.density(), pop.flux(), layout);
+            interpolator_(inDomain.begin(), inDomain.end(), pop.density(), pop.flux(), layout);
 
             if (copyInDomain)
-                std::copy(firstGhostOut, endInDomain, std::back_inserter(domain));
+                std::copy(inDomain.begin(), inDomain.end(), std::back_inserter(domain));
         };
 
         // After this function is done domain particles overlaping ghost layers of neighbor patches
@@ -229,10 +229,10 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto pushAndCopyInDomain = [&](auto& particleArray) {
             auto range            = makeRange(particleArray);
             auto firstOutGhostBox = pusher_->move(range, range, em, pop.mass(), interpolator_,
-                                                  inGhostBox, inGhostLayer, layout);
+                                                  inGhostBox, inDomainSelector, layout);
 
-            std::copy_if(firstOutGhostBox, std::end(particleArray),
-                         std::back_inserter(domainParticles), inDomainSelector);
+            auto inDomain = makeRange(std::begin(particleArray), firstOutGhostBox);
+            std::copy(inDomain.begin(), inDomain.end(), std::back_inserter(domainParticles));
 
             particleArray.erase(firstOutGhostBox, std::end(particleArray));
         };
