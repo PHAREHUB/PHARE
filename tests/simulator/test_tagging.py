@@ -108,8 +108,12 @@ class TaggingTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(TaggingTest, self).__init__(*args, **kwargs)
-        startMPI()
         self.simulator = None
+
+
+    def setUp(self):
+        from pyphare.simulator.simulator import startMPI
+        startMPI()
 
 
     def tearDown(self):
