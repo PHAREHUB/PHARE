@@ -30,8 +30,8 @@ def config():
     Simulation(
         smallest_patch_size=20,
         largest_patch_size=60,
-        time_step=0.0005, 
-        final_time=40,
+        final_time=50,
+        time_step=0.0005,
         boundary_types="periodic",
         cells=165,
         dl=0.2,
@@ -39,53 +39,53 @@ def config():
         refinement_boxes={"L0": {"B0": [( 50, ), (110, )]},
                           "L1": {"B0": [(140, ), (180, )]} },
         diag_options={"format": "phareh5",
-                      "options": {"dir": "ion_ion_beam", "mode": "overwrite"}}
+                      "options": {"dir": "ion_ion_beam1d", "mode": "overwrite"}}
     )
 
     def densityMain(x):
         return 1.
-   
+
     def densityBeam(x):
         return .01
-   
+
     def bx(x):
         return 1.
-   
+
     def by(x):
         return 0.
-   
+
     def bz(x):
         return 0.
-   
+
     def vB(x):
         return 5.
-   
+
     def v0(x):
         return 0.
-   
+
     def vth(x):
         return np.sqrt(0.1)
-   
-   
+
+
     vMain = {
         "vbulkx": v0, "vbulky": v0, "vbulkz": v0,
         "vthx": vth, "vthy": vth, "vthz": vth
     }
-   
-   
+
+
     vBulk = {
         "vbulkx": vB, "vbulky": v0, "vbulkz": v0,
         "vthx": vth, "vthy": vth, "vthz": vth
     }
-   
-   
+
+
     MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
         main={"charge": 1, "density": densityMain, **vMain},
         beam={"charge": 1, "density": densityBeam, **vBulk}
     )
 
-    ElectronModel(closure="isothermal", Te=0.1)
+    ElectronModel(closure="isothermal", Te=0.0)
 
     sim = ph.global_vars.sim
 
@@ -102,68 +102,91 @@ def config():
 
 
 
-def getMode(t, m):
-    # return the mode 'm' of the FFT : we the use m=1 for 1 wavelength in the whole simulation domain
-    return np.absolute(np.fft.fft(t)[m])
-
 def yaebx(x, a, b):
     return a*np.exp(np.multiply(b, x))
+
 
 def growth_b_right_hand(run_path):
     file = os.path.join(run_path, "EM_B.h5")
     times = get_times_from_h5(file)
 
     r = Run(run_path)
-    byz = np.array([])
+    first_mode = np.array([])
 
     from scipy.optimize import curve_fit
 
     for time in times:
-        interp_by, x = r.GetB(time, merged=True, interp='nearest')['By']
-        interp_bz, x = r.GetB(time, merged=True, interp='nearest')['Bz']
+        B_hier = r.GetB(time, merged=True, interp="linear")
 
-        by = interp_by(x[0])
-        bz = interp_bz(x[0])
+        by_interpolator, xyz_finest = B_hier["By"]
+        bz_interpolator, xyz_finest = B_hier["Bz"]
 
-        mm = getMode(by-1j*bz, 1) # last arg is the mode
+        # remove the last point so that "x" is periodic wo. last point = first point
+        x = xyz_finest[0][:-1]
 
-        byz = np.append(byz, mm)
+        by = by_interpolator(x)
+        bz = by_interpolator(x)
 
-    popt, pcov = curve_fit(yaebx, times, byz, p0=[0.1, 0.1]) # last args are initial guess
+        # get the mode 1, as it is the most unstable in a box of length 33
+        mode1 = np.absolute(np.fft.fft(by-1j*bz)[1])
+        first_mode = np.append(first_mode, mode1)
 
-    return times, byz, popt, pcov
+    popt, pcov = curve_fit(yaebx, times, first_mode, p0=[0.08, 0.09])
+
+    # now the signal is stripped from its exponential part
+    damped_mode=first_mode*yaebx(times, 1/popt[0], -popt[1])
+
+    # find the omega for which "damped_mode" is the largest :
+    # this term is twice the one it should be because "mode1" resulting from
+    # an absolute value, this (cosx)^2 = cos(2x) then appears at the 2nd
+    # harmonoic (hence the factor 0.5 to get "omega")
+    # the factor "+1" is because we remove the DC component, so the value
+    # given by argmax has also to miss this value
+    omegas = np.fabs(np.fft.fft(damped_mode).real)
+    omega = 0.5*(omegas[1:omegas.size//2].argmax()+1)*2*np.pi/times[-1]
+
+    print(omegas[0:6])
+    print(omegas[1:omegas.size//2].argmax())
+    print(2*np.pi/times[-1])
+    print(0.5*(omegas[1:omegas.size//2].argmax()+1)*2*np.pi/times[-1])
+
+    return times, first_mode, popt[0], popt[1], damped_mode, omega
 
 
 def main():
     from pybindlibs.cpp import mpi_rank
-    from matplotlib import rc
 
     config()
-    Simulator(gv.sim).initialize().run()
+    simulator = Simulator(gv.sim)
+    simulator.initialize()
+    simulator.run()
 
     if mpi_rank() == 0:
 
-        times, byz, popt, pcov = growth_b_right_hand(os.path.join(os.curdir, "ion_ion_beam"))
+        times, first_mode, ampl, gamma, damped_mode, omega \
+                = growth_b_right_hand(os.path.join(os.curdir, "ion_ion_beam1d"))
 
-        rc('text', usetex = True)
+        fig, (ax1, ax2) = plt.subplots(2, 1)
 
-        fig, ax = plt.subplots(figsize=(6,4), nrows=1)
+        ax1.set_title("Right Hand Resonant mode (Beam instability)")
+        ax1.stem(times, first_mode, linefmt='-k', basefmt=' ', use_line_collection=True)
+        ax1.plot(times, yaebx(times, ampl, gamma), color='r', linestyle='-', marker='')
+        ax1.text(0.04, 0.80, "From Gary et al., 1985 (ApJ : 10.1086/162797)", transform=ax1.transAxes)
+        ax1.set_ylabel("Most unstable mode")
+        ax1.set_title("Right Hand Resonant mode (Beam instability)")
+        ax1.text(0.30, 0.50, "gamma = {:5.3f}... expected 0.09".format(gamma), transform=ax1.transAxes)
 
-        ax.plot(times, byz, color='k', linestyle=' ', marker='o')
-        ax.plot(times, yaebx(times, popt[0], popt[1]), color='red')
+        ax2.plot(times, damped_mode, color='g', linestyle='', marker='o')
+        ax2.set_xlabel("Time")
+        ax2.set_ylabel("Real mode")
+        ax2.text(0.48, 0.30, "~ 3 periods until t=50", transform=ax2.transAxes)
+        ax2.text(0.40, 0.20, "omega (real) = {:5.3f}... expected 0.19".format(omega), transform=ax2.transAxes)
 
-        ax.set_xlabel("$t \Omega_p$")
-        ax.set_ylabel("$B_y - \imath B_z \ $ (m=1)")
-        ax.set_title("Ion/Ion beam instability : Right-Hand-Resonand mode")
-        ax.text(30, 0, "$\gamma / \Omega_p$ = {:6.4f}".format(popt[1]))
+        fig.savefig("ion_ion_beam1d.png")
 
-        fig.tight_layout()
-        fig.savefig("ion_ion_beam.pdf", dpi=200)
-
-        cov = np.fabs(np.array(pcov).flatten())
-
-        assert np.fabs(popt[1]-0.09) < 1e-2
-        assert cov.max() < 1e-2
+        # compare with the values given gary et al. 1985
+        assert np.fabs(gamma-0.09) < 2e-2
+        #assert np.fabs(omega-0.19) < 8e-2
 
 
 if __name__=="__main__":
