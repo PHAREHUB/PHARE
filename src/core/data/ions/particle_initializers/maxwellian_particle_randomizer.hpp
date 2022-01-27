@@ -3,11 +3,11 @@
 
 #include <random>
 
+#include <fstream>
 
 #include "core/utilities/mpi_utils.hpp"
 
 #if defined(PHARE_DEBUG_PARTICLE_INIT) && PHARE_DEBUG_PARTICLE_INIT == 1
-#include <fstream>
 #define PHARE_WITH_DEBUG_PARTICLE_INIT(...) __VA_ARGS__
 #else
 #define PHARE_WITH_DEBUG_PARTICLE_INIT(...)
