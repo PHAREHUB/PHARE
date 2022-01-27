@@ -15,6 +15,9 @@
 #include "core/utilities/point/point.hpp"
 
 
+#include "core/data/ions/particle_initializers/maxwellian_particle_randomizer.hpp"
+
+
 namespace PHARE::core
 {
 void maxwellianVelocity(std::array<double, 3> const& V, std::array<double, 3> const& Vth,
@@ -63,19 +66,6 @@ public:
 
 
     virtual ~MaxwellianParticleInitializer() = default;
-
-
-    static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
-    {
-        if (!seed.has_value())
-        {
-            std::random_device randSeed;
-            std::seed_seq seed_seq{randSeed(), randSeed(), randSeed(), randSeed(),
-                                   randSeed(), randSeed(), randSeed(), randSeed()};
-            return std::mt19937_64(seed_seq);
-        }
-        return std::mt19937_64(*seed);
-    }
 
 private:
     using Particle = typename ParticleArray::value_type;
@@ -170,7 +160,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         cellCoords));
 
     auto const [n, V, Vth] = fns();
-    auto randGen           = getRNG(rngSeed_);
+    auto randGen           = MaxwellianParticleRandomizer::getRNG(layout.id(), rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)

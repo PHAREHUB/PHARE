@@ -152,6 +152,8 @@ namespace core
          */
         Point<double, dimension> origin() const noexcept { return origin_; }
 
+        auto id() const { return hash_string(origin().toArray()); }
+
 
 
         /**

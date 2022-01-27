@@ -81,7 +81,7 @@ namespace core
             return areEqual;
         }
 
-        template<typename DestType>
+        template<typename DestType = Type>
         auto toArray() const
         {
             std::array<DestType, dimension> destArray;

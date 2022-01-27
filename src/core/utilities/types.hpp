@@ -340,6 +340,22 @@ auto none(Container const& container)
 
 
 
+template<typename T, std::size_t S>
+auto hash(std::array<T, S> const& array)
+{
+    std::size_t h = 0;
+    for (auto const& v : array)
+        h ^= std::hash<T>{}(v) + 0x9e3779b9 + (h << 6) + (h >> 2);
+    return h;
+}
+
+template<typename T, std::size_t S>
+auto hash_string(std::array<T, S> const& array)
+{
+    return std::to_string(hash(array));
+}
+
+
 } // namespace PHARE::core
 
 

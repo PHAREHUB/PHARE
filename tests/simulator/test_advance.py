@@ -507,8 +507,6 @@ class AdvanceTestBase(SimulatorTest):
 
           The simulations are no longer comparable after the first advance, so this test cannot work beyond that.
         """
-        print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(ndim, interp_order))
-
         import random
         rando = random.randint(0, 1e10)
 

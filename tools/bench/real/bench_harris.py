@@ -2,7 +2,13 @@
 
 import numpy as np
 from pyphare.cpp import cpp_lib # must be first
-cpp_lib("pybindlibs.cpp_sim_2_1_4")
+
+dim = 2
+interp = 2
+nb_parts = 4
+
+cpp_lib(f"pybindlibs.cpp_sim_{dim}_{interp}_{nb_parts}")
+
 import pyphare.pharein as ph
 
 seed = 133333333337
