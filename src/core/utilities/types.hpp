@@ -203,13 +203,13 @@ namespace core
 
 
     template<typename T, std::size_t... Is>
-    constexpr auto gft_helper(std::index_sequence<Is...> const&&)
+    constexpr auto gft_helper(std::index_sequence<Is...> const &&)
         -> decltype(std::make_tuple((Is, std::declval<T>())...));
 
     template<typename T, std::size_t N>
     constexpr auto get_fixed_tuple() -> decltype(gft_helper<T>(std::make_index_sequence<N>{}));
-    template<typename T, std::size_t N>
 
+    template<typename T, std::size_t N>
     using tuple_fixed_type = decltype(get_fixed_tuple<T, N>());
 
 

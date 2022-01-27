@@ -11,28 +11,6 @@ namespace core
 {
     enum class Component { X, Y, Z };
 
-    template<Component value>
-    struct ComponentTag
-    {
-    };
-
-    template<>
-    struct ComponentTag<Component::X>
-    {
-        static const auto component = Component::X;
-    };
-
-    template<>
-    struct ComponentTag<Component::Y>
-    {
-        static const auto component = Component::Y;
-    };
-
-    template<>
-    struct ComponentTag<Component::Z>
-    {
-        static const auto component = Component::Z;
-    };
 
     struct Components
     {
@@ -44,8 +22,8 @@ namespace core
 
         static std::unordered_map<std::string, Component> const componentMap;
 
-        template<typename Tag_t, Tag_t Tag>
-        constexpr static bool check(ComponentTag<Tag> tag)
+        template<auto Tag>
+        constexpr static bool check()
         {
             return Tag == Component::X || Tag == Component::Y || Tag == Component::Z;
         }
