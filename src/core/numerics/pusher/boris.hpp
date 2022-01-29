@@ -22,16 +22,15 @@ namespace core
     class BorisPusher : public Pusher<dim, ParticleIterator, Electromag, Interpolator,
                                       BoundaryCondition, GridLayout>
     {
-    public:
         using Super = Pusher<dim, ParticleIterator, Electromag, Interpolator, BoundaryCondition,
                              GridLayout>;
-        using ParticleSelector = typename Super::ParticleSelector;
-        using ParticleRange    = Range<ParticleIterator>;
 
-    private:
     public:
-        // This move function should be considered when being used so that all particles are pushed
-        // twice - see: https://github.com/PHAREHUB/PHARE/issues/571
+        using ParticleSelector = typename Super::ParticleSelector;
+        using ParticleRange    = typename Super::ParticleRange;
+
+        // This move function should be considered when being used so that all particles are
+        // pushed twice - see: https://github.com/PHAREHUB/PHARE/issues/571
         /** see Pusher::move() documentation*/
         ParticleIterator move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
                               Electromag const& emFields, double mass, Interpolator& interpolator,

@@ -916,6 +916,72 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
     this->checkDensityIsAsPrescribed();
 }
 
+template<typename IonUpdater, typename Electromag, typename GridLayout>
+struct SimplePusher : public IonUpdater::Pusher
+{
+    using Super               = typename IonUpdater::Pusher;
+    using ParticleRange       = typename Super::ParticleRange;
+    using ParticleSelector    = typename Super::ParticleSelector;
+    using BoundaryCondition   = typename IonUpdater::BoundaryCondition;
+    using ParticleIterator    = typename IonUpdater::PartIterator;
+    using Interpolator        = typename IonUpdater::Interpolator;
+    auto constexpr static dim = GridLayout::dimension;
+
+
+
+    ParticleIterator move(ParticleRange const&, ParticleRange& rangeOut, Electromag const&, double,
+                          Interpolator&, ParticleSelector const&, BoundaryCondition&,
+                          GridLayout const&) override
+    {
+        throw std::runtime_error("not implemented");
+    }
+
+
+    ParticleIterator move(ParticleRange const&, ParticleRange& rangeOut, Electromag const&, double,
+                          Interpolator&, ParticleSelector const& particleIsNotLeaving,
+                          GridLayout const&) override
+    {
+        // update icells of rangeout
+        auto firstLeaving
+            = std::partition(std::begin(rangeOut), std::end(rangeOut), particleIsNotLeaving);
+        return makeRange(rangeOut.begin(), std::move(firstLeaving)).end();
+    }
+
+
+    ParticleIterator move(ParticleRange const&, ParticleRange& rangeOut, Electromag const&, double,
+                          Interpolator&, ParticleSelector const& particleIsNotLeaving0,
+                          ParticleSelector const& particleIsNotLeaving1, GridLayout const&) override
+    {
+        // update icells of rangeout
+
+        auto firstLeaving
+            = std::partition(std::begin(rangeOut), std::end(rangeOut), particleIsNotLeaving0);
+
+        rangeOut = makeRange(rangeOut.begin(), std::move(firstLeaving));
+
+        // update icells of rangeout
+
+        firstLeaving
+            = std::partition(std::begin(rangeOut), std::end(rangeOut), particleIsNotLeaving1);
+
+        return makeRange(rangeOut.begin(), std::move(firstLeaving)).end();
+    }
+
+    void setMeshAndTimeStep(std::array<double, dim>, double) override {}
+};
+
+
+TYPED_TEST(IonUpdaterTest, particlesAreCopiedFilteredCorrectly)
+{
+    using GridLayout   = typename IonUpdaterTest<TypeParam>::GridLayout;
+    using Electromag   = typename IonUpdaterTest<TypeParam>::Electromag;
+    using IonUpdater_t = typename IonUpdaterTest<TypeParam>::IonUpdater;
+    using Pusher_t     = SimplePusher<IonUpdater_t, Electromag, GridLayout>;
+    IonUpdater_t ionUpdater{std::make_unique<Pusher_t>()};
+    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
+    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt, UpdaterMode::all);
+}
+
 
 
 
