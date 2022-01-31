@@ -19,6 +19,7 @@ permutations = [
 
 configs = {
     1 : {
+        "num_of_modes" : 8,
         "modes_left" : [4, 8, 16, 32, 64, 128, 256, 512],
         "modes_right" : [4, 8, 16, 32, 64, 128, 256, 512],
         "b_amplitudes_left" : [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
@@ -44,6 +45,7 @@ configs = {
         },
     },
     2 : {
+        "num_of_modes" : 5,
         "modes_left" : [4, 8, 16, 32, 64],
         "modes_right" : [4, 8, 16, 32, 64],
         "b_amplitudes_left" : [0.002, 0.002, 0.002, 0.002, 0.002],
@@ -70,14 +72,17 @@ configs = {
     },
 }
 
+
+
 def get_theta():
     """
     define the angle of the DC magnetic field so that it is exactly
-    along the diagonal of the 2D box
+    along the diagonal of the 2D box (only for the 2D case)
     """
     from pyphare.pharein.global_vars import sim
     L = sim.cells
     return np.arctan2(L[1], L[0])
+
 
 
 def setup(dim, resolution, modes, b_amplitudes, polarization, seed=12345):
@@ -90,8 +95,8 @@ def setup(dim, resolution, modes, b_amplitudes, polarization, seed=12345):
     sim = ph.Simulation(**config)
 
     # list of wave_numbers for the given box
-    from pyphare.pharein.global_vars import sim
-    L = sim.simulation_domain()
+    from pyphare.pharein.global_vars import sim # dont we already have a "sim" line 95 ?
+    L = sim.simulation_domain()                 # ...
     wave_numbers = [2*np.pi*m/L[0] for m in modes]
 
     if dim == 2:
@@ -150,17 +155,13 @@ def setup(dim, resolution, modes, b_amplitudes, polarization, seed=12345):
             compute_timestamps=timestamps,
             )
 
-    return sim, wave_numbers, b_amplitudes
+    return sim
 
 
 
-
-
-def get_all_w_1d(run_path, wave_numbers, polarization):
+def get_all_w_1d(run_path, num_of_modes, polarization):
     file = os.path.join(run_path, "EM_B.h5")
     times = get_times_from_h5(file)
-
-    nm = len(wave_numbers)
 
     r = Run(run_path)
     byz = np.array([])
@@ -191,11 +192,11 @@ def get_all_w_1d(run_path, wave_numbers, polarization):
     BYZ_4_all_W = np.sum(BYZ, axis=0)
 
     idx = np.argsort(BYZ_4_all_W)
-    kmodes = idx[-nm:]
+    kmodes = idx[-num_of_modes:]
 
     wmodes = np.array([])
-    for i in range(nm):
-        wmodes = np.append(wmodes, np.argmax(BYZ[:,idx[-nm+i]]))
+    for i in range(num_of_modes):
+        wmodes = np.append(wmodes, np.argmax(BYZ[:,idx[-num_of_modes+i]]))
 
     idx = np.argsort(kmodes)
 
@@ -203,11 +204,9 @@ def get_all_w_1d(run_path, wave_numbers, polarization):
 
 
 
-def get_all_w_2d(run_path, wave_numbers, polarization, theta):
+def get_all_w_2d(run_path, num_of_modes, polarization, theta):
     file = os.path.join(run_path, "EM_B.h5")
     times = get_times_from_h5(file)
-
-    nm = len(wave_numbers)
 
     r = Run(run_path)
     blz = np.array([])
@@ -245,11 +244,11 @@ def get_all_w_2d(run_path, wave_numbers, polarization, theta):
     BLZ_4_all_W = np.sum(BLZ, axis=0)
 
     idx = np.argsort(BLZ_4_all_W)
-    kmodes = idx[-nm:]
+    kmodes = idx[-num_of_modes:]
 
     wmodes = np.array([])
-    for i in range(nm):
-        wmodes = np.append(wmodes, np.argmax(BLZ[1:,idx[-nm+i]]))
+    for i in range(num_of_modes):
+        wmodes = np.append(wmodes, np.argmax(BLZ[1:,idx[-num_of_modes+i]]))
 
     idx = np.argsort(kmodes)
 
@@ -257,47 +256,33 @@ def get_all_w_2d(run_path, wave_numbers, polarization, theta):
 
 
 
-def post_sim_left(sim, **kwargs):
-    if cpp.mpi_rank() == 0 and dim == 2:
-        theta = get_theta()
-    if cpp.mpi_rank() == 0:
-
-        sim = ph.global_vars.sim
-
+def post_sim(sim, dim, num_of_modes, polarization):
+    if cpp.mpi_rank() == 0 and dim == 1:
         L = sim.simulation_domain()[0]
         T = sim.final_time
 
-        ki, wi = get_all_w_1d(os.path.join(os.curdir, "setOfModes1d"), wave_nums, -1)
+        ki, wi = get_all_w_1d(os.path.join(os.curdir, "setOfModes1d"), num_of_modes, polarization)
 
-        k_num_left_1d = 2*np.pi*ki/L
-        w_num_left_1d = 2*np.pi*wi/T
+        k_num_1d = 2*np.pi*ki/L
+        w_num_1d = 2*np.pi*wi/T
 
+        return k_num_1d, w_num_1d
 
+    elif cpp.mpi_rank() == 0 and dim == 2:
+        theta = get_theta()
+        sim = ph.global_vars.sim
         np.testing.assert_allclose(np.tan(theta) , sim.simulation_domain()[1]/sim.simulation_domain()[0], atol=1e-15)
 
         L = sim.simulation_domain()[0]
         T = sim.final_time
 
-        ki, wi = get_all_w_2d(os.path.join(os.curdir, "setOfModes2d"), wave_nums, -1, theta)
+        ki, wi = get_all_w_2d(os.path.join(os.curdir, "setOfModes2d"), num_of_modes, polarization, theta)
 
-        k_num_left_2d = 2*np.pi*ki*np.cos(theta)/L
-        w_num_left_2d = 2*np.pi*wi/T
+        k_num_2d = 2*np.pi*ki*np.cos(theta)/L
+        w_num_2d = 2*np.pi*wi/T
 
-    cpp.mpi_barrier() # KEEP THIS!
+        return k_num_2d, w_num_2d
 
-    return k_num_left_1d, w_num_left_1d, k_num_left_2d, w_num_left_2d
-
-
-
-def post_sim_right(sim, **kwargs):
-    if cpp.mpi_rank() == 0 and dim == 2:
-        theta = get_theta()
-    if cpp.mpi_rank() == 0:
-        # do things
-
-        ### ........................... TODO
-
-        pass
     cpp.mpi_barrier() # KEEP THIS!
 
 
@@ -308,31 +293,51 @@ def omega(k, p):
 
 
 
-def dispersion(dim, resolution):
+def dispersion(resolution):
     seed = cpp.mpi_rank()+1
-    config = configs[dim][resolution]
 
-    # we need to set, run and post process 1 run for the left mode
+    # we need to run both dim=1 and 2, as well as left and right : 4 runs
+    dim = 1
+    ### config = configs[dim][resolution]
+
+    num_of_modes = configs[dim]["num_of_modes"]
     modes = configs[dim]["modes_left"]
     b_amplitudes = configs[dim]["b_amplitudes_left"]
     polarization = -1
-    sim, wave_nums, b1 = setup(dim, resolution, modes, b_amplitudes, polarization, seed)
+    sim = setup(dim, resolution, modes, b_amplitudes, polarization, seed)
     Simulator(sim).run().reset()
-    k_num_left_1d, w_num_left_1d, k_num_left_2d, w_num_left_2d = post_sim_left(sim)
+    k_num_left_1d, w_num_left_1d = post_sim(sim, dim, num_of_modes, polarization)
 
-    # ... and set, run and post process 1 run for the right mode
     modes = configs[dim]["modes_right"]
     b_amplitudes = configs[dim]["b_amplitudes_right"]
-    polarization = 1
-    sim, wave_nums, b1 = setup(dim, resolution, modes, b_amplitudes, polarization, seed)
+    polarization = +1
+    sim = setup(dim, resolution, modes, b_amplitudes, polarization, seed)
     Simulator(sim).run().reset()
-    k_num_right_1d, w_num_right_1d, k_num_right_2d, w_num_right_2d = post_sim_right(dim)
+    k_num_right_1d, w_num_right_1d = post_sim(sim, dim, num_of_modes, polarization)
+
+    dim = 2
+    ### config = configs[dim][resolution]
+
+    num_of_modes = configs[dim]["num_of_modes"]
+    modes = configs[dim]["modes_left"]
+    b_amplitudes = configs[dim]["b_amplitudes_left"]
+    polarization = -1
+    sim = setup(dim, resolution, modes, b_amplitudes, polarization, seed)
+    Simulator(sim).run().reset()
+    k_num_left_2d, w_num_left_2d = post_sim(sim, dim, num_of_modes, polarization)
+
+    modes = configs[dim]["modes_right"]
+    b_amplitudes = configs[dim]["b_amplitudes_right"]
+    polarization = +1
+    sim = setup(dim, resolution, modes, b_amplitudes, polarization, seed)
+    Simulator(sim).run().reset()
+    k_num_right_2d, w_num_right_2d = post_sim(sim, dim, num_of_modes, polarization)
 
 
     # plot the dispersion function
     k_analytic = np.arange(0.2, 20, 0.001)
-    w_analytic_right = omega(k_the, +1)
     w_analytic_left = omega(k_the, -1)
+    w_analytic_right = omega(k_the, +1)
 
     fig, ax = plt.subplots(figsize=(4,3), nrows=1)
 
@@ -356,6 +361,7 @@ def dispersion(dim, resolution):
     fig.savefig("dispersion.png", dpi=200)
 
 
+    # then testing the values returned by post treatment
     error_left_1d  = 100*np.fabs(w_num_left_1d -omega(w_num_left_1d,  -1))/omega(w_num_left_1d,  -1)
     error_right_1d = 100*np.fabs(w_num_right_1d-omega(w_num_right_1d, -1))/omega(w_num_right_1d, +1)
 
@@ -377,36 +383,32 @@ def dispersion(dim, resolution):
 
 
 
-
-
-
-
-
-
-
 class DispersionTest(SimulatorTest):
     # ddt mangles method names so direct lookup isn't easy
-    def test_dispersion(self, dim, resolution):
-        dispersion(dim, resolution)
+    def test_dispersion(self, resolution):
+        dispersion(resolution)
+
+
 
 @ddt
 class DDTDispersionTest(SimulatorTest):
     @data(*permutations)
     @unpack
-    def test_dispersion(self, dim, resolution):
-        dispersion(dim, resolution)
+    def test_dispersion(self, resolution):
+        dispersion(resolution)
+
 
 
 if __name__=="__main__":
 
-    if len(sys.argv) == 3:
-        dim, resolution = parse_cli_args()
+    if len(sys.argv) == 2:
+        resolution = parse_cli_args()
         if resolution not in ['low', 'high']:
             raise ValueError('arg should be "low" or "high"')
 
         test = DispersionTest()
         test.setUp()
-        test.test_dispersion(int(dim), resolution)
+        test.test_dispersion(resolution)
         test.tearDown()
 
     elif len(sys.argv) == 1:
@@ -419,5 +421,5 @@ if __name__=="__main__":
         unittest.TextTestRunner(verbosity=2).run(tests)
 
     else:
-        print('example usage: $script $dim $resolution=[low/high]')
+        print('example usage: $script $resolution=[low/high]')
 
