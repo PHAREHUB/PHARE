@@ -9,7 +9,7 @@ import unittest, os, pyphare.pharein as ph
 from datetime import datetime, timezone
 from ddt import ddt, data
 from tests.simulator import NoOverwriteDict, populate_simulation
-from pyphare.simulator.simulator import Simulator,startMPI
+from pyphare.simulator.simulator import Simulator
 from pyphare.core.box import Box, Box2D
 
 out = "phare_outputs/valid/refinement_boxes/"

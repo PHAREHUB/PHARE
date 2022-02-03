@@ -31,6 +31,8 @@ int size();
 
 int rank();
 
+void barrier();
+
 template<typename Data>
 auto mpi_type_for()
 {

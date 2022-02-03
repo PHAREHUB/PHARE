@@ -1,7 +1,7 @@
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 
-from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.simulator.simulator import Simulator
 from pyphare.core.phare_utilities import np_array_ify
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
 from pyphare.pharein import MaxwellianFluidModel
@@ -41,7 +41,6 @@ class AdvanceTestBase(SimulatorTest):
             from pyphare.pharein.simulation import check_patch_size
             _, smallest_patch_size = check_patch_size(ndim, interp_order=interp_order, cells=cells)
 
-        startMPI()
         extra_diag_options["mode"] = "overwrite"
         extra_diag_options["dir"]  = diag_outputs
         self.register_diag_dir_for_cleanup(diag_outputs)

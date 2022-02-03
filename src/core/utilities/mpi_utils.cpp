@@ -34,4 +34,11 @@ bool any(bool b)
     return global_sum > 0;
 }
 
+
+void barrier()
+{
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+
 } // namespace PHARE::core::mpi
