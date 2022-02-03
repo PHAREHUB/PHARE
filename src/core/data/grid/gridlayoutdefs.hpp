@@ -13,29 +13,6 @@ namespace core
 {
     enum class Direction { X, Y, Z };
 
-    template<Direction value>
-    struct DirectionTag
-    {
-    };
-
-    template<>
-    struct DirectionTag<Direction::X>
-    {
-        static const auto direction = Direction::X;
-    };
-
-    template<>
-    struct DirectionTag<Direction::Y>
-    {
-        static const auto direction = Direction::Y;
-    };
-
-    template<>
-    struct DirectionTag<Direction::Z>
-    {
-        static const auto direction = Direction::Z;
-    };
-
 
     enum class QtyCentering { primal = 0, dual = 1 };
 

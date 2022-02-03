@@ -48,7 +48,7 @@ TYPED_TEST(a1DDerivative, DXBY1D)
 
     for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        auto localDerivative = this->layout.deriv(this->By, {ix}, DirectionTag<Direction::X>{});
+        auto localDerivative = this->layout.template deriv<Direction::X>(this->By, {ix});
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
     }
 }
@@ -74,7 +74,7 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
 
     for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        auto localDerivative = this->layout.deriv(this->Ez, {ix}, DirectionTag<Direction::X>{});
+        auto localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {ix});
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
     }
 }
@@ -122,9 +122,8 @@ TYPED_TEST(a2DDerivative, DXBY2D)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            auto localDerivative
-                = this->layout.deriv(this->By, {ix, iy}, DirectionTag<Direction::X>{});
-            auto index_ = ix * nPts_[1] + iy;
+            auto localDerivative = this->layout.template deriv<Direction::X>(this->By, {ix, iy});
+            auto index_          = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -161,9 +160,8 @@ TYPED_TEST(a2DDerivative, DYBY2D)
     {
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            auto localDerivative
-                = this->layout.deriv(this->By, {ix, iy}, DirectionTag<Direction::Y>{});
-            auto index_ = ix * nPts_[1] + iy;
+            auto localDerivative = this->layout.template deriv<Direction::Y>(this->By, {ix, iy});
+            auto index_          = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -200,9 +198,8 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
     {
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
-            auto localDerivative
-                = this->layout.deriv(this->Ez, {ix, iy}, DirectionTag<Direction::X>{});
-            auto index_ = ix * nPts_[1] + iy;
+            auto localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {ix, iy});
+            auto index_          = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -238,9 +235,8 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
     {
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
-            auto localDerivative
-                = this->layout.deriv(this->Ez, {ix, iy}, DirectionTag<Direction::Y>{});
-            auto index_ = ix * nPts_[1] + iy;
+            auto localDerivative = this->layout.template deriv<Direction::Y>(this->Ez, {ix, iy});
+            auto index_          = ix * nPts_[1] + iy;
             EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
         }
     }
@@ -298,7 +294,7 @@ TYPED_TEST(a3DDerivative, DXBY3D)
             for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
-                    = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::X>{});
+                    = this->layout.template deriv<Direction::X>(this->By, {ix, iy, iz});
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
@@ -347,7 +343,7 @@ TYPED_TEST(a3DDerivative, DYBY3D)
             for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
-                    = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::Y>{});
+                    = this->layout.template deriv<Direction::Y>(this->By, {ix, iy, iz});
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
@@ -397,7 +393,7 @@ TYPED_TEST(a3DDerivative, DZBY3D)
             for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
                 auto localDerivative
-                    = this->layout.deriv(this->By, {ix, iy, iz}, DirectionTag<Direction::Z>{});
+                    = this->layout.template deriv<Direction::Z>(this->By, {ix, iy, iz});
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
@@ -446,7 +442,7 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
             for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
-                    = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::X>{});
+                    = this->layout.template deriv<Direction::X>(this->Ez, {ix, iy, iz});
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
@@ -495,7 +491,7 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
             for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 auto localDerivative
-                    = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::Y>{});
+                    = this->layout.template deriv<Direction::Y>(this->Ez, {ix, iy, iz});
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }
@@ -544,7 +540,7 @@ TYPED_TEST(a3DDerivative, DZEZ3D)
             for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
                 auto localDerivative
-                    = this->layout.deriv(this->Ez, {ix, iy, iz}, DirectionTag<Direction::Z>{});
+                    = this->layout.template deriv<Direction::Z>(this->Ez, {ix, iy, iz});
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
                 EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
             }

@@ -27,11 +27,13 @@ using namespace PHARE::core;
 struct GridLayoutMock1D
 {
     static const auto dimension = 1u;
-    double deriv([[maybe_unused]] FieldMock<1> const& f, [[maybe_unused]] MeshIndex<1u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::X>)
+
+    template<auto direction>
+    double deriv([[maybe_unused]] FieldMock<1> const& f, [[maybe_unused]] MeshIndex<1u> mi)
     {
         return 0;
     }
+
     std::size_t physicalStartIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
     {
         return 0;
@@ -45,16 +47,13 @@ struct GridLayoutMock1D
 struct GridLayoutMock2D
 {
     static const auto dimension = 2u;
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::X>)
+
+    template<auto direction>
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi)
     {
         return 0;
     }
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::Y>)
-    {
-        return 0;
-    }
+
     std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
                                    [[maybe_unused]] Direction dir)
     {
@@ -70,21 +69,14 @@ struct GridLayoutMock2D
 struct GridLayoutMock3D
 {
     static const auto dimension = 3u;
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::X>)
+
+
+    template<auto direction>
+    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi)
     {
         return 0;
     }
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::Y>)
-    {
-        return 0;
-    }
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi,
-                 [[maybe_unused]] DirectionTag<Direction::Z>)
-    {
-        return 0;
-    }
+
     std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
                                    [[maybe_unused]] Direction dir)
     {

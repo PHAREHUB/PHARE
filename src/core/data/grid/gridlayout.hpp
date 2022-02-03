@@ -619,8 +619,8 @@ namespace core
          * The function can perform 1D, 2D and 3D 1st order derivatives, depending
          * on the dimensionality of the GridLayout.
          */
-        template<typename Field, typename DirectionTag>
-        auto deriv(Field const& operand, MeshIndex<Field::dimension> index, DirectionTag)
+        template<auto direction, typename Field>
+        auto deriv(Field const& operand, MeshIndex<Field::dimension> index)
         {
             auto fieldCentering = centering(operand.physicalQuantity());
             using PHARE::core::dirX;
@@ -636,14 +636,14 @@ namespace core
 
             else if constexpr (Field::dimension == 2)
             {
-                if constexpr (DirectionTag::direction == Direction::X)
+                if constexpr (direction == Direction::X)
                 {
                     auto next = operand(nextIndex(fieldCentering[dirX], index[0]), index[1]);
                     auto prev = operand(prevIndex(fieldCentering[dirX], index[0]), index[1]);
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
-                if constexpr (DirectionTag::direction == Direction::Y)
+                if constexpr (direction == Direction::Y)
                 {
                     auto next = operand(index[0], nextIndex(fieldCentering[dirY], index[1]));
                     auto prev = operand(index[0], prevIndex(fieldCentering[dirY], index[1]));
@@ -652,7 +652,7 @@ namespace core
             }
             else if constexpr (Field::dimension == 3)
             {
-                if constexpr (DirectionTag::direction == Direction::X)
+                if constexpr (direction == Direction::X)
                 {
                     auto next
                         = operand(nextIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
@@ -661,7 +661,7 @@ namespace core
                     return inverseMeshSize_[dirX] * (next - prev);
                 }
 
-                if constexpr (DirectionTag::direction == Direction::Y)
+                if constexpr (direction == Direction::Y)
                 {
                     auto next
                         = operand(index[0], nextIndex(fieldCentering[dirY], index[1]), index[2]);
@@ -669,7 +669,7 @@ namespace core
                         = operand(index[0], prevIndex(fieldCentering[dirY], index[1]), index[2]);
                     return inverseMeshSize_[dirY] * (next - prev);
                 }
-                if constexpr (DirectionTag::direction == Direction::Z)
+                if constexpr (direction == Direction::Z)
                 {
                     auto next
                         = operand(index[0], index[1], nextIndex(fieldCentering[dirZ], index[2]));

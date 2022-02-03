@@ -60,12 +60,11 @@ private:
         if constexpr (dimension == 2)
             Bxnew(ijk...)
                 = Bx(ijk...)
-                  - dt_ * layout_->deriv(E(Component::Z), {ijk...}, DirectionTag<Direction::Y>{});
+                  - dt_ * layout_->template deriv<Direction::Y>(E(Component::Z), {ijk...});
 
         if constexpr (dimension == 3)
-            Bxnew(ijk...) = Bx(ijk...)
-                            - dt_ * layout_->deriv(Ez, {ijk...}, DirectionTag<Direction::Y>{})
-                            + dt_ * layout_->deriv(Ey, {ijk...}, DirectionTag<Direction::Z>{});
+            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...})
+                            + dt_ * layout_->template deriv<Direction::Z>(Ey, {ijk...});
     }
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -76,17 +75,16 @@ private:
         if constexpr (dimension == 1)
             Bynew(ijk...)
                 = By(ijk...)
-                  + dt_ * layout_->deriv(E(Component::Z), {ijk...}, DirectionTag<Direction::X>{});
+                  + dt_ * layout_->template deriv<Direction::X>(E(Component::Z), {ijk...});
 
         if constexpr (dimension == 2)
             Bynew(ijk...)
                 = By(ijk...)
-                  + dt_ * layout_->deriv(E(Component::Z), {ijk...}, DirectionTag<Direction::X>{});
+                  + dt_ * layout_->template deriv<Direction::X>(E(Component::Z), {ijk...});
 
         if constexpr (dimension == 3)
-            Bynew(ijk...) = By(ijk...)
-                            - dt_ * layout_->deriv(Ex, {ijk...}, DirectionTag<Direction::Z>{})
-                            + dt_ * layout_->deriv(Ez, {ijk...}, DirectionTag<Direction::X>{});
+            Bynew(ijk...) = By(ijk...) - dt_ * layout_->template deriv<Direction::Z>(Ex, {ijk...})
+                            + dt_ * layout_->template deriv<Direction::X>(Ez, {ijk...});
     }
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -95,13 +93,11 @@ private:
         auto const& [Ex, Ey, _] = E();
 
         if constexpr (dimension == 1)
-            Bznew(ijk...)
-                = Bz(ijk...) - dt_ * layout_->deriv(Ey, {ijk...}, DirectionTag<Direction::X>{});
+            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_->template deriv<Direction::X>(Ey, {ijk...});
 
         else
-            Bznew(ijk...) = Bz(ijk...)
-                            - dt_ * layout_->deriv(Ey, {ijk...}, DirectionTag<Direction::X>{})
-                            + dt_ * layout_->deriv(Ex, {ijk...}, DirectionTag<Direction::Y>{});
+            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_->template deriv<Direction::X>(Ey, {ijk...})
+                            + dt_ * layout_->template deriv<Direction::Y>(Ex, {ijk...});
     }
 };
 

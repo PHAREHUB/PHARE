@@ -44,11 +44,11 @@ private:
         auto const& [_, By, Bz] = B();
 
         if constexpr (dimension == 2)
-            Jx(ijk...) = layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::Y>{});
+            Jx(ijk...) = layout_->template deriv<Direction::Y>(Bz, {ijk...});
 
         if constexpr (dimension == 3)
-            Jx(ijk...) = layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::Y>{})
-                         - layout_->deriv(By, {ijk...}, DirectionTag<Direction::Z>{});
+            Jx(ijk...) = layout_->template deriv<Direction::Y>(Bz, {ijk...})
+                         - layout_->template deriv<Direction::Z>(By, {ijk...});
     }
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -57,14 +57,14 @@ private:
         auto const& [Bx, By, Bz] = B();
 
         if constexpr (dimension == 1)
-            Jy(ijk...) = -layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::X>{});
+            Jy(ijk...) = -layout_->template deriv<Direction::X>(Bz, {ijk...});
 
         if constexpr (dimension == 2)
-            Jy(ijk...) = -layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::X>{});
+            Jy(ijk...) = -layout_->template deriv<Direction::X>(Bz, {ijk...});
 
         if constexpr (dimension == 3)
-            Jy(ijk...) = layout_->deriv(Bx, {ijk...}, DirectionTag<Direction::Z>{})
-                         - layout_->deriv(Bz, {ijk...}, DirectionTag<Direction::X>{});
+            Jy(ijk...) = layout_->template deriv<Direction::Z>(Bx, {ijk...})
+                         - layout_->template deriv<Direction::X>(Bz, {ijk...});
     }
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -73,11 +73,11 @@ private:
         auto const& [Bx, By, Bz] = B();
 
         if constexpr (dimension == 1)
-            Jz(ijk...) = layout_->deriv(By, {ijk...}, DirectionTag<Direction::X>{});
+            Jz(ijk...) = layout_->template deriv<Direction::X>(By, {ijk...});
 
         else
-            Jz(ijk...) = layout_->deriv(By, {ijk...}, DirectionTag<Direction::X>{})
-                         - layout_->deriv(Bx, {ijk...}, DirectionTag<Direction::Y>{});
+            Jz(ijk...) = layout_->template deriv<Direction::X>(By, {ijk...})
+                         - layout_->template deriv<Direction::Y>(Bx, {ijk...});
     }
 };
 
