@@ -510,7 +510,8 @@ def finest_part_data(hierarchy, time=None):
                         else:
                             toRemove = np.concatenate((toRemove, within))
 
-                    parts = remove(parts, toRemove)
+                    if toRemove.size != 0:
+                        parts = remove(parts, toRemove)
                     if parts is not None:
                         particles[popname].add(parts)
     return particles
