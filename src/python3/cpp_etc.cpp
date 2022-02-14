@@ -1,4 +1,6 @@
 
+#include "core/def.hpp"
+
 #include "python3/pybind_def.hpp"
 #include "simulator/simulator.hpp"
 

@@ -1,28 +1,28 @@
 #ifndef PHARE_CORE_DATA_PARTICLE_PACKER_HPP
 #define PHARE_CORE_DATA_PARTICLE_PACKER_HPP
 
-
 #include <cstddef>
-#include <vector>
 
-#include "particle.hpp"
-#include "particle_array.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
 
 namespace PHARE::core
 {
 template<std::size_t dim>
 class ParticlePacker
 {
+    using AoSParticles_t = AoSParticles<AoSVector<dim>>;
+
 public:
-    ParticlePacker(ParticleArray<dim> const& particles)
+    ParticlePacker(AoSParticles_t const& particles)
         : particles_{particles}
     {
     }
 
     static auto get(Particle<dim> const& particle)
     {
-        return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
-                                     particle.delta, particle.v);
+        return std::forward_as_tuple(particle.weight_, particle.charge_, particle.iCell_,
+                                     particle.delta_, particle.v_);
     }
 
     static auto empty()
@@ -41,26 +41,24 @@ public:
     bool hasNext() const { return it_ < particles_.size(); }
     auto next() { return get(it_++); }
 
-    void pack(ContiguousParticles<dim>& copy)
+    template<typename SoAParticles_t>
+    void pack(SoAParticles_t& copy)
     {
-        auto copyTo = [](auto& a, auto& idx, auto size, auto& v) {
-            std::copy(a.begin(), a.begin() + size, v.begin() + (idx * size));
-        };
         std::size_t idx = 0;
         while (this->hasNext())
         {
             auto next        = this->next();
-            copy.weight[idx] = std::get<0>(next);
-            copy.charge[idx] = std::get<1>(next);
-            copyTo(std::get<2>(next), idx, dim, copy.iCell);
-            copyTo(std::get<3>(next), idx, dim, copy.delta);
-            copyTo(std::get<4>(next), idx, 3, copy.v);
-            idx++;
+            copy.weight(idx) = std::get<0>(next);
+            copy.charge(idx) = std::get<1>(next);
+            copy.iCell(idx)  = std::get<2>(next);
+            copy.delta(idx)  = std::get<3>(next);
+            copy.v(idx)      = std::get<4>(next);
+            ++idx;
         }
     }
 
 private:
-    ParticleArray<dim> const& particles_;
+    AoSParticles_t const& particles_;
     std::size_t it_ = 0;
     static inline std::array<std::string, 5> keys_{"weight", "charge", "iCell", "delta", "v"};
 };

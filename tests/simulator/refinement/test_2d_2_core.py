@@ -31,7 +31,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
     Simulation(
         # smallest_patch_size=6,
         # largest_patch_size=(30, 15),
-        time_step_nbr= 1,
+        time_step_nbr=1,
         final_time= 0.001,
         #boundary_types="periodic",
         cells=(30, 30),
@@ -150,11 +150,8 @@ test = AdvanceTestBase(rethrow=True) # change to False for debugging images
 L0_diags = "phare_outputs/test_homo_0"
 L0L1_diags = "phare_outputs/test_homo_1"
 
-def post_advance_0(new_time):
-    if cpp.mpi_rank() == 0:
-        pass
 
-def post_advance_1(new_time):
+def post_advance(new_time):
     if cpp.mpi_rank() == 0:
         L0_datahier = get_hier(L0_diags)
         L0L1_datahier = get_hier(L0L1_diags)
@@ -175,9 +172,9 @@ def main():
 
     refinement_boxes={"L0": {"B0": [( 10, 10), ( 14, 14)]}}
 
-    Simulator(config(L0_diags, {"seed": rando}), post_advance=post_advance_0).run().reset()
+    Simulator(config(L0_diags, {"seed": rando})).run().reset()
     sim = config(L0L1_diags, {"seed": rando}, refinement_boxes)
-    Simulator(sim, post_advance=post_advance_1).run()
+    Simulator(sim, post_advance=post_advance).run()
 
 if __name__=="__main__":
     main()

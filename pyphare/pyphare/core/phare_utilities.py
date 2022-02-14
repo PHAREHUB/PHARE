@@ -1,18 +1,24 @@
 import math
 import numpy as np
 
+
+
+def is_nd_array(arg):
+    return isinstance(arg, np.ndarray)
+
+
 def all_iterables(*args):
     """
     return true if all arguments are either lists or tuples
     """
-    return all([isinstance(arg, list) or isinstance(arg, tuple) for arg in args])
+    return all([isinstance(arg, (tuple, list)) or is_nd_array(arg) for arg in args])
 
 
 def none_iterable(*args):
     """
     return true if none of the arguments are either lists or tuples
     """
-    return all([not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args])
+    return all([not isinstance(arg, (tuple, list)) and not is_nd_array(arg)  for arg in args])
 
 
 def equal_size(*args):
@@ -44,11 +50,9 @@ def listify(arg):
 
 
 def is_scalar(arg):
-    return not isinstance(arg, (list, tuple)) and not is_nd_array(arg)
+    return none_iterable(arg)
 
 
-def is_nd_array(arg):
-    return isinstance(arg, np.ndarray)
 
 
 def np_array_ify(arg, size = 1):
@@ -158,4 +162,9 @@ def deep_copy(item, memo, excludes=[]):
         else:
             setattr(that, key, deepcopy(value, memo))
     return that
+
+
+def NO_GUI():
+    import matplotlib as mpl
+    mpl.use("Agg")
 

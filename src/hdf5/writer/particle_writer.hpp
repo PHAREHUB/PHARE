@@ -18,18 +18,30 @@ public:
     template<typename H5File, typename Particles>
     static void write(H5File& h5file, Particles const& particles, std::string const& path)
     {
-        auto constexpr dim = Particles::dimension;
-        using Packer       = core::ParticlePacker<dim>;
+        auto constexpr dim            = Particles::dimension;
+        using Packer                  = core::ParticlePacker<dim>;
+        auto static const packer_keys = Packer::keys();
 
-        Packer packer(particles);
-        core::ContiguousParticles<dim> copy{particles.size()};
-        packer.pack(copy);
+        auto write_ = [&](auto& soa) {
+            h5file.template write_data_set_flat<2>(path + packer_keys[0], soa.weight().data());
+            h5file.template write_data_set_flat<2>(path + packer_keys[1], soa.charge().data());
+            h5file.template write_data_set(path + packer_keys[2], soa.iCell().data());
+            h5file.template write_data_set(path + packer_keys[3], soa.delta().data());
+            h5file.template write_data_set(path + packer_keys[4], soa.v().data());
+        };
 
-        std::size_t part_idx = 0;
-        core::apply(copy.as_tuple(), [&](auto const& arg) {
-            auto data_path = path + packer.keys()[part_idx++];
-            h5file.template write_data_set_flat<2>(data_path, arg.data());
-        });
+        if constexpr (Particles::is_contiguous)
+        {
+            write_(particles);
+        }
+        else
+        {
+            constexpr bool SOA = true;
+            Packer packer(particles);
+            core::ParticleArray<dim, SOA> copy{particles.size()};
+            packer.pack(copy);
+            write_(copy);
+        }
     }
 
 

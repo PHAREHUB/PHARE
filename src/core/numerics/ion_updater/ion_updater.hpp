@@ -156,8 +156,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto pushAndAccumulateGhosts = [&](auto& inputArray, bool copyInDomain = false) {
             ParticleArray outputArray(inputArray.size());
 
-            inRange  = makeRange(inputArray);
-            outRange = makeRange(outputArray);
+            auto inRange  = makeRange(inputArray);
+            auto outRange = makeRange(outputArray);
 
             auto firstGhostOut = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
                                                inGhostBox, inGhostLayer, layout);

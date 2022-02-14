@@ -78,7 +78,6 @@ public:
     }
 
 private:
-    using Particle = typename ParticleArray::value_type;
     InputFunction density_;
     std::array<InputFunction, 3> bulkVelocity_;
     std::array<InputFunction, 3> thermalVelocity_;
@@ -196,9 +195,9 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(Particle{cellWeight, particleCharge_,
-                                            AMRCellIndex.template toArray<int>(),
-                                            deltas(deltaDistrib, randGen), particleVelocity});
+            particles.emplace_back(cellWeight, particleCharge_,
+                                   AMRCellIndex.template toArray<int>(),
+                                   deltas(deltaDistrib, randGen), particleVelocity);
         }
     }
 }

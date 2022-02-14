@@ -30,7 +30,7 @@ struct ParticleDeltaDistribution
 template<typename Particle>
 auto cellAsPoint(Particle const& particle)
 {
-    return Point<int, Particle::dimension>{particle.iCell};
+    return Point<int, Particle::dimension>{particle.iCell()};
 }
 
 
@@ -41,181 +41,86 @@ struct Particle
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static const size_t dimension = dim;
 
-    double weight;
-    double charge;
+    double weight_;
+    double charge_;
 
-    std::array<int, dim> iCell    = ConstArray<int, dim>();
-    std::array<double, dim> delta = ConstArray<double, dim>();
-    std::array<double, 3> v       = ConstArray<double, 3>();
+    std::array<int, dim> iCell_    = ConstArray<int, dim>();
+    std::array<double, dim> delta_ = ConstArray<double, dim>();
+    std::array<double, 3> v_       = ConstArray<double, 3>();
 
-    double Ex = 0, Ey = 0, Ez = 0;
-    double Bx = 0, By = 0, Bz = 0;
+    std::array<double, 3> E_ = ConstArray<double, 3>();
+    std::array<double, 3> B_ = ConstArray<double, 3>();
+
 
     bool operator==(Particle<dim> const& that) const
     {
-        return (this->weight == that.weight) && //
-               (this->charge == that.charge) && //
-               (this->iCell == that.iCell) &&   //
-               (this->delta == that.delta) &&   //
-               (this->v == that.v) &&           //
-               (this->Ex == that.Ex) &&         //
-               (this->Ey == that.Ey) &&         //
-               (this->Ez == that.Ez) &&         //
-               (this->Bx == that.Bx) &&         //
-               (this->By == that.By) &&         //
-               (this->Bz == that.Bz);
+        return (this->weight_ == that.weight_) && //
+               (this->charge_ == that.charge_) && //
+               (this->iCell_ == that.iCell_) &&   //
+               (this->delta_ == that.delta_) &&   //
+               (this->v_ == that.v_);
     }
-};
 
+    auto& weight() { return weight_; }
+    auto& weight() const { return weight_; }
+
+    auto& charge() { return charge_; }
+    auto& charge() const { return charge_; }
+
+    auto& iCell() { return iCell_; }
+    auto& iCell() const { return iCell_; }
+
+    auto& delta() { return delta_; }
+    auto& delta() const { return delta_; }
+
+    auto& v() { return v_; }
+    auto& v() const { return v_; }
+
+
+    auto& E() { return E_; }
+    auto& E() const { return E_; }
+
+    auto& B() { return B_; }
+    auto& B() const { return B_; }
+
+    template<std::size_t dimension>
+    friend std::ostream& operator<<(std::ostream& out, const Particle<dimension>& particle);
+};
 
 template<std::size_t dim>
-struct ParticleView
+std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
 {
-    static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
-    static constexpr std::size_t dimension = dim;
-
-    double& weight;
-    double& charge;
-    std::array<int, dim>& iCell;
-    std::array<double, dim>& delta;
-    std::array<double, 3>& v;
-};
-
-
-
-template<std::size_t dim, bool OwnedState = true>
-struct ContiguousParticles
-{
-    static constexpr bool is_contiguous    = true;
-    static constexpr std::size_t dimension = dim;
-    using ContiguousParticles_             = ContiguousParticles<dim, OwnedState>;
-
-    template<typename T>
-    using container_t = std::conditional_t<OwnedState, std::vector<T>, Span<T>>;
-
-    template<bool OS = OwnedState, typename = std::enable_if_t<OS>>
-    ContiguousParticles(std::size_t s)
-        : iCell(s * dim)
-        , delta(s * dim)
-        , weight(s)
-        , charge(s)
-        , v(s * 3)
-    {
-    }
-
-    template<typename Container_int, typename Container_double>
-    ContiguousParticles(Container_int&& _iCell, Container_double&& _delta,
-                        Container_double&& _weight, Container_double&& _charge,
-                        Container_double&& _v)
-        : iCell{_iCell}
-        , delta{_delta}
-        , weight{_weight}
-        , charge{_charge}
-        , v{_v}
-    {
-    }
-
-    std::size_t size() const { return weight.size(); }
-
-    template<std::size_t S, typename T>
-    static std::array<T, S>* _array_cast(T const* array)
-    {
-        return reinterpret_cast<std::array<T, S>*>(const_cast<T*>(array));
-    }
-
-    template<typename Return>
-    Return _to(std::size_t i)
-    {
-        return {
-            *const_cast<double*>(weight.data() + i),     //
-            *const_cast<double*>(charge.data() + i),     //
-            *_array_cast<dim>(iCell.data() + (dim * i)), //
-            *_array_cast<dim>(delta.data() + (dim * i)), //
-            *_array_cast<3>(v.data() + (3 * i)),
-        };
-    }
-
-    auto copy(std::size_t i) { return _to<Particle<dim>>(i); }
-    auto view(std::size_t i) { return _to<ParticleView<dim>>(i); }
-
-    auto operator[](std::size_t i) const { return view(i); }
-    auto operator[](std::size_t i) { return view(i); }
-
-    struct iterator
-    {
-        iterator(ContiguousParticles_* particles)
-        {
-            for (std::size_t i = 0; i < particles->size(); i++)
-                views.emplace_back((*particles)[i]);
-        }
-
-        iterator& operator++()
-        {
-            ++curr_pos;
-            return *this;
-        }
-
-        bool operator!=(iterator const& other) const { return curr_pos != views.size(); }
-        auto& operator*() { return views[curr_pos]; }
-        auto& operator*() const { return views[curr_pos]; }
-
-        std::size_t curr_pos = 0;
-        std::vector<ParticleView<dim>> views;
-    };
-
-    auto as_tuple() { return std::forward_as_tuple(weight, charge, iCell, delta, v); }
-    auto as_tuple() const { return std::forward_as_tuple(weight, charge, iCell, delta, v); }
-
-    auto begin() { return iterator(this); }
-    auto cbegin() const { return iterator(this); }
-
-    auto end() { return iterator(this); }
-    auto cend() const { return iterator(this); }
-
-    container_t<int> iCell;
-    container_t<double> delta;
-    container_t<double> weight, charge, v;
-};
-
-
-template<std::size_t dim>
-using ContiguousParticlesView = ContiguousParticles<dim, /*OwnedState=*/false>;
-
-
-
-template<std::size_t dim, typename T>
-inline constexpr auto is_phare_particle_type
-    = std::is_same_v<Particle<dim>, T> or std::is_same_v<ParticleView<dim>, T>;
-
-
-template<std::size_t dim, template<std::size_t> typename ParticleA,
-         template<std::size_t> typename ParticleB>
-typename std::enable_if_t<
-    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
-    bool>
-operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
-{
-    return particleA.weight == particleB.weight and //
-           particleA.charge == particleB.charge and //
-           particleA.iCell == particleB.iCell and   //
-           particleA.delta == particleB.delta and   //
-           particleA.v == particleB.v;
+    out << "iCell(";
+    for (auto c : particle.iCell())
+        out << c << ",";
+    out << "), delta(";
+    for (auto d : particle.delta())
+        out << d << ",";
+    out << "), v(";
+    for (auto v : particle.v())
+        out << v << ",";
+    out << "), charge : " << particle.charge() << ", weight : " << particle.weight() << '\n';
+    return out;
 }
+
+
 
 } // namespace PHARE::core
 
 
 namespace std
 {
-template<size_t dim, template<std::size_t> typename Particle_t>
-typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
-                          PHARE::core::Particle<dim>>
-copy(Particle_t<dim> const& from)
+using namespace PHARE::core;
+
+template<std::size_t dim>
+Particle<dim> copy(Particle<dim> const& from)
 {
-    return {from.weight, from.charge, from.iCell, from.delta, from.v};
+    return {from.weight(), from.charge(), from.iCell(), from.delta(), from.v()};
 }
 
+
 } // namespace std
+
 
 
 #endif

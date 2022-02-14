@@ -177,6 +177,18 @@ private:
 };
 
 
+template<typename DataType, std::size_t dim>
+auto make_array_view(std::vector<DataType>& vec, std::array<std::uint32_t, dim> shape)
+{
+    return NdArrayView<dim, DataType>{vec.data(), shape};
+}
+
+template<typename DataType, std::size_t dim>
+auto make_array_view(std::vector<DataType> const& vec, std::array<std::uint32_t, dim> shape)
+{
+    return NdArrayView<dim, DataType, DataType const*>{vec.data(), shape};
+}
+
 
 
 template<std::size_t dim, typename DataType = double>

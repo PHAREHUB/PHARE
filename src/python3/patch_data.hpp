@@ -11,7 +11,7 @@
 namespace PHARE::pydata
 {
 template<typename Data, std::size_t dim>
-struct PatchData
+struct __attribute__((visibility("hidden"))) PatchData
 {
     static auto constexpr dimension = dim;
     std::string patchID;

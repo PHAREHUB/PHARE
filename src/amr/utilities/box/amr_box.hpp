@@ -14,8 +14,8 @@ auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId 
 {
     SAMRAI::tbox::Dimension dimension{dim};
     SAMRAI::hier::BlockId blockId{samrai_blockId};
-    return SAMRAI::hier::Box{SAMRAI::hier::Index{dimension, (*box.lower).data()},
-                             SAMRAI::hier::Index{dimension, (*box.upper).data()}, blockId};
+    return SAMRAI::hier::Box{SAMRAI::hier::Index{dimension, &box.lower[0]},
+                             SAMRAI::hier::Index{dimension, &box.upper[0]}, blockId};
 }
 
 template<typename Type, std::size_t dim>
@@ -68,6 +68,50 @@ struct Box : public PHARE::core::Box<Type, dim>
         return eq;
     }
 };
+
+
+
+
+template<std::size_t dim>
+inline bool isInBox(SAMRAI::hier::Box const& box, std::array<int, dim> const& iCell)
+{
+    auto const& lower = box.lower();
+    auto const& upper = box.upper();
+
+    if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
+    {
+        if constexpr (dim > 1)
+        {
+            if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
+            {
+                if constexpr (dim > 2)
+                {
+                    if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+template<typename Particle>
+inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
+{
+    return isInBox(box, particle.iCell());
+}
+
 
 } // namespace PHARE::amr
 

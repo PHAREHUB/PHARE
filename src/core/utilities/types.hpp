@@ -16,14 +16,8 @@
 
 #include "cppdict/include/dict.hpp"
 
-#if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
-#define PHARE_DEBUG_DO(...) __VA_ARGS__
-#else
-#define PHARE_DEBUG_DO(...)
-#endif
 
-#define _PHARE_TO_STR(x) #x // convert macro text to string
-#define PHARE_TO_STR(x) _PHARE_TO_STR(x)
+
 
 namespace PHARE
 {
@@ -187,6 +181,13 @@ namespace core
     {
         using value_type = T;
 
+
+        template<typename... Args>
+        StackVar(Args&&... args)
+            : var(std::forward<Args...>(args...))
+        {
+        }
+
         T var;
     };
 
@@ -246,6 +247,17 @@ Multiplies product(Container const& container, Multiplies mul = 1)
     return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
 }
 
+template<typename Container, typename F>
+auto sum_from(Container const& container, F fn)
+{
+    using value_type  = typename Container::value_type;
+    using return_type = std::decay_t<std::result_of_t<F const&(value_type const&)>>;
+    return_type sum   = 0;
+    for (auto const& el : container)
+        sum += fn(el);
+    return sum;
+}
+
 template<typename Container, typename Return = typename Container::value_type>
 Return sum(Container const& container, Return r = 0)
 {
@@ -295,6 +307,7 @@ auto generate(F&& f, std::vector<T>&& v)
     return generate(std::forward<F>(f), v);
 }
 
+
 template<std::size_t Idx, typename F, typename Type, std::size_t Size>
 auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
 {
@@ -310,6 +323,7 @@ auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
 
 template<typename F, typename Type, std::size_t Size>
 auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+// auto constexpr generate(F&& f, std::array<Type, Size>& arr)
 {
     return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
 }
@@ -335,6 +349,51 @@ template<typename Container>
 auto none(Container const& container)
 {
     return std::none_of(container.begin(), container.end(), to_bool);
+}
+
+
+
+void inline abort_if(bool b)
+{
+    if (b)
+        std::abort();
+}
+
+
+template<typename T = std::size_t>
+struct Apply
+{
+    template<size_t i>
+    constexpr auto operator()()
+    {
+        return std::integral_constant<T, i>{};
+    }
+};
+
+template<typename Apply, size_t... Is>
+constexpr auto apply_N(Apply& f, std::integer_sequence<size_t, Is...> const&)
+{
+    if constexpr (!std::is_same_v<decltype(f.template operator()<0>()), void>)
+        return std::make_tuple(f.template operator()<Is>()...);
+    (f.template operator()<Is>(), ...);
+}
+template<size_t N, typename Apply>
+constexpr auto apply_N(Apply&& f)
+{
+    return apply_N(f, std::make_integer_sequence<size_t, N>{});
+}
+
+template<size_t N, typename Fn>
+constexpr void for_N(Fn&& fn)
+{
+    /*
+        for_N<2>([](auto ic) {
+            constexpr auto i = ic();
+            // ...
+        });
+    */
+
+    std::apply([&](auto... ics) { (fn(ics), ...); }, apply_N<N>(Apply{}));
 }
 
 

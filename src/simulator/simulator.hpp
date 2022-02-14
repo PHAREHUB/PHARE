@@ -434,8 +434,6 @@ struct SimulatorMaker
 };
 
 
-std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
-
 
 template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>
 std::unique_ptr<Simulator<dim, interp, nbRefinedPart>>

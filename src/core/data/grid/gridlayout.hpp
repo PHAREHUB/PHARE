@@ -794,7 +794,7 @@ namespace core
         auto AMRToLocal(Point<T, dimension> AMRPoint) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            Point<T, dimension> localPoint;
+            Point<std::uint32_t, dimension> localPoint;
 
             // any direction, it's the same because we want cells
             auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
@@ -802,7 +802,9 @@ namespace core
             //
             for (auto i = 0u; i < dimension; ++i)
             {
-                localPoint[i] = AMRPoint[i] - (AMRBox_.lower[i] - localStart);
+                int local = AMRPoint[i] - (AMRBox_.lower[i] - localStart);
+                assert(local >= 0);
+                localPoint[i] = local;
             }
             return localPoint;
         }
@@ -816,7 +818,7 @@ namespace core
         auto AMRToLocal(Box<T, dimension> AMRBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            auto localBox = Box<T, dimension>{};
+            auto localBox = Box<std::uint32_t, dimension>{};
 
             localBox.lower = AMRToLocal(AMRBox.lower);
             localBox.upper = AMRToLocal(AMRBox.upper);
@@ -1491,4 +1493,4 @@ namespace core
 } // namespace core
 } // namespace PHARE
 
-#endif // GridLayout_HPP
+#endif // PHARE_CORE_GRID_GridLayout_HPP

@@ -19,10 +19,11 @@ public:
         , leavingParticles_(10)
     {
         bc.setBoundaryBoxes(boundaryBoxes);
-        for (auto& part : leavingParticles_)
+
+        for (std::size_t i = 0; i < leavingParticles_.size(); ++i)
         {
-            part.iCell[0] = 5;  // these particles are out...
-            part.iCell[1] = -1; // and not through the boundarybox
+            leavingParticles_.iCell(i)[0] = 5;  // these particles are out...
+            leavingParticles_.iCell(i)[1] = -1; // and not through the boundarybox
         }
     }
 

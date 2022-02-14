@@ -1,8 +1,11 @@
 #ifndef PHARE_BENCH_CORE_BENCH_H
 #define PHARE_BENCH_CORE_BENCH_H
 
+
 #include "phare_core.hpp"
-#include "benchmark/benchmark.hpp"
+#include "core/utilities/types.hpp"
+
+#include "benchmark/benchmark.h"
 
 
 namespace PHARE::core::bench

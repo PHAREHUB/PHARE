@@ -19,7 +19,10 @@ namespace core
     protected:
         using ParticleRange             = Range<ParticleIterator>;
         static auto constexpr dimension = GridLayout::dimension;
-        using ParticleSelector          = std::function<bool(Particle<dimension> const&)>;
+        using ParticleSelector
+            = std::conditional_t<ParticleIterator::is_contiguous,              //
+                                 std::function<bool(ParticleIterator const&)>, //
+                                 std::function<bool(Particle<dimension> const&)>>;
 
     public:
         /** Move all particles in rangeIn from t=n to t=n+1 and store their new

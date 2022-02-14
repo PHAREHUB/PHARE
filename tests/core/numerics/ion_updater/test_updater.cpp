@@ -396,8 +396,10 @@ struct IonUpdaterTest : public ::testing::Test
     using ParticleArray = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
-    using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using Field    = typename PHARETypes::Field_t;
+    using VecField = typename PHARETypes::VecField_t;
 
+    using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
     double dt{0.01};
 
@@ -407,15 +409,12 @@ struct IonUpdaterTest : public ::testing::Test
 
 
     // data for electromagnetic fields
-    using Field    = typename PHARETypes::Field_t;
-    using VecField = typename PHARETypes::VecField_t;
 
     ElectromagBuffers<dim, interp_order> emBuffers;
     IonsBuffers<dim, interp_order> ionsBuffers;
 
     Electromag EM{init_dict["electromag"]};
     Ions ions{init_dict["ions"]};
-
 
 
     IonUpdaterTest()
@@ -481,12 +480,12 @@ struct IonUpdaterTest : public ::testing::Test
                              [&firstAMRCell](auto const& particle) {
                                  if constexpr (interp_order == 1)
                                  {
-                                     return particle.iCell[0] == firstAMRCell[0];
+                                     return particle.iCell()[0] == firstAMRCell[0];
                                  }
                                  else if constexpr (interp_order == 2 or interp_order == 3)
                                  {
-                                     return (particle.iCell[0] == firstAMRCell[0])
-                                            || (particle.iCell[0] == firstAMRCell[0] + 1);
+                                     return (particle.iCell()[0] == firstAMRCell[0])
+                                            || (particle.iCell()[0] == firstAMRCell[0] + 1);
                                  }
                              });
 
@@ -514,11 +513,11 @@ struct IonUpdaterTest : public ::testing::Test
                                std::begin(levelGhostPartOld), [](auto& part) {
                                    if constexpr (interp_order == 2 or interp_order == 3)
                                    {
-                                       part.iCell[0] = part.iCell[0] - 2;
+                                       part.iCell()[0] = part.iCell()[0] - 2;
                                    }
                                    else if constexpr (interp_order == 1)
                                    {
-                                       part.iCell[0] = part.iCell[0] - 1;
+                                       part.iCell()[0] = part.iCell()[0] - 1;
                                    }
                                    return part;
                                });
@@ -540,12 +539,12 @@ struct IonUpdaterTest : public ::testing::Test
                              [&lastAMRCell](auto const& particle) {
                                  if constexpr (interp_order == 1)
                                  {
-                                     return particle.iCell[0] == lastAMRCell[0];
+                                     return particle.iCell()[0] == lastAMRCell[0];
                                  }
                                  else if constexpr (interp_order == 2 or interp_order == 3)
                                  {
-                                     return (particle.iCell[0] == lastAMRCell[0])
-                                            || (particle.iCell[0] == lastAMRCell[0] - 1);
+                                     return (particle.iCell()[0] == lastAMRCell[0])
+                                            || (particle.iCell()[0] == lastAMRCell[0] - 1);
                                  }
                              });
 
@@ -554,11 +553,11 @@ struct IonUpdaterTest : public ::testing::Test
                                std::begin(patchGhostPart), [](auto& part) {
                                    if constexpr (interp_order == 2 or interp_order == 3)
                                    {
-                                       part.iCell[0] = part.iCell[0] + 2;
+                                       part.iCell()[0] = part.iCell()[0] + 2;
                                    }
                                    else if constexpr (interp_order == 1)
                                    {
-                                       part.iCell[0] = part.iCell[0] + 1;
+                                       part.iCell()[0] = part.iCell()[0] + 1;
                                    }
                                    return part;
                                });
@@ -694,8 +693,9 @@ struct IonUpdaterTest : public ::testing::Test
                 EXPECT_GE(0.07, diff);
 
                 if (diff >= 0.07)
-                    std::cout << "actual : " << density(ix) << " prescribed : " << functionX[i]
-                              << " diff : " << diff << " ix : " << ix << "\n";
+                    std::cout << i << " actual : " << density(ix)
+                              << " prescribed : " << functionX[i] << " diff : " << diff
+                              << " ix : " << ix << " max: " << functionX.size() << "\n";
             }
         };
 
@@ -769,17 +769,18 @@ TYPED_TEST(IonUpdaterTest, loadsPatchGhostParticlesOnRightGhostArea)
         {
             if constexpr (TypeParam::interp_order == 1)
             {
-                for (auto const& part : pop.patchGhostParticles())
+                auto& ghost = pop.patchGhostParticles();
+                for (auto it = ghost.begin(); it != ghost.end(); ++it)
                 {
-                    EXPECT_EQ(lastAMRCell[0] + 1, part.iCell[0]);
+                    EXPECT_EQ(lastAMRCell[0] + 1, it.iCell()[0]);
                 }
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
-                typename IonUpdaterTest<TypeParam>::ParticleArray copy{pop.patchGhostParticles()};
+                auto copy{pop.patchGhostParticles()};
                 auto firstInOuterMostCell = std::partition(
                     std::begin(copy), std::end(copy), [&lastAMRCell](auto const& particle) {
-                        return particle.iCell[0] == lastAMRCell[0] + 1;
+                        return particle.iCell()[0] == lastAMRCell[0] + 1;
                     });
                 EXPECT_EQ(nbrPartPerCell, std::distance(std::begin(copy), firstInOuterMostCell));
                 EXPECT_EQ(nbrPartPerCell, std::distance(firstInOuterMostCell, std::end(copy)));
@@ -802,9 +803,10 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
         {
             if constexpr (TypeParam::interp_order == 1)
             {
-                for (auto const& part : pop.levelGhostParticles())
+                auto& ghost = pop.levelGhostParticles();
+                for (auto it = ghost.begin(); it != ghost.end(); ++it)
                 {
-                    EXPECT_EQ(firstAMRCell[0] - 1, part.iCell[0]);
+                    EXPECT_EQ(firstAMRCell[0] - 1, it.iCell()[0]);
                 }
             }
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
@@ -812,7 +814,7 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
                 typename IonUpdaterTest<TypeParam>::ParticleArray copy{pop.levelGhostParticles()};
                 auto firstInOuterMostCell = std::partition(
                     std::begin(copy), std::end(copy), [&firstAMRCell](auto const& particle) {
-                        return particle.iCell[0] == firstAMRCell[0] - 1;
+                        return particle.iCell()[0] == firstAMRCell[0] - 1;
                     });
                 EXPECT_EQ(nbrPartPerCell, std::distance(std::begin(copy), firstInOuterMostCell));
                 EXPECT_EQ(nbrPartPerCell, std::distance(firstInOuterMostCell, std::end(copy)));
@@ -850,12 +852,12 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
         EXPECT_EQ(cpy.size(), original.size());
         for (std::size_t iPart = 0; iPart < original.size(); ++iPart)
         {
-            EXPECT_EQ(cpy[iPart].iCell[0], original[iPart].iCell[0]);
-            EXPECT_DOUBLE_EQ(cpy[iPart].delta[0], original[iPart].delta[0]);
+            EXPECT_EQ(cpy.iCell(iPart)[0], original.iCell(iPart)[0]);
 
+            EXPECT_DOUBLE_EQ(cpy.delta(iPart)[0], original.delta(iPart)[0]);
             for (std::size_t iDir = 0; iDir < 3; ++iDir)
             {
-                EXPECT_DOUBLE_EQ(cpy[iPart].v[iDir], original[iPart].v[iDir]);
+                EXPECT_DOUBLE_EQ(cpy.v(iPart)[iDir], original.v(iPart)[iDir]);
             }
         }
     };

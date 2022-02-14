@@ -2,6 +2,7 @@
 #ifndef PHARE_CORE_INCLUDE_HPP
 #define PHARE_CORE_INCLUDE_HPP
 
+#include "core/logger.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -16,7 +17,6 @@
 #include "core/models/physical_state.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/logger.hpp"
 
 #include <string>
 #include <vector>
@@ -43,9 +43,9 @@ struct PHARE_Types
 
     using Particle_t      = PHARE::core::Particle<dimension>;
     using ParticleAoS_t   = PHARE::core::ParticleArray<dimension>;
-    using ParticleArray_t = ParticleAoS_t;
-    using ParticleSoA_t   = PHARE::core::ContiguousParticles<dimension>;
-
+    using ParticleSoA_t   = PHARE::core::ParticleArray<dimension, true>;
+    using ParticleArray_t = ParticleSoA_t;
+    // using ParticleArray_t = ParticleAoS_t;
 
     using MaxwellianParticleInitializer_t
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;

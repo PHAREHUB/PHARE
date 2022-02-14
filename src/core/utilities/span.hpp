@@ -10,24 +10,25 @@
 
 namespace PHARE::core
 {
-template<typename T, typename SIZE = size_t>
+template<typename T, typename SIZE = std::size_t>
 struct Span
 {
-    using value_type = T;
+    using value_type = std::decay_t<T>;
 
     auto& operator[](SIZE i) { return ptr[i]; }
     auto& operator[](SIZE i) const { return ptr[i]; }
-    T const* const& data() const { return ptr; }
-    T const* const& begin() const { return ptr; }
-    T* end() const { return ptr + s; }
+    auto data() const { return ptr; }
+    auto data() { return ptr; }
+    auto begin() const { return ptr; }
+    auto end() const { return ptr + s; }
     SIZE const& size() const { return s; }
 
-    T const* ptr = nullptr;
+    T* const ptr = nullptr;
     SIZE s       = 0;
 };
 
 
-template<typename T, typename SIZE = size_t>
+template<typename T, typename SIZE = std::size_t>
 class VectorSpan : private StackVar<std::vector<T>>, public core::Span<T, SIZE>
 {
     using Vector = StackVar<std::vector<T>>;
@@ -53,7 +54,7 @@ public:
 
 
 
-template<typename T, typename SIZE = size_t>
+template<typename T, typename SIZE = std::size_t>
 struct SpanSet
 {
     using value_type = T;
@@ -77,12 +78,14 @@ struct SpanSet
     {
     }
 
+    Span<T, SIZE> operator[](SIZE i) { return {this->vec.data() + displs[i], this->sizes[i]}; }
     Span<T, SIZE> operator[](SIZE i) const
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
     }
 
     T* data() const { return const_cast<T*>(vec.data()); }
+    T* data() { return const_cast<T*>(vec.data()); }
 
     struct iterator
     {
@@ -113,6 +116,29 @@ struct SpanSet
     std::vector<SIZE> displs;
     std::vector<T> vec;
 };
+
+
+
+
+template<typename T, std::size_t size>
+auto flatten(std::vector<std::array<T, size>> const& data)
+{
+    assert(data.size() > 0);
+
+    return Span<T const, std::size_t>{data.data()->data(), data.size() * size};
+}
+
+
+template<typename T, std::size_t size>
+auto flatten(std::vector<std::array<T, size>>& data)
+{
+    assert(data.size() > 0);
+
+    return Span<T, std::size_t>{data.data()->data(), data.size() * size};
+}
+
+
+
 } // namespace PHARE::core
 
 #endif // PHARE_CORE_UTILITIES_SPAN_HPP

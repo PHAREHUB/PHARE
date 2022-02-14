@@ -57,37 +57,37 @@ public:
 
         for (int i = 0; i < 850; ++i)
         {
-            particles[i].iCell[0] = disInX(gen);
-            particles[i].iCell[1] = disInY(gen);
+            particles.iCell(i)[0] = disInX(gen);
+            particles.iCell(i)[1] = disInY(gen);
         }
 
         for (int i = 850; i < 900; ++i)
         {
-            particles[i].iCell[0] = 21;
-            particles[i].iCell[1] = disInBox0Y(gen);
+            particles.iCell(i)[0] = 21;
+            particles.iCell(i)[1] = disInBox0Y(gen);
         }
 
         for (int i = 900; i < 950; ++i)
         {
-            particles[i].iCell[0] = disInBox1X(gen);
-            particles[i].iCell[1] = 11;
+            particles.iCell(i)[0] = disInBox1X(gen);
+            particles.iCell(i)[1] = 11;
         }
 
         for (int i = 950; i < 1000; ++i)
         {
-            particles[i].iCell[0] = 21;
-            particles[i].iCell[1] = 11;
+            particles.iCell(i)[0] = 21;
+            particles.iCell(i)[1] = 11;
         }
 
         for (int i = 1000; i < 1025; ++i)
         {
-            particles[i].iCell[0] = -1;
-            particles[i].iCell[1] = disInBox0Y(gen);
+            particles.iCell(i)[0] = -1;
+            particles.iCell(i)[1] = disInBox0Y(gen);
         }
         for (int i = 1025; i < 1050; ++i)
         {
-            particles[i].iCell[0] = disInBox1X(gen);
-            particles[i].iCell[1] = -1;
+            particles.iCell(i)[0] = disInBox1X(gen);
+            particles.iCell(i)[1] = -1;
         }
     }
 
