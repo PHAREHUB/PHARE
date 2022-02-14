@@ -10,6 +10,14 @@
 
 namespace PHARE::core
 {
+// PGI compiler (nvc++ 21.3-0) doesn't like static initializations of arrays,
+//   would result in empty strings
+inline std::array<std::string, 5> packer_keys()
+{
+    // The order of this array must match the tuple order of ParticlePacker::get(particle)
+    return {"weight", "charge", "iCell", "delta", "v"};
+}
+
 template<std::size_t dim>
 class ParticlePacker
 {
@@ -30,8 +38,6 @@ public:
         Particle<dim> particle;
         return get(particle);
     }
-
-    static auto& keys() { return keys_; }
 
     auto get(std::size_t i) const { return get(particles_[i]); }
     bool hasNext() const { return it_ < particles_.size(); }
@@ -55,10 +61,10 @@ public:
         }
     }
 
+
 private:
     ParticleArray<dim> const& particles_;
     std::size_t it_ = 0;
-    static inline std::array<std::string, 5> keys_{"weight", "charge", "iCell", "delta", "v"};
 };
 
 

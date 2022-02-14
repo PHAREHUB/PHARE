@@ -167,6 +167,15 @@ namespace core
         return arr;
     }
 
+    template<std::size_t size, typename FN>
+    constexpr auto ConstArrayFrom(FN fn)
+    {
+        std::array<decltype(fn()), size> arr{};
+        for (uint8_t i = 0; i < size; i++)
+            arr[i] = fn();
+        return arr;
+    }
+
     template<typename Type>
     std::vector<Type> displacementFrom(std::vector<Type> const& input)
     {
