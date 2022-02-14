@@ -794,6 +794,7 @@ namespace core
          * @brief AMRToLocal returns the local index associated with the given AMR one.
          * This method only deals with **cell** indexes.
          */
+
         template<typename T>
         auto AMRToLocal(Point<T, dimension> AMRPoint) const
         {
