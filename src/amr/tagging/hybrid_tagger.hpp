@@ -68,8 +68,11 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
         // hybridModel.tags may contain vectors for patches and levels that no longer exist
         auto key = std::to_string(patch.getPatchLevelNumber()) + "_"
                    + amr::to_string(patch.getGlobalId());
+
+        auto nCells = core::product(layout.nbrCells());
+
         bool item_exists_and_valid = hybridModel.tags.count(key)
-                                     and hybridModel.tags[key]->size() == layout.nbrCellsFlat();
+                                     and hybridModel.tags[key]->size() == nCells;
 
         if (!item_exists_and_valid)
         {
@@ -80,7 +83,7 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
                 = std::make_shared<typename Map_value_type::element_type>(layout.nbrCells());
         }
 
-        std::copy(tags, tags + layout.nbrCellsFlat(), hybridModel.tags[key]->data());
+        std::copy(tags, tags + nCells, hybridModel.tags[key]->data());
     }
     else
         throw std::runtime_error("invalid tagging strategy");

@@ -133,7 +133,7 @@ namespace amr
 
         /** @brief given two ParticlesData (destination and source),
          * an overlap , a ratio and the geometry of both patches, perform the
-         * splitting of coarse particules onto the destination patch
+         * splitting of coarse particles onto the destination patch
          */
         void refine_(ParticlesData<ParticleArray>& destParticlesData,
                      ParticlesData<ParticleArray> const& srcParticlesData,
@@ -167,12 +167,10 @@ namespace amr
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
             // In case of a coarseBoundary it will most likely give multiple boxes
-            // in case of interior, this will be just one boxe usually
+            // in case of interior, this will be just one box usually
             for (auto const& destinationBox : destBoxes)
             {
-                std::array<std::remove_reference_t<decltype(srcInteriorParticles)>*, 2>
-                    particlesArrays{{&srcInteriorParticles, &srcGhostParticles}};
-
+                std::array particlesArrays{&srcInteriorParticles, &srcGhostParticles};
 
                 auto isInDest = [&destinationBox](auto const& particle) //
                 { return isInBox(destinationBox, particle); };
@@ -200,7 +198,7 @@ namespace amr
 
 
 
-                            if (putParticlesInCoarseBoundary)
+                            if constexpr (putParticlesInCoarseBoundary)
                             {
                                 if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
                                 {

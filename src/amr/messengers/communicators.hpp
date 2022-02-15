@@ -239,6 +239,15 @@ namespace amr
                             oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
                         schedule->fillData(initDataTime);
                     }
+                    else if constexpr (Type == RefinerType::InitInteriorPart)
+                    {
+                        std::cout << "regriding adding " << key << " on level " << levelNumber
+                                  << " \n";
+                        auto schedule = algo->createSchedule(
+                            std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
+                            oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                        schedule->fillData(initDataTime);
+                    }
                     else
                     {
                         std::cout << "regriding adding " << key << " on level " << levelNumber

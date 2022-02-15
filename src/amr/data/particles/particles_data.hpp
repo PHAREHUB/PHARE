@@ -423,8 +423,8 @@ namespace amr
                    [[maybe_unused]] SAMRAI::hier::Box const& destinationGhostBox,
                    SAMRAI::hier::Box const& intersectionBox, ParticlesData const& sourceData)
         {
-            std::array<decltype(sourceData.domainParticles) const*, 2> particlesArrays{
-                &sourceData.domainParticles, &sourceData.patchGhostParticles};
+            std::array particlesArrays{&sourceData.domainParticles,
+                                       &sourceData.patchGhostParticles};
 
             auto myDomainBox = this->getBox();
 

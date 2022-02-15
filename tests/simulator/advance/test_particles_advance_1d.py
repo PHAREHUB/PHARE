@@ -39,6 +39,17 @@ class AdvanceTest(AdvanceTestBase):
         self._test_L0_particle_number_conservation(ndim, interp)
 
 
+
+    @data(
+        *per_interp(({"L0": {"B0": Box1D(10, 14)}})),
+    )
+    @unpack
+    def test_domain_particles_on_refined_level(self, interp_order, refinement_boxes):
+        self._test_domain_particles_on_refined_level(ndim, interp_order, refinement_boxes)
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
 

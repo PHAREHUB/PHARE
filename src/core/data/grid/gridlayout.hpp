@@ -178,10 +178,6 @@ namespace core
          */
         auto& nbrCells() const { return nbrPhysicalCells_; }
 
-        std::uint32_t nbrCellsFlat() const
-        {
-            return std::accumulate(nbrPhysicalCells_.begin(), nbrPhysicalCells_.end(), 0);
-        }
 
 
         auto const& AMRBox() const { return AMRBox_; }
