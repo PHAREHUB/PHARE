@@ -137,9 +137,7 @@ def withTagging(diagdir):
                                max_nbr_levels=3))
 
 
-def staticRefinement(diagdir):
-    config(**simulation_params(diagdir,
-                               refinement_boxes={"L0": [Box1D(46, 52), Box1D(146, 152)]}))
+
 
 
 def noRefinement(diagdir):
