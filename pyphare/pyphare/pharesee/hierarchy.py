@@ -175,6 +175,18 @@ class ParticleData(PatchData):
         assert (self.box.lower == self.ghost_box.lower + self.ghosts_nbr).all()
 
 
+    def select(self, box):
+        return self.dataset[box]
+
+
+    def __getitem__(self, box):
+            return self.select(box)
+
+
+    def size(self):
+        return self.dataset.size()
+
+
 
 
 class Patch:

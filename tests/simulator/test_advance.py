@@ -33,7 +33,9 @@ class AdvanceTestBase(SimulatorTest):
                      diag_outputs, nbr_part_per_cell=100, density = _density,
                      smallest_patch_size=None, largest_patch_size=20,
                      cells=120, time_step=0.001, model_init={},
-                     dl=0.2, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1):
+                     dl=0.2, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1,
+                     block_merging_particles=False):
+
         diag_outputs = f"phare_outputs/advance/{diag_outputs}"
         from pyphare.pharein import global_vars
         global_vars.sim = None
@@ -176,7 +178,7 @@ class AdvanceTestBase(SimulatorTest):
         if is_particle_type:
             particle_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_pop_protons_patchGhost.h5", hier=particle_hier)
 
-        if qty == "particles":
+        if not block_merging_particles and qty == "particles":
             merge_particles(particle_hier)
 
         if is_particle_type:
@@ -526,6 +528,43 @@ class AdvanceTestBase(SimulatorTest):
         quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
         checks = self.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier, quantities)
         self.assertGreater(checks, len(refinement_boxes["L0"]) * len(quantities))
+
+
+
+
+
+    def base_test_domain_particles_on_refined_level(self, datahier, new_time=None):
+        """
+          !! test assumes only domain particle patch_datas are present !!
+        """
+        times = datahier.times() if new_time is None else [new_time]
+        checks = 0
+        for coarsest_time in times:
+            for patch in datahier.level(1, coarsest_time).patches:
+                for pd_key, pd in patch.patch_datas.items():
+                    if pd_key.endswith("_domain"):
+                        self.assertGreater(pd[pd.box].size(), 0)
+                        self.assertEqual(pd[pd.box].size(), pd[pd.ghost_box].size())
+                        checks += 1
+        self.assertGreater(checks, 0)
+
+
+
+
+    def _test_domain_particles_on_refined_level(self, ndim, interp_order, refinement_boxes, **kwargs):
+        import pyphare.pharein as ph
+
+        time_step_nbr=5
+        time_step=0.001
+
+        out = "domain_particles"
+        test_id = self.ddt_test_id()
+
+        local_out = f"{out}/dim{ndim}_interp{interp_order}_mpi_n_{cpp.mpi_size()}_id{test_id}"
+
+        self.base_test_domain_particles_on_refined_level(self.getHierarchy(interp_order, refinement_boxes,
+                                      qty="particles", time_step=time_step, time_step_nbr=time_step_nbr,
+                                      ndim=ndim, diag_outputs=local_out, block_merging_particles=True, **kwargs))
 
 
 

@@ -2,10 +2,6 @@
 
 
 import pyphare.pharein as ph #lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
-from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharein import global_vars as gv
 from pyphare.pharesee.run import Run
@@ -79,102 +75,75 @@ def vthz(x):
 vvv = {"vbulkx": vx, "vbulky": vy, "vbulkz": vz,
         "vthx": vthx, "vthy": vthy, "vthz": vthz }
 
-def withTagging(**kwargs):
 
-    Simulation(
-        smallest_patch_size=20,
-        largest_patch_size=20,
-        time_step_nbr=2000,
-        final_time=20.,
-        boundary_types="periodic",
-        cells=200,
-        dl=1.0,
-        refinement="tagging",
-        max_nbr_levels = 3,
-        diag_options={"format": "phareh5",
-                      "options": {"dir": kwargs["diagdir"],
-                                  "mode":"overwrite"}}
-    )
+# used to only test on the early particle diagnostic files
+particle_diagnostics = {"count":10, "idx":0}
+
+def simulation_params(diagdir, **extra):
+    params = {
+        "interp_order": 1,
+        "time_step_nbr":2000,
+        "time_step":.01,
+        "boundary_types":"periodic",
+        "cells":200,
+        "dl":1.0,
+        "diag_options":{"format": "phareh5",
+                        "options": {
+                              "dir": diagdir,
+                              "mode":"overwrite"}}
+    }
+    params.update(**extra)
+    return params
 
 
-    MaxwellianFluidModel(
+def config(**options):
+
+    ph.Simulation(**options)
+    ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
         protons={"charge": 1, "density": density, **vvv}
     )
-
-    ElectronModel(closure="isothermal", Te=0.12)
-
-
+    ph.ElectronModel(closure="isothermal", Te=0.12)
 
     sim = ph.global_vars.sim
 
     timestamps = all_timestamps(sim)
 
-    ph.MetaDiagnostics(
-        quantity="tags",
-        write_timestamps=timestamps,
-        compute_timestamps=timestamps,
-    )
-
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
-
-
     for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
             )
 
+    for pop in sim.model.populations:
+        for quantity in ['domain']:
+            ph.ParticleDiagnostics(quantity=quantity,
+                                compute_timestamps=timestamps[:particle_diagnostics["count"]+1],
+                                write_timestamps=timestamps[:particle_diagnostics["count"]+1],
+                                population_name=pop)
 
 
 
-def noRefinement(**kwargs):
-
-    Simulation(
-        smallest_patch_size=20,
-        largest_patch_size=20,
-        time_step_nbr=2000,
-        final_time=20.,
-        boundary_types="periodic",
-        cells=200,
-        dl=1.0,
-        diag_options={"format": "phareh5",
-                      "options": {"dir": kwargs["diagdir"],"mode":"overwrite"}}
-    )
+def withTagging(diagdir):
+    config(**simulation_params(diagdir,
+                               refinement="tagging",
+                               max_nbr_levels=3))
 
 
-    MaxwellianFluidModel(
-        bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv}
-    )
-
-    ElectronModel(closure="isothermal", Te=0.12)
 
 
-    sim = ph.global_vars.sim
-    timestamps = all_timestamps(sim)
+
+def noRefinement(diagdir):
+    config(**simulation_params(diagdir))
 
 
-    for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
-
-
-    for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-            )
 
 
 def make_figure():
@@ -242,6 +211,7 @@ def make_figure():
     for ax in (ax0, ax1, ax2):
         ax.axvline(wT0+plot_time*v, color="r")
 
+    fig.savefig("td1dtagged.png")
 
     # select data around the rightward TD
     idx = np.where((xbywT>150) & (xbywT<190))
@@ -266,22 +236,38 @@ def make_figure():
         raise RuntimeError(f"x0 (={x0}) too far from 172")
 
 
+from tests.simulator.test_advance import AdvanceTestBase
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
 
+
+test = AdvanceTestBase()
+
+def get_time(path, time):
+    if time is not None:
+        time = "{:.10f}".format(time)
+    from pyphare.pharesee.hierarchy import hierarchy_from
+    return hierarchy_from(h5_filename=path+"/ions_pop_protons_domain.h5", time=time)
+
+
+
+def post_advance(new_time):
+    if particle_diagnostics["idx"] < particle_diagnostics["count"] and cpp.mpi_rank() == 0:
+        particle_diagnostics["idx"] += 1
+        datahier = get_time(gv.sim.diag_options["options"]["dir"], new_time)
+        test.base_test_domain_particles_on_refined_level(datahier, new_time)
 
 
 
 def main():
-    from pyphare.cpp import cpp_lib
-    cpp = cpp_lib()
-
-    withTagging(diagdir="withTagging")
-    Simulator(gv.sim).run()
-    gv.sim = None
 
     noRefinement(diagdir="noRefinement")
     Simulator(gv.sim).run()
     gv.sim = None
 
+    withTagging(diagdir="withTagging")
+    Simulator(gv.sim, post_advance=post_advance).run()
+    gv.sim = None
 
     if cpp.mpi_rank() == 0:
         make_figure()
