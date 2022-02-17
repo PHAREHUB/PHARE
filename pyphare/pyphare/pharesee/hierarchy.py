@@ -775,7 +775,7 @@ class PatchHierarchy:
                                   alpha=0.4, lw=0.8)
                     ax.add_patch(r)
 
-        ax.set_aspect("equal")
+        ax.set_aspect(kwargs.get("aspect", "equal"))
         ax.set_title(kwargs.get("title", ""))
         ax.set_xlabel(kwargs.get("xlabel", "x"))
         ax.set_ylabel(kwargs.get("ylabel", "y"))
