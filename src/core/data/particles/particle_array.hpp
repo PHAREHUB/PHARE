@@ -72,6 +72,10 @@ public:
 
     void swap(ParticleArray<dim>& that) { std::swap(this->particles, that.particles); }
 
+
+    auto& vector() { return particles; }
+    auto& vector() const { return particles; }
+
 private:
     Vector particles;
 };

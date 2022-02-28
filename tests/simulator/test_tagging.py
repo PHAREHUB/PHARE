@@ -18,47 +18,50 @@ import pyphare.pharein as ph
 
 
 def setup_model(ppc=100):
-    def density(*xyz):
+
+    def density(x):
         return 1.
 
-    def by(*xyz):
-        from pyphare.pharein.global_vars import sim
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+    def S(x,x0,l):
+        return 0.5*(1+np.tanh((x-x0)/l))
 
-    def bz(*xyz):
-        from pyphare.pharein.global_vars import sim
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
-
-    def bx(*xyz):
-        return 1.
-
-    def vx(*xyz):
+    def bx(x):
         return 0.
 
-    def vy(*xyz):
+    def by(x):
         from pyphare.pharein.global_vars import sim
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+        L = sim.simulation_domain()[0]
+        v1=-1
+        v2=1.
+        return v1 + (v2-v1)*(S(x,L*0.25,1) -S(x, L*0.75, 1))
 
-    def vz(*xyz):
-        from pyphare.pharein.global_vars import sim
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+    def bz(x):
+        return 0.5
 
-    def vthx(*xyz):
-        return 0.01
+    def b2(x):
+        return bx(x)**2 + by(x)**2 + bz(x)**2
 
-    def vthy(*xyz):
-        return 0.01
+    def T(x):
+        K = 1
+        return 1/density(x)*(K - b2(x)*0.5)
 
-    def vthz(*xyz):
-        return 0.01
+    def vx(x):
+        return 2.
+
+    def vy(x):
+        return 0.
+
+    def vz(x):
+        return 0.
+
+    def vthx(x):
+        return T(x)
+
+    def vthy(x):
+        return T(x)
+
+    def vthz(x):
+        return T(x)
 
     vvv = {
         "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
@@ -79,7 +82,7 @@ simArgs = {
   "time_step_nbr":30000,
   "final_time":30.,
   "boundary_types":"periodic",
-  "cells":40,
+  "cells":200,
   "dl":0.3,
   "refinement":"tagging",
   "max_nbr_levels": 3,
@@ -162,14 +165,17 @@ class TaggingTest(unittest.TestCase):
                     found = 1
                     hier = hierarchy_from(h5_filename=h5_filepath)
                     patches = hier.level(0).patches
+                    tag_found = 0
                     for patch in patches:
                         self.assertTrue(len(patch.patch_datas.items()))
                         for qty_name, pd in patch.patch_datas.items():
                             self.assertTrue((pd.dataset[:] >= 0).all())
                             self.assertTrue((pd.dataset[:] <  2).all())
+                            tag_found |= (pd.dataset[:] == 1).any()
                         checks += 1
 
             self.assertEqual(found, 1)
+            self.assertEqual(tag_found, 1)
             self.assertEqual(checks, n_patches)
             self.simulator = None
             ph.global_vars.sim = None

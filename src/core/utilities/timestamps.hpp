@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdint>
 
+#include "core/logger.hpp"
 #include "initializer/data_provider.hpp"
 
 namespace PHARE::core
@@ -42,10 +43,11 @@ struct TimeStamperFactory
     static std::unique_ptr<ITimeStamper> create(initializer::PHAREDict const& dict)
     {
         assert(dict.contains("time_step"));
-        auto time_step = dict["time_step"].template to<double>();
+        auto time_step  = dict["time_step"].template to<double>();
+        std::size_t idx = 0;
 
-        // only option for the moment
-        return std::make_unique<ConstantTimeStamper>(time_step);
+        // only option for the moment https://github.com/PHAREHUB/PHARE/issues/475
+        return std::make_unique<ConstantTimeStamper>(time_step, idx);
     }
 };
 

@@ -1,6 +1,8 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
+#include "core/logger.hpp"
+
 #include "field_resource.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "particle_resource.hpp"
@@ -10,7 +12,7 @@
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/VariableDatabase.h>
-
+#include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
 #include <optional>
@@ -287,10 +289,11 @@ namespace amr
         std::optional<int> getID(std::string const& resourceName) const
         {
             auto id = nameToResourceInfo_.find(resourceName);
+
             if (id != std::end(nameToResourceInfo_))
                 return std::optional<int>{id->second.id};
-            else
-                return std::nullopt;
+
+            return std::nullopt;
         }
 
 
@@ -303,7 +306,15 @@ namespace amr
             }
         }
 
+        void registerForRestarts(std::vector<int> const& ids) const
+        {
+            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
 
+            for (auto const& id : ids)
+                pdrm->registerPatchDataForRestart(id);
+        }
+
+        auto id_for_key(std::string const& name) const { return nameToResourceInfo_.at(name).id; }
 
     private:
         template<typename ResourcesUser>

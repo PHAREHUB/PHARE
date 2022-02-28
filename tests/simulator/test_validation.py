@@ -14,10 +14,12 @@ from pyphare.core.box import Box, Box2D
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}
+restarts = {"restart_options": {"dir": out, "mode":"overwrite" }}
 
 def dup(dic):
     dic = NoOverwriteDict(dic)
     dic.update(diags.copy())
+    dic.update(restarts.copy())
     return dic
 
 

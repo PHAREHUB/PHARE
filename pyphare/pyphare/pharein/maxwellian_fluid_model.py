@@ -49,7 +49,7 @@ class MaxwellianFluidModel(object):
                                 "by": by,
                                 "bz": bz})
 
-        self.populations = kwargs.keys()
+        self.populations = list(kwargs.keys())
         for population in self.populations:
             self.add_population(population, **kwargs[population])
 

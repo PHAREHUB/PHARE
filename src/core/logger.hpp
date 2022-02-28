@@ -2,6 +2,18 @@
 #ifndef PHARE_CORE_LOGGER_HPP
 #define PHARE_CORE_LOGGER_HPP
 
+
+#if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
+#define PHARE_LOG_LINE_STR(str)                                                                    \
+    std::cout << __FILE__ << ":" << __LINE__ << " - " << str << std::endl;
+#else
+#define PHARE_LOG_LINE_STR(str)
+#endif
+#define PHARE_LOG_LINE PHARE_LOG_LINE_STR("")
+
+
+
+
 #if PHARE_WITH_CALIPER
 #include "caliper/cali.h"
 

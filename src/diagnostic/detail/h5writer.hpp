@@ -2,20 +2,17 @@
 #ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 #define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
-#include "highfive/H5DataSet.hpp"
-#include "highfive/H5DataSpace.hpp"
-#include "highfive/H5Easy.hpp"
-
-#include "h5typewriter.hpp"
-#include "h5file.hpp"
-
-#include "diagnostic/diagnostic_manager.hpp"
-#include "diagnostic/diagnostic_props.hpp"
 
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
+
+#include "hdf5/detail/h5/h5_file.hpp"
+
+#include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/diagnostic_manager.hpp"
+#include "diagnostic/diagnostic_props.hpp"
 
 
 #if !defined(PHARE_DIAG_DOUBLES)
@@ -25,6 +22,8 @@
 
 namespace PHARE::diagnostic::h5
 {
+using namespace hdf5::h5;
+
 template<typename H5Writer>
 class ElectromagDiagnosticWriter;
 template<typename H5Writer>
@@ -113,39 +112,36 @@ public:
     }
 
     template<typename Type, typename Size>
-    static void createDataSet(HiFile& h5, std::string const& path, Size size)
+    static void createDataSet(HighFiveFile& h5, std::string const& path, Size const& size)
     {
         if constexpr (std::is_same_v<Type, double>) // force doubles for floats for storage
-            This::createDatasetsPerMPI<FloatType>(h5, path, size);
+            h5.create_data_set_per_mpi<FloatType>(path, size);
         else
-            This::createDatasetsPerMPI<Type>(h5, path, size);
+            h5.create_data_set_per_mpi<Type>(path, size);
     }
 
 
     // global function when all path+key are the same
     template<typename Data>
-    static void writeAttribute(HiFile& h5, std::string path, std::string key, Data const& value)
+    static void writeAttribute(HighFiveFile& h5, std::string const& path, std::string const& key,
+                               Data const& value)
     {
-        h5.getGroup(path)
-            .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
-            .write(value);
+        h5.write_attribute(path, key, value);
     }
 
+
     template<typename Dict>
-    static void writeAttributeDict(HiFile& h5, Dict dict, std::string path)
+    static void writeAttributeDict(HighFiveFile& h5, Dict dict, std::string path)
     {
         dict.visit([&](std::string const& key, const auto& val) {
-            writeAttributesPerMPI(h5, path, key, val);
+            h5.write_attributes_per_mpi(path, key, val);
         });
     }
 
-    // per MPI function where path differs per process
-    template<typename Data>
-    static void writeAttributesPerMPI(HiFile& h5, std::string path, std::string key,
-                                      Data const& value);
+
 
     template<typename VecField>
-    static void writeVecFieldAsDataset(h5::HighFiveFile& h5, std::string path, VecField& vecField)
+    static void writeVecFieldAsDataset(HighFiveFile& h5, std::string path, VecField& vecField)
     {
         for (auto& [id, type] : core::Components::componentMap)
             h5.write_data_set_flat<dimension>(path + "_" + id,
@@ -179,9 +175,6 @@ private:
     {
         return std::make_shared<Writer>(*this);
     }
-
-    template<typename Type, typename Size>
-    static void createDatasetsPerMPI(HiFile& h5, std::string path, Size dataSetSize);
 
 
     void initializeDatasets_(std::vector<DiagnosticProperties*> const& diagnotics);
@@ -259,123 +252,6 @@ void Writer<ModelView>::dump_level(std::size_t level,
     this->maxLevel = _maxLevel;
 }
 
-
-namespace
-{ // during attribute/dataset creation, we currently don't require the parents of the group to
-  // exist, but create all that are missing - this used to exist in highfive
-    inline std::string getParentName(const std::string& path)
-    {
-        std::size_t idx = path.find_last_of("/");
-        if (idx == std::string::npos or idx == 0)
-            return "/";
-        return path.substr(0, idx);
-    }
-
-    inline void createGroupsToDataSet(HiFile& file, const std::string& path)
-    {
-        std::string group_name = getParentName(path);
-        if (!file.exist(group_name))
-            file.createGroup(group_name);
-    }
-} // namespace
-
-
-/*
- * Communicate all dataset paths and sizes to all MPI process to allow each to create all
- * datasets independently. This is a requirement of HDF5.
- * in the case of a disparate number of datasets per MPI process, dataSetSize may be 0
- * such that the current process creates datasets for all other processes with non-zero
- * sizes. Recommended to use similar sized paths, if possible.
- */
-
-namespace
-{
-    template<typename Size>
-    bool is_zero(Size size)
-    {
-        if constexpr (core::is_iterable_v<Size>)
-            return std::all_of(size.begin(), size.end(), [](auto const& val) { return val == 0; });
-
-        else
-            return size == 0;
-    }
-
-} // namespace
-
-template<typename ModelView>
-template<typename Type, typename Size>
-void Writer<ModelView>::createDatasetsPerMPI(HiFile& h5file, std::string path, Size dataSetSize)
-{
-    auto mpi_size = core::mpi::size();
-    auto sizes    = core::mpi::collect(dataSetSize, mpi_size);
-    auto paths    = core::mpi::collect(path, mpi_size);
-    for (int i = 0; i < mpi_size; i++)
-    {
-        if (is_zero(sizes[i]))
-            continue;
-        createGroupsToDataSet(h5file, paths[i]);
-        h5file.createDataSet<Type>(paths[i], HighFive::DataSpace(sizes[i]));
-    }
-}
-
-
-
-/*
- * Communicate all attribute paths and values to all MPI process to allow each to create all
- * attributes independently. This is a requirement of HDF5.
- * in the case of a disparate number of attributes per MPI process, path may be an empty string
- * such that the current process creates attributes for all other processes with non-zero
- * sizes. Recommended to use similar sized paths, if possible. key is always assumed to the be
- * the same
- */
-template<typename ModelView>
-template<typename Data>
-void Writer<ModelView>::writeAttributesPerMPI(HiFile& h5file, std::string path, std::string key,
-                                              Data const& data)
-{
-    constexpr bool data_is_vector = core::is_std_vector_v<Data>;
-
-    auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
-        if constexpr (data_is_vector)
-        {
-            if (value.size())
-                node.template createAttribute<typename Data::value_type>(
-                        _key, HighFive::DataSpace(value.size()))
-                    .write(value.data());
-        }
-        else
-            node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
-                .write(value);
-    };
-
-    int mpi_size = core::mpi::size();
-    auto values  = [&]() {
-        if constexpr (data_is_vector)
-            return core::mpi::collect_raw(data, mpi_size);
-        else
-            return core::mpi::collect(data, mpi_size);
-    }();
-    auto paths = core::mpi::collect(path, mpi_size);
-
-    for (int i = 0; i < mpi_size; i++)
-    {
-        std::string const keyPath = paths[i] == "null" ? "" : paths[i];
-        if (keyPath.empty())
-            continue;
-
-        if (h5file.exist(keyPath) && h5file.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
-        {
-            if (!h5file.getDataSet(keyPath).hasAttribute(key))
-                doAttribute(h5file.getDataSet(keyPath), key, values[i]);
-        }
-        else // group
-        {
-            createGroupsToDataSet(h5file, keyPath + "/dataset");
-            if (!h5file.getGroup(keyPath).hasAttribute(key))
-                doAttribute(h5file.getGroup(keyPath), key, values[i]);
-        }
-    }
-}
 
 
 

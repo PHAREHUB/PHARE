@@ -14,6 +14,9 @@
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 
+#include "SAMRAI/tbox/RestartManager.h"
+#include "SAMRAI/hier/PatchDataRestartManager.h"
+
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/tagging/tagger.hpp"
@@ -339,10 +342,22 @@ namespace solver
 
 
 
-        void resetHierarchyConfiguration(
-            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-            int const /*coarsestLevel*/, int const /*finestLevel*/) override
+        void
+        resetHierarchyConfiguration(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                    int const coarsestLevel, int const finestLevel) override
         {
+            // handle samrai restarts / schedule creation
+            //  allocation of patch datas which may not want to be saved to restart files will
+            //   likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
+            if (!restartInitialized_
+                and SAMRAI::tbox::RestartManager::getManager()->isFromRestart())
+            {
+                auto& messenger = getMessengerWithCoarser_(coarsestLevel);
+                auto nextFiner = (coarsestLevel == finestLevel) ? coarsestLevel : coarsestLevel + 1;
+                for (auto ilvl = coarsestLevel; ilvl <= nextFiner; ++ilvl)
+                    messenger.registerLevel(hierarchy, ilvl);
+                restartInitialized_ = true;
+            }
         }
 
 
@@ -536,6 +551,7 @@ namespace solver
 
 
     private:
+        bool restartInitialized_ = false;
         int nbrOfLevels_;
         std::unordered_map<std::size_t, double> subcycleEndTimes_;
         std::unordered_map<std::size_t, double> subcycleStartTimes_;

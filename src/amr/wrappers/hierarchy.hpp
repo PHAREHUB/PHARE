@@ -17,10 +17,15 @@
 #include <SAMRAI/tbox/DatabaseBox.h>
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
+#include <SAMRAI/tbox/RestartManager.h>
+#include "SAMRAI/hier/PatchDataRestartManager.h"
 
 
+#include "core/logger.hpp"
+#include "core/utilities/mpi_utils.hpp"
 #include "initializer/data_provider.hpp"
-#include "core/utilities/point/point.hpp"
+
+
 
 namespace PHARE::amr
 {
@@ -28,7 +33,54 @@ namespace PHARE::amr
  * @brief The Hierarchy class is a wrapper of the SAMRAI hierarchy
  * so that users do not have to use SAMRAI types
  */
-class Hierarchy : public SAMRAI::hier::PatchHierarchy
+
+class HierarchyRestarter
+{
+public:
+    HierarchyRestarter(initializer::PHAREDict const& sim_dict)
+    {
+        if (sim_dict["simulation"].contains("restarts"))
+        {
+            auto& dict = sim_dict["simulation"]["restarts"];
+
+            if (dict.contains("loadPath"))
+            {
+                auto restart_manager = SAMRAI::tbox::RestartManager::getManager();
+                auto pdrm            = SAMRAI::hier::PatchDataRestartManager::getManager();
+
+                for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
+                    pdrm->registerPatchDataForRestart(id);
+
+                int timeStepIdx = 0; // forced to zero as we wrap in our own timestamp directories
+                auto& directory = dict["loadPath"].template to<std::string>();
+                restart_manager->openRestartFile(directory, timeStepIdx, core::mpi::size());
+            }
+        }
+    }
+
+    auto static getRestartFileFullPath(std::string path, int idx = 0)
+    {
+        // https://github.com/LLNL/SAMRAI/pull/198
+        // there's a PR for this next line, but until then the code below is the same
+        // return SAMRAI::tbox::RestartManager::getManager()->getRestartFileFullPath(path, idx);
+
+        return path                                                                   //
+               + "/restore." + SAMRAI::tbox::Utilities::intToString(idx, 6)           //
+               + "/nodes." + SAMRAI::tbox::Utilities::nodeToString(core::mpi::size()) //
+               + "/proc." + SAMRAI::tbox::Utilities::processorToString(core::mpi::rank());
+    }
+
+    void closeRestartFile()
+    {
+        auto* restart_manager = SAMRAI::tbox::RestartManager::getManager();
+
+        if (restart_manager->isFromRestart())
+            restart_manager->closeRestartFile();
+    }
+};
+
+
+class Hierarchy : public HierarchyRestarter, public SAMRAI::hier::PatchHierarchy
 {
 public:
     static auto make();
@@ -36,9 +88,21 @@ public:
     auto const& domainBox() const { return domainBox_; }
     auto const& origin() const { return origin_; }
 
+
+    auto writeRestartFile(std::string directory) const;
+
+    auto static restartFilePathForTime(std::string path, double timestamp)
+    {
+        std::size_t constexpr precision = 5;
+        std::size_t constexpr width     = 11;
+        // five digits either side of decimal point
+        return path + "/" + core::to_string_fixed_width(timestamp, precision, width);
+    }
+
 protected:
     template<std::size_t dimension>
-    Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
+    Hierarchy(initializer::PHAREDict const& dict,
+              std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
               std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
               std::array<int, dimension> const domainBox,
               std::array<double, dimension> const origin,
@@ -126,12 +190,15 @@ inline auto Hierarchy::make()
 
 
 template<std::size_t dimension>
-Hierarchy::Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
+Hierarchy::Hierarchy(initializer::PHAREDict const& dict,
+                     std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
                      std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
                      std::array<int, dimension> const domainBox,
                      std::array<double, dimension> const origin,
                      std::array<double, dimension> const cellWidth)
-    : SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
+    // needs to open restart database before SAMRAI::PatchHierarcy constructor
+    : HierarchyRestarter{dict}
+    , SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
     , cellWidth_(cellWidth.data(), cellWidth.data() + dimension)
     , domainBox_(domainBox.data(), domainBox.data() + dimension)
     , origin_(origin.data(), origin.data() + dimension)
@@ -139,6 +206,17 @@ Hierarchy::Hierarchy(std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
 }
 
 
+
+inline auto Hierarchy::writeRestartFile(std::string directory) const
+{
+    auto* restart_manager = SAMRAI::tbox::RestartManager::getManager();
+
+    int timeStepIdx = 0; // samrai needs this
+    restart_manager->writeRestartFile(directory, timeStepIdx);
+    restart_manager->closeRestartFile();
+
+    return HierarchyRestarter::getRestartFileFullPath(directory);
+}
 
 
 //-----------------------------------------------------------------------------
@@ -304,14 +382,15 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
 
 template<std::size_t _dimension>
 DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict)
-    : Hierarchy(
+    : Hierarchy{
+        dict,
         std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
             SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
             griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
         patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
         shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
         parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
-        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"))
+        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize")}
 {
 }
 

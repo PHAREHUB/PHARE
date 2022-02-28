@@ -11,12 +11,13 @@ def all_timestamps(sim):
     return sim.time_step * np.arange(nbr_dump_step)
 
 
-def dump_all_diags(pops=[], flush_every=100):
+def dump_all_diags(pops=[], flush_every=100, timestamps=None):
     import pyphare.pharein as ph, numpy as np
 
     sim = ph.global_vars.sim
 
-    timestamps = all_timestamps(sim)
+    if timestamps is None:
+        timestamps = all_timestamps(sim)
 
     ph.MetaDiagnostics(
         quantity="tags",

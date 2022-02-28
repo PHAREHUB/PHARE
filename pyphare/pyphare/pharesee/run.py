@@ -183,7 +183,7 @@ class Run:
         return self._get(hier, time, merged, interp)
 
     def GetN(self, time, pop_name, merged=False, interp='nearest'):
-        hier =  self._get_hierarchy(time, "ions_{}_density.h5".format(pop_name))
+        hier =  self._get_hierarchy(time, "ions_pop_{}_density.h5".format(pop_name))
         return self._get(hier, time, merged, interp)
 
     def GetVi(self, time, merged=False, interp='nearest'):

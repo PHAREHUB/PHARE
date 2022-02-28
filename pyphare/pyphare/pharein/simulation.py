@@ -373,9 +373,29 @@ def check_diag_options(**kwargs):
                     raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
             except FileExistsError:
                 raise ValueError ("Creation of the directory %s failed" % diag_dir)
+        valid_modes = ["overwrite"]
+        if "mode" in diag_options["options"]:
+            mode = diag_options["options"]["mode"]
+            if mode not in valid_modes:
+                raise ValueError (f"Invalid diagnostics mode {mode}, valid modes are {valid_modes}")
     return diag_options
 
 
+
+def check_restart_options(**kwargs):
+    restart_options = kwargs.get("restart_options", None)
+
+    if restart_options is not None:
+        valid_modes = ["conserve", "overwrite"]
+
+        if "mode" not in restart_options:
+            raise ValueError (f"Restart mode not set, valid modes are {valid_modes}")
+
+        mode = restart_options["mode"]
+        if mode not in valid_modes:
+            raise ValueError (f"Invalid restart mode {mode}, valid modes are {valid_modes}")
+
+    return restart_options
 
 
 
@@ -450,7 +470,7 @@ def checker(func):
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity', 'strict' ]
+                             'resistivity', 'hyper_resistivity', 'strict', "restart_options", ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -482,6 +502,7 @@ def checker(func):
 
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
+        kwargs["restart_options"] = check_restart_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
         kwargs["origin"] = check_origin(ndim, **kwargs)
@@ -545,6 +566,9 @@ class Simulation(object):
                    diag_options={"format": "phareh5",
                                  "options": {"dir": diag_outputs,
                                              "mode":"overwrite"}},
+                   restart_options={"dir": restart_outputs,
+                                   "mode": "overwrite" or "conserve",
+                                   "restart_time" : 99999.99999 },
                    strict=True,
                   )
 
@@ -646,6 +670,7 @@ Adaptive Mesh Refinement (AMR) parameters
         self.ndim = compute_dimension(self.cells)
 
         self.diagnostics = []
+        self.restarts = []
         self.model = None
         self.electrons = None
 
@@ -679,12 +704,17 @@ Adaptive Mesh Refinement (AMR) parameters
 
 
 
+    def restart_file_path(self):
+        assert self.restart_options is not None
+        if "dir" in self.restart_options:
+            return self.restart_options["dir"]
+        return "phare_outputs"
 
 
 # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
-        if diag.name in [diag.name for diag in self.diagnostics]:
+        if diag.name in [diagnostic.name for diagnostic in self.diagnostics]:
             raise ValueError("Error: diagnostics {} already registered".format(diag.name))
 
         # check whether the spatial extent of the diagnostics is valid, given the domain size
@@ -692,6 +722,13 @@ Adaptive Mesh Refinement (AMR) parameters
             raise RuntimeError("Error: invalid diagnostics spatial extent")
 
         self.diagnostics.append(diag)
+
+
+    def add_restarts(self, restart):
+        if len(self.restarts):
+            raise ValueError("Error: restart already registered")
+
+        self.restarts.append(restart)
 
 
 # ------------------------------------------------------------------------------
@@ -708,6 +745,7 @@ Adaptive Mesh Refinement (AMR) parameters
 
     def set_electrons(self, electrons):
         self.electrons = electrons
+
 # ------------------------------------------------------------------------------
 
 

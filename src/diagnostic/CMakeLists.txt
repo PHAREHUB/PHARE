@@ -12,7 +12,6 @@ if (HighFive)
  set(SOURCES_INC
    ${SOURCES_INC}
    ${PROJECT_SOURCE_DIR}/detail/h5writer.hpp
-   ${PROJECT_SOURCE_DIR}/detail/h5_utils.hpp
    ${PROJECT_SOURCE_DIR}/detail/h5typewriter.hpp
    ${PROJECT_SOURCE_DIR}/detail/types/particle.hpp
    ${PROJECT_SOURCE_DIR}/detail/types/electromag.hpp
