@@ -755,6 +755,7 @@ Adaptive Mesh Refinement (AMR) parameters
 
 
 def serialize(sim):
+    # pickle cannot handle simulation objects
     import dill, codecs
     return codecs.encode(dill.dumps(sim), 'hex')
 

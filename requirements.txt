@@ -1,3 +1,4 @@
+dill
 ddt
 h5py
 pyyaml
