@@ -103,6 +103,11 @@ RestartsManager<Writer>::addRestartDict(initializer::PHAREDict const& params)
     restarts_properties_->writeTimestamps
         = params["write_timestamps"].template to<std::vector<double>>();
 
+    assert(params.contains("serialized_simulation"));
+
+    restarts_properties_->fileAttributes["serialized_simulation"]
+        = params["serialized_simulation"].template to<std::string>();
+
     return *this;
 }
 
@@ -117,7 +122,7 @@ void RestartsManager<Writer>::dump(double timeStamp, double timeStep)
 
     if (needsWrite_(*restarts_properties_, timeStamp, timeStep))
     {
-        writer_->dump(timeStamp);
+        writer_->dump(*restarts_properties_, timeStamp);
         ++nextWrite_;
     }
 }

@@ -29,7 +29,7 @@ from .maxwellian_fluid_model import MaxwellianFluidModel
 from .electron_model import ElectronModel
 from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics, MetaDiagnostics
 from .restarts import Restarts
-from .simulation import Simulation
+from .simulation import Simulation, serialize as serialize_sim, deserialize as deserialize_sim
 
 
 def getSimulation():
@@ -47,6 +47,11 @@ def _patch_data_ids(path):
     h5File = cpp_etc_lib().samrai_restart_file(path)
     return h5py.File(h5File, "r")["phare"]["patch"]["ids"][:]
 
+def _serialized_simulation_string(path):
+    import h5py
+    from pyphare.cpp import cpp_etc_lib
+    h5File = cpp_etc_lib().samrai_restart_file(path)
+    return h5py.File(h5File, "r")["phare"].attrs["serialized_simulation"]
 
 
 # converts scalars to array of expected size
@@ -265,9 +270,13 @@ def populateDict():
             if not os.path.exists(restart_file_load_path):
                 raise ValueError(f"PHARE restart file not found for time {restart_time}")
 
+            deserialized_simulation = deserialize_sim(_serialized_simulation_string(restart_file_load_path))
+            if not simulation.is_restartable_compared_to(deserialized_simulation):
+                raise ValueError("deserialized Restart simulation is incompatible with configured simulation parameters")
+
+            add_vector_int(restarts_path + "restart_ids", _patch_data_ids(restart_file_load_path))
             add_string(restarts_path + "loadPath", restart_file_load_path)
             add_double(restarts_path + "restart_time", restart_time)
-            add_vector_int(restarts_path + "restart_ids", _patch_data_ids(restart_file_load_path))
 
         if "mode" in simulation.restart_options:
             add_string(restarts_path + "mode", simulation.restart_options["mode"])
@@ -277,6 +286,7 @@ def populateDict():
         assert len(simulation.restarts) <= 1
         for restart in simulation.restarts:
             pp.add_array_as_vector(restarts_path + "write_timestamps", restart.write_timestamps)
+            add_string(restarts_path + "serialized_simulation", serialize_sim(simulation))
     #### restarts added
 
 

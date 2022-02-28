@@ -731,6 +731,11 @@ Adaptive Mesh Refinement (AMR) parameters
         self.restarts.append(restart)
 
 
+    def is_restartable_compared_to(self, sim):
+        # not an exhaustive comparison
+        return self.cells == sim.cells
+
+
 # ------------------------------------------------------------------------------
 
     def count_diagnostics(self, type_name):

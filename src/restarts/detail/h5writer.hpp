@@ -5,6 +5,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 
+#include "restarts/restarts_props.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
@@ -35,7 +36,7 @@ public:
     }
 
 
-    void dump(double timestamp)
+    void dump(RestartsProperties const& properties, double timestamp)
     {
         auto restart_file
             = modelView_.writeRestartFile(ModelView::restartFilePathForTime(path_, timestamp));
@@ -45,6 +46,10 @@ public:
         auto patch_ids = modelView_.patch_data_ids();
         h5File.create_data_set<int>("/phare/patch/ids", patch_ids.size());
         h5File.write_data_set("/phare/patch/ids", patch_ids);
+
+        h5File.write_attribute(
+            "/phare", "serialized_simulation",
+            properties.fileAttributes["serialized_simulation"].template to<std::string>());
     }
 
     auto& modelView() { return modelView_; }

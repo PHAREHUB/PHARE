@@ -11,7 +11,11 @@ namespace PHARE::restarts
 {
 struct RestartsProperties
 {
+    using FileAttributes = cppdict::Dict<std::string>;
+
     std::vector<double> writeTimestamps;
+
+    FileAttributes fileAttributes{};
 };
 
 } // namespace PHARE::restarts
