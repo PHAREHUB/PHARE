@@ -383,11 +383,15 @@ def check_diag_options(**kwargs):
 
 
 def check_restart_options(**kwargs):
+
     restart_options = kwargs.get("restart_options", None)
 
     if restart_options is not None:
-        valid_modes = ["conserve", "overwrite"]
 
+        if "timestamps" not in restart_options:
+            raise ValueError (f"restart_options expects a list of timestamps")
+
+        valid_modes = ["conserve", "overwrite"]
         if "mode" not in restart_options:
             raise ValueError (f"Restart mode not set, valid modes are {valid_modes}")
 
@@ -396,6 +400,12 @@ def check_restart_options(**kwargs):
             raise ValueError (f"Invalid restart mode {mode}, valid modes are {valid_modes}")
 
     return restart_options
+
+def validate_restart_options(sim):
+    import pyphare.pharein.restarts as restarts
+    if sim.restart_options is not None:
+        restarts.validate(sim)
+
 
 
 
@@ -468,7 +478,7 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
-                             'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
+                             'diag_export_format', 'refinement_boxes', 'refinement',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
                              'resistivity', 'hyper_resistivity', 'strict', "restart_options", ]
 
@@ -486,7 +496,6 @@ def checker(func):
         kwargs["cells"] =  cells
         kwargs["refinement_ratio"] = 2
 
-        kwargs["init_time"] = kwargs.get('init_time', 0)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
@@ -568,8 +577,9 @@ class Simulation(object):
                                              "mode":"overwrite"}},
                    restart_options={"dir": restart_outputs,
                                    "mode": "overwrite" or "conserve",
+                                   "timestamps" : [.009, 99999]
                                    "restart_time" : 99999.99999 },
-                   strict=True,
+                   strict=True (turns warnings to errors, false by default),
                   )
 
 
@@ -582,8 +592,7 @@ Setting time parameters:
           simulation time step. Use with time_step_nbr OR final_time
         * *time_step_nbr* (``int``) -- number of time step to perform.
           Use with final_time OR time_step
-        * *init_time* (``float`` )--
-          unused for now, will be time for restarts someday
+
 
 
 Setting domain/grid parameters:
@@ -670,7 +679,6 @@ Adaptive Mesh Refinement (AMR) parameters
         self.ndim = compute_dimension(self.cells)
 
         self.diagnostics = []
-        self.restarts = []
         self.model = None
         self.electrons = None
 
@@ -685,6 +693,8 @@ Adaptive Mesh Refinement (AMR) parameters
         self.level_step_nbr = [
           self.nSubcycles ** levelNumbers[ilvl] * self.time_step_nbr for ilvl in levelNumbers
         ]
+        validate_restart_options(self)
+
 
     def final_time(self):
         return self.time_step * self.time_step_nbr
@@ -711,6 +721,13 @@ Adaptive Mesh Refinement (AMR) parameters
         return "phare_outputs"
 
 
+    def start_time(self):
+        if self.restart_options is not None:
+            if "restart_time" in self.restart_options:
+                return self.restart_options["restart_time"]
+        return 0
+
+
 # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
@@ -724,12 +741,7 @@ Adaptive Mesh Refinement (AMR) parameters
         self.diagnostics.append(diag)
 
 
-    def add_restarts(self, restart):
-        if len(self.restarts):
-            raise ValueError("Error: restart already registered")
-
-        self.restarts.append(restart)
-
+# ------------------------------------------------------------------------------
 
     def is_restartable_compared_to(self, sim):
         # not an exhaustive comparison

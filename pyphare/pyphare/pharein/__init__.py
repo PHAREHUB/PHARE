@@ -28,7 +28,6 @@ from .uniform_model import UniformModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .electron_model import ElectronModel
 from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics, MetaDiagnostics
-from .restarts import Restarts
 from .simulation import Simulation, serialize as serialize_sim, deserialize as deserialize_sim
 
 
@@ -255,16 +254,17 @@ def populateDict():
     #### adding restarts
     if simulation.restart_options is not None:
 
+        restart_options = simulation.restart_options
         restarts_path = "simulation/restarts/"
         restart_file_path = "phare_outputs"
 
-        if "dir" in simulation.restart_options:
-            restart_file_path = simulation.restart_options["dir"]
+        if "dir" in restart_options:
+            restart_file_path = restart_options["dir"]
 
-        if "restart_time" in simulation.restart_options:
+        if "restart_time" in restart_options:
             from pyphare.cpp import cpp_etc_lib
 
-            restart_time = simulation.restart_options["restart_time"]
+            restart_time = restart_options["restart_time"]
             restart_file_load_path = cpp_etc_lib().restart_path_for_time(restart_file_path, restart_time)
 
             if not os.path.exists(restart_file_load_path):
@@ -278,15 +278,15 @@ def populateDict():
             add_string(restarts_path + "loadPath", restart_file_load_path)
             add_double(restarts_path + "restart_time", restart_time)
 
-        if "mode" in simulation.restart_options:
-            add_string(restarts_path + "mode", simulation.restart_options["mode"])
+        if "mode" in restart_options:
+            add_string(restarts_path + "mode", restart_options["mode"])
 
         add_string(restarts_path + "filePath", restart_file_path)
 
-        assert len(simulation.restarts) <= 1
-        for restart in simulation.restarts:
-            pp.add_array_as_vector(restarts_path + "write_timestamps", restart.write_timestamps)
-            add_string(restarts_path + "serialized_simulation", serialize_sim(simulation))
+
+        pp.add_array_as_vector(restarts_path + "write_timestamps", restart_options["timestamps"])
+
+        add_string(restarts_path + "serialized_simulation", serialize_sim(simulation))
     #### restarts added
 
 

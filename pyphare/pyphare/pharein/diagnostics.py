@@ -43,11 +43,13 @@ import numpy as np
 def validate_timestamps(clazz, **kwargs):
     sim = global_vars.sim
 
+    init_time = sim.start_time()
+
     for key in ["write_timestamps", "compute_timestamps"]:
         timestamps = kwargs[key]
 
-        if np.any(timestamps < sim.init_time):
-            raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({sim.init_time}))")
+        if np.any(timestamps < init_time):
+            raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({init_time}))")
         if np.any(timestamps > sim.final_time):
             raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
         if not np.all(np.diff(timestamps) >= 0):
