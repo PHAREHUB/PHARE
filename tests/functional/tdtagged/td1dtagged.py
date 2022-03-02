@@ -82,10 +82,11 @@ particle_diagnostics = {"count":10, "idx":0}
 def simulation_params(diagdir, **extra):
     params = {
         "interp_order": 1,
-        "time_step_nbr":2000,
-        "time_step":.01,
+        "time_step_nbr":500,
+        "time_step":.04,
         "boundary_types":"periodic",
         "cells":200,
+        "hyper_resistivity": 0.01,
         "dl":1.0,
         "diag_options":{"format": "phareh5",
                         "options": {
@@ -148,7 +149,6 @@ def noRefinement(diagdir):
 
 def make_figure():
     from scipy.optimize import curve_fit
-    from pyphare.pharesee.hierarchy import flat_finest_field
 
     rwT    = Run("./withTagging")
     rNoRef = Run("./noRefinement")
@@ -156,15 +156,20 @@ def make_figure():
     plot_time = 11
     v = 2
 
-    BwT = rwT.GetB(plot_time)
-    BNoRef = rNoRef.GetB(plot_time)
-    JwT = rwT.GetJ(plot_time)
-    JNoRef = rNoRef.GetJ(plot_time)
+    BH = rwT.GetB(plot_time)
+    BwT = rwT.GetB(plot_time, merged=True, interp="linear")
+    BNoRef = rNoRef.GetB(plot_time, merged=True, interp="linear")
+    JwT = rwT.GetJ(plot_time, merged=True, interp="linear")
+    JNoRef = rNoRef.GetJ(plot_time, merged=True, interp="linear")
 
-    bywT, xbywT  = flat_finest_field(BwT, "By")
-    byNoRef, xbyNoRef  = flat_finest_field(BNoRef, "By")
-    jzwT, xjzwT  = flat_finest_field(JwT, "Jz")
-    jzNoRef, xjzNoRef  = flat_finest_field(JNoRef, "Jz")
+    xbywT = BwT["By"][1][0]
+    bywT  = BwT["By"][0](xbywT)
+    xbyNoRef = BNoRef["By"][1][0]
+    byNoRef  = BNoRef["By"][0](xbyNoRef)
+    xjzwT = JwT["Jz"][1][0]
+    jzwT = JwT["Jz"][0](xjzwT)
+    xjzNoRef = JNoRef["Jz"][1][0]
+    jzNoRef = JNoRef["Jz"][0](xjzNoRef)
 
     fig, axarr = plt.subplots(nrows=3, figsize=(8,8))
 
@@ -178,15 +183,17 @@ def make_figure():
         return v1 + (v2-v1)*(S(x, L*0.25, 1)-S(x, L*0.75, 1))
 
     wT0 = 150.
-    ax0, ax1, ax2 = axarr
-    ax0.plot(xbywT, bywT)
-    ax0.plot(xbyNoRef, byNoRef, color="k", alpha=0.6)
-    ax0.plot(xbyNoRef, by(xbyNoRef), ls='--')
 
-    ax1.plot(xbywT, bywT)
-    ax1.plot(xbyNoRef, byNoRef, color='k')
+    ax0, ax1, ax2 = axarr
+
+    ax0.plot(xbyNoRef, byNoRef, color="k", ls='-')
+    ax0.plot(xbywT, bywT, color="royalblue", ls='-')
+    ax0.plot(xbyNoRef, by(xbyNoRef), color="darkorange", ls='--')
+
     ax1.set_xlim((wT0,195))
     ax1.set_ylim((-1.5, 2))
+    ax1.plot(xbyNoRef, byNoRef, color="k", ls='-')
+    ax1.plot(xbywT, bywT, color="royalblue", ls='-')
 
     ax2.plot(xjzwT, jzwT)
     ax2.plot(xjzNoRef, jzNoRef, color='k')
@@ -195,13 +202,13 @@ def make_figure():
 
 
     # draw level patches
-    for ilvl,level in BwT.levels().items():
+    for ilvl,level in BH.levels().items():
         for patch in level.patches:
             dx = patch.layout.dl[0]
             x0 = patch.origin[0]
             x1 = (patch.box.upper[0]+1)*patch.layout.dl[0]
             for ax in (ax1, ax2, ax0):
-                ax.axvspan(x0, x1, color='b',ec='k', alpha=0.2,
+                ax.axvspan(x0, x1, color='royalblue',ec='k', alpha=0.2,
                             ymin=ilvl/4, ymax=(ilvl+1)/4)
 
 
@@ -211,7 +218,7 @@ def make_figure():
     for ax in (ax0, ax1, ax2):
         ax.axvline(wT0+plot_time*v, color="r")
 
-    fig.savefig("td1dtagged.png")
+    fig.savefig("tdtagged1d.png")
 
     # select data around the rightward TD
     idx = np.where((xbywT>150) & (xbywT<190))
