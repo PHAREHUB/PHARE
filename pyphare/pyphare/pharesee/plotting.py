@@ -62,7 +62,7 @@ def dist_plot(particles, **kwargs):
     bins = kwargs.get("bins", (50,50))
     h, xh, yh  = np.histogram2d(x, y,
               bins=kwargs.get("bins", bins),
-              weights=particles.weights)
+              weights=particles.weights[:,0])
 
     if "gaussian_filter_sigma" in kwargs and "median_filter_size" not in kwargs: 
         from scipy.ndimage import gaussian_filter
@@ -103,7 +103,6 @@ def dist_plot(particles, **kwargs):
         ax.set_xlim(kwargs["xlim"])
     if "ylim" in kwargs:
         ax.set_ylim(kwargs["ylim"])
-    ax.legend()
 
     if "bulk" in kwargs:
         if kwargs["bulk"] is True:

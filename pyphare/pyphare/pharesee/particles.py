@@ -39,8 +39,6 @@ class Particles:
 
 
     def xyz(self, i=0):
-        if self.ndim == 1:
-            return self.dl[:,0]*(self.iCells[:] + self.deltas[:])
         return self.dl[:,i]*(self.iCells[:,i] + self.deltas[:,i])
 
 
@@ -241,8 +239,8 @@ def remove(particles, idx):
     if len(idx) == particles.size():
         return None
 
-    icells = np.delete(particles.iCells, idx)
-    deltas = np.delete(particles.deltas, idx)
+    icells = np.delete(particles.iCells, idx, axis=0)
+    deltas = np.delete(particles.deltas, idx, axis=0)
     vx = np.delete(particles.v[:,0], idx)
     vy = np.delete(particles.v[:,1], idx)
     vz = np.delete(particles.v[:,2], idx)
@@ -250,12 +248,13 @@ def remove(particles, idx):
     v[:,0] = vx
     v[:,1] = vy
     v[:,2] = vz
-    weights = np.delete(particles.weights, idx)
+    weights = np.delete(particles.weights, idx, axis=0)
     dl = np.zeros((len(weights),particles.ndim))
     for i in range(particles.ndim):
         dl[:,i] = np.delete(particles.dl[:,i], idx)
 
-    charges = np.delete(particles.charges, idx)
+    charges = np.delete(particles.charges, idx, axis=0)
+
     return Particles(icells=icells,
                      deltas=deltas,
                      v = v,
