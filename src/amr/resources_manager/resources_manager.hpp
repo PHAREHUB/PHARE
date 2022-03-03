@@ -306,15 +306,35 @@ namespace amr
             }
         }
 
-        void registerForRestarts(std::vector<int> const& ids) const
+
+        template<typename ResourcesUser>
+        void registerForRestarts(ResourcesUser const& user) const
         {
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
 
-            for (auto const& id : ids)
+            for (auto const& id : restart_patch_data_ids(user))
                 pdrm->registerPatchDataForRestart(id);
         }
 
-        auto id_for_key(std::string const& name) const { return nameToResourceInfo_.at(name).id; }
+        template<typename ResourcesUser>
+        auto restart_patch_data_ids(ResourcesUser const& user) const
+        {
+            // // true for now with https://github.com/PHAREHUB/PHARE/issues/664
+            constexpr bool ALL_IDS = true;
+
+            std::vector<int> ids;
+
+            if constexpr (ALL_IDS)
+            { // get all registered ids to save
+                for (auto const& [key, info] : nameToResourceInfo_)
+                    ids.emplace_back(info.id);
+            }
+            else
+            { // this is the case when transient datas not to be saved
+                getIDs_(user, ids);
+            }
+            return ids;
+        }
 
     private:
         template<typename ResourcesUser>

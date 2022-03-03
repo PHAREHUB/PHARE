@@ -23,45 +23,6 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
          typename AMR_Types>
 class HybridModel : public IPhysicalModel<AMR_Types>
 {
-    static constexpr std::array<std::string_view, 14> patch_data_keys{
-        "EM_B_x",    "EM_B_y",    "EM_B_z",    "EM_E_x", "EM_E_y", "EM_E_z", "rho",
-        "bulkVel_x", "bulkVel_y", "bulkVel_z", "J_x",    "J_y",    "J_z",    "Pe"};
-
-
-    // these are to be removed when they are allocated on restart properly
-    // https://github.com/PHAREHUB/PHARE/issues/664
-    static constexpr std::array<std::string_view, 24> transient_patch_data_keys{
-        "HybridModel-HybridModel_EM_old_B_x",
-        "HybridModel-HybridModel_EM_old_B_y",
-        "HybridModel-HybridModel_EM_old_B_z",
-        "HybridModel-HybridModel_EM_old_E_x",
-        "HybridModel-HybridModel_EM_old_E_y",
-        "HybridModel-HybridModel_EM_old_E_z",
-        "HybridModel-HybridModel_Jold_x",
-        "HybridModel-HybridModel_Jold_y",
-        "HybridModel-HybridModel_Jold_z",
-        "StandardHybridElectronFluxComputer_Ve_x",
-        "StandardHybridElectronFluxComputer_Ve_y",
-        "StandardHybridElectronFluxComputer_Ve_z",
-        "EMAvg_B_x",
-        "EMAvg_B_y",
-        "EMAvg_B_z",
-        "EMAvg_E_x",
-        "EMAvg_E_y",
-        "EMAvg_E_z",
-        "EMPred_B_x",
-        "EMPred_B_y",
-        "EMPred_B_z",
-        "EMPred_E_x",
-        "EMPred_E_y",
-        "EMPred_E_z"};
-
-    auto static population_patch_data_keys(std::string const& pop)
-    {
-        return std::array<std::string, 5>{pop, pop + "_rho", pop + "_flux_x", pop + "_flux_y",
-                                          pop + "_flux_z"};
-    }
-
 public:
     using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
     using Interface = IPhysicalModel<AMR_Types>;
@@ -98,24 +59,7 @@ public:
     }
 
 
-    auto patch_data_ids() const
-    {
-        std::vector<int> ids;
-
-        for (auto const& key : patch_data_keys)
-            ids.emplace_back(resourcesManager->id_for_key(std::string{key}));
-
-        for (auto const& pop : state.ions)
-            for (auto const& key : population_patch_data_keys(pop.name()))
-                ids.emplace_back(resourcesManager->id_for_key(key));
-
-
-        // TORM when https://github.com/PHAREHUB/PHARE/issues/664
-        for (auto const& key : transient_patch_data_keys)
-            ids.emplace_back(resourcesManager->id_for_key(std::string{key}));
-
-        return ids;
-    }
+    auto patch_data_ids() const { return resourcesManager->restart_patch_data_ids(*this); }
 
 
     /**
@@ -188,7 +132,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::initializ
     }
 
 
-    resourcesManager->registerForRestarts(patch_data_ids());
+    resourcesManager->registerForRestarts(*this);
 }
 
 
