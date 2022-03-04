@@ -17,11 +17,11 @@ from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
 
 
-def permute(dict):
+def permute(dic):
     #from pyphare.pharein.simulation import supported_dimensions # eventually
     dims = [1] # supported_dimensions()
     return [
-      [dim, interp, dict] for dim in dims for interp in [1,2,3]
+      [dim, interp, dic] for dim in dims for interp in [1,2,3]
     ]
 
 
@@ -59,6 +59,10 @@ def setup_model(ppc=100):
 timestep=.001
 out = "phare_outputs/restarts/"
 simArgs = dict(
+  # we are saving at timestep 4, and we have seen that restarted simulations with refinement boxes
+  #  have regridding in places that don't exist in the original simulation
+  #   we compare the immediate next timestep of both simulations with refinement boxes, as we have seen
+  #   in this way neither simulations have any regrids, so are still comparable
   time_step_nbr = 5, # avoid regrid for refinement boxes https://github.com/LLNL/SAMRAI/issues/199
   time_step = timestep,
   boundary_types = "periodic",
@@ -113,6 +117,9 @@ class RestartsTest(SimulatorTest):
             b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
         else: # https://github.com/LLNL/SAMRAI/issues/199
+          # tagging can handle more than one timestep as it does not
+          #  appear subject to regridding issues, so we make more timesteps
+          #  to confirm simulations are still equivalent
             simput["time_step_nbr"] = 10
 
         # if restart time exists it "loads" from restart file
@@ -175,6 +182,15 @@ class RestartsTest(SimulatorTest):
         def check_field(qty0, qty1):
             return  check(qty0, qty1, lambda pd0, pd1: np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:]))
 
+
+        def count_levels_and_patches(qty):
+            n_levels = len(qty.patch_levels)
+            n_patches = 0
+            for ilvl, lvl in qty.patch_levels.items():
+                n_patches += len(qty.patch_levels[ilvl].patches)
+            return n_levels, n_patches
+
+        n_quantities_per_patch = 20
         pops = model.populations
         for time in timestamps:
             checks = 0
@@ -191,7 +207,10 @@ class RestartsTest(SimulatorTest):
                 checks += check_field(run0.GetFlux(time, pop), run1.GetFlux(time, pop))
                 checks += check_field(run0.GetN(time, pop), run1.GetN(time, pop))
 
-            self.assertGreaterEqual(checks, 14)
+            n_levels, n_patches = count_levels_and_patches(run0.GetB(time))
+            self.assertEqual(n_levels, 2) # at least 2 levels
+            self.assertGreaterEqual(n_patches, n_levels) # at least one patch per level
+            self.assertEqual(checks, n_quantities_per_patch * n_patches)
 
 
 
@@ -209,7 +228,6 @@ class RestartsTest(SimulatorTest):
         self.register_diag_dir_for_cleanup(local_out)
 
         simput["restart_options"]["dir"] = local_out
-        simput["restart_options"]["mode"] = "conserve"
         ph.global_vars.sim = ph.Simulation(**simput)
         self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 1)
         self.assertEqual(ph.global_vars.sim.restart_options["timestamps"][0], .004)
@@ -218,6 +236,7 @@ class RestartsTest(SimulatorTest):
 
         # second simulation (not restarted)
         ph.global_vars.sim = None
+        simput["restart_options"]["mode"] = "conserve"
         ph.global_vars.sim = ph.Simulation(**simput)
         self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 0)
 

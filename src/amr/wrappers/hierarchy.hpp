@@ -30,8 +30,9 @@
 namespace PHARE::amr
 {
 /**
- * @brief The Hierarchy class is a wrapper of the SAMRAI hierarchy
- * so that users do not have to use SAMRAI types
+ * @brief The HierarchyStarter class exists so we can open samrai restart files
+ *  before construction of SAMRAI::hier::PatchHierarchy, as PatchHierarchy constructor
+ *   checks to see if it is from restart
  */
 
 class HierarchyRestarter
@@ -70,16 +71,19 @@ public:
                + "/proc." + SAMRAI::tbox::Utilities::processorToString(core::mpi::rank());
     }
 
-    void closeRestartFile()
-    {
-        auto* restart_manager = SAMRAI::tbox::RestartManager::getManager();
+    void closeRestartFile() { SAMRAI::tbox::RestartManager::getManager()->closeRestartFile(); }
 
-        if (restart_manager->isFromRestart())
-            restart_manager->closeRestartFile();
+    bool isFromRestart() const
+    {
+        return SAMRAI::tbox::RestartManager::getManager()->isFromRestart();
     }
 };
 
 
+/**
+ * @brief The Hierarchy class is a wrapper of the SAMRAI hierarchy
+ * so that users do not have to use SAMRAI types
+ */
 class Hierarchy : public HierarchyRestarter, public SAMRAI::hier::PatchHierarchy
 {
 public:

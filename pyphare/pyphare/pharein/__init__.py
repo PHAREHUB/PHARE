@@ -86,7 +86,7 @@ def clearDict():
       dict may contain dangling references from a previous simulation unless cleared
     """
     import pybindlibs.dictator as pp
-    pp.clear()
+    pp.stop()
 
 
 def populateDict():

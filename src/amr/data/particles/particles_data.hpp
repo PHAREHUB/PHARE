@@ -157,11 +157,23 @@ namespace amr
 
             using Packer = core::ParticlePacker<dim>;
 
-            auto getParticles = [&](std::string name, auto& particles) {
-                // can't read what doesn't exist
-                if (!restart_db->keyExists(name + "_weight"))
+            auto getParticles = [&](std::string const name, auto& particles) {
+                auto const keys_exist = core::generate(
+                    [&](auto const& key) { return restart_db->keyExists(name + "_" + key); },
+                    Packer::keys());
+
+                assert(keys_exist.size() > 0);
+
+                bool all  = core::all(keys_exist);
+                bool none = core::none(keys_exist);
+                if (!(all or none))
+                    throw std::runtime_error("ParticlesData::getFromRestart has been given an "
+                                             "invalid input file, inconsistent state detected");
+
+                if (none) // can't read what doesn't exist
                     return;
 
+                // arbitrary use of weight, just needs single value non-dimensional array
                 auto n_particles = restart_db->getArraySize(name + "_weight");
                 core::ContiguousParticles<dim> soa{n_particles};
 

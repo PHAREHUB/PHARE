@@ -56,5 +56,5 @@ PYBIND11_MODULE(dictator, m)
 
     m.def("add_array_as_vector", add_array_as_vector<double>, "add_array_as_vector");
 
-    m.def("clear", []() { PHARE::initializer::PHAREDictHandler::INSTANCE().stop(); });
+    m.def("stop", []() { PHARE::initializer::PHAREDictHandler::INSTANCE().stop(); });
 }

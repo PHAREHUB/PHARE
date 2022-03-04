@@ -716,15 +716,12 @@ Adaptive Mesh Refinement (AMR) parameters
 
     def restart_file_path(self):
         assert self.restart_options is not None
-        if "dir" in self.restart_options:
-            return self.restart_options["dir"]
-        return "phare_outputs"
+        return self.restart_options.get("dir","phare_outputs")
 
 
     def start_time(self):
         if self.restart_options is not None:
-            if "restart_time" in self.restart_options:
-                return self.restart_options["restart_time"]
+            return self.restart_options.get("restart_time", 0)
         return 0
 
 
@@ -744,8 +741,10 @@ Adaptive Mesh Refinement (AMR) parameters
 # ------------------------------------------------------------------------------
 
     def is_restartable_compared_to(self, sim):
-        # not an exhaustive comparison
-        return self.cells == sim.cells
+        # to be considered https://github.com/PHAREHUB/PHARE/issues/666
+        check = ["cells", "dl"]
+        are_comparable = all([getattr(self, k) == getattr(sim, k)] for k in check)
+        return are_comparable
 
 
 # ------------------------------------------------------------------------------

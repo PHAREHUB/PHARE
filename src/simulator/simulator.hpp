@@ -350,7 +350,9 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
     }
 
     isInitialized = true;
-    hierarchy_->closeRestartFile();
+
+    if (hierarchy_->isFromRestart())
+        hierarchy_->closeRestartFile();
 }
 
 

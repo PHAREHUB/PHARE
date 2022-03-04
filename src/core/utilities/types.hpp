@@ -1,6 +1,7 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <cassert>
 #include <array>
 #include <iomanip>
 #include <optional>
@@ -257,6 +258,7 @@ Return sum(Container const& container, Return r = 0)
 template<typename F>
 auto generate(F&& f, std::size_t from, std::size_t to)
 {
+    assert(from <= to);
     using value_type = std::decay_t<std::result_of_t<F&(std::size_t const&)>>;
     std::vector<value_type> v;
     std::size_t count = to - from;
@@ -292,6 +294,50 @@ auto generate(F&& f, std::vector<T>&& v)
 {
     return generate(std::forward<F>(f), v);
 }
+
+template<std::size_t Idx, typename F, typename Type, std::size_t Size>
+auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
+{
+    return f(arr[Idx]);
+}
+
+template<typename Type, std::size_t Size, typename F, std::size_t... Is>
+auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
+                               std::integer_sequence<std::size_t, Is...>)
+{
+    return std::array{generate_array__<Is>(f, arr)...};
+}
+
+template<typename F, typename Type, std::size_t Size>
+auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+{
+    return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
+}
+
+
+// calls operator bool() or copies bool
+auto constexpr static to_bool = [](auto const& v) { return bool{v}; };
+
+
+template<typename Container>
+auto all(Container const& container)
+{
+    return std::all_of(container.begin(), container.end(), to_bool);
+}
+
+template<typename Container>
+auto any(Container const& container)
+{
+    return std::any_of(container.begin(), container.end(), to_bool);
+}
+
+template<typename Container>
+auto none(Container const& container)
+{
+    return std::none_of(container.begin(), container.end(), to_bool);
+}
+
+
 
 
 } // namespace PHARE::core
