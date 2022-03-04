@@ -173,8 +173,8 @@ namespace amr
                 if (none) // can't read what doesn't exist
                     return;
 
-                // arbitrary use of weight, just needs single value non-dimensional array
-                auto n_particles = restart_db->getArraySize(name + "_weight");
+                auto n_particles
+                    = restart_db->getArraySize(name + "_" + Packer::arbitrarySingleValueKey());
                 core::ContiguousParticles<dim> soa{n_particles};
 
                 {
