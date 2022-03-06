@@ -180,11 +180,19 @@ class Simulator:
             self.initialize()
 
     def _log_to_file(self):
+        """
+            send C++ std::cout logs to files with env var PHARE_LOG
+            Support keys:
+                RANK_FILES - logfile per rank
+                DATETIME_FILES - logfile with starting datetime timestamp per rank
+                NONE - no logging files, display to cout
+        """
         import os
-        # log per mpi proc
+
         if "PHARE_LOG" not in os.environ:
-            from pyphare.cpp import cpp_lib
             os.environ["PHARE_LOG"] = "RANK_FILES"
-            if cpp_lib().mpi_rank() == 0:
-                from pathlib import Path
-                Path(".log").mkdir(exist_ok=True)
+        from pyphare.cpp import cpp_lib
+        if os.environ["PHARE_LOG"] != "NONE" and cpp_lib().mpi_rank() == 0:
+            from pathlib import Path
+            Path(".log").mkdir(exist_ok=True)
+

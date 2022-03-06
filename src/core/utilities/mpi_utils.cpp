@@ -41,4 +41,17 @@ void barrier()
 }
 
 
+
+std::string date_time(std::string format)
+{
+    std::time_t t = std::time(NULL);
+    char buffer[80];
+    struct tm ti;
+    localtime_r(&t, &ti);
+    std::strftime(buffer, 80, format.c_str(), &ti);
+    std::string date_time{buffer};
+    return collect(date_time)[0];
+}
+
+
 } // namespace PHARE::core::mpi

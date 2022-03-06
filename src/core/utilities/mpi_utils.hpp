@@ -2,6 +2,7 @@
 #ifndef PHARE_CORE_UTILITIES_MPI_HPP
 #define PHARE_CORE_UTILITIES_MPI_HPP
 
+#include <chrono>
 #include <vector>
 #include <string>
 #include <cassert>
@@ -32,6 +33,8 @@ int size();
 int rank();
 
 void barrier();
+
+std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
 template<typename Data>
 auto mpi_type_for()
