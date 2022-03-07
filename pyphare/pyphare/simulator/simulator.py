@@ -111,7 +111,7 @@ class Simulator:
         self._check_init()
         perf = []
         end_time = self.cpp_sim.endTime()
-        t = self._start_time()
+        t = self.cpp_sim.startTime()
 
         while t < end_time:
             tick  = timem.time()
@@ -203,15 +203,5 @@ class Simulator:
         if os.environ["PHARE_LOG"] != "NONE" and cpp_lib().mpi_rank() == 0:
             from pathlib import Path
             Path(".log").mkdir(exist_ok=True)
-
-
-
-    def _start_time(self):
-        # could be on Simulation instead
-        if self.simulation.restart_options is not None \
-           and "options" in self.simulation.restart_options \
-           and "restart_time" in self.simulation.restart_options["options"]:
-             return self.simulation.restart_options["options"]["restart_time"]
-        return 0
 
 

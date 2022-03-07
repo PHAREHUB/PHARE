@@ -45,7 +45,7 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class Simulator : public ISimulator
 {
 public:
-    double startTime() override { return 0.; }
+    double startTime() override { return startTime_; }
     double endTime() override { return finalTime_; }
     double timeStep() override { return dt_; }
     double currentTime() override { return currentTime_; }
