@@ -265,10 +265,8 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
     if (dict["simulation"].contains("restarts"))
         startTime_ = restarts_init(dict["simulation"]["restarts"]);
 
-    auto endTime = startTime_; // startTime can't be higher than endTime
-
     integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
-                                               startTime_, endTime);
+                                               startTime_, finalTime_);
 
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
