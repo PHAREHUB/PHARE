@@ -373,8 +373,38 @@ def check_diag_options(**kwargs):
                     raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
             except FileExistsError:
                 raise ValueError ("Creation of the directory %s failed" % diag_dir)
+        valid_modes = ["overwrite"]
+        if "mode" in diag_options["options"]:
+            mode = diag_options["options"]["mode"]
+            if mode not in valid_modes:
+                raise ValueError (f"Invalid diagnostics mode {mode}, valid modes are {valid_modes}")
     return diag_options
 
+
+
+def check_restart_options(**kwargs):
+
+    restart_options = kwargs.get("restart_options", None)
+
+    if restart_options is not None:
+
+        if "timestamps" not in restart_options:
+            raise ValueError (f"restart_options expects a list of timestamps")
+
+        valid_modes = ["conserve", "overwrite"]
+        if "mode" not in restart_options:
+            raise ValueError (f"Restart mode not set, valid modes are {valid_modes}")
+
+        mode = restart_options["mode"]
+        if mode not in valid_modes:
+            raise ValueError (f"Invalid restart mode {mode}, valid modes are {valid_modes}")
+
+    return restart_options
+
+def validate_restart_options(sim):
+    import pyphare.pharein.restarts as restarts
+    if sim.restart_options is not None:
+        restarts.validate(sim)
 
 
 
@@ -448,9 +478,9 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
-                             'diag_export_format', 'refinement_boxes', 'refinement', 'init_time',
+                             'diag_export_format', 'refinement_boxes', 'refinement',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity', 'strict' ]
+                             'resistivity', 'hyper_resistivity', 'strict', "restart_options", ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -466,7 +496,6 @@ def checker(func):
         kwargs["cells"] =  cells
         kwargs["refinement_ratio"] = 2
 
-        kwargs["init_time"] = kwargs.get('init_time', 0)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
@@ -482,6 +511,7 @@ def checker(func):
 
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
+        kwargs["restart_options"] = check_restart_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
         kwargs["origin"] = check_origin(ndim, **kwargs)
@@ -545,7 +575,11 @@ class Simulation(object):
                    diag_options={"format": "phareh5",
                                  "options": {"dir": diag_outputs,
                                              "mode":"overwrite"}},
-                   strict=True,
+                   restart_options={"dir": restart_outputs,
+                                   "mode": "overwrite" or "conserve",
+                                   "timestamps" : [.009, 99999]
+                                   "restart_time" : 99999.99999 },
+                   strict=True (turns warnings to errors, false by default),
                   )
 
 
@@ -558,8 +592,7 @@ Setting time parameters:
           simulation time step. Use with time_step_nbr OR final_time
         * *time_step_nbr* (``int``) -- number of time step to perform.
           Use with final_time OR time_step
-        * *init_time* (``float`` )--
-          unused for now, will be time for restarts someday
+
 
 
 Setting domain/grid parameters:
@@ -660,6 +693,8 @@ Adaptive Mesh Refinement (AMR) parameters
         self.level_step_nbr = [
           self.nSubcycles ** levelNumbers[ilvl] * self.time_step_nbr for ilvl in levelNumbers
         ]
+        validate_restart_options(self)
+
 
     def final_time(self):
         return self.time_step * self.time_step_nbr
@@ -679,12 +714,21 @@ Adaptive Mesh Refinement (AMR) parameters
 
 
 
+    def restart_file_path(self):
+        assert self.restart_options is not None
+        return self.restart_options.get("dir","phare_outputs")
+
+
+    def start_time(self):
+        if self.restart_options is not None:
+            return self.restart_options.get("restart_time", 0)
+        return 0
 
 
 # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
-        if diag.name in [diag.name for diag in self.diagnostics]:
+        if diag.name in [diagnostic.name for diagnostic in self.diagnostics]:
             raise ValueError("Error: diagnostics {} already registered".format(diag.name))
 
         # check whether the spatial extent of the diagnostics is valid, given the domain size
@@ -692,6 +736,15 @@ Adaptive Mesh Refinement (AMR) parameters
             raise RuntimeError("Error: invalid diagnostics spatial extent")
 
         self.diagnostics.append(diag)
+
+
+# ------------------------------------------------------------------------------
+
+    def is_restartable_compared_to(self, sim):
+        # to be considered https://github.com/PHAREHUB/PHARE/issues/666
+        check = ["cells", "dl"]
+        are_comparable = all([getattr(self, k) == getattr(sim, k)] for k in check)
+        return are_comparable
 
 
 # ------------------------------------------------------------------------------
@@ -708,10 +761,12 @@ Adaptive Mesh Refinement (AMR) parameters
 
     def set_electrons(self, electrons):
         self.electrons = electrons
+
 # ------------------------------------------------------------------------------
 
 
 def serialize(sim):
+    # pickle cannot handle simulation objects
     import dill, codecs
     return codecs.encode(dill.dumps(sim), 'hex')
 

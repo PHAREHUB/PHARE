@@ -98,7 +98,7 @@ void MetaDiagnosticWriter<H5Writer>::initDataSets(
 
         if (diagnostic.quantity == "/tags")
             h5Writer.template createDataSet<int>(
-                fileData_.at(diagnostic.quantity)->file(), path + "/tags",
+                *fileData_.at(diagnostic.quantity), path + "/tags",
                 null or tags.count(path) == 0
                     ? std::vector<std::size_t>(GridLayout::dimension, 0)
                     : attr["tags"].template to<std::vector<std::size_t>>());
@@ -120,8 +120,8 @@ void MetaDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 
         if (tags.count(path) > 0)
         {
-            auto& h5 = fileData_.at(diagnostic.quantity);
-            h5->template write_data_set_flat<GridLayout::dimension>(path + "/tags", tags[path]);
+            auto& h5 = *fileData_.at(diagnostic.quantity);
+            h5.template write_data_set_flat<GridLayout::dimension>(path + "/tags", tags[path]);
             tags.erase(path);
         }
     }
@@ -135,7 +135,7 @@ void MetaDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    writeAttributes_(diagnostic, fileData_.at(diagnostic.quantity)->file(), fileAttributes,
+    writeAttributes_(diagnostic, *fileData_.at(diagnostic.quantity), fileAttributes,
                      patchAttributes, maxLevel);
 }
 

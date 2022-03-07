@@ -5,15 +5,17 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "diagnostic/diagnostic_writer.hpp"
-#include "diagnostic/detail/h5file.hpp"
-
 #include "core/utilities/mpi_utils.hpp"
 
-#include "highfive/H5File.hpp"
+#include "diagnostic/diagnostic_writer.hpp"
+
+#include "hdf5/detail/h5/h5_file.hpp"
+
 
 namespace PHARE::diagnostic::h5
 {
+using namespace hdf5::h5;
+
 template<typename Writer>
 class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
@@ -87,7 +89,7 @@ protected:
     }
 
     void writeAttributes_(
-        DiagnosticProperties& diagnostic, HighFive::File& file, Attributes& fileAttributes,
+        DiagnosticProperties& diagnostic, HighFiveFile& file, Attributes& fileAttributes,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&
             patchAttributes,
         std::size_t maxLevel)
@@ -111,7 +113,7 @@ protected:
     }
 
     template<typename ParticlePopulation>
-    void writeIonPopAttributes_(HighFive::File& file, ParticlePopulation const& pop)
+    void writeIonPopAttributes_(HighFiveFile& file, ParticlePopulation const& pop)
     {
         auto& h5Writer = this->h5Writer_;
 
@@ -120,7 +122,7 @@ protected:
         h5Writer.writeAttributeDict(file, popAttributes, "/");
     }
 
-    void writeGhostsAttr_(HighFive::File& file, std::string path, std::size_t ghosts, bool null)
+    void writeGhostsAttr_(HighFiveFile& file, std::string path, std::size_t ghosts, bool null)
     {
         Attributes dsAttr;
         dsAttr["ghosts"] = ghosts;

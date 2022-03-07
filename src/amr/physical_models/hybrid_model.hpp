@@ -59,6 +59,9 @@ public:
     }
 
 
+    auto patch_data_ids() const { return resourcesManager->restart_patch_data_ids(*this); }
+
+
     /**
      * @brief fillMessengerInfo describes which variables of the model are to be initialized or
      * filled at ghost nodes.
@@ -127,6 +130,9 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::initializ
 
         state.electromag.initialize(layout);
     }
+
+
+    resourcesManager->registerForRestarts(*this);
 }
 
 

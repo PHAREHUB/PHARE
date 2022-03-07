@@ -1,7 +1,9 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
+#include <cassert>
 #include <array>
+#include <iomanip>
 #include <optional>
 #include <string>
 #include <algorithm>
@@ -201,9 +203,19 @@ namespace core
         return out.str();
     }
 
+    template<typename T>
+    auto to_string_fixed_width(T const& value, std::size_t const& precision,
+                               std::size_t const& width, char const& fill = '0')
+    {
+        std::ostringstream out;
+        out.width(width);
+        out.precision(precision);
+        out << std::setfill(fill) << std::fixed << value;
+        return out.str();
+    }
 
     template<typename T, std::size_t... Is>
-    constexpr auto gft_helper(std::index_sequence<Is...> const &&)
+    constexpr auto gft_helper(std::index_sequence<Is...> const&&)
         -> decltype(std::make_tuple((Is, std::declval<T>())...));
 
     template<typename T, std::size_t N>
@@ -239,6 +251,95 @@ Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
+
+
+
+
+template<typename F>
+auto generate(F&& f, std::size_t from, std::size_t to)
+{
+    assert(from <= to);
+    using value_type = std::decay_t<std::result_of_t<F&(std::size_t const&)>>;
+    std::vector<value_type> v;
+    std::size_t count = to - from;
+    if (count > 0)
+        v.reserve(count);
+    for (std::size_t i = from; i < to; ++i)
+        v.emplace_back(f(i));
+    return v;
+}
+
+template<typename F>
+auto generate(F&& f, std::size_t count)
+{
+    return generate(std::forward<F>(f), 0, count);
+}
+
+
+template<typename F, typename Container>
+auto generate(F&& f, Container& container)
+{
+    using T          = typename Container::value_type;
+    using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
+    std::vector<value_type> v1;
+    if (container.size() > 0)
+        v1.reserve(container.size());
+    for (auto& v : container)
+        v1.emplace_back(f(v));
+    return v1;
+}
+
+template<typename F, typename T>
+auto generate(F&& f, std::vector<T>&& v)
+{
+    return generate(std::forward<F>(f), v);
+}
+
+template<std::size_t Idx, typename F, typename Type, std::size_t Size>
+auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
+{
+    return f(arr[Idx]);
+}
+
+template<typename Type, std::size_t Size, typename F, std::size_t... Is>
+auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
+                               std::integer_sequence<std::size_t, Is...>)
+{
+    return std::array{generate_array__<Is>(f, arr)...};
+}
+
+template<typename F, typename Type, std::size_t Size>
+auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+{
+    return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
+}
+
+
+// calls operator bool() or copies bool
+auto constexpr static to_bool = [](auto const& v) { return bool{v}; };
+
+
+template<typename Container>
+auto all(Container const& container)
+{
+    return std::all_of(container.begin(), container.end(), to_bool);
+}
+
+template<typename Container>
+auto any(Container const& container)
+{
+    return std::any_of(container.begin(), container.end(), to_bool);
+}
+
+template<typename Container>
+auto none(Container const& container)
+{
+    return std::none_of(container.begin(), container.end(), to_bool);
+}
+
+
+
+
 } // namespace PHARE::core
 
 

@@ -22,13 +22,13 @@ class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
 {
 public:
     using Super = H5TypeWriter<H5Writer>;
-    using Super::h5Writer_;
+    using Super::checkCreateFileFor_;
     using Super::fileData_;
+    using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
-    using Super::checkCreateFileFor_;
     using Attributes = typename Super::Attributes;
     using GridLayout = typename H5Writer::GridLayout;
     using FloatType  = typename H5Writer::FloatType;
@@ -128,25 +128,25 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& file     = fileData_.at(diagnostic.quantity)->file();
+    auto& h5file   = *fileData_.at(diagnostic.quantity);
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
 
     auto writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
-        this->writeGhostsAttr_(file, path,
+        this->writeGhostsAttr_(h5file, path,
                                null ? 0 : attr[key + "_ghosts_x"].template to<std::size_t>(), null);
         if constexpr (GridLayout::dimension > 1)
             this->writeGhostsAttr_(
-                file, path, null ? 0 : attr[key + "_ghosts_y"].template to<std::size_t>(), null);
+                h5file, path, null ? 0 : attr[key + "_ghosts_y"].template to<std::size_t>(), null);
         if constexpr (GridLayout::dimension > 2)
             this->writeGhostsAttr_(
-                file, path, null ? 0 : attr[key + "_ghosts_z"].template to<std::size_t>(), null);
+                h5file, path, null ? 0 : attr[key + "_ghosts_z"].template to<std::size_t>(), null);
     };
 
     auto initDS = [&](auto& path, auto& attr, std::string key, auto null) {
         auto dsPath = path + key;
         h5Writer.template createDataSet<FloatType>(
-            file, dsPath,
+            h5file, dsPath,
             null ? std::vector<std::size_t>(GridLayout::dimension, 0)
                  : attr[key].template to<std::vector<std::size_t>>());
         writeGhosts(dsPath, attr, key, null);
@@ -187,14 +187,14 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& hfile    = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = *fileData_.at(diagnostic.quantity);
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
     auto writeDS     = [&](auto path, auto& field) {
-        hfile.template write_data_set_flat<GridLayout::dimension>(path, &(*field.begin()));
+        h5file.template write_data_set_flat<GridLayout::dimension>(path, &(*field.begin()));
     };
     auto writeVF
-        = [&](auto path, auto& vecF) { h5Writer.writeVecFieldAsDataset(hfile, path, vecF); };
+        = [&](auto path, auto& vecF) { h5Writer.writeVecFieldAsDataset(h5file, path, vecF); };
 
     std::string path = h5Writer.patchPath() + "/";
     for (auto& pop : ions)
@@ -223,7 +223,7 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
     std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = fileData_.at(diagnostic.quantity)->file();
+    auto& h5file   = *fileData_.at(diagnostic.quantity);
 
     auto checkWrite = [&](auto& tree, std::string qty, auto const& pop) {
         if (diagnostic.quantity == tree + qty)

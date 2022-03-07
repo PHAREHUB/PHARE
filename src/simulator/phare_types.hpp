@@ -1,7 +1,11 @@
 #ifndef PHARE_TYPES_HPP
 #define PHARE_TYPES_HPP
 
-#include "include.hpp"
+
+#include "phare_solver.hpp"
+#include "initializer/data_provider.hpp"
+#include "diagnostic/diagnostics.hpp"
+#include "restarts/restarts.hpp"
 
 namespace PHARE
 {

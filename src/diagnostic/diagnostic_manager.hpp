@@ -97,8 +97,6 @@ public:
     DiagnosticsManager& operator=(DiagnosticsManager&&) = delete;
 
 private:
-    std::vector<DiagnosticProperties> diagnostics_;
-
     bool needsAction_(double nextTime, double timeStamp, double timeStep)
     {
         // casting to float to truncate double to avoid trailing imprecision
@@ -122,6 +120,7 @@ private:
     }
 
 
+    std::vector<DiagnosticProperties> diagnostics_;
     std::unique_ptr<Writer> writer_;
     std::map<std::string, std::size_t> nextCompute_;
     std::map<std::string, std::size_t> nextWrite_;

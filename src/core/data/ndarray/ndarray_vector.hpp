@@ -276,6 +276,10 @@ public:
     }
 
 
+    auto& vector() { return data_; }
+    auto& vector() const { return data_; }
+
+
 private:
     std::array<std::uint32_t, dim> nCells_;
     std::vector<DataType> data_;

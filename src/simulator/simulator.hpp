@@ -2,11 +2,12 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
-#include "include.hpp"
+
 
 #include "phare_core.hpp"
 #include "phare_types.hpp"
 
+#include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
@@ -44,7 +45,7 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class Simulator : public ISimulator
 {
 public:
-    double startTime() override { return 0.; }
+    double startTime() override { return startTime_; }
     double endTime() override { return finalTime_; }
     double timeStep() override { return dt_; }
     double currentTime() override { return currentTime_; }
@@ -64,7 +65,15 @@ public:
 
     bool dump(double timestamp, double timestep) override
     {
-        return dMan->dump(timestamp, timestep);
+        if (rMan)
+        {
+            rMan->dump(timestamp, timestep);
+        }
+
+        if (dMan)
+            return dMan->dump(timestamp, timestep);
+
+        return false;
     }
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
@@ -140,6 +149,7 @@ private:
     int maxLevelNumber_;
     double dt_;
     int timeStepNbr_           = 0;
+    double startTime_          = 0;
     double finalTime_          = 0;
     double currentTime_        = 0;
     bool isInitialized         = false;
@@ -151,6 +161,7 @@ private:
 
     std::unique_ptr<PHARE::core::ITimeStamper> timeStamper;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
+    std::unique_ptr<PHARE::restarts::IRestartsManager> rMan;
 
     SimFunctors functors_;
 
@@ -160,7 +171,15 @@ private:
     }
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
+
+
+
+    double restarts_init(initializer::PHAREDict const&);
+    void diagnostics_init(initializer::PHAREDict const&);
+    void hybrid_init(initializer::PHAREDict const&);
 };
+
+
 
 namespace
 {
@@ -175,9 +194,85 @@ namespace
         return buf;
     }
 } // namespace
+
+
+
 //-----------------------------------------------------------------------------
 //                           Definitions
 //-----------------------------------------------------------------------------
+
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
+double Simulator<dim, _interp, nbRefinedPart>::restarts_init(initializer::PHAREDict const& dict)
+{
+    rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hybridModel_, dict);
+
+    if (dict.contains("restart_time"))
+        return (currentTime_ = dict["restart_time"].template to<double>());
+
+    return 0;
+}
+
+
+
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
+void Simulator<dim, _interp, nbRefinedPart>::diagnostics_init(initializer::PHAREDict const& dict)
+{
+    dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(*hierarchy_, *hybridModel_,
+                                                                      dict);
+
+    if (dict.contains("fine_dump_lvl_max"))
+    {
+        auto fine_dump_lvl_max = dict["fine_dump_lvl_max"].template to<int>();
+
+        if (fine_dump_lvl_max > 0)
+        { // copy for later
+            this->fineDumpLvlMax                  = static_cast<std::size_t>(fine_dump_lvl_max);
+            functors_["pre_advance"]["fine_dump"] = [&](SimFunctorParams const& params) {
+                std::size_t level_nbr = params["level_nbr"].template to<int>();
+                auto timestamp        = params["timestamp"].template to<double>();
+
+                if (this->fineDumpLvlMax >= level_nbr)
+                    this->dMan->dump_level(level_nbr, timestamp);
+            };
+        }
+    }
+}
+
+
+
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
+void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict const& dict)
+{
+    hybridModel_ = std::make_shared<HybridModel>(
+        dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
+
+
+    hybridModel_->resourcesManager->registerResources(hybridModel_->state);
+
+    // we register the hybrid model for all possible levels in the hierarchy
+    // since for now it is the only model available, same for the solver
+    multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
+
+    multiphysInteg_->registerAndInitSolver(0, maxLevelNumber_ - 1,
+                                           std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
+
+    multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
+
+    // hard coded for now, should get some params later from the dict
+    auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
+    multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
+
+    if (dict["simulation"].contains("restarts"))
+        startTime_ = restarts_init(dict["simulation"]["restarts"]);
+
+    integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
+                                               startTime_, finalTime_);
+
+    timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
+
+    if (dict["simulation"].contains("diagnostics"))
+        diagnostics_init(dict["simulation"]["diagnostics"]);
+}
 
 
 
@@ -198,63 +293,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
     if (find_model("HybridModel"))
-    {
-        hybridModel_ = std::make_shared<HybridModel>(
-            dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
-
-
-        hybridModel_->resourcesManager->registerResources(hybridModel_->state);
-
-        // we register the hybrid model for all possible levels in the hierarchy
-        // since for now it is the only model available
-        // same for the solver
-        multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
-
-        multiphysInteg_->registerAndInitSolver(
-            0, maxLevelNumber_ - 1, std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
-
-        multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
-
-        // hard coded for now, should get some params later from the dict
-        auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
-        multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
-
-
-        auto startTime = 0.; // TODO make it runtime
-        auto endTime   = 0.; // TODO make it runtime
-
-
-        integrator_ = std::make_unique<Integrator>(dict, hierarchy, multiphysInteg_,
-                                                   multiphysInteg_, startTime, endTime);
-
-
-        timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
-
-        if (dict["simulation"].contains("diagnostics"))
-        {
-            auto& diagDict = dict["simulation"]["diagnostics"];
-
-            dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
-                *hierarchy_, *hybridModel_, diagDict);
-
-            if (diagDict.contains("fine_dump_lvl_max"))
-            {
-                auto fine_dump_lvl_max = diagDict["fine_dump_lvl_max"].template to<int>();
-
-                if (fine_dump_lvl_max > 0)
-                { // copy for later
-                    this->fineDumpLvlMax = static_cast<std::size_t>(fine_dump_lvl_max);
-                    functors_["pre_advance"]["fine_dump"] = [&](SimFunctorParams const& params) {
-                        std::size_t level_nbr = params["level_nbr"].template to<int>();
-                        auto timestamp        = params["timestamp"].template to<double>();
-
-                        if (this->fineDumpLvlMax >= level_nbr)
-                            this->dMan->dump_level(level_nbr, timestamp);
-                    };
-                }
-            }
-        }
-    }
+        hybrid_init(dict);
     else
         throw std::runtime_error("unsupported model");
 }
@@ -309,6 +348,9 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
     }
 
     isInitialized = true;
+
+    if (hierarchy_->isFromRestart())
+        hierarchy_->closeRestartFile();
 }
 
 
@@ -326,7 +368,7 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
     {
         PHARE_LOG_SCOPE("Simulator::advance");
         dt_new       = integrator_->advance(dt);
-        currentTime_ = ((*timeStamper) += dt);
+        currentTime_ = startTime_ + ((*timeStamper) += dt);
     }
     catch (std::runtime_error const& e)
     {

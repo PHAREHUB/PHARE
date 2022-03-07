@@ -28,12 +28,29 @@ from .uniform_model import UniformModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .electron_model import ElectronModel
 from .diagnostics import FluidDiagnostics, ElectromagDiagnostics, ParticleDiagnostics, MetaDiagnostics
-from .simulation import Simulation
+from .simulation import Simulation, serialize as serialize_sim, deserialize as deserialize_sim
 
 
 def getSimulation():
     from .global_vars import sim
     return sim
+
+
+def _patch_data_ids(path):
+    """
+     for restarts we save samrai patch data ids to the restart files, which we access from here
+     to tell samrai which patch datas to load from the restart file on restart
+    """
+    import h5py
+    from pyphare.cpp import cpp_etc_lib
+    h5File = cpp_etc_lib().samrai_restart_file(path)
+    return h5py.File(h5File, "r")["phare"]["patch"]["ids"][:]
+
+def _serialized_simulation_string(path):
+    import h5py
+    from pyphare.cpp import cpp_etc_lib
+    h5File = cpp_etc_lib().samrai_restart_file(path)
+    return h5py.File(h5File, "r")["phare"].attrs["serialized_simulation"]
 
 
 # converts scalars to array of expected size
@@ -63,6 +80,13 @@ class fn_wrapper(py_fn_wrapper):
         # couples vector init functions to C++
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
+
+def clearDict():
+    """
+      dict may contain dangling references from a previous simulation unless cleared
+    """
+    import pybindlibs.dictator as pp
+    pp.stop()
 
 
 def populateDict():
@@ -198,6 +222,8 @@ def populateDict():
     addInitFunction(maginit_path+"y_component", fn_wrapper(modelDict["by"]))
     addInitFunction(maginit_path+"z_component", fn_wrapper(modelDict["bz"]))
 
+
+    #### adding diagnostics
     diag_path = "simulation/diagnostics/"
     for diag in simulation.diagnostics:
         type_path = diag_path + diag.type + '/'
@@ -212,18 +238,57 @@ def populateDict():
             add_string(name_path + "/" + f'attribute_{attr_idx}_key' , attr_key)
             add_string(name_path + "/" + f'attribute_{attr_idx}_value' , diag.attributes[attr_key])
 
+    if len(simulation.diagnostics) > 0:
+        if simulation.diag_options is not None and "options" in simulation.diag_options:
+            add_string(diag_path + "filePath", simulation.diag_options["options"]["dir"])
+            if "mode" in simulation.diag_options["options"]:
+                add_string(diag_path + "mode", simulation.diag_options["options"]["mode"])
+            if "fine_dump_lvl_max" in simulation.diag_options["options"]:
+                add_int(diag_path + "fine_dump_lvl_max", simulation.diag_options["options"]["fine_dump_lvl_max"])
+        else:
+            add_string(diag_path + "filePath", "phare_output")
+    #### diagnostics added
 
 
-    if simulation.diag_options is not None and "options" in simulation.diag_options:
-        add_string(diag_path + "filePath", simulation.diag_options["options"]["dir"])
-    else:
-        add_string(diag_path + "filePath", "phare_output")
 
-    if simulation.diag_options is not None and "options" in simulation.diag_options:
-        if "mode" in simulation.diag_options["options"]:
-            add_string(diag_path + "mode", simulation.diag_options["options"]["mode"])
-        if "fine_dump_lvl_max" in simulation.diag_options["options"]:
-            add_int(diag_path + "fine_dump_lvl_max", simulation.diag_options["options"]["fine_dump_lvl_max"])
+    #### adding restarts
+    if simulation.restart_options is not None:
+
+        restart_options = simulation.restart_options
+        restarts_path = "simulation/restarts/"
+        restart_file_path = "phare_outputs"
+
+        if "dir" in restart_options:
+            restart_file_path = restart_options["dir"]
+
+        if "restart_time" in restart_options:
+            from pyphare.cpp import cpp_etc_lib
+
+            restart_time = restart_options["restart_time"]
+            restart_file_load_path = cpp_etc_lib().restart_path_for_time(restart_file_path, restart_time)
+
+            if not os.path.exists(restart_file_load_path):
+                raise ValueError(f"PHARE restart file not found for time {restart_time}")
+
+            deserialized_simulation = deserialize_sim(_serialized_simulation_string(restart_file_load_path))
+            if not simulation.is_restartable_compared_to(deserialized_simulation):
+                raise ValueError("deserialized Restart simulation is incompatible with configured simulation parameters")
+
+            add_vector_int(restarts_path + "restart_ids", _patch_data_ids(restart_file_load_path))
+            add_string(restarts_path + "loadPath", restart_file_load_path)
+            add_double(restarts_path + "restart_time", restart_time)
+
+        if "mode" in restart_options:
+            add_string(restarts_path + "mode", restart_options["mode"])
+
+        add_string(restarts_path + "filePath", restart_file_path)
+
+
+        pp.add_array_as_vector(restarts_path + "write_timestamps", restart_options["timestamps"])
+
+        add_string(restarts_path + "serialized_simulation", serialize_sim(simulation))
+    #### restarts added
+
 
 
     #### adding electrons

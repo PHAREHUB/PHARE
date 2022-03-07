@@ -2,6 +2,11 @@
 #include "python3/pybind_def.hpp"
 #include "simulator/simulator.hpp"
 
+
+#include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
+
+
+
 namespace py = pybind11;
 
 namespace PHARE::pydata
@@ -37,6 +42,14 @@ PYBIND11_MODULE(cpp_etc, m)
                                                               {"samrai", samrai_version()}};
         _PHARE_WITH_HIGHFIVE(versions["highfive"] = PHARE_TO_STR(HIGHFIVE_VERSION));
         return versions;
+    });
+
+    m.def("samrai_restart_file", [](std::string path) {
+        return PHARE::amr::HierarchyRestarter::getRestartFileFullPath(path);
+    });
+
+    m.def("restart_path_for_time", [](std::string path, double timestamp) {
+        return PHARE::amr::Hierarchy::restartFilePathForTime(path, timestamp);
     });
 }
 } // namespace PHARE::pydata

@@ -31,6 +31,10 @@ public:
         return get(particle);
     }
 
+    // sometimes we use this to infer the size of an ParticleArray
+    // could be "charge" either
+    static auto arbitrarySingleValueKey() { return "weight"; }
+
     static auto& keys() { return keys_; }
 
     auto get(std::size_t i) const { return get(particles_[i]); }

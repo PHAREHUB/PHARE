@@ -1,4 +1,5 @@
 
+
 import atexit
 import time as timem
 import numpy as np
@@ -28,7 +29,7 @@ def startMPI():
 
 class Simulator:
     def __init__(self, simulation, auto_dump=True, **kwargs):
-        import pyphare.pharein as ph #lgtm [py/import-and-import-from]
+        import pyphare.pharein as ph
         assert isinstance(simulation, ph.Simulation)
         self.simulation = simulation
         self.cpp_hier = None   # HERE
@@ -56,11 +57,11 @@ class Simulator:
             raise ValueError("Simulator already initialized: requires reset to re-initialize")
         try:
             from pyphare.cpp import cpp_lib
-            from pyphare.pharein import populateDict
+            import pyphare.pharein as ph
             startMPI()
             if self.log_to_file:
                 self._log_to_file()
-            populateDict()
+            ph.populateDict()
             self.cpp_hier = cpp_lib().make_hierarchy()
 
             self.cpp_sim = make_cpp_simulator(
@@ -68,6 +69,7 @@ class Simulator:
             )
 
             self.cpp_sim.initialize()
+
             self._auto_dump() # first dump might be before first advance
             return self
         except:
@@ -109,7 +111,8 @@ class Simulator:
         self._check_init()
         perf = []
         end_time = self.cpp_sim.endTime()
-        t = 0.
+        t = self.cpp_sim.startTime()
+
         while t < end_time:
             tick  = timem.time()
             self.advance()
@@ -128,11 +131,12 @@ class Simulator:
 
 
     def _auto_dump(self):
-        return self.auto_dump and len(self.simulation.diagnostics) > 0 and self.dump()
+        return self.auto_dump and self.dump()
 
 
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
+
         if len(args) == 0:
             return self.cpp_sim.dump(timestamp=self.currentTime(), timestep=self.timeStep())
         return self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
@@ -146,6 +150,9 @@ class Simulator:
         return self.cpp_dw
 
     def reset(self):
+        if self.cpp_sim is not None:
+            import pyphare.pharein as ph
+            ph.clearDict()
         if self.cpp_dw is not None:
             self.cpp_dw.kill()
         self.cpp_dw = None
@@ -179,6 +186,7 @@ class Simulator:
         if self.cpp_sim is None:
             self.initialize()
 
+
     def _log_to_file(self):
         """
             send C++ std::cout logs to files with env var PHARE_LOG
@@ -195,4 +203,5 @@ class Simulator:
         if os.environ["PHARE_LOG"] != "NONE" and cpp_lib().mpi_rank() == 0:
             from pathlib import Path
             Path(".log").mkdir(exist_ok=True)
+
 

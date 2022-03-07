@@ -12,12 +12,9 @@
 #define PHARE_DIAG_DOUBLES false
 #endif
 
-#if PHARE_HAS_HIGHFIVE
-#include "highfive/H5Version.hpp"
-#define _PHARE_WITH_HIGHFIVE(...) __VA_ARGS__
-#else
-#define _PHARE_WITH_HIGHFIVE(...)
-#endif
+
+#include "hdf5/phare_hdf5.hpp"
+
 
 #include "diagnostic_manager.hpp"
 
