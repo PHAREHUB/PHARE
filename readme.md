@@ -2,25 +2,23 @@
 [![License: GPL v3](https://img.shields.io/badge/PHARE-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![CPP17](https://img.shields.io/badge/Language-C++17-blue.svg)]()
 [![LGTM Total alerts](https://img.shields.io/lgtm/alerts/g/PHAREHUB/PHARE.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/PHAREHUB/PHARE/alerts/)
-[![codefactor](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)
+<!--[![codefactor](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)-->
+[![Documentation Status](https://readthedocs.org/projects/phare/badge/?version=latest)](https://phare.readthedocs.io/en/latest/?badge=latest)
 
-![](https://user-images.githubusercontent.com/3200931/95620089-f13ebb80-0a6f-11eb-9af3-a1db08004bcc.png)
+<!--![](https://user-images.githubusercontent.com/3200931/95620089-f13ebb80-0a6f-11eb-9af3-a1db08004bcc.png) -->
 
+![image](https://user-images.githubusercontent.com/3200931/157078466-db803003-fb5c-4f43-8ab1-cee08815658f.png)
 
 # Parallel Hybrid PIC code with Adaptive mesh REfinement
 
 
+PHARE is a Hybrid Particle-In-Cell (PIC) code. It solves the evolution of the Vlasov equation of an arbitrary number of ion populations in a Lagrangian way. Electrons are modeled as a single fluid. Their momentum equation is used to compute the electric field, assuming quasineutrality.
 
-PHARE is a Hybrid Particle-In-Cell (PIC) code. It solves the evolution of the Vlasov
-equation of an arbitrary number of ion populations in a Lagrangian way. Electrons are
-modeled as a single fluid. Their momentum equation is used to compute the electric field, 
-assuming quasineutrality.
+Using Adaptive Mesh Refinement, provided by the library [SAMRAI](https://github.com/llnl/samrai), PHARE aims at filling the gap between sub-ion scales and large "MHD" scales by increasing the mesh resolution wherever the solution needs it.
 
-Using Adaptive Mesh Refinement, provided by the library [SAMRAI](https://github.com/llnl/samrai),
-PHARE aims at filling the gap between sub-ion scales and large "MHD" scales by increasing the mesh
-resolution wherever the solution needs it.
+**WARNING** - PHARE is under development ;-)
 
-PHARE is still under development.
+
 
 
 ## Software Licence
@@ -28,29 +26,45 @@ PHARE is still under development.
 PHARE is an open-source projet licenced under the GPLv3. Please refer to [LICENCE.TXT](LICENCE.TXT)
 
 
-## Install
+## Building the code
 
-For system library requirements see the following [Docker File](https://github.com/PHARCHIVE/phare-teamcity-agent/blob/master/Dockerfile)
+Basic tools and library requirements:
+
+```
+- git
+- cmake
+- make/ninja
+- C++ and Fortran compiler
+- MPI
+- Parallel HDF5
+- Python 3.x devel package
+```
 
 
-For Python API, install dependencies:
+
+PHARE input and post-processing scripts are in python. Install dependencies with:
 
 ```
   python3 -m pip install -r requirements.txt
 ```
 
-Build with CMake and latest [SAMRAI](https://github.com/llnl/samrai):
+PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manager the adaptive mesh refinement. You can either
+
+- build PHARE with the latest version of [SAMRAI](https://github.com/llnl/samrai):
 
 ```
   mkdir build; cd build; cmake ..; make
 ```
 
-Build with CMake and specific [SAMRAI](https://github.com/llnl/samrai):
+- build PHARE with a pre-installed version of [SAMRAI](https://github.com/llnl/samrai):
 
 ```
   mkdir build; cd build; cmake .. -DSAMRAI_ROOT=/path/to/SAMRAI/install; make
 ```
 
+## Documentation
+
+- [https://phare.readthedocs.io/en/latest/](https://phare.readthedocs.io/en/latest/)
 
 
 ## Developers
@@ -58,10 +72,11 @@ Build with CMake and specific [SAMRAI](https://github.com/llnl/samrai):
 
 ### Contributing
 
-All contributions are welcome, although the code is still at an early phase of
-its development. If you are interested in participating to the project for an internship,
-PhD, PostDoc, [contact us](mailto:phare@lpp.polytechnique.fr).
+All contributions are welcome. If you are interested in participating to the project for an internship, PhD, PostDoc, [contact us](mailto:phare@lpp.polytechnique.fr).
 
+### Development environnment
+
+For system library requirements see the following [Docker File](https://github.com/PHARCHIVE/phare-teamcity-agent/blob/master/Dockerfile)
 
 ### Active core team
 
@@ -84,8 +99,9 @@ PhD, PostDoc, [contact us](mailto:phare@lpp.polytechnique.fr).
 ## Acknowledgments
 
 
-The project PHARE is supported by:
+We acknowledge support from:
 
 - [Plas@Par](http://www.plasapar.com)
 - [Laboratory of Plasma Physics (LPP)](https://www.lpp.polytechnique.fr)
 - [LERMA](https://lerma.obspm.fr)
+
