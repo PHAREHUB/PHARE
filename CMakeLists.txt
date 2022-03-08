@@ -4,6 +4,10 @@ project(PHARE VERSION 0.1)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+
+  if(NOT CMAKE_CXX_FLAGS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}") # -O2 -g
+  endif()
 endif()
 
 if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
