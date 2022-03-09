@@ -49,9 +49,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
         // at interporder 1 we choose not to tag the last patch cell since
         // the 5 points stencil may go beyond the last ghost node.
         // for interp order 2 and 3 this is ok
-        auto constexpr doLastCell = gridlayout_type::nbrGhosts() > 2;
-        std::size_t oneOrZero     = doLastCell ? 1 : 0;
-        for (auto iCell = 0u, ix = start_x; iCell < end_x + oneOrZero; ++ix, ++iCell)
+        for (auto iCell = 0u, ix = start_x; iCell <= end_x; ++ix, ++iCell)
         {
             auto crit_by_x = (By(ix + 2) - By(ix)) / (1 + By(ix + 1) - By(ix));
             auto crit_bz_x = (Bz(ix + 2) - Bz(ix)) / (1 + Bz(ix + 1) - Bz(ix));
@@ -67,14 +65,14 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     }
     if constexpr (dimension == 2)
     {
-        auto const& [start_y, _]
+        auto const& [start_y, __]
             = layout.physicalStartToEnd(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Y);
 
         auto const& end_y = layout.nbrCells()[1] - 1;
 
-        for (auto iTag_x = 0u, ix = start_x; iTag_x < end_x; ++ix, ++iTag_x)
+        for (auto iTag_x = 0u, ix = start_x; iTag_x <= end_x; ++ix, ++iTag_x)
         {
-            for (auto iTag_y = 0u, iy = start_y; iTag_y < end_y; ++iy, ++iTag_y)
+            for (auto iTag_y = 0u, iy = start_y; iTag_y <= end_y; ++iy, ++iTag_y)
             {
                 auto field_diff = [&](auto const& F) //
                 {
@@ -97,14 +95,6 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
                     tagsv(iTag_x, iTag_y) = 0;
                 }
             }
-        }
-        for (auto iTag_x = 0u; iTag_x <= end_x; ++iTag_x)
-        {
-            tagsv(iTag_x, end_y) = tagsv(iTag_x, end_y - 1);
-        }
-        for (auto iTag_y = 0u; iTag_y <= end_y; ++iTag_y)
-        {
-            tagsv(end_x, iTag_y) = tagsv(end_x - 1, iTag_y);
         }
     }
 }

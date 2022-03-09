@@ -123,6 +123,7 @@ class TaggingTest(unittest.TestCase):
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
+        ph.global_vars.sim=None
 
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
