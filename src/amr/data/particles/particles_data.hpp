@@ -68,10 +68,20 @@ namespace amr
             db->putVector(key, data);
         }
 
-        template<typename Span, typename DB>
-        void static samrai_put(std::string const& key, Span const& data, DB const& db)
+
+        template<typename T, std::size_t size, typename DB>
+        void static samrai_put(std::string const& key, std::vector<std::array<T, size>> const& vec,
+                               DB const& db)
         {
-            using T = typename Span::value_type;
+            core::abort_if(vec.data() == nullptr);
+            core::abort_if(vec.size() == 0);
+
+            PHARE_LOG_LINE_STR(key);
+            PHARE_LOG_LINE_STR(vec.size());
+
+            auto data = core::flatten(vec);
+
+            PHARE_LOG_LINE_STR(data.size());
 
             if constexpr (std::is_same_v<double, T>)
                 db->putDoubleArray(key, data.data(), data.size());
@@ -90,10 +100,19 @@ namespace amr
             db->getVector(key, data);
         }
 
-        template<typename Span, typename DB>
-        void static samrai_get(std::string const& key, Span& data, DB const& db)
+        template<typename T, std::size_t size, typename DB>
+        void static samrai_get(std::string const& key, std::vector<std::array<T, size>>& vec,
+                               DB const& db)
         {
-            using T = typename Span::value_type;
+            core::abort_if(vec.data() == nullptr);
+            core::abort_if(vec.size() == 0);
+
+            PHARE_LOG_LINE_STR(key);
+            PHARE_LOG_LINE_STR(vec.size());
+
+            auto data = core::flatten(vec);
+
+            PHARE_LOG_LINE_STR(data.size());
 
             if constexpr (std::is_same_v<double, T>)
                 db->getDoubleArray(key, data.data(), data.size());
@@ -144,9 +163,9 @@ namespace amr
                     return;
 
                 auto put = [&](auto const& soa) {
-                    constexpr bool full = false, flat = true;
+                    constexpr bool full  = false;
                     std::size_t part_idx = 0;
-                    core::apply(soa.template as_tuple<full, flat>(), [&](auto const& arg) {
+                    core::apply(soa.template as_tuple<full>(), [&](auto const& arg) {
                         samrai_put(name + "_" + Packer::keys()[part_idx++], arg, restart_db);
                     });
                 };
@@ -182,6 +201,8 @@ namespace amr
             auto getParticles = [&](std::string const name, auto& particles) {
                 using ParticleArray_t = std::decay_t<decltype(particles)>;
 
+                assert(particles.size() == 0);
+
                 auto const keys_exist = core::generate(
                     [&](auto const& key) { return restart_db->keyExists(name + "_" + key); },
                     Packer::keys());
@@ -202,11 +223,9 @@ namespace amr
                 particles.resize(n_particles);
 
                 auto get = [&](auto& soa) {
-                    constexpr bool full = false, flat = true;
-                    assert(soa.size() == 0);
+                    constexpr bool full  = false;
                     std::size_t part_idx = 0;
-                    core::apply(soa.template as_tuple<full, flat>(), [&](auto& arg) {
-                        // restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
+                    core::apply(soa.template as_tuple<full>(), [&](auto& arg) {
                         samrai_get(name + "_" + Packer::keys()[part_idx++], arg, restart_db);
                     });
                 };

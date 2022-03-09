@@ -6,6 +6,8 @@
 #include <vector>
 #include <cstddef>
 #include <numeric>
+
+#include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 
 namespace PHARE::core

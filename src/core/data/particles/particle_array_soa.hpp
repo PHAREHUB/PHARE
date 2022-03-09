@@ -329,45 +329,47 @@ public:
 
 
     template<bool full = true, bool flat = false>
+    // full addes E/B to the tuple, flat turns any vector<array> to span
     auto as_tuple()
     {
-        if constexpr (flat)
-        {
-            if constexpr (full)
-                return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-                                             flatten(v_), flatten(E_), flatten(B_));
-            else
-                return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-                                             flatten(v_));
-        }
+        // if constexpr (flat)
+        // {
+        //     if constexpr (full)
+        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
+        //                                      flatten(v_), flatten(E_), flatten(B_));
+        //     else
+        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
+        //                                      flatten(v_));
+        // }
+        // else
+        // {
+        if constexpr (full)
+            return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_, E_, B_);
         else
-        {
-            if constexpr (full)
-                return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_, E_, B_);
-            else
-                return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
-        }
+            return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+        // }
     }
 
     template<bool full = true, bool flat = false>
+    // full addes E/B to the tuple, flat turns any vector<array> to span
     auto as_tuple() const
     {
-        if constexpr (flat)
-        {
-            if constexpr (full)
-                return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-                                             flatten(v_), flatten(E_), flatten(B_));
-            else
-                return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-                                             flatten(v_));
-        }
+        // if constexpr (flat)
+        // {
+        //     if constexpr (full)
+        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
+        //                                      flatten(v_), flatten(E_), flatten(B_));
+        //     else
+        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
+        //                                      flatten(v_));
+        // }
+        // else
+        // {
+        if constexpr (full)
+            return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_, E_, B_);
         else
-        {
-            if constexpr (full)
-                return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_, E_, B_);
-            else
-                return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
-        }
+            return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+        // }
     }
 
 
