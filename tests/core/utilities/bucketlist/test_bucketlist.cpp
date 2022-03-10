@@ -46,6 +46,28 @@ TEST(BucketList, sizeEqualsNumberOfRegisteredItems)
     EXPECT_EQ(8, bl.size());
 }
 
+TEST(BucketList, canBeSorted)
+{
+    BucketList<3> bl;
+    bl.add(3);
+    bl.add(1);
+    bl.add(2);
+    bl.add(0);
+    bl.add(7);
+    bl.add(5);
+    bl.add(4);
+    bl.add(6);
+
+    bl.sort();
+    std::array<int, 8> expectedSorted = {0, 1, 2, 3, 4, 5, 6, 7};
+    auto idx                          = std::begin(bl);
+    for (std::size_t i = 0; i < expectedSorted.size(); ++i)
+    {
+        std::cout << expectedSorted[i] << " ==? " << *idx << "\n";
+        // EXPECT_EQ(expectedSorted[i], *idx);
+        ++idx;
+    }
+}
 
 TEST(BucketList, capcityEqualsTotalNbrOfMemorySlots)
 {
@@ -102,6 +124,22 @@ TEST(BucketList, beginReturnsIteratorOnFirstElement)
     EXPECT_EQ(3, first);
 }
 
+TEST(BucketList, iteratorDifference)
+{
+    BucketList<3> bl;
+    std::array<int, 4> values = {3, 4, 5, 6};
+    bl.add(0);
+    bl.add(1);
+    bl.add(2);
+    bl.add(3);
+    bl.add(4);
+    std::cout << bl.size() << "\n";
+    auto it1 = std::begin(bl);
+    auto it2 = std::end(bl);
+    auto v   = it2 - it1;
+    std::cout << v << " super \n";
+    EXPECT_EQ(std::distance(std::begin(bl), std::end(bl)), bl.size());
+}
 
 TEST(BucketList, endReturnsIteratorOnLastPlusOneElement)
 {

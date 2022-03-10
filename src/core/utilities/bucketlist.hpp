@@ -32,28 +32,39 @@ template<std::size_t bucket_size>
 class BucketList
 {
     // ----------------- BucketList Iterator ----------------------------------
-    template<typename BucketListRef>
-    class bucket_iterator : public std::iterator<std::forward_iterator_tag, std::size_t>
+    template<typename BucketListPtr>
+    class bucket_iterator : public std::iterator<std::random_access_iterator_tag, std::size_t>
     {
     private:
         using Bindex = typename BucketListIndex::Bindex;
 
     public:
-        auto& operator*() const { return bucketsList_.buckets_[curr_bucket_][curr_pos_]; }
-        auto& operator*() { return bucketsList_.buckets_[curr_bucket_][curr_pos_]; }
+        auto& operator*() const { return bucketsList_->buckets_[curr_bucket_][curr_pos_]; }
+        auto& operator*() { return bucketsList_->buckets_[curr_bucket_][curr_pos_]; }
         auto operator++();
+        auto operator--();
         bool operator!=(bucket_iterator const& other) const;
+        auto operator-(bucket_iterator const& other) const;
+        auto operator+(std::size_t n) const;
+        auto operator-(std::size_t n) const;
+        auto operator<(bucket_iterator const& that) const;
+        auto operator==(bucket_iterator const& that) const;
+        auto& operator=(bucket_iterator const& that);
+        auto& operator=(bucket_iterator&& that);
 
-        bucket_iterator(BucketListRef blist, Bindex curr_bucket = 0, Bindex curr_pos = 0)
+        bucket_iterator(BucketListPtr blist, Bindex curr_bucket = 0, Bindex curr_pos = 0)
             : curr_bucket_{curr_bucket}
             , curr_pos_{curr_pos}
             , bucketsList_{blist}
         {
         }
 
+        bucket_iterator(bucket_iterator const& that) = default;
+        bucket_iterator(bucket_iterator&& that)      = default;
+
     private:
         Bindex curr_bucket_ = 0, curr_pos_ = 0;
-        BucketListRef bucketsList_;
+        BucketListPtr bucketsList_;
     };
     // ----------------- END BucketList Iterator ------------------------------
 
@@ -67,8 +78,8 @@ public:
     {
     }
 
-    using iterator       = bucket_iterator<BucketList&>;
-    using const_iterator = bucket_iterator<BucketList const&>;
+    using iterator       = bucket_iterator<BucketList*>;
+    using const_iterator = bucket_iterator<BucketList const* const>;
 
     void add(std::size_t itemIndex);
     void remove(std::size_t itemIndex);
@@ -87,12 +98,14 @@ public:
     std::size_t size() const { return bucket_size * (bucket_idx) + curr; }
     std::size_t capacity() const { return buckets_.capacity() * bucket_size; }
 
-    auto begin() { return iterator{*this}; }
-    auto begin() const { return const_iterator{*this}; }
-    auto cbegin() const { return const_iterator{*this}; }
+    auto begin() { return iterator{this}; }
+    auto begin() const { return const_iterator{this}; }
+    auto cbegin() const { return const_iterator{this}; }
     auto end();
     auto end() const;
     auto cend() const;
+
+    void sort();
 
 
 
@@ -134,8 +147,8 @@ private:
 
 // ----------------- BucketList Iterator ----------------------------------
 template<std::size_t bucket_size>
-template<typename BucketListRef>
-inline auto BucketList<bucket_size>::bucket_iterator<BucketListRef>::operator++()
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator++()
 {
     auto val = *this;
     curr_pos_++;
@@ -147,14 +160,106 @@ inline auto BucketList<bucket_size>::bucket_iterator<BucketListRef>::operator++(
     return val;
 }
 
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator--()
+{
+    auto val = *this;
+    if (curr_pos_ == 0)
+    {
+        curr_pos_ = bucket_size - 1;
+        --curr_bucket_;
+    }
+    else
+        --curr_pos_;
+    return val;
+}
 
 template<std::size_t bucket_size>
-template<typename BucketListRef>
-inline bool BucketList<bucket_size>::bucket_iterator<BucketListRef>::operator!=(
+template<typename BucketListPtr>
+inline bool BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator!=(
     bucket_iterator const& other) const
 {
     return (other.curr_bucket_ != curr_bucket_ or other.curr_pos_ != curr_pos_)
-           or &bucketsList_ != &other.bucketsList_;
+           or bucketsList_ != other.bucketsList_;
+}
+
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator+(std::size_t n) const
+{
+    auto copy{*this};
+    Bindex bucketJump = n / bucket_size;
+    Bindex currJump   = n - bucketJump * bucket_size;
+    copy.curr_bucket_ += bucketJump;
+    copy.curr_pos_ += currJump;
+    return copy;
+}
+
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator-(std::size_t n) const
+{
+    auto copy{*this};
+    Bindex bucketJump = n / bucket_size;
+    Bindex currJump   = n - bucketJump * bucket_size;
+    copy.curr_pos_ -= currJump;
+    copy.curr_bucket_ = (bucketJump > copy.curr_bucket_) ? 0 : copy.curr_bucket_ - bucketJump;
+    return copy;
+}
+
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator-(
+    bucket_iterator const& other) const
+{
+    return (curr_pos_ + curr_bucket_ * bucket_size)
+           - (other.curr_pos_ + other.curr_bucket_ * bucket_size);
+}
+
+
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator<(
+    bucket_iterator const& that) const
+{
+    return (*this - that) < 0;
+}
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator==(
+    bucket_iterator const& that) const
+{
+    return curr_pos_ == that.curr_pos_ and curr_bucket_ == that.curr_bucket_
+           and bucketsList_ == that.bucketsList_;
+}
+
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto&
+BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator=(bucket_iterator const& that)
+{
+    curr_pos_    = that.curr_pos_;
+    curr_bucket_ = that.curr_bucket_;
+    bucketsList_ = that.bucketsList_;
+    return *this;
+}
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto&
+BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator=(bucket_iterator&& that)
+{
+    curr_pos_    = that.curr_pos_;
+    curr_bucket_ = that.curr_bucket_;
+    bucketsList_ = that.bucketsList_;
+    return *this;
 }
 
 // ----------------- BucketList Iterator ----------------------------------
@@ -243,16 +348,16 @@ auto BucketList<bucket_size>::end()
     // it means we really are positioned on the next
     // bucket at cursor 0
     if (bucket_idx == 0 and curr == 0) // never added
-        return iterator{*this, bucket_idx, curr};
+        return iterator{this, bucket_idx, curr};
 
     else if (curr != bucket_size)
     {
-        auto it = iterator{*this, bucket_idx, curr};
+        auto it = iterator{this, bucket_idx, curr};
         return it;
     }
     else
     {
-        auto it = iterator{*this, bucket_idx + 1, 0};
+        auto it = iterator{this, bucket_idx + 1, 0};
         return it;
     }
 }
@@ -265,12 +370,12 @@ auto BucketList<bucket_size>::end() const
     // bucket at cursor 0
     if (curr != bucket_size)
     {
-        auto it = const_iterator{*this, bucket_idx, curr};
+        auto it = const_iterator{this, bucket_idx, curr};
         return it;
     }
     else
     {
-        auto it = const_iterator{*this, bucket_idx + 1, 0};
+        auto it = const_iterator{this, bucket_idx + 1, 0};
         return it;
     }
 }
@@ -283,12 +388,12 @@ auto BucketList<bucket_size>::cend() const
     // bucket at cursor 0
     if (curr != bucket_size)
     {
-        auto it = const_iterator{*this, bucket_idx, curr};
+        auto it = const_iterator{this, bucket_idx, curr};
         return it;
     }
     else
     {
-        auto it = const_iterator{*this, bucket_idx + 1, 0};
+        auto it = const_iterator{this, bucket_idx + 1, 0};
         return it;
     }
 }
@@ -310,6 +415,15 @@ void BucketList<bucket_size>::trim(std::size_t max_empty)
         buckets_.swap(new_buckets_);
     }
 }
+
+
+
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::sort()
+{
+    std::sort(std::begin(*this), std::end(*this));
+}
+
 
 
 } // namespace PHARE::core
