@@ -227,7 +227,8 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator<(
     bucket_iterator const& that) const
 {
-    return (*this - that) < 0;
+    return (curr_pos_ + curr_bucket_ * bucket_size)
+           < (that.curr_pos_ + that.curr_bucket_ * bucket_size);
 }
 
 template<std::size_t bucket_size>

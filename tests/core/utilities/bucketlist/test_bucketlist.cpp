@@ -124,6 +124,85 @@ TEST(BucketList, beginReturnsIteratorOnFirstElement)
     EXPECT_EQ(3, first);
 }
 
+
+TEST(BucketList, iteratorPlusInt)
+{
+    BucketList<3> bl;
+    std::array<std::size_t, 4> indexes{4, 5, 6, 7};
+    bl.add(4);
+    bl.add(5);
+    bl.add(6);
+    bl.add(7);
+    auto it = std::begin(bl);
+    EXPECT_EQ(4, *it);
+    it = it + 1;
+    EXPECT_EQ(5, *it);
+    it = std::begin(bl);
+    EXPECT_EQ(4, *it);
+    for (std::size_t i = 0; i < 4; ++i)
+    {
+        EXPECT_EQ(*it, indexes[i]);
+        it = it + 1;
+    }
+
+    it = std::begin(bl);
+    it = it + 3;
+    EXPECT_EQ(7, *it);
+}
+
+
+
+TEST(BucketList, iteratorDecrement)
+{
+    BucketList<3> bl;
+    std::array<std::size_t, 4> indexes{4, 5, 6, 7};
+    bl.add(4);
+    bl.add(5);
+    bl.add(6);
+    bl.add(7);
+    auto it = std::end(bl);
+    --it;
+    EXPECT_EQ(7, *it);
+    --it;
+    EXPECT_EQ(6, *it);
+}
+
+
+TEST(BucketList, iteratorMinus)
+{
+    BucketList<3> bl;
+    std::array<std::size_t, 4> indexes{4, 5, 6, 7};
+    bl.add(4);
+    bl.add(5);
+    bl.add(6);
+    bl.add(7);
+    auto it = std::end(bl);
+    it      = it - 1;
+    EXPECT_EQ(7, *it);
+    it = it - 1;
+    EXPECT_EQ(6, *it);
+    it = std::begin(bl);
+    it = it - 3;
+    EXPECT_EQ(4, *it);
+}
+
+TEST(BucketList, iteratorLessThan)
+{
+    BucketList<3> bl;
+    std::array<std::size_t, 4> indexes{4, 5, 6, 7};
+    bl.add(4);
+    bl.add(5);
+    bl.add(6);
+    bl.add(7);
+    auto it  = std::begin(bl);
+    auto it2 = it + 1;
+    EXPECT_LT(it, it2);
+    auto it3 = it + 3;
+    EXPECT_LT(it, it3);
+}
+
+
+
 TEST(BucketList, iteratorDifference)
 {
     BucketList<3> bl;
@@ -133,13 +212,30 @@ TEST(BucketList, iteratorDifference)
     bl.add(2);
     bl.add(3);
     bl.add(4);
-    std::cout << bl.size() << "\n";
     auto it1 = std::begin(bl);
     auto it2 = std::end(bl);
     auto v   = it2 - it1;
-    std::cout << v << " super \n";
     EXPECT_EQ(std::distance(std::begin(bl), std::end(bl)), bl.size());
+    EXPECT_EQ(it1 - it1 + 1, 1);
+    auto it3 = it1 + 2;
+    EXPECT_EQ(it3 - it1, 2);
 }
+
+
+TEST(BucketList, iteratorEquality)
+{
+    BucketList<3> bl;
+    std::array<int, 4> values = {3, 4, 5, 6};
+    bl.add(0);
+    bl.add(1);
+    bl.add(2);
+    bl.add(3);
+    bl.add(4);
+    auto it1 = std::begin(bl);
+    auto it2 = it1 + 2;
+    EXPECT_EQ(it2, it1 + 2);
+}
+
 
 TEST(BucketList, endReturnsIteratorOnLastPlusOneElement)
 {
