@@ -58,26 +58,17 @@ TEST(BucketList, canBeSorted)
     bl.add(4);
     bl.add(6);
 
-    auto idx = std::begin(bl);
-    std::cout << "before sorting\n";
-    for (std::size_t i = 0; i < 8; ++i)
-    {
-        std::cout << *idx << "\n";
-        ++idx;
-    }
     bl.sort();
-    idx = std::begin(bl);
-    std::cout << "after sorting\n";
+    auto idx                          = std::begin(bl);
     std::array<int, 8> expectedSorted = {0, 1, 2, 3, 4, 5, 6, 7};
     for (std::size_t i = 0; i < expectedSorted.size(); ++i)
     {
-        std::cout << expectedSorted[i] << " ==? " << *idx << "\n";
-        // EXPECT_EQ(expectedSorted[i], *idx);
+        EXPECT_EQ(expectedSorted[i], *idx);
         ++idx;
     }
 }
 
-TEST(BucketList, capcityEqualsTotalNbrOfMemorySlots)
+TEST(BucketList, capacityEqualsTotalNbrOfMemorySlots)
 {
     BucketList<3> bl;
     EXPECT_EQ(3, bl.capacity());
@@ -96,7 +87,7 @@ TEST(BucketList, capcityEqualsTotalNbrOfMemorySlots)
 
 
 
-TEST(BucketList, emptySetSizeZeroLeavingCapacityUnchanged)
+TEST(BucketList, emptySetsSizeZeroLeavingCapacityUnchanged)
 {
     BucketList<3> bl;
     EXPECT_EQ(3, bl.capacity());
@@ -170,8 +161,9 @@ TEST(BucketList, iteratorPlusInt)
     it = std::begin(bl);
     it = it + 3;
     EXPECT_EQ(7, *it);
-    it = it + (-2);
-    // EXPECT_EQ(5, *it);
+    int a = -2;
+    it    = it + a;
+    EXPECT_EQ(5, *it);
 }
 
 
