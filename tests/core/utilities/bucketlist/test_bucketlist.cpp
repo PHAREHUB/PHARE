@@ -58,9 +58,17 @@ TEST(BucketList, canBeSorted)
     bl.add(4);
     bl.add(6);
 
+    auto idx = std::begin(bl);
+    std::cout << "before sorting\n";
+    for (std::size_t i = 0; i < 8; ++i)
+    {
+        std::cout << *idx << "\n";
+        ++idx;
+    }
     bl.sort();
+    idx = std::begin(bl);
+    std::cout << "after sorting\n";
     std::array<int, 8> expectedSorted = {0, 1, 2, 3, 4, 5, 6, 7};
-    auto idx                          = std::begin(bl);
     for (std::size_t i = 0; i < expectedSorted.size(); ++i)
     {
         std::cout << expectedSorted[i] << " ==? " << *idx << "\n";
@@ -124,6 +132,20 @@ TEST(BucketList, beginReturnsIteratorOnFirstElement)
     EXPECT_EQ(3, first);
 }
 
+TEST(BucketList, iteratorPlusEqual)
+{
+    BucketList<3> bl;
+    std::array<std::size_t, 4> indexes{4, 5, 6, 7};
+    bl.add(4);
+    bl.add(5);
+    bl.add(6);
+    bl.add(7);
+    auto it = std::begin(bl);
+    EXPECT_EQ(4, *it);
+    it = it + 1;
+}
+
+
 
 TEST(BucketList, iteratorPlusInt)
 {
@@ -148,6 +170,8 @@ TEST(BucketList, iteratorPlusInt)
     it = std::begin(bl);
     it = it + 3;
     EXPECT_EQ(7, *it);
+    it = it + (-2);
+    // EXPECT_EQ(5, *it);
 }
 
 
