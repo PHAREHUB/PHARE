@@ -141,6 +141,8 @@ namespace amr
                 if (particles.size() == 0)
                     return;
 
+                particles.sortMapping();
+
                 Packer packer(particles);
                 core::ContiguousParticles<dim> soa{particles.size()};
                 packer.pack(soa);

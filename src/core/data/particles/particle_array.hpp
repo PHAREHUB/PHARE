@@ -222,6 +222,7 @@ public:
         return true;
     }
 
+    void sortMapping() const { cellMap_.sort(); }
 
     auto& vector() { return particles_; }
     auto& vector() const { return particles_; }

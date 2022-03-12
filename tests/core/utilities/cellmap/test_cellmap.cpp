@@ -61,6 +61,43 @@ TEST(CellMap, sizeIsNbrOfElements)
     EXPECT_EQ(cm.size({26, 14}), 0);
 }
 
+TEST(CellMap, canSortCells)
+{
+    auto constexpr dim         = 2u;
+    auto constexpr bucket_size = 99u;
+    CellMap<dim, bucket_size, int, Point<int, 2>> cm;
+
+    // add indexes not in order
+    // in two different cells
+    cm.addToCell(std::array<int, 2>{14, 27}, 1);
+    cm.addToCell(Point{14, 27}, 0);
+    cm.addToCell(Point{14, 27}, 3);
+    cm.addToCell(Point{14, 27}, 2);
+
+    cm.addToCell(std::array<int, 2>{12, 22}, 3);
+    cm.addToCell(Point{12, 22}, 2);
+    cm.addToCell(Point{12, 22}, 0);
+    cm.addToCell(Point{12, 22}, 1);
+
+    cm.sort();
+
+    for (auto const& [cell, indexes] : cm)
+    {
+        int i = -1;
+        for (auto index : indexes)
+        {
+            if (i == -1)
+            {
+                i = index;
+            }
+            else
+            {
+                EXPECT_GT(index, i);
+                i = index;
+            }
+        }
+    }
+}
 
 
 TEST(CellMap, itemCanBeRemoved)

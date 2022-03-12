@@ -163,6 +163,8 @@ public:
                CellExtractor extract = default_extractor);
 
 
+    // sort all bucketlists
+    void sort();
 
     template<typename CellIndex>
     void print(CellIndex const& cell) const;
@@ -541,6 +543,17 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(CellIndex inde
         items.erase(std::begin(items) + lastIndex + 1, std::end(items));
     }
 }
+
+
+template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
+inline void CellMap<dim, bucket_size, cell_index_t, key_t>::sort()
+{
+    for (auto& [_, bl] : bucketsLists_)
+    {
+        bl.sort();
+    }
+}
+
 
 #if 0
 // we don't need it now but may become handy in the future so leave it here
