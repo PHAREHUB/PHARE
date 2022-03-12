@@ -52,6 +52,9 @@ class BucketList
         auto operator<(bucket_iterator const& that) const;
         auto operator>=(bucket_iterator const& that) const;
 
+        auto operator>(bucket_iterator const& that) const;
+        auto operator<=(bucket_iterator const& that) const;
+
         bool operator!=(bucket_iterator const& other) const;
         auto operator==(bucket_iterator const& that) const;
 
@@ -253,6 +256,23 @@ inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator>=(
     return !(*this < that);
 }
 
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator>(
+    bucket_iterator const& that) const
+{
+    return (curr_pos_ + curr_bucket_ * bucket_size)
+           > (that.curr_pos_ + that.curr_bucket_ * bucket_size);
+}
+
+
+template<std::size_t bucket_size>
+template<typename BucketListPtr>
+inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator<=(
+    bucket_iterator const& that) const
+{
+    return !(*this > that);
+}
 
 template<std::size_t bucket_size>
 template<typename BucketListPtr>
