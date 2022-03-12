@@ -6,3 +6,4 @@ numpy
 scipy
 matplotlib
 seaborn
+sphinx_rtd_theme
