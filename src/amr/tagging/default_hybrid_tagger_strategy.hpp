@@ -44,7 +44,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     bool constexpr c_ordering = false;
     auto tagsv = core::NdArrayView<dimension, int, int*, c_ordering>(tags, layout.nbrCells());
 
-    if constexpr (dimension == 1)
+    if constexpr (dimension == 1 and false)
     {
         // at interporder 1 we choose not to tag the last patch cell since
         // the 5 points stencil may go beyond the last ghost node.
@@ -54,6 +54,32 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             auto crit_by_x = (By(ix + 2) - By(ix)) / (1 + By(ix + 1) - By(ix));
             auto crit_bz_x = (Bz(ix + 2) - Bz(ix)) / (1 + Bz(ix + 1) - Bz(ix));
             auto criter    = std::max(crit_by_x, crit_bz_x);
+
+            if (criter > threshold)
+            {
+                tagsv(iCell) = 1;
+            }
+            else
+                tagsv(iCell) = 0;
+        }
+    }
+    if constexpr (dimension == 1)
+    {
+        // at interporder 1 we choose not to tag the last patch cell since
+        // the 5 points stencil may go beyond the last ghost node.
+        // for interp order 2 and 3 this is ok
+        auto constexpr doLastCell = gridlayout_type::nbrGhosts() > 2;
+        std::size_t oneOrZero     = doLastCell ? 1 : 0;
+        for (auto iCell = 0u, ix = start_x; iCell < end_x + oneOrZero; ++ix, ++iCell)
+        {
+            auto Byavg     = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
+            auto Bzavg     = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
+            auto Byavgp1   = 0.2 * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
+            auto Bzavgp1   = 0.2 * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
+            auto criter_by = std::abs(Byavgp1 - Byavg) / (1 + std::abs(Byavg));
+            auto criter_bz = std::abs(Bzavgp1 - Bzavg) / (1 + std::abs(Bzavg));
+            auto criter_b  = std::sqrt(criter_by * criter_by + criter_bz * criter_bz);
+            auto criter    = criter_b;
 
             if (criter > threshold)
             {
