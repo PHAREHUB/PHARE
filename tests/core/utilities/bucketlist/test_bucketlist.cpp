@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <random>
 
 #include "core/utilities/bucketlist.hpp"
 
@@ -67,6 +68,44 @@ TEST(BucketList, canBeSorted)
         ++idx;
     }
 }
+
+
+TEST(BucketList, canBeSortedLarge)
+{
+    BucketList<3> bl;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dis(0, 1000);
+    std::unordered_map<int, int> counter;
+    std::vector<int> indexes;
+    for (std::size_t cpt = 0; cpt < 1000; ++cpt)
+    {
+        auto r = dis(gen);
+        if (counter.count(r))
+            counter[r]++;
+        else
+            counter[r] = 0;
+    }
+    for (auto const& [r, c] : counter)
+    {
+        if (counter[r] == 1)
+        {
+            indexes.push_back(r);
+            bl.add(r);
+        }
+    }
+    std::cout << "bl.size = " << bl.size() << "\n";
+    bl.sort();
+    std::sort(std::begin(indexes), std::end(indexes));
+    auto idx = std::begin(bl);
+    for (std::size_t i = 0; i < indexes.size(); ++i)
+    {
+        std::cout << indexes[i] << " " << *idx << "\n";
+        EXPECT_EQ(indexes[i], *idx);
+        ++idx;
+    }
+}
+
 
 TEST(BucketList, capacityEqualsTotalNbrOfMemorySlots)
 {
@@ -198,8 +237,6 @@ TEST(BucketList, iteratorMinus)
     it = it - 1;
     EXPECT_EQ(6, *it);
     it = std::begin(bl);
-    it = it - 3;
-    EXPECT_EQ(4, *it);
 }
 
 TEST(BucketList, iteratorLessThan)

@@ -1,10 +1,9 @@
 #ifndef PHARE_BUCKETLIST_H
 #define PHARE_BUCKETLIST_H
 
-#include "core/logger.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
 #include "core/utilities/types.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <cstddef>
@@ -13,8 +12,8 @@
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
-#include <cassert>
 #include <unordered_map>
+#include <algorithm>
 
 namespace PHARE::core
 {
@@ -197,10 +196,10 @@ template<std::size_t bucket_size>
 template<typename BucketListPtr>
 inline auto& BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator+=(int n)
 {
-    Bindex bucketJump = n / static_cast<int>(bucket_size);
-    Bindex currJump   = n - bucketJump * bucket_size;
-    curr_bucket_ += bucketJump;
-    curr_pos_ += currJump;
+    auto globPos   = curr_pos_ + curr_bucket_ * bucket_size;
+    auto newGloPos = globPos + n;
+    curr_bucket_   = newGloPos / static_cast<int>(bucket_size);
+    curr_pos_      = newGloPos - curr_bucket_ * bucket_size;
     return *this;
 }
 
@@ -219,10 +218,11 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator-(int n) const
 {
     auto copy{*this};
-    Bindex bucketJump = n / static_cast<int>(bucket_size);
-    Bindex currJump   = n - bucketJump * bucket_size;
-    copy.curr_pos_ -= currJump;
-    copy.curr_bucket_ = (bucketJump > copy.curr_bucket_) ? 0 : copy.curr_bucket_ - bucketJump;
+    auto globPos      = copy.curr_pos_ + copy.curr_bucket_ * bucket_size;
+    auto newGloPos    = globPos - n;
+    copy.curr_bucket_ = newGloPos / static_cast<int>(bucket_size);
+    copy.curr_pos_    = newGloPos - copy.curr_bucket_ * bucket_size;
+    assert(copy.curr_pos_ < static_cast<int>(bucket_size));
     return copy;
 }
 
