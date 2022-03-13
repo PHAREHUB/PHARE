@@ -94,13 +94,11 @@ TEST(BucketList, canBeSortedLarge)
             bl.add(r);
         }
     }
-    std::cout << "bl.size = " << bl.size() << "\n";
     bl.sort();
     std::sort(std::begin(indexes), std::end(indexes));
     auto idx = std::begin(bl);
     for (std::size_t i = 0; i < indexes.size(); ++i)
     {
-        std::cout << indexes[i] << " " << *idx << "\n";
         EXPECT_EQ(indexes[i], *idx);
         ++idx;
     }
