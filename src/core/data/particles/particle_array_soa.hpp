@@ -315,7 +315,7 @@ public:
     auto emplace_back(Args const&... args)
     {
         auto arg_tuple  = std::forward_as_tuple(args...);
-        auto this_tuple = as_tuple<false, false>();
+        auto this_tuple = as_tuple<false>();
         for_N<std::tuple_size_v<decltype(this_tuple)>>([&](auto ic) {
             auto constexpr i = ic();
             std::get<i>(this_tuple).emplace_back(std::get<i>(arg_tuple));
@@ -328,48 +328,24 @@ public:
 
 
 
-    template<bool full = true, bool flat = false>
-    // full addes E/B to the tuple, flat turns any vector<array> to span
+    template<bool full = true>
+    // full addes E/B to the tuple
     auto as_tuple()
     {
-        // if constexpr (flat)
-        // {
-        //     if constexpr (full)
-        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-        //                                      flatten(v_), flatten(E_), flatten(B_));
-        //     else
-        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-        //                                      flatten(v_));
-        // }
-        // else
-        // {
         if constexpr (full)
             return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_, E_, B_);
         else
             return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
-        // }
     }
 
-    template<bool full = true, bool flat = false>
-    // full addes E/B to the tuple, flat turns any vector<array> to span
+    template<bool full = true>
+    // full addes E/B to the tuple
     auto as_tuple() const
     {
-        // if constexpr (flat)
-        // {
-        //     if constexpr (full)
-        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-        //                                      flatten(v_), flatten(E_), flatten(B_));
-        //     else
-        //         return std::forward_as_tuple(weight_, charge_, flatten(iCell_), flatten(delta_),
-        //                                      flatten(v_));
-        // }
-        // else
-        // {
         if constexpr (full)
             return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_, E_, B_);
         else
             return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
-        // }
     }
 
 
@@ -377,14 +353,17 @@ public:
     {
         std::apply([](auto&... container) { ((container.clear()), ...); }, as_tuple());
     }
+
     void resize(std::size_t size)
     {
         std::apply([&](auto&... container) { ((container.resize(size)), ...); }, as_tuple());
     }
+
     void reserve(std::size_t size)
     {
         std::apply([&](auto&... container) { ((container.reserve(size)), ...); }, as_tuple());
     }
+
     void swap(This& that)
     {
         auto this_tuple = as_tuple();
@@ -457,7 +436,7 @@ struct SoAParticles<OuterSuper>::iterator_impl
         ++curr_pos;
         return *this;
     }
-    auto& operator+=(std::size_t i)
+    auto& operator+=(std::int64_t i)
     {
         curr_pos += i;
         return *this;
@@ -468,13 +447,13 @@ struct SoAParticles<OuterSuper>::iterator_impl
         --curr_pos;
         return *this;
     }
-    auto operator+(std::size_t i)
+    auto operator+(std::int64_t i)
     {
         auto copy = *this;
         copy.curr_pos += i;
         return copy;
     }
-    auto operator-(std::size_t i)
+    auto operator-(std::int64_t i)
     {
         auto copy = *this;
         copy.curr_pos -= i;
@@ -495,6 +474,9 @@ struct SoAParticles<OuterSuper>::iterator_impl
     auto operator==(iterator_impl const& that) const { return curr_pos == that.curr_pos; }
     auto operator!=(iterator_impl const& that) const { return curr_pos != that.curr_pos; }
     auto operator<(iterator_impl const& that) const { return curr_pos < that.curr_pos; }
+
+
+    auto operator-(iterator_impl const& that) { return curr_pos - that.curr_pos; }
 
     auto& operator()() { return particles; }
     auto& operator()() const { return particles; }
@@ -720,17 +702,6 @@ typename std::enable_if_t<Iterator<O>::is_contiguous, std::size_t> distance(Iter
     return b.curr_pos - a.curr_pos;
 }
 
-
-template<template<typename> typename Iterator, typename O>
-// SFINAE to support const iterators
-typename std::enable_if_t<Iterator<O>::is_contiguous, std::size_t> operator-(Iterator<O> const& a,
-                                                                             Iterator<O> const& b)
-{
-    assert(&a.particles == &b.particles);
-    assert(b.curr_pos <= a.curr_pos);
-
-    return a.curr_pos - b.curr_pos;
-}
 
 
 template<typename Super>

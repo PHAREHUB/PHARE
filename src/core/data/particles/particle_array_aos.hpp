@@ -313,9 +313,6 @@ struct AoSParticles : public Super_
     auto& vector() { return particles_; }
     auto& vector() const { return particles_; }
 
-    auto as_tuple() { return std::forward_as_tuple(weight, charge, iCell, delta, v); }
-    auto as_tuple() const { return std::forward_as_tuple(weight, charge, iCell, delta, v); }
-
     auto constexpr static size_of_particle() { return sizeof(Particle_t); }
 };
 

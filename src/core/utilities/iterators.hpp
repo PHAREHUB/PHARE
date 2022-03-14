@@ -16,7 +16,7 @@ struct wrapped_iterator : public wrapped_iterator_base<Vector, is_const>
     using value_type = typename Vector::value_type;
     using Super      = wrapped_iterator_base<Vector, is_const>;
 
-    wrapped_iterator operator+(std::size_t i)
+    wrapped_iterator operator+(std::int64_t i)
     {
         wrapped_iterator copy = *this;
         static_cast<Super&>(copy) += i;
