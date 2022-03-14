@@ -17,12 +17,35 @@
 
 namespace PHARE::core
 {
+
+template<std::size_t bucket_size>
 struct BucketListIndex
 {
-    using Bindex                          = int;
+    using Bindex = int;
+    struct BucketIndex
+    {
+        Bindex val;
+    };
+    struct CursorIndex
+    {
+        Bindex val;
+    };
+    BucketListIndex(Bindex curr_bucket, Bindex curr_pos)
+        : pos{curr_pos}
+        , bucket_idx{curr_bucket}
+    {
+    }
+    bool operator==(BucketListIndex const& other) const
+    {
+        return (bucket_idx == other.bucket_idx) and (pos == other.pos);
+    }
+
+    bool operator!=(BucketListIndex const& other) const { return !(*this == other); }
+
     static constexpr Bindex default_idx_v = -1;
-    Bindex bucket_idx                     = default_idx_v;
     Bindex pos                            = default_idx_v;
+    Bindex bucket_idx                     = default_idx_v;
+    auto globalCurrPos() const { return pos + bucket_idx * bucket_size; }
 };
 
 
@@ -30,16 +53,14 @@ struct BucketListIndex
 template<std::size_t bucket_size>
 class BucketList
 {
+    using Bindex = typename BucketListIndex<bucket_size>::Bindex;
     // ----------------- BucketList Iterator ----------------------------------
     template<typename BucketListPtr>
     class bucket_iterator : public std::iterator<std::random_access_iterator_tag, std::size_t>
     {
-    private:
-        using Bindex = typename BucketListIndex::Bindex;
-
     public:
-        auto& operator*() const { return bucketsList_->buckets_[curr_bucket_][curr_pos_]; }
-        auto& operator*() { return bucketsList_->buckets_[curr_bucket_][curr_pos_]; }
+        auto& operator*() const { return bucketsList_->buckets_[index_.bucket_idx][index_.pos]; }
+        auto& operator*() { return bucketsList_->buckets_[index_.bucket_idx][index_.pos]; }
 
         auto& operator++();
         auto& operator--();
@@ -60,8 +81,7 @@ class BucketList
         auto& operator+=(int n);
 
         bucket_iterator(BucketListPtr blist, Bindex curr_bucket = 0, Bindex curr_pos = 0)
-            : curr_bucket_{curr_bucket}
-            , curr_pos_{curr_pos}
+            : index_{curr_bucket, curr_pos}
             , bucketsList_{blist}
         {
         }
@@ -72,7 +92,7 @@ class BucketList
         bucket_iterator(bucket_iterator&& that)            = default;
 
     private:
-        Bindex curr_bucket_ = 0, curr_pos_ = 0;
+        BucketListIndex<bucket_size> index_;
         BucketListPtr bucketsList_;
     };
     // ----------------- END BucketList Iterator ------------------------------
@@ -82,8 +102,9 @@ class BucketList
 
 public:
     BucketList(std::size_t min_bucket_nbr = 1)
-        : buckets_(min_bucket_nbr,
-                   ConstArray<std::size_t, bucket_size>(BucketListIndex::default_idx_v))
+        : index_{0, 0}
+        , buckets_(min_bucket_nbr, ConstArray<std::size_t, bucket_size>(
+                                       BucketListIndex<bucket_size>::default_idx_v))
     {
     }
 
@@ -102,9 +123,9 @@ public:
 
     // empty the bucketlist, but leaves the capacity untouched
     void empty();
-    bool is_empty() const { return bucket_idx == 0 and curr == 0; }
+    bool is_empty() const { return index_.bucket_idx == 0 and index_.pos == 0; }
 
-    std::size_t size() const { return globalCurrPos_(); }
+    std::size_t size() const { return index_.globalCurrPos(); }
     std::size_t capacity() const { return buckets_.capacity() * bucket_size; }
 
     auto begin() { return iterator{this}; }
@@ -119,38 +140,36 @@ public:
 
 
 private:
-    BucketListIndex lastIdx_() const;
+    BucketListIndex<bucket_size> lastIdx_() const;
 
-    auto globalCurrPos_() const { return curr + bucket_idx * bucket_size; }
 
     void decrement_()
     {
-        if (curr == 0)
+        if (index_.pos == 0)
         {
-            bucket_idx--;
-            curr = bucket_size - 1;
+            index_.bucket_idx--;
+            index_.pos = bucket_size - 1;
         }
         else
         {
-            auto check
-                = bucket_idx >= 0
-                  and bucket_idx < static_cast<typename BucketListIndex::Bindex>(buckets_.size())
-                  and curr >= 0 and (curr - 1 < static_cast<BucketListIndex::Bindex>(bucket_size));
+            auto bs    = static_cast<Bindex>(bucket_size);
+            auto check = index_.bucket_idx >= 0 and index_.bucket_idx < bs and (index_.pos >= 0)
+                         and ((index_.pos - 1) < bs);
             if (!check)
             {
-                std::cout << curr << " " << bucket_idx << "\n";
-                throw std::runtime_error(
-                    "BucketListError : bucket_idx (" + std::to_string(bucket_idx) + "), curr ("
-                    + std::to_string(curr) + " bucket_size(" + std::to_string(bucket_size) + ")");
+                throw std::runtime_error("BucketListError : bucket_idx ("
+                                         + std::to_string(index_.bucket_idx) + "), curr ("
+                                         + std::to_string(index_.pos) + " bucket_size("
+                                         + std::to_string(bucket_size) + ")");
             }
-            buckets_[bucket_idx][curr - 1] = BucketListIndex::default_idx_v;
-            curr--;
+            buckets_[index_.bucket_idx][index_.pos - 1]
+                = BucketListIndex<bucket_size>::default_idx_v;
+            index_.pos--;
         }
     }
 
-    using bucket_t                              = std::array<std::size_t, bucket_size>;
-    typename BucketListIndex::Bindex bucket_idx = 0;
-    typename BucketListIndex::Bindex curr       = 0;
+    using bucket_t = std::array<std::size_t, bucket_size>;
+    BucketListIndex<bucket_size> index_;
     std::vector<bucket_t> buckets_;
 };
 
@@ -160,11 +179,11 @@ template<std::size_t bucket_size>
 template<typename BucketListPtr>
 inline auto& BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator++()
 {
-    curr_pos_++;
-    if (curr_pos_ == bucket_size)
+    index_.pos++;
+    if (index_.pos == bucket_size)
     {
-        curr_bucket_++;
-        curr_pos_ = 0;
+        index_.bucket_idx++;
+        index_.pos = 0;
     }
     return *this;
 }
@@ -173,13 +192,13 @@ template<std::size_t bucket_size>
 template<typename BucketListPtr>
 inline auto& BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator--()
 {
-    if (curr_pos_ == 0)
+    if (index_.pos == 0)
     {
-        curr_pos_ = bucket_size - 1;
-        --curr_bucket_;
+        index_.pos = bucket_size - 1;
+        --index_.bucket_idx;
     }
     else
-        --curr_pos_;
+        --index_.pos;
     return *this;
 }
 
@@ -188,18 +207,17 @@ template<typename BucketListPtr>
 inline bool BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator!=(
     bucket_iterator const& other) const
 {
-    return (other.curr_bucket_ != curr_bucket_ or other.curr_pos_ != curr_pos_)
-           or bucketsList_ != other.bucketsList_;
+    return (this->index_ != other.index_) or (bucketsList_ != other.bucketsList_);
 }
 
 template<std::size_t bucket_size>
 template<typename BucketListPtr>
 inline auto& BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator+=(int n)
 {
-    auto globPos   = curr_pos_ + curr_bucket_ * bucket_size;
-    auto newGloPos = globPos + n;
-    curr_bucket_   = newGloPos / static_cast<int>(bucket_size);
-    curr_pos_      = newGloPos - curr_bucket_ * bucket_size;
+    auto globPos      = index_.globalCurrPos();
+    auto newGloPos    = globPos + n;
+    index_.bucket_idx = newGloPos / static_cast<int>(bucket_size);
+    index_.pos        = newGloPos - index_.bucket_idx * bucket_size;
     return *this;
 }
 
@@ -218,11 +236,11 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator-(int n) const
 {
     auto copy{*this};
-    auto globPos      = copy.curr_pos_ + copy.curr_bucket_ * bucket_size;
-    auto newGloPos    = globPos - n;
-    copy.curr_bucket_ = newGloPos / static_cast<int>(bucket_size);
-    copy.curr_pos_    = newGloPos - copy.curr_bucket_ * bucket_size;
-    assert(copy.curr_pos_ < static_cast<int>(bucket_size));
+    auto globPos           = copy.index_.globalCurrPos();
+    auto newGloPos         = globPos - n;
+    copy.index_.bucket_idx = newGloPos / static_cast<int>(bucket_size);
+    copy.index_.pos        = newGloPos - copy.index_.bucket_idx * bucket_size;
+    assert(copy.index_.pos < static_cast<int>(bucket_size));
     return copy;
 }
 
@@ -232,8 +250,7 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator-(
     bucket_iterator const& other) const
 {
-    return (curr_pos_ + curr_bucket_ * bucket_size)
-           - (other.curr_pos_ + other.curr_bucket_ * bucket_size);
+    return index_.globalCurrPos() - other.index_.globalCurrPos();
 }
 
 
@@ -243,8 +260,7 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator<(
     bucket_iterator const& that) const
 {
-    return (curr_pos_ + curr_bucket_ * bucket_size)
-           < (that.curr_pos_ + that.curr_bucket_ * bucket_size);
+    return index_.globalCurrPos() < that.index_.globalCurrPos();
 }
 
 
@@ -261,8 +277,7 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator>(
     bucket_iterator const& that) const
 {
-    return (curr_pos_ + curr_bucket_ * bucket_size)
-           > (that.curr_pos_ + that.curr_bucket_ * bucket_size);
+    return index_.globalCurrPos() > that.index_.globalCurrPos();
 }
 
 
@@ -279,8 +294,7 @@ template<typename BucketListPtr>
 inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator==(
     bucket_iterator const& that) const
 {
-    return curr_pos_ == that.curr_pos_ and curr_bucket_ == that.curr_bucket_
-           and bucketsList_ == that.bucketsList_;
+    return index_ == that.index_ and bucketsList_ == that.bucketsList_;
 }
 
 // ----------------- BucketList Iterator ----------------------------------
@@ -290,9 +304,9 @@ inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator==(
 template<std::size_t bucket_size>
 void BucketList<bucket_size>::add(std::size_t itemIndex)
 {
-    if (curr != bucket_size)
+    if (index_.pos != bucket_size)
     {
-        buckets_[bucket_idx][curr++] = itemIndex;
+        buckets_[index_.bucket_idx][index_.pos++] = itemIndex;
     }
     else
     {
@@ -301,19 +315,21 @@ void BucketList<bucket_size>::add(std::size_t itemIndex)
             buckets_.reserve(buckets_.size() + 1);
             buckets_.push_back(bucket_t{});
         }
-        bucket_idx++;
-        curr = 0;
+        index_.bucket_idx++;
+        index_.pos = 0;
         add(itemIndex);
     }
 }
 
 template<std::size_t bucket_size>
-BucketListIndex BucketList<bucket_size>::lastIdx_() const
+BucketListIndex<bucket_size> BucketList<bucket_size>::lastIdx_() const
 {
-    if (curr == 0)
-        return {bucket_idx - 1, bucket_size - 1};
+    if (index_.pos == 0)
+        return {index_.bucket_idx - 1, bucket_size - 1};
     else
-        return {bucket_idx, curr - 1};
+    {
+        return {index_.bucket_idx, index_.pos - 1};
+    }
 }
 
 
@@ -325,8 +341,8 @@ void BucketList<bucket_size>::empty()
     {
         trim(1);
     }
-    bucket_idx = 0;
-    curr       = 0;
+    index_.bucket_idx = 0;
+    index_.pos        = 0;
 }
 
 
@@ -368,17 +384,17 @@ auto BucketList<bucket_size>::end()
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
     // bucket at cursor 0
-    if (bucket_idx == 0 and curr == 0) // never added
-        return iterator{this, bucket_idx, curr};
+    if (index_.bucket_idx == 0 and index_.pos == 0) // never added
+        return iterator{this, index_.bucket_idx, index_.pos};
 
-    else if (curr != bucket_size)
+    else if (index_.pos != bucket_size)
     {
-        auto it = iterator{this, bucket_idx, curr};
+        auto it = iterator{this, index_.bucket_idx, index_.pos};
         return it;
     }
     else
     {
-        auto it = iterator{this, bucket_idx + 1, 0};
+        auto it = iterator{this, index_.bucket_idx + 1, 0};
         return it;
     }
 }
@@ -389,14 +405,14 @@ auto BucketList<bucket_size>::end() const
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
     // bucket at cursor 0
-    if (curr != bucket_size)
+    if (index_.pos != bucket_size)
     {
-        auto it = const_iterator{this, bucket_idx, curr};
+        auto it = const_iterator{this, index_.bucket_idx, index_.pos};
         return it;
     }
     else
     {
-        auto it = const_iterator{this, bucket_idx + 1, 0};
+        auto it = const_iterator{this, index_.bucket_idx + 1, 0};
         return it;
     }
 }
@@ -407,14 +423,14 @@ auto BucketList<bucket_size>::cend() const
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
     // bucket at cursor 0
-    if (curr != bucket_size)
+    if (index_.pos != bucket_size)
     {
-        auto it = const_iterator{this, bucket_idx, curr};
+        auto it = const_iterator{this, index_.bucket_idx, index_.pos};
         return it;
     }
     else
     {
-        auto it = const_iterator{this, bucket_idx + 1, 0};
+        auto it = const_iterator{this, index_.bucket_idx + 1, 0};
         return it;
     }
 }
@@ -426,8 +442,9 @@ void BucketList<bucket_size>::trim(std::size_t max_empty)
     auto nbr_full_buckets = nbr_elem / bucket_size;
     auto nbr_buckets      = buckets_.size();
 
-    auto occupied_buckets = nbr_full_buckets + ((curr == 0 or curr == bucket_size) ? 0 : 1);
-    auto curr_empty       = nbr_buckets - occupied_buckets;
+    auto occupied_buckets
+        = nbr_full_buckets + ((index_.pos == 0 or index_.pos == bucket_size) ? 0 : 1);
+    auto curr_empty = nbr_buckets - occupied_buckets;
     if (curr_empty > max_empty)
     {
         std::vector<bucket_t> new_buckets_(std::begin(buckets_),
