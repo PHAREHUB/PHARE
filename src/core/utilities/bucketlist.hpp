@@ -141,10 +141,22 @@ public:
     auto globalCurrPos() const { return cursor() + bucket() * bucket_size; }
     static constexpr Bindex default_idx_v = -1;
 
+    template<std::size_t s>
+    friend auto& operator<<(std::ostream& os, BucketListIndex<s> const& index);
+
+
 private:
     CursorIndex pos_{default_idx_v};
     BucketIndex bucket_idx_{default_idx_v};
 };
+
+template<std::size_t bucket_size>
+auto& operator<<(std::ostream& os, BucketListIndex<bucket_size> const& index)
+{
+    os << "bucket : " << index.bucket() << " cursor " << index.cursor();
+    return os;
+}
+
 
 template<std::size_t bucket_size>
 class Buckets
@@ -161,6 +173,7 @@ public:
 
     auto& operator()(BucketListIndex<bucket_size> const& index)
     {
+        assert(index.cursor() < static_cast<int>(bucket_size));
         return buckets_[index.bucket()][index.cursor()];
     }
 
@@ -176,6 +189,17 @@ public:
     void push_back(bucket_t const& b) { buckets_.push_back(b); }
     void reserve(std::size_t size) { buckets_.reserve(size); }
     auto size() const { return buckets_.size(); }
+    void clear() { buckets_.clear(); }
+    void swap(std::vector<bucket_t>& other) { buckets_.swap(other); }
+    auto capacity() const { return buckets_.capacity(); }
+    auto begin() { return buckets_.begin(); }
+    auto end() { return buckets_.end(); }
+    void add_bucket()
+    {
+        buckets_.reserve(buckets_.size() + 1);
+        buckets_.push_back(bucket_t{});
+    }
+    bool isFull() const { return size() == capacity(); }
 
 private:
     std::vector<bucket_t> buckets_;
@@ -189,10 +213,8 @@ class BucketList
     class bucket_iterator : public std::iterator<std::random_access_iterator_tag, std::size_t>
     {
     public:
-        auto& operator*() const { return bucketsList_->buckets_[index_.bucket()][index_.cursor()]; }
-        auto& operator*() { return bucketsList_->buckets_[index_.bucket()][index_.cursor()]; }
-        // auto const& operator*() const { return bucketsList_->buckets__(index_); }
-        // auto& operator*() { return bucketsList_->buckets__(index_); }
+        auto const& operator*() const { return bucketsList_->buckets__(index_); }
+        auto& operator*() { return bucketsList_->buckets__(index_); }
 
         auto& operator++();
         auto& operator--();
@@ -251,6 +273,7 @@ public:
     using const_iterator = bucket_iterator<BucketList const* const>;
 
     void add(std::size_t itemIndex);
+    void add2(std::size_t itemIndex);
     void remove(std::size_t itemIndex);
     bool in_bucket(std::size_t itemIndex);
 
@@ -265,7 +288,7 @@ public:
     bool is_empty() const { return index_.bucket() == 0 and index_.cursor() == 0; }
 
     std::size_t size() const { return index_.globalCurrPos(); }
-    std::size_t capacity() const { return buckets_.capacity() * bucket_size; }
+    std::size_t capacity() const { return buckets__.capacity() * bucket_size; }
 
     auto begin() { return iterator{this}; }
     auto begin() const { return const_iterator{this}; }
@@ -301,8 +324,7 @@ private:
                                          + std::to_string(index_.cursor()) + " bucket_size("
                                          + std::to_string(bucket_size) + ")");
             }
-            buckets_[index_.bucket()][index_.cursor() - 1]
-                = BucketListIndex<bucket_size>::default_idx_v;
+            buckets__(index_) = BucketListIndex<bucket_size>::default_idx_v;
             index_.cursor()--;
         }
     }
@@ -422,27 +444,38 @@ inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator==(
 
 
 template<std::size_t bucket_size>
-void BucketList<bucket_size>::add(std::size_t itemIndex)
+void BucketList<bucket_size>::add2(std::size_t itemIndex)
 {
     if (!index_.isBucketEnd())
     {
-        buckets_[index_.bucket()][index_.cursor()++] = itemIndex;
-        // buckets__(index_) = itemIndex;
+        buckets__[index_.bucket()][index_.cursor()++] = itemIndex;
     }
     else
     {
         if (size() == capacity())
         {
-            buckets_.reserve(buckets_.size() + 1);
-            buckets_.push_back(bucket_t{});
-            // buckets__.reserve(buckets__.size() + 1);
-            // buckets__.push_back(bucket_t{});
+            buckets__.reserve(buckets__.size() + 1);
+            buckets__.push_back(bucket_t{});
         }
         index_.bucket()++;
         index_.cursor() = 0;
         add(itemIndex);
     }
 }
+
+template<std::size_t bucket_size>
+void BucketList<bucket_size>::add(std::size_t itemIndex)
+{
+    std::cout << "adding " << itemIndex << " at " << index_ << "\n";
+    if (size() == capacity())
+    {
+        std::cout << "is full\n";
+        buckets__.add_bucket();
+    }
+    buckets__(index_) = itemIndex;
+    ++index_;
+}
+
 
 template<std::size_t bucket_size>
 BucketListIndex<bucket_size> BucketList<bucket_size>::lastIdx_() const
@@ -492,9 +525,7 @@ void BucketList<bucket_size>::remove(std::size_t itemIndex)
     iterator it = std::find(std::begin(*this), std::end(*this), itemIndex);
     if (it != std::end(*this))
     {
-        auto lastIdxInBucket = lastIdx_();
-        auto last_idx        = buckets_[lastIdxInBucket.bucket()][lastIdxInBucket.cursor()];
-        (*it)                = last_idx;
+        *it = buckets__(lastIdx_());
         decrement_();
     }
 }
@@ -563,17 +594,17 @@ void BucketList<bucket_size>::trim(std::size_t max_empty)
 {
     auto nbr_elem         = size();
     auto nbr_full_buckets = nbr_elem / bucket_size;
-    auto nbr_buckets      = buckets_.size();
+    auto nbr_buckets      = buckets__.size();
 
     auto occupied_buckets
         = nbr_full_buckets + ((index_.cursor() == 0 or index_.cursor() == bucket_size) ? 0 : 1);
     auto curr_empty = nbr_buckets - occupied_buckets;
     if (curr_empty > max_empty)
     {
-        std::vector<bucket_t> new_buckets_(std::begin(buckets_),
-                                           std::begin(buckets_) + occupied_buckets + max_empty);
-        buckets_.clear();
-        buckets_.swap(new_buckets_);
+        std::vector<bucket_t> new_buckets_(std::begin(buckets__),
+                                           std::begin(buckets__) + occupied_buckets + max_empty);
+        buckets__.clear();
+        buckets__.swap(new_buckets_);
     }
 }
 
