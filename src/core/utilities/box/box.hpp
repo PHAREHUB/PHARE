@@ -28,7 +28,7 @@ struct Box
     Point<Type, dim> upper;
 
     Box() = default;
-    // TODO Ctor with intializer_list would allow not {{},{}}
+
     Box(std::array<Type, dim> _lower, std::array<Type, dim> _upper)
         : lower{_lower}
         , upper{_upper}
