@@ -73,13 +73,12 @@ public:
     void reserve(Cells const& cells);
 
     // number of indexes stored in that cell of the cellmap
-    /*
     std::size_t size(cell_t cell) const
     {
         if (bucketsLists_.count(cell) != 0)
             return bucketsLists_.at(cell).size();
         return 0;
-    }*/
+    }
 
     std::size_t size(cell_t cell) { return bucketsLists_[cell].size(); }
     // total number of mapped indexes

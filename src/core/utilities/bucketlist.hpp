@@ -466,12 +466,8 @@ void BucketList<bucket_size>::add2(std::size_t itemIndex)
 template<std::size_t bucket_size>
 void BucketList<bucket_size>::add(std::size_t itemIndex)
 {
-    std::cout << "adding " << itemIndex << " at " << index_ << "\n";
     if (size() == capacity())
-    {
-        std::cout << "is full\n";
         buckets__.add_bucket();
-    }
     buckets__(index_) = itemIndex;
     ++index_;
 }
