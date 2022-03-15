@@ -535,7 +535,7 @@ auto BucketList<bucket_size>::end() const
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
     // bucket at cursor 0
-    if (index_.isBucketEnd())
+    if (!index_.isBucketEnd())
     {
         auto it = const_iterator{this, index_};
         return it;
