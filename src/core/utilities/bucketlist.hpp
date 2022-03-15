@@ -135,9 +135,13 @@ public:
     auto& cursor() { return pos_.get(); }
     auto const& cursor() const { return pos_.get(); }
 
-    auto isBucketEnd() { return cursor() == bucket_size; }
+    auto isBucketEnd() const { return cursor() == bucket_size; }
 
-
+    void reset()
+    {
+        cursor() = 0;
+        bucket() = 0;
+    }
     auto globalCurrPos() const { return cursor() + bucket() * bucket_size; }
     static constexpr Bindex default_idx_v = -1;
 
@@ -213,8 +217,8 @@ class BucketList
     class bucket_iterator : public std::iterator<std::random_access_iterator_tag, std::size_t>
     {
     public:
-        auto const& operator*() const { return bucketsList_->buckets__(index_); }
-        auto& operator*() { return bucketsList_->buckets__(index_); }
+        auto const& operator*() const { return bucketsList_->buckets_(index_); }
+        auto& operator*() { return bucketsList_->buckets_(index_); }
 
         auto& operator++();
         auto& operator--();
@@ -263,9 +267,7 @@ class BucketList
 public:
     BucketList(std::size_t min_bucket_nbr = 1)
         : index_{BucketIndex{0}, CursorIndex{0}}
-        , buckets_(min_bucket_nbr, ConstArray<std::size_t, bucket_size>(
-                                       BucketListIndex<bucket_size>::default_idx_v))
-        , buckets__(min_bucket_nbr)
+        , buckets_(min_bucket_nbr)
     {
     }
 
@@ -273,7 +275,6 @@ public:
     using const_iterator = bucket_iterator<BucketList const* const>;
 
     void add(std::size_t itemIndex);
-    void add2(std::size_t itemIndex);
     void remove(std::size_t itemIndex);
     bool in_bucket(std::size_t itemIndex);
 
@@ -288,7 +289,7 @@ public:
     bool is_empty() const { return index_.bucket() == 0 and index_.cursor() == 0; }
 
     std::size_t size() const { return index_.globalCurrPos(); }
-    std::size_t capacity() const { return buckets__.capacity() * bucket_size; }
+    std::size_t capacity() const { return buckets_.capacity() * bucket_size; }
 
     auto begin() { return iterator{this}; }
     auto begin() const { return const_iterator{this}; }
@@ -324,15 +325,14 @@ private:
                                          + std::to_string(index_.cursor()) + " bucket_size("
                                          + std::to_string(bucket_size) + ")");
             }
-            buckets__(index_) = BucketListIndex<bucket_size>::default_idx_v;
+            buckets_(index_) = BucketListIndex<bucket_size>::default_idx_v;
             index_.cursor()--;
         }
     }
 
     using bucket_t = std::array<std::size_t, bucket_size>;
     BucketListIndex<bucket_size> index_;
-    std::vector<bucket_t> buckets_;
-    Buckets<bucket_size> buckets__;
+    Buckets<bucket_size> buckets_;
 };
 
 
@@ -443,32 +443,13 @@ inline auto BucketList<bucket_size>::bucket_iterator<BucketListPtr>::operator==(
 
 
 
-template<std::size_t bucket_size>
-void BucketList<bucket_size>::add2(std::size_t itemIndex)
-{
-    if (!index_.isBucketEnd())
-    {
-        buckets__[index_.bucket()][index_.cursor()++] = itemIndex;
-    }
-    else
-    {
-        if (size() == capacity())
-        {
-            buckets__.reserve(buckets__.size() + 1);
-            buckets__.push_back(bucket_t{});
-        }
-        index_.bucket()++;
-        index_.cursor() = 0;
-        add(itemIndex);
-    }
-}
 
 template<std::size_t bucket_size>
 void BucketList<bucket_size>::add(std::size_t itemIndex)
 {
     if (size() == capacity())
-        buckets__.add_bucket();
-    buckets__(index_) = itemIndex;
+        buckets_.add_bucket();
+    buckets_(index_) = itemIndex;
     ++index_;
 }
 
@@ -493,8 +474,7 @@ void BucketList<bucket_size>::empty()
     {
         trim(1);
     }
-    index_.bucket() = 0;
-    index_.cursor() = 0;
+    index_.reset();
 }
 
 
@@ -521,7 +501,7 @@ void BucketList<bucket_size>::remove(std::size_t itemIndex)
     iterator it = std::find(std::begin(*this), std::end(*this), itemIndex);
     if (it != std::end(*this))
     {
-        *it = buckets__(lastIdx_());
+        *it = buckets_(lastIdx_());
         decrement_();
     }
 }
@@ -531,19 +511,19 @@ void BucketList<bucket_size>::remove(std::size_t itemIndex)
 template<std::size_t bucket_size>
 auto BucketList<bucket_size>::end()
 {
-    // if the current cursor position is equal to bucket_size
-    // it means we really are positioned on the next
-    // bucket at cursor 0
-    if (index_.bucket() == 0 and index_.cursor() == 0) // never added
-        return iterator{this, index_.bucket(), index_.cursor()};
+    if (is_empty())
+        return iterator{this, index_};
 
     else if (index_.cursor() != bucket_size)
     {
-        auto it = iterator{this, index_.bucket(), index_.cursor()};
+        auto it = iterator{this, index_};
         return it;
     }
     else
     {
+        // if the current cursor position is equal to bucket_size
+        // it means we really are positioned on the next
+        // bucket at cursor 0
         auto it = iterator{this, index_.bucket() + 1, 0};
         return it;
     }
@@ -555,9 +535,9 @@ auto BucketList<bucket_size>::end() const
     // if the current cursor position is equal to bucket_size
     // it means we really are positioned on the next
     // bucket at cursor 0
-    if (index_.cursor() != bucket_size)
+    if (index_.isBucketEnd())
     {
-        auto it = const_iterator{this, index_.bucket(), index_.cursor()};
+        auto it = const_iterator{this, index_};
         return it;
     }
     else
@@ -575,7 +555,7 @@ auto BucketList<bucket_size>::cend() const
     // bucket at cursor 0
     if (index_.cursor() != bucket_size)
     {
-        auto it = const_iterator{this, index_.bucket(), index_.cursor()};
+        auto it = const_iterator{this, index_};
         return it;
     }
     else
@@ -590,17 +570,17 @@ void BucketList<bucket_size>::trim(std::size_t max_empty)
 {
     auto nbr_elem         = size();
     auto nbr_full_buckets = nbr_elem / bucket_size;
-    auto nbr_buckets      = buckets__.size();
+    auto nbr_buckets      = buckets_.size();
 
     auto occupied_buckets
         = nbr_full_buckets + ((index_.cursor() == 0 or index_.cursor() == bucket_size) ? 0 : 1);
     auto curr_empty = nbr_buckets - occupied_buckets;
     if (curr_empty > max_empty)
     {
-        std::vector<bucket_t> new_buckets_(std::begin(buckets__),
-                                           std::begin(buckets__) + occupied_buckets + max_empty);
-        buckets__.clear();
-        buckets__.swap(new_buckets_);
+        std::vector<bucket_t> new_buckets_(std::begin(buckets_),
+                                           std::begin(buckets_) + occupied_buckets + max_empty);
+        buckets_.clear();
+        buckets_.swap(new_buckets_);
     }
 }
 
