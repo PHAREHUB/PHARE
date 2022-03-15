@@ -304,32 +304,6 @@ public:
 
 private:
     BucketListIndex<bucket_size> lastIdx_() const;
-
-
-    void decrement_()
-    {
-        if (index_.cursor() == 0)
-        {
-            index_.bucket()--;
-            index_.cursor() = bucket_size - 1;
-        }
-        else
-        {
-            auto bs    = static_cast<Bindex>(bucket_size);
-            auto check = index_.bucket() >= 0 and index_.bucket() < bs and (index_.cursor() >= 0)
-                         and ((index_.cursor() - 1) < bs);
-            if (!check)
-            {
-                throw std::runtime_error("BucketListError : bucket_idx ("
-                                         + std::to_string(index_.bucket()) + "), curr ("
-                                         + std::to_string(index_.cursor()) + " bucket_size("
-                                         + std::to_string(bucket_size) + ")");
-            }
-            buckets_(index_) = BucketListIndex<bucket_size>::default_idx_v;
-            index_.cursor()--;
-        }
-    }
-
     using bucket_t = std::array<std::size_t, bucket_size>;
     BucketListIndex<bucket_size> index_;
     Buckets<bucket_size> buckets_;
@@ -502,7 +476,7 @@ void BucketList<bucket_size>::remove(std::size_t itemIndex)
     if (it != std::end(*this))
     {
         *it = buckets_(lastIdx_());
-        decrement_();
+        --index_;
     }
 }
 
@@ -532,9 +506,6 @@ auto BucketList<bucket_size>::end()
 template<std::size_t bucket_size>
 auto BucketList<bucket_size>::end() const
 {
-    // if the current cursor position is equal to bucket_size
-    // it means we really are positioned on the next
-    // bucket at cursor 0
     if (!index_.isBucketEnd())
     {
         auto it = const_iterator{this, index_};
@@ -542,6 +513,9 @@ auto BucketList<bucket_size>::end() const
     }
     else
     {
+        // if the current cursor position is equal to bucket_size
+        // it means we really are positioned on the next
+        // bucket at cursor 0
         auto it = const_iterator{this, index_.bucket() + 1, 0};
         return it;
     }
@@ -550,9 +524,6 @@ auto BucketList<bucket_size>::end() const
 template<std::size_t bucket_size>
 auto BucketList<bucket_size>::cend() const
 {
-    // if the current cursor position is equal to bucket_size
-    // it means we really are positioned on the next
-    // bucket at cursor 0
     if (index_.cursor() != bucket_size)
     {
         auto it = const_iterator{this, index_};
@@ -560,6 +531,9 @@ auto BucketList<bucket_size>::cend() const
     }
     else
     {
+        // if the current cursor position is equal to bucket_size
+        // it means we really are positioned on the next
+        // bucket at cursor 0
         auto it = const_iterator{this, index_.bucket() + 1, 0};
         return it;
     }
