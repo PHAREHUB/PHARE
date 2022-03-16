@@ -195,9 +195,7 @@ namespace amr
                 }
 
                 assert(particles.size() == 0);
-                // particles.resize(n_particles);
-                // for (std::size_t i = 0; i < n_particles; ++i)
-                //     particles[i] = soa.copy(i);
+                particles.reserve(n_particles);
                 for (std::size_t i = 0; i < n_particles; ++i)
                     particles.push_back(soa.copy(i));
             };
