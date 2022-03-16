@@ -21,12 +21,17 @@
 
 namespace PHARE::core
 {
+
+
+
+
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t = int,
          typename key_t = std::array<cell_index_t, dim>>
 class CellMap
 {
 private:
-    using bucketlist_t = BucketList<bucket_size>;
+    // using bucketlist_t = BucketList<bucket_size>;
+    using bucketlist_t = BucketList;
     using cell_t       = std::array<cell_index_t, dim>;
     using box_t        = Box<cell_index_t, dim>;
 
@@ -101,7 +106,7 @@ public:
     float used_mem_ratio() const { return static_cast<float>(size()) / capacity(); }
 
     // trim all bucketlists
-    void trim(std::size_t max_empty);
+    // void trim(std::size_t max_empty);
 
 
     // export from 'from' into 'dest' items indexed in the map found withing 'box'
@@ -414,7 +419,7 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::empty()
 }
 
 
-
+#if 0
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::trim(std::size_t max_empty)
 {
@@ -424,6 +429,7 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::trim(std::size_t max
         blist.trim(max_empty);
     }
 }
+#endif
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 template<typename Array, typename CellIndex, typename CellExtractor>
