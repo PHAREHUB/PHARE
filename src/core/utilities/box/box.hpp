@@ -57,6 +57,8 @@ struct Box
         return std::optional<Box>{intersection};
     }
 
+    auto operator-(Box const& that) const { return Box{lower - that.lower, upper - that.upper}; }
+
     bool isEmpty() const { return (*this) == Box{}; }
 
     void grow(Type const& size)
@@ -245,6 +247,16 @@ bool isIn(Point const& point, Box<typename Point::value_type, Point::dimension> 
 
     return false;
 }
+
+
+template<typename Type, std::size_t dim>
+Box<Type, dim> grow(Box<Type, dim> const& box, Type const& size)
+{
+    auto copy{box};
+    copy.grow(size);
+    return copy;
+}
+
 
 } // namespace PHARE::core
 

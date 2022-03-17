@@ -53,9 +53,9 @@ struct NdArrayViewer
         }
     }
 
-    template<typename NCells, typename Index>
+    template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
     static DataType const& at(DataType const* data, NCells const& nCells,
-                              std::array<Index, dim> const& indexes)
+                              Indexes<Index, dim> const& indexes)
 
     {
         if constexpr (dim == 1)

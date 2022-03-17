@@ -163,7 +163,7 @@ namespace core
         auto operator-(Point<Type, dim> const& value) const { return (*this) - value.r; }
 
 
-
+        constexpr auto size() const { return dim; }
         auto begin() { return r.begin(); }
         auto begin() const { return r.begin(); }
         auto end() { return r.end(); }

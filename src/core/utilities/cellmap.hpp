@@ -12,6 +12,7 @@
 #include <numeric>
 #include <optional>
 
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/bucketlist.hpp"
 #include "core/logger.hpp"
@@ -37,10 +38,15 @@ private:
 
 
 public:
-    CellMap() = default;
+    CellMap(Box<cell_index_t, dim> const& box)
+        : box_{box}
+        , bucketLists_{box.shape().template toArray<std::uint32_t>()}
+    {
+        std::cout << "CellMapCtor " << bucketLists_.size() << "\n";
+    }
 
 
-    auto nbr_cells() const { return bucketsLists_.size(); }
+    auto nbr_cells() const { return bucketLists_.size(); }
 
 
 
@@ -78,14 +84,9 @@ public:
     void reserve(Cells const& cells);
 
     // number of indexes stored in that cell of the cellmap
-    std::size_t size(cell_t cell) const
-    {
-        if (bucketsLists_.count(cell) != 0)
-            return bucketsLists_.at(cell).size();
-        return 0;
-    }
+    std::size_t size(cell_t cell) const { return bucketLists_(local_(cell)).size(); }
+    std::size_t size(cell_t cell) { return bucketLists_(local_(cell)).size(); }
 
-    std::size_t size(cell_t cell) { return bucketsLists_[cell].size(); }
     // total number of mapped indexes
     auto size() const;
 
@@ -96,7 +97,7 @@ public:
     auto capacity() const;
 
     // remove all bucketlists
-    void clear() { bucketsLists_.clear(); }
+    // void clear() { bucketLists_.clear(); }
 
     void empty();
 
@@ -173,26 +174,37 @@ public:
     template<typename CellIndex>
     void print(CellIndex const& cell) const;
 
-    auto begin() { return bucketsLists_.begin(); }
-    auto end() { return bucketsLists_.end(); }
+    auto& box() { return box_; }
+    auto const& box() const { return box_; }
+
+    auto begin() { return bucketLists_.begin(); }
+    auto end() { return bucketLists_.end(); }
+
+    template<typename Cell>
+    auto& operator()(Cell const& cell)
+    {
+        return bucketLists_(local_(cell));
+    }
+
+    template<typename Cell>
+    auto const& operator()(Cell const& cell) const
+    {
+        return bucketLists_(local_(cell));
+    }
 
 private:
-    struct CellHasher
+    template<typename Cell>
+    auto local_(Cell const& cell) const
     {
-        template<typename CellIndex>
-        std::size_t operator()(CellIndex const& cell) const
+        auto loc{cell};
+        for (std::size_t i = 0; i < loc.size(); ++i)
         {
-            std::size_t h = 0;
-
-            for (auto c : cell)
-            {
-                h ^= std::hash<int>{}(c) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            }
-            return h;
+            loc[i] -= box_.lower[i];
         }
-    };
-
-    std::unordered_map<key_t, bucketlist_t, CellHasher> bucketsLists_;
+        return loc;
+    }
+    Box<cell_index_t, dim> const& box_;
+    NdArrayVector<dim, bucketlist_t> bucketLists_;
 };
 
 
@@ -202,7 +214,7 @@ template<typename CellIndex>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::addToCell(CellIndex const& cell,
                                                                       std::size_t itemIndex)
 {
-    bucketsLists_[cell].add(itemIndex);
+    bucketLists_(local_(cell)).add(itemIndex);
 }
 
 
@@ -251,15 +263,8 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(Array const& i
                                                                   std::size_t itemIndex,
                                                                   CellExtractor extract)
 {
-    auto blist = list_at(extract(items[itemIndex]));
-    if (blist)
-    {
-        blist->get().remove(itemIndex);
-    }
-    else
-    {
-        std::cout << "item cannot be found\n";
-    }
+    auto& blist = bucketLists_(local_(extract(items[itemIndex])));
+    blist.remove(itemIndex);
 }
 
 
@@ -269,7 +274,7 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::reserve(Cells const&
 {
     for (auto const& cell : cells)
     {
-        bucketsLists_.emplace(cell, bucketlist_t{});
+        // bucketLists_.emplace(cell, bucketlist_t{});
     }
 }
 
@@ -279,7 +284,7 @@ inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::size() const
 {
     PHARE_LOG_SCOPE("CellMap::size()");
     std::size_t s = 0;
-    for (auto const& [_, bucketlist] : bucketsLists_)
+    for (auto const& bucketlist : bucketLists_)
     {
         s += bucketlist.size();
     }
@@ -293,9 +298,8 @@ inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::size(box_t const& bo
     std::size_t s = 0;
     for (auto const& cell : box)
     {
-        auto blist = list_at(cell);
-        if (blist)
-            s += blist->get().size();
+        auto& blist = bucketLists_(local_(cell));
+        s += blist.size();
     }
     return s;
 }
@@ -306,12 +310,11 @@ template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typena
 template<typename CellIndex>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::print(CellIndex const& cell) const
 {
-    auto blist = list_at(cell);
-    if (blist)
-        for (auto itemIndex : blist->get())
-        {
-            std::cout << itemIndex << "\n";
-        }
+    auto& blist = bucketLists_(local_(cell));
+    for (auto itemIndex : blist)
+    {
+        std::cout << itemIndex << "\n";
+    }
 }
 
 
@@ -323,13 +326,10 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::export_to(box_t cons
 {
     for (auto const& cell : box)
     {
-        auto blist = list_at(cell);
-        if (blist)
+        auto& blist = bucketLists_(local_(cell));
+        for (auto itemIndex : blist)
         {
-            for (auto itemIndex : blist->get())
-            {
-                dest.push_back(from[itemIndex]);
-            }
+            dest.push_back(from[itemIndex]);
         }
     }
 }
@@ -342,12 +342,11 @@ CellMap<dim, bucket_size, cell_index_t, key_t>::export_to(box_t const& box, Arra
 {
     for (auto const& cell : box)
     {
-        auto blist = list_at(cell);
-        if (blist)
-            for (auto itemIndex : blist->get())
-            {
-                dest.push_back(Fn(from[itemIndex]));
-            }
+        auto& blist = bucketLists_(local_(cell));
+        for (auto itemIndex : blist)
+        {
+            dest.push_back(Fn(from[itemIndex]));
+        }
     }
 }
 
@@ -357,17 +356,14 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::export_to(Array cons
                                                                       Array& dest,
                                                                       Predicate&& pred) const
 {
-    for (auto& [cell, blist] : bucketsLists_)
+    for (auto const& cell : box_)
     {
+        auto& blist = bucketLists_(local_(cell));
         if (pred(cell))
         {
-            auto blist = list_at(cell);
-            if (blist)
+            for (auto itemIndex : blist)
             {
-                for (auto itemIndex : blist->get())
-                {
-                    dest.push_back(from[itemIndex]);
-                }
+                dest.push_back(from[itemIndex]);
             }
         }
     }
@@ -377,34 +373,12 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::export_to(Array cons
 
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
-template<typename CellIndex>
-inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::list_at(CellIndex const& cell)
-{
-    if (auto it = bucketsLists_.find(cell); it != bucketsLists_.end())
-        return std::make_optional<std::reference_wrapper<bucketlist_t>>(std::ref(it->second));
-    return std::optional<std::reference_wrapper<bucketlist_t>>(std::nullopt);
-}
-
-
-template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
-template<typename CellIndex>
-inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::list_at(CellIndex const& cell) const
-{
-    if (auto it = bucketsLists_.find(cell); it != bucketsLists_.end())
-        return std::make_optional<std::reference_wrapper<bucketlist_t const>>(
-            std::cref(it->second));
-    return std::optional<std::reference_wrapper<const bucketlist_t>>(std::nullopt);
-}
-
-
-
-template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::capacity() const
 {
     std::size_t tot = 0;
-    for (auto const& [_, bucketList] : bucketsLists_)
+    for (auto const& cell : box_)
     {
-        tot += bucketList.capacity();
+        tot += bucketLists_(local_(cell)).capacity();
     }
     return tot;
 }
@@ -412,9 +386,9 @@ inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::capacity() const
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::empty()
 {
-    for (auto& [_, bucketList] : bucketsLists_)
+    for (auto const& cell : box_)
     {
-        bucketList.empty();
+        bucketLists_(local_(cell)).empty();
     }
 }
 
@@ -424,7 +398,7 @@ template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typena
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::trim(std::size_t max_empty)
 {
     PHARE_LOG_SCOPE("CellMap::trim");
-    for (auto& [_, blist] : bucketsLists_)
+    for (auto& [_, blist] : bucketLists_)
     {
         blist.trim(max_empty);
     }
@@ -442,13 +416,9 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::update(Array& items,
     // already. if is, needs to remove it before inserting it again
     // with at its right cell.
     // It could not be in the map at 'oldCell', in that case we want to add it.
-    auto oldlist_opt = list_at(oldCell);
-    if (oldlist_opt)
-    {
-        auto& oldList = oldlist_opt->get();
-        if (oldList.in_bucket(itemIndex))
-            oldList.remove(itemIndex);
-    }
+    auto& oldList = bucketLists_(local_(oldCell));
+    if (oldList.in_bucket(itemIndex))
+        oldList.remove(itemIndex);
     add(items, itemIndex);
 }
 
@@ -462,8 +432,9 @@ inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::partition(Range rang
 {
     std::size_t shiftIdx = range.iend() - 1;
     auto pivot           = range.iend();
-    for (auto& [cell, itemIndexes] : bucketsLists_)
+    for (auto const& cell : box_)
     {
+        auto& itemIndexes = bucketLists_(local_(cell));
         if (!pred(cell))
         {
             for (auto idx : itemIndexes)
@@ -483,11 +454,8 @@ inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::partition(Range rang
                     // not satisfying the predicate
                     if (shiftIdx > idx)
                     {
-                        assert(pred(key_t{extract(range.array()[shiftIdx])}));
-                        assert(shiftIdx >= range.ibegin());
                         itemIndexes.updateIndex(idx, shiftIdx);
-                        auto bl = list_at(extract(range.array()[shiftIdx]));
-                        auto& l = bl->get();
+                        auto& l = bucketLists_(local_(extract(range.array()[shiftIdx])));
                         l.updateIndex(shiftIdx, idx);
                         std::swap(range.array()[idx], range.array()[shiftIdx]);
                         --shiftIdx;
@@ -523,39 +491,36 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(Range&& range)
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 template<typename Array, typename CellIndex, typename CellExtractor>
-inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(CellIndex index, Array& items,
+inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(CellIndex cell, Array& items,
                                                                   CellExtractor extract)
 {
-    auto lastIndex    = items.size() - 1;
-    auto itemsToErase = list_at(index);
-    if (itemsToErase)
+    auto lastIndex     = items.size() - 1;
+    auto& itemsToErase = bucketLists_(local_(cell));
+    for (auto itemIndex : itemsToErase)
     {
-        for (auto itemIndex : itemsToErase->get())
-        {
-            auto lastItemCell = extract(items[lastIndex]);
-            std::swap(items[itemIndex], items[lastIndex]);
+        auto lastItemCell = extract(items[lastIndex]);
+        std::swap(items[itemIndex], items[lastIndex]);
 
-            // item previously found at lastIndex
-            // is now at itemIndex
-            // we need to update the index stored in
-            // the bucketlist it is in
-            auto lastItemList = list_at(lastItemCell);
+        // item previously found at lastIndex
+        // is now at itemIndex
+        // we need to update the index stored in
+        // the bucketlist it is in
+        auto& lastItemList = bucketLists_(local_(lastItemCell));
 
-            lastItemList->get().updateIndex(lastIndex, itemIndex);
-            --lastIndex;
-        }
-        itemsToErase->get().empty();
-        items.erase(std::begin(items) + lastIndex + 1, std::end(items));
+        lastItemList.updateIndex(lastIndex, itemIndex);
+        --lastIndex;
     }
+    itemsToErase.empty();
+    items.erase(std::begin(items) + lastIndex + 1, std::end(items));
 }
 
 
 template<std::size_t dim, std::size_t bucket_size, typename cell_index_t, typename key_t>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::sort()
 {
-    for (auto& [_, bl] : bucketsLists_)
+    for (auto const& cell : box_)
     {
-        bl.sort();
+        bucketLists_(local_(cell)).sort();
     }
 }
 
