@@ -105,10 +105,16 @@ namespace amr
 
         using Particle_t          = typename ParticleArray::Particle_t;
         static constexpr auto dim = ParticleArray::dimension;
+        // static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
 
     public:
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)
+            , domainParticles{grow(phare_box_from<dim>(getGhostBox()), 4)}
+            , patchGhostParticles{grow(phare_box_from<dim>(getGhostBox()), 4)}
+            , levelGhostParticles{grow(phare_box_from<dim>(getGhostBox()), 4)}
+            , levelGhostParticlesOld{grow(phare_box_from<dim>(getGhostBox()), 4)}
+            , levelGhostParticlesNew{grow(phare_box_from<dim>(getGhostBox()), 4)}
             , pack{&domainParticles, &patchGhostParticles, &levelGhostParticles,
                    &levelGhostParticlesOld, &levelGhostParticlesNew}
             , interiorLocalBox_{AMRToLocal(box, this->getGhostBox())}

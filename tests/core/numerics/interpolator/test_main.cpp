@@ -232,6 +232,7 @@ public:
     ParticleArray_t particles;
     InterpolatorT interp;
     GridLayout_t layout{{0.1}, {nx}, {0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx1d_;
@@ -250,7 +251,7 @@ public:
 
     A1DInterpolator()
         : em{"EM"}
-        , particles(1)
+        , particles{layout.AMRBox(), safeLayer}
         , bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
         , by1d_{"field", HybridQuantity::Scalar::By, nx}
         , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
@@ -353,6 +354,7 @@ public:
     ParticleArray_t particles;
     InterpolatorT interp;
     GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
     Field<NdArray_t, typename HybridQuantity::Scalar> by_;
@@ -370,7 +372,7 @@ public:
 
     A2DInterpolator()
         : em{"EM"}
-        , particles(1)
+        , particles{layout.AMRBox(), safeLayer}
         , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny}
         , by_{"field", HybridQuantity::Scalar::By, nx, ny}
         , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny}
@@ -473,10 +475,11 @@ public:
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
     using VF              = VecField<NdArray_t, HybridQuantity>;
 
+    GridLayout<GridLayoutImpl> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
     Electromag<VF> em;
     ParticleArray_t particles;
     InterpolatorT interp;
-    GridLayout<GridLayoutImpl> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
     Field<NdArray_t, typename HybridQuantity::Scalar> by_;
@@ -494,7 +497,7 @@ public:
 
     A3DInterpolator()
         : em{"EM"}
-        , particles(1)
+        , particles{grow(layout.AMRBox(), safeLayer), 1}
         , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny, nz}
         , by_{"field", HybridQuantity::Scalar::By, nx, ny, nz}
         , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny, nz}
@@ -606,6 +609,9 @@ public:
     static constexpr std::uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
     static constexpr std::uint32_t numOfPart = Interpolator::interp_order + 2;
 
+    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+
     Particle_t part;
     ParticleArray_t particles;
 
@@ -615,13 +621,12 @@ public:
     Field<NdArray_t, typename HybridQuantity::Scalar> vz;
     VecField<NdArray_t, HybridQuantity> v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
-    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
 
 
 
     ACollectionOfParticles_1d()
         : part{}
-        , particles{}
+        , particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
         , vx{"v_x", HybridQuantity::Scalar::Vx, nx}
         , vy{"v_y", HybridQuantity::Scalar::Vy, nx}
@@ -777,7 +782,8 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
 
     ACollectionOfParticles_2d()
-        : rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        : particles{grow(layout.AMRBox(), 1)}
+        , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
         , vx{"v_x", HybridQuantity::Scalar::Vx, nx, ny}
         , vy{"v_y", HybridQuantity::Scalar::Vy, nx, ny}
         , vz{"v_z", HybridQuantity::Scalar::Vz, nx, ny}

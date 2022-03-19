@@ -29,7 +29,7 @@ struct Box
 
     Box() = default;
 
-    Box(std::array<Type, dim> _lower, std::array<Type, dim> _upper)
+    constexpr Box(std::array<Type, dim> _lower, std::array<Type, dim> _upper)
         : lower{_lower}
         , upper{_upper}
     {
@@ -256,6 +256,26 @@ Box<Type, dim> grow(Box<Type, dim> const& box, Type const& size)
     copy.grow(size);
     return copy;
 }
+
+template<typename Type, std::size_t dim>
+Box<Type, dim> emptyBox()
+{
+    return Box<Type, dim>{};
+}
+
+template<typename Type, std::size_t dim>
+auto& operator<<(std::ostream& os, Box<Type, dim> const& box)
+{
+    os << "Box<Type," << dim << "> : ( ";
+    for (auto& c : box.lower)
+        os << c << " ";
+    os << ")-->( ";
+    for (auto& c : box.upper)
+        os << c << " ";
+    os << ")";
+    return os;
+}
+
 
 
 } // namespace PHARE::core

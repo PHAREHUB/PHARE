@@ -25,6 +25,7 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
     using Particle             = TypeParam;
     constexpr auto dim         = Particle::dimension;
     constexpr std::size_t size = 10;
+    constexpr Box<int, dim> domain{ConstArray<int, dim>(0), ConstArray<int, dim>(size - 1)};
 
     ContiguousParticles<dim> contiguous{size};
     for (std::size_t i = 0; i < size; i++)
@@ -46,7 +47,7 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
         EXPECT_EQ(contiguous[i], std::copy(contiguous[i]));
     }
 
-    ParticleArray<dim> particleArray;
+    ParticleArray<dim> particleArray{domain};
     for (auto const& view : contiguous)
     {
         auto i = particleArray.size();

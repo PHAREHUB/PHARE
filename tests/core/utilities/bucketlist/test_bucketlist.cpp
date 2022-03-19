@@ -13,7 +13,7 @@ using namespace PHARE::core;
 
 TEST(BucketList, canBeGivenAParticle)
 {
-    BucketList<100> bl;
+    BucketList bl;
     bl.add(0);
 }
 
@@ -21,7 +21,7 @@ TEST(BucketList, canBeGivenAParticle)
 
 TEST(BucketList, registerMoreThanBucketSize)
 {
-    BucketList<2> bl;
+    BucketList bl;
     bl.add(0);
     bl.add(1);
     bl.add(2);
@@ -31,7 +31,7 @@ TEST(BucketList, registerMoreThanBucketSize)
 
 TEST(BucketList, sizeEqualsNumberOfRegisteredItems)
 {
-    BucketList<3> bl;
+    BucketList bl;
     bl.add(0);
     bl.add(1);
     bl.add(2);
@@ -49,7 +49,7 @@ TEST(BucketList, sizeEqualsNumberOfRegisteredItems)
 
 TEST(BucketList, canBeSorted)
 {
-    BucketList<3> bl;
+    BucketList bl;
     bl.add(3);
     bl.add(1);
     bl.add(2);
@@ -72,7 +72,7 @@ TEST(BucketList, canBeSorted)
 
 TEST(BucketList, canBeSortedLarge)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> dis(0, 1000);
@@ -105,29 +105,21 @@ TEST(BucketList, canBeSortedLarge)
 }
 
 
-TEST(BucketList, capacityEqualsTotalNbrOfMemorySlots)
+TEST(BucketList, capacityIsLargerOrEqualThanSize)
 {
-    BucketList<3> bl;
-    EXPECT_EQ(3, bl.capacity());
-    BucketList<100> bl100;
-    EXPECT_EQ(100, bl100.capacity());
-
+    BucketList bl;
     bl.add(0);
     bl.add(1);
     bl.add(2);
-    EXPECT_EQ(3, bl.capacity());
-    EXPECT_EQ(bl.size(), bl.capacity());
-
-    bl.add(4);
-    EXPECT_EQ(6, bl.capacity());
+    EXPECT_LE(bl.size(), bl.capacity());
 }
 
 
 
 TEST(BucketList, emptySetsSizeZeroLeavingCapacityUnchanged)
 {
-    BucketList<3> bl;
-    EXPECT_EQ(3, bl.capacity());
+    BucketList bl;
+    EXPECT_EQ(0, bl.capacity());
     EXPECT_EQ(0, bl.size());
 
     bl.add(0);
@@ -137,12 +129,13 @@ TEST(BucketList, emptySetsSizeZeroLeavingCapacityUnchanged)
 
     EXPECT_EQ(4, bl.size());
     EXPECT_FALSE(bl.is_empty());
+    auto capa = bl.capacity();
 
     bl.empty();
     EXPECT_TRUE(bl.is_empty());
 
     EXPECT_EQ(0, bl.size());
-    EXPECT_EQ(6, bl.capacity());
+    EXPECT_EQ(capa, bl.capacity());
 }
 
 
@@ -150,7 +143,7 @@ TEST(BucketList, emptySetsSizeZeroLeavingCapacityUnchanged)
 
 TEST(BucketList, beginReturnsIteratorOnFirstElement)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<int, 4> values = {3, 4, 5, 6};
     bl.add(0);
     bl.add(1);
@@ -162,7 +155,7 @@ TEST(BucketList, beginReturnsIteratorOnFirstElement)
 
 TEST(BucketList, iteratorPlusEqual)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<std::size_t, 4> indexes{4, 5, 6, 7};
     bl.add(4);
     bl.add(5);
@@ -177,7 +170,7 @@ TEST(BucketList, iteratorPlusEqual)
 
 TEST(BucketList, iteratorPlusInt)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<std::size_t, 4> indexes{4, 5, 6, 7};
     bl.add(4);
     bl.add(5);
@@ -207,7 +200,7 @@ TEST(BucketList, iteratorPlusInt)
 
 TEST(BucketList, iteratorDecrement)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<std::size_t, 4> indexes{4, 5, 6, 7};
     bl.add(4);
     bl.add(5);
@@ -223,7 +216,7 @@ TEST(BucketList, iteratorDecrement)
 
 TEST(BucketList, iteratorMinus)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<std::size_t, 4> indexes{4, 5, 6, 7};
     bl.add(4);
     bl.add(5);
@@ -239,7 +232,7 @@ TEST(BucketList, iteratorMinus)
 
 TEST(BucketList, iteratorLessThan)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<std::size_t, 4> indexes{4, 5, 6, 7};
     bl.add(4);
     bl.add(5);
@@ -256,7 +249,7 @@ TEST(BucketList, iteratorLessThan)
 
 TEST(BucketList, iteratorDifference)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<int, 4> values = {3, 4, 5, 6};
     bl.add(0);
     bl.add(1);
@@ -275,7 +268,7 @@ TEST(BucketList, iteratorDifference)
 
 TEST(BucketList, iteratorEquality)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<int, 4> values = {3, 4, 5, 6};
     bl.add(0);
     bl.add(1);
@@ -291,7 +284,7 @@ TEST(BucketList, iteratorEquality)
 TEST(BucketList, endReturnsIteratorOnLastPlusOneElement)
 {
     std::vector<int> values({1, 2, 3, 4, 5});
-    BucketList<3> bl;
+    BucketList bl;
     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
         bl.add(itemIndex);
 
@@ -306,7 +299,7 @@ TEST(BucketList, endReturnsIteratorOnLastPlusOneElement)
 TEST(BucketList, singleElementBucketListHasCorrectEnd)
 {
     std::vector<int> values({18});
-    BucketList<3> bl;
+    BucketList bl;
     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
         bl.add(itemIndex);
 
@@ -318,16 +311,11 @@ TEST(BucketList, singleElementBucketListHasCorrectEnd)
     EXPECT_EQ(actual, 18);
 }
 
-TEST(BucketList, emptyBucketListHasEndOnBegin)
-{
-    BucketList<3> bl;
-    EXPECT_EQ(*(std::end(bl)), *(std::begin(bl)));
-}
 
 TEST(BucketList, stdFindUsageOnBucketList)
 {
     std::vector<int> values({18, 22, 43, 24});
-    BucketList<3> bl;
+    BucketList bl;
     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
         bl.add(itemIndex);
 
@@ -349,7 +337,7 @@ TEST(BucketList, stdFindUsageOnBucketList)
 
 TEST(BucketList, stdFindOnSingleItemBucket)
 {
-    BucketList<3> bl;
+    BucketList bl;
     bl.add(2);
     auto it = std::find(std::begin(bl), std::end(bl), 2);
     EXPECT_EQ(*it, 2);
@@ -358,7 +346,7 @@ TEST(BucketList, stdFindOnSingleItemBucket)
 TEST(BucketList, loopOverEmptyBucketMakesNoIteration)
 {
     std::vector<int> values({1, 2, 3, 4, 5});
-    BucketList<3> bl;
+    BucketList bl;
     auto cpt = 0;
     for (auto const& itemIndex : bl)
     {
@@ -370,41 +358,41 @@ TEST(BucketList, loopOverEmptyBucketMakesNoIteration)
 
 
 
-TEST(BucketList, trimRemovesTheNLastEmptyBuckets)
-{
-    std::vector<int> values({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
-    BucketList<3> bl;
-    for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
-        bl.add(itemIndex);
-
-    EXPECT_EQ(4 * 3, bl.capacity());
-    EXPECT_EQ(bl.size(), bl.capacity());
-
-    bl.empty();
-    std::vector<int> others({1, 2, 3, 4});
-    for (std::size_t itemIndex = 0; itemIndex < others.size(); ++itemIndex)
-        bl.add(itemIndex);
-
-    EXPECT_EQ(4, bl.size());
-    EXPECT_EQ(12, bl.capacity());
-
-    bl.trim(1);
-    EXPECT_EQ(9, bl.capacity());
-
-
-    bl.empty();
-    for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
-        bl.add(itemIndex);
-    EXPECT_EQ(12, bl.capacity());
-    bl.trim(0);
-    EXPECT_EQ(12, bl.capacity());
-}
+// TEST(BucketList, trimRemovesTheNLastEmptyBuckets)
+//{
+//     std::vector<int> values({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
+//     BucketList bl;
+//     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
+//         bl.add(itemIndex);
+//
+//     EXPECT_EQ(4 * 3, bl.capacity());
+//     EXPECT_EQ(bl.size(), bl.capacity());
+//
+//     bl.empty();
+//     std::vector<int> others({1, 2, 3, 4});
+//     for (std::size_t itemIndex = 0; itemIndex < others.size(); ++itemIndex)
+//         bl.add(itemIndex);
+//
+//     EXPECT_EQ(4, bl.size());
+//     EXPECT_EQ(12, bl.capacity());
+//
+//     bl.trim(1);
+//     EXPECT_EQ(9, bl.capacity());
+//
+//
+//     bl.empty();
+//     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
+//         bl.add(itemIndex);
+//     EXPECT_EQ(12, bl.capacity());
+//     bl.trim(0);
+//     EXPECT_EQ(12, bl.capacity());
+// }
 
 
 
 TEST(BucketList, removeAnElement)
 {
-    BucketList<3> bl;
+    BucketList bl;
     std::array<int, 4> values = {3, 4, 5, 6};
 
     bl.add(0);
@@ -419,7 +407,6 @@ TEST(BucketList, removeAnElement)
         EXPECT_EQ(values[index], expected[i++]);
     }
     EXPECT_EQ(bl.size(), expected.size());
-    EXPECT_EQ(bl.capacity(), 3 * 2);
 }
 
 int main(int argc, char** argv)

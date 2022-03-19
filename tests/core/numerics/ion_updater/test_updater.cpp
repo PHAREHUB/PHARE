@@ -238,6 +238,7 @@ struct IonsBuffers
     Field Vx;
     Field Vy;
     Field Vz;
+    static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
 
     ParticleArray protonDomain;
     ParticleArray protonPatchGhost;
@@ -276,7 +277,16 @@ struct IonsBuffers
         , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
         , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
         , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
-
+        , protonDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , alphaLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
     {
         protonPack.domainParticles        = &protonDomain;
         protonPack.patchGhostParticles    = &protonPatchGhost;

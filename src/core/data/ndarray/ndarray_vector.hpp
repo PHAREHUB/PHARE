@@ -7,6 +7,7 @@
 #include <vector>
 #include <tuple>
 #include <numeric>
+#include <iostream>
 
 
 namespace PHARE::core
@@ -211,6 +212,8 @@ public:
 
     NdArrayVector(NdArrayVector const& source) = default;
     NdArrayVector(NdArrayVector&& source)      = default;
+    NdArrayVector& operator=(NdArrayVector const& source) = default;
+    NdArrayVector& operator=(NdArrayVector&& source) = default;
 
     auto data() const { return data_.data(); }
     auto data() { return data_.data(); }
@@ -226,27 +229,7 @@ public:
     void zero() { std::fill(data_.begin(), data_.end(), 0); }
 
 
-    NdArrayVector& operator=(NdArrayVector const& source)
-    {
-        if (nCells_ != source.nCells_)
-        {
-            throw std::runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
-        }
 
-        this->data_ = source.data_;
-        return *this;
-    }
-
-    NdArrayVector& operator=(NdArrayVector&& source)
-    {
-        if (nCells_ != source.nCells_)
-        {
-            throw std::runtime_error("Error NdArrayVector cannot be assigned, incompatible sizes");
-        }
-
-        this->data_ = std::move(source.data_);
-        return *this;
-    }
 
     template<typename... Indexes>
     DataType const& operator()(Indexes... indexes) const

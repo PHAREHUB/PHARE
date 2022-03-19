@@ -23,7 +23,11 @@ namespace PHARE::core
 class BucketList
 {
 public:
-    BucketList() = default;
+    BucketList()                        = default;
+    BucketList(BucketList const& other) = default;
+    BucketList(BucketList&& other)      = default;
+    BucketList& operator=(BucketList const& other) = default;
+    BucketList& operator=(BucketList&& other) = default;
 
     void add(std::size_t itemIndex) { indexes_.push_back(itemIndex); }
     void remove(std::size_t itemIndex)
@@ -31,9 +35,11 @@ public:
         auto it = std::find(std::begin(indexes_), std::end(indexes_), itemIndex);
         if (it != std::end(indexes_))
         {
-            std::swap(*it, indexes_[indexes_.size() - 1]);
-            indexes_.resize(indexes_.size() - 1);
+            // std::swap(*it, indexes_[indexes_.size() - 1]);
+            // indexes_.resize(indexes_.size() - 1);
+            indexes_.erase(it);
         }
+        assert(!in_bucket(itemIndex));
     }
     bool in_bucket(std::size_t itemIndex)
     {
@@ -68,6 +74,7 @@ public:
     auto end() const { return indexes_.end(); }
     auto cend() const { return indexes_.end(); }
     void sort() { std::sort(indexes_.begin(), indexes_.end()); }
+    void clear() { indexes_.clear(); }
 
 
 private:

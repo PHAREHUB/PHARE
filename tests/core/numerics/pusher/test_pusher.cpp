@@ -112,7 +112,7 @@ struct DummyLayout
     static constexpr std::size_t dimension = dimension_;
     std::array<unsigned int, dimension> nbrCells_;
     auto nbrCells() const { return nbrCells_; }
-    auto AMRBox() const { return PHARE::core::Box<int, 1>{}; }
+    auto AMRBox() const { return PHARE::core::emptyBox<int, dimension>(); }
 };
 
 template<std::size_t dim>
@@ -124,7 +124,8 @@ public:
 
     APusher()
         : expectedTrajectory{readExpectedTrajectory()}
-        , particlesOut(1)
+        , particlesIn{layout.AMRBox()}
+        , particlesOut(layout.AMRBox())
         , pusher{std::make_unique<Pusher_>()}
         , mass{1}
         , dt{0.0001}
@@ -143,6 +144,7 @@ public:
 protected:
     using Particle = typename ParticleArray<dim>::Particle_t;
     Trajectory expectedTrajectory;
+    DummyLayout<dim> layout;
     ParticleArray<dim> particlesIn;
     ParticleArray<dim> particlesOut;
     std::unique_ptr<Pusher_> pusher;
@@ -153,7 +155,6 @@ protected:
     Electromag em;
     Interpolator interpolator;
     DummySelector selector;
-    DummyLayout<dim> layout;
     // BoundaryCondition bc;
 
     std::array<std::vector<float>, dim> actual;
@@ -252,11 +253,9 @@ class APusherWithLeavingParticles : public ::testing::Test
 {
 public:
     APusherWithLeavingParticles()
-        : particlesOut1(1000)
-        , particlesOut2(1000)
-        , pusher{std::make_unique<
-              BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
-                          BoundaryCondition<1, 1>, DummyLayout<1>>>()}
+        : pusher{std::make_unique<
+            BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+                        BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
         , tstart{0}
@@ -264,6 +263,9 @@ public:
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
         , domain{Point<double, 1>{0.}, Point<double, 1>{1.}}
         , cells{Point{0}, Point{9}}
+        , particlesIn{grow(cells, 1)}
+        , particlesOut1{grow(cells, 1), 1000}
+        , particlesOut2{grow(cells, 1), 1000}
     {
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -280,9 +282,6 @@ public:
 
 
 protected:
-    ParticleArray<1> particlesIn;
-    ParticleArray<1> particlesOut1;
-    ParticleArray<1> particlesOut2;
     std::unique_ptr<BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
                                 BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
@@ -297,6 +296,9 @@ protected:
     Box<double, 1> domain;
     Box<int, 1> cells;
     BoundaryCondition<1, 1> bc;
+    ParticleArray<1> particlesIn;
+    ParticleArray<1> particlesOut1;
+    ParticleArray<1> particlesOut2;
 };
 
 

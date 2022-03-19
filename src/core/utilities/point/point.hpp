@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <sstream>
+#include <ostream>
 
 #include "core/utilities/meta/meta_utilities.hpp"
 
@@ -178,7 +179,15 @@ namespace core
     Point(Indexes... indexes)
         -> Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
-
+    template<typename Type, std::size_t dim>
+    auto& operator<<(std::ostream& os, Point<Type, dim> const& p)
+    {
+        os << "( ";
+        for (auto& v : p)
+            os << v << " ";
+        os << ")";
+        return os;
+    }
 
 } // namespace core
 } // namespace PHARE

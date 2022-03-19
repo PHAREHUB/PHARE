@@ -31,23 +31,53 @@ template<std::size_t dim, std::size_t bucket_size, typename cell_index_t = int,
 class CellMap
 {
 private:
-    // using bucketlist_t = BucketList<bucket_size>;
     using bucketlist_t = BucketList;
     using cell_t       = std::array<cell_index_t, dim>;
     using box_t        = Box<cell_index_t, dim>;
 
 
 public:
-    CellMap(Box<cell_index_t, dim> const& box)
+    CellMap(Box<cell_index_t, dim> box)
         : box_{box}
         , bucketLists_{box.shape().template toArray<std::uint32_t>()}
     {
-        std::cout << "CellMapCtor " << bucketLists_.size() << "\n";
     }
 
+    CellMap(CellMap const& from) = default;
+    CellMap(CellMap&& from)      = default;
+    CellMap& operator=(CellMap const& from) = default;
+    CellMap& operator=(CellMap&& from) = default;
 
     auto nbr_cells() const { return bucketLists_.size(); }
 
+
+    bool check_unique() const
+    {
+        std::unordered_map<std::size_t, std::size_t> counts;
+        for (auto const& cell : box_)
+        {
+            auto& itemIndexes = bucketLists_(local_(cell));
+            for (auto const& index : itemIndexes)
+            {
+                // std::cout << "Checking : " << cell << " " << index << "\n";
+                if (counts.count(index) == 0)
+                    counts[index] = 0;
+                counts[index]++;
+                if (counts[index] > 1)
+                {
+                    std::cout << "OUPS " << cell << " " << index << "\n";
+                }
+            }
+        }
+        bool unique = true;
+        for (auto const& [index, count] : counts)
+            if (count > 1)
+            {
+                std::cout << "CellMap CHECKUNIQUE : " << index << "appears " << count << " times\n";
+                unique = false;
+            }
+        return unique;
+    }
 
 
     // add a single index to the cellmap with the specified cell
@@ -97,7 +127,11 @@ public:
     auto capacity() const;
 
     // remove all bucketlists
-    // void clear() { bucketLists_.clear(); }
+    void clear()
+    {
+        for (auto& bucket : bucketLists_)
+            bucket.clear();
+    }
 
     void empty();
 
@@ -123,14 +157,6 @@ public:
     // export items satisfying Predicate in 'from' into 'dest'
     template<typename Array, typename Predicate>
     void export_to(Array const& from, Array& dest, Predicate&& pred) const;
-
-
-
-    template<typename CellIndex>
-    auto list_at(CellIndex const& cell);
-
-    template<typename CellIndex>
-    auto list_at(CellIndex const& cell) const;
 
 
 
@@ -203,7 +229,7 @@ private:
         }
         return loc;
     }
-    Box<cell_index_t, dim> const& box_;
+    Box<cell_index_t, dim> box_;
     NdArrayVector<dim, bucketlist_t> bucketLists_;
 };
 
@@ -214,7 +240,12 @@ template<typename CellIndex>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::addToCell(CellIndex const& cell,
                                                                       std::size_t itemIndex)
 {
-    bucketLists_(local_(cell)).add(itemIndex);
+    assert(isIn(Point{cell}, box_));
+    if (bucketLists_(local_(cell)).in_bucket(itemIndex))
+        std::cout << "ADDING : " << itemIndex << " already in bucket in cell " << Point{cell}
+                  << "\n";
+    if (isIn(Point{cell}, box_))
+        bucketLists_(local_(cell)).add(itemIndex);
 }
 
 
@@ -389,6 +420,7 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::empty()
     for (auto const& cell : box_)
     {
         bucketLists_(local_(cell)).empty();
+        assert(bucketLists_(local_(cell)).is_empty());
     }
 }
 
@@ -434,26 +466,35 @@ inline auto CellMap<dim, bucket_size, cell_index_t, key_t>::partition(Range rang
     auto pivot           = range.iend();
     for (auto const& cell : box_)
     {
+        // std::cout << "cell : " << cell << "\n";
         auto& itemIndexes = bucketLists_(local_(cell));
         if (!pred(cell))
         {
+            //    std::cout << "pred false, found " << itemIndexes.size()
+            //              << " indexes, begin swapping in range of size " << range.size() << "\n";
             for (auto idx : itemIndexes)
             {
+                //      std::cout << "idx = " << idx << "\n";
                 // partition only indexes in range
                 if (idx >= range.ibegin() and idx < range.iend())
                 {
                     assert(pivot > 0);
                     --pivot;
-                    // find last element that satisfy the predicate
-                    // to swap with it
+                    // std::cout << "in range, --pivot : " << pivot << "\n";
+                    //  find last element that satisfy the predicate
+                    //  to swap with it
+                    //         std::cout << "looking for item to swap from " << shiftIdx << "\n";
                     while (!pred(key_t{extract(range.array()[shiftIdx])}) and shiftIdx > idx)
                     {
                         --shiftIdx;
                     }
+                    //        std::cout << "found " << shiftIdx << " with pred true, swapping...\n";
                     // only swap if idx is not already the last index
                     // not satisfying the predicate
                     if (shiftIdx > idx)
                     {
+                        assert(pred(key_t{extract(range.array()[shiftIdx])}));
+                        assert(shiftIdx >= range.ibegin());
                         itemIndexes.updateIndex(idx, shiftIdx);
                         auto& l = bucketLists_(local_(extract(range.array()[shiftIdx])));
                         l.updateIndex(shiftIdx, idx);
@@ -496,22 +537,23 @@ inline void CellMap<dim, bucket_size, cell_index_t, key_t>::erase(CellIndex cell
 {
     auto lastIndex     = items.size() - 1;
     auto& itemsToErase = bucketLists_(local_(cell));
-    for (auto itemIndex : itemsToErase)
-    {
-        auto lastItemCell = extract(items[lastIndex]);
-        std::swap(items[itemIndex], items[lastIndex]);
+    assert(false);
+    //  for (auto itemIndex : itemsToErase)
+    //   {
+    //       auto lastItemCell = extract(items[lastIndex]);
+    //       std::swap(items[itemIndex], items[lastIndex]);
 
-        // item previously found at lastIndex
-        // is now at itemIndex
-        // we need to update the index stored in
-        // the bucketlist it is in
-        auto& lastItemList = bucketLists_(local_(lastItemCell));
+    //       // item previously found at lastIndex
+    //       // is now at itemIndex
+    //       // we need to update the index stored in
+    //       // the bucketlist it is in
+    //       auto& lastItemList = bucketLists_(local_(lastItemCell));
 
-        lastItemList.updateIndex(lastIndex, itemIndex);
-        --lastIndex;
-    }
-    itemsToErase.empty();
-    items.erase(std::begin(items) + lastIndex + 1, std::end(items));
+    //       lastItemList.updateIndex(lastIndex, itemIndex);
+    //       --lastIndex;
+    //  }
+    //  itemsToErase.empty();
+    //  items.erase(std::begin(items) + lastIndex + 1, std::end(items));
 }
 
 

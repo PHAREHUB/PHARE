@@ -41,16 +41,25 @@ public:
 
 
 public:
-    ParticleArray() {}
-    ParticleArray(std::size_t size)
-        : particles_(size)
+    ParticleArray(box_t box)
+        : box_{box}
+        , cellMap_{box_}
     {
+        assert(box_.size() > 0);
     }
 
-    ParticleArray(std::size_t size, Particle_t&& particle)
-        : particles_(size, particle)
+    ParticleArray(box_t box, std::size_t size)
+        : particles_(size)
+        , box_{box}
+        , cellMap_{box_}
     {
+        assert(box_.size() > 0);
     }
+
+    ParticleArray(ParticleArray const& from) = default;
+    ParticleArray(ParticleArray&& from)      = default;
+    ParticleArray& operator=(ParticleArray&& from) = default;
+    ParticleArray& operator=(ParticleArray const& from) = default;
 
     std::size_t size() const { return particles_.size(); }
     std::size_t capacity() const { return particles_.capacity(); }
@@ -107,41 +116,32 @@ public:
     }
 
 
-
-    template<bool mapping = true>
     Particle_t& emplace_back()
     {
         auto& part = particles_.emplace_back();
-        if constexpr (mapping)
-            cellMap_.add(particles_, particles_.size() - 1);
+        cellMap_.add(particles_, particles_.size() - 1);
         return part;
     }
 
 
 
-    template<bool mapping = true>
     Particle_t& emplace_back(Particle_t&& p)
     {
         auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
-        if constexpr (mapping)
-            cellMap_.add(particles_, particles_.size() - 1);
+        cellMap_.add(particles_, particles_.size() - 1);
         return part;
     }
 
-    template<bool mapping = true>
     void push_back(Particle_t const& p)
     {
         particles_.push_back(p);
-        if constexpr (mapping)
-            cellMap_.add(particles_, particles_.size() - 1);
+        cellMap_.add(particles_, particles_.size() - 1);
     }
 
-    template<bool mapping = true>
     void push_back(Particle_t&& p)
     {
         particles_.push_back(std::forward<Particle_t>(p));
-        if constexpr (mapping)
-            cellMap_.add(particles_, particles_.size() - 1);
+        cellMap_.add(particles_, particles_.size() - 1);
     }
 
     void swap(ParticleArray<dim>& that) { std::swap(this->particles_, that.particles_); }
@@ -184,7 +184,12 @@ public:
     {
         auto oldCell                    = particles_[particleIndex].iCell;
         particles_[particleIndex].iCell = newCell;
-        cellMap_.update(particles_, particleIndex, oldCell);
+        if (!box_.isEmpty())
+        {
+            std::cout << "ChangeIcell : " << particleIndex << " from " << Point{oldCell} << " to "
+                      << Point{newCell} << "\n";
+            cellMap_.update(particles_, particleIndex, oldCell);
+        }
     }
 
 
@@ -229,6 +234,7 @@ public:
 
 private:
     Vector particles_;
+    box_t box_;
     mutable CellMap_t cellMap_;
 };
 

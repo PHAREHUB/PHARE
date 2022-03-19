@@ -415,8 +415,8 @@ TEST_F(CellMappedParticleBox, trackParticle)
 
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto blist = cm(particles[200].iCell);
-    auto found = false;
+    auto& blist = cm(particles[200].iCell);
+    auto found  = false;
     for (auto particleIndex : blist)
     {
         if (particleIndex == 200)
