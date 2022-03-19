@@ -240,12 +240,15 @@ template<typename CellIndex>
 inline void CellMap<dim, bucket_size, cell_index_t, key_t>::addToCell(CellIndex const& cell,
                                                                       std::size_t itemIndex)
 {
-    assert(isIn(Point{cell}, box_));
-    if (bucketLists_(local_(cell)).in_bucket(itemIndex))
-        std::cout << "ADDING : " << itemIndex << " already in bucket in cell " << Point{cell}
-                  << "\n";
-    if (isIn(Point{cell}, box_))
-        bucketLists_(local_(cell)).add(itemIndex);
+    if (!box_.isEmpty())
+    {
+        assert(isIn(Point{cell}, box_));
+        if (bucketLists_(local_(cell)).in_bucket(itemIndex))
+            std::cout << "ADDING : " << itemIndex << " already in bucket in cell " << Point{cell}
+                      << "\n";
+        if (isIn(Point{cell}, box_))
+            bucketLists_(local_(cell)).add(itemIndex);
+    }
 }
 
 

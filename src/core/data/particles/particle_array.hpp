@@ -186,8 +186,9 @@ public:
         particles_[particleIndex].iCell = newCell;
         if (!box_.isEmpty())
         {
-            std::cout << "ChangeIcell : " << particleIndex << " from " << Point{oldCell} << " to "
-                      << Point{newCell} << "\n";
+            // std::cout << "ChangeIcell : " << particleIndex << " from " << Point{oldCell} << " to
+            // "
+            //           << Point{newCell} << "\n";
             cellMap_.update(particles_, particleIndex, oldCell);
         }
     }

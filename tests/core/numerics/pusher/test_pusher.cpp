@@ -135,6 +135,8 @@ public:
     {
         particlesIn.emplace_back(
             Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
+        particlesOut.emplace_back(
+            Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
         dxyz.fill(0.05);
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
