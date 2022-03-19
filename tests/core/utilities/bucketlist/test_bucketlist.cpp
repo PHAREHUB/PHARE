@@ -400,7 +400,7 @@ TEST(BucketList, removeAnElement)
     bl.add(2);
     bl.add(3);
     bl.remove(1);
-    std::array<int, 3> expected{3, 6, 5};
+    std::array<int, 3> expected{3, 5, 6};
     std::size_t i = 0;
     for (auto index : bl)
     {
