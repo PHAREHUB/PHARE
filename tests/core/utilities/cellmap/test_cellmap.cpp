@@ -7,7 +7,7 @@
 #include <cmath>
 
 #include "core/utilities/cellmap.hpp"
-#include "core/utilities/bucketlist.hpp"
+#include "core/utilities/indexer.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
 
@@ -43,10 +43,9 @@ struct Particle
 
 TEST(CellMap, sizeIsNbrOfElements)
 {
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 99u;
+    auto constexpr dim = 2u;
     Box<int, 2> b{{10, 12}, {30, 32}};
-    CellMap<dim, bucket_size, int, Point<int, 2>> cm{b};
+    CellMap<dim, int> cm{b};
     std::cout << "adding\n";
     cm.addToCell(std::array<int, 2>{14, 27}, 0);
     std::cout << "added\n";
@@ -59,10 +58,9 @@ TEST(CellMap, sizeIsNbrOfElements)
 
 TEST(CellMap, canSortCells)
 {
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 99u;
+    auto constexpr dim = 2u;
     Box<int, 2> b{{10, 12}, {30, 32}};
-    CellMap<dim, bucket_size, int, Point<int, 2>> cm{b};
+    CellMap<dim, int> cm{b};
 
     // add indexes not in order
     // in two different cells
@@ -101,14 +99,13 @@ TEST(CellMap, canSortCells)
 TEST(CellMap, itemCanBeRemoved)
 {
     std::array<Particle<2>, 2> particles;
-    particles[0].iCell[0]      = 14;
-    particles[0].iCell[1]      = 27;
-    particles[1].iCell[0]      = 14;
-    particles[1].iCell[1]      = 26;
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 99u;
+    particles[0].iCell[0] = 14;
+    particles[0].iCell[1] = 27;
+    particles[1].iCell[0] = 14;
+    particles[1].iCell[1] = 26;
+    auto constexpr dim    = 2u;
     Box<int, 2> b{{10, 12}, {30, 32}};
-    CellMap<dim, bucket_size, int, Point<int, 2>> cm{b};
+    CellMap<dim, int> cm{b};
     cm.addToCell(std::array<int, 2>{14, 27}, 0);
     EXPECT_EQ(cm.size(), 1);
     cm.addToCell(Point{14, 26}, 1);
@@ -161,10 +158,9 @@ auto make_particles_in(PHARE::core::Box<int, dim> box, std::size_t nppc)
 
 TEST(CellMap, canStoreItemCollection)
 {
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 100u;
+    auto constexpr dim = 2u;
     Box<int, dim> patchbox{{10, 11}, {20, 21}};
-    CellMap<dim, bucket_size> cm{patchbox};
+    CellMap<dim> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     EXPECT_EQ(patchbox.size() * nppc, particles.size());
@@ -178,10 +174,9 @@ TEST(CellMap, canStoreItemCollection)
 
 TEST(CellMap, canStoreItemCollectionFromIterators)
 {
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 100u;
+    auto constexpr dim = 2u;
     Box<int, dim> patchbox{{10, 11}, {20, 21}};
-    CellMap<dim, bucket_size> cm{patchbox};
+    CellMap<dim> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     EXPECT_EQ(patchbox.size() * nppc, particles.size());
@@ -196,10 +191,9 @@ TEST(CellMap, canStoreItemCollectionFromIterators)
 
 TEST(CellMap, givesAccessToAllParticlesInACell)
 {
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 100u;
+    auto constexpr dim = 2u;
     Box<int, 2> patchbox{{10, 20}, {25, 42}};
-    CellMap<dim, bucket_size> cm{patchbox};
+    CellMap<dim> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     cm.add(particles);
@@ -219,10 +213,9 @@ TEST(CellMap, givesAccessToAllParticlesInACell)
 
 TEST(CellMap, emptyLeavesCapacityButZeroSize)
 {
-    auto constexpr dim         = 2u;
-    auto constexpr bucket_size = 100u;
+    auto constexpr dim = 2u;
     Box<int, 2> patchbox{{10, 20}, {25, 42}};
-    CellMap<dim, bucket_size> cm{patchbox};
+    CellMap<dim> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     cm.add(particles);
@@ -296,10 +289,9 @@ public:
     }
 
 protected:
-    static std::size_t constexpr dim         = 2;
-    static std::size_t constexpr bucket_size = 100;
-    static std::size_t constexpr nppc        = 100;
-    using cellmap_t                          = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    static std::size_t constexpr dim  = 2;
+    static std::size_t constexpr nppc = 100;
+    using cellmap_t                   = CellMap<dim, int>;
     Box<int, dim> patchbox{{10, 20}, {25, 42}};
     cellmap_t cm{patchbox};
     std::vector<Particle<dim>> particles;
@@ -377,23 +369,24 @@ public:
 
     auto isInPatch()
     {
-        return [this](auto const& cell) { return isIn(cell, patchBox); };
+        return [this](auto const& cell) { return isIn(Point{cell}, patchBox); };
     }
     auto isInGhost()
     {
-        return [this](auto const& cell) { return isIn(cell, ghostBox); };
+        return [this](auto const& cell) { return isIn(Point{cell}, ghostBox); };
     }
 
     auto isOut()
     {
-        return [this](auto const& cell) { return isIn(cell, outBox) and !isIn(cell, ghostBox); };
+        return [this](auto const& cell) {
+            return isIn(Point{cell}, outBox) and !isIn(cell, ghostBox);
+        };
     }
 
 protected:
-    static std::size_t constexpr dim         = 3;
-    static std::size_t constexpr bucket_size = 100;
-    static std::size_t constexpr nppc        = 1;
-    using cellmap_t                          = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    static std::size_t constexpr dim  = 3;
+    static std::size_t constexpr nppc = 1;
+    using cellmap_t                   = CellMap<dim, int>;
     Box<int, 3> patchBox;
     Box<int, 3> ghostBox;
     Box<int, 3> outBox;
@@ -429,9 +422,8 @@ TEST_F(CellMappedParticleBox, trackParticle)
 
 TEST(CellMap, canReserveMemory)
 {
-    auto constexpr dim         = 3u;
-    auto constexpr bucket_size = 100;
-    using cellmap_t            = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    auto constexpr dim = 3u;
+    using cellmap_t    = CellMap<dim, int>;
     Box<int, 3> patchbox{{10, 20, 30}, {25, 42, 54}};
     cellmap_t cm{patchbox};
     cm.reserve(patchbox);
@@ -444,7 +436,7 @@ TEST_F(CellMappedParticleBox, partitionsParticlesInPatchBox)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto isInPatchBox = [&](auto const& cell) { return isIn(cell, patchBox); };
+    auto isInPatchBox = [&](auto const& cell) { return isIn(Point{cell}, patchBox); };
     auto allParts     = makeIndexRange(particles);
     auto inPatchRange = cm.partition(allParts, isInPatchBox);
 
@@ -465,7 +457,7 @@ TEST_F(CellMappedParticleBox, allButOneParticleSatisfyPredicate)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto doNotTakeThatParticle = [&](auto const& cell) { return cell != patchBox.lower; };
+    auto doNotTakeThatParticle = [&](auto const& cell) { return Point{cell} != patchBox.lower; };
     auto allParts              = makeIndexRange(particles);
     auto singleParticleRange   = cm.partition(allParts, doNotTakeThatParticle);
 

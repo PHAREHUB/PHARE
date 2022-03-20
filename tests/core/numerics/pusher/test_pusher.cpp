@@ -315,7 +315,7 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
     {
         auto& box = this->cells;
         return particleRange.array().partition(
-            [&](auto const& cell) { return PHARE::core::isIn(cell, box); });
+            [&](auto const& cell) { return PHARE::core::isIn(Point{cell}, box); });
     };
 
     for (decltype(nt) i = 0; i < nt; ++i)

@@ -120,7 +120,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
     {
         auto& box = domainBox;
         return particleRange.array().partition(
-            [&](auto const& cell) { return core::isIn(cell, box); });
+            [&](auto const& cell) { return core::isIn(Point{cell}, box); });
     };
 
     auto constexpr partGhostWidth = GridLayout::nbrParticleGhosts();
@@ -129,7 +129,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
     auto inGhostBox = [&](auto& particleRange) {
         return particleRange.array().partition(
-            [&](auto const& cell) { return isIn(cell, ghostBox); });
+            [&](auto const& cell) { return isIn(Point{cell}, ghostBox); });
     };
 
     for (auto& pop : ions)
@@ -214,18 +214,19 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
     auto inDomainBox = [&domainBox](auto& particleRange) //
     {
         return particleRange.array().partition(
-            [&](auto const& cell) { return isIn(cell, domainBox); });
+            [&](auto const& cell) { return isIn(Point{cell}, domainBox); });
     };
 
     auto inGhostBox = [&](auto& particleRange) {
         return particleRange.array().partition(
-            [&](auto const& cell) { return isIn(cell, ghostBox); });
+            [&](auto const& cell) { return isIn(Point{cell}, ghostBox); });
     };
 
 
     auto inGhostLayer = [&](auto& particleRange) {
-        return particleRange.array().partition(
-            [&](auto const& cell) { return isIn(cell, ghostBox) and !isIn(cell, domainBox); });
+        return particleRange.array().partition([&](auto const& cell) {
+            return isIn(Point{cell}, ghostBox) and !isIn(Point{cell}, domainBox);
+        });
     };
 
     // push domain particles, erase from array those leaving domain
@@ -248,8 +249,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                                                    interpolator_, layout, inGhostBox, inGhostLayer);
 
             auto& particleArray = particleRange.array();
-            particleArray.export_particles(domainParticles,
-                                           [&](auto const& cell) { return isIn(cell, domainBox); });
+            particleArray.export_particles(
+                domainParticles, [&](auto const& cell) { return isIn(Point{cell}, domainBox); });
 
             particleArray.erase(
                 makeRange(particleArray, inGhostLayerRange.iend(), particleArray.size()));

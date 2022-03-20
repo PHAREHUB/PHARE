@@ -1,9 +1,9 @@
 
 cmake_minimum_required (VERSION 3.9)
 
-project(test-bucketlist)
+project(test-indexer)
 
-set(SOURCES test_bucketlist.cpp)
+set(SOURCES test_indexer.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

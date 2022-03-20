@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/utilities/bucketlist.hpp"
+#include "core/utilities/indexer.hpp"
 #include "particle.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/cellmap.hpp"
@@ -20,15 +20,14 @@ template<std::size_t dim>
 class ParticleArray
 {
 public:
-    static constexpr bool is_contiguous              = false;
-    static constexpr auto dimension                  = dim;
-    static constexpr std::size_t cellmap_bucket_size = 100;
-    using This                                       = ParticleArray<dim>;
-    using Particle_t                                 = Particle<dim>;
-    using Vector                                     = std::vector<Particle_t>;
+    static constexpr bool is_contiguous = false;
+    static constexpr auto dimension     = dim;
+    using This                          = ParticleArray<dim>;
+    using Particle_t                    = Particle<dim>;
+    using Vector                        = std::vector<Particle_t>;
 
 private:
-    using CellMap_t   = CellMap<dim, cellmap_bucket_size, int, Point<int, dim>>;
+    using CellMap_t   = CellMap<dim, int>;
     using IndexRange_ = IndexRange<This>;
 
 
@@ -222,8 +221,8 @@ public:
             if (!l)
                 throw std::runtime_error("particle cell not mapped");
             auto& ll = l->get();
-            if (!ll.in_bucket(pidx))
-                throw std::runtime_error("particle index not in cell bucket");
+            if (!ll.is_indexed(pidx))
+                throw std::runtime_error("particle not indexed");
         }
         return true;
     }

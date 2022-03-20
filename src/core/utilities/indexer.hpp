@@ -1,5 +1,5 @@
-#ifndef PHARE_BUCKETLIST_H
-#define PHARE_BUCKETLIST_H
+#ifndef PHARE_INDEXER_H
+#define PHARE_INDEXER_H
 
 #include "core/utilities/types.hpp"
 
@@ -20,14 +20,14 @@ namespace PHARE::core
 {
 
 
-class BucketList
+class Indexer
 {
 public:
-    BucketList()                        = default;
-    BucketList(BucketList const& other) = default;
-    BucketList(BucketList&& other)      = default;
-    BucketList& operator=(BucketList const& other) = default;
-    BucketList& operator=(BucketList&& other) = default;
+    Indexer()                     = default;
+    Indexer(Indexer const& other) = default;
+    Indexer(Indexer&& other)      = default;
+    Indexer& operator=(Indexer const& other) = default;
+    Indexer& operator=(Indexer&& other) = default;
 
     void add(std::size_t itemIndex) { indexes_.push_back(itemIndex); }
     void remove(std::size_t itemIndex)
@@ -35,13 +35,11 @@ public:
         auto it = std::find(std::begin(indexes_), std::end(indexes_), itemIndex);
         if (it != std::end(indexes_))
         {
-            // std::swap(*it, indexes_[indexes_.size() - 1]);
-            // indexes_.resize(indexes_.size() - 1);
             indexes_.erase(it);
         }
-        assert(!in_bucket(itemIndex));
+        assert(!is_indexed(itemIndex));
     }
-    bool in_bucket(std::size_t itemIndex)
+    bool is_indexed(std::size_t itemIndex)
     {
         return std::end(indexes_) != std::find(std::begin(indexes_), std::end(indexes_), itemIndex);
     }
