@@ -45,6 +45,7 @@ namespace solver
         int solverIndex              = NOT_SET;
         int resourcesManagerIndex    = NOT_SET;
         int taggerIndex              = NOT_SET;
+        int workLoadIndex            = NOT_SET;
         std::string messengerName;
     };
 
@@ -236,6 +237,24 @@ namespace solver
             // now setup all messengers we've just created
 
             registerQuantitiesAllLevels_();
+        }
+
+
+
+
+        void registerWorkLoad(int coarsestLevel, int finestLevel,
+                            std::unique_ptr<PHARE::amr::WorkLoadEstimator> workLoad)
+        {
+            if (!validLevelRange_(coarsestLevel, finestLevel))
+            {
+                throw std::runtime_error("invalid range level");
+            }
+            if (existWorkLoadOnRange_(coarsestLevel, finestLevel))
+            {
+                throw std::runtime_error(
+                    "error - level range contains levels with a registered workLoad");
+            }
+            addWorkLoad_(std::move(workLoad), coarsestLevel, finestLevel);
         }
 
 
@@ -664,6 +683,23 @@ namespace solver
             else
             {
                 throw std::runtime_error("solver " + solver->name() + " already registered");
+            }
+        }
+
+
+
+
+        void addWorkLoad_(std::unique_ptr<PHARE::amr::WorkLoadEstimator> workLoad, int coarsestLevel,
+                        int finestLevel)
+        {
+            if (core::notIn(workLoad, workLoads_))
+            {
+                workLoads_.push_back(std::move(workLoad));
+                int taggerIndex = taggers_.size() - 1;
+                for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+                {
+                    levelDescriptors_[iLevel].taggerIndex = taggerIndex;
+                }
             }
         }
 

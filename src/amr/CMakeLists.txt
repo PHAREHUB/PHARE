@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.9)
 project(phare_amr)
 
 set( SOURCES_INC
+     work_load/workload.hpp
+     work_load/hybrid_workload.hpp
      data/particles/refine/particles_data_split.hpp
      data/particles/refine/split.hpp
      data/particles/particles_data.hpp
