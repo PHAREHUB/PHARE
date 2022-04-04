@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.9)
 project(phare_core)
 
 set( SOURCES_INC
+     work_load/hybrid_workload_strategy_factory.hpp
+     work_load/hybrid_workload_strategy.hpp
+     work_load/concrete_hybrid_workload_strategy_NPPC.hpp
      data/electromag/electromag.hpp
      data/field/field.hpp
      data/grid/gridlayoutdefs.hpp
