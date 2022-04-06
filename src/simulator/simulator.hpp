@@ -12,6 +12,7 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 #include "amr/tagging/tagger_factory.hpp"
+#include "amr/work_load/workload_factory.hpp"
 
 #include <chrono>
 #include <exception>
@@ -261,6 +262,14 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
     // hard coded for now, should get some params later from the dict
     auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
     multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
+
+
+
+    // TODO
+    auto hybridWorkLoaEstimator_ = amr::WorkLoadEstimatorFactory::create("HybridModel");
+    multiphysInteg_->registerWorkLoadEstimator(0, maxLevelNumber_ - 1, std::move(hybridWorkLoadEstimator_));
+
+
 
     if (dict["simulation"].contains("restarts"))
         startTime_ = restarts_init(dict["simulation"]["restarts"]);
