@@ -1,31 +1,52 @@
 
+#ifndef PHARE_HYBRID_WORKLOAD_HPP
+#define PHARE_HYBRID_WORKLOAD_HPP
+
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "core/data/ions/ions.h"
+#include "amr/types/amr_types.hpp"
+#include "amr/work_load/workload.hpp"
+#include "core/work_load/hybrid_workload_strategy_factory.hpp"
 
 
-class HybridWorkLoadEstimator : public WorkLoadEstimator
+namespace PHARE::amr
 {
-    public :
-        virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl, PHARE::core::Ions const& ions)
+template<typename HybridModel>
+class HybridWorkLoadEstimator : public IWorkLoadEstimator
+{
+using gridlayout_type = typename HybridModel::gridlayout_type;
+
+public :
+    virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl, PHARE::solver::IPhysicalModel<amr_t> const& model)
+    {
+        auto& hybridModel = dynamic_cast<HybridModel&>(model);
+
+        for (auto& p : levels)
         {
-            for (auto& p : levels)
-            {
-                auto pd = p.getPatchData(this->getID());
-                (void)pd;
+            auto layout = PHARE::amr::layoutFromPatch<gridlayout_type>(patch);
+
+            auto pd = p.getPatchData(this->getID());
+            (void)pd;
 
 
 
-                // TODO
+            // TODO
 
 
 
-            }
-        };
-        virtual void set_strategy(std::string stratName)
-        {
-            strat_ = HybridWorkLoadStrategyFactory::create(stratName);
-        };
-    private:
-        std::unique_ptr<HybridWorkLoadEstimatorStrategy> strat_;
+        }
+    };
+
+    virtual void set_strategy(std::string stratName)
+    {
+        strat_ = HybridWorkLoadStrategyFactory::create(stratName);
+    };
+
+private:
+    std::unique_ptr<HybridWorkLoadEstimatorStrategy> strat_;
+
 };
+
+} // namespace PHARE::amr
+
+#endif

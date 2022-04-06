@@ -28,6 +28,7 @@
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/solvers/solver_mhd.hpp"
 #include "amr/solvers/solver_ppc.hpp"
+#include "amr/work_load/workload.hpp"
 
 #include "core/utilities/algorithm.hpp"
 
@@ -243,7 +244,7 @@ namespace solver
 
 
         void registerWorkLoad(int coarsestLevel, int finestLevel,
-                            std::unique_ptr<PHARE::amr::WorkLoadEstimator> workLoad)
+                            std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -584,6 +585,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
+        std::vector<std::unique_ptr<PHARE::amr::IWorkLoadEstimator>> workLoads_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -608,6 +610,20 @@ namespace solver
             return false;
         }
 
+
+
+
+        bool existWorkLoadOnRange_(int coarsestLevel, int finestLevel)
+        {
+            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+            {
+                if (levelDescriptors_[iLevel].workLoadIndex != LevelDescriptor::NOT_SET)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
 
 
@@ -687,16 +703,17 @@ namespace solver
 
 
 
-        void addWorkLoad_(std::unique_ptr<PHARE::amr::WorkLoadEstimator> workLoad, int coarsestLevel,
+        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad, int coarsestLevel,
                         int finestLevel)
         {
             if (core::notIn(workLoad, workLoads_))
             {
                 workLoads_.push_back(std::move(workLoad));
-                int taggerIndex = taggers_.size() - 1;
+
+                int workLoadIndex = workLoads_.size() - 1;
                 for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
                 {
-                    levelDescriptors_[iLevel].taggerIndex = taggerIndex;
+                    levelDescriptors_[iLevel].workLoadIndex = workLoadIndex;
                 }
             }
         }
