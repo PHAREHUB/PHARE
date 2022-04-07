@@ -2,20 +2,23 @@
 #ifndef PHARE_WORKLOAD_FACTORY_HPP
 #define PHARE_WORKLOAD_FACTORY_HPP
 
+#include <memory>
 
 #include "workload.hpp"
 #include "hybrid_workload.hpp"
 
 
+
 namespace PHARE::amr
 {
+template<typename PHARE_T>
 class WorkLoadEstimatorFactory
 {
     public :
-        static std::shared_ptr<IWorkLoadEstimator> create(std::string modelName)
+        static std::unique_ptr<IWorkLoadEstimator> create(std::string modelName)
         {
             if (modelName == "HybridModel")
-                return std::make_shared<HybridWorkLoadEstimator>();
+                return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
             else
                 return {};
         }

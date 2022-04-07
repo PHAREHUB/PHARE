@@ -9,7 +9,6 @@
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/pdat/CellData.h>
 
-#include "amr/types/amr_types.hpp"
 
 
 namespace PHARE::amr
@@ -25,6 +24,7 @@ public:
     virtual void estimate(SAMRAI::hier::PatchLevel lev, double*, PHARE::solver::IPhysicalModel<amr_t> const& model) = 0;
     virtual void set_strategy(std::string) = 0;
     int getID() { return id_; };
+    virtual std::string name() = 0;
 
 private:
     SAMRAI::tbox::Dimension dim_{2};
