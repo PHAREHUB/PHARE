@@ -243,7 +243,8 @@ namespace solver
 
 
 
-        void registerWorkLoad(int coarsestLevel, int finestLevel,
+
+        void registerWorkLoadEstimator(int coarsestLevel, int finestLevel,
                             std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
@@ -585,7 +586,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
-        std::vector<std::unique_ptr<PHARE::amr::IWorkLoadEstimator>> workLoads_;
+        std::vector<std::shared_ptr<PHARE::amr::IWorkLoadEstimator>> workLoads_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)

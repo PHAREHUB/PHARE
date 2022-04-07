@@ -4,28 +4,29 @@
 
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "amr/types/amr_types.hpp"
 #include "amr/work_load/workload.hpp"
 #include "core/work_load/hybrid_workload_strategy_factory.hpp"
 
 
+
 namespace PHARE::amr
 {
-template<typename HybridModel>
+template<typename PHARE_T>
 class HybridWorkLoadEstimator : public IWorkLoadEstimator
 {
+using HybridModel = typename PHARE_T::HybridModel_t;
 using gridlayout_type = typename HybridModel::gridlayout_type;
 
 public :
-    virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl, PHARE::solver::IPhysicalModel<amr_t> const& model)
+    virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl, PHARE::solver::IPhysicalModel<amr_t> const& model) override
     {
-        auto& hybridModel = dynamic_cast<HybridModel&>(model);
+        auto& hybridModel = dynamic_cast<HybridModel const&>(model);
 
-        for (auto& p : levels)
+        for (auto& patch : levels)
         {
-            auto layout = PHARE::amr::layoutFromPatch<gridlayout_type>(patch);
+            auto layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
 
-            auto pd = p.getPatchData(this->getID());
+            auto pd = patch->getPatchData(this->getID());
             (void)pd;
 
 
@@ -37,13 +38,15 @@ public :
         }
     };
 
-    virtual void set_strategy(std::string stratName)
+    virtual void set_strategy(std::string stratName) override
     {
-        strat_ = HybridWorkLoadStrategyFactory::create(stratName);
+        strat_ = HybridWorkLoadStrategyFactory<PHARE_T>::create(stratName);
     };
 
+    std::string name() override { return std::string("HybridworkLoadEstimator_")+strat_->name(); }
+
 private:
-    std::unique_ptr<HybridWorkLoadEstimatorStrategy> strat_;
+    std::unique_ptr<HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
 
 };
 

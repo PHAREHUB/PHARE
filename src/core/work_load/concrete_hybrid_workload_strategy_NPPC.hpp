@@ -4,17 +4,27 @@
 
 
 #include "hybrid_workload_strategy.hpp"
-#include "phare_solver.hpp"
 
 
 
 namespace PHARE::core
 {
-class ConcreteHybridWorkLoadEstimatorStrategyNPPC : public HybridWorkLoadEstimatorStrategy
+template<typename HybridModel>
+class ConcreteHybridWorkLoadEstimatorStrategyNPPC : public HybridWorkLoadEstimatorStrategy<HybridModel>
 {
-
 public :
-    void estimate(double* wl, PHARE::solver::HybridModel_t const& hybrid_model) { } ;
+    virtual void estimate(double* wl, HybridModel const& hybrid_model) override
+    {
+
+
+
+        // TODO
+
+
+
+    };
+
+    virtual std::string name() override { return std::string("NPPC"); };
 };
 } // namespace PHARE::core
 
