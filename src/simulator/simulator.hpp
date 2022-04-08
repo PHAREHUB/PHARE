@@ -263,8 +263,13 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
     auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
     multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
 
-    auto hybridWorkLoadEstimator_ = amr::WorkLoadEstimatorFactory<PHARETypes>::create("HybridModel");
-    multiphysInteg_->registerWorkLoadEstimator(0, maxLevelNumber_ - 1, std::move(hybridWorkLoadEstimator_));
+    auto hybridWorkLoadEstimator_
+        = amr::WorkLoadEstimatorFactory<PHARETypes>::create("HybridModel");
+    //
+    // TODO hybridWorkLoadEstimator->set_strategy("NPPC")
+    //
+    multiphysInteg_->registerWorkLoadEstimator(0, maxLevelNumber_ - 1,
+                                               std::move(hybridWorkLoadEstimator_));
 
     if (dict["simulation"].contains("restarts"))
         startTime_ = restarts_init(dict["simulation"]["restarts"]);

@@ -243,9 +243,8 @@ namespace solver
 
 
 
-
         void registerWorkLoadEstimator(int coarsestLevel, int finestLevel,
-                            std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
+                                       std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -572,6 +571,18 @@ namespace solver
 
 
 
+        amr::IWorkLoadEstimator const& getWorkLoad(int iLevel) const
+        {
+            auto& descriptor = levelDescriptors_[iLevel];
+            if (workLoads_[descriptor.workLoadIndex] == nullptr)
+            {
+                throw std::runtime_error("Error - no workload assigned to level "
+                                         + std::to_string(iLevel));
+            }
+            return *workLoads_[descriptor.workLoadIndex];
+        }
+
+
 
     private:
         bool restartInitialized_ = false;
@@ -706,8 +717,8 @@ namespace solver
 
 
 
-        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad, int coarsestLevel,
-                        int finestLevel)
+        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad,
+                          int coarsestLevel, int finestLevel)
         {
             if (core::notIn(workLoad, workLoads_))
             {
@@ -886,7 +897,6 @@ namespace solver
             }
             return *taggers_[descriptor.taggerIndex];
         }
-
 
 
 
