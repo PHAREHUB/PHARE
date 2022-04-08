@@ -14,11 +14,12 @@ namespace PHARE::amr
 template<typename PHARE_T>
 class HybridWorkLoadEstimator : public IWorkLoadEstimator
 {
-using HybridModel = typename PHARE_T::HybridModel_t;
-using gridlayout_type = typename HybridModel::gridlayout_type;
+    using HybridModel     = typename PHARE_T::HybridModel_t;
+    using gridlayout_type = typename HybridModel::gridlayout_type;
 
-public :
-    virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl, PHARE::solver::IPhysicalModel<amr_t> const& model) override
+public:
+    virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl,
+                          PHARE::solver::IPhysicalModel<amr_t> const& model) override
     {
         auto& hybridModel = dynamic_cast<HybridModel const&>(model);
 
@@ -32,9 +33,6 @@ public :
 
 
             // TODO
-
-
-
         }
     };
 
@@ -43,11 +41,15 @@ public :
         strat_ = HybridWorkLoadStrategyFactory<PHARE_T>::create(stratName);
     };
 
-    std::string name() override { return std::string("HybridworkLoadEstimator_")+strat_->name(); }
+    std::string name() const override
+    {
+        if (strat_ == nullptr)
+            std::cout << "ta mere en slip" << std::endl;
+        return std::string("HybridworkLoadEstimator_") + strat_->name();
+    }
 
 private:
     std::unique_ptr<HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
-
 };
 
 } // namespace PHARE::amr
