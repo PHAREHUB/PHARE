@@ -265,9 +265,8 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
     auto hybridWorkLoadEstimator_
         = amr::WorkLoadEstimatorFactory<PHARETypes>::create("HybridModel");
-    //
-    // TODO hybridWorkLoadEstimator->set_strategy("NPPC")
-    //
+    hybridWorkLoadEstimator_->set_strategy("NPPC");
+
     multiphysInteg_->registerWorkLoadEstimator(0, maxLevelNumber_ - 1,
                                                std::move(hybridWorkLoadEstimator_));
 

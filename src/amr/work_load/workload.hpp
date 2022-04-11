@@ -21,8 +21,8 @@ protected:
 public:
     IWorkLoadEstimator() {}
 
-    virtual void estimate(SAMRAI::hier::PatchLevel lev, double*,
-                          PHARE::solver::IPhysicalModel<amr_t> const& model)
+    virtual void estimate(SAMRAI::hier::PatchLevel, double*,
+                          PHARE::solver::IPhysicalModel<amr_t> const&)
         = 0;
     virtual void set_strategy(std::string) = 0;
     int getID() { return id_; };

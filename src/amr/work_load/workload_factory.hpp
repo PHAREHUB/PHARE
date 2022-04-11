@@ -15,13 +15,14 @@ template<typename PHARE_T>
 class WorkLoadEstimatorFactory
 {
 public:
-    static std::unique_ptr<IWorkLoadEstimator> create(std::string modelName)
+    static std::unique_ptr<IWorkLoadEstimator>
+    create(std::string modelName) //, std::string stratName)
     {
         if (modelName == "HybridModel")
         {
             auto wl = std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
-            wl->set_strategy("NPPC");
-            // TODO la methode "create" doit prendre un second arg qui est la strat_name
+            // wl->set_strategy(stratName);
+
             return wl;
         }
         else
