@@ -18,39 +18,52 @@ class HybridWorkLoadEstimator : public IWorkLoadEstimator
     using gridlayout_type = typename HybridModel::gridlayout_type;
 
 public:
-    virtual void estimate(SAMRAI::hier::PatchLevel levels, double* wl,
-                          PHARE::solver::IPhysicalModel<amr_t> const& model) override
-    {
-        auto& hybridModel = dynamic_cast<HybridModel const&>(model);
-
-        for (auto& patch : levels)
-        {
-            auto layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
-
-            auto pd = patch->getPatchData(this->getID());
-            (void)pd;
-
-
-
-            // TODO
-        }
-    };
-
-    virtual void set_strategy(std::string stratName) override
-    {
-        strat_ = HybridWorkLoadStrategyFactory<PHARE_T>::create(stratName);
-    };
-
-    std::string name() const override
-    {
-        if (strat_ == nullptr)
-            std::cout << "ta mere en slip" << std::endl;
-        return std::string("HybridworkLoadEstimator_") + strat_->name();
-    }
+    virtual void estimate(SAMRAI::hier::PatchLevel, double*,
+                          PHARE::solver::IPhysicalModel<amr_t> const&) override;
+    virtual void set_strategy(std::string) override;
+    std::string name() const override;
 
 private:
     std::unique_ptr<HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
 };
+
+
+
+template<typename PHARE_T>
+void HybridWorkLoadEstimator<PHARE_T>::set_strategy(std::string stratName)
+{
+    strat_ = HybridWorkLoadStrategyFactory<PHARE_T>::create(stratName);
+};
+
+
+
+template<typename PHARE_T>
+void HybridWorkLoadEstimator<PHARE_T>::estimate(SAMRAI::hier::PatchLevel levels,
+                                                double* workload_val,
+                                                PHARE::solver::IPhysicalModel<amr_t> const& model)
+{
+    auto& hybridModel = dynamic_cast<HybridModel const&>(model);
+
+    for (auto& patch : levels)
+    {
+        auto const& layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
+        auto pd            = dynamic_cast<SAMRAI::pdat::CellData<double>*>(
+            patch->getPatchData(this->getID()).get());
+        auto workload_val = pd->getPointer();
+
+        strat_->estimate(workload_val, hybridModel, layout);
+    }
+};
+
+
+
+template<typename PHARE_T>
+std::string HybridWorkLoadEstimator<PHARE_T>::name() const
+{
+    if (strat_ == nullptr)
+        std::cout << "ta mere en slip" << std::endl;
+    return std::string("HybridworkLoadEstimator_") + strat_->name();
+}
 
 } // namespace PHARE::amr
 

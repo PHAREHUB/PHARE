@@ -10,12 +10,12 @@ template<typename HybridModel>
 class HybridWorkLoadEstimatorStrategy
 {
 protected:
-    using amr_t = PHARE::amr::SAMRAI_Types;
+    using amr_t           = PHARE::amr::SAMRAI_Types;
+    using gridlayout_type = typename HybridModel::gridlayout_type;
 
-public :
-    virtual void estimate(double*, HybridModel const&) = 0;
-    virtual std::string name() = 0;
-
+public:
+    virtual void estimate(double*, HybridModel const&, gridlayout_type const&) = 0;
+    virtual std::string name()                                                 = 0;
 };
 } // namespace PHARE::core
 

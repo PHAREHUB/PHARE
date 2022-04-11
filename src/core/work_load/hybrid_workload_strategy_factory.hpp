@@ -13,17 +13,18 @@ namespace PHARE::core
 template<typename PHARE_T>
 class HybridWorkLoadStrategyFactory
 {
-using HybridModel = typename PHARE_T::HybridModel_t;
+    using HybridModel = typename PHARE_T::HybridModel_t;
 
-public :
-    static std::unique_ptr<PHARE::core::HybridWorkLoadEstimatorStrategy<HybridModel>> create(std::string stratName)
-        {
-            using HybridModel = typename PHARE_T::HybridModel_t;
-            if (stratName == "NPPC")
-                return std::make_unique<ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>>();
-            else
-                return {};
-        };
+public:
+    static std::unique_ptr<PHARE::core::HybridWorkLoadEstimatorStrategy<HybridModel>>
+    create(std::string stratName)
+    {
+        using HybridModel = typename PHARE_T::HybridModel_t;
+        if (stratName == "NPPC")
+            return std::make_unique<ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>>();
+        else
+            return {};
+    };
 };
 } // namespace PHARE::core
 
