@@ -12,14 +12,14 @@
 namespace PHARE::amr
 {
 template<typename PHARE_T>
-class HybridWorkLoadEstimator : public IWorkLoadEstimator
+class HybridWorkLoadEstimator : public IWorkLoadEstimator<PHARE_T::dimension>
 {
     using HybridModel     = typename PHARE_T::HybridModel_t;
     using gridlayout_type = typename HybridModel::gridlayout_type;
 
 public:
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
-                          PHARE::solver::IPhysicalModel<amr_t> const&) override;
+                          PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&) override;
     virtual void set_strategy(std::string) override;
     std::string name() const override;
 
@@ -38,18 +38,20 @@ void HybridWorkLoadEstimator<PHARE_T>::set_strategy(std::string stratName)
 
 
 template<typename PHARE_T>
-void HybridWorkLoadEstimator<PHARE_T>::estimate(SAMRAI::hier::PatchLevel levels,
-                                                double* workload_val,
-                                                PHARE::solver::IPhysicalModel<amr_t> const& model)
+void HybridWorkLoadEstimator<PHARE_T>::estimate(
+    SAMRAI::hier::PatchLevel levels, double* workload_val,
+    PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const& model)
 {
     auto& hybridModel = dynamic_cast<HybridModel const&>(model);
 
     for (auto& patch : levels)
     {
         auto const& layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
-        auto pd            = dynamic_cast<SAMRAI::pdat::CellData<double>*>(
-            patch->getPatchData(this->getID()).get());
+        auto pd
+            = dynamic_cast<SAMRAI::pdat::CellData<double>*>(patch->getPatchData(this->id_).get());
         auto workload_val = pd->getPointer();
+
+
 
         strat_->estimate(workload_val, hybridModel, layout);
     }
