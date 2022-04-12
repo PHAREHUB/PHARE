@@ -13,29 +13,39 @@
 
 namespace PHARE::amr
 {
+template<std::size_t dim>
 class IWorkLoadEstimator
 {
-protected:
-    using amr_t = PHARE::amr::SAMRAI_Types;
-
 public:
-    IWorkLoadEstimator() {}
+    IWorkLoadEstimator()
+        : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
+        , dimension_{SAMRAI::tbox::Dimension{dim}}
+        , workLoadVariable_{std::make_shared<SAMRAI::pdat::CellVariable<double>>(dimension_,
+                                                                                 "workLoad")}
+        , context_{variableDatabase_->getContext("default")}
+        , id_{variableDatabase_->registerVariableAndContext(workLoadVariable_, context_, gw0)}
+    {
+        // TODO
+    }
 
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
-                          PHARE::solver::IPhysicalModel<amr_t> const&)
+                          PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
         = 0;
     virtual void set_strategy(std::string) = 0;
     int getID() { return id_; };
     virtual std::string name() const = 0;
 
+protected:
+    int const id_;
+
 private:
-    SAMRAI::tbox::Dimension dim_{2};
-    std::shared_ptr<SAMRAI::pdat::CellData<double>> workLoad_;
+    SAMRAI::hier::VariableDatabase* variableDatabase_;
+    SAMRAI::tbox::Dimension dimension_;
+    // std::shared_ptr<SAMRAI::pdat::CellData<double>> workLoad_;
     std::shared_ptr<SAMRAI::pdat::CellVariable<double>> workLoadVariable_;
-    std::string contextName_{"default"};
+    // std::string contextName_{"default"};
     std::shared_ptr<SAMRAI::hier::VariableContext> context_;
-    SAMRAI::hier::IntVector gw0 = SAMRAI::hier::IntVector::getZero(dim_);
-    int const id_{12};
+    SAMRAI::hier::IntVector gw0 = SAMRAI::hier::IntVector::getZero(dimension_);
 };
 
 } // namespace PHARE::amr

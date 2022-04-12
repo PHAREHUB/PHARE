@@ -15,7 +15,7 @@ template<typename PHARE_T>
 class WorkLoadEstimatorFactory
 {
 public:
-    static std::unique_ptr<IWorkLoadEstimator>
+    static std::unique_ptr<IWorkLoadEstimator<PHARE_T::dimension>>
     create(std::string modelName) //, std::string stratName)
     {
         if (modelName == "HybridModel")

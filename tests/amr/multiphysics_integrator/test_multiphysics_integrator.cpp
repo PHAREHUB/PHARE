@@ -86,10 +86,10 @@ TYPED_TEST(SimulatorTest, hasAWorkLoadEstimatorNPPC)
     {
         if (isInHybridRange(iLevel))
         {
-            auto& wl_  = multiphysInteg.getWorkLoad(iLevel);
+            auto& wl_  = multiphysInteg.getWorkLoadEstimator(iLevel);
             auto name_ = wl_.name();
             //             EXPECT_EQ("HybridworkLoadEstimator_NPPC",
-            //             multiphysInteg.getWorkLoad(iLevel).name());
+            //             multiphysInteg.getWorkLoadEstimator(iLevel).name());
         }
     }
 }

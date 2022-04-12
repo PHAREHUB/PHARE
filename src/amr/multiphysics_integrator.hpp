@@ -243,8 +243,9 @@ namespace solver
 
 
 
-        void registerWorkLoadEstimator(int coarsestLevel, int finestLevel,
-                                       std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
+        void registerWorkLoadEstimator(
+            int coarsestLevel, int finestLevel,
+            std::unique_ptr<PHARE::amr::IWorkLoadEstimator<dimension>> workLoad)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -485,9 +486,11 @@ namespace solver
             auto iLevel = level->getLevelNumber();
             std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
                       << " from t = " << currentTime << "to t = " << newTime << "\n";
-            auto& solver      = getSolver_(iLevel);
-            auto& model       = getModel_(iLevel);
-            auto& fromCoarser = getMessengerWithCoarser_(iLevel);
+            auto& solver            = getSolver_(iLevel);
+            auto& model             = getModel_(iLevel);
+            auto& fromCoarser       = getMessengerWithCoarser_(iLevel);
+            auto& workLoadEstimator = getWorkLoadEstimator(iLevel);
+            auto& workLoad_value    = std::make_shared<double>();
 
 
             subcycleStartTimes_[iLevel] = currentTime;
@@ -515,6 +518,8 @@ namespace solver
             {
                 dump_(iLevel);
             }
+
+            workLoadEstimator->estimate(level, workLoad_value, model);
 
             return newTime;
         }
@@ -571,7 +576,7 @@ namespace solver
 
 
 
-        amr::IWorkLoadEstimator const& getWorkLoad(int iLevel) const
+        PHARE::amr::IWorkLoadEstimator<dimension> const& getWorkLoadEstimator(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
             if (workLoads_[descriptor.workLoadIndex] == nullptr)
@@ -599,7 +604,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
-        std::vector<std::shared_ptr<PHARE::amr::IWorkLoadEstimator>> workLoads_;
+        std::vector<std::shared_ptr<PHARE::amr::IWorkLoadEstimator<dimension>>> workLoads_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -717,7 +722,7 @@ namespace solver
 
 
 
-        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad,
+        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator<dimension>> workLoad,
                           int coarsestLevel, int finestLevel)
         {
             if (core::notIn(workLoad, workLoads_))
