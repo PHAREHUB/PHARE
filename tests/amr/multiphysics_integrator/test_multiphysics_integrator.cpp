@@ -76,20 +76,18 @@ TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
 
 TYPED_TEST(SimulatorTest, hasAWorkLoadEstimatorNPPC)
 {
-    std::cout << "zob1" << std::endl;
     TypeParam sim;
-    std::cout << "zob2" << std::endl;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
-    std::cout << "zob3" << std::endl;
 
     for (int iLevel = 0; iLevel < sim.hierarchy->getNumberOfLevels(); ++iLevel)
     {
         if (isInHybridRange(iLevel))
         {
-            auto& wl_  = multiphysInteg.getWorkLoadEstimator(iLevel);
-            auto name_ = wl_.name();
-            //             EXPECT_EQ("HybridworkLoadEstimator_NPPC",
-            //             multiphysInteg.getWorkLoadEstimator(iLevel).name());
+            // auto& wl_  = multiphysInteg.getWorkLoadEstimator(iLevel);
+            // auto name_ = wl_.name();
+
+            EXPECT_EQ("HybridworkLoadEstimator_NPPC",
+                      multiphysInteg.getWorkLoadEstimator(iLevel).name());
         }
     }
 }

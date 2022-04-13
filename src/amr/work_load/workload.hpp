@@ -23,9 +23,9 @@ public:
         , workLoadVariable_{std::make_shared<SAMRAI::pdat::CellVariable<double>>(dimension_,
                                                                                  "workLoad")}
         , context_{variableDatabase_->getContext("default")}
-        , id_{variableDatabase_->registerVariableAndContext(workLoadVariable_, context_, gw0)}
+    // , id_{variableDatabase_->registerVariableAndContext(workLoadVariable_, context_, gw0)}
     {
-        // TODO
+        // TODO have the correct initialization in the ctor above
     }
 
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
@@ -36,7 +36,7 @@ public:
     virtual std::string name() const = 0;
 
 protected:
-    int const id_;
+    int const id_{12}; // TODO to be initialized in the ctor
 
 private:
     SAMRAI::hier::VariableDatabase* variableDatabase_;

@@ -15,18 +15,18 @@ template<typename PHARE_T>
 class WorkLoadEstimatorFactory
 {
 public:
-    static std::unique_ptr<IWorkLoadEstimator<PHARE_T::dimension>>
-    create(std::string modelName) //, std::string stratName)
+    static std::unique_ptr<IWorkLoadEstimator<PHARE_T::dimension>> create(std::string modelName)
     {
-        if (modelName == "HybridModel")
-        {
-            auto wl = std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
-            // wl->set_strategy(stratName);
-
-            return wl;
-        }
-        else
-            return {};
+        return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
+        // std::cout << modelName << std::endl;
+        // if (modelName == "HybridModel")
+        // {
+        //     return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
+        // }
+        // else
+        // {
+        //     return nullptr;
+        // }
     }
 };
 } // namespace PHARE::amr
