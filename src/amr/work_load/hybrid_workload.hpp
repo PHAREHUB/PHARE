@@ -62,8 +62,6 @@ void HybridWorkLoadEstimator<PHARE_T>::estimate(
 template<typename PHARE_T>
 std::string HybridWorkLoadEstimator<PHARE_T>::name() const
 {
-    if (strat_ == nullptr)
-        std::cout << "ta mere en slip" << std::endl;
     return std::string("HybridworkLoadEstimator_") + strat_->name();
 }
 

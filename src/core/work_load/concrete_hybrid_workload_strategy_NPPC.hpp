@@ -18,7 +18,7 @@ class ConcreteHybridWorkLoadEstimatorStrategyNPPC
 
 public:
     virtual void estimate(double*, HybridModel const&, typename Super::gridlayout_type const&);
-    virtual std::string name() override { return std::string("HybridWorkLoadEstimator_NPPC"); };
+    virtual std::string name() override { return std::string("NPPC"); };
 };
 
 
@@ -42,7 +42,9 @@ void ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>::estimate(
             (void)ix;
 
             // TODO : get the appropriate value with the cell_map
-            workload_val[iCell] = 1.0;
+            // workload_val[iCell] = 1.0;
+
+            // utiliser les NDArrayView pour transformer (i,j,k) en 1 indice 1D du double*
         }
     }
 }

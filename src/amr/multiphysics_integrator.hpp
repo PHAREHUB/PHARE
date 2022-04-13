@@ -488,7 +488,7 @@ namespace solver
             auto& model             = getModel_(iLevel);
             auto& fromCoarser       = getMessengerWithCoarser_(iLevel);
             auto& workLoadEstimator = getWorkLoadEstimator(iLevel);
-            auto& workLoad_value    = std::make_shared<double>();
+            double* workLoad_value;
 
 
             subcycleStartTimes_[iLevel] = currentTime;
@@ -517,7 +517,7 @@ namespace solver
                 dump_(iLevel);
             }
 
-            workLoadEstimator->estimate(level, workLoad_value, model);
+            // workLoadEstimator.estimate(*level, workLoad_value, model); // TODO
 
             return newTime;
         }
@@ -574,7 +574,7 @@ namespace solver
 
 
 
-        PHARE::amr::IWorkLoadEstimator<dimension> const& getWorkLoadEstimator(int iLevel) const
+        PHARE::amr::IWorkLoadEstimator<dimension>& getWorkLoadEstimator(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
             if (workLoads_[descriptor.workLoadIndex] == nullptr)

@@ -20,10 +20,14 @@ public:
     create(std::string stratName)
     {
         using HybridModel = typename PHARE_T::HybridModel_t;
+        std::cout << stratName << std::endl;
+
         if (stratName == "NPPC")
             return std::make_unique<ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>>();
         else
-            return {};
+        {
+            return nullptr;
+        }
     };
 };
 } // namespace PHARE::core
