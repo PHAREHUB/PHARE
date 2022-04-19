@@ -12,7 +12,7 @@
 namespace PHARE::amr
 {
 template<typename PHARE_T>
-class HybridWorkLoadEstimator : public IWorkLoadEstimator<PHARE_T::dimension>
+class HybridWorkLoadEstimator : public IWorkLoadEstimator<PHARE_T>
 {
     using HybridModel     = typename PHARE_T::HybridModel_t;
     using gridlayout_type = typename HybridModel::gridlayout_type;

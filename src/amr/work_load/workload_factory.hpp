@@ -15,7 +15,7 @@ template<typename PHARE_T>
 class WorkLoadEstimatorFactory
 {
 public:
-    static std::unique_ptr<IWorkLoadEstimator<PHARE_T::dimension>> create(std::string modelName)
+    static std::unique_ptr<IWorkLoadEstimator<PHARE_T>> create(std::string modelName)
     {
         return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
         // std::cout << modelName << std::endl;

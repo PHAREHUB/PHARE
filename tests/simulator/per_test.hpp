@@ -100,10 +100,13 @@ struct Simulator1dTest : public ::testing::Test
 };
 
 
-using Simulators1d = testing::Types<
-    SimulatorTestParam<1, 1, 2>, SimulatorTestParam<1, 1, 3>, SimulatorTestParam<1, 2, 2>,
-    SimulatorTestParam<1, 2, 3>, SimulatorTestParam<1, 2, 4>, SimulatorTestParam<1, 3, 2>,
-    SimulatorTestParam<1, 3, 3>, SimulatorTestParam<1, 3, 4>, SimulatorTestParam<1, 3, 5>>;
+using Simulators1d
+    = testing::Types<SimulatorTestParam<1, 1,
+                                        2> /*, SimulatorTestParam<1, 1, 3>, SimulatorTestParam<1,
+                2, 2>, SimulatorTestParam<1, 2, 3>, SimulatorTestParam<1, 2, 4>,
+                SimulatorTestParam<1, 3, 2>,
+                SimulatorTestParam<1, 3, 3>, SimulatorTestParam<1, 3, 4>, SimulatorTestParam<1, 3,
+                5>*/>;
 TYPED_TEST_SUITE(Simulator1dTest, Simulators1d);
 
 
