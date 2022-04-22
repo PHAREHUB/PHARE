@@ -4,6 +4,7 @@ project(phare_amr)
 set( SOURCES_INC
      work_load/workload_factory.hpp
      work_load/workload.hpp
+     work_load/workload_base.hpp
      work_load/hybrid_workload.hpp
      data/particles/refine/particles_data_split.hpp
      data/particles/refine/split.hpp
