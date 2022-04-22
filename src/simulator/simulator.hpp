@@ -267,8 +267,8 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
         = amr::WorkLoadEstimatorFactory<PHARETypes>::create("HybridModel");
     hybridWorkLoadEstimator_->set_strategy("NPPC");
 
-    multiphysInteg_->registerWorkLoadEstimator(0, maxLevelNumber_ - 1,
-                                               std::move(hybridWorkLoadEstimator_));
+    multiphysInteg_->registerWorkLoadEstimator<PHARETypes>(0, maxLevelNumber_ - 1,
+                                                           std::move(hybridWorkLoadEstimator_));
 
     if (dict["simulation"].contains("restarts"))
         startTime_ = restarts_init(dict["simulation"]["restarts"]);

@@ -242,10 +242,9 @@ namespace solver
 
 
 
-
-        void registerWorkLoadEstimator(
-            int coarsestLevel, int finestLevel,
-            std::unique_ptr<PHARE::amr::IWorkLoadEstimator<dimension>> workLoad)
+        template<typename PHARE_T>
+        void registerWorkLoadEstimator(int coarsestLevel, int finestLevel,
+                                       std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -576,7 +575,8 @@ namespace solver
 
 
 
-        PHARE::amr::IWorkLoadEstimator<dimension>& getWorkLoadEstimator(int iLevel) const
+        template<typename PHARE_T>
+        PHARE::amr::IWorkLoadEstimator& getWorkLoadEstimator(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
             if (workLoads_[descriptor.workLoadIndex] == nullptr)
@@ -604,7 +604,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
-        std::vector<std::shared_ptr<PHARE::amr::IWorkLoadEstimator<dimension>>> workLoads_;
+        std::vector<std::shared_ptr<PHARE::amr::IWorkLoadEstimator>> workLoads_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -722,7 +722,7 @@ namespace solver
 
 
 
-        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator<dimension>> workLoad,
+        void addWorkLoad_(std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad,
                           int coarsestLevel, int finestLevel)
         {
             if (core::notIn(workLoad, workLoads_))

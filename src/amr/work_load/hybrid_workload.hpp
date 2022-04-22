@@ -5,6 +5,7 @@
 #include <SAMRAI/hier/PatchLevel.h>
 
 #include "amr/work_load/workload.hpp"
+#include "amr/work_load/workload_base.hpp"
 #include "core/work_load/hybrid_workload_strategy_factory.hpp"
 
 
@@ -12,15 +13,22 @@
 namespace PHARE::amr
 {
 template<typename PHARE_T>
-class HybridWorkLoadEstimator : public IWorkLoadEstimator<PHARE_T>
+class HybridWorkLoadEstimator : public IWorkLoadEstimator, private WorkLoadEstimatorBase<PHARE_T>
 {
     using HybridModel     = typename PHARE_T::HybridModel_t;
     using gridlayout_type = typename HybridModel::gridlayout_type;
 
 public:
+    HybridWorkLoadEstimator()
+        : WorkLoadEstimatorBase<PHARE_T>{"hybrid"}
+    {
+    }
+
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&) override;
+
     virtual void set_strategy(std::string) override;
+
     std::string name() const override;
 
 private:
@@ -62,7 +70,7 @@ void HybridWorkLoadEstimator<PHARE_T>::estimate(
 template<typename PHARE_T>
 std::string HybridWorkLoadEstimator<PHARE_T>::name() const
 {
-    return std::string("HybridworkLoadEstimator_") + strat_->name();
+    return std::string("HybridWorkLoadEstimator_") + strat_->name();
 }
 
 } // namespace PHARE::amr
