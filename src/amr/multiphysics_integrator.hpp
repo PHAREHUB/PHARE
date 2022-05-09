@@ -242,7 +242,7 @@ namespace solver
 
 
 
-        template<typename PHARE_T>
+        // template<typename PHARE_T>
         void registerWorkLoadEstimator(int coarsestLevel, int finestLevel,
                                        std::unique_ptr<PHARE::amr::IWorkLoadEstimator> workLoad)
         {
@@ -486,7 +486,9 @@ namespace solver
             auto& solver            = getSolver_(iLevel);
             auto& model             = getModel_(iLevel);
             auto& fromCoarser       = getMessengerWithCoarser_(iLevel);
-            auto& workLoadEstimator = getWorkLoadEstimator(iLevel);
+            auto& workLoadEstimator = getWorkLoadEstimator(
+                iLevel); // TODO : !!!!!!!!!!!!!!!!! this method is templated with PHARE_T, which is
+                         //                          not defined here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             double* workLoad_value;
 
 
@@ -573,7 +575,7 @@ namespace solver
 
 
 
-        template<typename PHARE_T>
+        // template<typename PHARE_T>
         PHARE::amr::IWorkLoadEstimator& getWorkLoadEstimator(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
