@@ -8,6 +8,7 @@
 #include <SAMRAI/hier/VariableContext.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/pdat/CellData.h>
+#include <string>
 
 #include "amr/types/amr_types.hpp"
 #include "amr/solvers/solver.hpp"
@@ -20,9 +21,10 @@ class WorkLoadEstimatorBase
 {
 public:
     WorkLoadEstimatorBase(std::string physicalTypeOfWorkLoad)
-        : workLoadName_{physicalTypeOfWorkLoad + PHARE_T::dimension + "_" + PHARE_T::interp_order
-                        + "_" + PHARE_T::nbRefinedPart}
-        , dimension_{SAMRAI::tbox::Dimension{PHARE_T::dim}}
+        : workLoadName_{physicalTypeOfWorkLoad + std::to_string(PHARE_T::dimension) + "_"
+                        + std::to_string(PHARE_T::interp_order) + "_"
+                        + std::to_string(PHARE_T::nbRefinedPart)}
+        , dimension_{SAMRAI::tbox::Dimension{PHARE_T::dimension}}
         , workLoadVariable_{std::make_shared<SAMRAI::pdat::CellVariable<double>>(dimension_,
                                                                                  workLoadName_)}
         , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
