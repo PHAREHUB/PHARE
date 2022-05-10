@@ -3,6 +3,10 @@
 #define PHARE_HYBRID_WORKLOAD_STRATEGY_HPP
 
 
+#include <string>
+
+#include "amr/types/amr_types.hpp"
+
 
 namespace PHARE::core
 {
