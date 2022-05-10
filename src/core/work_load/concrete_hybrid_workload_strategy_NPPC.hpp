@@ -4,6 +4,7 @@
 
 
 #include "hybrid_workload_strategy.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 
 
@@ -32,10 +33,8 @@ void ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>::estimate(
     {
         auto endCell = layout.nbrCells()[0] - 1;
 
-        auto start
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
-        auto end
-            = layout.physicalEndIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
+        auto start = layout.physicalStartIndex(QtyCentering::dual, PHARE::core::Direction::X);
+        auto end   = layout.physicalEndIndex(QtyCentering::dual, PHARE::core::Direction::X);
 
         for (auto iCell = 0u, ix = start; iCell <= endCell; ++ix, ++iCell)
         {

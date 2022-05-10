@@ -2,11 +2,14 @@
 #ifndef PHARE_HYBRID_WORKLOAD_HPP
 #define PHARE_HYBRID_WORKLOAD_HPP
 
+
 #include <SAMRAI/hier/PatchLevel.h>
 
 #include "amr/work_load/workload.hpp"
 #include "amr/work_load/workload_base.hpp"
 #include "core/work_load/hybrid_workload_strategy_factory.hpp"
+#include "core/work_load/hybrid_workload_strategy.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 
 
@@ -32,7 +35,7 @@ public:
     std::string name() const override;
 
 private:
-    std::unique_ptr<HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
+    std::unique_ptr<core::HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
 };
 
 
@@ -40,7 +43,7 @@ private:
 template<typename PHARE_T>
 void HybridWorkLoadEstimator<PHARE_T>::set_strategy(std::string stratName)
 {
-    strat_ = HybridWorkLoadStrategyFactory<PHARE_T>::create(stratName);
+    strat_ = core::HybridWorkLoadStrategyFactory<PHARE_T>::create(stratName);
 };
 
 
