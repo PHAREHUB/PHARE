@@ -17,16 +17,14 @@ class WorkLoadEstimatorFactory
 public:
     static std::unique_ptr<IWorkLoadEstimator> create(std::string modelName)
     {
-        return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
-        // std::cout << modelName << std::endl;
-        // if (modelName == "HybridModel")
-        // {
-        //     return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
-        // }
-        // else
-        // {
-        //     return nullptr;
-        // }
+        if (modelName == "HybridModel")
+        {
+            return std::make_unique<HybridWorkLoadEstimator<PHARE_T>>();
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 };
 } // namespace PHARE::amr

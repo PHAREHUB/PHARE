@@ -21,7 +21,7 @@ class WorkLoadEstimatorBase
 {
 public:
     WorkLoadEstimatorBase(std::string physicalTypeOfWorkLoad)
-        : workLoadName_{physicalTypeOfWorkLoad + std::to_string(PHARE_T::dimension) + "_"
+        : workLoadName_{physicalTypeOfWorkLoad + "_" + std::to_string(PHARE_T::dimension) + "_"
                         + std::to_string(PHARE_T::interp_order) + "_"
                         + std::to_string(PHARE_T::nbRefinedPart)}
         , dimension_{SAMRAI::tbox::Dimension{PHARE_T::dimension}}
@@ -33,6 +33,7 @@ public:
               workLoadVariable_, context_, SAMRAI::hier::IntVector::getZero(dimension_))}
     {
     }
+    ~WorkLoadEstimatorBase(){};
 
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)

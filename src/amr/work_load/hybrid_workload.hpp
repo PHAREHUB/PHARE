@@ -62,8 +62,6 @@ void HybridWorkLoadEstimator<PHARE_T>::estimate(
             = dynamic_cast<SAMRAI::pdat::CellData<double>*>(patch->getPatchData(this->id_).get());
         auto workload_val = pd->getPointer();
 
-
-
         strat_->estimate(workload_val, hybridModel, layout);
     }
 };
