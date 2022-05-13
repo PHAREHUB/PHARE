@@ -33,7 +33,14 @@ public:
               workLoadVariable_, context_, SAMRAI::hier::IntVector::getZero(dimension_))}
     {
     }
-    ~WorkLoadEstimatorBase(){};
+
+    ~WorkLoadEstimatorBase()
+    {
+        assert(variableDatabase_->checkVariableExists(workLoadName_));
+        std::cout << variableDatabase_->checkVariableExists(workLoadName_) << std::endl;
+        std::cout << "zob" << std::endl;
+        variableDatabase_->removeVariable(workLoadName_);
+    };
 
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
