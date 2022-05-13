@@ -31,7 +31,9 @@ void ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>::estimate(
     typename Super::gridlayout_type const& layout)
 {
     // bool constexpr c_ordering = false;
-    auto wl_view = core::NdArrayView<dimension, float*>(workload_val, layout.nbrCells());
+    // auto wl_view = core::NdArrayView<dimension, float, float*>(workload_val, layout.nbrCells());
+    // auto tagsv = core::NdArrayView<dimension, int, int*, c_ordering>(tags, layout.nbrCells());
+
     //= core::NdArrayView<dimension, int, int*, c_ordering>(workload_val, layout.nbrCells()); TODO :
     // this new version of NDArrayView once it will be merged... or need a rebase
 

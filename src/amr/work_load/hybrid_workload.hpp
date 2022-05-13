@@ -27,6 +27,8 @@ public:
     {
     }
 
+    ~HybridWorkLoadEstimator() { std::cout << "zobi zobi" << std::endl; }
+
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&) override;
 
