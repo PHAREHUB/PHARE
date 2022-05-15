@@ -56,10 +56,7 @@ private:
     {
         auto const& [Bx, By, Bz] = B();
 
-        if constexpr (dimension == 1)
-            Jy(ijk...) = -layout_->template deriv<Direction::X>(Bz, {ijk...});
-
-        if constexpr (dimension == 2)
+        if constexpr (dimension == 1 || dimension == 2)
             Jy(ijk...) = -layout_->template deriv<Direction::X>(Bz, {ijk...});
 
         if constexpr (dimension == 3)

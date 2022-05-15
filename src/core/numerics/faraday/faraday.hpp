@@ -58,9 +58,7 @@ private:
             Bxnew(ijk...) = Bx(ijk...);
 
         if constexpr (dimension == 2)
-            Bxnew(ijk...)
-                = Bx(ijk...)
-                  - dt_ * layout_->template deriv<Direction::Y>(E(Component::Z), {ijk...});
+            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...});
 
         if constexpr (dimension == 3)
             Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...})
@@ -72,15 +70,8 @@ private:
     {
         auto const& [Ex, _, Ez] = E();
 
-        if constexpr (dimension == 1)
-            Bynew(ijk...)
-                = By(ijk...)
-                  + dt_ * layout_->template deriv<Direction::X>(E(Component::Z), {ijk...});
-
-        if constexpr (dimension == 2)
-            Bynew(ijk...)
-                = By(ijk...)
-                  + dt_ * layout_->template deriv<Direction::X>(E(Component::Z), {ijk...});
+        if constexpr (dimension == 1 || dimension == 2)
+            Bynew(ijk...) = By(ijk...) + dt_ * layout_->template deriv<Direction::X>(Ez, {ijk...});
 
         if constexpr (dimension == 3)
             Bynew(ijk...) = By(ijk...) - dt_ * layout_->template deriv<Direction::Z>(Ex, {ijk...})
