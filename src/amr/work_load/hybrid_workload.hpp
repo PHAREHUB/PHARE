@@ -16,7 +16,7 @@
 namespace PHARE::amr
 {
 template<typename PHARE_T>
-class HybridWorkLoadEstimator : public IWorkLoadEstimator, private WorkLoadEstimatorBase<PHARE_T>
+class HybridWorkLoadEstimator : public IWorkLoadEstimator, protected WorkLoadEstimatorBase<PHARE_T>
 {
     using HybridModel     = typename PHARE_T::HybridModel_t;
     using gridlayout_type = typename HybridModel::gridlayout_type;
@@ -34,7 +34,9 @@ public:
 
     virtual void set_strategy(std::string) override;
 
-    std::string name() const override;
+    virtual std::string name() const override;
+
+    virtual void cleanWorkLoadEstimator() override;
 
 private:
     std::unique_ptr<core::HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
@@ -75,6 +77,17 @@ std::string HybridWorkLoadEstimator<PHARE_T>::name() const
 {
     return std::string("HybridWorkLoadEstimator_") + strat_->name();
 }
+
+
+
+template<typename PHARE_T>
+void HybridWorkLoadEstimator<PHARE_T>::cleanWorkLoadEstimator()
+{
+    assert(variableDatabase_->checkVariableExists(workLoadName_));
+    variableDatabase_->removeVariable(workLoadName_);
+};
+
+
 
 } // namespace PHARE::amr
 
