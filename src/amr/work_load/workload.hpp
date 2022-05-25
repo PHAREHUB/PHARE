@@ -24,6 +24,7 @@ public:
         = 0;
     virtual void set_strategy(std::string) = 0;
     virtual std::string name() const       = 0;
+    virtual void cleanWorkLoadEstimator()  = 0;
 };
 
 } // namespace PHARE::amr

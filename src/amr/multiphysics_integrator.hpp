@@ -263,6 +263,15 @@ namespace solver
 
 
 
+        void cleanWorkLoadEstimator()
+        {
+            for (auto& workload : workLoads_)
+                workload->cleanWorkLoadEstimator();
+        }
+
+
+
+
         std::string solverName(int const iLevel) const { return getSolver_(iLevel).name(); }
 
 
