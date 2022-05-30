@@ -263,10 +263,10 @@ namespace solver
 
 
 
-        void cleanWorkLoadEstimator()
+        void finalizeWorkLoadEstimator()
         {
             for (auto& workload : workLoads_)
-                workload->cleanWorkLoadEstimator();
+                workload->terminateWorkLoadEstimator();
         }
 
 

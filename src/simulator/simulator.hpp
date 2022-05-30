@@ -85,7 +85,7 @@ public:
             std::cout.rdbuf(coutbuf);
 
         if (find_model("HybridModel"))
-            hybrid_close();
+            hybrid_finalize();
         else
             throw std::runtime_error("unsupported model");
     }
@@ -183,7 +183,7 @@ private:
     double restarts_init(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&);
     void hybrid_init(initializer::PHAREDict const&);
-    void hybrid_close();
+    void hybrid_finalize();
 };
 
 
@@ -292,9 +292,9 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
 
 template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-void Simulator<dim, _interp, nbRefinedPart>::hybrid_close()
+void Simulator<dim, _interp, nbRefinedPart>::hybrid_finalize()
 {
-    multiphysInteg_->cleanWorkLoadEstimator();
+    multiphysInteg_->finalizeWorkLoadEstimator();
 }
 
 
