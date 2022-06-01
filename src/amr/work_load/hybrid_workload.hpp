@@ -27,7 +27,11 @@ public:
     {
     }
 
-    ~HybridWorkLoadEstimator() { std::cout << "zobi zobi" << std::endl; }
+    ~HybridWorkLoadEstimator()
+    {
+        assert(this->variableDatabase_->checkVariableExists(this->workLoadName_));
+        this->variableDatabase_->removeVariable(this->workLoadName_);
+    }
 
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&) override;

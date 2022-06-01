@@ -34,12 +34,11 @@ public:
     {
     }
 
-    ~WorkLoadEstimatorBase()
-    {
-        assert(variableDatabase_->checkVariableExists(workLoadName_));
-        std::cout << variableDatabase_->checkVariableExists(workLoadName_) << std::endl;
-        std::cout << "zob" << std::endl;
-        variableDatabase_->removeVariable(workLoadName_);
+    ~WorkLoadEstimatorBase(){
+        // assert(variableDatabase_->checkVariableExists(workLoadName_));
+        // std::cout << variableDatabase_->checkVariableExists(workLoadName_) << std::endl;
+        // std::cout << "zob" << std::endl;
+        // variableDatabase_->removeVariable(workLoadName_);
     };
 
     virtual void estimate(SAMRAI::hier::PatchLevel, double*,
