@@ -117,7 +117,7 @@ namespace solver
         }
 
 
-        ~MultiPhysicsIntegrator() { std::cout << "zboub" << std::endl; }
+        // ~MultiPhysicsIntegrator() { std::cout << "zboub" << std::endl; }
 
 
         /* -------------------------------------------------------------------------
