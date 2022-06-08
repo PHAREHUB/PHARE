@@ -33,7 +33,7 @@ public:
         this->variableDatabase_->removeVariable(this->workLoadName_);
     }
 
-    virtual void estimate(SAMRAI::hier::PatchLevel, double*,
+    virtual void estimate(SAMRAI::hier::PatchLevel, // double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&) override;
 
     virtual void set_strategy(std::string) override;
@@ -59,8 +59,8 @@ void HybridWorkLoadEstimator<PHARE_T>::set_strategy(std::string stratName)
 template<typename PHARE_T>
 void HybridWorkLoadEstimator<PHARE_T>::estimate(
     SAMRAI::hier::PatchLevel level,
-    double* workload_val, // TODO le workload_val est defini dans le corps... ne doit pas etre un
-                          // arg de ce estimate
+    // double* workload_val, // TODO le workload_val est defini dans le corps... ne doit pas etre un
+    // arg de ce estimate
     PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const& model)
 {
     auto& hybridModel = dynamic_cast<HybridModel const&>(model);
