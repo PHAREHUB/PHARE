@@ -531,8 +531,7 @@ namespace solver
                 dump_(iLevel);
             }
 
-            // workLoadEstimator.estimate(*level, workLoad_value, model); // TODO virer le
-            // workload_value... c'est une var interne au estimate
+            // workLoadEstimator.estimate(*level, model);
 
             return newTime;
         }

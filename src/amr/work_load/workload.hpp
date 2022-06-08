@@ -19,7 +19,7 @@ namespace PHARE::amr
 class IWorkLoadEstimator
 {
 public:
-    virtual void estimate(SAMRAI::hier::PatchLevel, double*,
+    virtual void estimate(SAMRAI::hier::PatchLevel, // double*,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
         = 0;
     virtual void set_strategy(std::string)    = 0;
