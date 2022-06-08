@@ -67,7 +67,7 @@ void HybridWorkLoadEstimator<PHARE_T>::estimate(
 
     for (auto& patch : level)
     {
-        // auto const& layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
+        auto const& layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
         // auto pd
         //     =
         //     dynamic_cast<SAMRAI::pdat::CellData<double>*>(patch->getPatchData(this->id_).get());
