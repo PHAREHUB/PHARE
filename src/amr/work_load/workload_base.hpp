@@ -34,19 +34,9 @@ public:
     {
     }
 
-    ~WorkLoadEstimatorBase(){
-        // assert(variableDatabase_->checkVariableExists(workLoadName_));
-        // std::cout << variableDatabase_->checkVariableExists(workLoadName_) << std::endl;
-        // std::cout << "zob" << std::endl;
-        // variableDatabase_->removeVariable(workLoadName_);
-    };
+    ~WorkLoadEstimatorBase(){}; // TODO need to ke kept ? we have the default dtor in IWLE
 
-    // virtual void estimate(SAMRAI::hier::PatchLevel, double*,
-    //                       PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
-    //  = 0;
-    // virtual void set_strategy(std::string) = 0;
     int getID() { return id_; };
-    // virtual std::string name() const = 0;
 
 protected:
     std::string workLoadName_;
