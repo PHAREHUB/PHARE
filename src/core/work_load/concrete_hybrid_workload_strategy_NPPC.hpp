@@ -35,7 +35,7 @@ void ConcreteHybridWorkLoadEstimatorStrategyNPPC<HybridModel>::estimate(
     // auto tagsv = core::NdArrayView<dimension, int, int*, c_ordering>(tags, layout.nbrCells());
 
     //= core::NdArrayView<dimension, int, int*, c_ordering>(workload_val, layout.nbrCells()); TODO :
-    // this new version of NDArrayView once it will be merged... or need a rebase
+    // check if NDArrayView need this...
 
 
     if constexpr (dimension == 1)
