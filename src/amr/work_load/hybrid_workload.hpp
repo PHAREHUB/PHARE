@@ -58,12 +58,14 @@ void HybridWorkLoadEstimator<PHARE_T>::set_strategy(std::string stratName)
 
 template<typename PHARE_T>
 void HybridWorkLoadEstimator<PHARE_T>::estimate(
-    SAMRAI::hier::PatchLevel levels, double* workload_val,
+    SAMRAI::hier::PatchLevel level,
+    double* workload_val, // TODO le workload_val est defini dans le corps... ne doit pas etre un
+                          // arg de ce estimate
     PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const& model)
 {
     auto& hybridModel = dynamic_cast<HybridModel const&>(model);
 
-    for (auto& patch : levels)
+    for (auto& patch : level)
     {
         auto const& layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
         auto pd

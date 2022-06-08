@@ -41,19 +41,23 @@ public:
         // variableDatabase_->removeVariable(workLoadName_);
     };
 
-    virtual void estimate(SAMRAI::hier::PatchLevel, double*,
-                          PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
-        = 0;
-    virtual void set_strategy(std::string) = 0;
+    // virtual void estimate(SAMRAI::hier::PatchLevel, double*,
+    //                       PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
+    //  = 0;
+    // virtual void set_strategy(std::string) = 0;
     int getID() { return id_; };
-    virtual std::string name() const = 0;
+    // virtual std::string name() const = 0;
 
 protected:
     std::string workLoadName_;
     SAMRAI::tbox::Dimension dimension_;
-    std::shared_ptr<SAMRAI::pdat::CellVariable<double>> workLoadVariable_;
+    std::shared_ptr<SAMRAI::pdat::CellVariable<double>>
+        workLoadVariable_; // TODO has to ba a shared ptr because it is used in
+                           // variableDatabase_->registerVariableAndContext which wants a shared ptr
     SAMRAI::hier::VariableDatabase* variableDatabase_;
-    std::shared_ptr<SAMRAI::hier::VariableContext> context_;
+    std::shared_ptr<SAMRAI::hier::VariableContext>
+        context_; // TODO has to be a shared_ptr because variableDatabase_->getContext("default")
+                  // return a shared ptr
     int const id_;
 };
 

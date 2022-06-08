@@ -500,7 +500,7 @@ namespace solver
             auto& workLoadEstimator = getWorkLoadEstimator(
                 iLevel); // TODO : !!!!!!!!!!!!!!!!! this method is templated with PHARE_T, which is
                          //                          not defined here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            double* workLoad_value;
+            double* workLoad_value; // TODO a supprimer, c'est une var interne au estimate
 
 
             subcycleStartTimes_[iLevel] = currentTime;
@@ -529,7 +529,8 @@ namespace solver
                 dump_(iLevel);
             }
 
-            // workLoadEstimator.estimate(*level, workLoad_value, model); // TODO
+            // workLoadEstimator.estimate(*level, workLoad_value, model); // TODO virer le
+            // workload_value... c'est une var interne au estimate
 
             return newTime;
         }
