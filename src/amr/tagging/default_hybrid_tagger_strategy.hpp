@@ -121,7 +121,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
                 auto const& [Vz_x, Vz_y] = field_diff(Vz);
                 
                 auto crit_b              = std::max({Bx_x, Bx_y, By_x, By_y, Bz_x, Bz_y});
-                auto crit_v              = std::max({Vx_x, Vx_y, Vy_x, Vy_y, Bz_x, Bz_y});
+                auto crit_v              = std::max({Vx_x, Vx_y, Vy_x, Vy_y, Vz_x, Vz_y});
 
                 if ((crit_b > threshold_b) || (crit_v > threshold_v))
                 {
