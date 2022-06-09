@@ -27,10 +27,15 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     auto& Bx = model.state.electromag.B.getComponent(PHARE::core::Component::X);
     auto& By = model.state.electromag.B.getComponent(PHARE::core::Component::Y);
     auto& Bz = model.state.electromag.B.getComponent(PHARE::core::Component::Z);
+    
+    auto& Vx = model.state.ions.velocity().getComponent(PHARE::core::Component::X);
+    auto& Vy = model.state.ions.velocity().getComponent(PHARE::core::Component::Y);
+    auto& Vz = model.state.ions.velocity().getComponent(PHARE::core::Component::Z);
 
     auto& N = model.state.ions.density();
 
-    double threshold = 0.1;
+    double threshold_b = 0.1;
+    double threshold_v = 0.13;
 
     // we loop on cell indexes for all qties regardless of their centering
     auto const& [start_x, _]
@@ -55,7 +60,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             auto crit_bz_x = (Bz(ix + 2) - Bz(ix)) / (1 + Bz(ix + 1) - Bz(ix));
             auto criter    = std::max(crit_by_x, crit_bz_x);
 
-            if (criter > threshold)
+            if (criter > threshold_b)
             {
                 tagsv(iCell) = 1;
             }
@@ -81,7 +86,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             auto criter_b  = std::sqrt(criter_by * criter_by + criter_bz * criter_bz);
             auto criter    = criter_b;
 
-            if (criter > threshold)
+            if (criter > threshold_b)
             {
                 tagsv(iCell) = 1;
             }
@@ -104,15 +109,21 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
                 {
                     return std::make_tuple(
                         std::abs((F(ix + 2, iy) - F(ix, iy)) / (1 + F(ix + 1, iy) - F(ix, iy))),
-                        std::abs((F(ix, iy + 2) - F(ix, iy)) / (F(ix, iy + 1) - F(ix, iy) + 1)));
+                        std::abs((F(ix, iy + 2) - F(ix, iy)) / (1 + F(ix, iy + 1) - F(ix, iy))));
                 };
 
                 auto const& [Bx_x, Bx_y] = field_diff(Bx);
                 auto const& [By_x, By_y] = field_diff(By);
                 auto const& [Bz_x, Bz_y] = field_diff(Bz);
-                auto crit                = std::max({Bx_x, Bx_y, By_x, By_y, Bz_x, Bz_y});
+                
+                auto const& [Vx_x, Vx_y] = field_diff(Vx);
+                auto const& [Vy_x, Vy_y] = field_diff(Vy);
+                auto const& [Vz_x, Vz_y] = field_diff(Vz);
+                
+                auto crit_b              = std::max({Bx_x, Bx_y, By_x, By_y, Bz_x, Bz_y});
+                auto crit_v              = std::max({Vx_x, Vx_y, Vy_x, Vy_y, Bz_x, Bz_y});
 
-                if (crit > threshold)
+                if ((crit_b > threshold_b) || (crit_v > threshold_v))
                 {
                     tagsv(iTag_x, iTag_y) = 1;
                 }
