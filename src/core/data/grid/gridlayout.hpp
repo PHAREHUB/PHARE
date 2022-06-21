@@ -123,7 +123,7 @@ namespace core
             }
             else
             {
-                if (!sameSize(AMRBox, boxFromNbrCells(nbrCells)))
+                if (AMRBox.size() != boxFromNbrCells(nbrCells).size())
                 {
                     throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
                 }
@@ -177,7 +177,6 @@ namespace core
          * described by the gridlayout
          */
         auto& nbrCells() const { return nbrPhysicalCells_; }
-
 
 
         auto const& AMRBox() const { return AMRBox_; }
@@ -542,7 +541,7 @@ namespace core
         /**
          * @brief the number of ghost nodes on each side of the mesh for a given centering
          */
-        auto static nbrGhosts(QtyCentering /*centering*/ = QtyCentering::primal)
+        auto static constexpr nbrGhosts(QtyCentering /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
             static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
 
@@ -562,7 +561,7 @@ namespace core
 
 
         template<typename Quantity>
-        auto static nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
+        auto static constexpr nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
             return ConstArray<std::uint32_t, dimension>(nbrGhosts());
         }

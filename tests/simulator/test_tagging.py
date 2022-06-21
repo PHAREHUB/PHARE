@@ -123,6 +123,7 @@ class TaggingTest(unittest.TestCase):
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
+        ph.global_vars.sim=None
 
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
@@ -130,8 +131,7 @@ class TaggingTest(unittest.TestCase):
 
     @data(*_test_cases)
     def test_tagging(self, simInput):
-        # UPDATE when 2d tagging is finished
-        for ndim in [1]: #supported_dimensions():
+        for ndim in supported_dimensions():
             self._test_dump_diags(ndim, **simInput)
 
     def _test_dump_diags(self, dim, **simInput):
