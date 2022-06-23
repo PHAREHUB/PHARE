@@ -769,7 +769,7 @@ class PatchHierarchy:
                     x = np.copy(x)
                     y = np.copy(y)
                 else:
-                    data = data[patch.box]
+                    data = pdat[patch.box]
                     x = np.copy(x[nbrGhosts[0]:-nbrGhosts[0]])
                     y = np.copy(y[nbrGhosts[1]:-nbrGhosts[1]])
                 dx,dy = pdat.layout.dl
