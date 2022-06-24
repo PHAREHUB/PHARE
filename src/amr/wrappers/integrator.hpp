@@ -92,7 +92,9 @@ Integrator<_dimension>::Integrator(
     db->putDouble("start_time", startTime);
     db->putDouble("end_time", endTime);
     db->putInteger("max_integrator_steps", 1000000);
-    db->putIntegerVector("tag_buffer", std::vector<int>(hierarchy->getMaxNumberOfLevels(), dict["simulation"]["AMR"]["tag_buffer"].template to<int>()));
+    db->putIntegerVector(
+        "tag_buffer", std::vector<int>(hierarchy->getMaxNumberOfLevels(),
+                                       dict["simulation"]["AMR"]["tag_buffer"].template to<int>()));
 
 
     timeRefIntegrator_ = std::make_shared<SAMRAI::algs::TimeRefinementIntegrator>(
