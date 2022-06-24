@@ -480,7 +480,7 @@ def checker(func):
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity', 'strict', "restart_options", ]
+                             'resistivity', 'hyper_resistivity', 'strict', "restart_options", 'tag_buffer', ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -525,6 +525,8 @@ def checker(func):
         kwargs["largest_patch_size"] = largest
 
         kwargs["nesting_buffer"] = check_nesting_buffer(ndim, **kwargs)
+        
+        kwargs["tag_buffer"] = kwargs.get('tag_buffer', 1)
 
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
@@ -663,6 +665,8 @@ Adaptive Mesh Refinement (AMR) parameters
           [default=1] max number of levels in the hierarchy. Used if no refinement_boxes are set
         * *refined_particle_nbr* (``ìnt``) --
           number of refined particle per coarse particle.
+        * *tag_buffer* (``int``) --
+          [default=1] value representing the number of cells by which tagged cells are buffered before clustering into boxes.
     """
 
     @checker
