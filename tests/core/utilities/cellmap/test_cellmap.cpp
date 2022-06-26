@@ -346,7 +346,7 @@ TEST_F(CellMapExportFix, exportWithPredicate)
 {
     Box<int, 2> selectionBox{{14, 28}, {18, 37}};
     std::vector<Particle<dim>> selected;
-    cm.export_to(particles, selected, [&](auto const& cell) { return isIn(cell, selectionBox); });
+    cm.export_to_v2(particles, selected, [&](auto const& cell) { return isIn(cell, selectionBox); });
     for (auto const& p : selected)
     {
         EXPECT_TRUE(isIn(Point{p.iCell}, selectionBox));

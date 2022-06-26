@@ -136,18 +136,18 @@ public:
 
 
     // export from 'from' into 'dest' items indexed in the map found withing 'box'
-    template<typename Array>
-    void export_to(box_t const& box, Array const& from, Array& dest) const;
+    template<typename Src, typename Dst>
+    void export_to(box_t const& box, Src const& from, Dst& dest) const;
 
 
     // same as previous but applies a transformation to the items before exporting to 'dest'
-    template<typename Array, typename Transformation>
-    void export_to(box_t const& box, Array const& from, Array& dest, Transformation&& Fn) const;
+    template<typename Src, typename Dst, typename Transformation>
+    void export_to(box_t const& box, Src const& from, Dst& dest, Transformation&& Fn) const;
 
 
     // export items satisfying Predicate in 'from' into 'dest'
-    template<typename Array, typename Predicate>
-    void export_to(Array const& from, Array& dest, Predicate&& pred) const;
+    template<typename Src, typename Dst, typename Predicate>
+    void export_to_v2(Src const& from, Dst& dest, Predicate&& pred) const;
 
 
 
@@ -320,9 +320,9 @@ inline void CellMap<dim, cell_index_t>::print(CellIndex const& cell) const
 
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array>
-inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Array const& from,
-                                                  Array& dest) const
+template<typename Src, typename Dst>
+inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Src const& from,
+                                                  Dst& dest) const
 {
     for (auto const& cell : box)
     {
@@ -335,8 +335,8 @@ inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Array const&
 }
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array, typename Transformation>
-inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Array const& from, Array& dest,
+template<typename Src, typename Dst, typename Transformation>
+inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Src const& from, Dst& dest,
                                                   Transformation&& Fn) const
 {
     for (auto const& cell : box)
@@ -350,9 +350,9 @@ inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Array const&
 }
 
 template<std::size_t dim, typename cell_index_t>
-template<typename Array, typename Predicate>
-inline void CellMap<dim, cell_index_t>::export_to(Array const& from, Array& dest,
-                                                  Predicate&& pred) const
+template<typename Src, typename Dst, typename Predicate>
+inline void CellMap<dim, cell_index_t>::export_to_v2(Src const& from, Dst& dest,
+                                                     Predicate&& pred) const
 {
     for (auto const& cell : box_)
     {
