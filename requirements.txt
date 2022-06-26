@@ -1,0 +1,9 @@
+dill
+ddt
+h5py
+pyyaml
+numpy
+scipy
+matplotlib
+seaborn
+sphinx_rtd_theme

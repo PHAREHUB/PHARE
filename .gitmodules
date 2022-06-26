@@ -1,0 +1,3 @@
+[submodule "subprojects/cppdict"]
+	path = subprojects/cppdict
+	url = https://github.com/LaboratoryOfPlasmaPhysics/cppdict

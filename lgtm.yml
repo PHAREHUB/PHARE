@@ -1,0 +1,30 @@
+path_classifiers:
+  test:
+    - "tests"
+  library:
+    - "subprojects"
+extraction:
+  cpp:
+    prepare:
+      packages:
+      - build-essential
+      - cmake
+      - python3
+      - python3-pip
+      - openmpi-bin
+      - libopenmpi-dev
+    configure:
+      command:
+      - BD=$PWD
+      - SAMRAI_GIT=https://github.com/PHARCHIVE/SAMRAI_export
+      - SAMRAI_DIR=/opt/work/samrai
+      - git submodule update --init
+      - python3 -m pip install pip --upgrade
+      - python3 -m pip install -r requirements.txt --upgrade
+      - git clone $SAMRAI_GIT --depth 1 $SAMRAI_DIR -b ubuntu_18_04_openmpi
+      - cd $SAMRAI_DIR; ./unzip.sh;
+      - cd $BD; mkdir build; cd build; cmake .. -DSAMRAI_ROOT=$SAMRAI_DIR -DHighFive=OFF -DforceGetPybind=ON
+    index:
+      build_command:
+      - cd build; make
+      - ctest --output-on-failure

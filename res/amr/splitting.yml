@@ -1,0 +1,101 @@
+dimension_1:
+  interp_1:
+    N_particles_2:
+      delta:  .551569
+      weight: .5
+
+    N_particles_3:
+      delta:  1
+      weight: .5 .25
+
+  interp_2:
+    N_particles_2:
+      delta:  .663959
+      weight: .5
+
+    N_particles_3:
+        delta:  1.112033
+        weight: .468137 .265931
+
+    N_particles_4:
+        delta:  .5 1.5
+        weight: .375 .125
+
+  interp_3:
+    N_particles_2:
+      delta:  .752399
+      weight: .5
+
+    N_particles_3:
+        delta:  1.275922
+        weight: .473943 .263028
+
+    N_particles_4:
+        delta:  .542949 1.664886
+        weight: .364766 .135234
+
+    N_particles_5:
+        delta:  1 2
+        weight: .375 .250 .0625
+
+
+dimension_2:
+  interp_1:
+    N_particles_4:
+      delta:  .571783
+      weight: .25
+
+    N_particles_5:
+      delta:  .721835
+      weight: .239863 .190034
+
+    N_particles_8:
+      delta:  .700909 1.05786
+      weight: .179488 .070512
+
+    N_particles_9:
+      delta:  1
+      weight: .25 .125 .01625
+
+  interp_2:
+    N_particles_4:
+      delta:  .683734
+      weight: .25
+
+    N_particles_5:
+      delta:  1.203227
+      weight: .239166 .190209
+
+    N_particles_8:
+      delta:  .828428 1.236701
+      weight: .178624 .071376
+
+    N_particles_9:
+      delta:  1.105332 1.143884
+      weight: .213636 .126689 .069902
+
+    N_particles_16:
+      delta:  .5 1.5
+      weight: .140625 .046875 .015625
+
+  interp_3:
+    N_particles_4:
+      delta:  .776459
+      weight: .25
+
+    N_particles_5:
+      delta:  1.376953
+      weight: .242666 .189333
+
+    N_particles_8:
+      delta:  .942365 1.423324
+      weight: .179318 .070682
+
+    N_particles_9:
+      delta:  1.267689 1.315944
+      weight: .218605 .126871 .068477
+
+    N_particles_25:
+      delta:  1 2
+      weight: .140625 .09375 .0625 .0234375 .015625 .00390625
+

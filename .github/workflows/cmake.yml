@@ -1,0 +1,96 @@
+name: CMake
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, macos-latest]
+
+    steps:
+    - name: CCache
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
+        restore-keys: ${{ runner.os }}-ccache-
+
+    - name: Cache PIP (Linux)
+      uses: actions/cache@v2
+      if: startsWith(runner.os, 'Linux')
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Cache PIP (OSX)
+      uses: actions/cache@v2
+      if: startsWith(runner.os, 'macOS')
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Clone PHARE
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.6' # 3.10 is possibly too new
+
+    - name: Install system deps (openmpi, hdf5, ccache,...)
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
+        else
+          brew reinstall gcc
+          brew install open-mpi hdf5-mpi ccache
+          echo "/usr/local/opt/ccache/libexec" >> $GITHUB_PATH
+        fi
+
+    - name: Ensure ccache uses ~/.ccache
+      run: |
+          mkdir -p ~/.ccache
+          ccache --set-config=cache_dir=~/.ccache
+          ccache --get-config=cache_dir
+
+    - name: Install python deps
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: |
+        cmake $GITHUB_WORKSPACE \
+              -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
+              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 -O2"
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: cmake --build .
+
+    - name: Test
+      working-directory: ${{runner.workspace}}/build
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      shell: bash
+      run: ctest

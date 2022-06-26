@@ -1,0 +1,60 @@
+CartesianGridGeometry
+{
+    domain_boxes = [ (0, 0, 0) , (19, 19, 19) ]
+    x_lo = 0.0, 0.0, 0.0
+    x_up = 20.0, 10.0, 40.0
+    periodic_dimension = 1, 1, 1
+}
+Main
+{
+    dim = 3
+}
+PatchHierarchy
+{
+    max_levels  =   4
+    // vector of coarse ratio with dim dimension
+    ratio_to_coarser
+    {
+        level_1 =   2, 2, 2
+    }
+    largest_patch_size
+    {
+        level_0 =   20, 20, 20
+        // All finer level will use same values in as level_0
+    }
+    smallest_patch_size
+    {
+        level_0 =   10, 10, 10
+        // All finer level will use same values in as level_0
+     }
+}
+ChopAndPackLoadBalancer
+{
+    bin_pack_method = "SPATIAL"
+}
+StandardTagAndInitialize
+{
+    at_0
+    {
+        cycle = 0
+        tag_0
+        {
+            tagging_method = "REFINE_BOXES"
+            level_0
+            {
+                boxes = [ (8, 8, 8) , (12, 12, 12)]
+                // these refinement box(es) are such that the refined patches
+                // should NOT have any ghost beyond the coarest level
+                // domain boundaries, because periodicity would apply and
+                // ghost nodes would NOT have the value expected from the
+                // linear function
+            }
+        }
+    }
+}
+TileClustering
+{
+}
+GriddingAlgorithm
+{
+}

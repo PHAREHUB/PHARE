@@ -1,0 +1,11 @@
+#ifndef TESTS_REFINE_INPUT_CONFIG_HPP
+#define TESTS_REFINE_INPUT_CONFIG_HPP
+
+#include <iostream>
+#include <string>
+
+
+const std::string inputBase = "@CMAKE_CURRENT_SOURCE_DIR@/";
+
+
+#endif

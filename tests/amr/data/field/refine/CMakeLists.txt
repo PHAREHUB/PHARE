@@ -1,0 +1,42 @@
+cmake_minimum_required (VERSION 3.9)
+
+project(test-field-refine)
+
+configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
+
+if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+  file(GLOB PYFILES "*.py")
+  file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+set(SOURCES_INC
+  test_field_refinement_on_hierarchy.hpp
+  test_tag_strategy.hpp
+  ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
+   )
+
+set(SOURCES_CPP
+  test_field_refinement_on_hierarchy.cpp
+  test_field_refine.cpp)
+
+add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  ${GTEST_INCLUDE_DIRS}
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  phare_amr
+  ${GTEST_LIBS})
+
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+  $<BUILD_INTERFACE:${SAMRAI_INCLUDE_DIRS}>)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SAMRAI_LIBRARIES})
+
+add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+
+

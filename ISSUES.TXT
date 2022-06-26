@@ -1,0 +1,13 @@
+
+
+1. OMPI symbol resolution with python3.
+    Affects: OMPI versions < 3
+    Source: https://github.com/open-mpi/ompi/issues/3705
+    Solution:
+      import ctypes
+      ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
+
+2. Python launching, with C++ MPI init, doesn't work so well with MPI4PY
+    Source: https://bitbucket.org/mpi4py/mpi4py/issues/154/attempting-to-use-an-mpi-routine-before
+    Solution:
+      LD_PRELOAD=/path/to/your/libmpi.so python3 $SCRIPT
