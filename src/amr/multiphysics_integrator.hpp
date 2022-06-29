@@ -322,6 +322,7 @@ namespace solver
             auto& model            = getModel_(levelNumber);
             auto& solver           = getSolver_(levelNumber);
             auto& messenger        = getMessengerWithCoarser_(levelNumber);
+            auto& workload         = getWorkLoadEstimator(levelNumber);
             auto& levelInitializer = getLevelInitializer(model.name());
 
             bool const isRegridding = oldLevel != nullptr;
@@ -337,6 +338,7 @@ namespace solver
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
                     messenger.allocate(*patch, initDataTime);
+                    workload.allocate(*patch, initDataTime);
                 }
             }
 
