@@ -22,10 +22,9 @@ public:
     virtual void estimate(SAMRAI::hier::PatchLevel,
                           PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const&)
         = 0;
-    virtual void set_strategy(std::string)    = 0;
-    virtual std::string name() const          = 0;
-    virtual void terminateWorkLoadEstimator() = 0;
-    virtual ~IWorkLoadEstimator()             = default;
+    virtual void set_strategy(std::string) = 0;
+    virtual std::string name() const       = 0;
+    virtual ~IWorkLoadEstimator()          = default;
 };
 
 } // namespace PHARE::amr

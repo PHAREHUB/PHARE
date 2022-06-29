@@ -21,3 +21,5 @@ perf.*
 **/*.h5
 .vscode
 .cache
+*.idx
+.*.swp
