@@ -22,3 +22,4 @@ perf.*
 .vscode
 .cache/**
 **/.*.swp
+**/*.idx
