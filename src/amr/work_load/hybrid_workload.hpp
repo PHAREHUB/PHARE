@@ -40,7 +40,6 @@ public:
 
     virtual std::string name() const override;
 
-
     virtual void allocate(SAMRAI::hier::Patch&, double const) override;
 
 private:
@@ -89,6 +88,7 @@ template<typename PHARE_T>
 void HybridWorkLoadEstimator<PHARE_T>::allocate(SAMRAI::hier::Patch& patch,
                                                 double const allocateTime)
 {
+    this->allocate_(patch, allocateTime);
 }
 
 
