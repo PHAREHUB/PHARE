@@ -3,11 +3,13 @@
 #define PHARE_WORKLOAD_BASE_HPP
 
 
+#include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/pdat/CellVariable.h>
 #include <SAMRAI/hier/VariableContext.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/pdat/CellData.h>
+#include <bits/types/time_t.h>
 #include <string>
 
 #include "amr/types/amr_types.hpp"
@@ -38,6 +40,8 @@ public:
 
     int getID() { return id_; };
 
+    void allocate_(SAMRAI::hier::Patch&, double const);
+
 protected:
     std::string workLoadName_;
     SAMRAI::tbox::Dimension dimension_;
@@ -50,6 +54,15 @@ protected:
                   // return a shared ptr
     int const id_;
 };
+
+
+template<typename PHARE_T>
+void WorkLoadEstimatorBase<PHARE_T>::allocate_(SAMRAI::hier::Patch& patch,
+                                               double const allocateTime)
+{
+    patch.allocatePatchData(id_, allocateTime);
+};
+
 
 } // namespace PHARE::amr
 
