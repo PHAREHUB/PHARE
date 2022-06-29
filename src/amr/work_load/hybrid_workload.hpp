@@ -40,7 +40,6 @@ public:
 
     virtual std::string name() const override;
 
-    virtual void terminateWorkLoadEstimator() override;
 
 private:
     std::unique_ptr<core::HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
@@ -69,7 +68,7 @@ void HybridWorkLoadEstimator<PHARE_T>::estimate(
         auto pd
             = dynamic_cast<SAMRAI::pdat::CellData<double>*>(patch->getPatchData(this->id_).get());
         // auto workload_val = pd->getPointer(); // TODO this is where the problem is with tests 47,
-                                                 // 48, 48, 54, 55, 56, 57
+        // 48, 48, 54, 55, 56, 57
 
         // strat_->estimate(workload_val, hybridModel, layout);
     }
@@ -83,14 +82,6 @@ std::string HybridWorkLoadEstimator<PHARE_T>::name() const
     return std::string("HybridWorkLoadEstimator_") + strat_->name();
 }
 
-
-
-template<typename PHARE_T>
-void HybridWorkLoadEstimator<PHARE_T>::terminateWorkLoadEstimator()
-{
-    assert(this->variableDatabase_->checkVariableExists(this->workLoadName_));
-    this->variableDatabase_->removeVariable(this->workLoadName_);
-};
 
 
 

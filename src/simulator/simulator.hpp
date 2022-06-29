@@ -83,11 +83,6 @@ public:
     {
         if (coutbuf != nullptr)
             std::cout.rdbuf(coutbuf);
-
-        // if (find_model("HybridModel"))
-        // hybrid_finalize();
-        // else
-        //     throw std::runtime_error("unsupported model");
     }
 
     static constexpr std::size_t dimension     = _dimension;
@@ -183,7 +178,6 @@ private:
     double restarts_init(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&);
     void hybrid_init(initializer::PHAREDict const&);
-    void hybrid_finalize();
 };
 
 
@@ -287,14 +281,6 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
     if (dict["simulation"].contains("diagnostics"))
         diagnostics_init(dict["simulation"]["diagnostics"]);
-}
-
-
-
-template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-void Simulator<dim, _interp, nbRefinedPart>::hybrid_finalize()
-{
-    // multiphysInteg_->finalizeWorkLoadEstimator();
 }
 
 
