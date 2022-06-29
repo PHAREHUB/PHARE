@@ -41,6 +41,7 @@ public:
     virtual std::string name() const override;
 
 
+
 private:
     std::unique_ptr<core::HybridWorkLoadEstimatorStrategy<HybridModel>> strat_;
 };
