@@ -462,7 +462,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
     auto& Ne = electrons.density();
 
     auto check = [&layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
-                           FieldND const& Ne_, auto const& projector) {
+                           FieldND const& Ne_, auto const& projector) -> void {
         if constexpr (dim == 1)
         {
             auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
@@ -516,9 +516,9 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
         }
     };
 
-    check(this->Vex, this->Vix, this->Jx, Ne, GridYee::JxToMoments);
-    check(this->Vey, this->Viy, this->Jy, Ne, GridYee::JyToMoments);
-    check(this->Vez, this->Viz, this->Jz, Ne, GridYee::JzToMoments);
+    check(this->Vex, this->Vix, this->Jx, Ne, &GridYee::JxToMoments);
+    check(this->Vey, this->Viy, this->Jy, Ne, &GridYee::JyToMoments);
+    check(this->Vez, this->Viz, this->Jz, Ne, &GridYee::JzToMoments);
 }
 
 
