@@ -68,7 +68,7 @@ void HybridWorkLoadEstimator<PHARE_T>::estimate(
         auto const& layout = PHARE::amr::layoutFromPatch<gridlayout_type>(*patch);
         auto pd
             = dynamic_cast<SAMRAI::pdat::CellData<double>*>(patch->getPatchData(this->id_).get());
-        // auto workload_val = pd->getPointer(); // TODO this is where the problem is with tests 48
+        auto workload_val = pd->getPointer(); // TODO this is where the problem is with tests 48
 
         // strat_->estimate(workload_val, hybridModel, layout);
     }

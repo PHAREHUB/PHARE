@@ -20,6 +20,4 @@ tools/cmake.sh
 perf.*
 **/*.h5
 .vscode
-.cache/**
-**/.*.swp
-**/*.idx
+.cache/*
