@@ -180,7 +180,8 @@ namespace amr
                 {
                     for (auto const& particle : *sourceParticlesArray)
                     {
-                        ParticleArray refinedParticles{nbRefinedPart};
+                        std::array<typename ParticleArray::value_type, nbRefinedPart>
+                            refinedParticles;
                         auto particleRefinedPos = toFineGrid<interpOrder>(particle);
 
                         if (isCandidateForSplit_(particleRefinedPos, destinationBox))

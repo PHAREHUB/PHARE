@@ -18,7 +18,7 @@ auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId 
                              SAMRAI::hier::Index{dimension, (*box.upper).data()}, blockId};
 }
 
-template<typename Type, std::size_t dim>
+template<std::size_t dim, typename Type = int>
 auto phare_box_from(SAMRAI::hier::Box const& box)
 {
     std::array<Type, dim> lower = *reinterpret_cast<std::array<int, dim> const*>(&box.lower()[0]);
@@ -27,6 +27,19 @@ auto phare_box_from(SAMRAI::hier::Box const& box)
     return PHARE::core::Box<Type, dim>{core::Point{lower}, core::Point{upper}};
 }
 
+inline bool operator==(SAMRAI::hier::Box const& b1, SAMRAI::hier::Box const& b2)
+{
+    auto dim1 = b1.getDim().getValue();
+    auto dim2 = b2.getDim().getValue();
+
+    bool boxesAreEqual = true;
+    for (auto i = 0u; i < dim1; ++i)
+    {
+        boxesAreEqual &= b1.lower(i) == b2.lower(i);
+        boxesAreEqual &= b1.upper(i) == b2.upper(i);
+    }
+    return boxesAreEqual;
+}
 
 template<typename Type, std::size_t dim>
 struct Box : public PHARE::core::Box<Type, dim>
@@ -52,7 +65,7 @@ struct Box : public PHARE::core::Box<Type, dim>
     }
 
     Box(SAMRAI::hier::Box const& box)
-        : Super{phare_box_from<Type, dim>(box)}
+        : Super{phare_box_from<dim, Type>(box)}
     {
     }
 
