@@ -22,8 +22,6 @@
 
 namespace PHARE::core
 {
-
-
 template<std::size_t dim, typename cell_index_t = int>
 class CellMap
 {
@@ -147,7 +145,7 @@ public:
 
     // export items satisfying Predicate in 'from' into 'dest'
     template<typename Src, typename Dst, typename Predicate>
-    void export_to_v2(Src const& from, Dst& dest, Predicate&& pred) const;
+    void export_if(Src const& from, Dst& dest, Predicate&& pred) const;
 
 
 
@@ -351,8 +349,8 @@ inline void CellMap<dim, cell_index_t>::export_to(box_t const& box, Src const& f
 
 template<std::size_t dim, typename cell_index_t>
 template<typename Src, typename Dst, typename Predicate>
-inline void CellMap<dim, cell_index_t>::export_to_v2(Src const& from, Dst& dest,
-                                                     Predicate&& pred) const
+inline void CellMap<dim, cell_index_t>::export_if(Src const& from, Dst& dest,
+                                                  Predicate&& pred) const
 {
     for (auto const& cell : box_)
     {

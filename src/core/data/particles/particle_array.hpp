@@ -175,7 +175,7 @@ public:
     void export_particles(This& dest, Predicate&& pred) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn,vector)");
-        cellMap_.export_to_v2(particles_.data(), dest, std::forward<Predicate>(pred));
+        cellMap_.export_if(particles_.data(), dest, std::forward<Predicate>(pred));
     }
 
 
