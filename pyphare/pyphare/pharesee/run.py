@@ -189,13 +189,20 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
 
 
 class Run:
-    def __init__(self, path):
+    def __init__(self, path, single_hier_for_all_quantities=False):
         self.path = path
+        self.single_hier_for_all_quantities = single_hier_for_all_quantities
+        self.hier = None # only used if single_hier_for_all_quantities == True
 
     def _get_hierarchy(self, time, filename, hier=None):
         t = "{:.10f}".format(time)
-        return hierarchy_from(h5_filename=os.path.join(self.path, filename),\
-                              time=t, hier=hier)
+        def _get_hier(h):
+            return hierarchy_from(h5_filename=os.path.join(self.path, filename),\
+                              time=t, hier=h)
+        if self.single_hier_for_all_quantities:
+            self.hier = _get_hier(self.hier)
+            return self.hier
+        return _get_hier(hier)
 
     def _get(self, hierarchy, time, merged, interp):
         """
@@ -236,7 +243,7 @@ class Run:
         return self._get(hier, time, merged, interp)
 
     def GetN(self, time, pop_name, merged=False, interp='nearest'):
-        hier =  self._get_hierarchy(time, "ions_pop_{}_density.h5".format(pop_name))
+        hier =  self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5")
         return self._get(hier, time, merged, interp)
 
     def GetVi(self, time, merged=False, interp='nearest'):
@@ -244,7 +251,7 @@ class Run:
         return self._get(hier, time, merged, interp)
 
     def GetFlux(self, time, pop_name, merged=False, interp='nearest'):
-        hier = self._get_hierarchy(time, "ions_pop_{}_flux.h5".format(pop_name))
+        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5")
         return self._get(hier, time, merged, interp)
 
     def GetJ(self, time, merged=False, interp='nearest'):
@@ -324,3 +331,19 @@ class Run:
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return root_cell_width/fac
+
+
+    def GetAllAvailableQties(self, time, pops):
+        assert self.single_hier_for_all_quantities == True # can't work otherwise
+
+        self.GetParticles(time, pops)
+        self.GetB(time)
+        self.GetE(time)
+        self.GetNi(time)
+        self.GetVi(time)
+
+        for pop in pops:
+            self.GetFlux(time, pop)
+            self.GetN(time, pop)
+
+        return self.hier

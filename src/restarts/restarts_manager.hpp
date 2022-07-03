@@ -3,6 +3,7 @@
 #define PHARE_RESTART_MANAGER_HPP_
 
 #include "core/logger.hpp"
+#include "core/utilities/mpi_utils.hpp"
 #include "core/data/particles/particle_array.hpp"
 
 #include "initializer/data_provider.hpp"
@@ -49,7 +50,10 @@ public:
                                                         initializer::PHAREDict const& dict)
     {
         auto rMan = std::make_unique<RestartsManager>(Writer::make_unique(hier, model, dict));
-        if (dict.contains("write_timestamps")) // else is only loading not saving restarts
+        auto restarts_are_written = core::any(
+            core::generate([&](auto const& v) { return dict.contains(v); },
+                           std::vector<std::string>{"write_timestamps", "elapsed_timestamps"}));
+        if (restarts_are_written) // else is only loading not saving restarts
             rMan->addRestartDict(dict);
         return rMan;
     }
@@ -69,25 +73,43 @@ public:
     RestartsManager& operator=(RestartsManager&&) = delete;
 
 private:
-    bool needsAction_(double nextTime, double timeStamp, double timeStep)
+    bool needsCadenceAction_(double const nextTime, double const timeStamp,
+                             double const timeStep) const
     {
         // casting to float to truncate double to avoid trailing imprecision
         return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
     }
 
+    bool needsElapsedAction_(double const nextTime) const
+    {
+        return core::mpi::unix_timestamp_now() > nextTime;
+    }
+
 
     bool needsWrite_(RestartsProperties const& rest, double const timeStamp, double const timeStep)
     {
-        auto const& nextWrite = nextWrite_;
+        auto simUnit
+            = nextWriteSimUnit_ < rest.writeTimestamps.size()
+              and needsCadenceAction_(rest.writeTimestamps[nextWriteSimUnit_], timeStamp, timeStep);
 
-        return nextWrite < rest.writeTimestamps.size()
-               and needsAction_(rest.writeTimestamps[nextWrite], timeStamp, timeStep);
+        auto elapsed = nextWriteElapsed_ < rest.elapsedTimestamps.size()
+                       and needsElapsedAction_(rest.elapsedTimestamps[nextWriteElapsed_]);
+
+        if (simUnit)
+            ++nextWriteSimUnit_;
+        if (elapsed)
+            ++nextWriteElapsed_;
+
+        return simUnit || elapsed;
     }
 
 
     std::unique_ptr<RestartsProperties> restarts_properties_;
     std::unique_ptr<Writer> writer_;
-    std::size_t nextWrite_ = 0;
+    std::size_t nextWriteSimUnit_ = 0;
+    std::size_t nextWriteElapsed_ = 0;
+
+    std::time_t const start_time_{core::mpi::unix_timestamp_now()};
 };
 
 
@@ -100,8 +122,18 @@ RestartsManager<Writer>::addRestartDict(initializer::PHAREDict const& params)
         throw std::runtime_error("Restarts invalid, properties already set");
 
     restarts_properties_ = std::make_unique<RestartsProperties>();
-    restarts_properties_->writeTimestamps
-        = params["write_timestamps"].template to<std::vector<double>>();
+
+    if (params.contains("write_timestamps"))
+        restarts_properties_->writeTimestamps
+            = params["write_timestamps"].template to<std::vector<double>>();
+
+    if (params.contains("elapsed_timestamps"))
+    {
+        restarts_properties_->elapsedTimestamps
+            = params["elapsed_timestamps"].template to<std::vector<double>>();
+        for (auto& time : restarts_properties_->elapsedTimestamps)
+            time += start_time_; // expected for comparison later
+    }
 
     assert(params.contains("serialized_simulation"));
 
@@ -121,10 +153,7 @@ void RestartsManager<Writer>::dump(double timeStamp, double timeStep)
         return; // not active
 
     if (needsWrite_(*restarts_properties_, timeStamp, timeStep))
-    {
         writer_->dump(*restarts_properties_, timeStamp);
-        ++nextWrite_;
-    }
 }
 
 

@@ -36,6 +36,8 @@ void barrier();
 
 std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
+std::int64_t unix_timestamp_now();
+
 template<typename Data>
 auto mpi_type_for()
 {
@@ -47,6 +49,8 @@ auto mpi_type_for()
         return MPI_INT;
     else if constexpr (std::is_same_v<std::uint32_t, Data>)
         return MPI_UNSIGNED;
+    else if constexpr (std::is_same_v<std::int64_t, Data>)
+        return MPI_INT64_T;
     else if constexpr (std::is_same_v<std::uint8_t, Data>)
         return MPI_UNSIGNED_SHORT;
     else if constexpr (std::is_same_v<std::size_t, Data>)
