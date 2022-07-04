@@ -242,7 +242,8 @@ void Simulator<dim, _interp, nbRefinedPart>::diagnostics_init(initializer::PHARE
 
 
 template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict const& dict, std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
+void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(
+    initializer::PHAREDict const& dict, std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
 {
     hybridModel_ = std::make_shared<HybridModel>(
         dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
@@ -272,16 +273,19 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
                                                std::move(hybridWorkLoadEstimator_));
 
     if (dict["simulation"].contains("restarts"))
-    //{
+    {
         startTime_ = restarts_init(dict["simulation"]["restarts"]);
-    //
-    // for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); iLevel++)
-    // {
-    //     for (auto& patch : hierarchy->getPatchLevel(iLevel))
-    //     {
-    //         hybridWorkLoadEstimator_->allocate(patch, startTime_);
-    //     }
-    //}
+
+        for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); iLevel++)
+        {
+            // auto const& level = hierarchy->getPatchLevel(iLevel);
+
+            // for (auto& patch : *level)
+            // {
+            //     hybridWorkLoadEstimator_->allocate(patch, startTime_);
+            // }
+        }
+    }
 
     integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
                                                startTime_, finalTime_);
