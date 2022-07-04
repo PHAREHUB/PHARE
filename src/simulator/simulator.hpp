@@ -177,7 +177,7 @@ private:
 
     double restarts_init(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&);
-    void hybrid_init(initializer::PHAREDict const&);
+    void hybrid_init(initializer::PHAREDict const&, std::shared_ptr<PHARE::amr::Hierarchy>&);
 };
 
 
@@ -242,7 +242,7 @@ void Simulator<dim, _interp, nbRefinedPart>::diagnostics_init(initializer::PHARE
 
 
 template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict const& dict)
+void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict const& dict, std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
 {
     hybridModel_ = std::make_shared<HybridModel>(
         dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
@@ -272,17 +272,16 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
                                                std::move(hybridWorkLoadEstimator_));
 
     if (dict["simulation"].contains("restarts"))
+    //{
         startTime_ = restarts_init(dict["simulation"]["restarts"]);
+    //
+    // for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); iLevel++)
     // {
-    // startTime_ = restarts_init(dict["simulation"]["restarts"]);
-    // for (auto& level : hierarchy_)
-    // {
-    //     for (auto& patch : level)
+    //     for (auto& patch : hierarchy->getPatchLevel(iLevel))
     //     {
     //         hybridWorkLoadEstimator_->allocate(patch, startTime_);
     //     }
-    //     }
-    // }
+    //}
 
     integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
                                                startTime_, finalTime_);
@@ -313,7 +312,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
     if (find_model("HybridModel"))
-        hybrid_init(dict);
+        hybrid_init(dict, hierarchy_);
     else
         throw std::runtime_error("unsupported model");
 }
