@@ -272,17 +272,17 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
                                                std::move(hybridWorkLoadEstimator_));
 
     if (dict["simulation"].contains("restarts"))
-    // startTime_ = restarts_init(dict["simulation"]["restarts"]);
-    {
         startTime_ = restarts_init(dict["simulation"]["restarts"]);
-        for (auto& level : hierarchy_)
-        {
-            for (auto& patch : level)
-            {
-                hybridWorkLoadEstimator_->allocate(patch, startTime_);
-            }
-        }
-    }
+    // {
+    // startTime_ = restarts_init(dict["simulation"]["restarts"]);
+    // for (auto& level : hierarchy_)
+    // {
+    //     for (auto& patch : level)
+    //     {
+    //         hybridWorkLoadEstimator_->allocate(patch, startTime_);
+    //     }
+    //     }
+    // }
 
     integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
                                                startTime_, finalTime_);
