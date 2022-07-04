@@ -154,29 +154,30 @@ public:
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles");
-        cellMap_.export_to(box, particles_, dest.particles_);
+        cellMap_.export_to(box, particles_, dest);
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, ParticleArray<dim>& dest, Fn&& fn) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn)");
-        cellMap_.export_to(box, *this, dest, std::forward<Fn>(fn));
+        cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, std::vector<Particle_t>& dest, Fn&& fn) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (box, vector, Fn)");
-        cellMap_.export_to(box, particles_, dest, std::forward<Fn>(fn));
+        cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
     }
 
     template<typename Predicate>
     void export_particles(This& dest, Predicate&& pred) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn,vector)");
-        cellMap_.export_to(*this, dest, std::forward<Predicate>(pred));
+        cellMap_.export_if(particles_.data(), dest, std::forward<Predicate>(pred));
     }
+
 
     template<typename Cell>
     void change_icell(Cell const& newCell, std::size_t particleIndex)
