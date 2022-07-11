@@ -45,13 +45,9 @@ public:
 protected:
     std::string workLoadName_;
     SAMRAI::tbox::Dimension dimension_;
-    std::shared_ptr<SAMRAI::pdat::CellVariable<double>>
-        workLoadVariable_; // TODO has to ba a shared ptr because it is used in
-                           // variableDatabase_->registerVariableAndContext which wants a shared ptr
+    std::shared_ptr<SAMRAI::pdat::CellVariable<double>> workLoadVariable_;
     SAMRAI::hier::VariableDatabase* variableDatabase_;
-    std::shared_ptr<SAMRAI::hier::VariableContext>
-        context_; // TODO has to be a shared_ptr because variableDatabase_->getContext("default")
-                  // return a shared ptr
+    std::shared_ptr<SAMRAI::hier::VariableContext> context_;
     int const id_;
 };
 

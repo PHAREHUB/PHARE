@@ -51,7 +51,10 @@ namespace solver
     };
 
 
-    inline bool isRootLevel(int levelNumber) { return levelNumber == 0; }
+    inline bool isRootLevel(int levelNumber)
+    {
+        return levelNumber == 0;
+    }
 
 
     /**
@@ -492,10 +495,7 @@ namespace solver
             auto& solver            = getSolver_(iLevel);
             auto& model             = getModel_(iLevel);
             auto& fromCoarser       = getMessengerWithCoarser_(iLevel);
-            auto& workLoadEstimator = getWorkLoadEstimator(
-                iLevel); // TODO : !!!!!!!!!!!!!!!!! this method is templated with PHARE_T, which is
-                         //                          not defined here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // double* workLoad_value; // TODO a supprimer, c'est une var interne au estimate
+            auto& workLoadEstimator = getWorkLoadEstimator(iLevel);
 
 
             subcycleStartTimes_[iLevel] = currentTime;

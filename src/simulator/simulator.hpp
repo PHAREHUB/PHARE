@@ -278,7 +278,9 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(
 
         for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); iLevel++)
         {
-            // auto const& level = hierarchy->getPatchLevel(iLevel);
+            std::cout << iLevel << std::endl;
+            // auto const& level
+            // = hierarchy->getPatchLevel(iLevel); // TODO as is, this line seg fault !
 
             // for (auto& patch : *level)
             // {
