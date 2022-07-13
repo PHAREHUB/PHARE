@@ -207,16 +207,6 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   # use
   #  phare_exec(1 test_id ./binary ${CMAKE_CURRENT_BINARY_DIR})
 
-  function(phare_python3_exec level target file directory)
-    if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
-      string (REPLACE ";" " " CLI_ARGS "${ARGN}")
-      add_test(NAME py3_${target} COMMAND python3 -u ${file} ${CLI_ARGS} WORKING_DIRECTORY ${directory})
-      set_exe_paths_(py3_${target})
-    endif()
-  endfunction(phare_python3_exec)
-  # use
-  #  phare_python3_exec(1 test_id script.py ${CMAKE_CURRENT_BINARY_DIR} $ARGS)
-
 
   function(phare_mpi_python3_exec level N target file directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
@@ -238,6 +228,24 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   endfunction(phare_mpi_python3_exec)
   # use
   #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR} $ARGS)
+
+
+  if(testMPI)
+    function(phare_python3_exec level target file directory)
+      phare_mpi_python3_exec(${level} 2 ${target} ${file} ${directory})
+    endfunction(phare_python3_exec)
+  else()
+    function(phare_python3_exec level target file directory)
+      if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
+        string (REPLACE ";" " " CLI_ARGS "${ARGN}")
+        add_test(NAME py3_${target} COMMAND python3 -u ${file} ${CLI_ARGS} WORKING_DIRECTORY ${directory})
+        set_exe_paths_(py3_${target})
+      endif()
+    endfunction(phare_python3_exec)
+  endif(testMPI)
+  # use
+  #  phare_python3_exec(1 test_id script.py ${CMAKE_CURRENT_BINARY_DIR} $ARGS)
+
 
   set(GTEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIRS} ${PHARE_PROJECT_DIR})
 

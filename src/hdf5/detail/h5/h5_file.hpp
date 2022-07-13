@@ -60,20 +60,22 @@ auto vector_for_dim()
 class HighFiveFile
 {
 public:
-    static auto createHighFiveFile(std::string const path, unsigned flags)
+    static auto createHighFiveFile(std::string const path, unsigned flags, bool para)
     {
-        return HiFile
-        {
-            path, flags
+        if (para)
+            return HiFile
+            {
+                path, flags
 #if defined(H5_HAVE_PARALLEL)
-                ,
-                HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
+                    ,
+                    HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
 #endif
-        };
+            };
+        return HiFile{path, flags};
     }
 
-    HighFiveFile(std::string const path, unsigned flags = HiFile::ReadWrite)
-        : h5file_{createHighFiveFile(path, flags)}
+    HighFiveFile(std::string const path, unsigned flags = HiFile::ReadWrite, bool para = true)
+        : h5file_{createHighFiveFile(path, flags, para)}
     {
     }
 

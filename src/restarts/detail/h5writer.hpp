@@ -42,7 +42,10 @@ public:
             = modelView_.writeRestartFile(ModelView::restartFilePathForTime(path_, timestamp));
 
         // write model patch_data_ids to file with highfive
-        PHARE::hdf5::h5::HighFiveFile h5File{restart_file};
+        // SAMRAI restart files are PER RANK
+        PHARE::hdf5::h5::HighFiveFile h5File{restart_file, HighFive::File::ReadWrite,
+                                             /*para=*/false};
+
         auto patch_ids = modelView_.patch_data_ids();
         h5File.create_data_set<int>("/phare/patch/ids", patch_ids.size());
         h5File.write_data_set("/phare/patch/ids", patch_ids);
@@ -50,6 +53,8 @@ public:
         h5File.write_attribute(
             "/phare", "serialized_simulation",
             properties.fileAttributes["serialized_simulation"].template to<std::string>());
+
+        core::mpi::barrier();
     }
 
     auto& modelView() { return modelView_; }
