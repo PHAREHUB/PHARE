@@ -355,8 +355,7 @@ namespace solver
                 and SAMRAI::tbox::RestartManager::getManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
-                auto nextFiner = (coarsestLevel == finestLevel) ? coarsestLevel : coarsestLevel + 1;
-                for (auto ilvl = coarsestLevel; ilvl <= nextFiner; ++ilvl)
+                for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
                     messenger.registerLevel(hierarchy, ilvl);
                 restartInitialized_ = true;
             }
