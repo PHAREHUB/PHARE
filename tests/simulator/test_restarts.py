@@ -17,11 +17,11 @@ from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
 
 
-def permute(dic):
+def permute(dic, expected_num_levels):
     #from pyphare.pharein.simulation import supported_dimensions # eventually
     dims = [1] # supported_dimensions()
     return [
-      [dim, interp, dic] for dim in dims for interp in [1,2,3]
+      [dim, interp, dic, expected_num_levels] for dim in dims for interp in [1,2,3]
     ]
 
 
@@ -99,13 +99,13 @@ class RestartsTest(SimulatorTest):
 
     @data(
       *permute(dup(dict(
-          max_nbr_levels=2,
+          max_nbr_levels=3,
           refinement="tagging",
-      ))),
-      *permute(dup(dict())), # refinement boxes set later
+      )), expected_num_levels=3),
+      *permute(dup(dict()), expected_num_levels=2), # refinement boxes set later
     )
     @unpack
-    def test_restarts(self, dim, interp, simInput):
+    def test_restarts(self, dim, interp, simInput, expected_num_levels):
         print(f"test_restarts dim/interp:{dim}/{interp}")
 
         simput = copy.deepcopy(simInput)
@@ -114,7 +114,8 @@ class RestartsTest(SimulatorTest):
             simput[key] = [simput[key]] * dim
 
         if "refinement" not in simput:
-            b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
+            # three levels has issues with refinementboxes and possibly regridding
+            b0 = [[10] * dim, [19] * dim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
         else: # https://github.com/LLNL/SAMRAI/issues/199
           # tagging can handle more than one timestep as it does not
@@ -208,7 +209,7 @@ class RestartsTest(SimulatorTest):
                 checks += check_field(run0.GetN(time, pop), run1.GetN(time, pop))
 
             n_levels, n_patches = count_levels_and_patches(run0.GetB(time))
-            self.assertEqual(n_levels, 2) # at least 2 levels
+            self.assertEqual(n_levels, expected_num_levels) # at least 2 levels, 3 for tagging
             self.assertGreaterEqual(n_patches, n_levels) # at least one patch per level
             self.assertEqual(checks, n_quantities_per_patch * n_patches)
 
