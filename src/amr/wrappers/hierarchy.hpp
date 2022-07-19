@@ -9,7 +9,6 @@
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/mesh/BergerRigoutsos.h>
 #include <SAMRAI/mesh/GriddingAlgorithm.h>
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
 #include <SAMRAI/mesh/TreeLoadBalancer.h>

@@ -456,7 +456,7 @@ def check_optional_keywords(**kwargs):
 def check_resistivity(**kwargs):
     resistivity = kwargs.get("resistivity", 0.0)
     if resistivity < 0.0:
-            raise ValueError(f"Error: resistivity should not be negative")
+        raise ValueError(f"Error: resistivity should not be negative")
 
     return resistivity
 
@@ -469,6 +469,13 @@ def check_hyper_resistivity(**kwargs):
 
     return hyper_resistivity
 
+def check_clustering(**kwargs):
+    valid_keys = ["berger", "tile"]
+    clustering = kwargs.get("clustering", "berger")
+    if clustering not in valid_keys:
+        raise ValueError(f"Error: clustering type is not supported, supported types are {valid_keys}")
+    return clustering
+
 
 
 # ------------------------------------------------------------------------------
@@ -478,7 +485,7 @@ def checker(func):
         accepted_keywords = ['domain_size', 'cells', 'dl', 'particle_pusher', 'final_time',
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
-                             'diag_export_format', 'refinement_boxes', 'refinement',
+                             'diag_export_format', 'refinement_boxes', 'refinement', 'clustering',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
                              'resistivity', 'hyper_resistivity', 'strict', "restart_options", 'tag_buffer', ]
 
@@ -496,6 +503,7 @@ def checker(func):
         kwargs["cells"] =  cells
         kwargs["refinement_ratio"] = 2
 
+        kwargs["clustering"] = check_clustering(**kwargs)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr

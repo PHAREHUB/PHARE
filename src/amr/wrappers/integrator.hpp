@@ -7,6 +7,7 @@
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
+#include <SAMRAI/mesh/TileClustering.h>
 #include <SAMRAI/mesh/BergerRigoutsos.h>
 #include <SAMRAI/mesh/GriddingAlgorithm.h>
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
@@ -75,11 +76,27 @@ Integrator<_dimension>::Integrator(
         "StandardTagAndInitialize", tagAndInitStrategy.get(), refineDB);
 
 
-    std::shared_ptr<SAMRAI::tbox::Database> bergerDB
-        = std::make_shared<SAMRAI::tbox::MemoryDatabase>("Bergerdb");
-    bergerDB->putIntegerVector("max_box_size", std::vector<int>(dimension, 10));
-    auto clustering = std::make_shared<SAMRAI::mesh::BergerRigoutsos>(
-        SAMRAI::tbox::Dimension{dimension}, bergerDB);
+    auto clustering = [&]() -> std::shared_ptr<SAMRAI::mesh::BoxGeneratorStrategy> {
+        if (!dict["simulation"]["AMR"].contains("clustering"))
+            throw std::runtime_error(std::string{"clustering type not specificed"});
+
+        auto clustering_type = dict["simulation"]["AMR"]["clustering"].template to<std::string>();
+
+        if (clustering_type == "berger")
+        {
+            std::shared_ptr<SAMRAI::tbox::Database> bergerDB
+                = std::make_shared<SAMRAI::tbox::MemoryDatabase>("Bergerdb");
+            bergerDB->putIntegerVector("max_box_size", std::vector<int>(dimension, 10));
+            return std::make_shared<SAMRAI::mesh::BergerRigoutsos>(
+                SAMRAI::tbox::Dimension{dimension}, bergerDB);
+        }
+
+        if (clustering_type == "tile")
+            return std::make_shared<SAMRAI::mesh::TileClustering>(
+                SAMRAI::tbox::Dimension{dimension});
+
+        throw std::runtime_error(std::string{"Unknown clustering type "} + clustering_type);
+    }();
 
     auto gridding = std::make_shared<SAMRAI::mesh::GriddingAlgorithm>(
         hierarchy, "GriddingAlgorithm", std::shared_ptr<SAMRAI::tbox::Database>{}, standardTag,
