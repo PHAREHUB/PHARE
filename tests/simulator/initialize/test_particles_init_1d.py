@@ -10,6 +10,9 @@ from tests.simulator.test_initialization import InitializationTest
 
 import matplotlib
 
+from pyphare.cpp import cpp_lib
+cpp = cpp_lib()
+
 matplotlib.use("Agg")  # for systems without GUI
 
 ndim = 1
@@ -84,6 +87,17 @@ class InitializationTest(InitializationTest):
         simInput["smallest_patch_size"] = smallest_patch_size
         simInput["largest_patch_size"] = smallest_patch_size
         self._test_patch_ghost_on_refined_level_case(ndim, True, **simInput)
+
+
+
+    @data("berger", "tile")
+    def test_amr_clustering(self, clustering):
+        interp_order = 1
+        test_id = self.ddt_test_id()
+        local_out = f"test_amr_clustering/mpi/{cpp.mpi_size()}/{test_id}"
+        datahier = self.getHierarchy(interp_order, {"L0": {"B0": [(10, ), (20, )]}}, "particles", clustering=clustering, diag_outputs=local_out)
+
+
 
 
 if __name__ == "__main__":

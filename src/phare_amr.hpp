@@ -2,6 +2,8 @@
 #ifndef PHARE_AMR_INCLUDE_HPP
 #define PHARE_AMR_INCLUDE_HPP
 
+
+
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -17,12 +19,16 @@
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
+
+
 #include "phare_core.hpp"
 #include "amr/amr_constants.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/wrappers/hierarchy.hpp"
 #include "amr/wrappers/integrator.hpp"
 #include "amr/messengers/messenger_factory.hpp"
+
+
 
 namespace PHARE::amr
 {

@@ -1,4 +1,3 @@
-
 from pyphare.cpp import cpp_lib
 cpp = cpp_lib()
 
@@ -31,12 +30,13 @@ class InitializationTest(SimulatorTest):
 
 
 
+
     def getHierarchy(self, interp_order, refinement_boxes, qty,
                      diag_outputs, nbr_part_per_cell=100,
                      density = _density, extra_diag_options={},
                      beam = False, time_step_nbr=1,
                      smallest_patch_size=None, largest_patch_size=10,
-                     cells=120, dl=0.1, ndim=1):
+                     cells=120, dl=0.1, ndim=1, **kwargs):
         diag_outputs = f"phare_outputs/init/{diag_outputs}"
         from pyphare.pharein import global_vars
         global_vars.sim =None
@@ -61,6 +61,7 @@ class InitializationTest(SimulatorTest):
             diag_options={"format": "phareh5",
                           "options": extra_diag_options},
             strict=True,
+            **kwargs
         )
 
 
@@ -612,6 +613,9 @@ class InitializationTest(SimulatorTest):
                         part1 = gabox_patchData.dataset.select(ghostBox)
                         part2 = coarse_split_particles.select(ghostBox)
                         self.assertEqual(part1, part2)
+
+
+
 
 
 if __name__ == "__main__":
