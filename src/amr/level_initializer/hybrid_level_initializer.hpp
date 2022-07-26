@@ -105,10 +105,11 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
-                core::fixMomentGhosts(ions, layout);
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
+            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime,
+                                             initDataTime);
 
 
             if (isRootLevel(levelNumber))

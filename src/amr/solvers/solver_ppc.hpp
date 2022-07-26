@@ -1,5 +1,3 @@
-
-
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
@@ -589,6 +587,9 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
 
         // no need to update time, since it has been done before
     }
+    // now Ni and Vi are calculated we can fill pure ghost nodes
+    // these were not completed by the deposition of patch and levelghost particles
+    fromCoarser.fillIonMomentGhosts(ions, level, currentTime, newTime);
 }
 } // namespace PHARE::solver
 

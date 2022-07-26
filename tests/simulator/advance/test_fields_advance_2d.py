@@ -33,7 +33,7 @@ class AdvanceTest(AdvanceTestBase):
         time_step_nbr=3
         time_step=0.001
         diag_outputs=f"phare_overlaped_fields_are_equal_{ndim}_{self.ddt_test_id()}"
-        datahier = self.getHierarchy(interp_order, refinement_boxes, "eb", diag_outputs=diag_outputs,
+        datahier = self.getHierarchy(interp_order, refinement_boxes, "fields", diag_outputs=diag_outputs,
                                   time_step=time_step, time_step_nbr=time_step_nbr, ndim=ndim, nbr_part_per_cell=ppc)
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
 

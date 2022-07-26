@@ -864,7 +864,7 @@ namespace core
 
 
         /**
-         * @brief returns the centering of all hybrid quantities in all directions
+         * @brief returns the centering of a scalar hybrid quantity in each directions
          */
         constexpr static std::array<QtyCentering, dimension>
         centering(HybridQuantity::Scalar hybridQuantity)
@@ -875,7 +875,7 @@ namespace core
 
 
         /**
-         * @brief returns the centering of all hybrid quantities in all directions
+         * @brief returns the centering of a vector hybrid quantity in each directions
          */
         constexpr static std::array<std::array<QtyCentering, dimension>, 3>
         centering(HybridQuantity::Vector hybridQuantity)

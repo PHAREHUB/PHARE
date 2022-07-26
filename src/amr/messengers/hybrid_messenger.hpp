@@ -321,19 +321,24 @@ namespace amr
 
 
         /**
-         * @brief fillIonMomentGhosts is called by a ISolver solving hybrid equations to fill the
+         * @brief fillIonPopMomentGhosts is called by a ISolver solving hybrid equations to fill the
          * ion moments
          * @param ions
          * @param levelNumber
          * @param fillTime
          */
+        void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                    double const currentTime, double const fillTime)
+        {
+            strat_->fillIonPopMomentGhosts(ions, level, currentTime, fillTime);
+        }
+
+
         void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                  double const fillTime)
         {
             strat_->fillIonMomentGhosts(ions, level, fillTime);
         }
-
-
 
         // synchronization/coarsening methods
 

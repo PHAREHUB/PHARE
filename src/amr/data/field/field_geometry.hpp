@@ -2,8 +2,11 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 
 #include <cassert>
+#include <iostream>
 
+#include "SAMRAI/hier/IntVector.h"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
@@ -14,68 +17,76 @@
 #include <SAMRAI/hier/BoxGeometry.h>
 
 
-namespace PHARE::amr
-{
-class AFieldGeometry : public SAMRAI::hier::BoxGeometry
-{
-    auto get_unshared_interiorBox(SAMRAI::hier::Box const& box,
-                                  SAMRAI::hier::Box const& interiorBox)
-    {
-        if (patchBox.isSpatiallyEqual(interiorBox_))
-            return interiorBox_;
-
-        auto copy{interiorBox};
-
-        for (auto dir = PHARE::core::dirX; dir < dimension; ++dir)
-        {
-            assert(interiorBox.upper(dir) == patchBox.upper(dir)
-                   or interiorBox.upper(dir) == patchBox.upper(dir) + 1);
-
-            if (interiorBox.upper(dir) == patchBox.upper(dir) + 1)
-            {
-                copy.setLower(dir, copy.lower()(dir) + 1);
-                copy.setUpper(dir, copy.upper()(dir) - 1);
-            }
-        }
-        return copy;
-    }
-
-public:
-    virtual ~AFieldGeometry() {}
-    AFieldGeometry(std::size_t const dimension_, SAMRAI::hier::Box const& box,
-                   SAMRAI::hier::Box const& ghostBox, SAMRAI::hier::Box const& interiorBox)
-        : dimension{dimension_}
-        , patchBox{box}
-        , ghostBox_{ghostBox}
-        , interiorBox_{interiorBox}
-        , unshared_interiorBox_{get_unshared_interiorBox(box, interiorBox)}
-    {
-    }
-
-    auto const& unshared_interiorBox() const { return unshared_interiorBox_; }
-
-    std::size_t const dimension;
-    SAMRAI::hier::Box const patchBox;
-
-protected:
-    SAMRAI::hier::Box const ghostBox_;
-    SAMRAI::hier::Box const interiorBox_;
-    SAMRAI::hier::Box const unshared_interiorBox_;
-};
-
-} // namespace PHARE::amr
-
 namespace PHARE
 {
 namespace amr
 {
+
+
+    // this class is needed because the FieldFillPattern needs to cast the
+    // generic BoxGeometry into the specific geometry but cannot cast into
+    // the FieldGeometry below because it does not have the GridLayoutT and
+    // PhysicalQuantity for template arguments.
+    // this class is thus used instead and provide the method pureInteriorFieldBox()
+    // used in FieldFillPattern::calculateOverlap()
+    template<std::size_t dimension>
+    class FieldGeometryBase : public SAMRAI::hier::BoxGeometry
+    {
+    public:
+        virtual ~FieldGeometryBase() {}
+        FieldGeometryBase(SAMRAI::hier::Box const& patch_box,
+                          SAMRAI::hier::Box const& ghostFieldBox,
+                          SAMRAI::hier::Box const& interiorFieldBox,
+                          std::array<core::QtyCentering, dimension> const& centerings)
+            : patchBox{patch_box}
+            , ghostFieldBox_{ghostFieldBox}
+            , interiorFieldBox_{interiorFieldBox}
+            , centerings_{centerings}
+            , pureInteriorFieldBox_{pureInteriorBox_(interiorFieldBox, centerings)}
+        {
+        }
+
+        auto const& pureInteriorFieldBox() const { return pureInteriorFieldBox_; }
+
+        SAMRAI::hier::Box const patchBox;
+
+    protected:
+        SAMRAI::hier::Box const ghostFieldBox_;
+        SAMRAI::hier::Box const interiorFieldBox_;
+        std::array<core::QtyCentering, dimension> const centerings_;
+        SAMRAI::hier::Box const pureInteriorFieldBox_;
+
+    private:
+        static SAMRAI::hier::Box
+        pureInteriorBox_(SAMRAI::hier::Box const& interiorFieldBox,
+                         std::array<core::QtyCentering, dimension> const& centerings)
+        {
+            auto noSharedNodeBox{interiorFieldBox};
+            SAMRAI::hier::IntVector growth(SAMRAI::tbox::Dimension{dimension});
+            for (auto dir = 0u; dir < dimension; ++dir)
+            {
+                std::cout << static_cast<int>(centerings[dir]) << " and "
+                          << static_cast<int>(PHARE::core::QtyCentering::primal) << "\n";
+                if (static_cast<int>(centerings[dir]) == static_cast<int>(0))
+                {
+                    growth[dir] = -1;
+                }
+                else
+                    growth[dir] = 0;
+            }
+            noSharedNodeBox.grow(growth);
+            return noSharedNodeBox;
+        }
+    };
+
     template<typename GridLayoutT, typename PhysicalQuantity>
     /**
      * @brief The FieldGeometry class
      */
-    class FieldGeometry : public AFieldGeometry
+    class FieldGeometry : public FieldGeometryBase<GridLayoutT::dimension>
     {
     public:
+        using Super                               = FieldGeometryBase<GridLayoutT::dimension>;
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
@@ -84,8 +95,8 @@ namespace amr
          */
         FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT const& layout,
                       PhysicalQuantity const qty)
-            : AFieldGeometry{GridLayoutT::dimension, box, toFieldBox(box, qty, layout),
-                             toFieldBox(box, qty, layout, false)}
+            : Super(box, toFieldBox(box, qty, layout),
+                    toFieldBox(box, qty, layout, /*withGhost=*/false), GridLayoutT::centering(qty))
             , layout_{layout}
             , quantity_{qty}
         {
@@ -316,7 +327,7 @@ namespace amr
             // the sourceMask is a restriction of the sourceBox
             // so we need to intersect it with the sourceBox, then to apply a transformation
             // to account for the periodicity
-            SAMRAI::hier::Box sourceShift = sourceGeometry.ghostBox_ * sourceMask;
+            SAMRAI::hier::Box sourceShift = sourceGeometry.ghostFieldBox_ * sourceMask;
             sourceOffset.transform(sourceShift);
 
 
@@ -326,7 +337,7 @@ namespace amr
             core::GridLayout sourceShiftLayout = layoutFromBox(sourceShift, sourceGeometry.layout_);
             core::GridLayout fillBoxLayout     = layoutFromBox(fillBox, layout_);
 
-            auto const& destinationBox = ghostBox_;
+            auto const& destinationBox = this->ghostFieldBox_;
 
             SAMRAI::hier::Box const sourceBox{
                 toFieldBox(sourceShift, quantity_, sourceShiftLayout, !withGhosts)};
@@ -352,7 +363,7 @@ namespace amr
                 }
                 else
                 {
-                    destinationBoxes.removeIntersections(together, interiorBox_);
+                    destinationBoxes.removeIntersections(together, this->interiorFieldBox_);
                 }
             }
 

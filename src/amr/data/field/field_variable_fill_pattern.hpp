@@ -13,22 +13,35 @@ namespace PHARE::amr
 {
 /*
   This class is used from multiple schedules
-    1. To synchronize primal nodes which are duplicated across patches
-    2. To synchronize ghost values from src domain values
-  e.g. hybrid_hybrid_messenger_strategy.hpp HybridHybridMessengerStrategy::magneticSharedNodes_
-
   To know which schedule we are coming from, we have `std::optional<bool> opt_overwrite_interior_`
-    if it is == std::nullopt,
-      we are in the primal node sync step if it is set, we are in the second, patch ghost sync step.
 
-  If "std::optional<bool> opt_overwrite_interior_ == std::nullopt",
-    we set the forwarding flag of "bool overwrite_interior" to true
-      if the src.globalID > dst.globalID to end up with a single value across MPI domains.
-    we also remove the exclusive interior of the src patch to isolate only shared primal nodes.
+  the modes are :
+
+    1. To synchronize primal nodes on shared patch borders
+        e.g. hybrid_hybrid_messenger_strategy.hpp
+        HybridHybridMessengerStrategy::magneticSharedNodes_
+
+        in this case, the fillPattern is constructed
+        with "std::optional<bool> opt_overwrite_interior_ == std::nullopt",
+        we set the forwarding flag of "bool overwrite_interior" to true by default
+        and it is only set to false for one of the 2 patches involved in the overlap
+        so that only one process assigns its value to the shared border node
+        We also remove the exclusive interior of the src patch to isolate only shared primal
+  nodes.
+
+    2. To synchronize pure ghost values from src domain values
+    in that case, the optional is set to "false" and overwrite_interior takes this value
+    none of the two patches overwrites the shared border nodes and only pure ghost nodes are
+    filled.
+
+
 */
 // This class is mostly a copy of BoxGeometryVariableFillPattern
+template<std::size_t dimension>
 class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
+    constexpr static std::size_t dim = dimension;
+
 public:
     FieldFillPattern(std::optional<bool> overwrite_interior)
         : opt_overwrite_interior_{overwrite_interior}
@@ -40,9 +53,9 @@ public:
         auto const& op = dynamic_cast<AFieldRefineOperator const&>(*samrai_op);
 
         if (op.node_only)
-            return std::make_shared<FieldFillPattern>(std::nullopt);
+            return std::make_shared<FieldFillPattern<dim>>(std::nullopt);
 
-        return std::make_shared<FieldFillPattern>(false);
+        return std::make_shared<FieldFillPattern<dim>>(false);
     }
 
 
@@ -63,14 +76,19 @@ public:
         bool overwrite_interior = true; // replace func param
         assert(fn_overwrite_interior == overwrite_interior);
 
-        if (opt_overwrite_interior_)
+        if (opt_overwrite_interior_) // not node only
         {
+            // this sets overwrite_interior to false
             overwrite_interior = *opt_overwrite_interior_;
         }
-        else // assume primal node sync schedule
+
+        // opt_overwrite_interior_ is nullopt : assume primal node shared border schedule
+        else
         {
-            auto& dst_cast = dynamic_cast<AFieldGeometry const&>(dst_geometry);
-            auto& src_cast = dynamic_cast<AFieldGeometry const&>(src_geometry);
+            // cast into the Base class to get the pureInteriorFieldBox method
+            // see field_geometry.hpp for more explanations about why this base class exists
+            auto& dst_cast = dynamic_cast<FieldGeometryBase<dimension> const&>(dst_geometry);
+            auto& src_cast = dynamic_cast<FieldGeometryBase<dimension> const&>(src_geometry);
 
             if (src_cast.patchBox.getGlobalId().getOwnerRank()
                 != dst_cast.patchBox.getGlobalId().getOwnerRank())
@@ -82,11 +100,12 @@ public:
             auto& overlap      = dynamic_cast<FieldOverlap const&>(*basic_overlap);
 
             auto destinationBoxes = overlap.getDestinationBoxContainer();
-            destinationBoxes.removeIntersections(src_cast.unshared_interiorBox());
+            destinationBoxes.removeIntersections(src_cast.pureInteriorFieldBox());
 
             return std::make_shared<FieldOverlap>(destinationBoxes, overlap.getTransformation());
         }
 
+        // overwrite_interior is always false here
         return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
                                              transformation);
     }
