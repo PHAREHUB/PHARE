@@ -748,12 +748,20 @@ class PatchHierarchy:
             fig = ax.figure
 
         # assumes max 5 levels...
-        patchcolors = ["k"]*len(usr_lvls)
+        patchcolors = {ilvl:"k" for ilvl in usr_lvls}
         patchcolors = kwargs.get("patchcolors", patchcolors)
-        linewidths = [1]*len(usr_lvls)
+        if not isinstance(patchcolors,dict):
+            patchcolors = dict(zip(usr_lvls, patchcolors))
+
+        linewidths = {ilvl:1 for ilvl in usr_lvls}
         linewidths = kwargs.get("lw", linewidths)
-        linestyles = ['-']*len(usr_lvls)
+        if not isinstance(linewidths,dict):
+            linewidths = dict(zip(usr_lvls, linewidths))
+        linestyles = {ilvl:'-' for ilvl in usr_lvls}
         linestyles = kwargs.get("ls", linestyles)
+        if not isinstance(linestyles,dict):
+            linestyles = dict(zip(usr_lvls, linestyles))
+
         for lvl_nbr, lvl  in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
                 continue
