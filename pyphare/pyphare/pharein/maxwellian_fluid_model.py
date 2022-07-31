@@ -176,7 +176,7 @@ class MaxwellianFluidModel(object):
                     (pd1, pd2), box, offsets = overlap["pdatas"], overlap["box"], overlap["offset"]
                     slice1 = boxm.select(coords, boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0])))
                     slice2 = boxm.select(coords, boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1])))
-                    if not np.allclose(fn(*split_to_columns(slice1)) , fn(*split_to_columns(slice2)), atol=1e-15):
+                    if not np.allclose(fn(*split_to_columns(slice1)) , fn(*split_to_columns(slice2)), atol=1e-15, rtol=0):
                         return False
             return True
 
