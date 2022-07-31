@@ -142,104 +142,51 @@ class MaxwellianFluidModel(object):
 #------------------------------------------------------------------------------
 
     def validate(self, sim):
-        import itertools
         import numpy as np
         from ..core.gridlayout import GridLayout, directions as all_directions
         from ..core.box import Box
-        from pyphare.pharein import py_fn_wrapper
 
-        dl = np.array(sim.dl)
         directions = all_directions[:sim.ndim]
-
         domain_box = Box([0] * sim.ndim, np.asarray(sim.cells) - 1)
         assert len(sim.origin) == domain_box.ndim
+        ndim = domain_box.ndim
 
         def _primal_directions(qty):
             return [1 if yee_element_is_primal(qty, direction) else 0 for direction in directions]
 
-        def _nbrGhosts(qty, layout, primal_directions):
+        def _nbrGhosts(layout, qty, primal_directions):
             return [
-                layout.nbrGhosts(sim.interp_order, "primal" if primal_directions[dim] else "dual") for dim in range(sim.ndim)
+                layout.nbrGhosts(sim.interp_order, "primal" if primal_directions[dim] else "dual") for dim in range(ndim)
             ]
 
-        def qty_shifts(qty, nbrGhosts):
-          shifts = []
-          for dim in range(sim.ndim):
-              if yee_element_is_primal(qty, directions[dim]):
-                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim] + 1) * dl[dim]]
-              else:
-                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim]) *  dl[dim] + (.5 * dl[dim])]
-          return shifts
-
-        def _1d_check(layout, nbrGhosts, primal_directions, qty, fn):
-            fnX = py_fn_wrapper(fn)(layout.yeeCoordsFor(qty, "x"))
-            include_border = primal_directions[0]
-            np.testing.assert_allclose(fnX[:nbrGhosts * 2 + include_border] , fnX[-(nbrGhosts * 2) - include_border:], atol=1e-15)
-            return (
-                np.allclose(fnX[:nbrGhosts * 2 + include_border] , fnX[-(nbrGhosts * 2) - include_border:], atol=1e-15)
-            )
-
-
         def split_to_columns(ar):
-            ar = ar.reshape(-1, sim.ndim) # drop outer arrays if any
-            return [ar[:,dim] for dim in range(sim.ndim)]
+            ar = ar.reshape(-1, ndim) # drop outer arrays if any
+            return [ar[:,dim] for dim in range(ndim)]
 
+        def _nd_check(layout, qty, nbrGhosts, fn):
+            from pyphare.pharesee.geometry import hierarchy_overlaps
+            from pyphare.pharesee.hierarchy import hierarchy_from_box
+            from ..core import box as boxm
 
-        def _2d_check(nbrGhosts, primal_directions, qty, fn, shift):
-            layout = GridLayout(domain_box, sim.origin + (shift * sim.dl), sim.dl, sim.interp_order)
-            x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
-            y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
-            X,Y = np.meshgrid(x,y,indexing="ij")
-            coords = np.array([X.flatten(),Y.flatten()]).T
-            top = coords[:len(x)]
-            bot = coords[-len(x):]
-            left  = coords[0 :: len(x)]
-            right = coords[len(x) - 1 :: len(x)]
-            return (
-                np.allclose(fn(*split_to_columns(left)) , fn(*split_to_columns(right)), atol=1e-15) and
-                np.allclose(fn(*split_to_columns(top))  , fn(*split_to_columns(bot)), atol=1e-15)
-            )
+            hier = hierarchy_from_box(domain_box, nbrGhosts)
+            coords = layout.meshCoords(qty)
 
-        def _3d_check(nbrGhosts, primal_directions, qty, fn, shift):
-            def get_3d_faces(M):
-                def get_face(M, dim, front_side):
-                    return M[tuple((0 if front_side else -1) if i == dim else slice(None) for i in range(M.ndim))]
-                return [get_face(M, dim, front_side) for dim in range(sim.ndim) for front_side in (True, False)]
-
-            layout = GridLayout(domain_box, sim.origin + (shift * sim.dl), sim.dl, sim.interp_order)
-            x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
-            y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
-            z = layout.yeeCoordsFor(qty, "z")[nbrGhosts[2]:-(nbrGhosts[2]-1)-(primal_directions[2])]
-            coords = np.array([X.flatten(), Y.flatten(), Z.flatten()]).T.reshape((len(x), len(y), len(z), sim.ndim))
-            left, right, top, bot, front, back = get_3d_faces(coords)
-            return (
-                np.allclose(fn(split_to_columns(left)) , fn(split_to_columns(right)), atol=1e-15) and
-                np.allclose(fn(split_to_columns(top))  , fn(split_to_columns(bot)), atol=1e-15) and
-                np.allclose(fn(split_to_columns(front)), fn(split_to_columns(back)), atol=1e-15)
-            )
+            for ilvl, overlaps in hierarchy_overlaps(hier).items():
+                for overlap in overlaps:
+                    (pd1, pd2), box, offsets = overlap["pdatas"], overlap["box"], overlap["offset"]
+                    slice1 = boxm.select(coords, boxm.amr_to_local(box, boxm.shift(pd1.ghost_box, offsets[0])))
+                    slice2 = boxm.select(coords, boxm.amr_to_local(box, boxm.shift(pd2.ghost_box, offsets[1])))
+                    if not np.allclose(fn(*split_to_columns(slice1)) , fn(*split_to_columns(slice2)), atol=1e-15):
+                        return False
+            return True
 
         def periodic_function_check(vec_field, dic):
             valid = True
             for xyz in ["x", "y", "z"]:
                 qty = vec_field + xyz
-                fn = dic[qty]
-
                 layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
-                primal_directions = _primal_directions(qty)
-                nbrGhosts = _nbrGhosts(qty, layout, primal_directions)
-
-                if sim.ndim == 1:
-                    valid &= _1d_check(layout, nbrGhosts[0], primal_directions, qty, fn)
-
-                if sim.ndim == 2:
-                    permutations = itertools.product(*qty_shifts(qty, nbrGhosts))
-                    valid &= all([_2d_check(nbrGhosts, primal_directions, qty, fn, np.asarray(perm)) for perm in permutations])
-
-                if sim.ndim == 3:
-                    # untested block - add in during 3d/splitting PR https://github.com/PHAREHUB/PHARE/pull/314
-                    permutations = itertools.product(*qty_shifts(qty, nbrGhosts))
-                    valid &= all([_3d_check(nbrGhosts, primal_directions, qty, fn, np.asarray(perm)) for perm in permutations])
-
+                nbrGhosts = _nbrGhosts(layout, qty, _primal_directions(qty))
+                valid &= _nd_check(layout, qty, nbrGhosts, fn=dic[qty])
             return valid
 
         if sim.boundary_types[0] == "periodic":

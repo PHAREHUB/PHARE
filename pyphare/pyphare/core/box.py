@@ -67,6 +67,9 @@ class Box:
         return isinstance(other, Box) and (self.lower == other.lower).all() and (self.upper == other.upper).all()
 
     def __sub__(self, other):
+        if isinstance(other, (list, tuple)):
+            assert all([isinstance(item, Box) for item in other])
+            return remove_all(self, other)
         assert isinstance(other, Box)
         return remove(self, other)
 
@@ -183,5 +186,30 @@ def remove(box, to_remove):
     return list(boxes.values())
 
 
+def remove_all(box, to_remove):
+    if len(to_remove) > 0:
+        remaining = box - to_remove[0]
+        for to_rm in to_remove[1:]:
+            tmp, remove = [], []
+            for i, rem in enumerate(remaining):
+                if rem * to_rm is not None:
+                    remove.append(i)
+                    tmp += rem - to_rm
+            for rm in reversed(remove):
+                del remaining[rm]
+            remaining += tmp
+        return remaining
+    return box
+
+
+
+
 def amr_to_local(box, ref_box):
     return Box(box.lower - ref_box.lower, box.upper - ref_box.lower)
+
+
+
+
+def select(data, box):
+    return data[tuple([slice(l, u + 1) for l,u in zip(box.lower, box.upper)])]
+

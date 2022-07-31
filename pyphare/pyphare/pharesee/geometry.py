@@ -70,13 +70,16 @@ def periodicity_shifts(domain_box):
 
     if domain_box.ndim == 1:
         shape_x = domain_box.shape
-        return {
+        shifts = {
             "left" : shape_x,
             "right" : -shape_x,
         }
+        shifts.update({"leftright" : [shifts["left"], shifts["right"]]})
 
     if domain_box.ndim == 2:
         shape_x, shape_y = domain_box.shape
+
+    if domain_box.ndim > 1:
         shifts = {
             "left" : [(shape_x, 0)],
             "right" : [(-shape_x, 0)],
@@ -104,13 +107,15 @@ def periodicity_shifts(domain_box):
           "topleftright" : [
               *shifts["leftright"], *shifts["top"],
               shifts["topleft"][-1], shifts["topright"][-1]],
-          "bottomtopleftright" : [ # one patch covers domain
+          "leftrightbottomtop" : [ # one patch covers domain
               *shifts["bottomleft"], *shifts["topright"],
               shifts["bottomright"][-1], shifts["topleft"][-1]]
         })
 
     if domain_box.ndim == 3:
         raise ValueError("Unhandeled dimension")
+
+    shifts = {"".join(sorted(k)) : l for k,l in shifts.items()}
 
     return shifts
 
@@ -206,7 +211,7 @@ def compute_overlaps(patches, domain_box):
 
     for patch_i, ref_patch in enumerate(border_patches):
 
-        in_sides = borders_per_patch[ref_patch]
+        in_sides = "".join(sorted(borders_per_patch[ref_patch]))
         assert in_sides in shifts
 
         for ref_pdname, ref_pd in ref_patch.patch_datas.items():
@@ -278,34 +283,38 @@ def get_periodic_list(patches, domain_box, n_ghosts):
             shift_patch(first_patch, domain_box.shape)
             sorted_patches.append(first_patch)
 
+        return sorted_patches
+
+    dbu = domain_box.upper
+
     if dim == 2:
-
         sides = {
-            "bottom":Box([0, 0], [domain_box.upper[0], 0]),
-            "top":   Box([0, domain_box.upper[1]], [domain_box.upper[0], domain_box.upper[1]]),
-            "left" : Box([0, 0], [0, domain_box.upper[1]]),
-            "right": Box([domain_box.upper[0], 0], [domain_box.upper[0], domain_box.upper[1]])
+            "left" : Box([0, 0], [0, dbu[1]]),
+            "right": Box([dbu[0], 0], [dbu[0], dbu[1]]),
+            "bottom":Box([0, 0], [dbu[0], 0]),
+            "top":   Box([0, dbu[1]], [dbu[0], dbu[1]]),
         }
-
-        shifts = periodicity_shifts(domain_box)
-
-        def borders_per(box):
-            return "".join([key for key, side in sides.items() if box * side is not None])
-
-        for patch in patches:
-
-            in_sides = borders_per(boxm.grow(patch.box, n_ghosts))
-
-            if in_sides in shifts: # in_sides might be empty, so no borders
-                for shift in shifts[in_sides]:
-                    patch_copy = copy(patch)
-                    shift_patch(patch_copy, shift)
-                    sorted_patches.append(patch_copy)
-
-    if dim == 3:
+    else:
         raise ValueError("not yet implemented")
 
+    shifts = periodicity_shifts(domain_box)
+
+    def borders_per(box):
+        return "".join([key for key, side in sides.items() if box * side is not None])
+
+    for patch in patches:
+
+        in_sides = "".join(sorted(borders_per(boxm.grow(patch.box, n_ghosts))))
+
+        if in_sides in shifts: # in_sides might be empty, so no borders
+            for shift in shifts[in_sides]:
+                patch_copy = copy(patch)
+                shift_patch(patch_copy, shift)
+                sorted_patches.append(patch_copy)
+
     return sorted_patches
+
+
 
 
 
@@ -412,18 +421,7 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
 
                 for gabox in ghostAreaBoxes:
 
-                    remaining = gabox - check_patches[0].box
-
-                    for patch in check_patches[1:]:
-                        tmp = []
-                        remove = []
-                        for i, rem in enumerate(remaining):
-                            if rem * patch.box is not None:
-                                remove.append(i)
-                                tmp += rem - patch.box
-                        for rm in reversed(remove):
-                            del remaining[rm]
-                        remaining += tmp
+                    remaining = gabox - [p.box for p in check_patches]
 
                     if ilvl not in lvl_gaboxes:
                         lvl_gaboxes[ilvl] = {}

@@ -1502,3 +1502,17 @@ def get_times_from_h5(filepath):
     f.close()
     return times
 
+
+def hierarchy_from_box(domain_box, ghosts_nbr):
+    """
+    constructs a basic hierarchy with one patch for level 0 as the entire domain
+    """
+    layout = GridLayout(domain_box, np.asarray([0] * domain_box.ndim), [.1] * domain_box.ndim, 1)
+    pdata = PatchData(layout, "qty")
+    object.__setattr__(pdata, "ghosts_nbr", np.asarray(ghosts_nbr))
+    object.__setattr__(pdata, "ghost_box", boxm.grow(layout.box, ghosts_nbr))
+    return PatchHierarchy(
+        {0 : PatchLevel(0, [Patch({"qty": pdata})])}, domain_box
+    )
+
+
