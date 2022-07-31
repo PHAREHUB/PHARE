@@ -2,8 +2,6 @@
 
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
-from tests.diagnostic import all_timestamps
-
 from pyphare.pharein import global_vars as gv
 
 import numpy as np
@@ -18,16 +16,9 @@ def S(y, y0, l):
     return 0.5*(1. + np.tanh((y-y0)/(l)))
 
 
-def by(x, y):
-    return 0.
-
-
-def bx(x, y):
-    return 0.
-
-
-def bz(x, y):
-    return 1.
+def by(x, y): return 0.
+def bx(x, y): return 0.
+def bz(x, y): return 1.
 
 
 def b2(x, y):
@@ -77,9 +68,6 @@ def config():
         refinement_boxes={},
         hyper_resistivity=0.005,
         resistivity=0.001,
-        diag_options={"format": "phareh5",
-                      "options": {"dir": "phare_outputs/periodicity_test",
-                                  "mode":"overwrite"}},
         strict=True,
     )
 
@@ -97,35 +85,11 @@ def config():
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    sim = ph.global_vars.sim
-    timestamps = all_timestamps(sim)[1:] # skip init
-
-    for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
-
-    for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-            )
-
-    for name in ["domain","levelGhost", "patchGhost"]:
-        ph.ParticleDiagnostics(quantity=name,
-                            compute_timestamps=timestamps,
-                            write_timestamps=timestamps,
-                            population_name="protons")
 
 
 def main():
     config()
-    s = Simulator(gv.sim)
-    s.initialize()
-    s.run()
+    Simulator(gv.sim).run()
 
 
 if __name__=="__main__":
