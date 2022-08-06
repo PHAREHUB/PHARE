@@ -395,6 +395,10 @@ def check_restart_options(**kwargs):
         if "mode" not in restart_options:
             raise ValueError (f"Restart mode not set, valid modes are {valid_modes}")
 
+        if "dir" in restart_options:
+            while restart_options["dir"][-1] == "/": # samrai can't handle this
+                restart_options["dir"] = restart_options["dir"][:-1]
+
         mode = restart_options["mode"]
         if mode not in valid_modes:
             raise ValueError (f"Invalid restart mode {mode}, valid modes are {valid_modes}")
