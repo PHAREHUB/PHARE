@@ -34,7 +34,7 @@ class AdvanceTestBase(SimulatorTest):
                      smallest_patch_size=None, largest_patch_size=20,
                      cells=120, time_step=0.001, model_init={},
                      dl=0.2, extra_diag_options={}, time_step_nbr=1, timestamps=None, ndim=1,
-                     block_merging_particles=False):
+                     block_merging_particles=False, **kwargs):
 
         diag_outputs = f"phare_outputs/advance/{diag_outputs}"
         from pyphare.pharein import global_vars
@@ -59,6 +59,7 @@ class AdvanceTestBase(SimulatorTest):
             diag_options={"format": "phareh5",
                           "options": extra_diag_options},
             strict=True,
+            **kwargs,
         )
 
 
@@ -566,6 +567,32 @@ class AdvanceTestBase(SimulatorTest):
                                       qty="particles", time_step=time_step, time_step_nbr=time_step_nbr,
                                       ndim=ndim, diag_outputs=local_out, block_merging_particles=True, **kwargs))
 
+
+
+    def _test_multhreading(self, ndim, interp_order, n_threads, refinement_boxes, **kwargs):
+        assert n_threads > 1
+
+        from pyphare.pharein import global_vars
+        import random
+        rando = random.randint(0, 1e10)
+        test_id = self.ddt_test_id()
+
+        def _getHier(diag_dir, active_threads):
+            return self.getHierarchy(interp_order, refinement_boxes, "eb", cells=25,
+                time_step_nbr=2, largest_patch_size=15, nbr_part_per_cell=44,
+                diag_outputs=diag_dir, extra_diag_options={"fine_dump_lvl_max": 10}, time_step=0.001,
+                model_init={"seed": rando}, ndim=ndim, n_threads=active_threads,
+            )
+
+        serial_out = f"para_test/serial/{ndim}/{interp_order}/{cpp.mpi_size()}/{test_id}"
+        serial_hier = _getHier(serial_out, 1)
+        assert global_vars.sim.n_threads == 1
+
+        para_out = f"para_test/para/{ndim}/{interp_order}/{cpp.mpi_size()}/{test_id}"
+        para_hier = _getHier(para_out, n_threads)
+        assert global_vars.sim.n_threads == n_threads
+
+        self.assertEqual(serial_hier, para_hier)
 
 
 

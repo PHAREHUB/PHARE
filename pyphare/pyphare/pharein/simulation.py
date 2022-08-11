@@ -486,7 +486,7 @@ def checker(func):
                              'time_step', 'time_step_nbr', 'layout', 'interp_order', 'origin',
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'clustering',
-                             'smallest_patch_size', 'largest_patch_size', "diag_options",
+                             'smallest_patch_size', 'largest_patch_size', "diag_options", 'n_threads',
                              'resistivity', 'hyper_resistivity', 'strict', "restart_options", 'tag_buffer', ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -504,6 +504,7 @@ def checker(func):
         kwargs["refinement_ratio"] = 2
 
         kwargs["clustering"] = check_clustering(**kwargs)
+        kwargs["n_threads"] = kwargs.get('n_threads', 1)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr

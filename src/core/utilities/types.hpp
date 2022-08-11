@@ -215,7 +215,7 @@ namespace core
     }
 
     template<typename T, std::size_t... Is>
-    constexpr auto gft_helper(std::index_sequence<Is...> const&&)
+    constexpr auto gft_helper(std::index_sequence<Is...> const &&)
         -> decltype(std::make_tuple((Is, std::declval<T>())...));
 
     template<typename T, std::size_t N>
@@ -246,13 +246,31 @@ Multiplies product(Container const& container, Multiplies mul = 1)
     return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
 }
 
+template<typename Container, typename F>
+auto sum_from(Container const& container, F fn)
+{
+    using value_type  = typename Container::value_type;
+    using return_type = std::decay_t<std::result_of_t<F const&(value_type const&)>>;
+    return_type sum   = 0;
+    for (auto const& el : container)
+        sum += fn(el);
+    return sum;
+}
+
 template<typename Container, typename Return = typename Container::value_type>
 Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
 
-
+template<typename Type>
+auto& deref(Type& type)
+{
+    if constexpr (std::is_pointer_v<Type>)
+        return *type;
+    else
+        return type;
+}
 
 
 template<typename F>
@@ -309,7 +327,7 @@ auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
 }
 
 template<typename F, typename Type, std::size_t Size>
-auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+auto constexpr generate(F&& f, std::array<Type, Size>& arr)
 {
     return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
 }
@@ -338,6 +356,11 @@ auto none(Container const& container)
 }
 
 
+void inline abort_if(bool b)
+{
+    if (b)
+        std::abort();
+}
 
 
 } // namespace PHARE::core

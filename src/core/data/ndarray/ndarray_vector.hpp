@@ -9,6 +9,7 @@
 #include <numeric>
 #include <iostream>
 
+#include "core/utilities/types.hpp"
 
 namespace PHARE::core
 {
@@ -126,14 +127,18 @@ private:
 
 
 
-template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*,
+template<std::size_t dim, typename DataType = double, typename Pointer = DataType*,
          bool c_ordering = true>
-class NdArrayView : NdArrayViewer<dim, c_ordering, DataType>
+class NdArrayView
 {
+    using viewer = NdArrayViewer<dim, c_ordering, DataType>;
+    using This   = NdArrayView<dim, DataType, Pointer, c_ordering>;
+
 public:
     static constexpr bool is_contiguous = 1;
     static const std::size_t dimension  = dim;
     using type                          = DataType;
+    using view_t                        = This;
 
     explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
@@ -141,7 +146,8 @@ public:
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v,
+    template<typename DataType0>
+    explicit NdArrayView(std::vector<DataType0> const& v,
                          std::array<std::uint32_t, dim> const& nbCell)
         : NdArrayView{v.data(), nbCell}
     {
@@ -150,7 +156,7 @@ public:
     template<typename... Indexes>
     DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes...);
+        return viewer::at(ptr_, nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -162,7 +168,7 @@ public:
     template<typename Index>
     DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes);
+        return viewer::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
@@ -178,11 +184,25 @@ public:
     }
     auto shape() const { return nCells_; }
 
+    void zero() { std::fill(ptr_, ptr_ + core::product(nCells_), 0); }
+
 private:
     Pointer ptr_ = nullptr;
     std::array<std::uint32_t, dim> nCells_;
 };
 
+
+template<typename DataType, std::size_t dim>
+auto make_array_view(std::vector<DataType>& vec, std::array<std::uint32_t, dim> shape)
+{
+    return NdArrayView<dim, DataType>{vec.data(), shape};
+}
+
+template<typename DataType, std::size_t dim>
+auto make_array_view(std::vector<DataType> const& vec, std::array<std::uint32_t, dim> shape)
+{
+    return NdArrayView<dim, DataType const>{vec.data(), shape};
+}
 
 
 
@@ -193,6 +213,8 @@ public:
     static constexpr bool is_contiguous = 1;
     static const std::size_t dimension  = dim;
     using type                          = DataType;
+
+    using view_t = NdArrayView<dim, DataType, DataType*, c_ordering>;
 
     NdArrayVector() = delete;
 
@@ -267,6 +289,10 @@ public:
 
     auto& vector() { return data_; }
     auto& vector() const { return data_; }
+
+
+    auto& view() const { return view_t{data_.data(), nCells_}; }
+    auto& view() { return view_t{data_.data(), nCells_}; }
 
 
 private:

@@ -32,7 +32,6 @@ public:
 
     using Box               = PHARE::core::Box<int, dimension>;
     using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
-    using VecField          = typename Ions::vecfield_type;
     using ParticleArray     = typename Ions::particle_array_type;
     using Particle_t        = typename ParticleArray::Particle_t;
     using PartIterator      = typename ParticleArray::iterator;
@@ -59,7 +58,7 @@ public:
                            UpdaterMode = UpdaterMode::all);
 
 
-    void updateIons(Ions& ions, GridLayout const& layout);
+    void static updateIons(Ions& ions, GridLayout const& layout);
 
 
 private:

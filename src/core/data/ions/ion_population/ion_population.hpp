@@ -14,6 +14,7 @@
 #include "initializer/data_provider.hpp"
 #include "particle_pack.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/types.hpp"
 
 namespace PHARE
 {
@@ -133,7 +134,6 @@ namespace core
             return const_cast<ParticleArray&>(
                 static_cast<IonPopulation const*>(this)->levelGhostParticles());
         }
-
 
 
 
@@ -282,5 +282,73 @@ namespace core
     };
 } // namespace core
 } // namespace PHARE
+
+namespace PHARE::core
+{
+template<typename ParticleArray, typename VecField, typename GridLayout>
+struct IonPopulationView
+{
+    using This = IonPopulationView<ParticleArray, VecField, GridLayout>;
+
+    using particle_array_type = ParticleArray;
+    using VecFieldView_t      = typename VecField::view_t;
+    using Field_t             = typename VecField::field_type;
+    using FieldView_t         = typename Field_t::view_t;
+
+    FieldView_t density_;
+    VecFieldView_t flux_;
+    ParticleArray* domain;
+    ParticleArray* patch_ghost;
+    ParticleArray* level_ghost;
+    double const mass_;
+
+
+    auto& density() const { return density_; }
+    auto& density() { return density_; }
+
+    auto& flux() const { return flux_; }
+    auto& flux() { return flux_; }
+
+    double mass() const { return mass_; }
+    auto& domainParticles() { return *domain; }
+    auto& domainParticles() const { return *domain; }
+    auto& patchGhostParticles() { return *patch_ghost; }
+    auto& patchGhostParticles() const { return *patch_ghost; }
+    auto& levelGhostParticles() { return *level_ghost; }
+    auto& levelGhostParticles() const { return *level_ghost; }
+
+
+    auto static make(IonPopulation<ParticleArray, VecField, GridLayout>& pop)
+    {
+        return This{pop.density().view(),       pop.flux().view(),          &pop.domainParticles(),
+                    &pop.patchGhostParticles(), &pop.levelGhostParticles(), pop.mass()};
+    }
+};
+
+template<typename ParticleArray, typename VecField, typename GridLayout>
+struct IonsView
+{
+    using IonPopView = IonPopulationView<ParticleArray, VecField, GridLayout>;
+
+    using particle_array_type = ParticleArray;
+    using value_type          = IonPopView;
+
+    std::vector<IonPopView> pops;
+
+
+    auto begin() { return std::begin(pops); }
+    auto end() { return std::end(pops); }
+
+    auto begin() const { return std::begin(pops); }
+    auto end() const { return std::end(pops); }
+
+
+    template<typename Ions>
+    auto static make(Ions& ions)
+    {
+        return IonsView{generate([&](auto& pop) { return IonPopView::make(pop); }, ions)};
+    }
+};
+} // namespace PHARE::core
 
 #endif

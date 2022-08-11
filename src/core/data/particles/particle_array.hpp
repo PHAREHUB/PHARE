@@ -91,8 +91,10 @@ public:
         particles_.insert(position, first, last);
     }
 
-    auto back() { return particles_.back(); }
-    auto front() { return particles_.front(); }
+    auto& back() { return particles_.back(); }
+    auto& back() const { return particles_.back(); }
+    auto& front() { return particles_.front(); }
+    auto& front() const { return particles_.front(); }
 
     auto erase(IndexRange_& range) { cellMap_.erase(particles_, range); }
     auto erase(IndexRange_&& range)

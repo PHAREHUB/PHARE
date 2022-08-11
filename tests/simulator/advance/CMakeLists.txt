@@ -20,4 +20,6 @@ if(HighFive)
 
   endif()
 
+  add_no_mpi_python3_test(multithreading_nd test_multithreading.py ${CMAKE_CURRENT_BINARY_DIR})
+
 endif()

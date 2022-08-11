@@ -10,6 +10,17 @@
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "initializer/data_provider.hpp"
 
+namespace PHARE::core
+{
+template<typename VecField>
+struct ElectromagView
+{
+    using view_t         = ElectromagView<VecField>;
+    using VecFieldView_t = typename VecField::view_t;
+
+    VecFieldView_t E, B;
+};
+} // namespace PHARE::core
 
 namespace PHARE
 {
@@ -19,6 +30,8 @@ namespace core
     class Electromag
     {
     public:
+        using view_t = ElectromagView<VecFieldT>;
+
         static constexpr std::size_t dimension = VecFieldT::dimension;
 
         explicit Electromag(std::string name)
@@ -71,6 +84,9 @@ namespace core
             E.copyData(source.E);
             B.copyData(source.B);
         }
+
+        auto view() { return view_t{E.view(), B.view()}; }
+        auto view() const { return view_t{E.view(), B.view()}; }
 
         VecFieldT E;
         VecFieldT B;

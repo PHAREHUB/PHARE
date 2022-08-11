@@ -149,7 +149,11 @@ class FieldData(PatchData):
 
         self.dataset = data
 
+    def compare(self, that, atol=1e-16, rtol=0):
+        return isinstance(that, FieldData) and np.allclose(self.dataset, that.dataset, atol=atol, rtol=rtol)
 
+    def __eq__(self, that):
+        return self.compare(that)
 
 
 class ParticleData(PatchData):
@@ -540,6 +544,13 @@ class PatchHierarchy:
 
         if data_files is not None:
             self.data_files.update(data_files)
+
+
+
+    def __eq__(self, that):
+        return hierarchy_compare(self, that)
+
+
 
     def _default_time(self):
         return self.times()[0]
@@ -1502,3 +1513,41 @@ def get_times_from_h5(filepath):
     f.close()
     return times
 
+
+
+def hierarchy_compare(this, that):
+    if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
+        return False
+
+    if this.ndim != that.ndim or this.domain_box != that.domain_box:
+        return False
+
+    if this.time_hier.keys() != that.time_hier.keys():
+        return False
+
+    for tidx in this.times():
+        patch_levels_ref = this.time_hier[tidx]
+        patch_levels_cmp = that.time_hier[tidx]
+
+        if patch_levels_ref.keys() != patch_levels_cmp.keys():
+            return False
+
+        for level_idx in patch_levels_cmp.keys():
+            patch_level_ref = patch_levels_ref[level_idx]
+            patch_level_cmp = patch_levels_cmp[level_idx]
+
+            for patch_idx in range(len(patch_level_cmp.patches)):
+                patch_ref = patch_level_ref.patches[patch_idx]
+                patch_cmp = patch_level_cmp.patches[patch_idx]
+
+                if patch_ref.patch_datas.keys() != patch_cmp.patch_datas.keys():
+                    return False
+
+                for patch_data_key in patch_ref.patch_datas.keys():
+                    patch_data_ref = patch_ref.patch_datas[patch_data_key]
+                    patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
+
+                    if patch_data_cmp != patch_data_ref:
+                        return False
+
+    return True

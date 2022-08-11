@@ -6,9 +6,105 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "core/data/field/field.hpp"
 #include "vecfield_component.hpp"
+
+#include "core/utilities/types.hpp"
+#include "core/data/field/field.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
+
+
+namespace PHARE::core
+{
+template<typename Field>
+class VecFieldView
+{
+public:
+    using This                             = VecFieldView<Field>;
+    using field_type                       = Field;
+    using Components                       = std::array<Field, 3>;
+    static constexpr std::size_t dimension = Field::dimension;
+
+    template<typename VecField>
+    static constexpr Components make_components_from(VecField& vecfield)
+    {
+        return core::generate(
+            [&](auto& field_) {
+                auto& field = core::deref(field_); // might be a pointer
+                return field_type{field.data(), field.shape(), field.physicalQuantity()};
+            },
+            vecfield.components_);
+    }
+
+
+    VecFieldView(Components components)
+        : components_{components}
+    {
+    }
+
+
+    template<typename VecField>
+    VecFieldView(VecField& vecfield)
+        : components_{make_components_from(vecfield)}
+    {
+    }
+
+    VecFieldView()                    = default;
+    VecFieldView(VecFieldView const&) = default;
+    VecFieldView(VecFieldView&&)      = default;
+
+    auto& getComponent(Component component) const
+    {
+        switch (component)
+        {
+            case Component::X: return core::deref(components_[0]);
+            case Component::Y: return core::deref(components_[1]);
+            case Component::Z: return core::deref(components_[2]);
+        }
+        throw std::runtime_error("Error - VecFieldView not usable");
+    }
+
+
+    auto& getComponent(Component component)
+    {
+        switch (component)
+        {
+            case Component::X: return core::deref(components_[0]);
+            case Component::Y: return core::deref(components_[1]);
+            case Component::Z: return core::deref(components_[2]);
+        }
+        throw std::runtime_error("Error - VecFieldView not usable");
+    }
+
+    auto& operator()(Component component) const { return getComponent(component); }
+    auto& operator()(Component component) { return getComponent(component); }
+
+
+    auto getComponents() const { return std::forward_as_tuple((*this)[0], (*this)[1], (*this)[2]); }
+    auto getComponents() { return std::forward_as_tuple((*this)[0], (*this)[1], (*this)[2]); }
+
+    auto operator()() const { return getComponents(); }
+    auto operator()() { return getComponents(); }
+
+    auto begin() const { return components_.begin(); }
+    auto begin() { return components_.begin(); }
+
+    auto end() const { return components_.end(); }
+    auto end() { return components_.end(); }
+
+    auto& operator[](std::size_t i) { return core::deref(components_[i]); }
+    auto& operator[](std::size_t i) const { return core::deref(components_[i]); }
+
+    void zero()
+    {
+        for (auto& component : components_)
+            core::deref(component).zero();
+    }
+
+protected:
+    Components components_;
+};
+
+} // namespace PHARE::core
 
 namespace PHARE
 {
@@ -23,10 +119,21 @@ namespace core
      *  VecField class is templated by the type of NdArray Field use and which
      *  physical quantities they represent.
      */
+
     template<typename NdArrayImpl, typename PhysicalQuantity, typename DataType = double>
-    class VecField
+    class VecField : public VecFieldView<Field<NdArrayImpl, typename PhysicalQuantity::Scalar>*>
     {
     public:
+        using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
+        using Super      = VecFieldView<field_type*>;
+
+        using data_view_t = typename NdArrayImpl::view_t;
+        using view_t      = VecFieldView<FieldView<data_view_t, typename PhysicalQuantity::Scalar>>;
+
+        using Super::components_;
+        using Super::getComponent;
+        using Super::getComponents;
+
         VecField()                                 = delete;
         VecField& Vecfield(VecField const& source) = delete;
         VecField(VecField&& source)                = default;
@@ -43,12 +150,11 @@ namespace core
          * @param physQty is any of the vector physical quantities available in PHARE
          */
         VecField(std::string const& name, typename PhysicalQuantity::Vector physQty)
-            : name_{name}
+            : Super{ConstArray<field_type*, 3>(nullptr)}
+            , name_{name}
             , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
         {
         }
-
-
 
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface
@@ -61,8 +167,6 @@ namespace core
         };
 
         using resources_properties = std::vector<VecFieldProperties>;
-
-        using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
         resources_properties getFieldNamesAndQuantities() const
         {
@@ -100,16 +204,11 @@ namespace core
 
         void zero()
         {
-            if (isUsable())
-            {
-                for (auto& component : components_)
-                    component->zero();
-            }
-            else
-            {
+            if (!isUsable())
                 throw std::runtime_error(
                     "Error, cannot zero the VecField because it is not usable");
-            }
+
+            Super::zero();
         }
 
 
@@ -118,41 +217,6 @@ namespace core
         //-------------------------------------------------------------------------
 
         std::string const& name() const { return name_; }
-
-
-
-        Field<NdArrayImpl, typename PhysicalQuantity::Scalar>& getComponent(Component component)
-        {
-            if (isUsable())
-            {
-                switch (component)
-                {
-                    case Component::X: return *components_[0];
-                    case Component::Y: return *components_[1];
-                    case Component::Z: return *components_[2];
-                }
-            }
-            throw std::runtime_error("Error - VecField not usable");
-        }
-
-
-
-
-        Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
-        getComponent(Component component) const
-        {
-            if (isUsable())
-            {
-                switch (component)
-                {
-                    case Component::X: return *components_[0];
-                    case Component::Y: return *components_[1];
-                    case Component::Z: return *components_[2];
-                }
-            }
-            throw std::runtime_error("Error - VecField not usable");
-        }
-
 
 
         std::string getComponentName(Component component) const
@@ -185,36 +249,22 @@ namespace core
 
         void copyData(VecField const& source)
         {
-            if (isUsable() && source.isUsable())
-            {
-                for (std::size_t i = 0; i < 3; ++i)
-                {
-                    components_[i]->copyData(*source.components_[i]);
-                }
-            }
-            else
-            {
+            if (!(isUsable() && source.isUsable()))
                 throw std::runtime_error("Error, unusable VecField, cannot copyData");
-            }
+
+            for (std::size_t i = 0; i < 3; ++i)
+                components_[i]->copyData(*source.components_[i]);
         }
 
 
-        auto begin() { return std::begin(components_); }
-
-        auto cbegin() const { return std::cbegin(components_); }
-
-        auto end() { return std::end(components_); }
-
-        auto cend() const { return std::cend(components_); }
-
-
+        auto view() { return view_t{*this}; }
+        auto view() const { return view_t{*this}; }
 
     private:
         std::string name_ = "No Name";
         std::array<typename PhysicalQuantity::Scalar, 3> physQties_;
 
         const std::array<std::string, 3> componentNames_{name_ + "_x", name_ + "_y", name_ + "_z"};
-        std::array<field_type*, 3> components_{nullptr, nullptr, nullptr};
 
         const std::unordered_map<std::string, std::size_t> nameToIndex_{
             {componentNames_[0], 0u}, {componentNames_[1], 1u}, {componentNames_[2], 2u}};
