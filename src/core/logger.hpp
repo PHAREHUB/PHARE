@@ -3,6 +3,10 @@
 #define PHARE_CORE_LOGGER_HPP
 
 
+#include <string>
+#include <utility>
+
+
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
 #define PHARE_LOG_LINE_STR(str)                                                                    \
     std::cout << __FILE__ << ":" << __LINE__ << " - " << str << std::endl;
@@ -15,13 +19,14 @@
 
 
 #if PHARE_WITH_CALIPER
+
 #include "caliper/cali.h"
 
 #define PHARE_LOG_START(str) CALI_MARK_BEGIN(str)
 #define PHARE_LOG_STOP(str) CALI_MARK_END(str)
 #define PHARE_LOG_SCOPE(str) PHARE::scope_log __phare_scope##__line__(str)
 
-#else
+#else // !PHARE_WITH_CALIPER
 
 #define PHARE_LOG_START(str)
 #define PHARE_LOG_STOP(str)
@@ -29,8 +34,6 @@
 
 #endif
 
-#include <string>
-#include <utility>
 
 namespace PHARE
 {

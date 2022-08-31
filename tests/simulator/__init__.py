@@ -1,8 +1,13 @@
 
 import unittest
 from datetime import datetime
-import pyphare.pharein as ph, numpy as np
-from pyphare.pharein import ElectronModel
+
+#import ctypes
+# ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
+
+
+import numpy as np
+import pyphare.pharein as ph
 
 
 def parse_cli_args(pop_from_sys = True):
@@ -28,13 +33,12 @@ class NoOverwriteDict(dict):
 def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     from pyphare.pharein.simulation import valid_refined_particle_nbr
     from pyphare.pharein.simulation import check_patch_size
+    from pyphare.core.phare_utilities import np_array_ify
 
-    cells = kwargs.get("cells", [20 for i in range(dim)])
-    if not isinstance(cells, (list, tuple)):
-        cells = [cells] * dim
+    cells = np_array_ify(kwargs.get("cells", [20 for i in range(dim)]), dim)
 
     _, smallest_patch_size = check_patch_size(dim, interp_order=interp, cells=cells)
-    dl = [1.0 / v for v in cells]
+    dl = 1.0 / cells
     b0 = [[3] * dim, [8] * dim]
     args = {
         "interp_order": interp,
@@ -54,7 +58,8 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     for k, v in kwargs.items():
         if k in args:
             args[k] = v
-
+    args["cells"] = np_array_ify(args["cells"], dim)
+    args["dl"]    = np_array_ify(args["dl"], dim)
     return args
 
 def meshify(*xyz):
@@ -103,19 +108,19 @@ def defaultPopulationSettings(sim, density_fn, vbulk_fn):
     }
 
 
-def makeBasicModel(extra_pops={}):
+def makeBasicModel(extra_pops={}, ppc=100):
     sim = ph.global_vars.sim
     _density_fn_periodic = globals()["density_"+str(sim.ndim)+"d_periodic"]
 
     pops = {
         "protons": {
             **defaultPopulationSettings(sim, _density_fn_periodic, fn_periodic),
-            "nbr_part_per_cell": 100,
+            "nbr_part_per_cell": ppc,
             "init": {"seed": 1337},
         },
         "alpha": {
             **defaultPopulationSettings(sim, _density_fn_periodic, fn_periodic),
-            "nbr_part_per_cell": 100,
+            "nbr_part_per_cell": ppc,
             "init": {"seed": 13337},
         },
     }
@@ -141,7 +146,7 @@ def populate_simulation(dim, interp, **input):
     if "diags_fn" in input:
         input["diags_fn"](model)
 
-    ElectronModel(closure="isothermal", Te=0.12)
+    ph.ElectronModel(closure="isothermal", Te=0.12)
 
     return simulation
 

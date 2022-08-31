@@ -3,13 +3,14 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <algorithm>
+#include <list>
 #include <array>
 #include <cmath>
+#include <random>
 #include <cstddef>
 #include <fstream>
-#include <list>
-#include <random>
+#include <algorithm>
+
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
@@ -62,8 +63,7 @@ public:
             auto delta = normalizedPositions[i] - icell;
             auto startIndex
                 = icell
-                  - Interpolator_t::template computeStartLeftShift<QtyCentering,
-                                                                   QtyCentering::primal>(delta);
+                  - Interpolator_t::template computeStartLeftShift<QtyCentering::primal>(delta);
             this->weighter.computeWeight(normalizedPositions[i], startIndex, weights_[i]);
         }
 
@@ -171,8 +171,7 @@ void check_bspline(Weighter& weighter, std::string centering_id)
     {
         auto delta = static_cast<double>(ipos) * dx;
 
-        auto startIndex
-            = icell - Interpolator_t::template computeStartLeftShift<Centering, centering>(delta);
+        auto startIndex = icell - Interpolator_t::template computeStartLeftShift<centering>(delta);
 
         double normalizedPosition = icell + delta;
         if constexpr (centering == QtyCentering::dual)
@@ -234,6 +233,7 @@ public:
     ParticleArray_t particles;
     InterpolatorT interp;
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+
 
 
     Field<NdArray_t, typename HybridQuantity::Scalar> bx1d_;
@@ -772,8 +772,8 @@ INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_1d, MyTy
 template<typename Interpolator>
 struct ACollectionOfParticles_2d : public ::testing::Test
 {
+    static constexpr std::size_t dim   = Interpolator::dimension;
     static constexpr auto interp_order = Interpolator::interp_order;
-    static constexpr std::size_t dim   = 2;
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
 
@@ -810,7 +810,6 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     }
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
-
     ParticleArray_t particles;
     Field<NdArray_t, typename HybridQuantity::Scalar> rho, vx, vy, vz;
     VecField<NdArray_t, HybridQuantity> v;

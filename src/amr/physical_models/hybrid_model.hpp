@@ -24,11 +24,14 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 class HybridModel : public IPhysicalModel<AMR_Types>
 {
 public:
-    using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
-    using Interface = IPhysicalModel<AMR_Types>;
-    using amr_types = AMR_Types;
-    using patch_t   = typename AMR_Types::patch_t;
-    using level_t   = typename AMR_Types::level_t;
+    // type_list must be kept in sync with template parameters above including order of
+    using type_list   = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
+    using Interface   = IPhysicalModel<AMR_Types>;
+    using amr_types   = AMR_Types;
+    using InitState_t = core::HybridState<Electromag, Ions, Electrons>;
+    using State_t     = typename core::HybridState<Electromag, Ions, Electrons>;
+    using patch_t     = typename AMR_Types::patch_t;
+    using level_t     = typename AMR_Types::level_t;
     static const std::string model_name;
     using gridlayout_type           = GridLayoutT;
     using electromag_type           = Electromag;
@@ -42,7 +45,7 @@ public:
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
 
-    core::HybridState<Electromag, Ions, Electrons> state;
+    State_t state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
 

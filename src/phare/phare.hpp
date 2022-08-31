@@ -2,11 +2,12 @@
 #ifndef PHARE_PHARE_INCLUDE_HPP
 #define PHARE_PHARE_INCLUDE_HPP
 
+#include <memory>
+#include <cassert>
+#include <iostream>
+
 #include "simulator/simulator.hpp"
 #include "core/utilities/algorithm.hpp"
-
-#include <memory>
-#include <iostream>
 
 namespace PHARE
 {
@@ -42,6 +43,7 @@ public:
         SAMRAI::tbox::SAMRAIManager::shutdown();
         SAMRAI::tbox::SAMRAIManager::finalize();
         SAMRAI::tbox::SAMRAI_MPI::finalize();
+        PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
     }
 
     static void reset()

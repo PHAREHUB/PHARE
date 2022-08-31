@@ -1,11 +1,11 @@
 #ifndef PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 
-#include <iterator>
+#include <vector>
 #include <cstddef>
 #include <numeric>
+#include <iterator>
 #include <stdexcept>
-#include <vector>
 
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/IntVector.h>
@@ -16,63 +16,22 @@
 #include "SAMRAI/hier/Transformation.h"
 
 
+#include "core/logger.hpp"
+
 #include "core/data/ions/ion_population/particle_pack.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "amr/utilities/box/amr_box.hpp"
 #include "core/utilities/point/point.hpp"
 
-#include "core/logger.hpp"
-
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
 
 namespace PHARE
 {
 namespace amr
 {
-
-
-    template<typename Particle>
-    inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
-    {
-        constexpr auto dim = Particle::dimension;
-
-        auto const& iCell = particle.iCell;
-
-        auto const& lower = box.lower();
-        auto const& upper = box.upper();
-
-
-        if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
-        {
-            if constexpr (dim > 1)
-            {
-                if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
-                {
-                    if constexpr (dim > 2)
-                    {
-                        if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
-                        {
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-            }
-            else
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
     /** @brief ParticlesData is a concrete SAMRAI::hier::PatchData subclass to store Particle data
      *
      * This class encapsulates particle storage known by the module core, and by being derived
@@ -98,11 +57,11 @@ namespace amr
     /**
      * @brief The ParticlesData class
      */
-    template<typename ParticleArray>
+    template<typename ParticleArray_>
     class ParticlesData : public SAMRAI::hier::PatchData
     {
-        using Super = SAMRAI::hier::PatchData;
-
+        using Super               = SAMRAI::hier::PatchData;
+        using ParticleArray       = ParticleArray_;
         using Particle_t          = typename ParticleArray::Particle_t;
         static constexpr auto dim = ParticleArray::dimension;
         // add one cell surrounding ghost box to map particles exiting the ghost layer
@@ -156,7 +115,12 @@ namespace amr
 
                 std::size_t part_idx = 0;
                 core::apply(soa.as_tuple(), [&](auto const& arg) {
-                    restart_db->putVector(name + "_" + packer.keys()[part_idx++], arg);
+                    if constexpr (std::decay_t<decltype(particles)>::is_host_mem)
+                        restart_db->putVector(name + "_" + packer.keys()[part_idx++], arg);
+                    else
+                    {
+                        std::abort();
+                    }
                 });
             };
 
@@ -197,14 +161,21 @@ namespace amr
                 {
                     std::size_t part_idx = 0;
                     core::apply(soa.as_tuple(), [&](auto& arg) {
-                        restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
+                        if constexpr (std::decay_t<decltype(particles)>::is_host_mem)
+                            restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
+                        else
+                        {
+                            std::abort();
+                        }
                     });
                 }
 
                 assert(particles.size() == 0);
                 particles.reserve(n_particles);
                 for (std::size_t i = 0; i < n_particles; ++i)
-                    particles.push_back(soa.copy(i));
+                    particles.emplace_back(soa.copy(i));
+
+                particles.check();
             };
 
             getParticles("domainParticles", domainParticles);

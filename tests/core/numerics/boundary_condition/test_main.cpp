@@ -32,7 +32,7 @@ protected:
     BoundaryCondition<2, interpOrder> bc;
     Box<int, 2> bbox{Point<int, 2>{0, 10}, Point<int, 2>{20, 11}};
     std::vector<Box<int, 2>> boundaryBoxes;
-    ParticleArray<2> leavingParticles_;
+    ParticleArray<Particle<2>> leavingParticles_;
 };
 
 

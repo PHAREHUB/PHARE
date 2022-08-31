@@ -140,32 +140,41 @@ class InitializationTest(SimulatorTest):
                                           "init": {"seed": 1337}})
 
 
-        ElectronModel(closure="isothermal", Te=0.12)
-
-
-        for quantity in ["E", "B"]:
-            ElectromagDiagnostics(
-                quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr),
-                compute_timestamps=np.zeros(time_step_nbr)
-            )
-
-        for quantity in ["density", "bulkVelocity"]:
-            FluidDiagnostics(
-                quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr),
-                compute_timestamps=np.zeros(time_step_nbr)
-            )
-
         poplist = ["protons", "beam"] if beam else ["protons"]
-        for pop in poplist:
-            for quantity in ["density", "flux"]:
-                FluidDiagnostics(quantity=quantity,
-                                 write_timestamps=np.zeros(time_step_nbr),
-                                 compute_timestamps=np.zeros(time_step_nbr),
-                                 population_name=pop)
+        ElectronModel(closure="isothermal", Te=0.12)
+        is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
+        is_e_and_or_b = qty in ["e", "b", "eb"]
 
-            for quantity in ['domain', 'levelGhost', 'patchGhost']:
+        if is_e_and_or_b:
+            for quantity in ["E", "B"]:
+                ElectromagDiagnostics(
+                    quantity=quantity,
+                    write_timestamps=np.zeros(time_step_nbr),
+                    compute_timestamps=np.zeros(time_step_nbr)
+                )
+        if qty == "moments":
+            for quantity in ["density", "bulkVelocity"]:
+                FluidDiagnostics(
+                    quantity=quantity,
+                    write_timestamps=np.zeros(time_step_nbr),
+                    compute_timestamps=np.zeros(time_step_nbr)
+                )
+
+        particle_diags = []
+        if qty == "particles":
+            particle_diags += ['domain', 'levelGhost']
+        if is_particle_type:
+            particle_diags += ['patchGhost']
+
+        for pop in poplist:
+            if qty == "moments":
+                for quantity in ["density", "flux"]:
+                    FluidDiagnostics(quantity=quantity,
+                                     write_timestamps=np.zeros(time_step_nbr),
+                                     compute_timestamps=np.zeros(time_step_nbr),
+                                     population_name=pop)
+
+            for quantity in particle_diags:
                 ParticleDiagnostics(quantity=quantity,
                                     compute_timestamps=np.zeros(time_step_nbr),
                                     write_timestamps=np.zeros(time_step_nbr),
@@ -178,10 +187,9 @@ class InitializationTest(SimulatorTest):
             eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_E.h5", hier=eb_hier)
         if qty in ["b", "eb"]:
             eb_hier = hierarchy_from(h5_filename=diag_outputs+"/EM_B.h5", hier=eb_hier)
-        if qty in ["e", "b", "eb"]:
+        if is_e_and_or_b:
             return eb_hier
 
-        is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
 
         if is_particle_type:
             particle_hier = None
@@ -198,6 +206,7 @@ class InitializationTest(SimulatorTest):
 
         if is_particle_type:
             return particle_hier
+
 
         if qty == "moments":
             mom_hier = hierarchy_from(h5_filename=diag_outputs+"/ions_density.h5")

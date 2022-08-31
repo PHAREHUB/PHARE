@@ -41,15 +41,17 @@ std::array<int, 3> boxBoundsUpper(Box const& box)
 
 
 template<std::size_t dimension>
-ParticleArray<dimension> loadCell(int iCellX, int iCellY, int iCellZ)
+auto loadCell(int iCellX, int iCellY, int iCellZ)
 {
+    using Particle_t = Particle<dimension>;
+
     std::array<int, 3> _3diCell = {iCellX, iCellY, iCellZ};
 
     float middle = 0.5;
     float delta  = 0.30f;
 
-    Particle<dimension> particle;
-    ParticleArray<dimension> particles;
+    Particle_t particle;
+    ParticleArray<Particle_t> particles;
 
     particle.weight = 1.;
     particle.charge = 1.;
@@ -87,6 +89,8 @@ ParticleArray<dimension> loadCell(int iCellX, int iCellY, int iCellZ)
 template<std::size_t dimension>
 class TagStrategy : public SAMRAI::mesh::StandardTagAndInitStrategy
 {
+    using Particle_t = Particle<dimension>;
+
 public:
     TagStrategy(std::map<std::string, int> const& dataToAllocate,
                 std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOperator,
@@ -144,7 +148,7 @@ public:
                 for (auto const& [name, dataId] : dataToAllocate_)
                 {
                     auto particlesData
-                        = std::dynamic_pointer_cast<ParticlesData<ParticleArray<dimension>>>(
+                        = std::dynamic_pointer_cast<ParticlesData<ParticleArray<Particle_t>>>(
                             patch->getPatchData(dataId));
 
                     auto& interior = particlesData->domainParticles;

@@ -6,6 +6,7 @@
 #include <string>
 #include <tuple>
 
+#include "core/def.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "initializer/data_provider.hpp"

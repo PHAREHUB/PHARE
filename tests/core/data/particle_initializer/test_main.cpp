@@ -5,6 +5,7 @@
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 
@@ -26,7 +27,7 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 
 using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
-using ParticleArrayT = ParticleArray<1>;
+using ParticleArrayT = ParticleArray<Particle<1>>;
 
 
 TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleVectorInitializer)

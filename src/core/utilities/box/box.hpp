@@ -2,6 +2,7 @@
 #define PHARE_CORE_UTILITIES_BOX_BOX_HPP
 
 
+#include "core/def.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
@@ -189,7 +190,7 @@ private:
 
 
 template<typename T, std::size_t s>
-Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;
+Box(Point<T, s> lower, Point<T, s> upper)->Box<T, s>;
 
 
 
@@ -198,11 +199,10 @@ Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;
  * Returns occurs at the first box the point is in.
  */
 template<typename Point, typename BoxContainer, is_iterable<BoxContainer> = dummy::value>
-bool isIn(Point const& point, BoxContainer const& boxes)
+bool isIn(Point const& point, BoxContainer const& boxes) _PHARE_ALL_FN_
 {
     if (boxes.size() == 0)
         return false;
-
 
     static_assert(std::is_same<typename Point::value_type,
                                typename BoxContainer::value_type::value_type>::value,
@@ -231,7 +231,8 @@ bool isIn(Point const& point, BoxContainer const& boxes)
  * one box.
  */
 template<typename Point>
-bool isIn(Point const& point, Box<typename Point::value_type, Point::dimension> const& box)
+bool isIn(Point const& point,
+          Box<typename Point::value_type, Point::dimension> const& box) _PHARE_ALL_FN_
 {
     auto isIn1D = [](typename Point::value_type pos, typename Point::value_type lower,
                      typename Point::value_type upper) { return pos >= lower && pos <= upper; };

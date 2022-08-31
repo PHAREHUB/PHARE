@@ -14,8 +14,47 @@
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
 
+
 namespace PHARE::solver
 {
+template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
+struct CPU_Types
+{
+    using core_types = PHARE::core::CPU_Types<dimension, interp_order>;
+
+    using VecField_t   = typename core_types::VecField_t;
+    using Electromag_t = typename core_types::Electromag_t;
+    using Ions_t       = typename core_types::Ions_t;
+    using GridLayout_t = typename core_types::GridLayout_t;
+    using Electrons_t  = typename core_types::Electrons_t;
+
+    using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
+    using MHDModel_t = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
+    using HybridModel_t = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t,
+                                                     Electrons_t, PHARE::amr::SAMRAI_Types>;
+
+
+    using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+
+    using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
+
+
+    // amr deps
+    using amr_types        = PHARE::amr::PHARE_Types<dimension, interp_order, nbRefinedPart>;
+    using RefinementParams = typename amr_types::RefinementParams;
+
+    using MessengerFactory // = amr/solver bidirectional dependency
+        = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, RefinementParams>;
+    // amr deps
+
+    using MultiPhysicsIntegrator
+        = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, LevelInitializerFactory_t,
+                                                PHARE::amr::SAMRAI_Types>;
+};
+
+
+
 template<std::size_t dimension_, std::size_t interp_order_, std::size_t nbRefinedPart_>
 struct PHARE_Types
 {
@@ -35,10 +74,15 @@ struct PHARE_Types
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
     using HybridModel_t  = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t,
                                                      Electrons_t, PHARE::amr::SAMRAI_Types>;
-    using MHDModel_t  = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
+    using MHDModel_t = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types>;
+
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
+
+
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types>;
-    using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
+
+    using CPU_Types_t               = CPU_Types<dimension, interp_order, nbRefinedPart>;
+    using LevelInitializerFactory_t = typename CPU_Types_t::LevelInitializerFactory_t;
 
     // amr deps
     using amr_types        = PHARE::amr::PHARE_Types<dimension, interp_order, nbRefinedPart>;
@@ -48,9 +92,9 @@ struct PHARE_Types
         = PHARE::amr::MessengerFactory<MHDModel_t, HybridModel_t, RefinementParams>;
     // amr deps
 
-    using MultiPhysicsIntegrator
-        = PHARE::solver::MultiPhysicsIntegrator<MessengerFactory, LevelInitializerFactory_t,
-                                                PHARE::amr::SAMRAI_Types>;
+    using MultiPhysicsIntegrator = PHARE::solver::MultiPhysicsIntegrator<
+        MessengerFactory, PHARE::solver::LevelInitializerFactory<HybridModel_t>,
+        PHARE::amr::SAMRAI_Types>;
 };
 
 } // namespace PHARE::solver

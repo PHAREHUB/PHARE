@@ -1,0 +1,33 @@
+
+# local:
+#   repo: /mkn/r
+#   mod-repo: /mkn/m
+
+# remote:
+#   repo: git@github.com:mkn/
+#   mod-repo: git@github.com:mkn-mod/
+
+compiler:
+  mask:
+    g++:
+      mpicxx
+
+env: |
+  PATH=/home/deegan/chain/clang_14.0.6/bin:${PATH}
+  OMPI_CXX=clang++
+
+path:
+  /home/deegan/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/targets/x86_64-linux/lib
+
+inc:
+  /home/deegan/hpc_sdk/Linux_x86_64/22.7/cuda/11.0/targets/x86_64-linux/include
+  
+# The following compile flags will likely be required with their specific values for your current hardware
+#
+# --cuda-gpu-arch=sm_61  # sm_61 = nvidia 1080 (see: http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards )
+
+file:
+  - type: cpp:cxx:cc:cu
+    compiler:  mpicxx --std=c++17 -fPIC -fsized-deallocation -x cuda --cuda-gpu-arch="sm_80" #--cuda-path=/home/deegan/hpc_sdk/Linux_x86_64/22.7/cuda/11.7
+    linker:  mpicxx -Wl,-z,defs -lcudart #-fuse-ld=gold -Wl,--threads -Wl,--thread-count=5
+    archiver: ar -cr

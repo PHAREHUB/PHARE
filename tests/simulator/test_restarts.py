@@ -149,6 +149,7 @@ class RestartsTest(SimulatorTest):
         diag_dir0 = local_out
 
 
+        print("RESTARTING")
         # second restarted simulation
         local_out = f"{local_out}_n2"
         simput["diag_options"]["options"]["dir"] = local_out
@@ -212,7 +213,6 @@ class RestartsTest(SimulatorTest):
             self.assertEqual(n_levels, expected_num_levels) # at least 2 levels, 3 for tagging
             self.assertGreaterEqual(n_patches, n_levels) # at least one patch per level
             self.assertEqual(checks, n_quantities_per_patch * n_patches)
-
 
 
 

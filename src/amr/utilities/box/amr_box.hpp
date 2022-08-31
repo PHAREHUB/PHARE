@@ -9,6 +9,44 @@
 
 namespace PHARE::amr
 {
+template<typename Particle>
+inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
+{
+    constexpr auto dim = Particle::dimension;
+
+    auto const& iCell = particle.iCell;
+
+    auto const& lower = box.lower();
+    auto const& upper = box.upper();
+
+
+    if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
+    {
+        if constexpr (dim > 1)
+        {
+            if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
+            {
+                if constexpr (dim > 2)
+                {
+                    if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 template<typename Type, std::size_t dim>
 auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId = 0)
 {

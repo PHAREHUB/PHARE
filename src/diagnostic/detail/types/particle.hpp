@@ -13,6 +13,8 @@
 #include <string>
 #include <memory>
 
+
+
 namespace PHARE::diagnostic::h5
 {
 /*
@@ -39,8 +41,9 @@ public:
     static constexpr auto dimension   = H5Writer::dimension;
     static constexpr auto interpOrder = H5Writer::interpOrder;
     using Attributes                  = typename Super::Attributes;
-    using Packer                      = core::ParticlePacker<dimension>;
-    using FloatType                   = typename H5Writer::FloatType;
+    // using Particle_t = typename core::PHARE_Types<dimension, interpOrder>::Particle_t;
+    using Packer    = core::ParticlePacker<dimension>;
+    using FloatType = typename H5Writer::FloatType;
 
     ParticlesDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}
@@ -62,6 +65,10 @@ public:
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
         std::size_t maxLevel) override;
+
+private:
+    // PGI compiler (nvc++ 21.3-0) doesn't like static initializations of arrays
+    std::array<std::string, 5> packer_keys_ = core::packer_keys();
 };
 
 
@@ -137,8 +144,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
         std::string path{h5Writer_.getPatchPathAddTimestamp(lvl, patchID) + "/"};
         std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
-            createDataSet(path + Packer::keys()[part_idx], attr, Packer::keys()[part_idx], arg,
-                          null);
+            createDataSet(path + packer_keys_[part_idx], attr, packer_keys_[part_idx], arg, null);
             ++part_idx;
         });
         this->writeGhostsAttr_(h5file, path, core::ghostWidthForParticles<interpOrder>(), null);
@@ -167,6 +173,7 @@ template<typename H5Writer>
 void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
+
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
         std::string active{tree + pType};
@@ -211,7 +218,7 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
     writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);
 }
 
-
 } // namespace PHARE::diagnostic::h5
+
 
 #endif /* PHARE_DIAGNOSTIC_DETAIL_TYPES_PARTICLE_H */

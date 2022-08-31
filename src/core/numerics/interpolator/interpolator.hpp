@@ -10,7 +10,9 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/point/point.hpp"
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/operators.hpp"
 
 namespace PHARE::core
 {
@@ -54,7 +56,7 @@ class Weighter<1>
 {
 public:
     inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(1)>& weights)
+                              std::array<double, nbrPointsSupport(1)>& weights) _PHARE_ALL_FN_
     {
         weights[1] = normalizedPos - static_cast<double>(startIndex);
         weights[0] = 1. - weights[1];
@@ -71,7 +73,7 @@ class Weighter<2>
 {
 public:
     inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(2)>& weights)
+                              std::array<double, nbrPointsSupport(2)>& weights) _PHARE_ALL_FN_
     {
         auto index = startIndex + 1;
         auto delta = static_cast<double>(index) - normalizedPos;
@@ -97,7 +99,7 @@ class Weighter<3>
 {
 public:
     inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(3)>& weights)
+                              std::array<double, nbrPointsSupport(3)>& weights) _PHARE_ALL_FN_
     {
         constexpr double _4_over_3 = 4. / 3.;
         constexpr double _2_over_3 = 2. / 3.;
@@ -134,7 +136,7 @@ class MeshToParticle
 
 
 template<std::size_t dimdex, typename GridLayout, auto quantity, typename IndexWeights>
-auto static start_index_and_weights_for_qty(IndexWeights const& indexWeights)
+auto static start_index_and_weights_for_qty(IndexWeights const& indexWeights) _PHARE_ALL_FN_
 {
     auto constexpr centerings                              = GridLayout::centering(quantity);
     auto const& [d_starts, d_weights, p_starts, p_weights] = indexWeights;
@@ -158,7 +160,7 @@ public:
      * the field \param[in] weights are the nbrPointsSupport weights used for the interpolation
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    inline auto operator()(Field const& field, IndexWeights const& indexWeights) _PHARE_ALL_FN_
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -189,7 +191,7 @@ public:
      * weights used for the interpolation in both directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    inline auto operator()(Field const& field, IndexWeights const& indexWeights) _PHARE_ALL_FN_
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -230,7 +232,7 @@ public:
      * weights used for the interpolation in the 3 directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    inline auto operator()(Field const& field, IndexWeights const& indexWeights) _PHARE_ALL_FN_
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -265,16 +267,15 @@ public:
 
 
 //! ParticleToMesh projects a particle density and flux to given grids
-template<std::size_t dim>
+template<std::size_t dim, typename Operator = core::Operators<double>>
 class ParticleToMesh
 {
 };
 
-
-
-/** \brief specialization of ParticleToMesh for 1D interpolation */
-template<>
-class ParticleToMesh<1>
+/** \brief specialization of ParticleToMesh for 1D interpolation
+ */
+template<typename Op>
+class ParticleToMesh<1, Op>
 {
 public: /** Performs the 1D interpolation
          * \param[in] density is the field that will be interpolated from the particle Particle
@@ -379,7 +380,8 @@ public: /** Performs the 3D interpolation
     template<typename Field, typename VecField, typename Particle, typename Indexes,
              typename Weights>
     inline void operator()(Field& density, VecField& flux, Particle const& particle,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+                           Indexes const& startIndex, Weights const& weights,
+                           double coef = 1.) _PHARE_ALL_FN_
     {
         auto const& [xFlux, yFlux, zFlux]                   = flux();
         auto const& [xStartIndex, yStartIndex, zStartIndex] = startIndex;
@@ -417,15 +419,14 @@ public: /** Performs the 3D interpolation
 /** \brief Interpolator is used to perform particle-mesh interpolations using
  * 1st, 2nd or 3rd order interpolation in 1D, 2D or 3D, on a given layout.
  */
-template<std::size_t dim, std::size_t interpOrder>
+template<std::size_t dim, std::size_t interpOrder, bool atomic_ops = false>
 class Interpolator : private Weighter<interpOrder>
 {
     // this calculates the startIndex and the nbrPointsSupport() weights for
     // dual field interpolation and puts this at the corresponding location
     // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
     // is offseted compared to primal ones.
-    template<typename CenteringT, CenteringT centering, typename GridLayout, typename ICell,
-             typename Delta>
+    template<auto centering, typename GridLayout, typename ICell, typename Delta>
     auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_, Delta const& delta)
     {
         // dual weights require -.5 to take the correct position weight
@@ -441,8 +442,7 @@ class Interpolator : private Weighter<interpOrder>
         auto iCell = layout.AMRToLocal(Point{iCell_});
         for (auto iDim = 0u; iDim < dimension; ++iDim)
         {
-            startIndex_[iDim]
-                = iCell[iDim] - computeStartLeftShift<CenteringT, centering>(delta[iDim]);
+            startIndex_[iDim] = iCell[iDim] - computeStartLeftShift<centering>(delta[iDim]);
 
             double normalizedPos = iCell[iDim] + delta[iDim];
 
@@ -453,9 +453,14 @@ class Interpolator : private Weighter<interpOrder>
         }
     }
 
+
 public:
+    using Operator = core::Operators<double, atomic_ops>;
+
     auto static constexpr interp_order = interpOrder;
     auto static constexpr dimension    = dim;
+
+
     /**\brief interpolate electromagnetic fields on all particles in the range
      *
      * For each particle :
@@ -464,50 +469,59 @@ public:
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
-    template<typename ParticleRange, typename Electromag, typename GridLayout>
-    inline void operator()(ParticleRange&& particleRange, Electromag const& Em,
-                           GridLayout const& layout)
+
+    template<typename Particle_t, typename Electromag, typename GridLayout>
+    void meshToParticle(Particle_t& particle, Electromag const& Em,
+                        GridLayout const& layout) _PHARE_ALL_FN_
     {
-        PHARE_LOG_SCOPE("Interpolator::operator()");
-
-        auto begin = particleRange.begin();
-        auto end   = particleRange.end();
-
         using Scalar             = HybridQuantity::Scalar;
         auto const& [Ex, Ey, Ez] = Em.E();
         auto const& [Bx, By, Bz] = Em.B();
 
+        auto& iCell = particle.iCell;
+        auto& delta = particle.delta;
+        indexAndWeights_<QtyCentering::dual>(layout, iCell, delta);
+        indexAndWeights_<QtyCentering::primal>(layout, iCell, delta);
+
+        auto indexWeights = std::forward_as_tuple(dual_startIndex_, dual_weights_,
+                                                  primal_startIndex_, primal_weights_);
+
+        particle.Ex = meshToParticle_.template operator()<GridLayout, Scalar::Ex>(Ex, indexWeights);
+        particle.Ey = meshToParticle_.template operator()<GridLayout, Scalar::Ey>(Ey, indexWeights);
+        particle.Ez = meshToParticle_.template operator()<GridLayout, Scalar::Ez>(Ez, indexWeights);
+        particle.Bx = meshToParticle_.template operator()<GridLayout, Scalar::Bx>(Bx, indexWeights);
+        particle.By = meshToParticle_.template operator()<GridLayout, Scalar::By>(By, indexWeights);
+        particle.Bz = meshToParticle_.template operator()<GridLayout, Scalar::Bz>(Bz, indexWeights);
+    }
+
+
+
+    template<typename Particles, typename Electromag, typename GridLayout>
+    inline void operator()(Particles& particles, Electromag const& Em, GridLayout const& layout)
+    {
         // for each particle, first calculate the startIndex and weights for dual and
         // primal quantities. then, knowing the centering (primal or dual) of each
         // electromagnetic component, we use Interpol to actually perform the
         // interpolation. the trick here is that the StartIndex and weights have only been
         // calculated twice, and not for each E,B component.
 
+        PHARE_LOG_SCOPE("Interpolator::operator()");
+
+        auto begin = particles.begin();
+        auto end   = particles.end();
+
         PHARE_LOG_START("MeshToParticle::operator()");
         for (auto currPart = begin; currPart != end; ++currPart)
-        {
-            auto& iCell = currPart->iCell;
-            auto& delta = currPart->delta;
-            indexAndWeights_<QtyCentering, QtyCentering::dual>(layout, iCell, delta);
-            indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, iCell, delta);
-
-            auto indexWeights = std::forward_as_tuple(dual_startIndex_, dual_weights_,
-                                                      primal_startIndex_, primal_weights_);
-
-            currPart->Ex
-                = meshToParticle_.template operator()<GridLayout, Scalar::Ex>(Ex, indexWeights);
-            currPart->Ey
-                = meshToParticle_.template operator()<GridLayout, Scalar::Ey>(Ey, indexWeights);
-            currPart->Ez
-                = meshToParticle_.template operator()<GridLayout, Scalar::Ez>(Ez, indexWeights);
-            currPart->Bx
-                = meshToParticle_.template operator()<GridLayout, Scalar::Bx>(Bx, indexWeights);
-            currPart->By
-                = meshToParticle_.template operator()<GridLayout, Scalar::By>(By, indexWeights);
-            currPart->Bz
-                = meshToParticle_.template operator()<GridLayout, Scalar::Bz>(Bz, indexWeights);
-        }
+            meshToParticle(*currPart, Em, layout);
         PHARE_LOG_STOP("MeshToParticle::operator()");
+    }
+
+    // template<typename PartIterator, typename Electromag, typename GridLayout>
+    // inline void operator()(PartIterator begin, PartIterator end, Electromag const& Em,
+    template<typename Particles, typename Electromag, typename GridLayout>
+    inline void operator()(Particles&& particles, Electromag const& Em, GridLayout const& layout)
+    {
+        (*this)(particles, Em, layout);
     }
 
 
@@ -519,41 +533,51 @@ public:
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
-    template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange&& particleRange, Field& density, VecField& flux,
-                           GridLayout const& layout, double coef = 1.)
+
+    template<typename Particle_t, typename VecField, typename GridLayout, typename Field>
+    void particleToMesh(Particle_t const& particle, Field& density, VecField& flux,
+                        GridLayout const& layout, double coef = 1.) _PHARE_ALL_FN_
     {
-        auto begin        = particleRange.begin();
-        auto end          = particleRange.end();
         auto& startIndex_ = primal_startIndex_;
         auto& weights_    = primal_weights_;
 
+        auto const& [xFlux, yFlux, zFlux] = flux.getComponents();
+
+        // TODO #3375
+        indexAndWeights_<QtyCentering::primal>(layout, particle.iCell, particle.delta);
+
+        particleToMesh_(density, flux, particle, startIndex_, weights_, coef);
+    }
+
+
+    template<typename Particles, typename VecField, typename GridLayout, typename Field>
+    inline void operator()(Particles const& particles, Field& density, VecField& flux,
+                           GridLayout const& layout, double coef = 1.)
+    {
         // for each particle, first calculate the startIndex and weights
         // for dual and primal quantities.
         // then, knowing the centering (primal or dual) of each electromagnetic
         // component, we use Interpol to actually perform the interpolation.
-        // the trick here is that the StartIndex and weights have only been calculated
-        // twice, and not for each E,B component.
+        // the trick here is that the StartIndex and weights have only been
+        // calculated twice, and not for each E,B component.
 
         PHARE_LOG_START("ParticleToMesh::operator()");
 
-        for (auto currPart = begin; currPart != end; ++currPart)
-        {
-            // TODO #3375
-            indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, currPart->iCell,
-                                                                 currPart->delta);
+        auto begin = particles.begin();
+        auto end   = particles.end();
 
-            particleToMesh_(density, flux, *currPart, startIndex_, weights_, coef);
-        }
+        for (auto currPart = begin; currPart != end; ++currPart)
+            particleToMesh(*currPart, density, flux, layout, coef);
         PHARE_LOG_STOP("ParticleToMesh::operator()");
     }
+
 
 
     /**
      * @brief Given a delta and an interpolation order, deduce which lower index to start
      * traversing from
      */
-    template<typename CenteringT, CenteringT Centering>
+    template<auto Centering>
     static int computeStartLeftShift([[maybe_unused]] double delta)
     {
         static_assert(interpOrder > 0 and interpOrder < 4);
@@ -594,7 +618,7 @@ private:
 
     Weighter<interpOrder> weightComputer_;
     MeshToParticle<dimension> meshToParticle_;
-    ParticleToMesh<dimension> particleToMesh_;
+    ParticleToMesh<dimension, Operator> particleToMesh_;
 
     Starts dual_startIndex_;
     Weights dual_weights_;

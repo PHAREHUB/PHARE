@@ -6,9 +6,15 @@ cpp_lib("pybindlibs.cpp_sim_2_1_4")
 import pyphare.pharein as ph
 
 seed = 133333333337
-cells, dl = 100, .2
-patch_sizes = [50,100]
+cells, dl = 500, .2
+patch_sizes = [50,50]
 diag_outputs="tools/bench/real/harris/outputs"
+time_step_nbr=1
+time_step=0.001
+nbr_part_per_cell=500
+
+
+simulation_particles = nbr_part_per_cell * cells ** 2
 
 def density(x, y):
     L = ph.global_vars.sim.simulation_domain()[1]
@@ -30,8 +36,7 @@ def by(x, y):
 def S(y, y0, l): return 0.5*(1. + np.tanh((y-y0)/l))
 def bx(x, y):
     sim = ph.global_vars.sim
-    Lx = sim.simulation_domain()[0]
-    Ly = sim.simulation_domain()[1]
+    Lx, Ly = sim.simulation_domain()
     w1, w2 = 0.2, 1.0
     x0 = (x - 0.5 * Lx)
     y1 = (y - 0.3 * Ly)
@@ -51,15 +56,15 @@ def vthxyz(x, y): return np.sqrt(T(x, y))
 def config():
     ph.Simulation(# strict=True,
         smallest_patch_size=patch_sizes[0], largest_patch_size=patch_sizes[1],
-        time_step_nbr=10, time_step=0.001,
+        time_step_nbr=time_step_nbr, time_step=time_step,
         cells=[cells] * 2, dl=[dl] * 2,
         resistivity=0.001, hyper_resistivity=0.001,
         diag_options={"format": "phareh5", "options": {"dir": diag_outputs, "mode":"overwrite"}},
-        refinement_boxes={},
+        refinement_boxes={}
     )
     ph.MaxwellianFluidModel( bx=bx, by=by, bz=bz,
         protons={"charge": 1, "density": density, "init":{"seed": seed},
-          **{ "nbr_part_per_cell":100,
+          **{ "nbr_part_per_cell":nbr_part_per_cell,
             "vbulkx": vxyz, "vbulky": vxyz, "vbulkz": vxyz,
             "vthx": vthxyz, "vthy": vthxyz, "vthz": vthxyz,
           }

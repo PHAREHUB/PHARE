@@ -83,7 +83,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
     vvv = {
         "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
         "vthx": vthx, "vthy": vthy, "vthz": vthz,
-        "nbr_part_per_cell":100,
+        "nbr_part_per_cell": 10,
         "init": model_init,
     }
 

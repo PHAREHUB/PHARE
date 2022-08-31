@@ -1,9 +1,14 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
-#include <fstream>
 #include <memory>
+#include <fstream>
 
+#if defined(HAVE_RAJA) and defined(HAVE_UMPIRE)
+#include "SAMRAI/tbox/Collectives.h" // tbox::parallel_synchronize();
+#include "core/def.h"
+#include "simulator/simulator.h" // static allocator init - probably should be isolated
+#endif
+
+#include "phare_core.hpp"
 
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -13,7 +18,8 @@
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/index/index.hpp"
 
-#include "phare_core.hpp"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 
 using namespace PHARE::core;
@@ -65,27 +71,30 @@ struct OhmTest : public ::testing::Test
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    using GridYee  = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using PHARE_Types = PHARE::core::PHARE_Types<dim, interp>;
+    using GridYee     = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using NdArray_t   = typename PHARE_Types::Array_t;
+
     GridYee layout = NDlayout<dim, interp>::create();
 
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> n;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vy;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> P;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Exnew;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Eynew;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Eznew;
-    VecField<NdArrayVector<dim>, HybridQuantity> V;
-    VecField<NdArrayVector<dim>, HybridQuantity> B;
-    VecField<NdArrayVector<dim>, HybridQuantity> J;
-    VecField<NdArrayVector<dim>, HybridQuantity> Enew;
+    Field<NdArray_t, HybridQuantity::Scalar> n;
+    Field<NdArray_t, HybridQuantity::Scalar> Vx;
+    Field<NdArray_t, HybridQuantity::Scalar> Vy;
+    Field<NdArray_t, HybridQuantity::Scalar> Vz;
+    Field<NdArray_t, HybridQuantity::Scalar> P;
+    Field<NdArray_t, HybridQuantity::Scalar> Bx;
+    Field<NdArray_t, HybridQuantity::Scalar> By;
+    Field<NdArray_t, HybridQuantity::Scalar> Bz;
+    Field<NdArray_t, HybridQuantity::Scalar> Jx;
+    Field<NdArray_t, HybridQuantity::Scalar> Jy;
+    Field<NdArray_t, HybridQuantity::Scalar> Jz;
+    Field<NdArray_t, HybridQuantity::Scalar> Exnew;
+    Field<NdArray_t, HybridQuantity::Scalar> Eynew;
+    Field<NdArray_t, HybridQuantity::Scalar> Eznew;
+    VecField<NdArray_t, HybridQuantity> V;
+    VecField<NdArray_t, HybridQuantity> B;
+    VecField<NdArray_t, HybridQuantity> J;
+    VecField<NdArray_t, HybridQuantity> Enew;
     Ohm<GridYee> ohm;
 
     OhmTest()

@@ -45,7 +45,7 @@ template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType 
          std::size_t refinedParticlesNbr>
 class BasicHierarchy
 {
-    using ParticlesVariable_t = ParticlesVariable<ParticleArray<dimension>, interpOrder>;
+    using ParticlesVariable_t = ParticlesVariable<ParticleArray<Particle<dimension>>, interpOrder>;
 
 public:
     /**
@@ -96,7 +96,7 @@ public:
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
         , refineOperator_{std::make_shared<
-              ParticlesRefineOperator<ParticleArray<dimension>, splitType,
+              ParticlesRefineOperator<ParticleArray<Particle<dimension>>, splitType,
                                       Splitter<DimConst<dimension>, InterpConst<interpOrder>,
                                                RefinedParticlesConst<refinedParticlesNbr>>>>()}
 

@@ -13,17 +13,9 @@
 #include <tuple>
 #include <vector>
 
-
 #include "cppdict/include/dict.hpp"
 
-#if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
-#define PHARE_DEBUG_DO(...) __VA_ARGS__
-#else
-#define PHARE_DEBUG_DO(...)
-#endif
-
-#define _PHARE_TO_STR(x) #x // convert macro text to string
-#define PHARE_TO_STR(x) _PHARE_TO_STR(x)
+#include "core/def.hpp"
 
 namespace PHARE
 {
@@ -169,6 +161,15 @@ namespace core
         return arr;
     }
 
+    template<std::size_t size, typename FN>
+    constexpr auto ConstArrayFrom(FN fn)
+    {
+        std::array<decltype(fn()), size> arr{};
+        for (uint8_t i = 0; i < size; i++)
+            arr[i] = fn();
+        return arr;
+    }
+
     template<typename Type>
     std::vector<Type> displacementFrom(std::vector<Type> const& input)
     {
@@ -215,7 +216,7 @@ namespace core
     }
 
     template<typename T, std::size_t... Is>
-    constexpr auto gft_helper(std::index_sequence<Is...> const&&)
+    constexpr auto gft_helper(std::index_sequence<Is...> const &&)
         -> decltype(std::make_tuple((Is, std::declval<T>())...));
 
     template<typename T, std::size_t N>
@@ -234,24 +235,27 @@ namespace core
     }
     inline std::optional<std::string> get_env(std::string&& key) { return get_env(key); }
 
+
+
 } // namespace core
 } // namespace PHARE
-
 
 namespace PHARE::core
 {
 template<typename Container, typename Multiplies = typename Container::value_type>
-Multiplies product(Container const& container, Multiplies mul = 1)
+Multiplies product(Container const& container, Multiplies mul = 1) _PHARE_ALL_FN_
 {
-    return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
+    // std accumulate doesn't exist on GPU
+    for (auto const& v : container)
+        mul *= v;
+    return mul;
 }
 
 template<typename Container, typename Return = typename Container::value_type>
-Return sum(Container const& container, Return r = 0)
+Return sum(Container const& container, Return r = 0) _PHARE_HST_FN_
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
-
 
 
 
@@ -269,25 +273,23 @@ auto generate(F&& f, std::size_t from, std::size_t to)
     return v;
 }
 
+
+template<typename Type>
+auto& deref(Type& type) _PHARE_ALL_FN_
+{
+    if constexpr (std::is_pointer_v<Type>)
+        return *type;
+    else
+        return type;
+}
+
+
 template<typename F>
 auto generate(F&& f, std::size_t count)
 {
     return generate(std::forward<F>(f), 0, count);
 }
 
-
-template<typename F, typename Container>
-auto generate(F&& f, Container& container)
-{
-    using T          = typename Container::value_type;
-    using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
-    std::vector<value_type> v1;
-    if (container.size() > 0)
-        v1.reserve(container.size());
-    for (auto& v : container)
-        v1.emplace_back(f(v));
-    return v1;
-}
 
 template<typename F, typename T>
 auto generate(F&& f, std::vector<T>&& v)
@@ -296,13 +298,13 @@ auto generate(F&& f, std::vector<T>&& v)
 }
 
 template<std::size_t Idx, typename F, typename Type, std::size_t Size>
-auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
+auto constexpr generate_array__(F& f, std::array<Type, Size> const& arr)
 {
     return f(arr[Idx]);
 }
 
 template<typename Type, std::size_t Size, typename F, std::size_t... Is>
-auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
+auto constexpr generate_array_(F& f, std::array<Type, Size> const& arr,
                                std::integer_sequence<std::size_t, Is...>)
 {
     return std::array{generate_array__<Is>(f, arr)...};
@@ -313,6 +315,35 @@ auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
 {
     return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
 }
+
+
+
+// // template<typename F, typename Container> // general case
+// // auto generate(F&& f, Container& container)
+// template<typename F, typename T>
+// auto generate(F&& f, std::vector<T> const& v0)
+// {
+//     using T          = typename Container::value_type;
+//     using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
+//     std::vector<value_type> v1;
+//     if (v0.size() > 0)
+//         v1.reserve(v0.size());
+//     for (auto& v : v0)
+//         v1.emplace_back(f(v));
+//     return v1;
+// }
+
+template<typename F, typename T>
+auto generate(F&& f, std::vector<T> const& v0)
+{
+    using value_type = std::decay_t<std::result_of_t<F const&(T const&)>>;
+    std::vector<value_type> v1;
+    v1.reserve(v0.size());
+    for (auto const& v : v0)
+        v1.emplace_back(f(v));
+    return v1;
+}
+
 
 
 // calls operator bool() or copies bool
@@ -338,6 +369,12 @@ auto none(Container const& container)
 }
 
 
+
+inline void abort_if(bool b)
+{
+    if (b)
+        std::abort();
+}
 
 
 } // namespace PHARE::core

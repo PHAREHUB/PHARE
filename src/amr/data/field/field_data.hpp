@@ -83,14 +83,25 @@ namespace amr
         {
             Super::getFromRestart(restart_db);
 
-            restart_db->getVector("field_" + field.name(), field.vector());
+            if constexpr (std::decay_t<decltype(field)>::is_host_mem)
+                restart_db->getVector("field_" + field.name(), field.vector());
+            else
+            {
+                std::abort();
+            }
+            field.reset(); // :(
         }
 
         void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) const override
         {
             Super::putToRestart(restart_db);
 
-            restart_db->putVector("field_" + field.name(), field.vector());
+            if constexpr (std::decay_t<decltype(field)>::is_host_mem)
+                restart_db->putVector("field_" + field.name(), field.vector());
+            else
+            {
+                std::abort();
+            }
         };
 
 

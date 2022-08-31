@@ -21,6 +21,8 @@ public:
 
     using PHARESolverTypes = solver::PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using HybridModel      = typename PHARESolverTypes::HybridModel_t;
+    using ParticleArray_t  = typename core::PHARE_Types<dim, interp_order>::ParticleArray_t;
+    using Particle_t       = typename ParticleArray_t::Particle_t;
 
     using GridLayout = typename HybridModel::gridlayout_type;
 
@@ -260,40 +262,46 @@ public:
 
         std::unordered_map<std::string, Inner> pop_particles;
 
-        auto getParticleData = [&](Inner& inner, GridLayout& grid, std::string patchID,
-                                   std::string key, auto& particles) {
-            if (particles.size() == 0)
-                return;
+        if constexpr (ParticleArray_t::is_host_mem)
+        {
+            auto getParticleData = [&](Inner& inner, GridLayout& grid, std::string patchID,
+                                       std::string key, auto& particles) {
+                if (particles.size() == 0)
+                    return;
 
-            if (!inner.count(key))
-                inner.emplace(key, Nested());
+                if (!inner.count(key))
+                    inner.emplace(key, Nested());
 
-            auto& patch_data = inner[key].emplace_back(particles.size());
-            setPatchDataFromGrid(patch_data, grid, patchID);
-            core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
-        };
+                auto& patch_data = inner[key].emplace_back(particles.size());
+                setPatchDataFromGrid(patch_data, grid, patchID);
+                core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
+            };
 
-        auto& ions = model_.state.ions;
+            auto& ions = model_.state.ions;
 
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto& pop : ions)
-            {
-                if ((userPopName != "" and userPopName == pop.name()) or userPopName == "all")
+            auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
+                for (auto& pop : ions)
                 {
-                    if (!pop_particles.count(pop.name()))
-                        pop_particles.emplace(pop.name(), Inner());
+                    if ((userPopName != "" and userPopName == pop.name()) or userPopName == "all")
+                    {
+                        if (!pop_particles.count(pop.name()))
+                            pop_particles.emplace(pop.name(), Inner());
 
-                    auto& inner = pop_particles.at(pop.name());
+                        auto& inner = pop_particles.at(pop.name());
 
-                    getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
-                    getParticleData(inner, grid, patchID, "patchGhost", pop.patchGhostParticles());
-                    getParticleData(inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
+                        getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
+                        getParticleData(inner, grid, patchID, "patchGhost",
+                                        pop.patchGhostParticles());
+                        getParticleData(inner, grid, patchID, "levelGhost",
+                                        pop.levelGhostParticles());
+                    }
                 }
-            }
-        };
+            };
 
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
+
+            PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                               *model_.resourcesManager, visit, ions);
+        }
 
         return pop_particles;
     }

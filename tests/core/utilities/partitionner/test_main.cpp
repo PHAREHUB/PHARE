@@ -111,10 +111,11 @@ public:
 
 
 protected:
-    ParticleArray<2> particles;
+    using ParticleArray_t = ParticleArray<Particle<2>>;
+    ParticleArray_t particles;
     Box<int, 2> patchBox;
     std::vector<Box<int, 2>> boundaryBoxes;
-    ParticleArray<2>::iterator firstLeaving;
+    ParticleArray_t::iterator firstLeaving;
 };
 
 

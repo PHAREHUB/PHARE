@@ -8,12 +8,12 @@
 #include "initializer/python_data_provider.hpp"
 #include "initializer/restart_data_provider.hpp"
 
-
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 
 
@@ -21,7 +21,7 @@
 using namespace PHARE::initializer;
 
 using GridLayoutT    = PHARE::core::GridLayout<PHARE::core::GridLayoutImplYee<1, 1>>;
-using ParticleArrayT = PHARE::core::ParticleArray<1>;
+using ParticleArrayT = PHARE::core::ParticleArray<PHARE::core::Particle<1>>;
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

@@ -107,10 +107,11 @@ public:
 
 
     /** see Pusher::move() documentation*/
-    virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) override
+    void setMeshAndTimeStep(std::array<double, dim> const& ms,
+                            double const ts) override _PHARE_ALL_FN_
     {
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
-                       [ts](double& x) { return 0.5 * ts / x; });
+                       [ts](auto const& x) { return 0.5 * ts / x; });
         dt_ = ts;
     }
 

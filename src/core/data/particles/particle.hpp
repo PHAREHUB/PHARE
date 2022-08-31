@@ -9,10 +9,10 @@
 #include <type_traits>
 #include <iostream>
 
+#include "core/def.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
-
 
 namespace PHARE::core
 {
@@ -28,10 +28,16 @@ struct ParticleDeltaDistribution
 };
 
 
-template<typename Particle>
-auto cellAsPoint(Particle const& particle)
+template<typename T, std::size_t S>
+auto cellAsPoint(std::array<T, S> const& iCell) _PHARE_ALL_FN_
 {
-    return Point<int, Particle::dimension>{particle.iCell};
+    return Point<T, S>{iCell};
+}
+
+template<typename Particle>
+auto cellAsPoint(Particle const& particle) _PHARE_ALL_FN_
+{
+    return cellAsPoint(particle.iCell);
 }
 
 
@@ -78,8 +84,25 @@ struct Particle
                (this->Bz == that.Bz);
     }
 
+
     template<std::size_t dimension>
     friend std::ostream& operator<<(std::ostream& out, const Particle<dimension>& particle);
+
+    // auto& operator=(Particle<dim> const& that)
+    // {
+    //     this->weight = that.weight;
+    //     this->charge = that.charge;
+    //     this->iCell  = that.iCell;
+    //     this->delta  = that.delta;
+    //     this->v      = that.v;
+    //     this->Ex     = that.Ex;
+    //     this->Ey     = that.Ey;
+    //     this->Ez     = that.Ez;
+    //     this->Bx     = that.Bx;
+    //     this->By     = that.By;
+    //     this->Bz     = that.Bz;
+    //     return *this;
+    // }
 };
 
 template<std::size_t dim>
@@ -148,7 +171,6 @@ operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 
 namespace std
 {
-
 template<size_t dim, template<std::size_t> typename Particle_t>
 typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
                           PHARE::core::Particle<dim>>

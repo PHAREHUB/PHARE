@@ -21,7 +21,7 @@ auto positionAsPoint(Particle<GridLayout::dimension> const& particle, GridLayout
     auto origin       = layout.origin();
     auto startIndexes = layout.physicalStartIndex(QtyCentering::primal);
     auto meshSize     = layout.meshSize();
-    auto iCell        = layout.AMRToLocal(Point{particle.iCell});
+    auto iCell        = layout.AMRToLocal(cellAsPoint(particle));
 
     for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
     {

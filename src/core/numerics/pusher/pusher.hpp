@@ -23,6 +23,14 @@ namespace core
         using ParticleSelector = std::function<ParticleRange(ParticleRange&)>;
 
     public:
+        /**
+         * @brief setMeshAndTimeStep allows to let the pusher know what is the mesh
+         * size and time step in the domain where particles are to be pushed.
+         */
+        virtual void setMeshAndTimeStep(std::array<double, dim> const& ms,
+                                        double const ts) _PHARE_ALL_FN_ = 0;
+
+
         // TODO : to really be independant on boris which has 2 push steps
         // we should have an arbitrary number of selectors, 1 per push step
         virtual ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
@@ -32,9 +40,9 @@ namespace core
             = 0;
 
 
-        virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) = 0;
 
-        virtual ~Pusher() {}
+        Pusher() _PHARE_ALL_FN_ {}
+        virtual ~Pusher() _PHARE_ALL_FN_ {}
     };
 
 } // namespace core

@@ -175,7 +175,7 @@ void test(GridLayout const& layout,
 template<typename GridLayout, typename NdArrayImpl, std::size_t dim, typename T,
          typename FF = PHARE::FieldNullFilter>
 void test(GridLayout const& layout,
-          PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
+          PHARE::core::FieldView<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
           PHARE::core::NdArrayView<dim, T> const& field1, FF const ff = FF{})
 {
     static_assert(NdArrayImpl::dimension == dim);
@@ -186,33 +186,13 @@ void test(GridLayout const& layout,
 template<typename GridLayout, typename NdArrayImpl, typename T,
          typename FF = PHARE::FieldNullFilter>
 void test(GridLayout const& layout,
-          PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
+          PHARE::core::FieldView<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
           std::vector<T> const& fieldV, FF const ff = FF{})
 {
     EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T> const field1{fieldV.data(), field0.shape()};
+    core::NdArrayView<GridLayout::dimension, const T> field1{fieldV.data(), field0.shape()};
     test_fields(layout, field0, field1, ff);
 }
-
-template<typename GridLayout, typename NdArrayImpl, typename Qty, typename T,
-         typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout, PHARE::core::Field<NdArrayImpl, Qty> field0,
-          std::vector<T>&& fieldV, FF const ff = FF{})
-{
-    EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T> field1{fieldV, field0.shape()};
-    test_fields(layout, field0, field1, ff);
-}
-
-
-template<typename GridLayout, typename NdArrayImpl0, typename NdArrayImpl1, typename Qty,
-         typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout, PHARE::core::Field<NdArrayImpl0, Qty> field0,
-          PHARE::core::Field<NdArrayImpl1, Qty> field1, FF const ff = FF{})
-{
-    test_fields(layout, field0, field1, ff);
-}
-
 
 } // namespace PHARE::core
 

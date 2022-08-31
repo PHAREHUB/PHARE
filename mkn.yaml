@@ -1,0 +1,192 @@
+#! clean build -x mpi -dtKOp py
+
+name: phare
+
+property:
+  MPI_INC: /usr/include #/hdf5/mpich #/usr/include/hdf5/openmpi #/usr/local/netcdf/include
+  MPI_LIB: hdf5
+  MPI_PTH: /opt/conda/envs/vscode/lib
+
+profile:
+- name: base
+  # diagnostics disabled for the moment
+  # -DPHARE_HAS_HIGHFIVE=1 -DPHARE_DIAG_DOUBLES=1
+  arg:  -Wno-macro-redefined -Wno-unknown-cuda-version -DPHARE_HAVE_UMPIRE=1 -DPHARE_HAVE_RAJA=1
+  #-DHAVE_RAJA -DHAVE_UMPIRE -DPHARE_HAS_HIGHFIVE=0 -DRAJA_ENABLE_CUDA=1 -DUMPIRE_ENABLE_CUDA=1
+
+
+- name: core
+  inc: src subprojects
+  src: src/core
+  dep: mkn.kul
+  out: phare_core
+
+- name: samrai
+  self: core
+  arg: -DPHARE_WITH_GPU=1 -DKUL_GPU_CUDA=1
+  dep: llnl.samrai#phare(https://github.com/dekken/llnl.samrai) llnl.raja[lib] llnl.umpire[lib] mkn.gpu
+  src: src/amr
+  out: phare_amr
+
+- name: diagnostic
+  self: samrai
+  dep: hpc.highfive(https://github.com/dekken/hpc.highfive)
+  inc: build/subprojects/highfive/include
+       ${MPI_INC}
+  lib: ${MPI_LIB}
+  path: ${MPI_PTH}
+
+- name: simulator
+  parent: base
+  self: diagnostic
+  out: phare_simulator
+
+- name: exe
+  self: simulator init
+  dep: lang.pybind11 mkn.gpu
+  arg: -DPHARE_WITH_GPU=1 -DPHARE_HAS_HIGHFIVE=0 -DKUL_GPU_CUDA=1 -DHAVE_RAJA -DHAVE_UMPIRE  -DRAJA_ENABLE_CUDA=1 -DUMPIRE_ENABLE_CUDA=1 -DPHARE_WITH_KUL=1
+  main: src/phare/phare.cpp
+  mod: lang.python3
+  env: PYTHONPATH=${MKN_ROOT}:${MKN_ROOT}/tests/diagnostic:${MKN_ROOT}/build:${MKN_ROOT}/pyphare
+
+- name: init
+  src: src/initializer/data_provider.cpp
+  self: core
+  out: phare_initializer
+  mode: shared # static singleton dict lives here
+
+- name: pybind
+  parent: base
+  mode: shared
+  dep: lang.pybind11
+  mod: lang.pybind11 lang.python3
+
+- name: dictator
+  parent: pybind
+  self: init
+  src: src/initializer/dictator.cpp
+  install: build/pybindlibs
+  out: dictator
+
+- name: cpp
+  parent: pybind
+  dep: mkn.gpu
+  # lib: numa
+  # arg: -DPHARE_WITH_GPU -DKUL_GPU_CUDA
+  arg: |
+      -DPHARE_WITH_GPU=1 -DPHARE_HAS_HIGHFIVE=1 -DKUL_GPU_CUDA=1 -DHAVE_RAJA -DHAVE_UMPIRE  -DRAJA_ENABLE_CUDA=1 -DUMPIRE_ENABLE_CUDA=1 -DPHARE_WITH_KUL=1
+      -DPHARE_DIAG_DOUBLES=1
+
+  self: simulator init
+  src: src/python3/cpp_simulator.cpp
+  install: build/pybindlibs
+  #test: tests/amr/solvers/ppc/test_gpu_solverppc.cpp
+  out: cpp
+
+- name: cpp_ext
+  parent: pybind
+  self: init
+  src: src/python3/cpp_ext.cpp
+  install: build/pybindlibs
+  out: cpp_ext
+
+- name: py
+  self: dictator cpp_ext simulator
+
+- name: test
+  parent: base
+  self: init simulator
+  dep: lang.pybind11 google.test
+  mod: lang.python3
+  inc: .
+  link: -pthread
+
+- name: test_diagnostics
+  parent: test
+  mode: none
+  mod: lang.python3
+  test:
+    tests/diagnostic/test-diagnostics_1d.cpp
+    tests/diagnostic/test-diagnostics_2d.cpp
+  env: PYTHONPATH=${MKN_ROOT}:${MKN_ROOT}/build/tests/diagnostic:${MKN_ROOT}/build:${MKN_ROOT}/pyphare
+
+- name: bench
+  self: core
+  dep: google.benchmark
+  main: tools/bench/core/data/particles/interop.cpp
+  link: -pthread
+
+- name: gpu_pusher
+  parent: test
+  self: bench
+  inc: .
+  dep: mkn.gpu
+  arg: -DPHARE_WITH_GPU
+  env: PYTHONPATH=${MKN_ROOT}:${MKN_ROOT}/tools/bench/core/numerics/pusher:${MKN_ROOT}/build:${MKN_ROOT}/pyphare
+
+- name: rocm_pusher
+  parent: gpu_pusher
+  main: tools/bench/core/numerics/pusher/gpu.cpp
+  arg: -DKUL_GPU_ROCM
+  env: PYTHONPATH=${MKN_ROOT}:${MKN_ROOT}/tools/bench/core/numerics/pusher:${MKN_ROOT}/build:${MKN_ROOT}/pyphare
+
+- name: cuda_pusher
+  parent: gpu_pusher
+  main: tests/amr/solvers/ppc/test_gpu_solverppc.cpp #tools/bench/core/numerics/pusher/gpu.cpp
+  arg: -DKUL_GPU_CUDA
+  inc: subprojects/thrust
+  env: PYTHONPATH=${MKN_ROOT}:${MKN_ROOT}/tools/bench/core/numerics/pusher:${MKN_ROOT}/build:${MKN_ROOT}/pyphare
+
+# - name: cuda_bandwidth_test
+#   main: subprojects/cuda-samples/Samples/bandwidthTest/bandwidthTest.cu
+#   inc: subprojects/cuda-samples/Common
+
+- name: c_depositor
+  test: tools/hw/gpu/bench/depositor.cpp
+
+- name: mkn.gpu_depositor
+  dep: mkn.gpu
+  test: tools/hw/gpu/bench/depositor.mkn.gpu.cpp
+
+# mkn clean build test run -p mkn.sheath.hip -x res/mkn/hcc.yaml -O
+- name: mkn.sheath.hip
+  dep: mkn.gpu
+  test: tools/hw/gpu/bench/sheath-gpu.hip.cpp
+
+- name: mkn.sheath.cuda
+  dep: mkn.gpu
+  test: tools/hw/gpu/bench/sheath-gpu.cuda.cpp
+
+
+
+- name: format
+  mod: |
+    clang.format{init{style: file, paths: src}}
+
+
+- name: gpu_test
+  parent: test
+  self: simulator init
+  arg: |
+      -DHAVE_RAJA
+      -DHAVE_UMPIRE
+      -DRAJA_ENABLE_CUDA=1
+      -DUMPIRE_ENABLE_CUDA=1
+      -DPHARE_WITH_GPU=1
+      -DPHARE_HAS_HIGHFIVE=1
+      -DPHARE_WITH_KUL=1
+      -DKUL_GPU_CUDA=1
+  test:
+    tests/core/data/ndarray/test_main.cpp
+
+
+# tests/core/numerics/ion_updater/test_updater.cpp
+# tests/core/numerics/interpolator/test_main.cpp
+# tests/core/data/field/test_field.cpp
+# tests/core/data/vecfield/test_main.cpp
+# tests/core/data/ions/test_ions.cpp
+# tests/core/data/electrons/test_electrons.cpp
+# tests/core/numerics/ampere/test_main.cpp
+# tests/core/numerics/faraday/test_main.cpp
+# tests/core/numerics/ohm/test_main.cpp
+

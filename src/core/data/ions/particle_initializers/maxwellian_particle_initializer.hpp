@@ -129,10 +129,12 @@ private:
 
 
 
-template<typename ParticleArray, typename GridLayout>
-void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
-    ParticleArray& particles, GridLayout const& layout) const
+template<typename ParticleArray_t, typename GridLayout>
+void MaxwellianParticleInitializer<ParticleArray_t, GridLayout>::loadParticles(
+    ParticleArray_t& particles, GridLayout const& layout) const
 {
+    // using Particle_t = typename ParticleArray_t::Particle_t;
+
     auto point = [](std::size_t i, auto const& indices) -> core::Point<std::uint32_t, dimension> {
         if constexpr (dimension == 1)
             return {std::get<0>(indices[i])};
@@ -141,17 +143,6 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         if constexpr (dimension == 3)
             return {std::get<0>(indices[i]), std::get<1>(indices[i]), std::get<2>(indices[i])};
     };
-
-
-    auto deltas = [](auto& pos, auto& gen) -> std::array<double, dimension> {
-        if constexpr (dimension == 1)
-            return {pos(gen)};
-        if constexpr (dimension == 2)
-            return {pos(gen), pos(gen)};
-        if constexpr (dimension == 3)
-            return {pos(gen), pos(gen), pos(gen)};
-    };
-
 
     // in the following two calls,
     // primal indexes are given here because that's what cellCenteredCoordinates takes
@@ -173,7 +164,10 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
 
-    for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)
+    // std::vector<Particle_t> particles;
+    // particles.reserve(ndCellIndices.size() * nbrParticlePerCell_);
+
+    for (std::size_t flatCellIdx = 0, i = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx, ++i)
     {
         auto const cellWeight   = n[flatCellIdx] / nbrParticlePerCell_;
         auto const AMRCellIndex = layout.localToAMR(point(flatCellIdx, ndCellIndices));
@@ -196,11 +190,14 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(Particle{cellWeight, particleCharge_,
-                                            AMRCellIndex.template toArray<int>(),
-                                            deltas(deltaDistrib, randGen), particleVelocity});
+            particles.emplace_back(
+                cellWeight, particleCharge_, AMRCellIndex.template toArray<int>(),
+                core::ConstArrayFrom<dimension>([&] { return deltaDistrib(randGen); }),
+                particleVelocity);
         }
     }
+
+    // out_particles = std::move(particles);
 }
 
 } // namespace PHARE::core

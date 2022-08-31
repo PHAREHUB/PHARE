@@ -102,10 +102,11 @@ namespace amr
         template<typename ResourcesUser>
         using UserParticle_t = UserParticleType<ResourcesUser, interp_order>;
 
-        ResourcesManager()
+        ResourcesManager(std::string prefix = "")
             : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
             , context_{variableDatabase_->getContext(contextName_)}
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
+            , prefix_{prefix}
         {
         }
 
@@ -264,6 +265,7 @@ namespace amr
             for (auto const& id : IDs)
             {
                 auto patchdata = patch.getPatchData(id);
+                assert(patchdata);
                 patchdata->setTime(time);
             }
         }
@@ -337,6 +339,13 @@ namespace amr
         }
 
     private:
+        template<typename Property>
+        auto resourceName_(Property const& properties) const
+        {
+            return prefix_ + properties.name;
+        }
+
+
         template<typename ResourcesUser>
         void getIDs_(ResourcesUser& obj, std::vector<int>& IDs) const
         {
@@ -344,14 +353,15 @@ namespace amr
             {
                 for (auto const& properties : obj.getFieldNamesAndQuantities())
                 {
-                    auto foundIt = nameToResourceInfo_.find(properties.name);
+                    auto name    = resourceName_(properties);
+                    auto foundIt = nameToResourceInfo_.find(name);
                     if (foundIt != nameToResourceInfo_.end())
                     {
                         IDs.push_back(foundIt->second.id);
                     }
                     else
                     {
-                        throw std::runtime_error("Cannot find " + properties.name);
+                        throw std::runtime_error("Cannot find " + name);
                     }
                 }
             }
@@ -360,14 +370,15 @@ namespace amr
             {
                 for (auto const& properties : obj.getParticleArrayNames())
                 {
-                    auto foundIt = nameToResourceInfo_.find(properties.name);
+                    auto name    = resourceName_(properties);
+                    auto foundIt = nameToResourceInfo_.find(name);
                     if (foundIt != nameToResourceInfo_.end())
                     {
                         IDs.push_back(foundIt->second.id);
                     }
                     else
                     {
-                        throw std::runtime_error("Cannot find " + properties.name);
+                        throw std::runtime_error("Cannot find " + name);
                     }
                 }
             }
@@ -494,8 +505,8 @@ namespace amr
                 auto const& resourcesProperties = user.getFieldNamesAndQuantities();
                 for (auto const& properties : resourcesProperties)
                 {
-                    std::string const& resourcesName = properties.name;
-                    auto const& qty                  = properties.qty;
+                    auto const resourcesName = resourceName_(properties);
+                    auto const& qty          = properties.qty;
 
                     if (notInMap(resourcesName, nameToResourceInfo_))
                     {
@@ -516,7 +527,7 @@ namespace amr
                 auto const& resourcesProperties = user.getParticleArrayNames();
                 for (auto const& properties : resourcesProperties)
                 {
-                    auto const& name = properties.name;
+                    auto const name = resourceName_(properties);
 
                     if (notInMap(name, nameToResourceInfo_))
                     {
@@ -547,14 +558,15 @@ namespace amr
         {
             for (auto const& properties : resourcesProperties)
             {
-                std::string const& resourcesName = properties.name;
-                auto const& resourceInfoIt       = nameToResourceInfo_.find(resourcesName);
+                auto const resourcesName   = resourceName_(properties);
+                auto const& resourceInfoIt = nameToResourceInfo_.find(resourcesName);
                 if (resourceInfoIt != nameToResourceInfo_.end())
                 {
                     auto data = getResourcesPointer_<ResourcesType, RequestedPtr>(
                         resourceType, resourceInfoIt->second, patch);
 
-                    obj.setBuffer(resourcesName, data);
+                    // ignore prefix for setBuffer
+                    obj.setBuffer(properties.name, data);
                 }
                 else
                 {
@@ -574,7 +586,7 @@ namespace amr
         {
             for (auto const& properties : resourcesProperties)
             {
-                std::string const& resourcesName  = properties.name;
+                auto const resourcesName          = resourceName_(properties);
                 auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
                 if (resourceVariablesInfo != nameToResourceInfo_.end())
                 {
@@ -592,6 +604,7 @@ namespace amr
         SAMRAI::hier::VariableDatabase* variableDatabase_;
         std::shared_ptr<SAMRAI::hier::VariableContext> context_;
         SAMRAI::tbox::Dimension dimension_;
+        std::string prefix_; // allows multiple models at once
         std::map<std::string, ResourcesInfo> nameToResourceInfo_;
 
         template<typename ResourcesManager, typename... ResourcesUsers>

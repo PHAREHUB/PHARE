@@ -2,12 +2,12 @@
 #include <type_traits>
 
 
-
-
 #include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
+
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -52,7 +52,7 @@ PHAREDict getDict()
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField, DummyLayout> protons{getDict()};
+    IonPopulation<ParticleArray<Particle<1>>, DummyVecField, DummyLayout> protons{getDict()};
     virtual ~AnIonPopulation();
 };
 

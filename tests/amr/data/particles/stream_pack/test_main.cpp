@@ -29,6 +29,7 @@ template<std::size_t dim>
 struct AParticlesData
 {
     static constexpr auto dimension = dim;
+    using Particle_t                = Particle<dim>;
 
     SAMRAI::tbox::Dimension amr_dimension{dim};
     SAMRAI::hier::BlockId blockId{0};
@@ -47,8 +48,8 @@ struct AParticlesData
     SAMRAI::hier::Patch destPatch{destDomain, patchDescriptor};
     SAMRAI::hier::Patch sourcePatch{sourceDomain, patchDescriptor};
 
-    ParticlesData<ParticleArray<dim>> destData{destDomain, ghost};
-    ParticlesData<ParticleArray<dim>> sourceData{sourceDomain, ghost};
+    ParticlesData<ParticleArray<Particle_t>> destData{destDomain, ghost};
+    ParticlesData<ParticleArray<Particle_t>> sourceData{sourceDomain, ghost};
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destGeom{
         std::make_shared<SAMRAI::pdat::CellGeometry>(destPatch.getBox(), ghost)};
@@ -73,7 +74,7 @@ struct AParticlesData
             *sourceGeom, srcMask, fillBox, overwriteInterior, transformation))};
 
 
-    typename ParticleArray<dim>::Particle_t particle;
+    Particle_t particle;
 
 
     AParticlesData()

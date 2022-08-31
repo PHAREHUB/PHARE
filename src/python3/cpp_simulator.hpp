@@ -156,7 +156,7 @@ void declare_sim(py::module& m)
 
     name = "make_simulator" + type_string;
     m.def(name.c_str(), [](std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-        return std::shared_ptr<Sim>{std::move(makeSimulator<dim, interp, nbRefinedPart>(hier))};
+        return std::shared_ptr<Sim>{std::move(makeSimulator<Sim>(hier))};
     });
 }
 

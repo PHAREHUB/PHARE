@@ -140,8 +140,11 @@ private:
 
 
     // extend lifespan
-    std::unordered_map<std::string, ParticleArray> tmpDomain;
-    std::unordered_map<std::string, ParticleArray> patchGhost;
+    // GPU -> GPU alloc/copy is bugging inside std vector
+    using PHARE_Types    = core::CPU_Types<dimension>;
+    using LocalParticles = typename PHARE_Types::ParticleArray_t;
+    std::unordered_map<std::string, LocalParticles> tmpDomain;
+    std::unordered_map<std::string, LocalParticles> patchGhost;
 
 
 }; // end solverPPC
@@ -200,6 +203,8 @@ void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, Ions& ions, R
         auto _ = rm.setOnPatch(*patch, ions);
         for (auto& pop : ions)
         {
+            pop.domainParticles().check();
+
             auto key = ss.str() + "_" + pop.name();
             if (!tmpDomain.count(key))
                 tmpDomain.emplace(key, pop.domainParticles());
@@ -225,8 +230,11 @@ void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, Ions& ions
         auto _ = rm.setOnPatch(*patch, ions);
         for (auto& pop : ions)
         {
-            pop.domainParticles()     = std::move(tmpDomain.at(ss.str() + "_" + pop.name()));
-            pop.patchGhostParticles() = std::move(patchGhost.at(ss.str() + "_" + pop.name()));
+            auto key = ss.str() + "_" + pop.name();
+            tmpDomain.at(key).check();
+            pop.domainParticles() = std::move(tmpDomain.at(key));
+            pop.domainParticles().check();
+            pop.patchGhostParticles() = std::move(patchGhost.at(key));
         }
     }
 }

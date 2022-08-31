@@ -11,6 +11,7 @@
 #include <memory>
 
 
+
 namespace PHARE::core
 {
 template<typename Ions>
@@ -93,40 +94,39 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
-        auto const& Jx  = J_(Component::X);
-        auto const& Jy  = J_(Component::Y);
-        auto const& Jz  = J_(Component::Z);
-        auto const& Vix = ions_.velocity()(Component::X);
-        auto const& Viy = ions_.velocity()(Component::Y);
-        auto const& Viz = ions_.velocity()(Component::Z);
-        auto const& Ni  = ions_.density();
+        auto const J  = J_.view();
+        auto const Vi = ions_.velocity().view();
+        auto const Ni = ions_.density().view();
+        auto Ve       = Ve_.view();
 
-        auto& Vex = Ve_(Component::X);
-        auto& Vey = Ve_(Component::Y);
-        auto& Vez = Ve_(Component::Z);
+        auto& Jx  = J(Component::X);
+        auto& Jy  = J(Component::Y);
+        auto& Jz  = J(Component::Z);
+        auto& Vix = Vi(Component::X);
+        auto& Viy = Vi(Component::Y);
+        auto& Viz = Vi(Component::Z);
+        auto& Vex = Ve(Component::X);
+        auto& Vey = Ve(Component::Y);
+        auto& Vez = Ve(Component::Z);
 
         // from Ni because all components defined on primal
-        layout.evalOnBox(Ni, [&](auto const&... args) {
-            auto arr = std::array{args...};
+        layout.evalOnBox(Ni, [=] _PHARE_ALL_FN_(auto const& ijk) mutable {
+            auto const JxOnVx = GridLayout::project(Jx, ijk, GridLayout::JxToMoments());
+            auto const JyOnVy = GridLayout::project(Jy, ijk, GridLayout::JyToMoments());
+            auto const JzOnVz = GridLayout::project(Jz, ijk, GridLayout::JzToMoments());
 
-            auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
-            auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
-            auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
-
-            Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
-            Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
-            Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
+            Vex(ijk) = Vix(ijk) - JxOnVx / Ni(ijk);
+            Vey(ijk) = Viy(ijk) - JyOnVy / Ni(ijk);
+            Vez(ijk) = Viz(ijk) - JzOnVz / Ni(ijk);
         });
     }
-
 
 
 private:
     Ions& ions_;
     VecField& J_;
     VecField Ve_;
-
-}; // namespace PHARE::core
+};
 
 
 

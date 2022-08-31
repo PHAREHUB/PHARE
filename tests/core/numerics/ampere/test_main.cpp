@@ -1,9 +1,10 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <fstream>
 #include <memory>
+#include <fstream>
 
+#include "phare_core.hpp"
 
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -135,19 +136,24 @@ std::vector<double> read(std::string filename)
 class Ampere1DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<1, 1>;
+    static constexpr auto dimension    = 1;
+    static constexpr auto interp_order = 1;
+
+    using PHARE_TYPES    = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayoutImpl = GridLayoutImplYee<dimension, interp_order>;
+    using NdArray_t      = typename PHARE_TYPES::Array_t;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
+    Field<NdArray_t, HybridQuantity::Scalar> Bx;
+    Field<NdArray_t, HybridQuantity::Scalar> By;
+    Field<NdArray_t, HybridQuantity::Scalar> Bz;
+    Field<NdArray_t, HybridQuantity::Scalar> Jx;
+    Field<NdArray_t, HybridQuantity::Scalar> Jy;
+    Field<NdArray_t, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector<1>, HybridQuantity> B;
-    VecField<NdArrayVector<1>, HybridQuantity> J;
+    VecField<NdArray_t, HybridQuantity> B;
+    VecField<NdArray_t, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -176,19 +182,24 @@ public:
 class Ampere2DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<2, 1>;
+    static constexpr auto dimension    = 2;
+    static constexpr auto interp_order = 1;
+
+    using PHARE_TYPES    = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayoutImpl = GridLayoutImplYee<dimension, interp_order>;
+    using NdArray_t      = typename PHARE_TYPES::Array_t;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
+    Field<NdArray_t, HybridQuantity::Scalar> Bx;
+    Field<NdArray_t, HybridQuantity::Scalar> By;
+    Field<NdArray_t, HybridQuantity::Scalar> Bz;
+    Field<NdArray_t, HybridQuantity::Scalar> Jx;
+    Field<NdArray_t, HybridQuantity::Scalar> Jy;
+    Field<NdArray_t, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector<2>, HybridQuantity> B;
-    VecField<NdArrayVector<2>, HybridQuantity> J;
+    VecField<NdArray_t, HybridQuantity> B;
+    VecField<NdArray_t, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -217,19 +228,24 @@ public:
 class Ampere3DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<3, 1>;
+    static constexpr auto dimension    = 3;
+    static constexpr auto interp_order = 1;
+
+    using PHARE_TYPES    = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayoutImpl = GridLayoutImplYee<dimension, interp_order>;
+    using NdArray_t      = typename PHARE_TYPES::Array_t;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
+    Field<NdArray_t, HybridQuantity::Scalar> Bx;
+    Field<NdArray_t, HybridQuantity::Scalar> By;
+    Field<NdArray_t, HybridQuantity::Scalar> Bz;
+    Field<NdArray_t, HybridQuantity::Scalar> Jx;
+    Field<NdArray_t, HybridQuantity::Scalar> Jy;
+    Field<NdArray_t, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector<3>, HybridQuantity> B;
-    VecField<NdArrayVector<3>, HybridQuantity> J;
+    VecField<NdArray_t, HybridQuantity> B;
+    VecField<NdArray_t, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -285,6 +301,8 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
         EXPECT_THAT(Jz(ix), ::testing::DoubleNear((expectedJz[ix]), 1e-12));
     }
 }
+
+
 
 
 TEST_F(Ampere2DTest, ampere2DCalculatedOk)

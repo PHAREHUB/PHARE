@@ -1,6 +1,9 @@
 
-#include "initializer/data_provider.hpp"
 
+
+#include "phare_core.hpp"
+
+#include "initializer/data_provider.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
@@ -8,12 +11,12 @@
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
 #include "core/data/electromag/electromag.hpp"
-#include "src/core/utilities/types.hpp"
+#include "core/utilities/types.hpp"
+
+#include "tests/initializer/init_functions.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-#include "tests/initializer/init_functions.hpp"
 
 
 using namespace PHARE::core;
@@ -124,12 +127,13 @@ struct ElectronsTest : public ::testing::Test
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interp>;
+    using VecFieldND      = typename PHARE_TYPES::VecField_t;
+    using FieldND         = typename VecFieldND::field_type;
+    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
 
-    using VecFieldND = VecField<NdArrayVector<dim>, HybridQuantity>;
-    using FieldND    = typename VecFieldND::field_type;
-
-    using IonPopulationND = IonPopulation<ParticleArray<dim>, VecFieldND, GridYee>;
+    using GridYee         = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using IonPopulationND = IonPopulation<ParticleArray_t, VecFieldND, GridYee>;
     using IonsT           = Ions<IonPopulationND, GridYee>;
     using PartPackND      = ParticlesPack<typename IonPopulationND::particle_array_type>;
     using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
@@ -449,16 +453,15 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
 
+    using PHARE_TYPES = PHARE::core::PHARE_Types<dim, interp>;
+    using VecFieldND  = typename PHARE_TYPES::VecField_t;
+    using FieldND     = typename VecFieldND::field_type;
+    using GridYee     = GridLayout<GridLayoutImplYee<dim, interp>>;
+
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
 
-    using VecFieldND = VecField<NdArrayVector<dim>, HybridQuantity>;
-    using FieldND    = typename VecFieldND::field_type;
-    using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
-
-
     electrons.update(layout);
-
     auto& Ne = electrons.density();
 
     auto check = [&layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,

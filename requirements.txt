@@ -1,3 +1,5 @@
+# wheel might be need to build other deps
+wheel
 dill
 ddt
 h5py

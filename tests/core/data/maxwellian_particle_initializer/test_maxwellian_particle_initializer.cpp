@@ -24,7 +24,7 @@ class AMaxwellianParticleInitializer1D : public ::testing::Test
 {
 private:
     using GridLayoutT       = GridLayout<GridLayoutImplYee<1, 1>>;
-    using ParticleArrayT    = ParticleArray<1>;
+    using ParticleArrayT    = ParticleArray<Particle<1>>;
     using InitFunctionArray = std::array<InitFunction<1>, 3>;
 
 public:
