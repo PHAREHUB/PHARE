@@ -356,6 +356,25 @@ def check_patch_size(ndim, **kwargs):
 
 # ------------------------------------------------------------------------------
 
+def check_directory(directory, key):
+    directory = directory.rstrip(os.path.sep) # trim trailing slashes
+
+    if os.path.exists(directory):
+        if os.path.isfile(directory):
+            raise ValueError (f"Error: Simulation {key} dir exists as a file.")
+
+        if not os.access(directory, os.R_OK | os.W_OK | os.X_OK):
+            raise ValueError (f"Directory ({directory}) for {key} does not have the correct permissions")
+
+    try:
+        os.makedirs(directory, exist_ok=True)
+        if not os.path.exists(directory):
+            raise ValueError ("1. Creation of the directory %s failed" % directory)
+    except FileExistsError:
+        raise ValueError ("Creation of the directory %s failed" % directory)
+
+    return directory
+
 # diag_options = {"format":"phareh5", "options": {"dir": "phare_ouputs/"}}
 def check_diag_options(**kwargs):
     diag_options = kwargs.get("diag_options", None)
@@ -364,15 +383,7 @@ def check_diag_options(**kwargs):
         if diag_options["format"] not in formats:
             raise ValueError("Error - diag_options format is invalid")
         if "options" in diag_options and "dir" in diag_options["options"]:
-            diag_dir = diag_options["options"]["dir"]
-            if os.path.exists(diag_dir) and os.path.isfile(diag_dir):
-                raise ValueError ("Error: Simulation diag_options dir exists as a file.")
-            try:
-                os.makedirs(diag_dir, exist_ok=True)
-                if not os.path.exists(diag_dir):
-                    raise ValueError ("1. Creation of the directory %s failed" % diag_dir)
-            except FileExistsError:
-                raise ValueError ("Creation of the directory %s failed" % diag_dir)
+            diag_options["options"]["dir"] = check_directory(diag_options["options"]["dir"], "diagnostics")
         valid_modes = ["overwrite"]
         if "mode" in diag_options["options"]:
             mode = diag_options["options"]["mode"]
@@ -396,9 +407,7 @@ def check_restart_options(**kwargs):
             raise ValueError (f"Restart mode not set, valid modes are {valid_modes}")
 
         if "dir" in restart_options:
-            # trim trailing slashes
-            restart_options["dir"] = restart_options["dir"].rstrip(os.path.sep)
-
+            restart_options["dir"] = check_directory(restart_options["dir"], "restarts")
 
         mode = restart_options["mode"]
         if mode not in valid_modes:
