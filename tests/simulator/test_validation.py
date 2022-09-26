@@ -41,7 +41,7 @@ class SimulatorValidation(unittest.TestCase):
 
             try:
                 self.simulator = Simulator(populate_simulation(dim, interp, **input))
-                self.simulator.initialize()
+                self.simulator.setup()
                 self.assertTrue(valid)
                 self.simulator = None
             except ValueError as e:

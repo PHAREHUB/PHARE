@@ -51,10 +51,8 @@ class Simulator:
     def __del__(self):
         self.reset()
 
-
-    def initialize(self):
-        if self.cpp_sim is not None:
-            raise ValueError("Simulator already initialized: requires reset to re-initialize")
+    def setup(self):
+        # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
         try:
             from pyphare.cpp import cpp_lib
             import pyphare.pharein as ph
@@ -67,9 +65,21 @@ class Simulator:
             self.cpp_sim = make_cpp_simulator(
               self.simulation.ndim, self.simulation.interp_order, self.simulation.refined_particle_nbr, self.cpp_hier
             )
+            return self
+        except:
+            import sys
+            print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()[0]))
+            raise ValueError("Error in Simulator.setup(), see previous error")
+
+
+    def initialize(self):
+        if self.cpp_sim is not None:
+            raise ValueError("Simulator already initialized: requires reset to re-initialize")
+        try:
+            if self.cpp_hier is None:
+                self.setup()
 
             self.cpp_sim.initialize()
-
             self._auto_dump() # first dump might be before first advance
             return self
         except:
