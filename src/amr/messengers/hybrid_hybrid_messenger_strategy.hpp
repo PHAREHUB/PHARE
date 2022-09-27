@@ -57,7 +57,8 @@ namespace amr
 
         std::vector<Property> getFieldNamesAndQuantities() const { return {{name, quantity}}; }
 
-        void setBuffer([[maybe_unused]] std::string const& bufferName, FieldT* field) { f = field; }
+        void setBuffer(std::string const& /*bufferName*/, FieldT* field) { f = field; }
+        void copyData(FieldT const& source) { f->copyData(source); }
     };
 
 
@@ -569,7 +570,7 @@ namespace amr
                 EM_old_.copyData(EM);
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
-                NiOldUser_.f->copyData(Ni);
+                NiOldUser_.copyData(Ni);
             }
         }
 

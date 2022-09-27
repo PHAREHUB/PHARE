@@ -65,14 +65,7 @@ namespace amr
             SAMRAI::hier::IntVector growth(SAMRAI::tbox::Dimension{dimension});
             for (auto dir = 0u; dir < dimension; ++dir)
             {
-                std::cout << static_cast<int>(centerings[dir]) << " and "
-                          << static_cast<int>(PHARE::core::QtyCentering::primal) << "\n";
-                if (static_cast<int>(centerings[dir]) == static_cast<int>(0))
-                {
-                    growth[dir] = -1;
-                }
-                else
-                    growth[dir] = 0;
+                growth[dir] = (centerings[dir] == core::QtyCentering::primal) ? -1 : 0;
             }
             noSharedNodeBox.grow(growth);
             return noSharedNodeBox;
