@@ -6,12 +6,14 @@
 #include "core/def.hpp"
 #include "core/def/detail/umpire.hpp"
 #include "core/def/detail/raja.hpp" // checks for umpire to know if gpu
+#include "core/def/detail/mkn_gpu.hpp"
 
 namespace PHARE
 {
 struct CompileOptions
 {
     static constexpr bool WithUmpire = PHARE_HAVE_UMPIRE;
+    static constexpr bool WithMknGpu = PHARE_HAVE_MKN_GPU;
     static constexpr bool WithRAJA   = PHARE_HAVE_RAJA;
 };
 } // namespace PHARE
@@ -25,6 +27,8 @@ struct Vector
 {
 #if PHARE_HAVE_UMPIRE
     using allocator_type = umpire::TypedAllocator<Type>;
+#elif PHARE_HAVE_MKN_GPU
+    using allocator_type = mkn::gpu::ManagedAllocator<Type>;
 #else
     using allocator_type = typename std::vector<Type>::allocator_type;
 #endif
@@ -40,6 +44,8 @@ struct Vector
         {
             PHARE_WITH_UMPIRE(return Allocator{
                 umpire::ResourceManager::getInstance().getAllocator("PHARE::data_allocator")});
+
+            PHARE_WITH_MKN_GPU(return Allocator{});
         }
     }
 

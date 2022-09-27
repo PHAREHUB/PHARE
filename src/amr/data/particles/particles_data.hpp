@@ -100,35 +100,35 @@ namespace amr
         {
             Super::putToRestart(restart_db);
 
-            using Packer = core::ParticlePacker<dim>;
+            // using Packer = core::ParticlePacker<dim>;
 
-            auto putParticles = [&](std::string name, auto& particles) {
-                // SAMRAI errors on writing 0 size arrays
-                if (particles.size() == 0)
-                    return;
+            // auto putParticles = [&](std::string name, auto& particles) {
+            //     // SAMRAI errors on writing 0 size arrays
+            //     if (particles.size() == 0)
+            //         return;
 
-                particles.sortMapping();
+            //     particles.sortMapping();
 
-                Packer packer(particles);
-                core::ContiguousParticles<dim> soa{particles.size()};
-                packer.pack(soa);
+            //     Packer packer(particles);
+            //     core::ContiguousParticles<dim> soa{particles.size()};
+            //     packer.pack(soa);
 
-                std::size_t part_idx = 0;
-                core::apply(soa.as_tuple(), [&](auto const& arg) {
-                    if constexpr (std::decay_t<decltype(particles)>::is_host_mem)
-                        restart_db->putVector(name + "_" + packer.keys()[part_idx++], arg);
-                    else
-                    {
-                        std::abort();
-                    }
-                });
-            };
+            //     std::size_t part_idx = 0;
+            //     core::apply(soa.as_tuple(), [&](auto const& arg) {
+            //         if constexpr (std::decay_t<decltype(particles)>::is_host_mem)
+            //             restart_db->putVector(name + "_" + packer.keys()[part_idx++], arg);
+            //         else
+            //         {
+            //             std::abort();
+            //         }
+            //     });
+            // };
 
-            putParticles("domainParticles", domainParticles);
-            putParticles("patchGhostParticles", patchGhostParticles);
-            putParticles("levelGhostParticles", levelGhostParticles);
-            putParticles("levelGhostParticlesNew", levelGhostParticlesNew);
-            putParticles("levelGhostParticlesOld", levelGhostParticlesOld);
+            // putParticles("domainParticles", domainParticles);
+            // putParticles("patchGhostParticles", patchGhostParticles);
+            // putParticles("levelGhostParticles", levelGhostParticles);
+            // putParticles("levelGhostParticlesNew", levelGhostParticlesNew);
+            // putParticles("levelGhostParticlesOld", levelGhostParticlesOld);
         };
 
 
@@ -136,53 +136,53 @@ namespace amr
         {
             Super::getFromRestart(restart_db);
 
-            using Packer = core::ParticlePacker<dim>;
+            // using Packer = core::ParticlePacker<dim>;
 
-            auto getParticles = [&](std::string const name, auto& particles) {
-                auto const keys_exist = core::generate(
-                    [&](auto const& key) { return restart_db->keyExists(name + "_" + key); },
-                    Packer::keys());
+            // auto getParticles = [&](std::string const name, auto& particles) {
+            //     auto const keys_exist = core::generate(
+            //         [&](auto const& key) { return restart_db->keyExists(name + "_" + key); },
+            //         Packer::keys());
 
-                assert(keys_exist.size() > 0);
+            //     assert(keys_exist.size() > 0);
 
-                bool all  = core::all(keys_exist);
-                bool none = core::none(keys_exist);
-                if (!(all or none))
-                    throw std::runtime_error("ParticlesData::getFromRestart has been given an "
-                                             "invalid input file, inconsistent state detected");
+            //     bool all  = core::all(keys_exist);
+            //     bool none = core::none(keys_exist);
+            //     if (!(all or none))
+            //         throw std::runtime_error("ParticlesData::getFromRestart has been given an "
+            //                                  "invalid input file, inconsistent state detected");
 
-                if (none) // can't read what doesn't exist
-                    return;
+            //     if (none) // can't read what doesn't exist
+            //         return;
 
-                auto n_particles
-                    = restart_db->getArraySize(name + "_" + Packer::arbitrarySingleValueKey());
-                core::ContiguousParticles<dim> soa{n_particles};
+            //     auto n_particles
+            //         = restart_db->getArraySize(name + "_" + Packer::arbitrarySingleValueKey());
+            //     core::ContiguousParticles<dim> soa{n_particles};
 
-                {
-                    std::size_t part_idx = 0;
-                    core::apply(soa.as_tuple(), [&](auto& arg) {
-                        if constexpr (std::decay_t<decltype(particles)>::is_host_mem)
-                            restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
-                        else
-                        {
-                            std::abort();
-                        }
-                    });
-                }
+            //     {
+            //         std::size_t part_idx = 0;
+            //         core::apply(soa.as_tuple(), [&](auto& arg) {
+            //             if constexpr (std::decay_t<decltype(particles)>::is_host_mem)
+            //                 restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
+            //             else
+            //             {
+            //                 std::abort();
+            //             }
+            //         });
+            //     }
 
-                assert(particles.size() == 0);
-                particles.reserve(n_particles);
-                for (std::size_t i = 0; i < n_particles; ++i)
-                    particles.emplace_back(soa.copy(i));
+            //     assert(particles.size() == 0);
+            //     particles.reserve(n_particles);
+            //     for (std::size_t i = 0; i < n_particles; ++i)
+            //         particles.emplace_back(soa.copy(i));
 
-                particles.check();
-            };
+            //     particles.check();
+            // };
 
-            getParticles("domainParticles", domainParticles);
-            getParticles("patchGhostParticles", patchGhostParticles);
-            getParticles("levelGhostParticles", levelGhostParticles);
-            getParticles("levelGhostParticlesNew", levelGhostParticlesNew);
-            getParticles("levelGhostParticlesOld", levelGhostParticlesOld);
+            // getParticles("domainParticles", domainParticles);
+            // getParticles("patchGhostParticles", patchGhostParticles);
+            // getParticles("levelGhostParticles", levelGhostParticles);
+            // getParticles("levelGhostParticlesNew", levelGhostParticlesNew);
+            // getParticles("levelGhostParticlesOld", levelGhostParticlesOld);
         }
 
 

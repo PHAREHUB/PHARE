@@ -57,19 +57,53 @@ public:
         assert(box_.size() > 0);
     }
 
+    template<typename Allocator0>
+    ParticleArray(ParticleArray<Particle, Allocator0> const& that)
+        : ParticleArray{0}
+    {
+        PHARE::Vector<Particle_t>::copy(this->particles, that.particles);
+    }
+
+
+    template<typename Allocator0>
+    ParticleArray(ParticleArray<Particle, Allocator0>&& that)
+        : ParticleArray{0}
+    {
+        PHARE::Vector<Particle_t>::move(this->particles, that.particles);
+    }
+
     ParticleArray(This const& from) = default;
     ParticleArray(This&& from)      = default;
+
     This& operator=(This&& from) = default;
     This& operator=(This const& from) = default;
 
-    // template<typename Allocator0>
-    // auto& operator=(std::vector<Particle, Allocator0>&& particles)
-    // {
-    //     PHARE::Vector<Particle_t>::move(this->particles_, particles);
-    //     cellMap_.clear();
-    //     map_particles();
-    //     return *this;
-    // }
+    template<typename Allocator0>
+    auto& operator=(std::vector<Particle, Allocator0>&& particles)
+    {
+        PHARE::Vector<Particle_t>::move(this->particles_, particles);
+        cellMap_.clear();
+        map_particles();
+        return *this;
+    }
+
+    template<typename Allocator0>
+    auto& operator=(ParticleArray<Particle, Allocator0> const& that)
+    {
+        PHARE::Vector<Particle_t>::copy(this->particles_, that.particles_);
+        cellMap_.clear();
+        map_particles();
+        return *this;
+    }
+
+    template<typename Allocator0>
+    auto& operator=(ParticleArray<Particle, Allocator0>&& that)
+    {
+        PHARE::Vector<Particle_t>::move(this->particles_, that.particles_);
+        cellMap_.clear();
+        map_particles();
+        return *this;
+    }
 
     std::size_t size() const { return particles_.size(); }
     std::size_t capacity() const { return particles_.capacity(); }
@@ -267,6 +301,10 @@ private:
     Vector particles_;
     box_t box_;
     mutable CellMap_t cellMap_;
+
+    // allow other versions of this class to have access to each others particle vector
+    template<typename, typename>
+    friend class ParticleArray;
 };
 
 } // namespace PHARE::core
