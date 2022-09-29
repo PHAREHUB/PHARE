@@ -146,6 +146,8 @@ class GridLayout(object):
         return self.nbrGhosts(interpOrder, 'primal')
 
 
+    def qtyIsDual(self, qty, direction):
+        return self.isDual(self.qtyCentering(qty, direction))
 
     def isDual(self, centering):
         if centering == 'dual':
