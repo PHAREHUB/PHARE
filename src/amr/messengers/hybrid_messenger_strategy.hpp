@@ -85,7 +85,7 @@ namespace amr
 
 
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double beforePushTime, double const afterPushTime)
+                                         double const afterPushTime)
             = 0;
 
 

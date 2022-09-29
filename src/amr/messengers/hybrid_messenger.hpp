@@ -328,9 +328,9 @@ namespace amr
          * @param fillTime
          */
         void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                 double const currentTime, double const fillTime)
+                                 double const fillTime)
         {
-            strat_->fillIonMomentGhosts(ions, level, currentTime, fillTime);
+            strat_->fillIonMomentGhosts(ions, level, fillTime);
         }
 
 

@@ -346,17 +346,16 @@ namespace amr
          * interpolation coef.
          */
         void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                 double const beforePushTime, double const afterPushTime) override
+                                 double const afterPushTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonMomentGhosts");
 
-            auto alpha = timeInterpCoef_(beforePushTime, afterPushTime, level.getLevelNumber());
+            auto alpha = timeInterpCoef_(afterPushTime, level.getLevelNumber());
             if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
             {
                 std::cout << std::setprecision(12) << alpha << "\n";
                 throw std::runtime_error("ion moment ghost time interp coef invalid : alpha: "
                                          + std::to_string(alpha) + " beforePushTime "
-                                         + std::to_string(beforePushTime) + " afterPushTime "
                                          + std::to_string(afterPushTime) + " on level "
                                          + std::to_string(level.getLevelNumber()));
             }
@@ -714,10 +713,9 @@ namespace amr
 
 
 
-        double timeInterpCoef_(double const beforePushTime, double const afterPushTime,
-                               std::size_t levelNumber)
+        double timeInterpCoef_(double const afterPushTime, std::size_t levelNumber)
         {
-            return (afterPushTime - beforePushTime)
+            return (afterPushTime - beforePushCoarseTime_[levelNumber])
                    / (afterPushCoarseTime_[levelNumber] - beforePushCoarseTime_[levelNumber]);
         }
 
