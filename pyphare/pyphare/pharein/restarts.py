@@ -18,9 +18,9 @@ def validate(sim):
     if np.any(timestamps > sim.final_time):
         raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
     if not np.all(np.diff(timestamps) >= 0):
-        raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
+        raise RuntimeError("Error: restart timestamps not in ascending order)")
     if not np.all(np.abs(timestamps / sim.time_step - np.rint(timestamps/sim.time_step) < 1e-9)):
-        raise RuntimeError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step")
+        raise RuntimeError("Error: restart timestamps is inconsistent with simulation.time_step")
 
     sim.restart_options["timestamps"] = conserve_existing(sim)
 

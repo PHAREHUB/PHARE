@@ -210,6 +210,7 @@ class MaxwellianFluidModel(object):
             x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
             y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
             z = layout.yeeCoordsFor(qty, "z")[nbrGhosts[2]:-(nbrGhosts[2]-1)-(primal_directions[2])]
+            X,Y,Z = np.meshgrid(x,y,z,indexing="ij")
             coords = np.array([X.flatten(), Y.flatten(), Z.flatten()]).T.reshape((len(x), len(y), len(z), sim.ndim))
             left, right, top, bot, front, back = get_3d_faces(coords)
             return (

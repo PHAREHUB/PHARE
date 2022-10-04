@@ -533,7 +533,7 @@ def checker(func):
         kwargs["largest_patch_size"] = largest
 
         kwargs["nesting_buffer"] = check_nesting_buffer(ndim, **kwargs)
-        
+
         kwargs["tag_buffer"] = kwargs.get('tag_buffer', 1)
 
         kwargs["refinement"] = check_refinement(**kwargs)
@@ -735,6 +735,16 @@ Adaptive Mesh Refinement (AMR) parameters
         if self.restart_options is not None:
             return self.restart_options.get("restart_time", 0)
         return 0
+
+    def __getattr__(self, name): # stops pylint complaining about dynamic class attributes not existing
+        ...
+
+    # dill serialization uses __getattr__
+    #  but without these it causes errors
+    def __getstate__(self):
+        return vars(self)
+    def __setstate__(self, state):
+        vars(self).update(state)
 
 
 # ------------------------------------------------------------------------------
