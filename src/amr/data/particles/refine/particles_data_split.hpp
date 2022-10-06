@@ -171,6 +171,7 @@ namespace amr
             for (auto const& destinationBox : destBoxes)
             {
                 std::array particlesArrays{&srcInteriorParticles, &srcGhostParticles};
+                auto splitBox = getSplitBox(destinationBox);
 
                 auto isInDest = [&destinationBox](auto const& particle) //
                 { return isInBox(destinationBox, particle); };
@@ -184,7 +185,7 @@ namespace amr
                             refinedParticles;
                         auto particleRefinedPos = toFineGrid<interpOrder>(particle);
 
-                        if (isCandidateForSplit_(particleRefinedPos, destinationBox))
+                        if (isInBox(splitBox, particleRefinedPos))
                         {
                             split(particleRefinedPos, refinedParticles);
 
@@ -258,14 +259,6 @@ namespace amr
             splitBox.grow(growingVec);
 
             return splitBox;
-        }
-
-        template<typename Particle>
-        bool isCandidateForSplit_(Particle const& particle,
-                                  SAMRAI::hier::Box const& toFillBox) const
-        {
-            auto toSplitBox = getSplitBox(toFillBox);
-            return isInBox(toSplitBox, particle);
         }
     };
 
