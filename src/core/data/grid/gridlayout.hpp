@@ -21,7 +21,7 @@
 #include "core/utilities/point/point.hpp"
 
 
-#if PHARE_HAVE_UMPIRE and PHARE_HAVE_RAJA
+#if PHARE_HAVE_RAJA
 #include "core/data/grid/detail/raja.hpp"
 #endif
 

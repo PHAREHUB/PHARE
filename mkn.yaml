@@ -6,14 +6,20 @@ property:
   MPI_INC: /usr/include #/hdf5/mpich #/usr/include/hdf5/openmpi #/usr/local/netcdf/include
   MPI_LIB: hdf5
   MPI_PTH: /opt/conda/envs/vscode/lib
+  mkn.gpu: -DPHARE_HAVE_MKN_GPU=1 -DMKN_GPU_CUDA=1  -DPHARE_WITH_KUL=1
+  gpu.args: -DPHARE_HAVE_RAJA=1 -DPHARE_WITH_GPU=1  ${mkn.gpu} -DHAVE_RAJA=1 -DHAVE_CUDA=1
 
 profile:
-- name: base
-  # diagnostics disabled for the moment
-  # -DPHARE_HAS_HIGHFIVE=1 -DPHARE_DIAG_DOUBLES=1
-  arg:  -Wno-macro-redefined -Wno-unknown-cuda-version -DPHARE_HAVE_UMPIRE=1 -DPHARE_HAVE_RAJA=1
-  #-DHAVE_RAJA -DHAVE_UMPIRE -DPHARE_HAS_HIGHFIVE=0 -DRAJA_ENABLE_CUDA=1 -DUMPIRE_ENABLE_CUDA=1
+- name: umpira_raja_base
+  arg: -DPHARE_HAVE_RAJA=1 -DPHARE_HAVE_UMPIRE=1 
 
+- name: base
+  arg:  -Wno-macro-redefined -Wno-unknown-cuda-version  -DPHARE_HAS_HIGHFIVE=0
+  
+- name: gpu_base
+  parent: base
+  dep: mkn.gpu llnl.raja[lib]
+  arg: ${gpu.args}
 
 - name: core
   inc: src subprojects
@@ -23,14 +29,14 @@ profile:
 
 - name: samrai
   self: core
-  arg: -DPHARE_WITH_GPU=1 -DKUL_GPU_CUDA=1
-  dep: llnl.samrai#phare(https://github.com/dekken/llnl.samrai) llnl.raja[lib] llnl.umpire[lib] mkn.gpu
+  # arg: -DPHARE_WITH_GPU=1 -DKUL_GPU_CUDA=1
+  dep: llnl.samrai #(https://github.com/dekken/llnl.samrai) #llnl.raja[lib] mkn.gpu #llnl.umpire[lib] 
   src: src/amr
   out: phare_amr
 
 - name: diagnostic
   self: samrai
-  dep: hpc.highfive(https://github.com/dekken/hpc.highfive)
+  dep: hpc.highfive #(https://github.com/dekken/hpc.highfive)
   inc: build/subprojects/highfive/include
        ${MPI_INC}
   lib: ${MPI_LIB}
@@ -42,9 +48,9 @@ profile:
   out: phare_simulator
 
 - name: exe
+  parent: gpu_base
   self: simulator init
-  dep: lang.pybind11 mkn.gpu
-  arg: -DPHARE_WITH_GPU=1 -DPHARE_HAS_HIGHFIVE=0 -DKUL_GPU_CUDA=1 -DHAVE_RAJA -DHAVE_UMPIRE  -DRAJA_ENABLE_CUDA=1 -DUMPIRE_ENABLE_CUDA=1 -DPHARE_WITH_KUL=1
+  dep: lang.pybind11 
   main: src/phare/phare.cpp
   mod: lang.python3
   env: PYTHONPATH=${MKN_ROOT}:${MKN_ROOT}/tests/diagnostic:${MKN_ROOT}/build:${MKN_ROOT}/pyphare
@@ -56,7 +62,7 @@ profile:
   mode: shared # static singleton dict lives here
 
 - name: pybind
-  parent: base
+  # parent: base
   mode: shared
   dep: lang.pybind11
   mod: lang.pybind11 lang.python3
@@ -70,28 +76,26 @@ profile:
 
 - name: cpp
   parent: pybind
-  dep: mkn.gpu
   # lib: numa
   # arg: -DPHARE_WITH_GPU -DKUL_GPU_CUDA
-  arg: |
-      -DPHARE_WITH_GPU=1 -DPHARE_HAS_HIGHFIVE=1 -DKUL_GPU_CUDA=1 -DHAVE_RAJA -DHAVE_UMPIRE  -DRAJA_ENABLE_CUDA=1 -DUMPIRE_ENABLE_CUDA=1 -DPHARE_WITH_KUL=1
-      -DPHARE_DIAG_DOUBLES=1
+  arg: ${gpu.args}
 
-  self: simulator init
+  self: simulator init gpu_base
   src: src/python3/cpp_simulator.cpp
   install: build/pybindlibs
   #test: tests/amr/solvers/ppc/test_gpu_solverppc.cpp
   out: cpp
 
-- name: cpp_ext
+- name: cpp_etc
   parent: pybind
-  self: init
-  src: src/python3/cpp_ext.cpp
+  self: simulator
+  src: src/python3/cpp_etc.cpp
   install: build/pybindlibs
-  out: cpp_ext
+  out: cpp_etc
+  arg:  -DPHARE_HAS_HIGHFIVE=0
 
 - name: py
-  self: dictator cpp_ext simulator
+  self: dictator cpp_etc simulator
 
 - name: test
   parent: base

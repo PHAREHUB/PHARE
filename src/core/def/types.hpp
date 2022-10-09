@@ -25,10 +25,10 @@ namespace PHARE
 template<typename Type>
 struct Vector
 {
-#if PHARE_HAVE_UMPIRE
-    using allocator_type = umpire::TypedAllocator<Type>;
-#elif PHARE_HAVE_MKN_GPU
+#if PHARE_HAVE_MKN_GPU
     using allocator_type = mkn::gpu::ManagedAllocator<Type>;
+#elif PHARE_HAVE_UMPIRE
+    using allocator_type = umpire::TypedAllocator<Type>;
 #else
     using allocator_type = typename std::vector<Type>::allocator_type;
 #endif
@@ -42,10 +42,13 @@ struct Vector
         }
         else
         {
-            PHARE_WITH_UMPIRE(return Allocator{
-                umpire::ResourceManager::getInstance().getAllocator("PHARE::data_allocator")});
-
-            PHARE_WITH_MKN_GPU(return Allocator{});
+            if constexpr (CompileOptions::WithMknGpu) PHARE_WITH_MKN_GPU(return Allocator{});
+            
+            else
+                PHARE_WITH_UMPIRE(return Allocator{
+                    umpire::ResourceManager::getInstance().getAllocator("PHARE::data_allocator")});
+            
+            
         }
     }
 
@@ -82,7 +85,7 @@ struct Vector
         }
         else
         {
-            if constexpr (CompileOptions::WithUmpire and CompileOptions::WithRAJA)
+            if constexpr (CompileOptions::WithRAJA)
             {
                 PHARE_WITH_RAJA(PHARE::core::raja::copy(dst.data(), src.data(), src.size()));
             }
@@ -144,7 +147,7 @@ struct Vector
         }
         else
         {
-            if constexpr (CompileOptions::WithUmpire and CompileOptions::WithRAJA)
+            if constexpr (CompileOptions::WithRAJA)
             {
                 PHARE_WITH_RAJA(PHARE::core::raja::set(vec.data(), val, vec.size()));
             }

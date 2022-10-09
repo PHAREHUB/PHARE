@@ -9,14 +9,14 @@
 #undef HAVE_UNISTD_H
 #endif
 
-// provides HAVE_RAJA
-#include "SAMRAI/SAMRAI_config.h"
 
 #if !defined(PHARE_HAVE_RAJA)
+// provides HAVE_RAJA
 #define PHARE_HAVE_RAJA 0
 #endif
 
 #if PHARE_HAVE_RAJA
+#include "SAMRAI/SAMRAI_config.h"
 #include "SAMRAI/tbox/Collectives.h" // tbox::parallel_synchronize();
 #include "RAJA/RAJA.hpp"
 
@@ -30,9 +30,9 @@
 
 #if PHARE_HAVE_RAJA
 
-#if !PHARE_HAVE_UMPIRE
-#error no alternative
-#endif
+// #if !PHARE_HAVE_UMPIRE
+// #error no alternative
+// #endif
 
 namespace PHARE::core::raja
 {

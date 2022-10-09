@@ -59,17 +59,17 @@ public:
 
     template<typename Allocator0>
     ParticleArray(ParticleArray<Particle, Allocator0> const& that)
-        : ParticleArray{0}
+        : ParticleArray{that.box_}
     {
-        PHARE::Vector<Particle_t>::copy(this->particles, that.particles);
+        // PHARE::Vector<Particle_t>::copy(this->particles, that.particles);
     }
 
 
     template<typename Allocator0>
     ParticleArray(ParticleArray<Particle, Allocator0>&& that)
-        : ParticleArray{0}
+        : ParticleArray{that.box_}
     {
-        PHARE::Vector<Particle_t>::move(this->particles, that.particles);
+        // PHARE::Vector<Particle_t>::move(this->particles, that.particles);
     }
 
     ParticleArray(This const& from) = default;

@@ -2,8 +2,9 @@
 
 import numpy as np
 from pyphare.cpp import cpp_lib # must be first
-cpp_lib("pybindlibs.cpp_sim_2_1_4")
 import pyphare.pharein as ph
+if not ph.PHARE_EXE: cpp_lib("pybindlibs.cpp_sim_2_1_4")
+
 
 seed = 133333333337
 cells, dl = 500, .2
