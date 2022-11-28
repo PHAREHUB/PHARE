@@ -10,16 +10,10 @@ if(HighFive)
       COMMAND ${Git} clone https://github.com/BlueBrain/HighFive ${HIGHFIVE_SRC} -b master --depth 1
     )
 
-    # Remove symlinks that cause infinite looping
-    #  https://github.com/BlueBrain/HighFive/issues/338
-    file(REMOVE_RECURSE ${HIGHFIVE_SRC}/tests)
-
   else()
     if(devMode)
       message("downloading latest HighFive updates")
-      execute_process(COMMAND ${Git} checkout tests WORKING_DIRECTORY ${HIGHFIVE_SRC}) # undo tests delete
       execute_process(COMMAND ${Git} pull origin master WORKING_DIRECTORY ${HIGHFIVE_SRC})
-      file(REMOVE_RECURSE ${HIGHFIVE_SRC}/tests) # redelete symlinks
     endif(devMode)
   endif()
 

@@ -68,6 +68,8 @@ public:
         {
 #if defined(H5_HAVE_PARALLEL)
             fapl.add(HighFive::MPIOFileAccess{MPI_COMM_WORLD, MPI_INFO_NULL});
+#else
+            std::cout << "WARNING: PARALLEL HDF5 not available" << std::endl;
 #endif
         }
         return HiFile{path, flags, fapl};
