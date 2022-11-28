@@ -60,22 +60,24 @@ auto vector_for_dim()
 class HighFiveFile
 {
 public:
-    static auto createHighFiveFile(std::string const path, unsigned flags, bool para)
+    template<typename FileAccessProps>
+    static auto createHighFiveFile(std::string const path, unsigned flags, bool para,
+                                   FileAccessProps& fapl)
     {
         if (para)
-            return HiFile
-            {
-                path, flags
+        {
 #if defined(H5_HAVE_PARALLEL)
-                    ,
-                    HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)
+            fapl.add(HighFive::MPIOFileAccess{MPI_COMM_WORLD, MPI_INFO_NULL});
+#else
+            std::cout << "WARNING: PARALLEL HDF5 not available" << std::endl;
 #endif
-            };
-        return HiFile{path, flags};
+        }
+        return HiFile{path, flags, fapl};
     }
 
     HighFiveFile(std::string const path, unsigned flags = HiFile::ReadWrite, bool para = true)
-        : h5file_{createHighFiveFile(path, flags, para)}
+        : fapl_{}
+        , h5file_{createHighFiveFile(path, flags, para, fapl_)}
     {
     }
 
@@ -222,6 +224,7 @@ public:
     HighFiveFile& operator=(const HighFiveFile&&) = delete;
 
 private:
+    HighFive::FileAccessProps fapl_;
     HiFile h5file_;
 
 
