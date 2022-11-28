@@ -278,7 +278,7 @@ TEST(Indexer, endReturnsIteratorOnLastPlusOneElement)
     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
         indexer.add(itemIndex);
 
-    int actual;
+    int actual = 0;
     for (auto const& itemIndex : indexer)
     {
         actual = values[itemIndex];
@@ -293,7 +293,7 @@ TEST(Indexer, singleElementIndexerHasCorrectEnd)
     for (std::size_t itemIndex = 0; itemIndex < values.size(); ++itemIndex)
         indexer.add(itemIndex);
 
-    int actual;
+    int actual = 0;
     for (auto const& itemIndex : indexer)
     {
         actual = values[itemIndex];
@@ -405,4 +405,3 @@ int main(int argc, char** argv)
 
     return RUN_ALL_TESTS();
 }
-
