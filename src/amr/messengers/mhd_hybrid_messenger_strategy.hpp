@@ -1,4 +1,3 @@
-
 #ifndef PHARE_MHD_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_MHD_HYBRID_MESSENGER_STRATEGY_HPP
 
@@ -116,7 +115,6 @@ namespace amr
         {
         }
         void fillIonPopMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
-                                    double const /*currentTime*/,
                                     double const /*fillTime*/) override
         {
         }

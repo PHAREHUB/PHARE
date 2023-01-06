@@ -1,5 +1,3 @@
-
-
 #ifndef PHARE_HYBRID_MESSENGER_HPP
 #define PHARE_HYBRID_MESSENGER_HPP
 
@@ -328,9 +326,9 @@ namespace amr
          * @param fillTime
          */
         void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                    double const currentTime, double const fillTime)
+                                    double const fillTime)
         {
-            strat_->fillIonPopMomentGhosts(ions, level, currentTime, fillTime);
+            strat_->fillIonPopMomentGhosts(ions, level, fillTime);
         }
 
 

@@ -1,5 +1,3 @@
-
-
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
@@ -108,8 +106,7 @@ namespace solver
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
-            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime,
-                                             initDataTime);
+            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
 
 
             if (isRootLevel(levelNumber))
