@@ -116,7 +116,7 @@ namespace amr
         {
         }
         void fillIonMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
-                                 double const /*currentTime*/, double const /*fillTime*/) override
+                                 double const /*fillTime*/) override
         {
         }
 

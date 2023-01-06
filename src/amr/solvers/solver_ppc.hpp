@@ -579,7 +579,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
 
 
     fromCoarser.fillIonGhostParticles(ions, level, newTime);
-    fromCoarser.fillIonMomentGhosts(ions, level, currentTime, newTime);
+    fromCoarser.fillIonMomentGhosts(ions, level, newTime);
 
     for (auto& patch : level)
     {
