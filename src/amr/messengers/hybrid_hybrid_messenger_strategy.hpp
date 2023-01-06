@@ -386,8 +386,8 @@ namespace amr
          * for all populations, linear time interpolation is used to get the contribution of old/new
          * particles
          */
-        void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                 double const afterPushTime) override
+        void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                    double const afterPushTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonMomentGhosts");
 
@@ -436,7 +436,7 @@ namespace amr
          * population densities and fluxes. These partial densities and fluxes are thus
          * not available on ANY ghost node.*/
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double beforePushTime, double const afterPushTime) override
+                                         double const afterPushTime) override
         {
             densityGhosts_.fill(level.getLevelNumber(), afterPushTime);
             bulkVelGhosts_.fill(level.getLevelNumber(), afterPushTime);

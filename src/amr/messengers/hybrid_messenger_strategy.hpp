@@ -83,13 +83,13 @@ namespace amr
             = 0;
 
 
-        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double const afterPushTime)
+        virtual void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                            double const afterPushTime)
             = 0;
 
 
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                         double beforePushTime, double const afterPushTime)
+                                         double const afterPushTime)
             = 0;
 
         virtual std::string fineModelName() const = 0;
