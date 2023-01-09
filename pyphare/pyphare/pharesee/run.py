@@ -89,6 +89,30 @@ def _compute_current(patch):
                 {"name":"Jy", "data":Jy, "centering":centering["Jy"]},
                 {"name":"Jz", "data":Jz,"centering":centering["Jz"]})
 
+
+def _divB2D(Bx,By, xBx, yBy):
+    dxbx = (Bx[1:,:]-Bx[:-1,:])/(xBx[1]-xBx[0])
+    dyby = (By[:,1:]-By[:,:-1])/(yBy[1]-yBy[0])
+    return dxbx + dyby
+
+def _compute_divB(patch):
+
+    if patch.box.ndim ==1:
+        raise ValueError("divB is 0 by construction in 1D")
+
+    elif patch.box.ndim == 2:
+        By  = patch.patch_datas["By"].dataset[:]
+        Bx  = patch.patch_datas["Bx"].dataset[:]
+        xBx = patch.patch_datas["Bx"].x
+        yBy = patch.patch_datas["By"].y
+        divB = _divB2D(Bx,By, xBx, yBy)
+
+        return ({"name":"cell_custom", "data":divB, "centering":"dual"},)
+
+    else:
+        raise RuntimeError("dimension not implemented")
+
+
 def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
     """
     :param data: the values of the data that will be used for making
@@ -202,6 +226,11 @@ class Run:
         B = self.GetB(time)
         J = compute_hier_from(B, _compute_current)
         return self._get(J, time, merged, interp)
+
+    def GetDivB(self, time, merged=False, interp='nearest'):
+        B = self.GetB(time)
+        db = compute_hier_from(B, _compute_divB)
+        return self._get(db, time, merged, interp)
 
     def GetParticles(self, time, pop_name, hier=None):
         def filename(name):

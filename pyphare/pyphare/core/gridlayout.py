@@ -19,6 +19,7 @@ yee_centering = {
         'rho':'primal', 'P':'primal',
         'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
         'tags':'dual',
+        'cell_custom':'dual'
     },
     'y' : {
         'Bx':'dual', 'By':'primal', 'Bz':'dual',
@@ -29,6 +30,7 @@ yee_centering = {
         'rho':'primal', 'P':'primal',
         'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
         'tags':'dual',
+        'cell_custom':'dual'
     },
     'z' : {
         'Bx':'dual', 'By':'dual', 'Bz':'primal',
@@ -39,6 +41,7 @@ yee_centering = {
         'rho':'primal', 'P':'primal',
         'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
         'tags':'dual',
+        'cell_custom':'dual'
     }
 }
 yee_centering_lower = {
