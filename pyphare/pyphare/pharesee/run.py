@@ -113,6 +113,18 @@ def _compute_divB(patch):
         raise RuntimeError("dimension not implemented")
 
 
+
+def _get_rank(patch):
+    if patch.box.ndim == 2:
+        shape = patch.box.shape
+        ghost_shape = (shape[0]+5, shape[1]+5)
+        data = np.zeros(ghost_shape) + int(patch.id.strip("p").split("#")[0])
+        return ({"name":"cell_custom", "data":data, "centering":"dual"},)
+    else:
+        raise 
+
+
+
 def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
     """
     :param data: the values of the data that will be used for making
@@ -231,6 +243,11 @@ class Run:
         B = self.GetB(time)
         db = compute_hier_from(B, _compute_divB)
         return self._get(db, time, merged, interp)
+
+    def GetRanks(self, time, merged=False, interp='nearest'):
+        B = self.GetB(time)
+        ranks = compute_hier_from(B, _get_rank)
+        return self._get(ranks, time, merged, interp)
 
     def GetParticles(self, time, pop_name, hier=None):
         def filename(name):
