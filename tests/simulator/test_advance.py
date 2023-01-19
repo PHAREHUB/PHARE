@@ -236,10 +236,10 @@ class AdvanceTestBase(SimulatorTest):
                     try:
                         assert slice1.dtype == np.float64
 
-                        # empirical max absolute observed 3.33e-15
+                        # empirical max absolute observed 4e-15
                         # seems correct considering ghosts are filled with schedules
                         # involving linear/spatial interpolations and so on where
-                        # rounding errors may occur.... setting atol to 2e-15
+                        # rounding errors may occur.... setting atol to 4e-15
                         np.testing.assert_allclose(slice1,slice2, atol=3.5e-15, rtol=0)
                         checks += 1
                     except AssertionError as e:
