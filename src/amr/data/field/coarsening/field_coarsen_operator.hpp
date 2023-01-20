@@ -4,7 +4,7 @@
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "field_coarsen_index_weight.hpp"
-#include "field_coarsener.hpp"
+#include "default_field_coarsener.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 
@@ -21,7 +21,7 @@ namespace amr
     using core::dirY;
     using core::dirZ;
     //
-    template<typename GridLayoutT, typename FieldT,
+    template<typename GridLayoutT, typename FieldT, typename FieldCoarsenerPolicy,
              typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
     /**
      * @brief The FieldCoarsenOperator class
@@ -40,10 +40,10 @@ namespace amr
         {
         }
 
-        FieldCoarsenOperator(FieldCoarsenOperator const&) = delete;
-        FieldCoarsenOperator(FieldCoarsenOperator&&)      = delete;
+        FieldCoarsenOperator(FieldCoarsenOperator const&)            = delete;
+        FieldCoarsenOperator(FieldCoarsenOperator&&)                 = delete;
         FieldCoarsenOperator& operator=(FieldCoarsenOperator const&) = delete;
-        FieldCoarsenOperator&& operator=(FieldCoarsenOperator&&) = delete;
+        FieldCoarsenOperator&& operator=(FieldCoarsenOperator&&)     = delete;
 
 
         virtual ~FieldCoarsenOperator() = default;
@@ -127,8 +127,8 @@ namespace amr
 
 
             // We can now create the coarsening operator
-            FieldCoarsener<dimension> coarsener{destinationLayout.centering(qty), sourceBox,
-                                                destinationBox, ratio};
+            FieldCoarsenerPolicy coarsener{destinationLayout.centering(qty), sourceBox,
+                                           destinationBox, ratio};
 
             // now we can loop over the intersection box
 
@@ -152,9 +152,11 @@ namespace amr
             if constexpr (dimension == 1)
             {
                 for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
-                {
-                    coarsener(sourceField, destinationField, {{ix}});
-                }
+
+                    for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
+                    {
+                        coarsener(sourceField, destinationField, {{ix}});
+                    }
             }
 
 

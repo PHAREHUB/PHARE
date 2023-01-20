@@ -2,7 +2,8 @@
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
 #include "communicators.hpp"
-#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
+#include "amr/data/field/coarsening/default_field_coarsener.hpp"
+#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
@@ -716,6 +717,7 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
+            // TODO should change to magneticCoarseningOp_
             magnetoSynchronizers_.add(info->modelMagnetic, resourcesManager_, fieldCoarseningOp_,
                                       info->modelMagnetic.vecName);
 
@@ -902,8 +904,11 @@ namespace amr
             std::make_shared<CoarseToFineRefineOpNew>()};
 
 
-        std::shared_ptr<SAMRAI::hier::CoarsenOperator> fieldCoarseningOp_{
-            std::make_shared<FieldCoarsenOperator<GridLayoutT, FieldT>>()};
+        std::shared_ptr<SAMRAI::hier::CoarsenOperator> fieldCoarseningOp_{std::make_shared<
+            FieldCoarsenOperator<GridLayoutT, FieldT, DefaultFieldCoarsener<dimension>>>()};
+
+        std::shared_ptr<SAMRAI::hier::CoarsenOperator> magneticCoarseningOp_{std::make_shared<
+            FieldCoarsenOperator<GridLayoutT, FieldT, MagneticFieldCoarsener<dimension>>>()};
     };
 
     template<typename HybridModel, typename RefinementParams>

@@ -221,7 +221,7 @@ void load(FieldCoarsenTestData<dimension>& param, Files& file_data)
     SAMRAI::hier::IntVector ratio{dim, 2};
 
     auto coarsen = [&em, &ratio](auto idx, auto& fineBox, auto& coarseBox, auto& centering) {
-        FieldCoarsener<dimension> coarseIt{centering, fineBox, coarseBox, ratio};
+        DefaultFieldCoarsener<dimension> coarseIt{centering, fineBox, coarseBox, ratio};
 
         auto primals(ConstArray<int, dimension>());
         for (std::size_t i = 0; i < dimension; i++)
