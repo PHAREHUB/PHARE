@@ -152,11 +152,9 @@ namespace amr
             if constexpr (dimension == 1)
             {
                 for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
-
-                    for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
-                    {
-                        coarsener(sourceField, destinationField, {{ix}});
-                    }
+                {
+                    coarsener(sourceField, destinationField, {{ix}});
+                }
             }
 
 

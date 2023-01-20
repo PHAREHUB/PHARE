@@ -717,7 +717,6 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            // TODO should change to magneticCoarseningOp_
             magnetoSynchronizers_.add(info->modelMagnetic, resourcesManager_, fieldCoarseningOp_,
                                       info->modelMagnetic.vecName);
 
