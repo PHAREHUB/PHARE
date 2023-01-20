@@ -1,4 +1,3 @@
-
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 #define PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 
@@ -34,10 +33,10 @@ namespace core
         using NdArrayImpl::dimension;
 
 
-        Field()                    = delete;
-        Field(Field const& source) = delete;
-        Field(Field&& source)      = default;
-        Field& operator=(Field&& source) = delete;
+        Field()                               = delete;
+        Field(Field const& source)            = delete;
+        Field(Field&& source)                 = default;
+        Field& operator=(Field&& source)      = delete;
         Field& operator=(Field const& source) = delete;
 
         template<typename... Dims>

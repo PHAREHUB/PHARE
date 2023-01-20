@@ -113,7 +113,7 @@ public:
     std::string const& getPatternName() const { return s_name_id; }
 
 private:
-    FieldFillPattern(FieldFillPattern const&) = delete;
+    FieldFillPattern(FieldFillPattern const&)            = delete;
     FieldFillPattern& operator=(FieldFillPattern const&) = delete;
 
     static const inline std::string s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
@@ -156,7 +156,6 @@ private:
 
         SAMRAI::hier::BoxContainer overlap_boxes(fill_boxes);
         overlap_boxes.intersectBoxes(data_box);
-
         return pdf.getBoxGeometry(patch_box)->setUpOverlap(overlap_boxes, transformation);
     }
 

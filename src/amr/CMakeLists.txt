@@ -10,7 +10,8 @@ set( SOURCES_INC
      data/field/coarsening/field_coarsen_operator.hpp
      data/field/coarsening/field_coarsen_index_weight.hpp
      data/field/coarsening/coarsen_weighter.hpp
-     data/field/coarsening/field_coarsener.hpp
+     data/field/coarsening/default_field_coarsener.hpp
+     data/field/coarsening/magnetic_field_coarsener.hpp
      data/field/field_data.hpp
      data/field/field_data_factory.hpp
      data/field/field_geometry.hpp
@@ -18,6 +19,8 @@ set( SOURCES_INC
      data/field/field_variable.hpp
      data/field/refine/field_linear_refine.hpp
      data/field/refine/field_refiner.hpp
+     data/field/refine/magnetic_field_refiner.hpp
+     data/field/refine/electric_field_refiner.hpp
      data/field/refine/linear_weighter.hpp
      data/field/refine/field_refine_operator.hpp
      data/field/time_interpolate/field_linear_time_interpolate.hpp
@@ -27,8 +30,9 @@ set( SOURCES_INC
      resources_manager/resources_manager.hpp
      resources_manager/resources_manager_utilities.hpp
      resources_manager/resources_guards.hpp
-     messengers/quantity_communicator.hpp
-     messengers/communicators.hpp
+     messengers/communicator.hpp
+     messengers/refiner_pool.hpp
+     messengers/synchronizer_pool.hpp
      messengers/messenger.hpp
      messengers/hybrid_messenger.hpp
      messengers/hybrid_messenger_strategy.hpp

@@ -1,16 +1,17 @@
-
 import unittest
 from datetime import datetime
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
 
 
-def parse_cli_args(pop_from_sys = True):
+def parse_cli_args(pop_from_sys=True):
     import sys
+
     r = sys.argv[1:].copy()
-    if pop_from_sys: # args can interfere with other things
+    if pop_from_sys:  # args can interfere with other things
         sys.argv = [sys.argv[0]]
     return r
+
 
 # Block accidental dictionary key rewrites
 class NoOverwriteDict(dict):
@@ -57,30 +58,40 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
 
     return args
 
+
 def meshify(*xyz):
     if all([isinstance(v, np.ndarray) for v in xyz]):
         return xyz
-    return np.meshgrid(*xyz,indexing="ij")
+    return np.meshgrid(*xyz, indexing="ij")
+
 
 def pi_over_max_domain():
     return [np.pi / max_domain for max_domain in ph.global_vars.sim.simulation_domain()]
 
+
 def fn_periodic(sim, *xyz):
     from pyphare.pharein.global_vars import sim
+
     L = sim.simulation_domain()
-    _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-    return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+    _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
+    return np.asarray([_(i) for i, v in enumerate(xyz)]).prod(axis=0)
+
 
 def density_1d_periodic(sim, x):
     xmax = sim.simulation_domain()[0]
     background_particles = 0.3  # avoids 0 density
     return 1.0 / np.cosh((x - xmax * 0.5) ** 2 + background_particles)
 
+
 def density_2d_periodic(sim, x, y):
     xmax, ymax = sim.simulation_domain()
     background_particles = 0.3  # avoids 0 density
     xx, yy = meshify(x, y)
-    return np.exp(-(xx-0.5*xmax)**2)*np.exp(-(yy-ymax/2.)**2) + background_particles
+    return (
+        np.exp(-((xx - 0.5 * xmax) ** 2)) * np.exp(-((yy - ymax / 2.0) ** 2))
+        + background_particles
+    )
+
 
 # def density_3d_periodic(sim, x, y, z):
 #     xmax, ymax, zmax = sim.simulation_domain()
@@ -105,7 +116,7 @@ def defaultPopulationSettings(sim, density_fn, vbulk_fn):
 
 def makeBasicModel(extra_pops={}):
     sim = ph.global_vars.sim
-    _density_fn_periodic = globals()["density_"+str(sim.ndim)+"d_periodic"]
+    _density_fn_periodic = globals()["density_" + str(sim.ndim) + "d_periodic"]
 
     pops = {
         "protons": {
@@ -121,10 +132,10 @@ def makeBasicModel(extra_pops={}):
     }
     pops.update(extra_pops)
     return ph.MaxwellianFluidModel(
-        bx= lambda *xyz: fn_periodic(sim, *xyz) + 0.04,
-        by= lambda *xyz: fn_periodic(sim, *xyz) + 0.05,
-        bz= lambda *xyz: fn_periodic(sim, *xyz) + 0.06,
-        **pops
+        bx=lambda *xyz: fn_periodic(sim, *xyz) + 0.04,
+        by=lambda *xyz: fn_periodic(sim, *xyz) + 0.05,
+        bz=lambda *xyz: fn_periodic(sim, *xyz) + 0.06,
+        **pops,
     )
 
 
@@ -146,14 +157,14 @@ def populate_simulation(dim, interp, **input):
     return simulation
 
 
-
-
-def diff_boxes(self, slice1, slice2, box, atol=None):
+def diff_boxes(slice1, slice2, box, atol=None):
     if atol is not None:
         ignore = np.isclose(slice1, slice2, atol=atol, rtol=0)
+
         def _diff(slice0):
-            slice0[ignore] = 0 # set values which are within atol range to 0
+            slice0[ignore] = 0  # set values which are within atol range to 0
             return slice0
+
         diff = np.abs(_diff(slice1.copy()) - _diff(slice2.copy()))
     else:
         diff = np.abs(slice1 - slice2)
@@ -162,25 +173,22 @@ def diff_boxes(self, slice1, slice2, box, atol=None):
     if box.ndim == 1:
         x1 = np.where(diff != 0)
         for x in zip(x1):
-            x = x+box.lower[0]
+            x = x + box.lower[0]
             boxes += [Box([x], [x])]
     elif box.ndim == 2:
         x1, y1 = np.where(diff != 0)
         for x, y in zip(x1, y1):
-            x = x+box.lower[0]
-            y = y+box.lower[1]
+            x = x + box.lower[0]
+            y = y + box.lower[1]
             boxes += [Box([x, y], [x, y])]
     elif box.ndim == 3:
         x1, y1, z1 = np.where(diff != 0)
         for x, y, z in zip(x1, y1, z1):
-            x = x+box.lower[0]
-            y = y+box.lower[1]
-            z = z+box.lower[2]
+            x = x + box.lower[0]
+            y = y + box.lower[1]
+            z = z + box.lower[2]
             boxes += [Box([x, y, z], [x, y, z])]
     return boxes
-
-
-
 
 
 class SimulatorTest(unittest.TestCase):
@@ -192,6 +200,7 @@ class SimulatorTest(unittest.TestCase):
 
     def setUp(self):
         from pyphare.simulator.simulator import startMPI
+
         startMPI()
 
     def datetime_now(self):
@@ -209,18 +218,15 @@ class SimulatorTest(unittest.TestCase):
                 kwargs.pop(key)
         return kwargs
 
-
-
     old_failureException = unittest.TestCase.failureException
-    @property # intercept test failure to not delete diags in case
+
+    @property  # intercept test failure to not delete diags in case
     def failureException(self):
         self.success = False
         return self.old_failureException
 
-
     def register_diag_dir_for_cleanup(self, diag_dir):
         self.diag_dirs += [diag_dir]
-
 
     def __init__(self, *args, **kwargs):
         super(SimulatorTest, self).__init__(*args, **SimulatorTest.pop(kwargs.copy()))
@@ -228,25 +234,24 @@ class SimulatorTest(unittest.TestCase):
         for key in SimulatorTest.test_kwargs:
             if key in kwargs:
                 super().__setattr__(f"{key}_", kwargs[key])
-        self.diag_dirs = [] # cleanup after tests
+        self.diag_dirs = []  # cleanup after tests
         self.success = True
-
 
     def run(self, result=None):
         self._outcome = result
         super().run(result)
 
-
     def clean_up_diags_dirs(self):
         from pyphare.cpp import cpp_lib
 
-        cpp_lib().mpi_barrier() # synchronize first
+        cpp_lib().mpi_barrier()  # synchronize first
         if cpp_lib().mpi_rank() > 0:
-            return # only delete h5 files for rank 0
+            return  # only delete h5 files for rank 0
 
         if self.success:
             import os
             import shutil
+
             for diag_dir in self.diag_dirs:
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
