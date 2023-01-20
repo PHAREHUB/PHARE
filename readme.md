@@ -7,7 +7,7 @@
 
 <!--![](https://user-images.githubusercontent.com/3200931/95620089-f13ebb80-0a6f-11eb-9af3-a1db08004bcc.png) -->
 
-![image](https://user-images.githubusercontent.com/3200931/157078466-db803003-fb5c-4f43-8ab1-cee08815658f.png)
+![image](https://user-images.githubusercontent.com/3200931/213649230-da966bb5-9384-4c58-8e77-24ebe46cf2bf.png)
 
 # Parallel Hybrid PIC code with Adaptive mesh REfinement
 
