@@ -1,4 +1,3 @@
-
 #ifndef PHARE_HYBRID_MESSENGER_INFO_HPP
 #define PHARE_HYBRID_MESSENGER_INFO_HPP
 
@@ -41,7 +40,7 @@ namespace amr
         VecFieldDescriptor() = default;
 
         template<typename VecFieldT>
-        VecFieldDescriptor(VecFieldT const& v)
+        explicit VecFieldDescriptor(VecFieldT const& v)
             : vecName{v.name()}
             , xName{v.getComponentName(core::Component::X)}
             , yName{v.getComponentName(core::Component::Y)}

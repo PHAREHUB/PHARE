@@ -1,0 +1,11 @@
+ - if the electric field is known on all cell edges, including those of ghost cells
+   then the magnetic field can be computed everywhere. Thus faraday now need to be computed
+   on the ghost box and magnetic ghosts not filled.
+
+ - electric field ghosts are needed for:
+   * particle push
+   * faraday p2 and faraday corr.
+     these two need Eavg to be filled on ghosts.
+   * faraday p1 needs En
+     this can be obtained from filling model E after corrector Ohm.
+

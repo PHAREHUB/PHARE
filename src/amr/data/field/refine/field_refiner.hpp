@@ -26,12 +26,13 @@ namespace amr
      * coarse field.
      */
     template<std::size_t dimension>
-    class FieldRefiner
+    class DefaultFieldRefiner
     {
     public:
-        FieldRefiner(std::array<core::QtyCentering, dimension> const& centering,
-                     SAMRAI::hier::Box const& destinationGhostBox,
-                     SAMRAI::hier::Box const& sourceGhostBox, SAMRAI::hier::IntVector const& ratio)
+        DefaultFieldRefiner(std::array<core::QtyCentering, dimension> const& centering,
+                            SAMRAI::hier::Box const& destinationGhostBox,
+                            SAMRAI::hier::Box const& sourceGhostBox,
+                            SAMRAI::hier::IntVector const& ratio)
             : indexesAndWeights_{centering, ratio}
             , fineBox_{destinationGhostBox}
             , coarseBox_{sourceGhostBox}

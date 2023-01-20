@@ -10,49 +10,86 @@ directions = ["x", "y", "z"]
 direction_to_dim = {direction: idx for idx, direction in enumerate(directions)}
 
 yee_centering = {
-    'x': {
-        'Bx':'primal', 'By':'dual', 'Bz':'dual',
-        'Ex':'dual', 'Ey':'primal', 'Ez':'primal',
-        'Jx':'dual', 'Jy':'primal', 'Jz':'primal',
-        'Vx':'primal','Vy':'primal','Vz':'primal',
-        'Fx':'primal', 'Fy':'primal', 'Fz':'primal',
-        'rho':'primal', 'P':'primal',
-        'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
-        'tags':'dual',
+    "x": {
+        "Bx": "primal",
+        "By": "dual",
+        "Bz": "dual",
+        "Ex": "dual",
+        "Ey": "primal",
+        "Ez": "primal",
+        "Jx": "dual",
+        "Jy": "primal",
+        "Jz": "primal",
+        "Vx": "primal",
+        "Vy": "primal",
+        "Vz": "primal",
+        "Fx": "primal",
+        "Fy": "primal",
+        "Fz": "primal",
+        "rho": "primal",
+        "P": "primal",
+        "Vthx": "primal",
+        "Vthy": "primal",
+        "Vthz": "primal",
+        "tags": "dual",
     },
-    'y' : {
-        'Bx':'dual', 'By':'primal', 'Bz':'dual',
-        'Ex':'primal', 'Ey':'dual', 'Ez':'primal',
-        'Jx':'primal', 'Jy':'dual', 'Jz':'primal',
-        'Vx':'primal','Vy':'primal', 'Vz':'primal',
-        'Fx':'primal', 'Fy':'primal', 'Fz':'primal',
-        'rho':'primal', 'P':'primal',
-        'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
-        'tags':'dual',
+    "y": {
+        "Bx": "dual",
+        "By": "primal",
+        "Bz": "dual",
+        "Ex": "primal",
+        "Ey": "dual",
+        "Ez": "primal",
+        "Jx": "primal",
+        "Jy": "dual",
+        "Jz": "primal",
+        "Vx": "primal",
+        "Vy": "primal",
+        "Vz": "primal",
+        "Fx": "primal",
+        "Fy": "primal",
+        "Fz": "primal",
+        "rho": "primal",
+        "P": "primal",
+        "Vthx": "primal",
+        "Vthy": "primal",
+        "Vthz": "primal",
+        "tags": "dual",
     },
-    'z' : {
-        'Bx':'dual', 'By':'dual', 'Bz':'primal',
-        'Ex':'primal', 'Ey':'primal', 'Ez':'dual',
-        'Jx':'primal', 'Jy':'primal', 'Jz':'dual',
-        'Vx':'primal','Vy':'primal', 'Vz':'primal',
-        'Fx':'primal', 'Fy':'primal', 'Fz':'primal',
-        'rho':'primal', 'P':'primal',
-        'Vthx':'primal', 'Vthy':'primal', 'Vthz':'primal',
-        'tags':'dual',
-    }
+    "z": {
+        "Bx": "dual",
+        "By": "dual",
+        "Bz": "primal",
+        "Ex": "primal",
+        "Ey": "primal",
+        "Ez": "dual",
+        "Jx": "primal",
+        "Jy": "primal",
+        "Jz": "dual",
+        "Vx": "primal",
+        "Vy": "primal",
+        "Vz": "primal",
+        "Fx": "primal",
+        "Fy": "primal",
+        "Fz": "primal",
+        "rho": "primal",
+        "P": "primal",
+        "Vthx": "primal",
+        "Vthy": "primal",
+        "Vthz": "primal",
+        "tags": "dual",
+    },
 }
 yee_centering_lower = {
-  direction : {
-    key.lower() : centering
-    for key, centering in key_dict.items()
-  }
-  for direction, key_dict in yee_centering.items()
+    direction: {key.lower(): centering for key, centering in key_dict.items()}
+    for direction, key_dict in yee_centering.items()
 }
 
-def yee_element_is_primal(key, direction = 'x'):
+
+def yee_element_is_primal(key, direction="x"):
     if key in yee_centering_lower[direction]:
-        return yee_centering_lower[direction][key] == 'primal'
-    return yee_centering[direction][key] == 'primal'
+        return yee_centering_lower[direction][key] == "primal"
+    return yee_centering[direction][key] == "primal"
 
 
 class YeeCentering(object):
@@ -62,7 +99,9 @@ class YeeCentering(object):
         self.centerZ = yee_centering["z"]
 
 
-def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts =False, **kwargs):
+def yeeCoordsFor(
+    origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts=False, **kwargs
+):
 
     assert direction in direction_to_dim, f"direction ({direction} not supported)"
     if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
@@ -71,7 +110,7 @@ def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts =Fa
     if "centering" in kwargs:
         centering = kwargs["centering"]
     else:
-        centering= yee_centering[direction][qty]
+        centering = yee_centering[direction][qty]
 
     offset = 0
     dim = direction_to_dim[direction]
@@ -80,8 +119,8 @@ def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts =Fa
     else:
         size = nbrCells[dim]
 
-    if centering == 'dual':
-        offset = 0.5*dl[dim]
+    if centering == "dual":
+        offset = 0.5 * dl[dim]
     else:
         size += 1
 
@@ -93,12 +132,14 @@ def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts =Fa
 
 class GridLayout(object):
     """
-      field_ghosts_nbr is a parameter to support pyphare geometry tests having hard coded 5 ghosts
-      initialized default to -1 as an invalid value allowing the override mechanism. Using None
-      results in a pylint error elsewhere
+    field_ghosts_nbr is a parameter to support pyphare geometry tests having hard coded 5 ghosts
+    initialized default to -1 as an invalid value allowing the override mechanism. Using None
+    results in a pylint error elsewhere
     """
 
-    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1, field_ghosts_nbr=-1):
+    def __init__(
+        self, box=Box(0, 0), origin=0, dl=0.1, interp_order=1, field_ghosts_nbr=-1
+    ):
         self.box = box
 
         self.dl = listify(dl)
@@ -109,139 +150,148 @@ class GridLayout(object):
 
         self.interp_order = interp_order
         self.impl = "yee"
-        self.directions = ['X','Y','Z']
+        self.directions = ["X", "Y", "Z"]
 
-        self.hybridQuantities = ['Bx','By','Bz',
-                                 'Ex','Ey','Ez',
-                                 'Jx','Jy','Jz',
-                                 'rho','Vx','Vy',
-                                 'Vz','P', 'Fx', 'Fy', 'Fz']
-
+        self.hybridQuantities = [
+            "Bx",
+            "By",
+            "Bz",
+            "Ex",
+            "Ey",
+            "Ez",
+            "Jx",
+            "Jy",
+            "Jz",
+            "rho",
+            "Vx",
+            "Vy",
+            "Vz",
+            "P",
+            "Fx",
+            "Fy",
+            "Fz",
+        ]
 
         self.yeeCentering = YeeCentering()
 
-        self.centering = {'X' : self.yeeCentering.centerX,
-                          'Y' : self.yeeCentering.centerY,
-                          'Z' : self.yeeCentering.centerZ
-                         }
+        self.centering = {
+            "X": self.yeeCentering.centerX,
+            "Y": self.yeeCentering.centerY,
+            "Z": self.yeeCentering.centerZ,
+        }
 
-        self.field_ghosts_nbr = field_ghosts_nbr # allows override
-
+        self.field_ghosts_nbr = field_ghosts_nbr  # allows override
 
     @property
     def ndim(self):
         return self.box.ndim
 
-
     def qtyCentering(self, quantity, direction):
         return self.centering[direction][quantity]
 
-
     def particleGhostNbr(self, interp_order):
         return 1 if interp_order == 1 else 2
-
 
     def nbrGhosts(self, interpOrder, centering):
         if self.field_ghosts_nbr == -1:
             return int((interpOrder + 1) / 2) + self.particleGhostNbr(interpOrder)
         return self.field_ghosts_nbr
 
-
     def nbrGhostsPrimal(self, interpOrder):
-        return self.nbrGhosts(interpOrder, 'primal')
-
+        return self.nbrGhosts(interpOrder, "primal")
 
     def qtyIsDual(self, qty, direction):
         return self.isDual(self.qtyCentering(qty, direction))
 
     def isDual(self, centering):
-        if centering == 'dual':
+        if centering == "dual":
             return 1
         else:
             return 0
 
-
-
     def ghostStartIndex(self):
-        return 0;
+        return 0
 
     def ghostEndIndex(self, interpOrder, centering, nbrCells):
-        index = self.physicalEndIndex(interpOrder, centering, nbrCells) \
-              + self.nbrGhosts(interpOrder, centering)
+        index = self.physicalEndIndex(
+            interpOrder, centering, nbrCells
+        ) + self.nbrGhosts(interpOrder, centering)
         return index
-
 
     def physicalStartIndex(self, interpOrder, centering):
         index = self.ghostStartIndex() + self.nbrGhosts(interpOrder, centering)
         return index
 
-
-
     def physicalEndIndex(self, interpOrder, centering, nbrCells):
-        index = self.physicalStartIndex(interpOrder, centering) \
-                + nbrCells - self.isDual(centering)
+        index = (
+            self.physicalStartIndex(interpOrder, centering)
+            + nbrCells
+            - self.isDual(centering)
+        )
         return index
-
-
 
     def physicalStartIndices(self, qty):
         assert qty in self.hybridQuantities
         indices = np.zeros(self.box.ndim)
-        for i, direction in enumerate(directions[:self.box.ndim]):
+        for i, direction in enumerate(directions[: self.box.ndim]):
             centering = yee_centering[direction][qty]
             indices[i] = self.physicalStartIndex(self.interp_order, centering)
         return indices
 
-
     def physicalEndIndices(self, qty):
         assert qty in self.hybridQuantities
         indices = np.zeros(self.box.ndim)
-        for i, direction in enumerate(directions[:self.box.ndim]):
+        for i, direction in enumerate(directions[: self.box.ndim]):
             centering = yee_centering[direction][qty]
-            indices[i] = self.physicalEndIndex(self.interp_order, centering, self.box.shape[i])
+            indices[i] = self.physicalEndIndex(
+                self.interp_order, centering, self.box.shape[i]
+            )
         return indices
-
 
     def nbrGhostFor(self, qty):
         assert qty in self.hybridQuantities
         nGhosts = np.zeros(self.box.ndim, dtype=np.int32)
-        for i, direction in enumerate(directions[:self.box.ndim]):
+        for i, direction in enumerate(directions[: self.box.ndim]):
             centering = yee_centering[direction][qty]
             nGhosts[i] = self.nbrGhosts(self.interp_order, centering)
         return nGhosts
-
 
     # ---- Start / End   primal methods ------
     def physicalStartPrimal(self, interpOrder):
         index = self.ghostStartIndex() + self.nbrGhostsPrimal(interpOrder)
         return index
 
-
-
-    def physicalEndPrimal(self,interpOrder, nbrCells):
+    def physicalEndPrimal(self, interpOrder, nbrCells):
         index = self.physicalStartPrimal(interpOrder) + nbrCells
         return index
 
     # ---- Alloc methods -------------------------
 
     def allocSize(self, interpOrder, centering, nbrCells):
-        size = nbrCells + 1 + 2*self.nbrGhosts(interpOrder, centering) \
-               - self.isDual(centering)
+        size = (
+            nbrCells
+            + 1
+            + 2 * self.nbrGhosts(interpOrder, centering)
+            - self.isDual(centering)
+        )
         return size
-
-
 
     # 1st derivative
     def allocSizeDerived(self, interpOrder, centering, nbrCells):
-        newCentering = self.changeCentering( centering, 1 )
+        newCentering = self.changeCentering(centering, 1)
 
-        size = nbrCells + 1 + 2*self.nbrGhosts(interpOrder, newCentering) \
-             - self.isDual(newCentering)
+        size = (
+            nbrCells
+            + 1
+            + 2 * self.nbrGhosts(interpOrder, newCentering)
+            - self.isDual(newCentering)
+        )
         return size
 
-
     def AMRPointToLocal(self, point):
-        return point - self.box.lower + self.physicalStartIndex(self.interp_order, "dual")
+        return (
+            point - self.box.lower + self.physicalStartIndex(self.interp_order, "dual")
+        )
 
     def AMRBoxToLocal(self, box):
         local = box.copy()
@@ -260,7 +310,6 @@ class GridLayout(object):
         dualStart = self.physicalStartIndex(self.interp_order, "dual")
         return index - self.box.lower[dim] + dualStart
 
-
     # ---- Yee coordinate methods -------------------------
     # knode : a primal or dual node index
     #
@@ -271,17 +320,16 @@ class GridLayout(object):
     # This method returns a point
     #
     def yeeCoords(self, knode, iStart, centering, direction, ds, origin, derivOrder):
-        halfCell = 0.
+        halfCell = 0.0
 
-        newCentering = self.changeCentering( centering, derivOrder )
+        newCentering = self.changeCentering(centering, derivOrder)
 
-        if newCentering == 'dual':
+        if newCentering == "dual":
             halfCell = 0.5
 
-        x = ( (knode - iStart) + halfCell )*ds + origin
+        x = ((knode - iStart) + halfCell) * ds + origin
 
         return x
-
 
     def yeeCoordsFor(self, qty, direction, withGhosts=True, **kwargs):
         """
@@ -292,21 +340,27 @@ class GridLayout(object):
         :param direction: can only be a single one
         """
 
-        if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
+        if (
+            qty in yee_centering_lower[direction]
+            and qty not in yee_centering[direction]
+        ):
             qty = qty[0].upper() + qty[1:]
 
         if "centering" in kwargs:
             centering = kwargs["centering"]
         else:
-            centering= yee_centering[direction][qty]
+            centering = yee_centering[direction][qty]
 
-        return yeeCoordsFor(self.origin, self.nbrGhosts(self.interp_order, centering),
-                            self.dl, self.box.shape, qty, direction, withGhosts=withGhosts, centering=centering)
-
-
-
-
-
+        return yeeCoordsFor(
+            self.origin,
+            self.nbrGhosts(self.interp_order, centering),
+            self.dl,
+            self.box.shape,
+            qty,
+            direction,
+            withGhosts=withGhosts,
+            centering=centering,
+        )
 
     # ---- Get coordinate methods -------------------------
     # knode : a primal or dual node index
@@ -318,42 +372,40 @@ class GridLayout(object):
     # This method returns a point
     #
     def fieldCoords(self, knode, iStart, qty, direction, ds, origin, derivOrder):
-        halfCell = 0.
+        halfCell = 0.0
 
-        newCentering = self.changeCentering( self.qtyCentering(qty, direction), derivOrder )
+        newCentering = self.changeCentering(
+            self.qtyCentering(qty, direction), derivOrder
+        )
 
-        if newCentering == 'dual':
+        if newCentering == "dual":
             halfCell = 0.5
 
-        x = ( (knode - iStart) + halfCell )*ds + origin
+        x = ((knode - iStart) + halfCell) * ds + origin
 
         return x
-
-
 
     # ---- Change centering method -------------------------
     #
     # Use case:
     #   changeCentering( qtyCentering(qty, direct), 1 )
     #
-    def changeCentering(self, centering, derivOrder = 0):
+    def changeCentering(self, centering, derivOrder=0):
 
         newCentering = centering
 
         # if derivOrder is odd the centering is changed
         if derivOrder % 2 != 0:
-            newCentering = self.swapCentering( centering )
+            newCentering = self.swapCentering(centering)
 
         return newCentering
 
-
-
     # -------------------------------------------------------
-    def swapCentering(self, centering ):
+    def swapCentering(self, centering):
 
-        newCentering = 'primal'
+        newCentering = "primal"
 
-        if centering == 'primal':
-            newCentering = 'dual'
+        if centering == "primal":
+            newCentering = "dual"
 
         return newCentering
