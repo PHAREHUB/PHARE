@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_COARSENER_HPP
-#define PHARE_FIELD_COARSENER_HPP
+#ifndef PHARE_DEFAULT_FIELD_COARSENER_HPP
+#define PHARE_DEFAULT_FIELD_COARSENER_HPP
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
@@ -25,16 +25,19 @@ namespace amr
     /** @brief This class gives an operator() that performs the coarsening of N fine nodes onto a
      * given coarse node
      *
-     * A FieldCoarsener object is created each time the refine() method of the FieldCoarsenOperator
-     * is called and its operator() is called for each coarse index.
+     * A DefaultFieldCoarsener object is created each time the refine() method of the
+     * FieldCoarsenOperator is called and its operator() is called for each coarse index.
+     * It is the default coarsening policy and used for any field that does not come with
+     * specific constraints (such as conserving some property in the coarsening process).
      */
     template<std::size_t dimension>
-    class FieldCoarsener
+    class DefaultFieldCoarsener
     {
     public:
-        FieldCoarsener(std::array<core::QtyCentering, dimension> const& centering,
-                       SAMRAI::hier::Box const& sourceBox, SAMRAI::hier::Box const& destinationBox,
-                       SAMRAI::hier::IntVector const& ratio)
+        DefaultFieldCoarsener(std::array<core::QtyCentering, dimension> const& centering,
+                              SAMRAI::hier::Box const& sourceBox,
+                              SAMRAI::hier::Box const& destinationBox,
+                              SAMRAI::hier::IntVector const& ratio)
             : indexesAndWeights_{centering, ratio}
             , sourceBox_{sourceBox}
             , destinationBox_{destinationBox}

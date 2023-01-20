@@ -1,9 +1,9 @@
-#ifndef PHARE_COMMUNICATORS_HPP
-#define PHARE_COMMUNICATORS_HPP
+#ifndef PHARE_REFINER_POOL_HPP
+#define PHARE_REFINER_POOL_HPP
 
-#include "quantity_communicator.hpp"
+#include "communicator.hpp"
 
-#include <SAMRAI/hier/RefineOperator.h>
+#include "amr/data/field/patch_level_ghost_fill_pattern.hpp"
 
 #include <map>
 #include <memory>
@@ -17,6 +17,8 @@ namespace amr
 {
     enum class RefinerType {
         GhostField,
+        PatchGhostField,
+        LevelGhostField,
         InitField,
         InitInteriorPart,
         LevelBorderParticles,
@@ -26,8 +28,8 @@ namespace amr
 
 
     /**
-     * @brief The Communicators class is used by a Messenger to manipulate SAMRAI algorithms and
-     * schedules It contains a QuantityCommunicator for all quantities registered to the Messenger
+     * @brief The RefinerPool class is used by a Messenger to manipulate SAMRAI algorithms and
+     * schedules It contains a Refiner for all quantities registered to the Messenger
      * for ghost, init etc.
      */
     template<RefinerType Type>
@@ -35,28 +37,41 @@ namespace amr
     {
     public:
         /**
-         * @brief add a QuantityCommunicator to the communicators based on the given Descriptor and
-         * the refinement operator refineOp. The method uses the ResourcesManager to check the
-         * quantities in the Descriptor are properly registered. The created QuantityCommunicator is
-         * associated with the given key.
-         *
+         * @brief add a Refiner to the pool based on the given Descriptor and
+         * the refinement operator refineOp.
          * This overload is used for communications that do not use time interpolation
          */
         template<typename Descriptor, typename ResourcesManager>
-        void add(Descriptor const& descriptor,
-                 std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                 std::string const key, std::shared_ptr<ResourcesManager> const& rm)
+        void addStaticRefiner(Descriptor const& ghostDesc, Descriptor const& srcDesc,
+                              std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                              std::string const key, std::shared_ptr<ResourcesManager> const& rm,
+                              bool ghosts = false)
         {
             auto const [it, success]
-                = refiners_.insert({key, makeRefiner(descriptor, rm, refineOp)});
+                = refiners_.insert({key, makeRefiner(ghostDesc, srcDesc, rm, refineOp, ghosts)});
 
             if (!success)
                 throw std::runtime_error(key + " is already registered");
         }
 
+        /**
+         * @brief convenience overload of above addStaticRefiner taking only one descriptor.
+         * used for communications from a quantity to the same quantity.
+         */
+        template<typename Descriptor, typename ResourcesManager>
+        void addStaticRefiner(Descriptor const& descriptor,
+                              std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                              std::string const key, std::shared_ptr<ResourcesManager> const& rm,
+                              bool ghosts = false)
+        {
+            addStaticRefiner(descriptor, descriptor, refineOp, key, rm, ghosts);
+        }
+
+
 
         /**
-         * @brief add a QuantityCommunicator to the Communicators based on the given descroptors and
+         * @brief  Add a Reginer
+         * add a QuantityCommunicator to the Communicators based on the given descroptors and
          * spatial refinement operator and time interpolation operator. The created
          * QuantityCommunicator is associated with the given key.
          *
@@ -64,12 +79,13 @@ namespace amr
          * are only for ghost nodes, which is only for VecField E and B.
          */
         template<typename ResourcesManager>
-        void
-        add(VecFieldDescriptor const& ghostDescriptor, VecFieldDescriptor const& modelDescriptor,
-            VecFieldDescriptor const& oldModelDescriptor,
-            std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
+        void addTimeRefiner(VecFieldDescriptor const& ghostDescriptor,
+                            VecFieldDescriptor const& modelDescriptor,
+                            VecFieldDescriptor const& oldModelDescriptor,
+                            std::shared_ptr<ResourcesManager> const& rm,
+                            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
+                            std::string key)
         {
             auto const [it, success]
                 = refiners_.insert({key, makeRefiner(ghostDescriptor, modelDescriptor,
@@ -79,6 +95,21 @@ namespace amr
         }
 
 
+        template<typename ResourcesManager>
+        void addTimeRefiner(FieldDescriptor const& ghostDescriptor,
+                            FieldDescriptor const& modelDescriptor,
+                            FieldDescriptor const& oldModelDescriptor,
+                            std::shared_ptr<ResourcesManager> const& rm,
+                            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
+                            std::string key)
+        {
+            auto const [it, success]
+                = refiners_.insert({key, makeRefiner(ghostDescriptor, modelDescriptor,
+                                                     oldModelDescriptor, rm, refineOp, timeOp)});
+            if (!success)
+                throw std::runtime_error(key + " is already registered");
+        }
 
 
         /**
@@ -124,6 +155,22 @@ namespace amr
                             algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
                                                  hierarchy),
                             levelNumber);
+                    }
+
+                    // the following schedule will only fill patch ghost nodes
+                    // not level border ghosts
+                    else if constexpr (Type == RefinerType::PatchGhostField)
+                    {
+                        refiner.add(algo, algo->createSchedule(level), levelNumber);
+                    }
+
+                    else if constexpr (Type == RefinerType::LevelGhostField)
+                    {
+                        refiner.add(algo,
+                                    algo->createSchedule(
+                                        std::make_shared<PatchLevelGhostFillPattern>(), level,
+                                        level->getNextCoarserHierarchyLevelNumber(), hierarchy),
+                                    levelNumber);
                     }
 
                     // this createSchedule overload is used to initialize fields.
@@ -279,65 +326,6 @@ namespace amr
     };
 
 
-
-
-    template<std::size_t dimension>
-    class SynchronizerPool
-    {
-    public:
-        template<typename Descriptor, typename ResourcesManager>
-        void add(Descriptor const& descriptor,
-                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> const& coarsenOp, std::string key,
-                 std::shared_ptr<ResourcesManager> const& rm)
-        {
-            synchronizers_.insert(
-                {key, makeSynchronizer<ResourcesManager, dimension>(descriptor, rm, coarsenOp)});
-        }
-
-
-
-
-        template<typename ResourcesManager>
-        void add(VecFieldDescriptor const& descriptor, std::shared_ptr<ResourcesManager> const& rm,
-                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> const& coarsenOp, std::string key)
-        {
-            auto const [it, success] = synchronizers_.insert(
-                {key, makeSynchronizer<ResourcesManager, dimension>(descriptor, rm, coarsenOp)});
-
-            if (!success)
-                throw std::runtime_error(key + " is already registered");
-        }
-
-
-
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
-        {
-            auto levelNumber        = level->getLevelNumber();
-            auto const& coarseLevel = hierarchy->getPatchLevel(levelNumber - 1);
-
-            for (auto& [_, synchronizer] : synchronizers_)
-                for (auto& algo : synchronizer.algos)
-                    synchronizer.add(algo, algo->createSchedule(coarseLevel, level), levelNumber);
-        }
-
-
-
-        void sync(int const levelNumber)
-        {
-            for (auto& [key, synchronizer] : synchronizers_)
-            {
-                if (synchronizer.algos.size() == 0)
-                    throw std::runtime_error("Algorithms are not configured");
-
-                for (auto const& algo : synchronizer.algos)
-                    synchronizer.findSchedule(algo, levelNumber)->coarsenData();
-            }
-        }
-
-    private:
-        std::map<std::string, Communicator<Synchronizer, dimension>> synchronizers_;
-    };
 
 
 } // namespace amr

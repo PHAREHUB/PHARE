@@ -77,7 +77,7 @@ TYPED_TEST(aFieldRefineOperator, canBeCreated)
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
     using FieldT  = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
-    FieldRefineOperator<GridYee, FieldT> linearRefine{};
+    FieldRefineOperator<GridYee, FieldT, DefaultFieldRefiner<dim>> linearRefine{};
 }
 
 
@@ -103,7 +103,8 @@ TYPED_TEST(aFieldRefine, canBeCreated)
     SAMRAI::hier::Box sourceGhostBox{dimension};
     SAMRAI::hier::IntVector ratio{dimension, 2};
 
-    FieldRefiner<dim> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox, ratio};
+    DefaultFieldRefiner<dim> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox,
+                                               ratio};
 }
 
 
