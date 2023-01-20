@@ -98,6 +98,8 @@ namespace amr
         std::vector<VecFieldDescriptor> ghostCurrent;
 
 
+        std::vector<VecFieldDescriptor> ghostBulkVelocity;
+
         virtual ~HybridMessengerInfo() = default;
     };
 

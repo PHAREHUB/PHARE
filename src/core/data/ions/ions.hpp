@@ -233,44 +233,6 @@ namespace core
         std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
                                                  // although only 1 Ions should exist.
     };
-
-
-
-    /**
-     * This routine sets NaNs on all but closest to domain ghost moment nodes
-     * All nodes set to NaN are unsued and NaNs helps finding bugs if they are
-     * used by mistake. The ghost node that is closest to domain is used
-     * in refinement ratio 2 coarsening and should thus not be NaN. It is set
-     * to a copy of the first domain node.
-     *
-     * Directions for start index are superfluous, as all directions are primal for these fields
-     */
-    template<typename Ions, typename GridLayout>
-    void fixMomentGhosts(Ions& ions, GridLayout const& layout)
-    {
-        using Mask = NdArrayMask;
-
-        for (auto& pop : ions)
-        {
-            for (auto& [id, type] : Components::componentMap)
-            {
-                auto& flux_comp = pop.flux().getComponent(type);
-
-                auto phyStartIdx
-                    = layout.physicalStartIndex(flux_comp.physicalQuantity(), Direction::X);
-
-                flux_comp[Mask{0, phyStartIdx - 2}] = NAN;
-                flux_comp[Mask{phyStartIdx}] >> flux_comp[Mask{phyStartIdx - 1}];
-            }
-
-            auto& density    = pop.density();
-            auto phyStartIdx = layout.physicalStartIndex(density.physicalQuantity(), Direction::X);
-
-            density[Mask{0, phyStartIdx - 2}] = NAN;
-            density[Mask{phyStartIdx}] >> density[Mask{phyStartIdx - 1}];
-        }
-    }
-
 } // namespace core
 } // namespace PHARE
 

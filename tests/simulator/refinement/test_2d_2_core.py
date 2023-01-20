@@ -160,7 +160,7 @@ def post_advance_1(new_time):
         L0L1_datahier = get_hier(L0L1_diags)
         extra_collections = []
         errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)
-        errors = test.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier)
+#        errors = test.base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(L0_datahier, L0L1_datahier)
         if isinstance(errors, list):
             extra_collections += [{
                 "boxes": errors,

@@ -1,4 +1,3 @@
-
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
@@ -34,6 +33,36 @@ namespace PHARE
 {
 namespace amr
 {
+
+    // this structure is a wrapper of a field*
+    // so to serve as a ResourcesUser for the ResourcesManager
+    template<typename FieldT>
+    struct FieldUser
+    {
+        struct Property
+        {
+            std::string name;
+            typename HybridQuantity::Scalar qty;
+        };
+        FieldUser(std::string fieldName, FieldT* ptr, typename HybridQuantity::Scalar qty)
+            : name{fieldName}
+            , f{ptr}
+            , quantity{qty}
+        {
+        }
+        std::string name;
+        FieldT* f;
+        typename HybridQuantity::Scalar quantity;
+        using field_type = FieldT;
+
+        std::vector<Property> getFieldNamesAndQuantities() const { return {{name, quantity}}; }
+
+        void setBuffer(std::string const& /*bufferName*/, FieldT* field) { f = field; }
+        void copyData(FieldT const& source) { f->copyData(source); }
+    };
+
+
+
     /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid to
      * hybrid data communications.
      */
@@ -68,6 +97,8 @@ namespace amr
         {
             resourcesManager_->registerResources(EM_old_);
             resourcesManager_->registerResources(Jold_);
+            resourcesManager_->registerResources(NiOldUser_);
+            resourcesManager_->registerResources(ViOld_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -86,6 +117,8 @@ namespace amr
         {
             resourcesManager_->allocate(EM_old_, patch, allocateTime);
             resourcesManager_->allocate(Jold_, patch, allocateTime);
+            resourcesManager_->allocate(NiOldUser_, patch, allocateTime);
+            resourcesManager_->allocate(ViOld_, patch, allocateTime);
         }
 
 
@@ -123,10 +156,13 @@ namespace amr
          *  - electric fields
          *  - patch ghost particles
          *
-         *  ion moments : do not need to be filled on ghost node by SAMRAI schedules
+         *  ion moments :
+         *  do not need to be filled on shared border nodes by SAMRAI schedules
          *  since they will be filled with levelGhostParticles[old,new] on level ghost nodes
          *  and computed by ghost particles on interior patch ghost nodes
-         *
+         *  however they need to be filled on pure ghost nodes.
+         *  Note : they are filled for all pure ghost nodes for now although
+         *  only the first one is needed (for the coarsening stencil).
          *
          * Init communicators that need to know this level :
          *
@@ -147,6 +183,9 @@ namespace amr
             magneticGhosts_.registerLevel(hierarchy, level);
             electricGhosts_.registerLevel(hierarchy, level);
             currentGhosts_.registerLevel(hierarchy, level);
+
+            densityGhosts_.registerLevel(hierarchy, level);
+            bulkVelGhosts_.registerLevel(hierarchy, level);
 
             patchGhostParticles_.registerLevel(hierarchy, level);
 
@@ -339,14 +378,16 @@ namespace amr
 
 
         /**
-         * @brief fillIonMomentGhosts will compute the ion moments for all species on ghost nodes.
+         * @brief fillIonMomentGhosts works on moment ghost nodes
          *
-         * For patch ghost nodes, patch ghost particles are used.
-         * For level ghost nodes, levelGhostParticlesOld and new are both projected with a time
-         * interpolation coef.
+         * patch border node moments are completed by the deposition of patch ghost particles
+         * for all populations
+         * level border nodes are completed by the deposition of level ghost [old,new] particles
+         * for all populations, linear time interpolation is used to get the contribution of old/new
+         * particles
          */
-        void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                 double const afterPushTime) override
+        void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                    double const afterPushTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonMomentGhosts");
 
@@ -388,6 +429,18 @@ namespace amr
         }
 
 
+        /* pure (patch and level) ghost nodes are filled by applying a regular ghost schedule
+         * i.e. that does not overwrite the border patch node previously well calculated from
+         * particles
+         * Note : the ghost schedule only fills the total density and bulk velocity and NOT
+         * population densities and fluxes. These partial densities and fluxes are thus
+         * not available on ANY ghost node.*/
+        virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                         double const afterPushTime) override
+        {
+            densityGhosts_.fill(level.getLevelNumber(), afterPushTime);
+            bulkVelGhosts_.fill(level.getLevelNumber(), afterPushTime);
+        }
 
         /**
          * @brief firstStep : in the HybridHybridMessengerStrategy, the firstStep method is used to
@@ -484,12 +537,13 @@ namespace amr
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
-         * This method copies the current model electromagnetic field and current, defined at
-         * t=n. Since prepareStep() is called just before advancing the level, this operation
-         * actually saves the t=n electromagnetic field and current into the messenger. When the
-         * time comes that the next finer level needs to time interpolate the electromagnetic
-         * field and current at its ghost nodes, this level will have its model EM field  and
-         * current at t=n+1 and thanks to this methods, the t=n field will be in the messenger.
+         * This method copies the current model electromagnetic field E,B, the current density J,
+         * and the density and bulk velocity, defined at t=n. Since prepareStep() is called just
+         * before advancing the level, this operation actually saves the t=n versions of E,B,J,Ni,Vi
+         * into the messenger. When the time comes that the next finer level needs to
+         * time interpolate the electromagnetic field and current at its ghost nodes, this level
+         * will be able to interpolate at required time because the t=n Vi,Ni,E,B,J
+         * fields of previous next coarser step will be in the messenger.
          */
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
@@ -500,14 +554,23 @@ namespace amr
             for (auto& patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, hybridModel.state.electromag, hybridModel.state.J, EM_old_, Jold_);
+                    *patch, hybridModel.state.electromag, hybridModel.state.J,
+                    hybridModel.state.ions, EM_old_, Jold_, NiOldUser_, ViOld_);
+
                 resourcesManager_->setTime(EM_old_, *patch, currentTime);
                 resourcesManager_->setTime(Jold_, *patch, currentTime);
+                resourcesManager_->setTime(NiOldUser_, *patch, currentTime);
+                resourcesManager_->setTime(ViOld_, *patch, currentTime);
 
                 auto& EM = hybridModel.state.electromag;
                 auto& J  = hybridModel.state.J;
+                auto& Vi = hybridModel.state.ions.velocity();
+                auto& Ni = hybridModel.state.ions.density();
+
                 EM_old_.copyData(EM);
                 Jold_.copyData(J);
+                ViOld_.copyData(Vi);
+                NiOldUser_.copyData(Ni);
             }
         }
 
@@ -531,6 +594,16 @@ namespace amr
 
             // at some point in the future levelGhostParticles could be filled with injected
             // particles depending on the domain boundary condition.
+            //
+            // Do we need J ghosts filled here?
+            // This method is only called when root level is initialized
+            // but J ghosts are needed a priori for the laplacian when the first Ohm is calculated
+            // so I think we do, not having them here is just having the laplacian wrong on
+            // L0 borders for the initial E, which is not the end of the world...
+            //
+            // do we need moment ghosts filled here?
+            // a priori no because those are at this time only needed for coarsening, which
+            // will not happen before the first advance
         }
 
 
@@ -544,10 +617,18 @@ namespace amr
             // call coarsning schedules...
             magnetoSynchronizers_.sync(levelNumber);
             electroSynchronizers_.sync(levelNumber);
-            // densitySynchronizers_.sync(levelNumber);
-            // ionBulkVelSynchronizers_.sync(levelNumber);
+            densitySynchronizers_.sync(levelNumber);
+            ionBulkVelSynchronizers_.sync(levelNumber);
         }
 
+        // after coarsening, domain nodes have been updated and therefore patch ghost nodes
+        // will probably stop having the exact same value as their overlapped neighbor domain node
+        // we thus fill ghost nodes.
+        // note that we first fill shared border nodes with the sharedNode refiners so that
+        // these shared nodes agree on their value at MPI process boundaries.
+        // then regular refiner fill are called, which fill only pure ghost nodes.
+        // note also that moments are not filled on border nodes since already OK from particle
+        // deposition
         void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                              double const time) override
         {
@@ -558,6 +639,8 @@ namespace amr
 
             magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, time);
+            densityGhosts_.fill(levelNumber, time);
+            bulkVelGhosts_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
         }
 
     private:
@@ -580,6 +663,17 @@ namespace amr
                           currentSharedNodes_, fieldNodeRefineOp_);
             fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
                           currentGhosts_);
+
+            // no fillRefiners overload for a scalar so do it manually for the density
+            // density and bulk velocity are OK on border node because it is obtained from
+            // domain particles and either patch ghost particles or levelghost[old,new] particles
+            // so we only need to fill pure ghost nodes. Therefore there is no need for a
+            // SharedNodes refiner
+            densityGhosts_.add(info->modelIonDensity, fieldRefineOp_, info->modelIonDensity,
+                               resourcesManager_);
+
+            fillRefiners_(info->ghostBulkVelocity, info->modelIonBulkVelocity,
+                          VecFieldDescriptor{ViOld_}, bulkVelGhosts_);
         }
 
 
@@ -721,12 +815,15 @@ namespace amr
 
 
 
-
         //! keeps a copy of the model electromagnetic field at t=n
         ElectromagT EM_old_{stratName + "_EM_old"}; // TODO needs to be allocated somewhere and
                                                     // updated to t=n before advanceLevel()
 
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
+        VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
+        FieldT* NiOld_{nullptr};
+        FieldUser<FieldT> NiOldUser_{stratName + "_NiOld", NiOld_,
+                                     core::HybridQuantity::Scalar::rho};
 
 
         //! ResourceManager shared with other objects (like the HybridModel)
@@ -758,6 +855,9 @@ namespace amr
         RefinerPool<RefinerType::GhostField> currentSharedNodes_;
         RefinerPool<RefinerType::GhostField> currentGhosts_;
 
+        // moment ghosts
+        RefinerPool<RefinerType::GhostField> densityGhosts_;
+        RefinerPool<RefinerType::GhostField> bulkVelGhosts_;
 
         // algo and schedule used to initialize domain particles
         // from coarser level using particleRefineOp<domain>
@@ -773,15 +873,14 @@ namespace amr
         RefinerPool<RefinerType::InteriorGhostParticles> patchGhostParticles_;
 
         SynchronizerPool<dimension> densitySynchronizers_;
-
         SynchronizerPool<dimension> ionBulkVelSynchronizers_;
-
         SynchronizerPool<dimension> electroSynchronizers_;
-
         SynchronizerPool<dimension> magnetoSynchronizers_;
 
 
         // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
+        // Note that refinement operator, via the boolean argument, serve as a relay for the
+        // the RefineAlgorithm to get the correct VariableFillPattern
         std::shared_ptr<SAMRAI::hier::RefineOperator> fieldNodeRefineOp_{
             std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>(/*node_only*/ true)};
 

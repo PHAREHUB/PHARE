@@ -141,7 +141,8 @@ namespace amr
                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
                 std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
     {
-        auto variableFillPattern = FieldFillPattern::make_shared(refineOp);
+        constexpr auto dimension = ResourcesManager::dimension;
+        auto variableFillPattern = FieldFillPattern<dimension>::make_shared(refineOp);
 
         Communicator<Refiner> com;
 

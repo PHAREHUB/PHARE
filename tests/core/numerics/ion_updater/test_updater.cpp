@@ -976,58 +976,6 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 
 
 
-TYPED_TEST(IonUpdaterTest, thatUnusedMomentNodesAreNaN)
-{
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
-
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
-                                 UpdaterMode::domain_only);
-
-    this->fillIonsMomentsGhosts();
-
-    ionUpdater.updateIons(this->ions, this->layout);
-
-
-    auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    auto ix2 = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-
-    for (auto& pop : this->ions)
-    {
-        for (auto ix = 0u; ix < ix0 - 1; ++ix) // leftGhostNodes
-        {
-            auto& density = pop.density();
-            auto& flux    = pop.flux();
-
-            auto& fx = flux.getComponent(Component::X);
-            auto& fy = flux.getComponent(Component::Y);
-            auto& fz = flux.getComponent(Component::Z);
-
-            EXPECT_TRUE(std::isnan(density(ix)));
-            EXPECT_TRUE(std::isnan(fx(ix)));
-            EXPECT_TRUE(std::isnan(fy(ix)));
-            EXPECT_TRUE(std::isnan(fz(ix)));
-        }
-
-        for (auto ix = ix1 + 1 + 1; ix <= ix2; ++ix)
-        {
-            auto& density = pop.density();
-            auto& flux    = pop.flux();
-
-            auto& fx = flux.getComponent(Component::X);
-            auto& fy = flux.getComponent(Component::Y);
-            auto& fz = flux.getComponent(Component::Z);
-
-            EXPECT_TRUE(std::isnan(density(ix)));
-            EXPECT_TRUE(std::isnan(fx(ix)));
-            EXPECT_TRUE(std::isnan(fy(ix)));
-            EXPECT_TRUE(std::isnan(fz(ix)));
-        }
-    }
-}
-
-
 
 int main(int argc, char** argv)
 {

@@ -1,5 +1,3 @@
-
-
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
@@ -105,10 +103,10 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
-                core::fixMomentGhosts(ions, layout);
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
+            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
 
 
             if (isRootLevel(levelNumber))

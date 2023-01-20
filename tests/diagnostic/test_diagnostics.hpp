@@ -20,76 +20,6 @@ constexpr unsigned NEW_HI5_FILE
     = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
 
 
-template<typename Field, typename GridLayout, typename Data>
-void validateFluidGhosts(Data const& data, GridLayout const& layout, Field const& field)
-{
-    auto constexpr dim = GridLayout::dimension;
-
-    using Filter = FieldDomainPlusNFilter;
-    auto filter  = Filter{1}; // include one ghost on each side
-
-    auto beg = fieldIndices(filter, std::mem_fn(&Filter::template start<Field, GridLayout>), layout,
-                            field);
-    auto end = fieldIndices(filter, std::mem_fn(&Filter::template end<Field, GridLayout>), layout,
-                            field);
-
-    for (std::size_t d = 0; d < dim; d++)
-    {
-        ASSERT_TRUE(beg[d] > 0);
-        ASSERT_TRUE(end[d] > beg[d]);
-    }
-
-    core::NdArrayView<dim, typename Data::value_type> const view(data.data(), field.shape());
-
-    {
-        std::size_t nans = 0;
-        for (auto const& v : data)
-            if (std::isnan(v))
-                nans++;
-
-        auto phyStartIdx = layout.physicalStartIndex(field.physicalQuantity(), core::Direction::X);
-        core::NdArrayMask mask{0, phyStartIdx - 2};
-        EXPECT_EQ(mask.nCells(field), nans);
-    }
-
-    if constexpr (dim == 1)
-    {
-        EXPECT_FLOAT_EQ(data[beg[0]], data[beg[0] + 1]); // left
-        EXPECT_FLOAT_EQ(data[end[0] - 1], data[end[0]]); // right
-    }
-    else if constexpr (dim == 2)
-    {
-        for (std::size_t j = beg[1] + 1; j < end[1]; j++)
-        {
-            EXPECT_FLOAT_EQ(view(beg[0], j), view(beg[0] + 1, j)); // bottom
-            EXPECT_FLOAT_EQ(view(end[0], j), view(end[0] - 1, j)); // top
-        }
-
-        for (std::size_t i = beg[0] + 1; i < end[0]; i++)
-        {
-            EXPECT_FLOAT_EQ(view(i, beg[1]), view(i, beg[1] + 1)); // left
-            EXPECT_FLOAT_EQ(view(i, end[1]), view(i, end[1] - 1)); // right
-        }
-
-        // bottom left
-        EXPECT_FLOAT_EQ(view(beg[0], beg[1]), view(beg[0] + 1, beg[1] + 1));
-
-        // bottom right
-        EXPECT_FLOAT_EQ(view(beg[0], end[1]), view(beg[0] + 1, end[1] - 1));
-
-        // top left square
-        EXPECT_FLOAT_EQ(view(end[0], beg[1]), view(end[0] - 1, beg[1] + 1));
-
-        // top right square
-        EXPECT_FLOAT_EQ(view(end[0], end[1]), view(end[0] - 1, end[1] - 1));
-    }
-    else if constexpr (dim == 3)
-    {
-        throw std::runtime_error("not implemented");
-    }
-}
-
-
 template<typename GridLayout, typename Field, typename FieldFilter = PHARE::FieldNullFilter>
 auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field const& field,
                 std::string const path, FieldFilter const ff = FieldFilter{})
@@ -176,12 +106,8 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
     auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
         auto&& data = checkField(*hifile, layout, field, path + name, FieldDomainFilter{});
-        /*
-          Validate ghost of first border node is equal to border node
-          see fixMomentGhosts() in src/core/data/ions/ions.hpp
-        */
-        validateFluidGhosts(data, layout, field);
     };
+
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
         checkVecField(*hifile, layout, val, path + name, FieldDomainFilter{});

@@ -1,4 +1,3 @@
-
 #ifndef PHARE_MHD_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_MHD_HYBRID_MESSENGER_STRATEGY_HPP
 
@@ -115,11 +114,15 @@ namespace amr
                                    double const /*fillTime*/) override
         {
         }
+        void fillIonPopMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                                    double const /*fillTime*/) override
+        {
+        }
+
         void fillIonMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
                                  double const /*fillTime*/) override
         {
         }
-
 
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                        const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
