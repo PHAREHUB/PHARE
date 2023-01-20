@@ -427,7 +427,7 @@ class AdvanceTestBase(SimulatorTest):
                                 coarsen(qty, coarse_pd, fine_pd, coarseBox, fine_pdDataset, afterCoarse)
                                 # 1e-16 seems to fail for some reason. Discrepency appears to be
                                 # on refined adjacent patches. Was way worse (1e-4 or so) when not
-                                # filling pure ghosts for Ni and Vi. 1e-15 seems food enough
+                                # filling pure ghosts for Ni and Vi. 1e-15 seems good enough
                                 np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-15, rtol=0)
 
 
