@@ -95,7 +95,8 @@ def dist_plot(particles, **kwargs):
     fig.colorbar(im, ax=ax)
 
     if kwargs.get("kde",False) is True:
-        sns.kdeplot(x, y, ax=ax, color="w")
+        import seaborn as sns
+        sns.kdeplot(x=x, y=y, ax=ax, color="w")
 
     ax.set_title(kwargs.get("title",""))
     ax.set_xlabel(kwargs.get("xlabel", axis[0]))

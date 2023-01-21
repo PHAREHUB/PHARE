@@ -97,6 +97,7 @@ class Diagnostics(object):
         for key in self.attributes:
             self.attributes[key] = self.attributes[key]
 
+        self.quantity = None # set in next line, stops pylint complaining
         self._setSubTypeAttributes(**kwargs)
         self.flush_every = kwargs.get("flush_every", 1) # flushes every dump, safe, but costly
 
@@ -112,6 +113,9 @@ class Diagnostics(object):
 
     def extent(self):
         return self.__extent
+
+    def _setSubTypeAttributes(self, **kwargs): # stop pyline complaining
+        raise RuntimeError("Never to be called, defined in subclass")
 
 # ------------------------------------------------------------------------------
 

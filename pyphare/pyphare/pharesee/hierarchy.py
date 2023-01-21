@@ -354,7 +354,8 @@ def flat_finest_field(hierarchy, qty, time=None):
     elif dim == 2:
         return flat_finest_field_2d(hierarchy, qty, time)
     elif dim == 3:
-        return flat_finest_field_3d(hierarchy, qty, time)
+        raise RuntimeError("Not implemented")
+        # return flat_finest_field_3d(hierarchy, qty, time)
     else:
         raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
 
@@ -698,12 +699,13 @@ class PatchHierarchy:
                 continue
             for ip, patch in enumerate(level.patches):
                 pdata_nbr = len(patch.patch_datas)
+                pdata_names = list(patch.patch_datas.keys())
                 if qty is None and pdata_nbr != 1:
                     multiple = "multiple quantities in patch, "
-                    err = multiple + "please specify a quantity in  "+ pdata_names
+                    err = multiple + "please specify a quantity in " + " ".join(pdata_names)
                     raise ValueError(err)
                 if qty is None:
-                    qty = list(patch.patch_datas.keys())[0]
+                    qty = pdata_names[0]
 
                 layout  = patch.patch_datas[qty].layout
                 nbrGhosts = layout.nbrGhostFor(qty)

@@ -30,7 +30,7 @@ def startMPI():
 class Simulator:
     def __init__(self, simulation, auto_dump=True, **kwargs):
         import pyphare.pharein as ph
-        assert isinstance(simulation, ph.Simulation)
+        assert isinstance(simulation, ph.Simulation) # pylint: disable=no-member
         self.simulation = simulation
         self.cpp_hier = None   # HERE
         self.cpp_sim  = None   # BE
