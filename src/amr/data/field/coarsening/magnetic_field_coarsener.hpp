@@ -30,13 +30,75 @@ namespace amr
                                SAMRAI::hier::Box const& sourceBox,
                                SAMRAI::hier::Box const& destinationBox,
                                SAMRAI::hier::IntVector const& ratio)
+            : centering_{centering}
+            , sourceBox_{sourceBox}
+            , destinationBox_{destinationBox}
+
         {
         }
         template<typename FieldT>
         void operator()(FieldT const& fineField, FieldT& coarseField,
                         core::Point<int, dimension> coarseIndex)
         {
+            // For the moment we only take the case of field with the same centering
+            TBOX_ASSERT(fineField.physicalQuantity() == coarseField.physicalQuantity());
+
+            core::Point<int, dimension> fineStartIndex;
+            if constexpr (dimension == 1)
+            {
+                fineStartIndex[dirX] = coarseIndex[dirX] * this->ratio_;
+            }
+            else if constexpr (dimension > 1)
+            {
+                fineStartIndex[dirY] = coarseIndex[dirY] * this->ratio_;
+                if constexpr (dimension > 2)
+                {
+                    fineStartIndex[dirZ] = coarseIndex[dirZ] * this->ratio_;
+                }
+            }
+
+            fineStartIndex = AMRToLocal(fineStartIndex, sourceBox_);
+            coarseIndex    = AMRToLocal(coarseIndex, destinationBox_);
+
+
+            double coarseValue = 0.;
+
+            // we're not supposed to know B has this specific centering here
+            // hard coded for now but should instead used the layout to ask for centering
+
+            if constexpr (dimension == 2)
+            {
+                if constexpr (centering_[dirX] == core::QtyCentering::primal
+                              and centering_[dirY] == core::QtyCentering::dual)
+                {
+                    // Bx is primal-dual, take average in Y
+                    coarseField(coarseIndex[dirX], coarseIndex[dirY])
+                        = 0.5
+                          * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
+                             + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1));
+                }
+                if constexpr (centering_[dirX] == core::QtyCentering::dual
+                              and centering_[dirY] == core::QtyCentering::dual)
+                {
+                    // By is dual-primal, take average in X
+                    coarseField(coarseIndex[dirX], coarseIndex[dirY])
+                        = 0.5
+                          * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
+                             + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY]));
+                }
+                // Bz is dual-dual, take average in XY
+                coarseField(coarseIndex[dirX], coarseIndex[dirY])
+                    = 0.25
+                      * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
+                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY])
+                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1)
+                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY] + 1));
+            }
         }
+        std::array<core::QtyCentering, dimension> const& centering_;
+        SAMRAI::hier::Box const sourceBox_;
+        SAMRAI::hier::Box const destinationBox_;
+        static int constexpr ratio_ = 2;
     };
 } // namespace amr
 } // namespace PHARE
