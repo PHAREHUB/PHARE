@@ -68,31 +68,32 @@ namespace amr
 
             if constexpr (dimension == 2)
             {
-                if constexpr (centering_[dirX] == core::QtyCentering::primal
-                              and centering_[dirY] == core::QtyCentering::dual)
+                if (centering_[dirX] == core::QtyCentering::primal
+                    and centering_[dirY] == core::QtyCentering::dual)
                 {
-                    // Bx is primal-dual, take average in Y
                     coarseField(coarseIndex[dirX], coarseIndex[dirY])
                         = 0.5
                           * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
                              + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1));
                 }
-                if constexpr (centering_[dirX] == core::QtyCentering::dual
-                              and centering_[dirY] == core::QtyCentering::dual)
+                else if (centering_[dirX] == core::QtyCentering::dual
+                         and centering_[dirY] == core::QtyCentering::primal)
                 {
-                    // By is dual-primal, take average in X
                     coarseField(coarseIndex[dirX], coarseIndex[dirY])
                         = 0.5
                           * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
                              + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY]));
                 }
-                // Bz is dual-dual, take average in XY
-                coarseField(coarseIndex[dirX], coarseIndex[dirY])
-                    = 0.25
-                      * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
-                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY])
-                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1)
-                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY] + 1));
+                else if (centering_[dirX] == core::QtyCentering::dual
+                         and centering_[dirY] == core::QtyCentering::dual)
+                {
+                    coarseField(coarseIndex[dirX], coarseIndex[dirY])
+                        = 0.25
+                          * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
+                             + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY])
+                             + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1)
+                             + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY] + 1));
+                }
             }
         }
         std::array<core::QtyCentering, dimension> const& centering_;
