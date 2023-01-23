@@ -153,6 +153,8 @@ class MaxwellianFluidModel(object):
             self.validate2d(sim, atol)
 
     def validate1d(self, sim, atol):
+        if sim is None:
+            raise ValueError("Simulation is None")
 
         domain_box = Box([0]*sim.ndim, sim.cells)
         layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
