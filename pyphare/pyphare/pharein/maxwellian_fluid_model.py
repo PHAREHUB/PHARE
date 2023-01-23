@@ -1,12 +1,8 @@
-
-
-from pyphare.core import phare_utilities
-from pyphare.core.gridlayout import yee_element_is_primal
-from pyphare.pharein import global_vars
-from pyphare.core.box import Box
-from pyphare.core.gridlayout import GridLayout
-
 import numpy as np
+from pyphare.core import phare_utilities
+from pyphare.core.box import Box
+from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
+from pyphare.pharein import global_vars
 
 
 class MaxwellianFluidModel(object):
@@ -153,8 +149,6 @@ class MaxwellianFluidModel(object):
             self.validate2d(sim, atol)
 
     def validate1d(self, sim, atol):
-        if sim is None:
-            raise ValueError("Simulation is None")
 
         domain_box = Box([0]*sim.ndim, sim.cells)
         layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
@@ -262,7 +256,3 @@ class MaxwellianFluidModel(object):
             print("Warning: Simulation is periodic but some functions are not : ", not_periodic)
             if sim.strict:
                 raise RuntimeError("Simulation is not periodic")
-
-
-
-
