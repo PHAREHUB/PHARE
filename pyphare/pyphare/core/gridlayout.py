@@ -140,7 +140,7 @@ class GridLayout(object):
 
 
     def nbrGhosts(self, interpOrder, centering):
-        if self.field_ghosts_nbr is None:
+        if self.field_ghosts_nbr == -1:
             return int((interpOrder + 1) / 2) + self.particleGhostNbr(interpOrder)
         return self.field_ghosts_nbr
 
