@@ -28,7 +28,7 @@ namespace amr
     class MagneticFieldCoarsener
     {
     public:
-        MagneticFieldCoarsener(std::array<core::QtyCentering, dimension> const& centering,
+        MagneticFieldCoarsener(std::array<core::QtyCentering, dimension> const centering,
                                SAMRAI::hier::Box const& sourceBox,
                                SAMRAI::hier::Box const& destinationBox,
                                SAMRAI::hier::IntVector const& ratio)
@@ -84,6 +84,7 @@ namespace amr
                 }
             }
 
+#if 0
             if constexpr (dimension == 2)
             {
                 if (centering_[dirX] == core::QtyCentering::primal
@@ -123,8 +124,9 @@ namespace amr
             {
                 throw std::runtime_error("Not Implemented yet");
             }
+#endif
         }
-        std::array<core::QtyCentering, dimension> const& centering_;
+        std::array<core::QtyCentering, dimension> const centering_;
         SAMRAI::hier::Box const sourceBox_;
         SAMRAI::hier::Box const destinationBox_;
         static int constexpr ratio_ = 2;
