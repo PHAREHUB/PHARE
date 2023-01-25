@@ -47,11 +47,10 @@ namespace amr
             TBOX_ASSERT(fineField.physicalQuantity() == coarseField.physicalQuantity());
 
             core::Point<int, dimension> fineStartIndex;
-            if constexpr (dimension == 1)
-            {
-                fineStartIndex[dirX] = coarseIndex[dirX] * this->ratio_;
-            }
-            else if constexpr (dimension > 1)
+
+            fineStartIndex[dirX] = coarseIndex[dirX] * this->ratio_;
+
+            if constexpr (dimension > 1)
             {
                 fineStartIndex[dirY] = coarseIndex[dirY] * this->ratio_;
                 if constexpr (dimension > 2)
