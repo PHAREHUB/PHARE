@@ -3,8 +3,8 @@
 
 import numpy as np
 
-from .phare_utilities import is_scalar, listify
 from .box import Box
+from .phare_utilities import is_scalar, listify
 
 directions = ["x", "y", "z"]
 direction_to_dim = {direction: idx for idx, direction in enumerate(directions)}
@@ -345,4 +345,3 @@ class GridLayout(object):
             newCentering = 'dual'
 
         return newCentering
-
