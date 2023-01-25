@@ -717,7 +717,7 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            magnetoSynchronizers_.add(info->modelMagnetic, resourcesManager_, fieldCoarseningOp_,
+            magnetoSynchronizers_.add(info->modelMagnetic, resourcesManager_, magneticCoarseningOp_,
                                       info->modelMagnetic.vecName);
 
             electroSynchronizers_.add(info->modelElectric, resourcesManager_, fieldCoarseningOp_,

@@ -5,7 +5,9 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/utilities/constants.hpp"
 
+
 #include <SAMRAI/hier/Box.h>
+#include <stdexcept>
 
 namespace PHARE
 {
@@ -36,6 +38,7 @@ namespace amr
 
         {
         }
+
         template<typename FieldT>
         void operator()(FieldT const& fineField, FieldT& coarseField,
                         core::Point<int, dimension> coarseIndex)
@@ -60,11 +63,27 @@ namespace amr
             fineStartIndex = AMRToLocal(fineStartIndex, sourceBox_);
             coarseIndex    = AMRToLocal(coarseIndex, destinationBox_);
 
+            // the following kinda assumes where B is, i.e. Yee layout centering
+            // as it only does faces pirmal-dual, dual-primal and dual-dual
 
-            double coarseValue = 0.;
+            if constexpr (dimension == 1)
+            {
+                // in 1D div(B) is automatically satisfied so using this coarsening
+                // opertor is probably not better than the default one, but we do that
+                // for a kind of consistency...
+                // coarse flux is equal to fine flux and we're 1D so there is flux partitioned
+                // only for By and Bz, Bx is equal to the fine value
 
-            // we're not supposed to know B has this specific centering here
-            // hard coded for now but should instead used the layout to ask for centering
+                if (centering_[dirX] == core::QtyCentering::primal) // bx
+                {
+                    coarseField(coarseIndex[dirX]) = fineField(fineStartIndex[dirX]);
+                }
+                else if (centering_[dirX] == core::QtyCentering::dual) // by and bz
+                {
+                    coarseField(coarseIndex[dirX])
+                        = 0.5 * (fineField(fineStartIndex[dirX]) + fineField(fineStartIndex[dirX]));
+                }
+            }
 
             if constexpr (dimension == 2)
             {
@@ -94,6 +113,16 @@ namespace amr
                              + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1)
                              + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY] + 1));
                 }
+                else
+                {
+                    {
+                        throw std::runtime_error("no magnetic field should end up here");
+                    }
+                }
+            }
+            else if constexpr (dimension == 3)
+            {
+                throw std::runtime_error("Not Implemented yet");
             }
         }
         std::array<core::QtyCentering, dimension> const& centering_;
