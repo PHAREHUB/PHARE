@@ -4,14 +4,16 @@
 
 import os
 import sys
-import numpy as np
+from multiprocessing import Value
 
-from pyphare.core.box import Box
+import numpy as np
 import pyphare.core.box as boxm
 from pyphare.core import gridlayout
+from pyphare.core.box import Box
 from pyphare.core.gridlayout import directions
 from pyphare.core.phare_utilities import refinement_ratio
 from pyphare.pharesee.hierarchy import FieldData
+
 
 def exec_fn(xyz, fn):
     ndim = len(xyz)
@@ -101,6 +103,41 @@ def main(path="./"):
         for EM in ["E", "B"]:
             for qty in ["x", "y", "z"]:
                 dump(ndim, path, EM + qty)
+
+
+
+def magnetic_coarsen(qty, coarseField,fineData, coarseData):
+
+    ndim = coarseField.layout.box.ndim
+    layout = coarseField.layout
+
+    if ndim==1:
+        centerX = layout.qtyCentering(qty, "X")
+        if centerX == "primal": # Bx
+            coarseData[:] = fineData[::2]
+        elif centerX == "primal": # By
+            coarseData[:] = 0.5*(fineData[1::2] + fineData[:-1:2])
+
+    elif ndim == 2:
+        centerX = layout.qtyCentering(qty, "X")
+        centerY = layout.qtyCentering(qty, "Y")
+        if centerX == "primal" and centerY == "dual": # Bx
+            coarseData[:,:] = 0.5*(fineData[::2, 1::2] + fineData[::2, :-1:2])
+        elif centerX == "dual" and centerY == "primal": # By
+            coarseData[:,:] = 0.5*(fineData[1::2,::2] + fineData[:-1:2,::2])
+        elif centerX == "dual" and centerY == "dual": # Bz
+            coarseData[:,:] = 0.25*(fineData[1::2, 1::2] + fineData[:-1:2,:-1:2])
+        else:
+            raise ValueError("Invalid centering for a magnetic field")
+
+    elif ndim==3:
+            raise ValueError("not implemented yet")
+
+
+    else:
+        raise ValueError("invalid dimension {ndim}".format(ndim=ndim))
+
+
 
 
 
