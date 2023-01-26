@@ -62,7 +62,7 @@ class YeeCentering(object):
         self.centerZ = yee_centering["z"]
 
 
-def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts=False):
+def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts :int =False):
 
     assert direction in direction_to_dim, f"direction ({direction} not supported)"
     assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
@@ -92,9 +92,11 @@ def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts=Fal
 class GridLayout(object):
     """
       field_ghosts_nbr is a parameter to support pyphare geometry tests having hard coded 5 ghosts
+      initialized default to -1 as an invalid value allowing the override mechanism. Using None
+      results in a pylint error elsewhere
     """
 
-    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1, field_ghosts_nbr=None):
+    def __init__(self, box=Box(0,0), origin=0, dl=0.1, interp_order=1, field_ghosts_nbr=-1):
         self.box = box
 
         self.dl = listify(dl)
@@ -120,6 +122,7 @@ class GridLayout(object):
                           'Y' : self.yeeCentering.centerY,
                           'Z' : self.yeeCentering.centerZ
                          }
+
         self.field_ghosts_nbr = field_ghosts_nbr # allows override
 
 
@@ -137,7 +140,7 @@ class GridLayout(object):
 
 
     def nbrGhosts(self, interpOrder, centering):
-        if self.field_ghosts_nbr is None:
+        if self.field_ghosts_nbr == -1:
             return int((interpOrder + 1) / 2) + self.particleGhostNbr(interpOrder)
         return self.field_ghosts_nbr
 
@@ -146,6 +149,8 @@ class GridLayout(object):
         return self.nbrGhosts(interpOrder, 'primal')
 
 
+    def qtyIsDual(self, qty, direction):
+        return self.isDual(self.qtyCentering(qty, direction))
 
     def isDual(self, centering):
         if centering == 'dual':
