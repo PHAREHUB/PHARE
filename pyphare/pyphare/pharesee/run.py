@@ -134,7 +134,7 @@ def _get_rank(patch):
         data = np.zeros(shape) + int(patch.id.strip("p").split("#")[0])
         return ({"name":"rank", "data":data, "centering":[centering]*2},)
     else:
-        raise 
+        raise RuntimeError("Not Implemented yet")
 
 
 
