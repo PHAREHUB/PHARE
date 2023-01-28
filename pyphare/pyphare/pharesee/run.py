@@ -117,6 +117,10 @@ def _compute_divB(patch):
 
 
 def _get_rank(patch):
+    """
+    make a field dataset cell centered coding the MPI rank
+    rank is obtained from patch global id == "rank#local_patch_id"
+    """
     from pyphare.core.box import grow
     layout = patch.layout
     centering = "dual"
