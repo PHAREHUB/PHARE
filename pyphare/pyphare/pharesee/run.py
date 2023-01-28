@@ -1,7 +1,9 @@
 import os
-from .hierarchy import hierarchy_from, flat_finest_field
+
 import numpy as np
 from pyphare.pharesee.hierarchy import compute_hier_from
+
+from .hierarchy import flat_finest_field, hierarchy_from
 
 
 def _current1d(by, bz, xby, xbz):
@@ -107,7 +109,7 @@ def _compute_divB(patch):
         yBy = patch.patch_datas["By"].y
         divB = _divB2D(Bx,By, xBx, yBy)
 
-        return ({"name":"cell_custom", "data":divB, "centering":"dual"},)
+        return ({"name":"divB", "data":divB, "centering":["dual","dual"]},)
 
     else:
         raise RuntimeError("dimension not implemented")
@@ -115,11 +117,18 @@ def _compute_divB(patch):
 
 
 def _get_rank(patch):
+    from pyphare.core.box import grow
+    layout = patch.layout
+    centering = "dual"
+    nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
+    shape = grow(patch.box, [nbrGhosts]*2).shape
+
+    if patch.box.ndim == 1:
+        pass
+
     if patch.box.ndim == 2:
-        shape = patch.box.shape
-        ghost_shape = (shape[0]+5, shape[1]+5)
-        data = np.zeros(ghost_shape) + int(patch.id.strip("p").split("#")[0])
-        return ({"name":"cell_custom", "data":data, "centering":"dual"},)
+        data = np.zeros(shape) + int(patch.id.strip("p").split("#")[0])
+        return ({"name":"rank", "data":data, "centering":[centering]*2},)
     else:
         raise 
 
@@ -152,8 +161,8 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         finest_coords = (x,)
 
     elif dim == 2:
-        from scipy.interpolate import NearestNDInterpolator
-        from scipy.interpolate import LinearNDInterpolator
+        from scipy.interpolate import (LinearNDInterpolator,
+                                       NearestNDInterpolator)
 
         if interp == 'nearest':
             interpolator = NearestNDInterpolator(coords, data)
@@ -311,4 +320,3 @@ class Run:
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return root_cell_width/fac
-
