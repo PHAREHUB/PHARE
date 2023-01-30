@@ -12,9 +12,7 @@
 
 #include <cassert>
 
-using testing::DoubleEq;
 using testing::DoubleNear;
-using testing::Eq;
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
@@ -302,12 +300,12 @@ template<typename FieldCoarsenTestDataParam>
 struct FieldCoarsenOperatorTest : public ::testing::Test
 {
     static constexpr auto dimension  = FieldCoarsenTestDataParam::dimension;
-    static constexpr double absError = 1.e-8;
+    static constexpr double absError = 1.e-15;
 };
 
 using FieldCoarsenOperators
     = testing::Types<FieldCoarsenTestData<1>,
-                     FieldCoarsenTestData<2> /* , FieldCoarsenTestData<3>*/>;
+                     FieldCoarsenTestData<2> /* , FieldCoarsenTestData<3>*/>; // TODO 3D
 TYPED_TEST_SUITE(FieldCoarsenOperatorTest, FieldCoarsenOperators);
 
 
@@ -344,7 +342,7 @@ TYPED_TEST(FieldCoarsenOperatorTest, doTheExpectedCoarseningForEB)
                         EXPECT_THAT(coarseValue(ix, iy),
                                     DoubleNear(expectedCoarseValue(ix, iy), absError));
             }
-            else if constexpr (dim == 3)
+            else if constexpr (dim == 3) // TODO 3D
             {
                 throw std::runtime_error("Unsupported dimension"); // uncomment/test below
                 // auto iStartZ = layout->ghostStartIndex(qty, Direction::Z);
