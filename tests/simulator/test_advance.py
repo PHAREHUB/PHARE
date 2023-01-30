@@ -1,22 +1,26 @@
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
-from pyphare.simulator.simulator import Simulator
-from pyphare.core.phare_utilities import np_array_ify
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.pharein.simulation import Simulation, supported_dimensions
-from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
-from pyphare.pharesee.particles import aggregate as aggregate_particles
-import pyphare.core.box as boxm
-from pyphare.core.box import Box
-import numpy as np
 import unittest
-from ddt import ddt, data, unpack
+
+import numpy as np
+import pyphare.core.box as boxm
+from ddt import data, ddt, unpack
+from pyphare.core.box import Box
+from pyphare.core.phare_utilities import np_array_ify
+from pyphare.pharein import ElectronModel, MaxwellianFluidModel
+from pyphare.pharein.diagnostics import (ElectromagDiagnostics,
+                                         FluidDiagnostics, ParticleDiagnostics)
+from pyphare.pharein.simulation import Simulation, supported_dimensions
+from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
+from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.particles import aggregate as aggregate_particles
+from pyphare.simulator.simulator import Simulator
+
 from tests.diagnostic import all_timestamps
-from tests.simulator import diff_boxes, SimulatorTest
+from tests.simulator import SimulatorTest, diff_boxes
+
 
 @ddt
 class AdvanceTestBase(SimulatorTest):
@@ -348,8 +352,9 @@ class AdvanceTestBase(SimulatorTest):
     def _test_field_coarsening_via_subcycles(self, dim, interp_order, refinement_boxes, **kwargs):
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(dim, interp_order))
 
-        from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
         from pyphare.pharein import global_vars
+
+        from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
 
         time_step_nbr=3
 
@@ -428,7 +433,14 @@ class AdvanceTestBase(SimulatorTest):
                                 # 1e-16 seems to fail for some reason. Discrepency appears to be
                                 # on refined adjacent patches. Was way worse (1e-4 or so) when not
                                 # filling pure ghosts for Ni and Vi. 1e-15 seems good enough
-                                np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-15, rtol=0)
+                                try:
+                                    np.testing.assert_allclose(coarse_pdDataset, afterCoarse, atol=1e-15, rtol=0)
+                                except AssertionError as e:
+                                    print("failing for {}".format(qty))
+                                    print(np.abs(coarse_pdDataset - afterCoarse).max())
+                                    print(coarse_pdDataset)
+                                    print(afterCoarse)
+                                    raise e
 
 
 
@@ -438,8 +450,10 @@ class AdvanceTestBase(SimulatorTest):
         if quantities is None:
             quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
-        from tests.amr.data.field.refine.test_refine_field import refine_time_interpolate
         from pyphare.pharein import global_vars
+
+        from tests.amr.data.field.refine.test_refine_field import \
+            refine_time_interpolate
 
         def assert_time_in_hier(*ts):
             for t in ts:

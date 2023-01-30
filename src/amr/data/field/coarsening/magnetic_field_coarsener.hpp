@@ -80,11 +80,12 @@ namespace amr
                 else if (centering_[dirX] == core::QtyCentering::dual) // by and bz
                 {
                     coarseField(coarseIndex[dirX])
-                        = 0.5 * (fineField(fineStartIndex[dirX]) + fineField(fineStartIndex[dirX]));
+                        = 0.5
+                          * (fineField(fineStartIndex[dirX] + 1) + fineField(fineStartIndex[dirX]));
                 }
             }
 
-#if 0
+#if 1
             if constexpr (dimension == 2)
             {
                 if (centering_[dirX] == core::QtyCentering::primal
