@@ -1,6 +1,8 @@
 #ifndef PHARE_TEST_LINEAR_COARSEN_HPP
 #define PHARE_TEST_LINEAR_COARSEN_HPP
 
+#include "amr/data/field/coarsening/default_field_coarsener.hpp"
+#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -143,7 +145,40 @@ struct FieldCoarsenTestData
     }
 };
 
-template<std::size_t dimension>
+template<std::size_t dimension, typename Coarsener>
+void coarsen(std::size_t idx, SAMRAI::hier::Box& fineBox, SAMRAI::hier::Box& coarseBox,
+             std::array<PHARE::core::QtyCentering, dimension>& centering,
+             SAMRAI::hier::IntVector& ratio, EMData<dimension>& em)
+{
+    Coarsener coarseIt{centering, fineBox, coarseBox, ratio};
+
+    auto primals(ConstArray<int, dimension>());
+    for (std::size_t i = 0; i < dimension; i++)
+        primals[i] = centering[i] == QtyCentering::primal;
+
+    if constexpr (dimension == 1)
+    {
+        for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
+            coarseIt(*em.fineValues[idx], *em.coarseValues[idx], Point<int, dimension>{coarseX});
+    }
+    else if constexpr (dimension == 2)
+    {
+        for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
+            for (int coarseY = 10; coarseY < 15 + primals[1]; ++coarseY)
+                coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
+                         Point<int, dimension>{coarseX, coarseY});
+    }
+    else if constexpr (dimension == 3)
+    {
+        for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
+            for (int coarseY = 10; coarseY < 15 + primals[1]; ++coarseY)
+                for (int coarseZ = 10; coarseZ < 15 + primals[2]; ++coarseZ)
+                    coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
+                             Point<int, dimension>{coarseX, coarseY, coarseZ});
+    }
+};
+
+template<std::size_t dimension, typename Coarsener>
 void load(FieldCoarsenTestData<dimension>& param, Files& file_data)
 {
     auto load = [](auto& value, auto const& nCells, auto& file) {
@@ -220,39 +255,9 @@ void load(FieldCoarsenTestData<dimension>& param, Files& file_data)
 
     SAMRAI::hier::IntVector ratio{dim, 2};
 
-    auto coarsen = [&em, &ratio](auto idx, auto& fineBox, auto& coarseBox, auto& centering) {
-        DefaultFieldCoarsener<dimension> coarseIt{centering, fineBox, coarseBox, ratio};
-
-        auto primals(ConstArray<int, dimension>());
-        for (std::size_t i = 0; i < dimension; i++)
-            primals[i] = centering[i] == QtyCentering::primal;
-
-        if constexpr (dimension == 1)
-        {
-            for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
-                coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
-                         Point<int, dimension>{coarseX});
-        }
-        else if constexpr (dimension == 2)
-        {
-            for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
-                for (int coarseY = 10; coarseY < 15 + primals[1]; ++coarseY)
-                    coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
-                             Point<int, dimension>{coarseX, coarseY});
-        }
-        else if constexpr (dimension == 3)
-        {
-            for (int coarseX = 10; coarseX < 15 + primals[0]; ++coarseX)
-                for (int coarseY = 10; coarseY < 15 + primals[1]; ++coarseY)
-                    for (int coarseZ = 10; coarseZ < 15 + primals[2]; ++coarseZ)
-                        coarseIt(*em.fineValues[idx], *em.coarseValues[idx],
-                                 Point<int, dimension>{coarseX, coarseY, coarseZ});
-        }
-    };
-
-    coarsen(0, fineBoxX, coarseBoxX, centeringX);
-    coarsen(1, fineBoxY, coarseBoxY, centeringY);
-    coarsen(2, fineBoxZ, coarseBoxZ, centeringZ);
+    coarsen<dimension, Coarsener>(0, fineBoxX, coarseBoxX, centeringX, ratio, em);
+    coarsen<dimension, Coarsener>(1, fineBoxY, coarseBoxY, centeringY, ratio, em);
+    coarsen<dimension, Coarsener>(2, fineBoxZ, coarseBoxZ, centeringZ, ratio, em);
 }
 
 
@@ -263,16 +268,32 @@ std::vector<FieldCoarsenTestData<dimension>> createParam()
 
     std::string const dimStr = std::to_string(dimension);
 
+
     std::array<std::pair<std::string, Files>, 2> files{
         {{"E", Files::init("E", dimStr)}, {"B", Files::init("B", dimStr)}}};
 
     for (auto& [em_key, file_data] : files)
+    {
         while (file_data.ok())
-            load(coarsenData
-                     .emplace_back(FieldCoarsenTestData<dimension>{EMData<dimension>::get(em_key)})
-                     .init(),
-                 file_data);
-
+        {
+            if (em_key == "E")
+                load<dimension, DefaultFieldCoarsener<dimension>>(
+                    coarsenData
+                        .emplace_back(
+                            FieldCoarsenTestData<dimension>{EMData<dimension>::get(em_key)})
+                        .init(),
+                    file_data);
+            else if (em_key == "B")
+            {
+                load<dimension, MagneticFieldCoarsener<dimension>>(
+                    coarsenData
+                        .emplace_back(
+                            FieldCoarsenTestData<dimension>{EMData<dimension>::get(em_key)})
+                        .init(),
+                    file_data);
+            }
+        }
+    }
     return coarsenData;
 }
 
