@@ -184,6 +184,8 @@ def populateDict():
 
     add_int("simulation/AMR/tag_buffer", simulation.tag_buffer)
 
+    add_string("simulation/AMR/loadbalancing", simulation.loadbalancing)
+
     refinement_boxes = simulation.refinement_boxes
 
     def as_paths(rb):

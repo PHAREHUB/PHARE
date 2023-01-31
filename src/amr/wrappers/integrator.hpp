@@ -13,7 +13,8 @@
 #include <SAMRAI/mesh/BergerRigoutsos.h>
 #include <SAMRAI/mesh/GriddingAlgorithm.h>
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TreeLoadBalancer.h>
+// #include <SAMRAI/mesh/TreeLoadBalancer.h>
+#include <SAMRAI/mesh/CascadePartitioner.h>
 #include <SAMRAI/tbox/Database.h>
 #include <SAMRAI/tbox/DatabaseBox.h>
 #include <SAMRAI/tbox/InputManager.h>
@@ -70,8 +71,13 @@ Integrator<_dimension>::Integrator(
     std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy, double startTime,
     double endTime)
 {
-    auto loadBalancer = std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
+    // auto loadBalancer = std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
+    //     SAMRAI::tbox::Dimension{dimension}, "LoadBalancer");
+
+    auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
         SAMRAI::tbox::Dimension{dimension}, "LoadBalancer");
+
+    loadBalancer->setSAMRAI_MPI(SAMRAI::tbox::SAMRAI_MPI::getSAMRAIWorld()); // TODO Is it really needed ?
 
     auto refineDB    = getUserRefinementBoxesDatabase<dimension>(dict["simulation"]["AMR"]);
     auto standardTag = std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
