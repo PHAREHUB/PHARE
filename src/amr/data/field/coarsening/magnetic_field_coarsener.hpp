@@ -42,7 +42,7 @@ public:
                     core::Point<int, dimension> coarseIndex)
     {
         // For the moment we only take the case of field with the same centering
-        static_assert(fineField.physicalQuantity() == coarseField.physicalQuantity());
+        TBOX_ASSERT(fineField.physicalQuantity() == coarseField.physicalQuantity());
 
         core::Point<int, dimension> fineStartIndex;
 
