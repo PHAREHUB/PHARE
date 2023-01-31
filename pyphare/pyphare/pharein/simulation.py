@@ -491,6 +491,14 @@ def check_clustering(**kwargs):
     return clustering
 
 
+def check_loadbalancing(**kwargs):
+    valid_keys = ["nppc", "homogeneous"]
+    loadbalancing = kwargs.get("loadbalancing", "nppc")
+    if loadbalancing not in valid_keys:
+        raise ValueError(f"Error: loadbalancing type is not supported, supported types are {valid_keys}")
+    return loadbalancing
+
+
 
 # ------------------------------------------------------------------------------
 
@@ -501,7 +509,8 @@ def checker(func):
                              'boundary_types', 'refined_particle_nbr', 'path', 'nesting_buffer',
                              'diag_export_format', 'refinement_boxes', 'refinement', 'clustering',
                              'smallest_patch_size', 'largest_patch_size', "diag_options",
-                             'resistivity', 'hyper_resistivity', 'strict', "restart_options", 'tag_buffer', ]
+                             'resistivity', 'hyper_resistivity', 'strict', "restart_options",
+                             'tag_buffer', 'loadbalancing',]
 
         accepted_keywords += check_optional_keywords(**kwargs)
 
@@ -518,6 +527,8 @@ def checker(func):
         kwargs["refinement_ratio"] = 2
 
         kwargs["clustering"] = check_clustering(**kwargs)
+
+        kwargs["loadbalancing"] = check_loadbalancing(**kwargs)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr

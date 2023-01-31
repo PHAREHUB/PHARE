@@ -55,9 +55,9 @@ public:
         assert(box_.size() > 0);
     }
 
-    ParticleArray(ParticleArray const& from) = default;
-    ParticleArray(ParticleArray&& from)      = default;
-    ParticleArray& operator=(ParticleArray&& from) = default;
+    ParticleArray(ParticleArray const& from)            = default;
+    ParticleArray(ParticleArray&& from)                 = default;
+    ParticleArray& operator=(ParticleArray&& from)      = default;
     ParticleArray& operator=(ParticleArray const& from) = default;
 
     std::size_t size() const { return particles_.size(); }
@@ -150,6 +150,9 @@ public:
 
 
     auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
+
+    using cell_t = std::array<int, dim>;
+    auto nbr_particles_in(cell_t const& cell) const { return cellMap_.size(cell); }
 
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {

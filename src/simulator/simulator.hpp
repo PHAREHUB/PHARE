@@ -2,7 +2,8 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
-
+#include <vector>
+#include <string>
 
 #include "phare_core.hpp"
 #include "phare_types.hpp"
@@ -12,10 +13,8 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 #include "amr/tagging/tagger_factory.hpp"
-
-#include <chrono>
-#include <exception>
-#include <unordered_set>
+#include "amr/load_balancing/load_balancer_manager.hpp"
+#include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
 
 
 namespace PHARE
@@ -261,6 +260,23 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
     // hard coded for now, should get some params later from the dict
     auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
     multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
+
+
+
+
+    // auto lbm_ = std::make_unique<amr::LoadBalancerManager<dim>>(maxLevelNumber_);
+    auto lbm_ = std::make_unique<amr::LoadBalancerManager<dim>>(dict);
+    // auto lbe_ = std::make_unique<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(lbm_->getId());
+    // auto lbe_
+    //    = std::make_unique<amr::LoadBalancerEstimatorHybrid<PHARETypes>>("nppc", lbm_->getId());
+    auto lbe_ = std::make_unique<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(
+        dict["simulation"]["AMR"]["loadbalancing"].template to<std::string>(), lbm_->getId());
+
+    lbm_->addLoadBalancerEstimator(0, maxLevelNumber_ - 1, std::move(lbe_));
+    multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
+
+
+
 
     if (dict["simulation"].contains("restarts"))
         startTime_ = restarts_init(dict["simulation"]["restarts"]);

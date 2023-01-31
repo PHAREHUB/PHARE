@@ -144,9 +144,13 @@ def populateDict():
     add_string("simulation/AMR/clustering", simulation.clustering)
     add_int("simulation/AMR/max_nbr_levels", simulation.max_nbr_levels)
     add_vector_int("simulation/AMR/nesting_buffer", simulation.nesting_buffer)
-    
-    add_int("simulation/AMR/tag_buffer", simulation.tag_buffer) 
-   
+
+    add_int("simulation/AMR/tag_buffer", simulation.tag_buffer)
+
+
+    add_string("simulation/AMR/loadbalancing", simulation.loadbalancing)
+
+
     refinement_boxes = simulation.refinement_boxes
 
 
