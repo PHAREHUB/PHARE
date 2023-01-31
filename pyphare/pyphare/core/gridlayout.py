@@ -62,7 +62,7 @@ class YeeCentering(object):
         self.centerZ = yee_centering["z"]
 
 
-def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts :int =False):
+def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts =False):
 
     assert direction in direction_to_dim, f"direction ({direction} not supported)"
     assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
