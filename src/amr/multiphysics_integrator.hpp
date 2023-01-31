@@ -31,6 +31,8 @@
 
 #include "core/utilities/algorithm.hpp"
 
+#include "load_balancing/load_balancer_manager.hpp"
+#include "load_balancing/load_balancer_estimator.hpp"
 #include "phare_core.hpp"
 
 
@@ -45,11 +47,15 @@ namespace solver
         int solverIndex              = NOT_SET;
         int resourcesManagerIndex    = NOT_SET;
         int taggerIndex              = NOT_SET;
+        int loadBalancerIndex        = NOT_SET;
         std::string messengerName;
     };
 
 
-    inline bool isRootLevel(int levelNumber) { return levelNumber == 0; }
+    inline bool isRootLevel(int levelNumber)
+    {
+        return levelNumber == 0;
+    }
 
 
     /**
@@ -97,6 +103,7 @@ namespace solver
             , levelDescriptors_(dict["AMR"]["max_nbr_levels"].template to<int>())
             , simFuncs_{simFuncs}
             , dict_{dict}
+            , load_balancer_manager_{std::make_unique<amr::LoadBalancerManager>()}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -241,6 +248,27 @@ namespace solver
 
 
 
+        void registerLoadBalancerEstimator(
+            int coarsestLevel, int finestLevel,
+            std::unique_ptr<amr::LoadBalancerEstimator> loadBalancerEstimator)
+        {
+            if (!validLevelRange_(coarsestLevel, finestLevel))
+            {
+                throw std::runtime_error("invalid range level");
+            }
+
+
+            if (existloadBalancererOnRange_(coarsestLevel, finestLevel))
+            {
+                throw std::runtime_error(
+                    "error - level range contains levels with a registered tagger");
+            }
+            addloadBalancerEstimator_(std::move(loadBalancerEstimator), coarsestLevel, finestLevel);
+        }
+
+
+
+
         std::string solverName(int const iLevel) const { return getSolver_(iLevel).name(); }
 
 
@@ -315,6 +343,7 @@ namespace solver
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
                     messenger.allocate(*patch, initDataTime);
+                    // TODO allocate patch for the loadBalancerEstimator
                 }
             }
 
@@ -566,6 +595,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
+        std::unique_ptr<amr::LoadBalancerManager> load_balancer_manager_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -576,6 +606,7 @@ namespace solver
             }
             return true;
         }
+
 
 
         bool existTaggerOnRange_(int coarsestLevel, int finestLevel)
@@ -590,6 +621,19 @@ namespace solver
             return false;
         }
 
+
+
+        bool existloadBalancererOnRange_(int coarsestLevel, int finestLevel)
+        {
+            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+            {
+                if (levelDescriptors_[iLevel].loadBalancerIndex != LevelDescriptor::NOT_SET)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
 
 
@@ -663,6 +707,23 @@ namespace solver
             else
             {
                 throw std::runtime_error("solver " + solver->name() + " already registered");
+            }
+        }
+
+
+
+
+        void
+        addloadBalancerEstimator_(std::unique_ptr<amr::LoadBalancerEstimator> loadBalancerEstimator,
+                                  int coarsestLevel, int finestLevel)
+        {
+            load_balancer_manager_->addLoadBalancerEstimator(std::move(loadBalancerEstimator));
+
+            auto loadBalancerIndex = load_balancer_manager_->numOfEstimators();
+
+            for (auto iLevel = coarsestLevel; iLevel <= finestLevel; ++iLevel)
+            {
+                levelDescriptors_[iLevel].loadBalancerIndex = loadBalancerIndex;
             }
         }
 

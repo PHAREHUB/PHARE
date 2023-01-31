@@ -59,6 +59,10 @@ set( SOURCES_INC
      level_initializer/hybrid_level_initializer.hpp
      level_initializer/level_initializer_factory.hpp
      data/field/field_variable_fill_pattern.hpp
+     load_balancing/load_balancer_manager.hpp
+     load_balancing/load_balancer_estimator.hpp
+     load_balancing/load_balancer_estimator_factory.hpp
+     load_balancing/load_balancer_estimator_hybrid.hpp
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

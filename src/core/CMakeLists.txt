@@ -47,6 +47,9 @@ set( SOURCES_INC
      utilities/range/range.hpp
      utilities/types.hpp
      utilities/mpi_utils.hpp
+     load_balancing/load_balancer_estimator_hybrid_strategy.hpp
+     load_balancing/load_balancer_estimator_hybrid_strategy_factory.hpp
+     load_balancing/load_balancer_estimator_hybrid_strategy_nppc.hpp
    )
 
 set( SOURCES_CPP
