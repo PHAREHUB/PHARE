@@ -264,9 +264,7 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
 
 
-    // auto loadBalancerManager_ = std::make_unique<amr::LoadBalancerManager>();
-
-    auto lbe_ = amr::LoadBalancerEstimatorFactory::create("HybridModel");
+    auto lbe_ = amr::LoadBalancerEstimatorFactory<dim>::create("HybridModel");
 
     multiphysInteg_->registerLoadBalancerEstimator(0, maxLevelNumber_ - 1, std::move(lbe_));
 

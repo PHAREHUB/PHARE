@@ -1,11 +1,13 @@
 #ifndef PHARE_LOAD_BALANCER_ESTIMATOR_HPP
 #define PHARE_LOAD_BALANCER_ESTIMATOR_HPP
 
+#include <cstddef>
 #include <string>
 
 
 namespace PHARE::amr
 {
+template<std::size_t dim>
 class LoadBalancerEstimator
 {
 public:

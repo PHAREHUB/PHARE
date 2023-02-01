@@ -6,7 +6,8 @@
 
 namespace PHARE::amr
 {
-class LoadBalancerEstimatorHybrid : public LoadBalancerEstimator
+template<std::size_t dim>
+class LoadBalancerEstimatorHybrid : public LoadBalancerEstimator<dim>
 {
 public:
     // LoadBalancerEstimatorHybrid(){};
@@ -20,7 +21,8 @@ public:
 };
 
 
-inline std::string LoadBalancerEstimatorHybrid::name() const
+template<std::size_t dim>
+inline std::string LoadBalancerEstimatorHybrid<dim>::name() const
 {
     return std::string("Hybrid");
 }

@@ -103,7 +103,7 @@ namespace solver
             , levelDescriptors_(dict["AMR"]["max_nbr_levels"].template to<int>())
             , simFuncs_{simFuncs}
             , dict_{dict}
-            , load_balancer_manager_{std::make_unique<amr::LoadBalancerManager>()}
+            , load_balancer_manager_{std::make_unique<amr::LoadBalancerManager<dimension>>()}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -250,7 +250,7 @@ namespace solver
 
         void registerLoadBalancerEstimator(
             int coarsestLevel, int finestLevel,
-            std::unique_ptr<amr::LoadBalancerEstimator> loadBalancerEstimator)
+            std::unique_ptr<amr::LoadBalancerEstimator<dimension>> loadBalancerEstimator)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -343,7 +343,7 @@ namespace solver
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
                     messenger.allocate(*patch, initDataTime);
-                    // TODO allocate patch for the loadBalancerEstimator
+                    load_balancer_manager_->allocate(*patch, initDataTime);
                 }
             }
 
@@ -578,6 +578,15 @@ namespace solver
         bool usingRefinedTimestepping() const override { return true; }
 
 
+        // PHARE::amr::LoadBalancerEstimator& getLoadBalancerEstimator(int iLevel) const
+        // {
+        //     auto& descriptor = levelDescriptors_[iLevel];
+
+        //     auto estimator_index = descriptor.loadBalancerIndex;
+
+        //     return load_balancer_manager_->getLoadBalancerEstimator(estimator_index);
+        // }
+
 
 
     private:
@@ -595,7 +604,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
-        std::unique_ptr<amr::LoadBalancerManager> load_balancer_manager_;
+        std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -713,9 +722,9 @@ namespace solver
 
 
 
-        void
-        addloadBalancerEstimator_(std::unique_ptr<amr::LoadBalancerEstimator> loadBalancerEstimator,
-                                  int coarsestLevel, int finestLevel)
+        void addloadBalancerEstimator_(
+            std::unique_ptr<amr::LoadBalancerEstimator<dimension>> loadBalancerEstimator,
+            int coarsestLevel, int finestLevel)
         {
             load_balancer_manager_->addLoadBalancerEstimator(std::move(loadBalancerEstimator));
 

@@ -11,13 +11,14 @@
 
 namespace PHARE::amr
 {
+template<std::size_t dim>
 class LoadBalancerEstimatorFactory
 {
 public:
-    static std::unique_ptr<LoadBalancerEstimator> create(std::string modelName)
+    static std::unique_ptr<LoadBalancerEstimator<dim>> create(std::string modelName)
     {
         if (modelName == "HybridModel")
-            return std::make_unique<LoadBalancerEstimatorHybrid>();
+            return std::make_unique<LoadBalancerEstimatorHybrid<dim>>();
 
         return nullptr;
     };
