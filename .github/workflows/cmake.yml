@@ -71,8 +71,8 @@ jobs:
     - name: Setup
       working-directory: ${{runner.workspace}}/build
       run: |
-        ${pythonLocation}/python3 -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then ${pythonLocation}/python3 -m pip install -r requirements.txt; fi
+        ${pythonLocation}/bin/python3 -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then ${pythonLocation}/bin/python3 -m pip install -r requirements.txt; fi
         cmake $GITHUB_WORKSPACE \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
