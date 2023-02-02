@@ -5,9 +5,11 @@
 #include <vector>
 
 #include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/pdat/CellVariable.h>
 #include "phare_core.hpp"
 #include "load_balancer_estimator.hpp"
-
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/solvers/solver.hpp"
 
 
 namespace PHARE::amr
@@ -16,20 +18,39 @@ template<std::size_t dim>
 class LoadBalancerManager
 {
 public:
-    LoadBalancerManager()
-        : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
-        , id_{12000000} {};
-    void addLoadBalancerEstimator(std::unique_ptr<amr::LoadBalancerEstimator<dim>> lbe);
+    LoadBalancerManager() // TODO doit prendre en arg le max level number
+        : dim_{SAMRAI::tbox::Dimension{dim}}
+        , loadBalancerVar_{std::make_shared<SAMRAI::pdat::CellVariable<double>>(
+              dim_, "LoadBalancerVariable")}
+        , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
+        , context_{variableDatabase_->getContext("default")}
+        , id_{variableDatabase_->registerVariableAndContext(
+              loadBalancerVar_, context_, SAMRAI::hier::IntVector::getZero(dim_))} {};
+
+    ~LoadBalancerManager() { variableDatabase_->removeVariable("LoadBalancerVariable"); };
+
+    void addLoadBalancerEstimator(
+        std::unique_ptr<amr::LoadBalancerEstimator<dim>>
+            lbe); // TODO doit aussi prendre le level sur lequel on l'enregistre
+
     int numOfEstimators() const;
+
     // std::shared_ptr<amr::LoadBalancerEstimator> getLoadBalancerEstimator(int estimator_index);
+
     void allocate(SAMRAI::hier::Patch& patch, double const allocateTime);
-    // VariableDatabase.h : virtual void removeVariable(const std::string& variable_name); TODO
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    void estimate(SAMRAI::hier::PatchLevel& level,
+                  PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const& model);
 
 private:
+    SAMRAI::tbox::Dimension dim_;
+    std::shared_ptr<SAMRAI::pdat::CellVariable<double>> loadBalancerVar_;
     SAMRAI::hier::VariableDatabase* variableDatabase_;
+    std::shared_ptr<SAMRAI::hier::VariableContext> context_;
     int const id_;
-    std::vector<std::shared_ptr<amr::LoadBalancerEstimator<dim>>> loadBalancerEstimators_;
+    std::vector<std::shared_ptr<amr::LoadBalancerEstimator<dim>>>
+        loadBalancerEstimators_; // TODO ce vector doit avoir maxLevelNumber cases, qui contiendront
+                                 // toutes des LBEHybrid
 };
 
 
@@ -79,6 +100,13 @@ inline void LoadBalancerManager<dim>::allocate(SAMRAI::hier::Patch& patch,
 }
 
 
+
+template<std::size_t dim>
+inline void LoadBalancerManager<dim>::estimate(
+    SAMRAI::hier::PatchLevel& level,
+    PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types> const& model)
+{
+}
 
 } // namespace PHARE::amr
 

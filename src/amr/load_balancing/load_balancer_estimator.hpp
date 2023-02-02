@@ -15,7 +15,7 @@ public:
 
     virtual ~LoadBalancerEstimator() = default;
 
-    virtual std::string name() const = 0;
+    virtual std::string modelName() const = 0;
     // virtual void estimate()    = 0;
 
 private:

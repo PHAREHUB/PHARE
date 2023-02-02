@@ -14,7 +14,7 @@ public:
 
     ~LoadBalancerEstimatorHybrid() = default; // the implementation of a virtual class NEEDS a dtor
 
-    std::string name() const override;
+    std::string modelName() const override;
     //  void estimate() override;
 
     // private:
@@ -22,7 +22,7 @@ public:
 
 
 template<std::size_t dim>
-inline std::string LoadBalancerEstimatorHybrid<dim>::name() const
+inline std::string LoadBalancerEstimatorHybrid<dim>::modelName() const
 {
     return std::string("Hybrid");
 }

@@ -104,6 +104,7 @@ namespace solver
             , simFuncs_{simFuncs}
             , dict_{dict}
             , load_balancer_manager_{std::make_unique<amr::LoadBalancerManager<dimension>>()}
+        // TODO le ctor de LoadBalancerManager doit prendre en arg le nbrOfLevels_
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -378,14 +379,22 @@ namespace solver
                                     int const coarsestLevel, int const finestLevel) override
         {
             // handle samrai restarts / schedule creation
-            //  allocation of patch datas which may not want to be saved to restart files will
-            //   likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
+            // allocation of patch datas which may not want to be saved to restart files will
+            // likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
             if (!restartInitialized_
                 and SAMRAI::tbox::RestartManager::getManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
+                {
                     messenger.registerLevel(hierarchy, ilvl);
+                    auto level = hierarchy->getPatchLevel(ilvl);
+                    for (auto& patch : *level)
+                    {
+                        auto time = dict_["restarts"]["restart_time"].template to<double>();
+                        load_balancer_manager_->allocate(*patch, time);
+                    }
+                }
                 restartInitialized_ = true;
             }
         }
@@ -523,6 +532,8 @@ namespace solver
             {
                 dump_(iLevel);
             }
+
+            load_balancer_manager_->estimate(*level, model);
 
             return newTime;
         }
