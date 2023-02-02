@@ -40,7 +40,7 @@ jobs:
           ${{ runner.os }}-pip-
 
     - name: Clone PHARE
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: 'recursive'
 
@@ -67,6 +67,7 @@ jobs:
 
     - name: Install python deps
       run: |
+        export PATH="$pythonLocation:$PATH"
         python3 -m pip install --upgrade pip
         if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
 
