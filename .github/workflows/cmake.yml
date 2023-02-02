@@ -59,6 +59,12 @@ jobs:
           echo "/usr/local/opt/ccache/libexec" >> $GITHUB_PATH
         fi
 
+    - name: Install python deps
+      run: |
+        echo ${pythonLocation}
+        ${pythonLocation}/bin/python3 -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then ${pythonLocation}/bin/python3 -m pip install -r requirements.txt; fi
+
     - name: Ensure ccache uses ~/.ccache
       run: |
           mkdir -p ~/.ccache
@@ -71,8 +77,6 @@ jobs:
     - name: Setup
       working-directory: ${{runner.workspace}}/build
       run: |
-        ${pythonLocation}/bin/python3 -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then ${pythonLocation}/bin/python3 -m pip install -r requirements.txt; fi
         cmake $GITHUB_WORKSPACE \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
