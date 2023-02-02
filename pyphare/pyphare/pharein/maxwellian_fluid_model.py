@@ -209,9 +209,9 @@ class MaxwellianFluidModel(object):
 
         def getCoord(L,R, idir):
             if idir == 0:
-                return (L,0), (R,0)
+                return (L,np.zeros_like(L)), (R,np.zeros_like(R))
             else:
-                return (0,L), (0,R)
+                return (np.zeros_like(L),L), (np.zeros_like(R),R)
 
         print("2d periodic validation")
         for idir in np.arange(sim.ndim):
