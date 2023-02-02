@@ -65,18 +65,14 @@ jobs:
           ccache --set-config=cache_dir=~/.ccache
           ccache --get-config=cache_dir
 
-    - name: Install python deps
-      run: |
-        export PATH="$pythonLocation:$PATH"
-        python3 -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
-
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
 
-    - name: Configure CMake
+    - name: Setup
       working-directory: ${{runner.workspace}}/build
       run: |
+        python3 -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
         cmake $GITHUB_WORKSPACE \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
