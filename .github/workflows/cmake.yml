@@ -45,9 +45,9 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v4
       with:
-        python-version: '3.9.6' # 3.10 is possibly too new
+        python-version: '3.11.1'
 
     - name: Install system deps (openmpi, hdf5, ccache,...)
       run: |
@@ -68,8 +68,8 @@ jobs:
 
     - name: Install python deps
       run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python3 -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
