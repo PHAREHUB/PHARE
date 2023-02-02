@@ -7,15 +7,15 @@ and the quantity.
 """
 
 
-import numpy as np
 
-import sys
 import os
+import sys
 
 print(sys.path)
-from pyphare.core import gridlayout
-import utilities
 import gridparams
+import utilities
+from pyphare.core import gridlayout
+
 
 class AllocParams(gridparams.GridParams):
     def __init__(self,dim,interpOrder):
@@ -139,4 +139,3 @@ def main(path='./'):
 
 if __name__ == "__main__":
     main()
-
