@@ -1,7 +1,6 @@
 name: CMake
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -75,7 +74,6 @@ jobs:
       run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake
-      shell: bash
       working-directory: ${{runner.workspace}}/build
       run: |
         cmake $GITHUB_WORKSPACE \
@@ -85,12 +83,10 @@ jobs:
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
-      shell: bash
       run: cmake --build .
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
       env:
         CTEST_OUTPUT_ON_FAILURE: 1
-      shell: bash
-      run: ctest
+      run: ctest -j
