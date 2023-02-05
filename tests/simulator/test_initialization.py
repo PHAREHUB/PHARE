@@ -1,21 +1,22 @@
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
-from pyphare.pharein import MaxwellianFluidModel, fn_wrapper
-from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.pharein.simulation import Simulation
-from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps, touch_domain_border
-from pyphare.pharesee.particles import aggregate as aggregate_particles
-import pyphare.core.box as boxm
-from pyphare.core.box import nDBox
-import numpy as np
 import unittest
-from ddt import ddt, data, unpack
-from tests.simulator import SimulatorTest
 
+import numpy as np
+from ddt import ddt
+from pyphare.core.box import nDBox
+from pyphare.pharein import ElectronModel, MaxwellianFluidModel
+from pyphare.pharein.diagnostics import (ElectromagDiagnostics,
+                                         FluidDiagnostics, ParticleDiagnostics)
+from pyphare.pharein.simulation import Simulation
+from pyphare.pharesee.geometry import level_ghost_boxes
+from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.particles import aggregate as aggregate_particles
+from pyphare.simulator.simulator import Simulator
+
+from tests.simulator import SimulatorTest
 
 
 @ddt
@@ -26,7 +27,7 @@ class InitializationTest(SimulatorTest):
         from pyphare.pharein.global_vars import sim
         hL = np.array(sim.simulation_domain()) / 2
         _ = lambda i: -(xyz[i]-hL[i]) ** 2
-        return .3 + np.exp(sum([_(i) for i,v in enumerate(xyz)]))
+        return .3 + np.exp(sum([_(i) for i in range(len(xyz))]))
 
 
 
@@ -76,31 +77,31 @@ class InitializationTest(SimulatorTest):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def bz(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vx(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vy(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vz(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vth(*xyz):
             return 0.01 + np.zeros_like(xyz[0])
@@ -226,7 +227,7 @@ class InitializationTest(SimulatorTest):
         for ilvl, level in hier.levels().items():
             self.assertTrue(ilvl == 0) # only level 0 is expected perfect precision
             print("checking level {}".format(ilvl))
-            for ip, patch in enumerate(level.patches):
+            for patch in level.patches:
 
                 bx_pd = patch.patch_datas["Bx"]
                 by_pd = patch.patch_datas["By"]
@@ -506,7 +507,7 @@ class InitializationTest(SimulatorTest):
         for patch in datahier.level(0).patches:
             pd = patch.patch_datas["protons_particles"]
             icells = pd.dataset[patch.box].iCells
-            H, edges = np.histogramdd(icells)
+            H, _ = np.histogramdd(icells)
             self.assertTrue((H == default_ppc).all())
 
 
@@ -547,7 +548,7 @@ class InitializationTest(SimulatorTest):
             level = levels[ilvl]
             coarse_particles = self._domainParticles_for(datahier, ilvl - 1)
 
-            self.assertTrue(all([particles.size() > 0 for k, particles in coarse_particles.items()]))
+            self.assertTrue(all([particles.size() > 0 for _, particles in coarse_particles.items()]))
 
             coarse_split_particles = {k: particles.split(sim) for k, particles in coarse_particles.items()}
 

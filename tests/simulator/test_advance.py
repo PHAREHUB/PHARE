@@ -6,16 +6,15 @@ import unittest
 
 import numpy as np
 import pyphare.core.box as boxm
-from ddt import data, ddt, unpack
+from ddt import ddt
 from pyphare.core.box import Box
 from pyphare.core.phare_utilities import np_array_ify
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
 from pyphare.pharein.diagnostics import (ElectromagDiagnostics,
                                          FluidDiagnostics, ParticleDiagnostics)
-from pyphare.pharein.simulation import Simulation, supported_dimensions
+from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
 from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
-from pyphare.pharesee.particles import aggregate as aggregate_particles
 from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps
@@ -30,7 +29,7 @@ class AdvanceTestBase(SimulatorTest):
         from pyphare.pharein.global_vars import sim
         hL = np.array(sim.simulation_domain()) / 2
         _ = lambda i: -(xyz[i]-hL[i]) ** 2
-        return .3 + np.exp(sum([_(i) for i,v in enumerate(xyz)]))
+        return .3 + np.exp(sum([_(i) for i in range(len(xyz))]))
 
 
     def getHierarchy(self, interp_order, refinement_boxes, qty,
@@ -67,9 +66,6 @@ class AdvanceTestBase(SimulatorTest):
 
 
 
-        def S(x,x0,l):
-            return 0.5*(1+np.tanh((x-x0)/l))
-
         def bx(*xyz):
             return 1.
 
@@ -78,31 +74,31 @@ class AdvanceTestBase(SimulatorTest):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def bz(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vx(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vy(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vz(*xyz):
             from pyphare.pharein.global_vars import sim
             L = sim.simulation_domain()
             _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-            return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
 
         def vth(*xyz):

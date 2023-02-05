@@ -4,11 +4,12 @@
 """
 
 import unittest
-from ddt import ddt, data, unpack
-from pyphare.core.box import Box, Box1D, nDBox
-from tests.simulator.test_advance import AdvanceTestBase
 
 import matplotlib
+from ddt import data, ddt, unpack
+from pyphare.core.box import Box1D
+
+from tests.simulator.test_advance import AdvanceTestBase
 
 matplotlib.use("Agg")  # for systems without GUI
 
@@ -83,4 +84,3 @@ class AdvanceTest(AdvanceTestBase):
 
 if __name__ == "__main__":
     unittest.main()
-

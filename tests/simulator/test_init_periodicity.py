@@ -1,12 +1,8 @@
-
 import unittest
+
 import numpy as np
-
-
-import pyphare.pharein.global_vars as gv
-from pyphare.core  import phare_utilities
-from pyphare.pharein import simulation
 import pyphare.pharein as ph
+import pyphare.pharein.global_vars as gv
 
 
 def density(x, y): return 1.
@@ -32,7 +28,6 @@ def T(x, y):
     return temp
 
 def vx(x, y):
-    from pyphare.pharein.global_vars import sim
     y0 = gv.sim.simulation_domain()[1]
     x_b = gv.sim.simulation_domain()[0]
     amp = 0.1
@@ -44,7 +39,6 @@ def vx(x, y):
     return(v0 + v1)
 
 def vy(x, y):
-    from pyphare.pharein.global_vars import sim
     x0 = gv.sim.simulation_domain()[0]
     v1 = -0.5
     v2 = 0.5

@@ -9,19 +9,15 @@
 """
 
 
-import pyphare.pharein as ph #lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics,FluidDiagnostics, ParticleDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.core.box import Box
-import pyphare.core.box as boxm
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharein import global_vars as gv
-
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import numpy as np
+import pyphare.core.box as boxm
+import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
+from pyphare.pharein import (ElectromagDiagnostics, ElectronModel,
+                             FluidDiagnostics, MaxwellianFluidModel,
+                             Simulation)
+from pyphare.simulator.simulator import Simulator, startMPI
+
 mpl.use('Agg')
 
 
@@ -143,8 +139,10 @@ def get_time(path, time=None, datahier = None):
 def get_hier(path):
     return get_time(path)
 
-from tests.simulator.test_advance import AdvanceTestBase
 from pyphare.cpp import cpp_lib
+
+from tests.simulator.test_advance import AdvanceTestBase
+
 cpp = cpp_lib()
 test = AdvanceTestBase(rethrow=True) # change to False for debugging images
 L0_diags = "phare_outputs/test_homo_0"
@@ -181,4 +179,3 @@ def main():
 
 if __name__=="__main__":
     main()
-

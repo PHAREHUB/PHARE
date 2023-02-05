@@ -9,19 +9,15 @@
 """
 
 
-import pyphare.pharein as ph #lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics,FluidDiagnostics, ParticleDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.core.box import Box
-import pyphare.core.box as boxm
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharein import global_vars as gv
-
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import numpy as np
+import pyphare.core.box as boxm
+import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
+from pyphare.pharein import (ElectromagDiagnostics, ElectronModel,
+                             FluidDiagnostics, MaxwellianFluidModel,
+                             Simulation)
+from pyphare.simulator.simulator import Simulator, startMPI
+
 mpl.use('Agg')
 
 
@@ -46,17 +42,12 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
                                   "mode":"overwrite", "fine_dump_lvl_max": 10}}
     )
     def density(x, y):
-        from pyphare.pharein.global_vars import sim
-        Lx = sim.simulation_domain()[0]
         return 1.
 
     def bx(x, y):
         return 0.1
 
     def by(x, y):
-        from pyphare.pharein.global_vars import sim
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
         return 0.2
 
     def bz(x, y):
@@ -128,8 +119,10 @@ def get_time(path, time=None, datahier = None):
 def get_hier(path):
     return get_time(path)
 
-from tests.simulator.test_advance import AdvanceTestBase
 from pyphare.cpp import cpp_lib
+
+from tests.simulator.test_advance import AdvanceTestBase
+
 cpp = cpp_lib()
 test = AdvanceTestBase(rethrow=True) # change to False for debugging images
 L0_diags = "phare_outputs/test_x_homo_0"
@@ -177,7 +170,7 @@ def post_advance(new_time):
 def main():
     import random
     startMPI()
-    rando = random.randint(0, 1e10)
+    rando = random.randint(0, int(1e10))
     Simulator(config(L0_diags, {"seed": rando})).run().reset()
     refinement_boxes={"L0": {"B0": [( 7,  40), ( 20, 60)]}}
     sim = config(L0L1_diags, {"seed": rando}, refinement_boxes)
