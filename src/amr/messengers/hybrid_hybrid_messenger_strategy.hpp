@@ -4,7 +4,8 @@
 #include "communicators.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
-#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_field_refiner.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
 #include "amr/data/particles/refine/split.hpp"
@@ -656,9 +657,9 @@ namespace amr
                           electricGhosts_);
 
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
-                          magneticSharedNodes_, fieldNodeRefineOp_);
+                          magneticSharedNodes_, BfieldNodeRefineOp_);
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
-                          magneticGhosts_);
+                          magneticGhosts_, BfieldRefineOp_);
 
             fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
                           currentSharedNodes_, fieldNodeRefineOp_);
@@ -689,7 +690,7 @@ namespace amr
                 return keys;
             };
 
-            fillRefiners_(info->initMagnetic, fieldRefineOp_, magneticInit_,
+            fillRefiners_(info->initMagnetic, BfieldRefineOp_, magneticInit_,
                           makeKeys(info->initMagnetic));
 
             fillRefiners_(info->initElectric, fieldRefineOp_, electricInit_,
@@ -882,11 +883,19 @@ namespace amr
         // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
         // Note that refinement operator, via the boolean argument, serve as a relay for the
         // the RefineAlgorithm to get the correct VariableFillPattern
-        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldNodeRefineOp_{
-            std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>(/*node_only*/ true)};
+        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldNodeRefineOp_{std::make_shared<
+            FieldRefineOperator<GridLayoutT, FieldT, DefaultFieldRefiner<dimension>>>(
+            /*node_only*/ true)};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{
-            std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()};
+        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{std::make_shared<
+            FieldRefineOperator<GridLayoutT, FieldT, DefaultFieldRefiner<dimension>>>()};
+
+        std::shared_ptr<SAMRAI::hier::RefineOperator> BfieldNodeRefineOp_{std::make_shared<
+            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>(
+            /*node_only*/ true)};
+
+        std::shared_ptr<SAMRAI::hier::RefineOperator> BfieldRefineOp_{std::make_shared<
+            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>()};
 
         // field data time op
         std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> fieldTimeOp_{

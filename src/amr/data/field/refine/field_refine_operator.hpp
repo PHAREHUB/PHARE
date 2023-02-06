@@ -33,7 +33,7 @@ using core::dirX;
 using core::dirY;
 using core::dirZ;
 
-template<typename GridLayoutT, typename FieldT>
+template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
 class FieldRefineOperator : public SAMRAI::hier::RefineOperator, public AFieldRefineOperator
 {
 public:
@@ -108,8 +108,8 @@ public:
 
 
 
-        FieldRefiner<dimension> refiner{destinationLayout.centering(qty), destinationFieldBox,
-                                        sourceFieldBox, ratio};
+        FieldRefinerPolicy refiner{destinationLayout.centering(qty), destinationFieldBox,
+                                   sourceFieldBox, ratio};
 
 
 
