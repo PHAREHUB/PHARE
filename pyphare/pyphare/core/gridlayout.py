@@ -62,14 +62,16 @@ class YeeCentering(object):
         self.centerZ = yee_centering["z"]
 
 
-def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts :int =False):
+def yeeCoordsFor(origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts =False, **kwargs):
 
     assert direction in direction_to_dim, f"direction ({direction} not supported)"
-    assert qty in yee_centering[direction] or qty in yee_centering_lower[direction], f"qty ({qty} not supported)"
     if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
         qty = qty[0].upper() + qty[1:]
 
-    centering = yee_centering[direction][qty]
+    if "centering" in kwargs:
+        centering = kwargs["centering"]
+    else:
+        centering= yee_centering[direction][qty]
 
     offset = 0
     dim = direction_to_dim[direction]
@@ -281,7 +283,7 @@ class GridLayout(object):
         return x
 
 
-    def yeeCoordsFor(self, qty, direction, withGhosts=True):
+    def yeeCoordsFor(self, qty, direction, withGhosts=True, **kwargs):
         """
         from a qty and a direction, returns a 1d array containing
         the coordinates where the qty is defined, including the ghost nodes
@@ -293,8 +295,13 @@ class GridLayout(object):
         if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
             qty = qty[0].upper() + qty[1:]
 
-        return yeeCoordsFor(self.origin, self.nbrGhosts(self.interp_order, yee_centering[direction][qty]),
-                            self.dl, self.box.shape, qty, direction, withGhosts=withGhosts)
+        if "centering" in kwargs:
+            centering = kwargs["centering"]
+        else:
+            centering= yee_centering[direction][qty]
+
+        return yeeCoordsFor(self.origin, self.nbrGhosts(self.interp_order, centering),
+                            self.dl, self.box.shape, qty, direction, withGhosts=withGhosts, centering=centering)
 
 
 
