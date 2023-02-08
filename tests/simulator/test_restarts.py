@@ -57,7 +57,7 @@ def setup_model(ppc=100):
 
 
 timestep=.001
-out = "phare_outputs/restarts/"
+out = "phare_outputs/restarts"
 simArgs = dict(
   # we are saving at timestep 4, and we have seen that restarted simulations with refinement boxes
   #  have regridding in places that don't exist in the original simulation
@@ -72,7 +72,7 @@ simArgs = dict(
   restart_options = dict(dir=out, mode="overwrite", timestamps=[timestep*4])
 )
 
-def dup(dic):
+def dup(dic = {}):
     dic.update(copy.deepcopy(simArgs))
     return dic
 
@@ -242,6 +242,17 @@ class RestartsTest(SimulatorTest):
         self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 0)
 
 
+
+    def test_input_validation_trailing_slash(self):
+        if cpp.mpi_size() > 1:
+            return # no need to test in parallel
+
+        simulation_args = dup()
+        simulation_args["restart_options"]["dir"] += simulation_args["restart_options"]["dir"] + "//"
+        sim = ph.Simulation(**simulation_args)
+        model = setup_model()
+        Simulator(sim).run().reset()
+        ph.global_vars.sim = None
 
 
 
