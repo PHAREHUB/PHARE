@@ -64,7 +64,7 @@ class InitializationTest(SimulatorTest):
         extra_diag_options["mode"] = "overwrite"
         extra_diag_options["dir"] = diag_outputs
         self.register_diag_dir_for_cleanup(diag_outputs)
-        Simulation(
+        sim = Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
@@ -86,36 +86,26 @@ class InitializationTest(SimulatorTest):
             return 1.0
 
         def by(*xyz):
-            from pyphare.pharein.global_vars import sim
-
             L = sim.simulation_domain()
             _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
             return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def bz(*xyz):
-            from pyphare.pharein.global_vars import sim
-
             L = sim.simulation_domain()
             _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
             return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vx(*xyz):
-            from pyphare.pharein.global_vars import sim
-
             L = sim.simulation_domain()
             _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
             return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vy(*xyz):
-            from pyphare.pharein.global_vars import sim
-
             L = sim.simulation_domain()
             _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
             return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
         def vz(*xyz):
-            from pyphare.pharein.global_vars import sim
-
             L = sim.simulation_domain()
             _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
             return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
@@ -132,23 +122,25 @@ class InitializationTest(SimulatorTest):
         def vthz(*xyz):
             return vth(*xyz)
 
+        protons = {
+            "charge": 1,
+            "density": density,
+            "vbulkx": vx,
+            "vbulky": vy,
+            "vbulkz": vz,
+            "vthx": vthx,
+            "vthy": vthy,
+            "vthz": vthz,
+            "nbr_part_per_cell": nbr_part_per_cell,
+            "init": {"seed": 1337},
+        }
+
         if beam:
             MaxwellianFluidModel(
                 bx=bx,
                 by=by,
                 bz=bz,
-                protons={
-                    "charge": 1,
-                    "density": density,
-                    "vbulkx": vx,
-                    "vbulky": vy,
-                    "vbulkz": vz,
-                    "vthx": vthx,
-                    "vthy": vthy,
-                    "vthz": vthz,
-                    "nbr_part_per_cell": nbr_part_per_cell,
-                    "init": {"seed": 1337},
-                },
+                protons=protons,
                 beam={
                     "charge": 1,
                     "density": beam_density,
@@ -164,23 +156,7 @@ class InitializationTest(SimulatorTest):
             )
 
         else:
-            MaxwellianFluidModel(
-                bx=bx,
-                by=by,
-                bz=bz,
-                protons={
-                    "charge": 1,
-                    "density": density,
-                    "vbulkx": vx,
-                    "vbulky": vy,
-                    "vbulkz": vz,
-                    "vthx": vthx,
-                    "vthy": vthy,
-                    "vthz": vthz,
-                    "nbr_part_per_cell": nbr_part_per_cell,
-                    "init": {"seed": 1337},
-                },
-            )
+            MaxwellianFluidModel(bx=bx, by=by, bz=bz, protons=protons)
 
         ElectronModel(closure="isothermal", Te=0.12)
 
