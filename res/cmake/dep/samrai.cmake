@@ -11,7 +11,7 @@ if (NOT SAMRAI_FOUND)
 
     if (NOT EXISTS ${SAMRAI_SRCDIR})
       execute_process(
-        COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b master --recursive --depth 10
+        COMMAND ${Git} clone https://github.com/LLNL/SAMRAI ${SAMRAI_SRCDIR} -b develop --recursive --depth 10
         )
     else()
       if(devMode)
