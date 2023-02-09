@@ -1,7 +1,9 @@
 import os
-from .hierarchy import hierarchy_from, flat_finest_field
+
 import numpy as np
 from pyphare.pharesee.hierarchy import compute_hier_from
+
+from .hierarchy import flat_finest_field, hierarchy_from
 
 
 def _current1d(by, bz, xby, xbz):
@@ -89,6 +91,53 @@ def _compute_current(patch):
                 {"name":"Jy", "data":Jy, "centering":centering["Jy"]},
                 {"name":"Jz", "data":Jz,"centering":centering["Jz"]})
 
+
+def _divB2D(Bx,By, xBx, yBy):
+    dxbx = (Bx[1:,:]-Bx[:-1,:])/(xBx[1]-xBx[0])
+    dyby = (By[:,1:]-By[:,:-1])/(yBy[1]-yBy[0])
+    return dxbx + dyby
+
+def _compute_divB(patch):
+
+    if patch.box.ndim ==1:
+        raise ValueError("divB is 0 by construction in 1D")
+
+    elif patch.box.ndim == 2:
+        By  = patch.patch_datas["By"].dataset[:]
+        Bx  = patch.patch_datas["Bx"].dataset[:]
+        xBx = patch.patch_datas["Bx"].x
+        yBy = patch.patch_datas["By"].y
+        divB = _divB2D(Bx,By, xBx, yBy)
+
+        return ({"name":"divB", "data":divB, "centering":["dual","dual"]},)
+
+    else:
+        raise RuntimeError("dimension not implemented")
+
+
+
+def _get_rank(patch):
+    """
+    make a field dataset cell centered coding the MPI rank
+    rank is obtained from patch global id == "rank#local_patch_id"
+    """
+    from pyphare.core.box import grow
+    layout = patch.layout
+    centering = "dual"
+    nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
+    shape = grow(patch.box, [nbrGhosts]*2).shape
+
+    if patch.box.ndim == 1:
+        pass
+
+    if patch.box.ndim == 2:
+        data = np.zeros(shape) + int(patch.id.strip("p").split("#")[0])
+        return ({"name":"rank", "data":data, "centering":[centering]*2},)
+    else:
+        raise RuntimeError("Not Implemented yet")
+
+
+
 def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
     """
     :param data: the values of the data that will be used for making
@@ -116,8 +165,8 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         finest_coords = (x,)
 
     elif dim == 2:
-        from scipy.interpolate import NearestNDInterpolator
-        from scipy.interpolate import LinearNDInterpolator
+        from scipy.interpolate import (LinearNDInterpolator,
+                                       NearestNDInterpolator)
 
         if interp == 'nearest':
             interpolator = NearestNDInterpolator(coords, data)
@@ -203,6 +252,16 @@ class Run:
         J = compute_hier_from(B, _compute_current)
         return self._get(J, time, merged, interp)
 
+    def GetDivB(self, time, merged=False, interp='nearest'):
+        B = self.GetB(time)
+        db = compute_hier_from(B, _compute_divB)
+        return self._get(db, time, merged, interp)
+
+    def GetRanks(self, time, merged=False, interp='nearest'):
+        B = self.GetB(time)
+        ranks = compute_hier_from(B, _get_rank)
+        return self._get(ranks, time, merged, interp)
+
     def GetParticles(self, time, pop_name, hier=None):
         def filename(name):
             return f"ions_pop_{name}_domain.h5"
@@ -265,4 +324,3 @@ class Run:
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return root_cell_width/fac
-

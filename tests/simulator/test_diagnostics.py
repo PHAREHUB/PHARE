@@ -7,7 +7,6 @@ cpp = cpp_lib()
 
 from tests.diagnostic import dump_all_diags
 from tests.simulator import populate_simulation
-from pyphare.pharein import ElectronModel
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
@@ -74,7 +73,7 @@ def setup_model(ppc=100):
         protons={"mass":1, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 1337}},
         alpha={"mass":4, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 2334}},
     )
-    ElectronModel(closure="isothermal", Te=0.12)
+    ph.ElectronModel(closure="isothermal", Te=0.12)
     return model
 
 
@@ -212,6 +211,7 @@ class DiagnosticsTest(unittest.TestCase):
         model = setup_model()
         dump_all_diags(model.populations) # first register
         self.assertRaises(RuntimeError, dump_all_diags, model.populations)
+
 
 
 if __name__ == "__main__":

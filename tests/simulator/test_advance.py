@@ -1,22 +1,26 @@
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
-from pyphare.simulator.simulator import Simulator
-from pyphare.core.phare_utilities import np_array_ify
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein.diagnostics import ParticleDiagnostics, FluidDiagnostics, ElectromagDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.pharein.simulation import Simulation, supported_dimensions
-from pyphare.pharesee.geometry import level_ghost_boxes, hierarchy_overlaps
-from pyphare.pharesee.particles import aggregate as aggregate_particles
-import pyphare.core.box as boxm
-from pyphare.core.box import Box
-import numpy as np
 import unittest
-from ddt import ddt, data, unpack
+
+import numpy as np
+import pyphare.core.box as boxm
+from ddt import data, ddt, unpack
+from pyphare.core.box import Box
+from pyphare.core.phare_utilities import np_array_ify
+from pyphare.pharein import ElectronModel, MaxwellianFluidModel
+from pyphare.pharein.diagnostics import (ElectromagDiagnostics,
+                                         FluidDiagnostics, ParticleDiagnostics)
+from pyphare.pharein.simulation import Simulation, supported_dimensions
+from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
+from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.particles import aggregate as aggregate_particles
+from pyphare.simulator.simulator import Simulator
+
 from tests.diagnostic import all_timestamps
-from tests.simulator import diff_boxes, SimulatorTest
+from tests.simulator import SimulatorTest, diff_boxes
+
 
 @ddt
 class AdvanceTestBase(SimulatorTest):
@@ -240,7 +244,7 @@ class AdvanceTestBase(SimulatorTest):
                         # seems correct considering ghosts are filled with schedules
                         # involving linear/spatial interpolations and so on where
                         # rounding errors may occur.... setting atol to 4e-15
-                        np.testing.assert_allclose(slice1,slice2, atol=3.5e-15, rtol=0)
+                        np.testing.assert_allclose(slice1,slice2, atol=4e-15, rtol=0)
                         checks += 1
                     except AssertionError as e:
                         print("AssertionError", pd1.name, e)
@@ -348,8 +352,9 @@ class AdvanceTestBase(SimulatorTest):
     def _test_field_coarsening_via_subcycles(self, dim, interp_order, refinement_boxes, **kwargs):
         print("test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(dim, interp_order))
 
-        from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
         from pyphare.pharein import global_vars
+
+        from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
 
         time_step_nbr=3
 
@@ -438,8 +443,10 @@ class AdvanceTestBase(SimulatorTest):
         if quantities is None:
             quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
-        from tests.amr.data.field.refine.test_refine_field import refine_time_interpolate
         from pyphare.pharein import global_vars
+
+        from tests.amr.data.field.refine.test_refine_field import \
+            refine_time_interpolate
 
         def assert_time_in_hier(*ts):
             for t in ts:

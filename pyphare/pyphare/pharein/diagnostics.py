@@ -40,24 +40,23 @@ def diagnostics_checker(func):
 
 import numpy as np
 # ------------------------------------------------------------------------------
-def validate_timestamps(clazz, **kwargs):
+def validate_timestamps(clazz, key, **kwargs):
     sim = global_vars.sim
 
     init_time = sim.start_time()
 
-    for key in ["write_timestamps", "compute_timestamps"]:
-        timestamps = kwargs[key]
+    timestamps = phare_utilities.np_array_ify(kwargs.get(key, []))
 
-        if np.any(timestamps < init_time):
-            raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({init_time}))")
-        if np.any(timestamps > sim.final_time):
-            raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
-        if not np.all(np.diff(timestamps) >= 0):
-            raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
-        if not np.all(np.abs(timestamps / sim.time_step - np.rint(timestamps/sim.time_step) < 1e-9)):
-            raise RuntimeError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step")
+    if np.any(timestamps < init_time):
+        raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({init_time}))")
+    if np.any(timestamps > sim.final_time):
+        raise RuntimeError(f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))")
+    if not np.all(np.diff(timestamps) >= 0):
+        raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
+    if not np.all(np.abs(timestamps / sim.time_step - np.rint(timestamps/sim.time_step) < 1e-9)):
+        raise RuntimeError(f"Error: {clazz}.{key} is inconsistent with simulation.time_step")
 
-
+    return timestamps
 
 
 
@@ -84,9 +83,8 @@ class Diagnostics(object):
         self.name = name
         self.path = kwargs['path']
 
-        validate_timestamps(self.__class__.__name__, **kwargs)
-        self.write_timestamps = kwargs['write_timestamps'] #[0, 1, 2]
-        self.compute_timestamps = kwargs['compute_timestamps']
+        self.write_timestamps = validate_timestamps(self.__class__.__name__, 'write_timestamps', **kwargs)
+        self.compute_timestamps = validate_timestamps(self.__class__.__name__, 'compute_timestamps', **kwargs)
 
         self.attributes = kwargs.get("attributes", {})
         self.attributes["git_hash"]  = phare_utilities.top_git_hash()
@@ -149,7 +147,7 @@ class ElectromagDiagnostics(Diagnostics):
 # ------------------------------------------------------------------------------
 
 def population_in_model(population):
-    return population in [p for p in global_vars.sim.model.populations] + ["all","ions"]
+    return population in [p for p in global_vars.sim.model.populations]
 
 
 

@@ -1,8 +1,8 @@
-
-
-from ..core import phare_utilities
-from ..core.gridlayout import yee_element_is_primal
-from . import global_vars
+import numpy as np
+from pyphare.core import phare_utilities
+from pyphare.core.box import Box
+from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
+from pyphare.pharein import global_vars
 
 
 class MaxwellianFluidModel(object):
@@ -141,116 +141,118 @@ class MaxwellianFluidModel(object):
 
 #------------------------------------------------------------------------------
 
-    def validate(self, sim):
-        import itertools
-        import numpy as np
-        from ..core.gridlayout import GridLayout, directions as all_directions
-        from ..core.box import Box
-        from pyphare.pharein import py_fn_wrapper
+    def validate(self, sim, atol=1e-15):
+        print(f"validating dim={sim.ndim}")
+        if sim.ndim==1:
+            self.validate1d(sim, atol)
+        elif sim.ndim==2:
+            self.validate2d(sim, atol)
 
-        dl = np.array(sim.dl)
-        directions = all_directions[:sim.ndim]
+    def validate1d(self, sim, atol):
 
-        domain_box = Box([0] * sim.ndim, np.asarray(sim.cells) - 1)
-        assert len(sim.origin) == domain_box.ndim
+        domain_box = Box([0]*sim.ndim, sim.cells)
+        layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
+        nbrDualGhosts= layout.nbrGhostsPrimal(sim.interp_order)
+        nbrPrimalGhosts= layout.nbrGhostsPrimal(sim.interp_order)
+        directions=["X"]
+        domain = sim.simulation_domain()
+        bx = self.model_dict["bx"]
+        by = self.model_dict["by"]
+        bz = self.model_dict["bz"]
+        is_periodic = True
 
-        def _primal_directions(qty):
-            return [1 if yee_element_is_primal(qty, direction) else 0 for direction in directions]
+        dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts)+0.5)*sim.dl[0]
+        dual_right = dual_left + domain[0]
+        primal_left = np.arange(-nbrPrimalGhosts, nbrPrimalGhosts)*sim.dl[0]
+        primal_right = primal_left + domain[0]
 
-        def _nbrGhosts(qty, layout, primal_directions):
-            return [
-                layout.nbrGhosts(sim.interp_order, "primal" if primal_directions[dim] else "dual") for dim in range(sim.ndim)
-            ]
+        direction = directions[0]
 
-        def qty_shifts(qty, nbrGhosts):
-          shifts = []
-          for dim in range(sim.ndim):
-              if yee_element_is_primal(qty, directions[dim]):
-                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim] + 1) * dl[dim]]
-              else:
-                  shifts += [np.arange(-nbrGhosts[dim], nbrGhosts[dim]) *  dl[dim] + (.5 * dl[dim])]
-          return shifts
-
-        def _1d_check(layout, nbrGhosts, primal_directions, qty, fn):
-            fnX = py_fn_wrapper(fn)(layout.yeeCoordsFor(qty, "x"))
-            include_border = primal_directions[0]
-            np.testing.assert_allclose(fnX[:nbrGhosts * 2 + include_border] , fnX[-(nbrGhosts * 2) - include_border:], atol=1e-15)
-            return (
-                np.allclose(fnX[:nbrGhosts * 2 + include_border] , fnX[-(nbrGhosts * 2) - include_border:], atol=1e-15)
-            )
+        for b_i,b_name in zip((bx,by,bz), ("Bx", "By", "Bz")):
+            if layout.qtyIsDual(b_name, direction):
+                xL,xR = dual_left, dual_right
+            else:
+                xL,xR = primal_left, primal_right
 
 
-        def split_to_columns(ar):
-            ar = ar.reshape(-1, sim.ndim) # drop outer arrays if any
-            return [ar[:,dim] for dim in range(sim.ndim)]
+            is_periodic &= np.allclose(b_i(xL), b_i(xL),atol=atol, rtol=0)
 
 
-        def _2d_check(nbrGhosts, primal_directions, qty, fn, shift):
-            layout = GridLayout(domain_box, sim.origin + (shift * sim.dl), sim.dl, sim.interp_order)
-            x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
-            y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
-            X,Y = np.meshgrid(x,y,indexing="ij")
-            coords = np.array([X.flatten(),Y.flatten()]).T
-            top = coords[:len(x)]
-            bot = coords[-len(x):]
-            left  = coords[0 :: len(x)]
-            right = coords[len(x) - 1 :: len(x)]
-            return (
-                np.allclose(fn(*split_to_columns(left)) , fn(*split_to_columns(right)), atol=1e-15) and
-                np.allclose(fn(*split_to_columns(top))  , fn(*split_to_columns(bot)), atol=1e-15)
-            )
+        for pop in self.populations:
+            functions = ("vx", "vy", "vz", "vthx", "vthy", "vthz")
+            xL,xR = primal_left, primal_right
 
-        def _3d_check(nbrGhosts, primal_directions, qty, fn, shift):
-            def get_3d_faces(M):
-                def get_face(M, dim, front_side):
-                    return M[tuple((0 if front_side else -1) if i == dim else slice(None) for i in range(M.ndim))]
-                return [get_face(M, dim, front_side) for dim in range(sim.ndim) for front_side in (True, False)]
+            for fn in functions:
+                f = self.model_dict[pop][fn]
+                is_periodic &= np.allclose(f(xL), f(xR), atol=atol, rtol=0)
 
-            layout = GridLayout(domain_box, sim.origin + (shift * sim.dl), sim.dl, sim.interp_order)
-            x = layout.yeeCoordsFor(qty, "x")[nbrGhosts[0]:-(nbrGhosts[0]-1)-(primal_directions[0])]
-            y = layout.yeeCoordsFor(qty, "y")[nbrGhosts[1]:-(nbrGhosts[1]-1)-(primal_directions[1])]
-            z = layout.yeeCoordsFor(qty, "z")[nbrGhosts[2]:-(nbrGhosts[2]-1)-(primal_directions[2])]
-            X,Y,Z = np.meshgrid(x,y,z,indexing="ij")
-            coords = np.array([X.flatten(), Y.flatten(), Z.flatten()]).T.reshape((len(x), len(y), len(z), sim.ndim))
-            left, right, top, bot, front, back = get_3d_faces(coords)
-            return (
-                np.allclose(fn(split_to_columns(left)) , fn(split_to_columns(right)), atol=1e-15) and
-                np.allclose(fn(split_to_columns(top))  , fn(split_to_columns(bot)), atol=1e-15) and
-                np.allclose(fn(split_to_columns(front)), fn(split_to_columns(back)), atol=1e-15)
-            )
+        if not is_periodic:
+            print("Warning: Simulation is periodic but some functions are not")
+            if sim.strict:
+                raise RuntimeError("Simulation is not periodic")
 
-        def periodic_function_check(vec_field, dic):
-            valid = True
-            for xyz in ["x", "y", "z"]:
-                qty = vec_field + xyz
-                fn = dic[qty]
 
-                layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
-                primal_directions = _primal_directions(qty)
-                nbrGhosts = _nbrGhosts(qty, layout, primal_directions)
 
-                if sim.ndim == 1:
-                    valid &= _1d_check(layout, nbrGhosts[0], primal_directions, qty, fn)
+    def validate2d(self, sim, atol):
 
-                if sim.ndim == 2:
-                    permutations = itertools.product(*qty_shifts(qty, nbrGhosts))
-                    valid &= all([_2d_check(nbrGhosts, primal_directions, qty, fn, np.asarray(perm)) for perm in permutations])
+        domain_box = Box([0]*sim.ndim, sim.cells)
+        layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
+        nbrDualGhosts= layout.nbrGhostsPrimal(sim.interp_order)
+        nbrPrimalGhosts= layout.nbrGhostsPrimal(sim.interp_order)
+        directions=["X", "Y"]
+        domain = sim.simulation_domain()
+        bx = self.model_dict["bx"]
+        by = self.model_dict["by"]
+        bz = self.model_dict["bz"]
+        is_periodic = True
+        not_periodic = []
 
-                if sim.ndim == 3:
-                    # untested block - add in during 3d/splitting PR https://github.com/PHAREHUB/PHARE/pull/314
-                    permutations = itertools.product(*qty_shifts(qty, nbrGhosts))
-                    valid &= all([_3d_check(nbrGhosts, primal_directions, qty, fn, np.asarray(perm)) for perm in permutations])
+        def getCoord(L,R, idir):
+            if idir == 0:
+                return (L,np.zeros_like(L)), (R,np.zeros_like(R))
+            else:
+                return (np.zeros_like(L),L), (np.zeros_like(R),R)
 
-            return valid
+        print("2d periodic validation")
+        for idir in np.arange(sim.ndim):
+            print("validating direction ...", idir)
+            if sim.boundary_types[idir] == "periodic":
+                print(f"direction {idir} is periodic?")
+                dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts)+0.5)*sim.dl[0]
+                dual_right = dual_left + domain[0]
+                primal_left = np.arange(-nbrPrimalGhosts, nbrPrimalGhosts)*sim.dl[0]
+                primal_right = primal_left + domain[0]
 
-        if sim.boundary_types[0] == "periodic":
-            model_dict = self.model_dict
-            valid = True
-            for pop in self.populations:
-                for v in ["vth", "v"]:
-                    valid &= periodic_function_check(v, model_dict[pop])
-            valid &= periodic_function_check("b", model_dict)
-            if not valid:
-                print("Warning: Simulation is periodic but some functions are not")
-                if sim.strict:
-                    raise RuntimeError("Simulation is not periodic")
+                direction = directions[idir]
+
+                for b_i,b_name in zip((bx,by,bz), ("Bx", "By", "Bz")):
+                    if layout.qtyIsDual(b_name, direction):
+                        L,R = dual_left, dual_right
+                    else:
+                        L,R = primal_left, primal_right
+
+                coordsL, coordsR = getCoord(L, R, idir)
+                check  = np.allclose(b_i(*coordsL), b_i(*coordsR),atol=atol, rtol=0)
+                if not check:
+                    not_periodic += [(b_name,idir)]
+                is_periodic &= check
+
+                for pop in self.populations:
+                    functions = ("vx", "vy", "vz", "vthx", "vthy", "vthz")
+                    L,R = primal_left, primal_right
+                    coordsL, coordsR = getCoord(L,R, idir)
+
+                    for fn in functions:
+                        f = self.model_dict[pop][fn]
+                        fL = f(*coordsL)
+                        fR = f(*coordsR)
+                        check = np.allclose(fL,fR, atol=atol, rtol=0)
+                        print(f"checked {fn} : fL = {fL} and fR = {fR} and check = {check}")
+                        if not check:
+                            not_periodic += [(fn,idir)]
+                        is_periodic &=check
+
+        if not is_periodic:
+            print("Warning: Simulation is periodic but some functions are not : ", not_periodic)
+            if sim.strict:
+                raise RuntimeError("Simulation is not periodic")

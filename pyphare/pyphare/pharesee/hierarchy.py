@@ -1,17 +1,13 @@
-
-
 import os
-import numpy as np
 
-from .particles import Particles
+import matplotlib.pyplot as plt
+import numpy as np
 
 from ..core import box as boxm
 from ..core.box import Box
 from ..core.gridlayout import GridLayout
-import matplotlib.pyplot as plt
-from ..core.phare_utilities import refinement_ratio, deep_copy
-
-
+from ..core.phare_utilities import deep_copy, refinement_ratio
+from .particles import Particles
 
 
 class PatchData:
@@ -45,23 +41,23 @@ class FieldData(PatchData):
 
     @property
     def x(self):
-        withGhost= self.field_name != "tags"
+        withGhosts= self.field_name != "tags"
         if self._x is None:
-            self._x = self.layout.yeeCoordsFor(self.field_name, "x", withGhosts=withGhost)
+            self._x = self.layout.yeeCoordsFor(self.field_name, "x", withGhosts=withGhosts, centering=self.centerings[0])
         return self._x
 
     @property
     def y(self):
         withGhosts = self.field_name != "tags"
         if self._y is None:
-            self._y = self.layout.yeeCoordsFor(self.field_name, "y", withGhosts=withGhosts)
+            self._y = self.layout.yeeCoordsFor(self.field_name, "y", withGhosts=withGhosts, centering=self.centerings[1])
         return self._y
 
     @property
     def z(self):
         withGhosts = self.field_name != "tags"
         if self._z is None:
-            self._z = self.layout.yeeCoordsFor(self.field_name, "z", withGhosts=withGhosts)
+            self._z = self.layout.yeeCoordsFor(self.field_name, "z", withGhosts=withGhosts, centering=self.centerings[2])
         return self._z
 
     def primal_directions(self):
@@ -119,20 +115,20 @@ class FieldData(PatchData):
 
         if field_name in layout.centering["X"]:
             directions = ["X", "Y", "Z"][:layout.box.ndim] # drop unused directions
-            centerings = [layout.qtyCentering(field_name, direction) for direction in directions]
+            self.centerings = [layout.qtyCentering(field_name, direction) for direction in directions]
         elif "centering" in kwargs:
             if isinstance(kwargs["centering"], list):
-                centerings = kwargs["centering"]
-                assert len(centerings) == self.ndim
+                self.centerings = kwargs["centering"]
+                assert len(self.centerings) == self.ndim
             else:
                 if self.ndim != 1:
                     raise ValueError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
-                centerings = [kwargs["centering"]]
+                self.centerings = [kwargs["centering"]]
         else:
             raise ValueError("centering not specified and cannot be inferred from field name")
 
         if self.field_name != "tags":
-            for i, centering in enumerate(centerings):
+            for i, centering in enumerate(self.centerings):
                 self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
@@ -140,7 +136,7 @@ class FieldData(PatchData):
         self.size = np.copy(self.ghost_box.shape)
         self.offset = np.zeros(self.ndim)
 
-        for i, centering in enumerate(centerings):
+        for i, centering in enumerate(self.centerings):
             if centering == "primal":
                 self.size[i] = self.ghost_box.shape[i] + 1
             else:
@@ -468,8 +464,9 @@ def finest_part_data(hierarchy, time=None):
     Particles contained in the dict are those from
     the finest patches available at a given location
     """
-    from .particles import remove
     from copy import deepcopy
+
+    from .particles import remove
 
     # we are going to return a dict {popname : Particles}
     # we prepare it with population names
@@ -737,8 +734,8 @@ class PatchHierarchy:
 
 
     def plot2d(self, **kwargs):
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
         from matplotlib.patches import Rectangle
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
         time = kwargs.get("time", self._default_time())
         usr_lvls = kwargs.get("levels",self.levelNbrs(time))
         qty = kwargs.get("qty", None)
@@ -834,6 +831,7 @@ class PatchHierarchy:
         plot phase space of a particle hierarchy
         """
         import copy
+
         from .plotting import dist_plot as dp
         usr_lvls = kwargs.get("levels",(0,))
         finest = kwargs.get("finest", False)
@@ -1503,4 +1501,3 @@ def get_times_from_h5(filepath):
     times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
     f.close()
     return times
-
