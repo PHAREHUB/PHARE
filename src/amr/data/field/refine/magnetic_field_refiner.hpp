@@ -3,14 +3,20 @@
 
 #include <SAMRAI/hier/Box.h>
 
+#include "amr/resources_manager/amr_utils.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/constants.hpp"
 
 #include <cstddef>
 
 namespace PHARE::amr
 {
+
+using core::dirX;
+using core::dirY;
+using core::dirZ;
 
 template<std::size_t dimension>
 class MagneticFieldRefiner
@@ -20,9 +26,9 @@ public:
                          SAMRAI::hier::Box const& destinationGhostBox,
                          SAMRAI::hier::Box const& sourceGhostBox,
                          SAMRAI::hier::IntVector const& ratio)
-        : indexesAndWeights_{centering, ratio}
-        , fineBox_{destinationGhostBox}
+        : fineBox_{destinationGhostBox}
         , coarseBox_{sourceGhostBox}
+        , centerings_{centering}
     {
     }
 
@@ -30,42 +36,57 @@ public:
     /** @brief Given a sourceField , a destinationField, and a fineIndex compute the
      */
     template<typename FieldT>
-    void operator()(FieldT const& sourceField, FieldT& destinationField,
+    void operator()(FieldT const& coarseField, FieldT& fineField,
                     core::Point<int, dimension> fineIndex)
     {
-        TBOX_ASSERT(sourceField.physicalQuantity() == destinationField.physicalQuantity());
+        TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        // First we get the coarseStartIndex for a given fineIndex
-        // then we get the index in weights table for a given fineIndex.
-        // After that we get the local index of coarseStartIndex and fineIndex.
-
-        // Finally we can compute the interpolation
-
-
-        core::Point<int, dimension> coarseStartIndex
-            = indexesAndWeights_.coarseStartIndex(fineIndex);
-        core::Point<int, dimension> iWeight{indexesAndWeights_.computeWeightIndex(fineIndex)};
-
-        coarseStartIndex = AMRToLocal(coarseStartIndex, coarseBox_);
-        fineIndex        = AMRToLocal(fineIndex, fineBox_);
-
-        double fieldValue = 0.;
-
-
+        auto locFineIdx = AMRToLocal(fineIndex, fineBox_);
+        auto coarseIdx{fineIndex};
+        for (auto& idx : coarseIdx)
+            idx = idx / 2;
+        auto locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
 
         if constexpr (dimension == 1)
         {
-            auto const& xStartIndex = coarseStartIndex[dirX];
-
-            auto const& xWeights         = indexesAndWeights_.weights(core::Direction::X);
-            auto const& leftRightWeights = xWeights[iWeight[dirX]];
-
-            for (std::size_t iShiftX = 0; iShiftX < leftRightWeights.size(); ++iShiftX)
+            // if primal, i.e. Bx :
+            // if even fine index, we're on top of coarse, we take 100% coarse overlaped fieldValue
+            // e.g. fineIndex==100, we take coarse[100/2]
+            // if odd fine index, we take 50% of surrounding coarse nodes
+            // e.g. fineIndex == 101, we take 0.5(coarse(101/2)+coarse(101/2+1))
+            //
+            //   49          50              51            52
+            //    o           o              o             o      Bx on coarse
+            //    x     x     x      x       o      x      x      Bx on fine
+            //   98     99   100    101     102    103    104
+            //
+            //
+            if (centerings_[0] == core::QtyCentering::primal)
             {
-                fieldValue += sourceField(xStartIndex + iShiftX) * leftRightWeights[iShiftX];
+                if (fineIndex[0] % 2 == 0)
+                {
+                    fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+                }
+                else
+                {
+                    fineField(locFineIdx[dirX])
+                        = 0.5
+                          * (coarseField(locCoarseIdx[dirX]) + coarseField(locCoarseIdx[dirX] + 1));
+                }
             }
-            destinationField(fineIndex[dirX]) = fieldValue;
+            // dual case, By, Bz
+            //          49           50             51
+            //    o     +     o      +       o      +       o      Byz on coarse : +
+            //    o  +  o  +  o   +  o   +   o   +  o   +   o      Byz on fine   : +
+            //      98    99     100    101     102    103
+            //
+            // 100 takes 50 = 100/2
+            // 101 takes 50 = 101/2
+            else
+            {
+                fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+            }
         }
 
 
@@ -73,72 +94,133 @@ public:
 
         else if constexpr (dimension == 2)
         {
-            auto const& xStartIndex = coarseStartIndex[dirX];
-            auto const& yStartIndex = coarseStartIndex[dirY];
-
-            auto const& xWeights = indexesAndWeights_.weights(core::Direction::X);
-            auto const& yWeights = indexesAndWeights_.weights(core::Direction::Y);
-
-            auto const& xLeftRightWeights = xWeights[iWeight[dirX]];
-            auto const& yLeftRightWeights = yWeights[iWeight[dirY]];
-
-            for (std::size_t iShiftX = 0; iShiftX < xLeftRightWeights.size(); ++iShiftX)
+            if (centerings_[dirX] == core::QtyCentering::primal
+                and centerings_[dirY] == core::QtyCentering::dual)
             {
-                double Yinterp = 0.;
-                for (std::size_t iShiftY = 0; iShiftY < yLeftRightWeights.size(); ++iShiftY)
+                // Bx
+                if (fineIndex[dirX] % 2 == 0)
                 {
-                    Yinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY)
-                               * yLeftRightWeights[iShiftY];
+                    // we're on a coarse X face
+                    // take the coarse face value
+                    fineField(locFineIdx[dirX], locFineIdx[dirY])
+                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
                 }
-                fieldValue += Yinterp * xLeftRightWeights[iShiftX];
+                else
+                {
+                    // we're on a fine X face, take the average of the coarse value
+                    // between the two surrounding faces
+                    fineField(locFineIdx[dirX], locFineIdx[dirY])
+                        = 0.5
+                          * (coarseField(coarseIdx[dirX], coarseIdx[dirY])
+                             + coarseField(coarseIdx[dirX] + 1, coarseIdx[dirY]));
+                }
             }
-
-            destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
+            else if (centerings_[dirX] == core::QtyCentering::dual
+                     and centerings_[dirY] == core::QtyCentering::primal)
+            {
+                // By
+                if (fineIndex[dirY] % 2 == 0)
+                {
+                    // we're on a coarse Y face
+                    // take the coarse face value
+                    fineField(locFineIdx[dirX], locFineIdx[dirY])
+                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                }
+                else
+                {
+                    // we're on a fine Y face, take the average of the coarse value
+                    // between the two surrounding faces
+                    fineField(locFineIdx[dirX], locFineIdx[dirY])
+                        = 0.5
+                          * (coarseField(coarseIdx[dirX], coarseIdx[dirY])
+                             + coarseField(coarseIdx[dirX], coarseIdx[dirY] + 1));
+                }
+            }
+            else if (centerings_[dirX] == core::QtyCentering::dual
+                     and centerings_[dirY] == core::QtyCentering::dual)
+            {
+                // Bz
+                // we're always on a coarse Z face since there is no dual in z
+                // all 4 fine Bz take the coarse Z value
+                fineField(locFineIdx[dirX], locFineIdx[dirY])
+                    = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+            }
         }
-
-
 
 
         else if constexpr (dimension == 3)
         {
-            auto const& xStartIndex = coarseStartIndex[dirX];
-            auto const& yStartIndex = coarseStartIndex[dirY];
-            auto const& zStartIndex = coarseStartIndex[dirZ];
+            auto ix = locCoarseIdx[dirX];
+            auto iy = locCoarseIdx[dirY];
+            auto iz = locCoarseIdx[dirZ];
 
-            auto const& xWeights = indexesAndWeights_.weights(core::Direction::X);
-            auto const& yWeights = indexesAndWeights_.weights(core::Direction::Y);
-            auto const& zWeights = indexesAndWeights_.weights(core::Direction::Z);
-
-            auto const& xLeftRightWeights = xWeights[iWeight[dirX]];
-            auto const& yLeftRightWeights = yWeights[iWeight[dirY]];
-            auto const& zLeftRightWeights = zWeights[iWeight[dirZ]];
-
-
-            for (std::size_t iShiftX = 0; iShiftX < xLeftRightWeights.size(); ++iShiftX)
+            if (centerings_[dirX] == core::QtyCentering::primal
+                and centerings_[dirY] == core::QtyCentering::dual
+                and centerings_[dirZ] == core::QtyCentering::dual)
             {
-                double Yinterp = 0.;
-                for (std::size_t iShiftY = 0; iShiftY < yLeftRightWeights.size(); ++iShiftY)
+                // Bx
+                if (fineIndex[dirX] % 2 == 0)
                 {
-                    double Zinterp = 0.;
-                    for (std::size_t iShiftZ = 0; iShiftZ < zLeftRightWeights.size(); ++iShiftZ)
-                    {
-                        Zinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY,
-                                               zStartIndex + iShiftZ)
-                                   * zLeftRightWeights[iShiftZ];
-                    }
-                    Yinterp += Zinterp * yLeftRightWeights[iShiftY];
+                    // we're on a coarse X face
+                    // take the coarse face value
+                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
+                        = coarseField(ix, iy, iz);
                 }
-                fieldValue += Yinterp * xLeftRightWeights[iShiftX];
+                else
+                {
+                    // we're on a fine X face, take the average of the coarse value
+                    // between the two surrounding faces
+                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
+                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix + 1, iy, iz));
+                }
             }
-
-            destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldValue;
+            else if (centerings_[dirX] == core::QtyCentering::dual
+                     and centerings_[dirY] == core::QtyCentering::primal
+                     and centerings_[dirZ] == core::QtyCentering::dual)
+            {
+                // By
+                if (fineIndex[dirY] % 2 == 0)
+                {
+                    // we're on a coarse Y face
+                    // take the coarse face value
+                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
+                        = coarseField(ix, iy, iz);
+                }
+                else
+                {
+                    // we're on a fine Y face, take the average of the coarse value
+                    // between the two surrounding faces
+                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
+                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy + 1, iz));
+                }
+            }
+            else if (centerings_[dirX] == core::QtyCentering::dual
+                     and centerings_[dirY] == core::QtyCentering::dual
+                     and centerings_[dirZ] == core::QtyCentering::primal)
+            {
+                // Bz
+                if (fineIndex[dirZ] % 2 == 0)
+                {
+                    // we're on a coarse X face
+                    // take the coarse face value
+                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
+                        = coarseField(ix, iy, iz);
+                }
+                else
+                {
+                    // we're on a fine Z face, take the average of the coarse value
+                    // between the two surrounding faces
+                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
+                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy, iz + 1));
+                }
+            }
         }
     }
 
 private:
-    FieldRefineIndexesAndWeights<dimension> const indexesAndWeights_;
     SAMRAI::hier::Box const fineBox_;
     SAMRAI::hier::Box const coarseBox_;
+    std::array<core::QtyCentering, dimension> const& centerings_;
 };
 } // namespace PHARE::amr
 
