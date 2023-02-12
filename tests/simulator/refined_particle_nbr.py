@@ -3,16 +3,19 @@
 # formatted with black
 
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
-import os, sys, unittest, yaml
-import numpy as np
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
-from tests.simulator import NoOverwriteDict
-from tests.simulator import populate_simulation
-from pyphare.cpp import splitter_type
+import os
+import sys
+import unittest
 
+import numpy as np
+import yaml
+from pyphare.cpp import splitter_type
+from pyphare.simulator.simulator import Simulator
+
+from tests.simulator import NoOverwriteDict, populate_simulation
 from tests.simulator.config import project_root
 
 

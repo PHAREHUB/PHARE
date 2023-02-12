@@ -4,11 +4,11 @@
 """
 
 import unittest
-from ddt import ddt, data, unpack
-from pyphare.core.box import Box, Box2D, nDBox
-from tests.simulator.test_initialization import InitializationTest
 
 import matplotlib
+from ddt import data, ddt
+
+from tests.simulator.test_initialization import InitializationTest
 
 matplotlib.use("Agg")  # for systems without GUI
 

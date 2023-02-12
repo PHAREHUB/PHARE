@@ -3,14 +3,16 @@
 # formatted with black
 
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
-import unittest, os, pyphare.pharein as ph
-from datetime import datetime, timezone
-from ddt import ddt, data
-from tests.simulator import NoOverwriteDict, populate_simulation
-from pyphare.simulator.simulator import Simulator
+import unittest
+
+from ddt import data, ddt
 from pyphare.core.box import Box, Box2D
+from pyphare.simulator.simulator import Simulator
+
+from tests.simulator import NoOverwriteDict, populate_simulation
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {"diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite" }}}

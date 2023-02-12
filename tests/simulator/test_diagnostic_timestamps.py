@@ -1,23 +1,20 @@
-
 #!/usr/bin/env python3
 
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
-from tests.diagnostic import dump_all_diags
-from tests.simulator import populate_simulation
-from pyphare.pharein import ElectronModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics, ParticleDiagnostics
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
-import pyphare.pharein as ph
-import unittest
 import os
+import unittest
+
 import h5py
 import numpy as np
-from ddt import ddt, data
-from pyphare.core.box import Box, Box1D
-
-from tests.simulator.config import project_root
+import pyphare.pharein as ph
+from ddt import data, ddt
+from pyphare.core.box import Box1D
+from pyphare.pharein import ElectromagDiagnostics, ElectronModel
+from pyphare.pharesee.hierarchy import (h5_filename_from, h5_time_grp_key,
+                                        hierarchy_from)
+from pyphare.simulator.simulator import Simulator
 
 
 def setup_model(ppc):
@@ -186,4 +183,3 @@ class DiagnosticsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

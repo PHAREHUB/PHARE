@@ -4,11 +4,12 @@
 """
 
 import unittest
-from ddt import ddt, data, unpack
-from pyphare.core.box import Box, Box2D, nDBox
-from tests.simulator.test_initialization import InitializationTest
 
 import matplotlib
+from ddt import data, ddt, unpack
+from pyphare.core.box import Box2D
+
+from tests.simulator.test_initialization import InitializationTest
 
 matplotlib.use("Agg")  # for systems without GUI
 
@@ -81,7 +82,6 @@ class InitializationTest(InitializationTest):
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
         print(f"\n{self._testMethodName}_{ndim}d")
         from pyphare.pharein.simulation import check_patch_size
-        diag_outputs=f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts_{ndim}_{self.ddt_test_id()}"
         _, smallest_patch_size = check_patch_size(ndim, **simInput)
         simInput["smallest_patch_size"] = smallest_patch_size
         simInput["largest_patch_size"] = smallest_patch_size

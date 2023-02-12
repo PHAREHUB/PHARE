@@ -1,58 +1,61 @@
-
 #!/usr/bin/env python3
 
 
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
-from tests.diagnostic import dump_all_diags
-from tests.simulator import populate_simulation
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharein.simulation import supported_dimensions
-from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
-import pyphare.pharein as ph
-import unittest
 import os
+import unittest
+
 import h5py
 import numpy as np
-from ddt import ddt, data
+import pyphare.pharein as ph
+from ddt import data, ddt
+from pyphare.pharein.simulation import supported_dimensions
+from pyphare.pharesee.hierarchy import h5_filename_from, h5_time_grp_key, hierarchy_from
+from pyphare.simulator.simulator import Simulator, startMPI
 
-from tests.simulator.config import project_root
+from tests.diagnostic import dump_all_diags
 
 
 def setup_model(ppc=100):
     def density(*xyz):
-        return 1.
+        return 1.0
 
     def by(*xyz):
         from pyphare.pharein.global_vars import sim
+
         L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+        _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
+        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
     def bz(*xyz):
         from pyphare.pharein.global_vars import sim
+
         L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.sin(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+        _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
+        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
     def bx(*xyz):
-        return 1.
+        return 1.0
 
     def vx(*xyz):
-        return 0.
+        return 0.0
 
     def vy(*xyz):
         from pyphare.pharein.global_vars import sim
+
         L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+        _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
+        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
     def vz(*xyz):
         from pyphare.pharein.global_vars import sim
+
         L = sim.simulation_domain()
-        _ = lambda i: 0.1*np.cos(2*np.pi*xyz[i]/L[i])
-        return np.asarray([_(i) for i,v in enumerate(xyz)]).prod(axis=0)
+        _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
+        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
 
     def vthx(*xyz):
         return 0.01
@@ -64,14 +67,34 @@ def setup_model(ppc=100):
         return 0.01
 
     vvv = {
-        "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
-        "vthx": vthx, "vthy": vthy, "vthz": vthz
+        "vbulkx": vx,
+        "vbulky": vy,
+        "vbulkz": vz,
+        "vthx": vthx,
+        "vthy": vthy,
+        "vthz": vthz,
     }
 
     model = ph.MaxwellianFluidModel(
-        bx=bx, by=by, bz=bz,
-        protons={"mass":1, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 1337}},
-        alpha={"mass":4, "charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc, "init": {"seed": 2334}},
+        bx=bx,
+        by=by,
+        bz=bz,
+        protons={
+            "mass": 1,
+            "charge": 1,
+            "density": density,
+            **vvv,
+            "nbr_part_per_cell": ppc,
+            "init": {"seed": 1337},
+        },
+        alpha={
+            "mass": 4,
+            "charge": 1,
+            "density": density,
+            **vvv,
+            "nbr_part_per_cell": ppc,
+            "init": {"seed": 2334},
+        },
     )
     ph.ElectronModel(closure="isothermal", Te=0.12)
     return model
@@ -79,13 +102,17 @@ def setup_model(ppc=100):
 
 out = "phare_outputs/diagnostic_test/"
 simArgs = {
-  "time_step_nbr":30000,
-  "final_time":30.,
-  "boundary_types":"periodic",
-  "cells":40,
-  "dl":0.3,
-  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite", "fine_dump_lvl_max": 10}}
+    "time_step_nbr": 30000,
+    "final_time": 30.0,
+    "boundary_types": "periodic",
+    "cells": 40,
+    "dl": 0.3,
+    "diag_options": {
+        "format": "phareh5",
+        "options": {"dir": out, "mode": "overwrite", "fine_dump_lvl_max": 10},
+    },
 }
+
 
 def dup(dic):
     dic.update(simArgs.copy())
@@ -96,27 +123,19 @@ def dup(dic):
 class DiagnosticsTest(unittest.TestCase):
 
     _test_cases = (
-      dup({
-        "smallest_patch_size": 10,
-        "largest_patch_size": 20}),
-      dup({
-        "smallest_patch_size": 20,
-        "largest_patch_size": 20}),
-      dup({
-        "smallest_patch_size": 20,
-        "largest_patch_size": 40})
+        dup({"smallest_patch_size": 10, "largest_patch_size": 20}),
+        dup({"smallest_patch_size": 20, "largest_patch_size": 20}),
+        dup({"smallest_patch_size": 20, "largest_patch_size": 40}),
     )
 
     def __init__(self, *args, **kwargs):
         super(DiagnosticsTest, self).__init__(*args, **kwargs)
         self.simulator = None
 
-
-
     def setUp(self):
         from pyphare.simulator.simulator import startMPI
-        startMPI()
 
+        startMPI()
 
     def tearDown(self):
         if self.simulator is not None:
@@ -125,7 +144,6 @@ class DiagnosticsTest(unittest.TestCase):
 
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
-
 
     @data(*_test_cases)
     def test_dump_diags(self, simInput):
@@ -142,13 +160,15 @@ class DiagnosticsTest(unittest.TestCase):
         b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
-        py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"] ]
+        py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
         py_attrs += ["git_hash"]
 
         for interp in range(1, 4):
             print("test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
-            local_out = f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
+            local_out = (
+                f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
+            )
             simInput["diag_options"]["options"]["dir"] = local_out
 
             simulation = ph.Simulation(**simInput)
@@ -159,9 +179,14 @@ class DiagnosticsTest(unittest.TestCase):
 
             refined_particle_nbr = simulation.refined_particle_nbr
 
-            self.assertTrue(any([diagInfo.quantity.endswith("domain") for diagInfo in ph.global_vars.sim.diagnostics]))
-
-
+            self.assertTrue(
+                any(
+                    [
+                        diagInfo.quantity.endswith("domain")
+                        for diagInfo in ph.global_vars.sim.diagnostics
+                    ]
+                )
+            )
 
             particle_files = 0
             for diagInfo in ph.global_vars.sim.diagnostics:
@@ -170,8 +195,10 @@ class DiagnosticsTest(unittest.TestCase):
 
                 h5_file = h5py.File(h5_filepath, "r")
 
-                self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key]) # init dump
-                self.assertTrue("0.0010000000" in h5_file[h5_time_grp_key]) # first advance dump
+                self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key])  # init dump
+                self.assertTrue(
+                    "0.0010000000" in h5_file[h5_time_grp_key]
+                )  # first advance dump
 
                 h5_py_attrs = h5_file["py_attrs"].attrs.keys()
                 for py_attr in py_attrs:
@@ -183,9 +210,9 @@ class DiagnosticsTest(unittest.TestCase):
                     self.assertTrue("pop_mass" in h5_file.attrs)
 
                     if "protons" in h5_filepath:
-                        self.assertTrue(h5_file.attrs[ "pop_mass"] == 1)
+                        self.assertTrue(h5_file.attrs["pop_mass"] == 1)
                     elif "alpha" in h5_filepath:
-                        self.assertTrue(h5_file.attrs[ "pop_mass"] == 4)
+                        self.assertTrue(h5_file.attrs["pop_mass"] == 4)
                     else:
                         raise RuntimeError("Unknown population")
 
@@ -197,21 +224,21 @@ class DiagnosticsTest(unittest.TestCase):
                             splits = pd.dataset.split(ph.global_vars.sim)
                             self.assertTrue(splits.size() > 0)
                             self.assertTrue(pd.dataset.size() > 0)
-                            self.assertTrue(splits.size() == pd.dataset.size() * refined_particle_nbr)
+                            self.assertTrue(
+                                splits.size()
+                                == pd.dataset.size() * refined_particle_nbr
+                            )
 
             self.assertEqual(particle_files, ph.global_vars.sim.model.nbr_populations())
 
             self.simulator = None
             ph.global_vars.sim = None
 
-
-
     def test_twice_register(self):
         simulation = ph.Simulation(**simArgs.copy())
         model = setup_model()
-        dump_all_diags(model.populations) # first register
+        dump_all_diags(model.populations)  # first register
         self.assertRaises(RuntimeError, dump_all_diags, model.populations)
-
 
 
 if __name__ == "__main__":

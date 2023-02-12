@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 
 import os
-import h5py
 import unittest
+
+import h5py
 import numpy as np
-from ddt import ddt, data
+import pyphare.pharein as ph
+from ddt import data, ddt
+from pyphare.pharein import ElectronModel
+from pyphare.pharein.simulation import supported_dimensions
+from pyphare.pharesee.hierarchy import (h5_filename_from, h5_time_grp_key,
+                                        hierarchy_from)
+from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import dump_all_diags
-from pyphare.pharein import ElectronModel
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharein.simulation import supported_dimensions
-from pyphare.pharesee.hierarchy import hierarchy_from, h5_filename_from, h5_time_grp_key
-import pyphare.pharein as ph
 
 
 def setup_model(ppc=100):
