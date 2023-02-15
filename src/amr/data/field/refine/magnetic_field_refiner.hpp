@@ -132,8 +132,8 @@ public:
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = 0.5
-                          * (coarseField(coarseIdx[dirX], coarseIdx[dirY])
-                             + coarseField(coarseIdx[dirX], coarseIdx[dirY] + 1));
+                          * (coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
+                             + coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY] + 1));
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
