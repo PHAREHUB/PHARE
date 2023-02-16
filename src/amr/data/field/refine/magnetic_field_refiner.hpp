@@ -111,7 +111,7 @@ public:
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = 0.5
-                          * (coarseField(locCoarseIdx[dirX], coarseIdx[dirY])
+                          * (coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
                              + coarseField(locCoarseIdx[dirX] + 1, locCoarseIdx[dirY]));
                 }
             }
