@@ -111,8 +111,8 @@ public:
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = 0.5
-                          * (coarseField(coarseIdx[dirX], coarseIdx[dirY])
-                             + coarseField(coarseIdx[dirX] + 1, coarseIdx[dirY]));
+                          * (coarseField(locCoarseIdx[dirX], coarseIdx[dirY])
+                             + coarseField(locCoarseIdx[dirX] + 1, locCoarseIdx[dirY]));
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -220,7 +220,7 @@ public:
 private:
     SAMRAI::hier::Box const fineBox_;
     SAMRAI::hier::Box const coarseBox_;
-    std::array<core::QtyCentering, dimension> const& centerings_;
+    std::array<core::QtyCentering, dimension> const centerings_;
 };
 } // namespace PHARE::amr
 
