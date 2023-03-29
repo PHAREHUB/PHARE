@@ -182,6 +182,8 @@ namespace amr
             electricSharedNodes_.registerLevel(hierarchy, level);
             currentSharedNodes_.registerLevel(hierarchy, level);
 
+            // magneticPatchGhosts_.registerLevel(hierarchy, level);
+            // magneticLevelGhosts_.registerLevel(hierarchy, level);
             magneticGhosts_.registerLevel(hierarchy, level);
             electricGhosts_.registerLevel(hierarchy, level);
             currentGhosts_.registerLevel(hierarchy, level);
@@ -329,6 +331,8 @@ namespace amr
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillMagneticGhosts");
             magneticSharedNodes_.fill(B, levelNumber, fillTime);
+            // magneticPatchGhosts_.fill(B, levelNumber, fillTime);
+            // magneticLevelGhosts_.fill(B, levelNumber, fillTime);
             magneticGhosts_.fill(B, levelNumber, fillTime);
         }
 
@@ -590,6 +594,8 @@ namespace amr
             magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
             electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
 
+            // magneticPatchGhosts_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
+            // magneticLevelGhosts_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
             magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, initDataTime);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
             patchGhostParticles_.fill(levelNumber, initDataTime);
@@ -617,7 +623,7 @@ namespace amr
             auto levelNumber = level.getLevelNumber();
 
             // call coarsning schedules...
-            magnetoSynchronizers_.sync(levelNumber);
+            // magnetoSynchronizers_.sync(levelNumber);
             electroSynchronizers_.sync(levelNumber);
             densitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
@@ -639,6 +645,8 @@ namespace amr
             magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
+            // magneticPatchGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            // magneticLevelGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
             magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, time);
             densityGhosts_.fill(levelNumber, time);
@@ -658,6 +666,10 @@ namespace amr
 
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                           magneticSharedNodes_, BfieldNodeRefineOp_);
+            // fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
+            //               magneticPatchGhosts_, BfieldRefineOp_);
+            // fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
+            //               magneticLevelGhosts_, BfieldRefineOp_);
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                           magneticGhosts_, BfieldRefineOp_);
 
@@ -838,26 +850,58 @@ namespace amr
 
         core::Interpolator<dimension, interpOrder> interpolate_;
 
+        //! store communicators for magnetic fields that need to be initialized
+        RefinerPool<RefinerType::InitField> magneticInit_;
+        //! store communicators for electric fields that need to be initializes
+        RefinerPool<RefinerType::InitField> electricInit_;
+
+
+        // strategy for ghost filling:
+        // the SharedNodes refinerPools are here so that adjactent MPI processes
+        // agree on shared border nodes. Before, these nodes may have slightly
+        // different values as a result of small moment roundoff errors on the
+        // shared node. The schedule behind the SharedNodes refinerPools impose
+        // two adjacent patches living on different MPI ranks to take the value
+        // of the highest rank. This ensures border node will not compute later
+        // B,E values with mismatches that grow over time....
+        //
+        // The GhostField refinerPools is used after the SharedNodes and exchanges
+        // ghosts. On patch borders, only pure ghosts will be set, owing to these
+        // FieldVariableFillPattern and refinement operator that use default
+        // overwrite_interior=False.
+        // However, level ghost are set via an overlap computed from the
+        // FieldGeometry::computeFillBoxesOverlap which does not know about this, and thus also
+        // fills border nodes. Therefore, for fields using GhostField template tag, level border
+        // nodes WILL be overwritten. This is an issue for the magnetic field since the existing
+        // border node value is, through the properties of the Yee mesh and faraday's law,
+        // consistent with divB=0 on the first cell layer. Overwritting the border node breaks this
+        // consistency and makes divB!= on that border cell. Therefore, the magnetic field ghost
+        // filling distinguishes Patch and Level ghosts filling PatchGhostField fills only patch
+        // ghosts (intra level) thus using the overwrite_interior mechanism. Level ghosts are
+        // assigned later with the LevelGhostField tag which hides schedules with a
+        // PatchLevelBorderFieldPattern, excluding interior points.
+        // This distinction does not seem necessary for other fields, altough re-writting the border
+        // value is also slightly inconsistent.
 
         //! store communicators for magnetic fields that need ghosts to be filled
         RefinerPool<RefinerType::SharedBorder> magneticSharedNodes_;
+        RefinerPool<RefinerType::PatchGhostField> magneticPatchGhosts_;
+        RefinerPool<RefinerType::LevelGhostField> magneticLevelGhosts_;
         RefinerPool<RefinerType::GhostField> magneticGhosts_;
-
-        //! store communicators for magnetic fields that need to be initialized
-        RefinerPool<RefinerType::InitField> magneticInit_;
 
         //! store refiners for electric fields that need ghosts to be filled
         RefinerPool<RefinerType::SharedBorder> electricSharedNodes_;
         RefinerPool<RefinerType::GhostField> electricGhosts_;
 
-        //! store communicators for electric fields that need to be initializes
-        RefinerPool<RefinerType::InitField> electricInit_;
-
-
         RefinerPool<RefinerType::GhostField> currentSharedNodes_;
         RefinerPool<RefinerType::GhostField> currentGhosts_;
 
         // moment ghosts
+        // these do not need sharedNode refiners. The reason is that
+        // the border node is already complete by the deposit of ghost particles
+        // these refiners are used to fill ghost nodes, and therefore, owing to
+        // the GhostField tag, will only assign pur ghost nodes. Border nodes will
+        // be overwritten only on level borders, which does not seem to be an issue.
         RefinerPool<RefinerType::GhostField> densityGhosts_;
         RefinerPool<RefinerType::GhostField> bulkVelGhosts_;
 

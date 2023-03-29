@@ -4,6 +4,8 @@
 #include "quantity_communicator.hpp"
 
 #include <SAMRAI/hier/RefineOperator.h>
+// #include <SAMRAI/xfer/PatchLevelBorderFillPattern.h>
+#include "amr/data/field/patch_level_ghost_fill_pattern.hpp"
 
 #include <map>
 #include <memory>
@@ -17,6 +19,8 @@ namespace amr
 {
     enum class RefinerType {
         GhostField,
+        PatchGhostField,
+        LevelGhostField,
         InitField,
         InitInteriorPart,
         LevelBorderParticles,
@@ -124,6 +128,22 @@ namespace amr
                             algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
                                                  hierarchy),
                             levelNumber);
+                    }
+
+                    // the following schedule will only fill patch ghost nodes
+                    // not level border ghosts
+                    else if constexpr (Type == RefinerType::PatchGhostField)
+                    {
+                        refiner.add(algo, algo->createSchedule(level), levelNumber);
+                    }
+
+                    else if constexpr (Type == RefinerType::LevelGhostField)
+                    {
+                        refiner.add(algo,
+                                    algo->createSchedule(
+                                        std::make_shared<PatchLevelGhostFillPattern>(), level,
+                                        level->getNextCoarserHierarchyLevelNumber(), hierarchy),
+                                    levelNumber);
                     }
 
                     // this createSchedule overload is used to initialize fields.

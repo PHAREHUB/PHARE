@@ -62,6 +62,7 @@ set( SOURCES_INC
      data/field/field_variable_fill_pattern.hpp
    )
 set( SOURCES_CPP
+     data/field/patch_level_ghost_fill_pattern.cpp
      data/field/refine/linear_weighter.cpp
      resources_manager/amr_utils.cpp
      data/field/coarsening/field_coarsen.cpp
