@@ -660,9 +660,9 @@ namespace amr
             auto const& Bold = EM_old_.B;
 
             fillRefiners_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
-                          electricSharedNodes_, fieldNodeRefineOp_);
+                          electricSharedNodes_, EfieldNodeRefineOp_);
             fillRefiners_(info->ghostElectric, info->modelElectric, VecFieldDescriptor{Eold},
-                          electricGhosts_);
+                          electricGhosts_, EfieldRefineOp_);
 
             fillRefiners_(info->ghostMagnetic, info->modelMagnetic, VecFieldDescriptor{Bold},
                           magneticSharedNodes_, BfieldNodeRefineOp_);
@@ -939,6 +939,13 @@ namespace amr
             /*node_only*/ true)};
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> BfieldRefineOp_{std::make_shared<
+            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>()};
+
+        std::shared_ptr<SAMRAI::hier::RefineOperator> EfieldNodeRefineOp_{std::make_shared<
+            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>(
+            /*node_only*/ true)};
+
+        std::shared_ptr<SAMRAI::hier::RefineOperator> EfieldRefineOp_{std::make_shared<
             FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>()};
 
         // field data time op
