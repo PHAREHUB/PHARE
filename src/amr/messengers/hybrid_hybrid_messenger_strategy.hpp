@@ -6,6 +6,7 @@
 #include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
+#include "amr/data/field/refine/electric_field_refiner.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
 #include "amr/data/particles/refine/split.hpp"
@@ -216,8 +217,7 @@ namespace amr
 
         /**
          * @brief regrid performs the regriding communications for Hybrid to Hybrid messengers
-         *
-         * basically, all quantities that are in initialization refiners need to be regridded
+         , all quantities that are in initialization refiners need to be regridded
          */
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                     const int levelNumber,
@@ -623,8 +623,8 @@ namespace amr
             auto levelNumber = level.getLevelNumber();
 
             // call coarsning schedules...
-            // magnetoSynchronizers_.sync(levelNumber);
-            electroSynchronizers_.sync(levelNumber);
+            magnetoSynchronizers_.sync(levelNumber);
+            // electroSynchronizers_.sync(levelNumber);
             densitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
         }
@@ -674,9 +674,9 @@ namespace amr
                           magneticGhosts_, BfieldRefineOp_);
 
             fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
-                          currentSharedNodes_, fieldNodeRefineOp_);
+                          currentSharedNodes_, EfieldNodeRefineOp_);
             fillRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
-                          currentGhosts_);
+                          currentGhosts_, EfieldNodeRefineOp_);
 
             // no fillRefiners overload for a scalar so do it manually for the density
             // density and bulk velocity are OK on border node because it is obtained from
@@ -705,7 +705,7 @@ namespace amr
             fillRefiners_(info->initMagnetic, BfieldRefineOp_, magneticInit_,
                           makeKeys(info->initMagnetic));
 
-            fillRefiners_(info->initElectric, fieldRefineOp_, electricInit_,
+            fillRefiners_(info->initElectric, EfieldRefineOp_, electricInit_,
                           makeKeys(info->initElectric));
 
 
@@ -942,11 +942,11 @@ namespace amr
             FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>()};
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> EfieldNodeRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>(
+            FieldRefineOperator<GridLayoutT, FieldT, ElectricFieldRefiner<dimension>>>(
             /*node_only*/ true)};
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> EfieldRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>()};
+            FieldRefineOperator<GridLayoutT, FieldT, ElectricFieldRefiner<dimension>>>()};
 
         // field data time op
         std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> fieldTimeOp_{

@@ -156,7 +156,7 @@ private:
 
         SAMRAI::hier::BoxContainer overlap_boxes(fill_boxes);
         overlap_boxes.intersectBoxes(data_box);
-        overlap_boxes.removeIntersections(patch_box);
+        //        overlap_boxes.removeIntersections(patch_box);
         // overlap_boxes.removeIntersections(SAMRAI::hier::Box::grow(
         //     patch_box, SAMRAI::hier::IntVector::getOne(patch_box.getDim())));
 
