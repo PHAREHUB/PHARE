@@ -106,6 +106,7 @@ namespace solver
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
+            hybMessenger.prepareStep(hybridModel, level, initDataTime);
             hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
 
 

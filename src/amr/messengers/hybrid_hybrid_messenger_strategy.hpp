@@ -680,14 +680,14 @@ namespace amr
             fillStaticRefiners_(info->ghostElectric, EfieldNodeRefineOp_, electricSharedNodes_,
                                 makeKeys(info->ghostElectric));
 
-            fillStaticRefiners_(info->ghostElectric, EfieldNodeRefineOp_, electricGhosts_,
+            fillStaticRefiners_(info->ghostElectric, EfieldRefineOp_, electricGhosts_,
                                 makeKeys(info->ghostElectric));
 
             fillTimeRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
                               currentSharedNodes_, EfieldNodeRefineOp_);
 
             fillTimeRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
-                              currentGhosts_, EfieldNodeRefineOp_);
+                              currentGhosts_, EfieldRefineOp_);
 
             // no fillTimeRefiners overload for a scalar so do it manually for the density
             // density and bulk velocity are OK on border node because it is obtained from
