@@ -1,4 +1,3 @@
-
 #ifndef PHARE_HYBRID_MESSENGER_INFO_HPP
 #define PHARE_HYBRID_MESSENGER_INFO_HPP
 
@@ -41,7 +40,7 @@ namespace amr
         VecFieldDescriptor() = default;
 
         template<typename VecFieldT>
-        VecFieldDescriptor(VecFieldT const& v)
+        explicit VecFieldDescriptor(VecFieldT const& v)
             : vecName{v.name()}
             , xName{v.getComponentName(core::Component::X)}
             , yName{v.getComponentName(core::Component::Y)}
@@ -85,7 +84,7 @@ namespace amr
 
         //! name of the magnetic quantities that will be communicated by
         //! HybridMessenger::fillMagneticGhosts()
-        std::vector<VecFieldDescriptor> ghostMagnetic;
+        // std::vector<VecFieldDescriptor> ghostMagnetic;
 
 
         //! name of the electric quantities that will be communicated by the

@@ -1,6 +1,3 @@
-
-
-
 #ifndef PHARE_HYBRID_MODEL_HPP
 #define PHARE_HYBRID_MODEL_HPP
 
@@ -150,12 +147,12 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::fillMesse
     modelInfo.modelIonBulkVelocity = amr::VecFieldDescriptor{state.ions.velocity()};
     modelInfo.modelCurrent         = amr::VecFieldDescriptor{state.J};
 
-    modelInfo.initElectric.emplace_back(state.electromag.E);
-    modelInfo.initMagnetic.emplace_back(state.electromag.B);
+    modelInfo.initElectric.emplace_back(amr::VecFieldDescriptor{state.electromag.E});
+    modelInfo.initMagnetic.emplace_back(amr::VecFieldDescriptor{state.electromag.B});
 
     modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
-    modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
-    modelInfo.ghostCurrent.push_back(state.J);
+    // modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
+    modelInfo.ghostCurrent.push_back(amr::VecFieldDescriptor{state.J});
     modelInfo.ghostBulkVelocity.push_back(modelInfo.modelIonBulkVelocity);
 
 

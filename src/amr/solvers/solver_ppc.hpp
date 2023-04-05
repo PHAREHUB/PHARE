@@ -116,7 +116,7 @@ private:
                     double const currentTime, double const newTime);
 
 
-    void average_(level_t& level, HybridModel& model);
+    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser, double const newTime);
 
 
     void moveIons_(level_t& level, Ions& ions, Electromag& electromag, ResourcesManager& rm,
@@ -179,11 +179,12 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto& modelInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
     auto const& Epred = electromagPred_.E;
+    auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
-    modelInfo.ghostElectric.emplace_back(Epred);
-    modelInfo.ghostMagnetic.emplace_back(Bpred);
-    modelInfo.initMagnetic.emplace_back(Bpred);
+    modelInfo.ghostElectric.emplace_back(amr::VecFieldDescriptor{Eavg});
+    // modelInfo.ghostMagnetic.emplace_back(Bpred);
+    modelInfo.initMagnetic.emplace_back(amr::VecFieldDescriptor{Bpred});
 }
 
 
@@ -247,19 +248,20 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 
     predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
-
-    average_(*level, hybridModel);
+    average_(*level, hybridModel, fromCoarser, newTime);
 
     saveState_(*level, hybridState.ions, resourcesManager);
+
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::domain_only);
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
 
-    average_(*level, hybridModel);
+    average_(*level, hybridModel, fromCoarser, newTime);
 
     restoreState_(*level, hybridState.ions, resourcesManager);
+
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::all);
 
@@ -304,7 +306,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
             resourcesManager->setTime(Bpred, *patch, newTime);
         }
 
-        fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
+        // TODO ghost degage car on fait Faraday sur ghost box.
+        // fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
     }
 
 
@@ -351,7 +354,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
             resourcesManager->setTime(Epred, *patch, newTime);
         }
 
-        fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
+        // fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
     }
 }
 
@@ -387,7 +390,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
             resourcesManager->setTime(Bpred, *patch, newTime);
         }
 
-        fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
+        // fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
     }
 
 
@@ -432,7 +435,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
             resourcesManager->setTime(Epred, *patch, newTime);
         }
 
-        fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
+        // fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
     }
 }
 
@@ -467,7 +470,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
             resourcesManager->setTime(B, *patch, newTime);
         }
 
-        fromCoarser.fillMagneticGhosts(B, levelNumber, newTime);
+        // fromCoarser.fillMagneticGhosts(B, levelNumber, newTime);
     }
 
 
@@ -500,7 +503,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model)
+void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model,
+                                                 Messenger& fromCoarser, double const newTime)
 {
     PHARE_LOG_SCOPE("SolverPPC::average_");
 
@@ -521,6 +525,10 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
         PHARE::core::average(B, Bpred, Bavg);
         PHARE::core::average(E, Epred, Eavg);
     }
+    // the following will fill E on all edges of all ghost cells, including those
+    // on domain border. For level ghosts, electric field will be obtained from
+    // next coarser level E average
+    fromCoarser.fillElectricGhosts(Eavg, level.getLevelNumber(), newTime);
 }
 
 

@@ -37,7 +37,10 @@ namespace core
     constexpr bool has_physicalQuantity_v = has_physicalQuantity<T>::value;
 
 
-    constexpr int centering2int(QtyCentering c) { return static_cast<int>(c); }
+    constexpr int centering2int(QtyCentering c)
+    {
+        return static_cast<int>(c);
+    }
 
 
     template<std::size_t interpOrder>
@@ -1140,6 +1143,15 @@ namespace core
             evalOnBox_(field, fn, indices);
         }
 
+        template<typename Field, typename Fn>
+        void evalOnGhostBox(Field& field, Fn&& fn) const
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                return this->ghostStartToEnd(centering, direction);
+            };
+
+            evalOnBox_(field, fn, indices);
+        }
 
 
     private:

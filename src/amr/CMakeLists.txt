@@ -30,8 +30,9 @@ set( SOURCES_INC
      resources_manager/resources_manager.hpp
      resources_manager/resources_manager_utilities.hpp
      resources_manager/resources_guards.hpp
-     messengers/quantity_communicator.hpp
-     messengers/communicators.hpp
+     messengers/communicator.hpp
+     messengers/refiner_pool.hpp
+     messengers/synchronizer_pool.hpp
      messengers/messenger.hpp
      messengers/hybrid_messenger.hpp
      messengers/hybrid_messenger_strategy.hpp
