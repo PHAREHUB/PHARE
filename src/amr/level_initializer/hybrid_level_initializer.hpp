@@ -70,6 +70,7 @@ namespace solver
             {
                 if (isRegridding)
                 {
+                    std::cout << "reriding level " << levelNumber << "\n";
                     PHARE_LOG_START("hybridLevelInitializer::initialize : regriding block");
                     messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
                     PHARE_LOG_STOP("hybridLevelInitializer::initialize : regriding block");
