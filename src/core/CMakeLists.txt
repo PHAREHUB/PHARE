@@ -59,7 +59,7 @@ find_package(MPI)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES}
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES}
     PUBLIC ${PHARE_BASE_LIBS}
   )
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
