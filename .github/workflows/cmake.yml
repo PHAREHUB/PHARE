@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-latest] # macos-latest disabled because of https://github.com/PHAREHUB/PHARE/issues/732
 
     steps:
     - name: CCache
