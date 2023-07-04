@@ -532,11 +532,17 @@ def finest_part_data(hierarchy, time=None):
     return particles
 
 
-class PatchHierarchy:
+class PatchHierarchy(object):
     """is a collection of patch levels"""
 
     def __init__(
-        self, patch_levels, domain_box, refinement_ratio=2, time=0.0, data_files=None
+        self,
+        patch_levels,
+        domain_box,
+        refinement_ratio=2,
+        time=0.0,
+        data_files=None,
+        **kwargs,
     ):
         self.patch_levels = patch_levels
         self.ndim = len(domain_box.lower)
@@ -550,6 +556,29 @@ class PatchHierarchy:
 
         if data_files is not None:
             self.data_files.update(data_files)
+
+        if len(self.quantities()) > 1:
+            for qty in self.quantities():
+                if qty in self.__dict__:
+                    continue
+                first = True
+                for time, levels in self.time_hier.items():
+                    new_lvls = {}
+                    for ilvl, level in levels.items():
+                        patches = []
+                        for patch in level.patches:
+                            patches += [Patch({qty: patch.patch_datas[qty]})]
+                        new_lvls[ilvl] = PatchLevel(ilvl, patches)
+                    if first:
+                        self.__dict__[qty] = PatchHierarchy(
+                            new_lvls, self.domain_box, time=time
+                        )
+                        first = False
+                    else:
+                        self.qty.time_hier[time] = new_lvls
+
+    def __getitem__(self, qty):
+        return self.__dict__[qty]
 
     def _default_time(self):
         return self.times()[0]
