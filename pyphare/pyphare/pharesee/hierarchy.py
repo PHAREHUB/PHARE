@@ -242,6 +242,25 @@ class Patch:
     def __copy__(self):
         return self.copy()
 
+    def __call__(self, qty, **kwargs):
+        # take slice/slab of 1/2d array from 2/3d array
+        if "x" in kwargs and len(kwargs) == 1:
+            cut = kwargs["x"]
+            idim = 0
+        elif "y" in kwargs and len(kwargs) == 1:
+            cut = kwargs["y"]
+            idim = 1
+        else:
+            raise ValueError("need to specify either x or y cut coordinate")
+        pd = self.patch_datas[qty]
+        origin = pd.origin[idim]
+        idx = int((cut - origin) / pd.layout.dl[idim])
+        nbrGhosts = pd.ghosts_nbr[idim]
+        if idim == 0:
+            return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
+        elif idim == 1:
+            return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+
 
 class PatchLevel:
     """is a collection of patches"""
@@ -575,10 +594,79 @@ class PatchHierarchy(object):
                         )
                         first = False
                     else:
-                        self.qty.time_hier[time] = new_lvls
+                        self.qty.time_hier[time] = new_lvls  # pylint: disable=E1101
 
     def __getitem__(self, qty):
         return self.__dict__[qty]
+
+    def __call__(self, qty=None, **kwargs):
+        # take slice/slab of 1/2d array from 2/3d array
+        def cuts(c, coord):
+            return c > coord.min() and c < coord.max()
+
+        class Extractor:
+            def __init__(self):
+                self.exclusions = []
+
+            def extract(self, coord, data):
+                mask = coord == coord
+                for exclusion in self.exclusions:
+                    idx = np.where(
+                        (coord > exclusion[0] - 1e-6) & (coord < exclusion[1] + 1e-6)
+                    )[0]
+                    mask[idx] = False
+
+                self.exclusions += [(coord.min(), coord.max())]
+                return coord[mask], data[mask]
+
+        def domain_coords(patch, qty):
+            pd = patch.patch_datas[qty]
+            nbrGhosts = pd.ghosts_nbr[0]
+            return pd.x[nbrGhosts:-nbrGhosts], pd.y[nbrGhosts:-nbrGhosts]
+
+        if len(kwargs) < 1 or len(kwargs) > 3:
+            raise ValueError("Error - must provide coordinates")
+        if qty == None:
+            if len(self.quantities()) == 1:
+                qty = self.quantities()[0]
+            else:
+                raise ValueError(
+                    "The PatchHierarchy has several quantities but none is specified"
+                )
+
+        if len(kwargs) == 1:  # 1D cut
+            if "x" in kwargs:
+                c = kwargs["x"]
+                slice_dim = 1
+                cst_dim = 0
+            else:
+                c = kwargs["y"]
+                slice_dim = 0
+                cst_dim = 1
+
+        extractor = Extractor()
+        datas = []
+        coords = []
+        ilvls = list(self.levels().keys())[::-1]
+
+        for ilvl in ilvls:
+            lvl = self.patch_levels[ilvl]
+            for patch in lvl.patches:
+                slice_coord = domain_coords(patch, qty)[slice_dim]
+                cst_coord = domain_coords(patch, qty)[cst_dim]
+
+                if cuts(c, cst_coord):
+                    data = patch(qty, **kwargs)
+                    coord_keep, data_keep = extractor.extract(slice_coord, data)
+                    datas += [data_keep]
+                    coords += [coord_keep]
+
+        cut = np.concatenate(datas)
+        coords = np.concatenate(coords)
+        ic = np.argsort(coords)
+        coords = coords[ic]
+        cut = cut[ic]
+        return coords, cut
 
     def _default_time(self):
         return self.times()[0]
@@ -620,12 +708,43 @@ class PatchHierarchy(object):
         return it_is
 
     def _quantities(self):
-        return list(self.level(0).patches[0].patch_datas.keys())
+        for ilvl, lvl in self.levels().items():
+            if len(lvl.patches) > 0:
+                return list(self.level(ilvl).patches[0].patch_datas.keys())
+        return []
 
     def quantities(self):
         if not self.is_homogeneous():
             raise RuntimeError("Error - hierarchy is not homogeneous")
         return self._quantities()
+
+    def global_min(self, qty, **kwargs):
+        time = kwargs.get("time", self._default_time())
+        first = True
+        for ilvl, lvl in self.levels(time).items():
+            for patch in lvl.patches:
+                pd = patch.patch_datas[qty]
+                if first:
+                    m = pd.dataset[:].min()
+                    first = False
+                else:
+                    m = min(m, pd.dataset[:].min())
+
+        return m
+
+    def global_max(self, qty, **kwargs):
+        time = kwargs.get("time", self._default_time())
+        first = True
+        for ilvl, lvl in self.levels(time).items():
+            for patch in lvl.patches:
+                pd = patch.patch_datas[qty]
+                if first:
+                    m = pd.dataset[:].max()
+                    first = False
+                else:
+                    m = max(m, pd.dataset[:].max())
+
+        return m
 
     def refined_domain_box(self, level_number):
         """
@@ -788,7 +907,10 @@ class PatchHierarchy(object):
 
         time = kwargs.get("time", self._default_time())
         usr_lvls = kwargs.get("levels", self.levelNbrs(time))
-        qty = kwargs.get("qty", None)
+        default_qty = None
+        if len(self.quantities()) == 1:
+            default_qty = self.quantities()[0]
+        qty = kwargs.get("qty", default_qty)
 
         if "ax" not in kwargs:
             fig, ax = plt.subplots()
@@ -796,6 +918,8 @@ class PatchHierarchy(object):
             ax = kwargs["ax"]
             fig = ax.figure
 
+        glob_min = self.global_min(qty)
+        glob_max = self.global_max(qty)
         # assumes max 5 levels...
         patchcolors = {ilvl: "k" for ilvl in usr_lvls}
         patchcolors = kwargs.get("patchcolors", patchcolors)
@@ -839,8 +963,8 @@ class PatchHierarchy(object):
                     y,
                     data.T,
                     cmap=kwargs.get("cmap", "Spectral_r"),
-                    vmin=kwargs.get("vmin", None),
-                    vmax=kwargs.get("vmax", None),
+                    vmin=kwargs.get("vmin", glob_min - 1e-6),
+                    vmax=kwargs.get("vmax", glob_max + 1e-6),
                 )
 
                 if kwargs.get("plot_patches", False) is True:
@@ -1220,6 +1344,9 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
             lvl_cell_width = root_cell_width / refinement_ratio**ilvl
             patches = {}
 
+            if ilvl not in patches:
+                patches[ilvl] = []
+
             for pkey in h5_patch_lvl_grp.keys():
 
                 h5_patch_grp = h5_patch_lvl_grp[pkey]
@@ -1228,9 +1355,6 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                     patch_datas = {}
                     layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
                     add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
-
-                    if ilvl not in patches:
-                        patches[ilvl] = []
 
                     patches[ilvl].append(
                         Patch(patch_datas, h5_patch_grp.name.split("/")[-1])
