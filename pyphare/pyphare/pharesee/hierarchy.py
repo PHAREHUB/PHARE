@@ -15,6 +15,7 @@ class PatchData:
     base class for FieldData and ParticleData
     this class just factors common geometrical properties
     """
+
     def __init__(self, layout, quantity):
         """
         :param layout: a GridLayout representing the domain on which the data
@@ -22,15 +23,13 @@ class PatchData:
         :param quantity: ['field', 'particle']
         """
         self.quantity = quantity
-        self.box      = layout.box
-        self.origin   = layout.origin
-        self.layout   = layout
-
+        self.box = layout.box
+        self.origin = layout.origin
+        self.layout = layout
 
     def __deepcopy__(self, memo):
-        no_copy_keys = ["dataset"] # do not copy these things
+        no_copy_keys = ["dataset"]  # do not copy these things
         return deep_copy(self, memo, no_copy_keys)
-
 
 
 class FieldData(PatchData):
@@ -41,37 +40,55 @@ class FieldData(PatchData):
 
     @property
     def x(self):
-        withGhosts= self.field_name != "tags"
+        withGhosts = self.field_name != "tags"
         if self._x is None:
-            self._x = self.layout.yeeCoordsFor(self.field_name, "x", withGhosts=withGhosts, centering=self.centerings[0])
+            self._x = self.layout.yeeCoordsFor(
+                self.field_name,
+                "x",
+                withGhosts=withGhosts,
+                centering=self.centerings[0],
+            )
         return self._x
 
     @property
     def y(self):
         withGhosts = self.field_name != "tags"
         if self._y is None:
-            self._y = self.layout.yeeCoordsFor(self.field_name, "y", withGhosts=withGhosts, centering=self.centerings[1])
+            self._y = self.layout.yeeCoordsFor(
+                self.field_name,
+                "y",
+                withGhosts=withGhosts,
+                centering=self.centerings[1],
+            )
         return self._y
 
     @property
     def z(self):
         withGhosts = self.field_name != "tags"
         if self._z is None:
-            self._z = self.layout.yeeCoordsFor(self.field_name, "z", withGhosts=withGhosts, centering=self.centerings[2])
+            self._z = self.layout.yeeCoordsFor(
+                self.field_name,
+                "z",
+                withGhosts=withGhosts,
+                centering=self.centerings[2],
+            )
         return self._z
 
     def primal_directions(self):
         return self.size - self.ghost_box.shape
 
     def __str__(self):
-        return "FieldData: (box=({}, {}), key={})".format(self.layout.box, self.layout.box.shape, self.field_name)
+        return "FieldData: (box=({}, {}), key={})".format(
+            self.layout.box, self.layout.box.shape, self.field_name
+        )
+
     def __repr__(self):
         return self.__str__()
 
     def select(self, box):
         """
-          return view of internal data based on overlap of input box
-             returns a view +1 in size in primal directions
+        return view of internal data based on overlap of input box
+           returns a view +1 in size in primal directions
         """
         assert isinstance(box, Box) and box.ndim == self.box.ndim
 
@@ -89,7 +106,7 @@ class FieldData(PatchData):
             if box.ndim == 1:
                 return self.dataset[lower[0] : upper[0] + 1]
             if box.ndim == 2:
-                return self.dataset[lower[0]:upper[0] + 1 , lower[1] : upper[1] + 1]
+                return self.dataset[lower[0] : upper[0] + 1, lower[1] : upper[1] + 1]
         return np.array([])
 
     def __getitem__(self, box):
@@ -101,7 +118,7 @@ class FieldData(PatchData):
         :param field_name: the name of the field (e.g. "Bx")
         :param data: the dataset from which data can be accessed
         """
-        super().__init__(layout, 'field')
+        super().__init__(layout, "field")
         self._x = None
         self._y = None
         self._z = None
@@ -114,18 +131,24 @@ class FieldData(PatchData):
         self.ghosts_nbr = np.zeros(self.ndim, dtype=int)
 
         if field_name in layout.centering["X"]:
-            directions = ["X", "Y", "Z"][:layout.box.ndim] # drop unused directions
-            self.centerings = [layout.qtyCentering(field_name, direction) for direction in directions]
+            directions = ["X", "Y", "Z"][: layout.box.ndim]  # drop unused directions
+            self.centerings = [
+                layout.qtyCentering(field_name, direction) for direction in directions
+            ]
         elif "centering" in kwargs:
             if isinstance(kwargs["centering"], list):
                 self.centerings = kwargs["centering"]
                 assert len(self.centerings) == self.ndim
             else:
                 if self.ndim != 1:
-                    raise ValueError("FieldData invalid dimenion for centering argument, expected list for dim > 1")
+                    raise ValueError(
+                        "FieldData invalid dimenion for centering argument, expected list for dim > 1"
+                    )
                 self.centerings = [kwargs["centering"]]
         else:
-            raise ValueError("centering not specified and cannot be inferred from field name")
+            raise ValueError(
+                "centering not specified and cannot be inferred from field name"
+            )
 
         if self.field_name != "tags":
             for i, centering in enumerate(self.centerings):
@@ -141,23 +164,22 @@ class FieldData(PatchData):
                 self.size[i] = self.ghost_box.shape[i] + 1
             else:
                 self.size[i] = self.ghost_box.shape[i]
-                self.offset[i] = 0.5*self.dl[i]
+                self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
-
-
 
 
 class ParticleData(PatchData):
     """
     Concrete type of PatchData representing particles in a region
     """
+
     def __init__(self, layout, data, pop_name):
         """
         :param layout: A GridLayout object representing the domain in which particles are
         :param data: dataset containing particles
         """
-        super().__init__(layout, 'particles')
+        super().__init__(layout, "particles")
         self.dataset = data
         self.pop_name = pop_name
         self.name = pop_name
@@ -169,24 +191,21 @@ class ParticleData(PatchData):
         elif layout.interp_order == 2 or layout.interp_order == 3:
             self.ghosts_nbr = np.array([2] * layout.box.ndim)
         else:
-            raise RuntimeError("invalid interpolation order {}".format(layout.interp_order))
+            raise RuntimeError(
+                "invalid interpolation order {}".format(layout.interp_order)
+            )
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
         assert (self.box.lower == self.ghost_box.lower + self.ghosts_nbr).all()
 
-
     def select(self, box):
         return self.dataset[box]
 
-
     def __getitem__(self, box):
-            return self.select(box)
-
+        return self.select(box)
 
     def size(self):
         return self.dataset.size()
-
-
 
 
 class Patch:
@@ -200,7 +219,7 @@ class Patch:
         these are assumed to "belong" to the Patch so to
         share the same origin, mesh size and box.
         """
-        pdata0 = list(patch_datas.values())[0] #0 represents all others
+        pdata0 = list(patch_datas.values())[0]  # 0 represents all others
         self.layout = pdata0.layout
         self.box = pdata0.layout.box
         self.origin = pdata0.layout.origin
@@ -208,25 +227,24 @@ class Patch:
         self.patch_datas = patch_datas
         self.id = patch_id
 
-
     def __str__(self):
         return f"Patch: box( {self.box}), id({self.id})"
+
     def __repr__(self):
         return self.__str__()
-
 
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""
         from copy import deepcopy
+
         return deepcopy(self)
 
     def __copy__(self):
         return self.copy()
 
 
-
 class PatchLevel:
-    """is a collection of patches """
+    """is a collection of patches"""
 
     def __init__(self, lvl_nbr, patches):
         self.level_number = lvl_nbr
@@ -237,17 +255,13 @@ class PatchLevel:
 
     def level_range(self):
         name = list(self.patches[0].patch_datas.keys())[0]
-        return min([patch.patch_datas[name].x.min() for patch in self.patches]),\
-                max([patch.patch_datas[name].x.max() for patch in self.patches])
-
-
+        return min([patch.patch_datas[name].x.min() for patch in self.patches]), max(
+            [patch.patch_datas[name].x.max() for patch in self.patches]
+        )
 
 
 def are_adjacent(lower, upper, atol=1e-6):
-    return np.abs(upper[0]-lower[-1]) < atol
-
-
-
+    return np.abs(upper[0] - lower[-1]) < atol
 
 
 def overlap_mask_1d(x, dl, level, qty):
@@ -261,21 +275,21 @@ def overlap_mask_1d(x, dl, level, qty):
     :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
     """
 
-    is_overlaped = np.ones(x.shape[0], dtype=bool)*False
+    is_overlaped = np.ones(x.shape[0], dtype=bool) * False
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
         ghosts_nbr = pdata.ghosts_nbr
 
-        fine_x = pdata.x[ghosts_nbr[0]-1:-ghosts_nbr[0]+1]
+        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
 
         fine_dl = pdata.dl
         local_dl = dl
 
-        if (fine_dl[0] < local_dl[0]):
+        if fine_dl[0] < local_dl[0]:
             xmin, xmax = fine_x.min(), fine_x.max()
 
-            overlaped_idx = np.where( (x > xmin) & (x < xmax) )[0]
+            overlaped_idx = np.where((x > xmin) & (x < xmax))[0]
 
             is_overlaped[overlaped_idx] = True
 
@@ -283,8 +297,6 @@ def overlap_mask_1d(x, dl, level, qty):
             raise ValueError("level needs to have finer grid resolution than that of x")
 
     return is_overlaped
-
-
 
 
 def overlap_mask_2d(x, y, dl, level, qty):
@@ -300,14 +312,14 @@ def overlap_mask_2d(x, y, dl, level, qty):
     :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
     """
 
-    is_overlaped = np.ones([x.shape[0]*y.shape[0]], dtype=bool)*False
+    is_overlaped = np.ones([x.shape[0] * y.shape[0]], dtype=bool) * False
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
         ghosts_nbr = pdata.ghosts_nbr
 
-        fine_x = pdata.x[ghosts_nbr[0]-1:-ghosts_nbr[0]+1]
-        fine_y = pdata.y[ghosts_nbr[1]-1:-ghosts_nbr[1]+1]
+        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
+        fine_y = pdata.y[ghosts_nbr[1] - 1 : -ghosts_nbr[1] + 1]
 
         fine_dl = pdata.dl
         local_dl = dl
@@ -316,21 +328,22 @@ def overlap_mask_2d(x, y, dl, level, qty):
             xmin, xmax = fine_x.min(), fine_x.max()
             ymin, ymax = fine_y.min(), fine_y.max()
 
-            xv, yv = np.meshgrid(x, y, indexing='ij')
+            xv, yv = np.meshgrid(x, y, indexing="ij")
             xf = xv.flatten()
             yf = yv.flatten()
 
-            overlaped_idx = np.where( (xf > xmin) & (xf < xmax) &\
-                                      (yf > ymin) & (yf < ymax) )[0]
+            overlaped_idx = np.where(
+                (xf > xmin) & (xf < xmax) & (yf > ymin) & (yf < ymax)
+            )[0]
 
             is_overlaped[overlaped_idx] = True
 
         else:
-            raise ValueError("level needs to have finer grid resolution than that of x or y")
+            raise ValueError(
+                "level needs to have finer grid resolution than that of x or y"
+            )
 
     return is_overlaped
-
-
 
 
 def flat_finest_field(hierarchy, qty, time=None):
@@ -356,13 +369,11 @@ def flat_finest_field(hierarchy, qty, time=None):
         raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
 
 
-
-
 def flat_finest_field_1d(hierarchy, qty, time=None):
 
     lvl = hierarchy.levels(time)
 
-    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
@@ -372,11 +383,11 @@ def flat_finest_field_1d(hierarchy, qty, time=None):
             # all but 1 ghost nodes are removed in order to limit
             # the overlapping, but to keep enough point to avoid
             # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr-1
+            needed_points = pdata.ghosts_nbr - 1
 
             # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0]:-needed_points[0]]
-            x = pdata.x[needed_points[0]:-needed_points[0]]
+            data = pdata.dataset[needed_points[0] : -needed_points[0]]
+            x = pdata.x[needed_points[0] : -needed_points[0]]
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -387,8 +398,9 @@ def flat_finest_field_1d(hierarchy, qty, time=None):
                     final_x = np.concatenate((final_x, x))
 
             else:
-                is_overlaped = overlap_mask_1d(x, pdata.dl,\
-                               hierarchy.level(ilvl+1, time), qty)
+                is_overlaped = overlap_mask_1d(
+                    x, pdata.dl, hierarchy.level(ilvl + 1, time), qty
+                )
 
                 finest_data = data[~is_overlaped]
                 finest_x = x[~is_overlaped]
@@ -399,13 +411,11 @@ def flat_finest_field_1d(hierarchy, qty, time=None):
     return final_data, final_x
 
 
-
-
 def flat_finest_field_2d(hierarchy, qty, time=None):
 
     lvl = hierarchy.levels(time)
 
-    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
@@ -415,15 +425,17 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
             # all but 1 ghost nodes are removed in order to limit
             # the overlapping, but to keep enough point to avoid
             # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr-1
+            needed_points = pdata.ghosts_nbr - 1
 
             # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0]:-needed_points[0],\
-                                 needed_points[1]:-needed_points[1]]
-            x = pdata.x[needed_points[0]:-needed_points[0]]
-            y = pdata.y[needed_points[1]:-needed_points[1]]
+            data = pdata.dataset[
+                needed_points[0] : -needed_points[0],
+                needed_points[1] : -needed_points[1],
+            ]
+            x = pdata.x[needed_points[0] : -needed_points[0]]
+            y = pdata.y[needed_points[1] : -needed_points[1]]
 
-            xv, yv = np.meshgrid(x, y, indexing='ij')
+            xv, yv = np.meshgrid(x, y, indexing="ij")
 
             data_f = data.flatten()
             xv_f = xv.flatten()
@@ -440,8 +452,9 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                     tmp_y = np.concatenate((tmp_y, yv_f))
 
             else:
-                is_overlaped = overlap_mask_2d(x, y, pdata.dl,\
-                               hierarchy.level(ilvl+1, time), qty)
+                is_overlaped = overlap_mask_2d(
+                    x, y, pdata.dl, hierarchy.level(ilvl + 1, time), qty
+                )
 
                 finest_data = data_f[~is_overlaped]
                 finest_x = xv_f[~is_overlaped]
@@ -454,8 +467,6 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
     final_xy = np.stack((tmp_x, tmp_y), axis=1)
 
     return final_data, final_xy
-
-
 
 
 def finest_part_data(hierarchy, time=None):
@@ -471,7 +482,7 @@ def finest_part_data(hierarchy, time=None):
     # we are going to return a dict {popname : Particles}
     # we prepare it with population names
     aPatch = hierarchy.level(0, time=time).patches[0]
-    particles = {popname:None for popname in aPatch.patch_datas.keys()}
+    particles = {popname: None for popname in aPatch.patch_datas.keys()}
 
     # our strategy is to explore the hierarchy from the finest
     # level to the coarsest. at Each level we keep only particles
@@ -479,9 +490,9 @@ def finest_part_data(hierarchy, time=None):
 
     # this dict keeps boxes for patches at each level
     # each level will thus need this dict to see next finer boxes
-    lvlPatchBoxes = {ilvl:[] for ilvl in range(hierarchy.finest_level(time)+1)}
+    lvlPatchBoxes = {ilvl: [] for ilvl in range(hierarchy.finest_level(time) + 1)}
 
-    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         plvl = hierarchy.level(ilvl, time=time)
         for ip, patch in enumerate(plvl.patches):
             lvlPatchBoxes[ilvl].append(patch.box)
@@ -502,13 +513,15 @@ def finest_part_data(hierarchy, time=None):
                     icells = pdata.dataset.iCells
                     parts = deepcopy(pdata.dataset)
                     create = True
-                    for finerBox in lvlPatchBoxes[ilvl+1]:
+                    for finerBox in lvlPatchBoxes[ilvl + 1]:
                         coarseFinerBox = boxm.coarsen(finerBox, refinement_ratio)
-                        within = np.where((icells >= coarseFinerBox.lower[0]) &\
-                                                 (icells <= coarseFinerBox.upper[0]))[0]
+                        within = np.where(
+                            (icells >= coarseFinerBox.lower[0])
+                            & (icells <= coarseFinerBox.upper[0])
+                        )[0]
                         if create:
                             toRemove = within
-                            create=False
+                            create = False
                         else:
                             toRemove = np.concatenate((toRemove, within))
 
@@ -519,17 +532,16 @@ def finest_part_data(hierarchy, time=None):
     return particles
 
 
-
-
 class PatchHierarchy:
-    """is a collection of patch levels """
+    """is a collection of patch levels"""
 
-
-    def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
+    def __init__(
+        self, patch_levels, domain_box, refinement_ratio=2, time=0.0, data_files=None
+    ):
         self.patch_levels = patch_levels
         self.ndim = len(domain_box.lower)
         self.time_hier = {}
-        self.time_hier.update({self.format_timestamp(time):patch_levels})
+        self.time_hier.update({self.format_timestamp(time): patch_levels})
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
@@ -544,7 +556,7 @@ class PatchHierarchy:
 
     def finest_level(self, time=None):
         if time is None:
-            time  = self._default_time()
+            time = self._default_time()
         return max(list(self.levels(time=time).keys()))
 
     def levels(self, time=None):
@@ -554,7 +566,6 @@ class PatchHierarchy:
 
     def level(self, level_number, time=None):
         return self.levels(time)[level_number]
-
 
     def levelNbr(self, time=None):
         if time is None:
@@ -591,8 +602,8 @@ class PatchHierarchy:
         """
         returns the domain box refined for a given level number
         """
-        assert (level_number >= 0)
-        return boxm.refine(self.domain_box, self.refinement_ratio ** level_number)
+        assert level_number >= 0
+        return boxm.refine(self.domain_box, self.refinement_ratio**level_number)
 
     def format_timestamp(self, timestamp):
         if isinstance(timestamp, str):
@@ -612,8 +623,13 @@ class PatchHierarchy:
                 for ip, patch in enumerate(lvl.patches):
                     for qty_name, pd in patch.patch_datas.items():
                         pdstr = "    P{ip} {type} {pdname} box is {box} and ghost box is {gbox}"
-                        s = s + pdstr.format(ip=ip, type=type(pd.dataset), pdname=qty_name,
-                                             box=patch.box, gbox=pd.ghost_box)
+                        s = s + pdstr.format(
+                            ip=ip,
+                            type=type(pd.dataset),
+                            pdname=qty_name,
+                            box=patch.box,
+                            gbox=pd.ghost_box,
+                        )
                         s = s + "\n"
         return s
 
@@ -622,7 +638,7 @@ class PatchHierarchy:
 
     def plot_patches(self, save=False):
         fig, ax = plt.subplots(figsize=(10, 3))
-        for ilvl, lvl in self.levels(0.).items():
+        for ilvl, lvl in self.levels(0.0).items():
             lvl_offset = ilvl * 0.1
             for patch in lvl.patches:
                 dx = patch.dl[0]
@@ -637,11 +653,14 @@ class PatchHierarchy:
 
     def box_to_Rectangle(self, box):
         from matplotlib.patches import Rectangle
+
         return Rectangle(box.lower, *box.shape)
 
     def plot_2d_patches(self, ilvl, collections, **kwargs):
-        if isinstance(collections, list) and all([isinstance(el, Box) for el in collections]):
-            collections = [{"boxes" : collections}]
+        if isinstance(collections, list) and all(
+            [isinstance(el, Box) for el in collections]
+        ):
+            collections = [{"boxes": collections}]
 
         from matplotlib.collections import PatchCollection
 
@@ -652,18 +671,20 @@ class PatchHierarchy:
 
         for collection in collections:
             facecolor = collection.get("facecolor", "none")
-            edgecolor = collection.get("edgecolor", 'purple')
+            edgecolor = collection.get("edgecolor", "purple")
             alpha = collection.get("alpha", 1)
             rects = [self.box_to_Rectangle(box) for box in collection["boxes"]]
 
-            ax.add_collection(PatchCollection(rects,
-                              facecolor=facecolor,
-                              alpha=alpha,
-                              edgecolor=edgecolor))
+            ax.add_collection(
+                PatchCollection(
+                    rects, facecolor=facecolor, alpha=alpha, edgecolor=edgecolor
+                )
+            )
 
         if "title" in kwargs:
             from textwrap import wrap
-            xfigsize = int(fig.get_size_inches()[0] * 10) # 10 characters per inch
+
+            xfigsize = int(fig.get_size_inches()[0] * 10)  # 10 characters per inch
             ax.set_title("\n".join(wrap(kwargs["title"], xfigsize)))
 
         major_ticks = np.arange(mi - 5, ma + 5 + 5, 5)
@@ -674,7 +695,7 @@ class PatchHierarchy:
         ax.set_xticks(minor_ticks, minor=True)
         ax.set_yticks(minor_ticks, minor=True)
 
-        ax.grid(which='both')
+        ax.grid(which="both")
 
         return fig
 
@@ -682,8 +703,8 @@ class PatchHierarchy:
         """
         plot
         """
-        usr_lvls = kwargs.get("levels",(0,))
-        qty = kwargs.get("qty",None)
+        usr_lvls = kwargs.get("levels", (0,))
+        qty = kwargs.get("qty", None)
         time = kwargs.get("time", self.times()[0])
 
         if "ax" not in kwargs:
@@ -691,7 +712,7 @@ class PatchHierarchy:
         else:
             ax = kwargs["ax"]
             fig = ax.figure
-        for lvl_nbr,level in self.levels(time).items():
+        for lvl_nbr, level in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
                 continue
             for ip, patch in enumerate(level.patches):
@@ -699,27 +720,27 @@ class PatchHierarchy:
                 pdata_names = list(patch.patch_datas.keys())
                 if qty is None and pdata_nbr != 1:
                     multiple = "multiple quantities in patch, "
-                    err = multiple + "please specify a quantity in " + " ".join(pdata_names)
+                    err = (
+                        multiple
+                        + "please specify a quantity in "
+                        + " ".join(pdata_names)
+                    )
                     raise ValueError(err)
                 if qty is None:
                     qty = pdata_names[0]
 
-                layout  = patch.patch_datas[qty].layout
+                layout = patch.patch_datas[qty].layout
                 nbrGhosts = layout.nbrGhostFor(qty)
                 val = patch.patch_datas[qty][patch.box]
-                x   = patch.patch_datas[qty].x[nbrGhosts[0]:-nbrGhosts[0]]
-                label = "L{level}P{patch}".format(level=lvl_nbr,patch=ip)
-                marker=kwargs.get("marker", "")
-                ls = kwargs.get("ls","--")
+                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
+                marker = kwargs.get("marker", "")
+                ls = kwargs.get("ls", "--")
                 color = kwargs.get("color", "k")
-                ax.plot(x, val,
-                        label=label,
-                        marker=marker,
-                        ls=ls,
-                        color=color)
+                ax.plot(x, val, label=label, marker=marker, ls=ls, color=color)
 
-        ax.set_title(kwargs.get("title",""))
-        ax.set_xlabel(kwargs.get("xlabel","x"))
+        ax.set_title(kwargs.get("title", ""))
+        ax.set_xlabel(kwargs.get("xlabel", "x"))
         ax.set_ylabel(kwargs.get("ylabel", qty))
         if "xlim" in kwargs:
             ax.set_xlim(kwargs["xlim"])
@@ -732,12 +753,12 @@ class PatchHierarchy:
         if "filename" in kwargs:
             fig.savefig(kwargs["filename"])
 
-
     def plot2d(self, **kwargs):
         from matplotlib.patches import Rectangle
         from mpl_toolkits.axes_grid1 import make_axes_locatable
+
         time = kwargs.get("time", self._default_time())
-        usr_lvls = kwargs.get("levels",self.levelNbrs(time))
+        usr_lvls = kwargs.get("levels", self.levelNbrs(time))
         qty = kwargs.get("qty", None)
 
         if "ax" not in kwargs:
@@ -747,21 +768,21 @@ class PatchHierarchy:
             fig = ax.figure
 
         # assumes max 5 levels...
-        patchcolors = {ilvl:"k" for ilvl in usr_lvls}
+        patchcolors = {ilvl: "k" for ilvl in usr_lvls}
         patchcolors = kwargs.get("patchcolors", patchcolors)
-        if not isinstance(patchcolors,dict):
+        if not isinstance(patchcolors, dict):
             patchcolors = dict(zip(usr_lvls, patchcolors))
 
-        linewidths = {ilvl:1 for ilvl in usr_lvls}
+        linewidths = {ilvl: 1 for ilvl in usr_lvls}
         linewidths = kwargs.get("lw", linewidths)
-        if not isinstance(linewidths,dict):
+        if not isinstance(linewidths, dict):
             linewidths = dict(zip(usr_lvls, linewidths))
-        linestyles = {ilvl:'-' for ilvl in usr_lvls}
+        linestyles = {ilvl: "-" for ilvl in usr_lvls}
         linestyles = kwargs.get("ls", linestyles)
-        if not isinstance(linestyles,dict):
+        if not isinstance(linestyles, dict):
             linestyles = dict(zip(usr_lvls, linestyles))
 
-        for lvl_nbr, lvl  in self.levels(time).items():
+        for lvl_nbr, lvl in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
                 continue
             for patch in self.level(lvl_nbr, time).patches:
@@ -772,30 +793,38 @@ class PatchHierarchy:
                 y = pdat.y
 
                 # if nbrGhosts is 0, we cannot do array[0,-0]
-                if np.all(nbrGhosts==np.zeros_like(nbrGhosts)):
+                if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
                     x = np.copy(x)
                     y = np.copy(y)
                 else:
                     data = pdat[patch.box]
-                    x = np.copy(x[nbrGhosts[0]:-nbrGhosts[0]])
-                    y = np.copy(y[nbrGhosts[1]:-nbrGhosts[1]])
-                dx,dy = pdat.layout.dl
-                x -= dx*0.5
-                y -= dy*0.5
-                x = np.append(x, x[-1]+dx)
-                y = np.append(y, y[-1]+dy)
-                im = ax.pcolormesh(x, y, data.T,
-                                   cmap=kwargs.get("cmap","Spectral_r"),
-                                   vmin=kwargs.get("vmin", None),
-                                   vmax=kwargs.get("vmax", None))
+                    x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
+                    y = np.copy(y[nbrGhosts[1] : -nbrGhosts[1]])
+                dx, dy = pdat.layout.dl
+                x -= dx * 0.5
+                y -= dy * 0.5
+                x = np.append(x, x[-1] + dx)
+                y = np.append(y, y[-1] + dy)
+                im = ax.pcolormesh(
+                    x,
+                    y,
+                    data.T,
+                    cmap=kwargs.get("cmap", "Spectral_r"),
+                    vmin=kwargs.get("vmin", None),
+                    vmax=kwargs.get("vmax", None),
+                )
 
                 if kwargs.get("plot_patches", False) is True:
-                    r = Rectangle((patch.box.lower[0]*dx,
-                                   patch.box.lower[1]*dy),
-                                  patch.box.shape[0]*dx,
-                                  patch.box.shape[1]*dy,
-                                  fc="none", ec=patchcolors[lvl_nbr],
-                                  alpha=0.4, lw=linewidths[lvl_nbr],ls=linestyles[lvl_nbr])
+                    r = Rectangle(
+                        (patch.box.lower[0] * dx, patch.box.lower[1] * dy),
+                        patch.box.shape[0] * dx,
+                        patch.box.shape[1] * dy,
+                        fc="none",
+                        ec=patchcolors[lvl_nbr],
+                        alpha=0.4,
+                        lw=linewidths[lvl_nbr],
+                        ls=linestyles[lvl_nbr],
+                    )
                     ax.add_patch(r)
 
         ax.set_aspect(kwargs.get("aspect", "equal"))
@@ -809,22 +838,21 @@ class PatchHierarchy:
 
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.08)
-        plt.colorbar( im, ax=ax, cax=cax )
+        plt.colorbar(im, ax=ax, cax=cax)
 
         if kwargs.get("legend", None) is not None:
             ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(kwargs["filename"], dpi=kwargs.get("dpi",200))
+            fig.savefig(kwargs["filename"], dpi=kwargs.get("dpi", 200))
 
-        return fig,ax
+        return fig, ax
 
     def plot(self, **kwargs):
         if self.ndim == 1:
             return self.plot1d(**kwargs)
-        elif self.ndim==2:
+        elif self.ndim == 2:
             return self.plot2d(**kwargs)
-
 
     def dist_plot(self, **kwargs):
         """
@@ -833,17 +861,18 @@ class PatchHierarchy:
         import copy
 
         from .plotting import dist_plot as dp
-        usr_lvls = kwargs.get("levels",(0,))
+
+        usr_lvls = kwargs.get("levels", (0,))
         finest = kwargs.get("finest", False)
-        pops = kwargs.get("pop",[])
+        pops = kwargs.get("pop", [])
         time = kwargs.get("time", self.times()[0])
         axis = kwargs.get("axis", ("Vx", "Vy"))
-        all_pops = list(self.level(0,time).patches[0].patch_datas.keys())
+        all_pops = list(self.level(0, time).patches[0].patch_datas.keys())
 
         vmin = kwargs.get("vmin", -2)
         vmax = kwargs.get("vmax", 2)
         dv = kwargs.get("dv", 0.05)
-        vbins = vmin + dv*np.arange(int((vmax-vmin)/dv))
+        vbins = vmin + dv * np.arange(int((vmax - vmin) / dv))
 
         if finest:
             final = finest_part_data(self)
@@ -851,16 +880,16 @@ class PatchHierarchy:
                 xbins = amr_grid(self, time)
                 bins = (xbins, vbins)
             else:
-                bins=(vbins, vbins)
+                bins = (vbins, vbins)
             kwargs["bins"] = bins
 
         else:
-            final = {pop:None for pop in all_pops}
-            for lvl_nbr,level in self.levels(time).items():
+            final = {pop: None for pop in all_pops}
+            for lvl_nbr, level in self.levels(time).items():
                 if lvl_nbr not in usr_lvls:
                     continue
                 for ip, patch in enumerate(level.patches):
-                    if len(pops)==0:
+                    if len(pops) == 0:
                         pops = list(patch.patch_datas.keys())
 
                     for pop in pops:
@@ -879,20 +908,17 @@ class PatchHierarchy:
         return final, dp(final, **kwargs)
 
 
-
-
 def amr_grid(hierarchy, time):
     """returns a non-uniform contiguous primal grid
-       associated to the given hierarchy
+    associated to the given hierarchy
     """
-    lvlPatchBoxes = {ilvl:[] for ilvl in range(hierarchy.finest_level()+1)}
-    finalCells = {ilvl:None for ilvl in range(hierarchy.finest_level()+1)}
+    lvlPatchBoxes = {ilvl: [] for ilvl in range(hierarchy.finest_level() + 1)}
+    finalCells = {ilvl: None for ilvl in range(hierarchy.finest_level() + 1)}
     lvl = hierarchy.levels(time)
 
-    for ilvl in range(hierarchy.finest_level(time)+1)[::-1]:
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
 
-        sorted_patches = sorted(lvl[ilvl].patches,
-                                key= lambda p:p.layout.box.lower[0])
+        sorted_patches = sorted(lvl[ilvl].patches, key=lambda p: p.layout.box.lower[0])
 
         for ip, patch in enumerate(sorted_patches):
             box = patch.layout.box
@@ -910,77 +936,76 @@ def amr_grid(hierarchy, time):
             # other than L0 because the last primal node of the last patch
             # of L_i is the first primal node of a L_{i-1} node, so including it
             # would also mean adding a duplicate.
-            last = 1 if ilvl==0 and ip == len(sorted_patches)-1 else 0
-            cells = np.arange(box.lower[0], box.upper[0]+1 + last)
+            last = 1 if ilvl == 0 and ip == len(sorted_patches) - 1 else 0
+            cells = np.arange(box.lower[0], box.upper[0] + 1 + last)
 
             # finest level has no next finer so we take all cells
             if ilvl == hierarchy.finest_level(time):
                 if finalCells[ilvl] is None:
                     finalCells[ilvl] = cells
                 else:
-                    finalCells[ilvl] = np.concatenate((finalCells[ilvl],cells))
+                    finalCells[ilvl] = np.concatenate((finalCells[ilvl], cells))
 
             else:
                 # on other levels
                 # we take only grids not overlaped by next finer
-                coarsenedNextFinerBoxes = [boxm.coarsen(b, refinement_ratio) for b in lvlPatchBoxes[ilvl+1]]
+                coarsenedNextFinerBoxes = [
+                    boxm.coarsen(b, refinement_ratio) for b in lvlPatchBoxes[ilvl + 1]
+                ]
                 for coarseBox in coarsenedNextFinerBoxes:
-                    ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0]+1)
-                    inter,icells, iccells = np.intersect1d(cells, ccells, return_indices=True)
+                    ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0] + 1)
+                    inter, icells, iccells = np.intersect1d(
+                        cells, ccells, return_indices=True
+                    )
                     cells = np.delete(cells, icells)
                 if len(cells):
                     if finalCells[ilvl] is None:
                         finalCells[ilvl] = cells
                     else:
-                        finalCells[ilvl] = np.unique(np.concatenate((finalCells[ilvl],cells)))
+                        finalCells[ilvl] = np.unique(
+                            np.concatenate((finalCells[ilvl], cells))
+                        )
 
     # now we have all cells for each level we
     # just need to compute the primal coordinates
     # and concatenate in a single array
-    for ilvl in range(hierarchy.finest_level()+1):
+    for ilvl in range(hierarchy.finest_level() + 1):
         if ilvl == 0:
-            x = finalCells[ilvl]*hierarchy.level(ilvl).patches[0].layout.dl[0]
+            x = finalCells[ilvl] * hierarchy.level(ilvl).patches[0].layout.dl[0]
         else:
-            xx = finalCells[ilvl]*hierarchy.level(ilvl).patches[0].layout.dl[0]
+            xx = finalCells[ilvl] * hierarchy.level(ilvl).patches[0].layout.dl[0]
             x = np.concatenate((x, xx))
 
     return np.sort(x)
-
-
 
 
 def is_root_lvl(patch_level):
     return patch_level.level_number == 0
 
 
-
-
-field_qties = {"EM_B_x": "Bx",
-               "EM_B_y": "By",
-               "EM_B_z": "Bz",
-               "EM_E_x": "Ex",
-               "EM_E_y": "Ey",
-               "EM_E_z": "Ez",
-               "flux_x": "Fx",
-               "flux_y": "Fy",
-               "flux_z": "Fz",
-               "bulkVelocity_x": "Vx",
-               "bulkVelocity_y": "Vy",
-               "bulkVelocity_z": "Vz",
-               "density": "rho", "tags":"tags"}
-
-
+field_qties = {
+    "EM_B_x": "Bx",
+    "EM_B_y": "By",
+    "EM_B_z": "Bz",
+    "EM_E_x": "Ex",
+    "EM_E_y": "Ey",
+    "EM_E_z": "Ez",
+    "flux_x": "Fx",
+    "flux_y": "Fy",
+    "flux_z": "Fz",
+    "bulkVelocity_x": "Vx",
+    "bulkVelocity_y": "Vy",
+    "bulkVelocity_z": "Vz",
+    "density": "rho",
+    "tags": "tags",
+}
 
 
 particle_files_patterns = ("domain", "patchGhost", "levelGhost")
 
 
-
-
 def is_particle_file(filename):
     return any([pattern in filename for pattern in particle_files_patterns])
-
-
 
 
 def particle_dataset_name(basename):
@@ -994,45 +1019,31 @@ def particle_dataset_name(basename):
     return dataset_name
 
 
-
-
 def is_pop_fluid_file(basename):
     return (is_particle_file(basename) is False) and "pop" in basename
 
 
-
-
 def make_layout(h5_patch_grp, cell_width, interp_order):
-    origin = h5_patch_grp.attrs['origin']
-    upper = h5_patch_grp.attrs['upper']
-    lower = h5_patch_grp.attrs['lower']
+    origin = h5_patch_grp.attrs["origin"]
+    upper = h5_patch_grp.attrs["upper"]
+    lower = h5_patch_grp.attrs["lower"]
     return GridLayout(Box(lower, upper), origin, cell_width, interp_order=interp_order)
-
-
 
 
 def create_from_all_times(time, hier):
     return time is None and hier is None
 
 
-
-
 def create_from_one_time(time, hier):
     return time is not None and hier is None
-
-
 
 
 def load_all_times(time, hier):
     return time is None and hier is not None
 
 
-
-
 def load_one_time(time, hier):
     return time is not None and hier is not None
-
-
 
 
 def compute_hier_from(h, compute):
@@ -1049,7 +1060,7 @@ def compute_hier_from(h, compute):
 
      caveat: routine only works in 1D so far.
     """
-    assert(len(h.time_hier) == 1) # only single time hierarchies now
+    assert len(h.time_hier) == 1  # only single time hierarchies now
     patch_levels = {}
     for ilvl, lvl in h.patch_levels.items():
         patches = {}
@@ -1058,9 +1069,9 @@ def compute_hier_from(h, compute):
             layout = patch.layout
             datas = compute(patch)
             for data in datas:
-                pd = FieldData(layout, data["name"],
-                               data["data"],
-                               centering=data["centering"])
+                pd = FieldData(
+                    layout, data["name"], data["data"], centering=data["centering"]
+                )
                 new_patch_datas[data["name"]] = pd
             if ilvl not in patches:
                 patches[ilvl] = []
@@ -1069,16 +1080,11 @@ def compute_hier_from(h, compute):
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
     t = list(h.time_hier.keys())[0]
-    return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio,
-                          time=t)
-
-
+    return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio, time=t)
 
 
 def pop_name(basename):
     return basename.strip(".h5").split("_")[-2]
-
-
 
 
 def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
@@ -1095,14 +1101,16 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
         nbrParts = v.shape[0]
         dl = np.zeros((nbrParts, layout.ndim))
         for i in range(layout.ndim):
-            dl[:,i] = layout.dl[i]
+            dl[:, i] = layout.dl[i]
 
-        particles = Particles(icells=h5_patch_grp["iCell"],
-                              deltas=h5_patch_grp["delta"],
-                              v=v,
-                              weights=h5_patch_grp["weight"],
-                              charges=h5_patch_grp["charge"],
-                              dl=dl)
+        particles = Particles(
+            icells=h5_patch_grp["iCell"],
+            deltas=h5_patch_grp["delta"],
+            v=v,
+            weights=h5_patch_grp["weight"],
+            charges=h5_patch_grp["charge"],
+            dl=dl,
+        )
 
         pdname = particle_dataset_name(basename)
         if pdname in patch_datas:
@@ -1117,7 +1125,10 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
             if dataset_name not in field_qties:
                 raise RuntimeError(
-                    "invalid dataset name : {} is not in {}".format(dataset_name, field_qties))
+                    "invalid dataset name : {} is not in {}".format(
+                        dataset_name, field_qties
+                    )
+                )
 
             pdata = FieldData(layout, field_qties[dataset_name], dataset)
 
@@ -1126,36 +1137,32 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
             if is_pop_fluid_file(basename):
                 pdata_name = pop_name(basename) + "_" + pdata_name
 
-
             if dataset_name in patch_datas:
                 raise ValueError("error - {} already in patchdata".format(dataset_name))
 
             patch_datas[pdata_name] = pdata
 
-    return True # valid patch assumed
-
-
+    return True  # valid patch assumed
 
 
 def patch_has_datasets(h5_patch_grp):
-    return len(h5_patch_grp.keys())>0
-
-
+    return len(h5_patch_grp.keys()) > 0
 
 
 h5_time_grp_key = "t"
 
 
-
-
 def hierarchy_fromh5(h5_filename, time, hier, silent=True):
     import h5py
+
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
 
     root_cell_width = np.asarray(data_file.attrs["cell_width"])
     interp = data_file.attrs["interpOrder"]
-    domain_box = Box([0] * len(data_file.attrs["domain_box"]), data_file.attrs["domain_box"])
+    domain_box = Box(
+        [0] * len(data_file.attrs["domain_box"]), data_file.attrs["domain_box"]
+    )
 
     if create_from_all_times(time, hier):
         # first create from first time
@@ -1181,7 +1188,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             h5_patch_lvl_grp = h5_time_grp[plvl_key]
             ilvl = int(plvl_key[2:])
-            lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
+            lvl_cell_width = root_cell_width / refinement_ratio**ilvl
             patches = {}
 
             for pkey in h5_patch_lvl_grp.keys():
@@ -1196,11 +1203,15 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                     if ilvl not in patches:
                         patches[ilvl] = []
 
-                    patches[ilvl].append(Patch(patch_datas, h5_patch_grp.name.split("/")[-1]))
+                    patches[ilvl].append(
+                        Patch(patch_datas, h5_patch_grp.name.split("/")[-1])
+                    )
 
                     patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-        diag_hier = PatchHierarchy(patch_levels, domain_box, refinement_ratio, t, data_file)
+        diag_hier = PatchHierarchy(
+            patch_levels, domain_box, refinement_ratio, t, data_file
+        )
 
         return diag_hier
 
@@ -1223,16 +1234,16 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
             for plvl_key in h5_time_grp.keys():
                 ilvl = int(plvl_key[2:])
-                lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
+                lvl_cell_width = root_cell_width / refinement_ratio**ilvl
 
                 for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
                     h5_patch_grp = h5_time_grp[plvl_key][pkey]
 
                     if patch_has_datasets(h5_patch_grp):
                         hier_patch = patch_levels[ilvl].patches[ipatch]
-                        origin = h5_time_grp[plvl_key][pkey].attrs['origin']
-                        upper = h5_time_grp[plvl_key][pkey].attrs['upper']
-                        lower = h5_time_grp[plvl_key][pkey].attrs['lower']
+                        origin = h5_time_grp[plvl_key][pkey].attrs["origin"]
+                        upper = h5_time_grp[plvl_key][pkey].attrs["upper"]
+                        lower = h5_time_grp[plvl_key][pkey].attrs["lower"]
                         file_patch_box = Box(lower, upper)
 
                         assert file_patch_box == hier_patch.box
@@ -1240,7 +1251,9 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                         assert (abs(lvl_cell_width - hier_patch.dl) < 1e-6).all()
 
                         layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
-                        add_to_patchdata(hier_patch.patch_datas, h5_patch_grp, basename, layout)
+                        add_to_patchdata(
+                            hier_patch.patch_datas, h5_patch_grp, basename, layout
+                        )
 
             return hier
 
@@ -1255,7 +1268,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         for plvl_key in h5_time_grp.keys():
             ilvl = int(plvl_key[2:])
 
-            lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
+            lvl_cell_width = root_cell_width / refinement_ratio**ilvl
             lvl_patches = []
 
             for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
@@ -1281,43 +1294,43 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         return hier
 
 
-
-
 def quantidic(ilvl, wrangler):
     pl = wrangler.getPatchLevel(ilvl)
 
-    return  {"density": pl.getDensity,
-             "bulkVelocity_x":pl.getVix,
-             "bulkVelocity_y": pl.getViy,
-             "bulkVelocity_z":pl.getViz,
-             "EM_B_x":pl.getBx,
-             "EM_B_y": pl.getBy,
-             "EM_B_z": pl.getBz,
-             "EM_E_x": pl.getEx,
-             "EM_E_y": pl.getEy,
-             "EM_E_z": pl.getEz,
-             "flux_x": pl.getFx,
-             "flux_y": pl.getFy,
-             "flux_z": pl.getFz,
-             "particles":pl.getParticles}
-
-
+    return {
+        "density": pl.getDensity,
+        "bulkVelocity_x": pl.getVix,
+        "bulkVelocity_y": pl.getViy,
+        "bulkVelocity_z": pl.getViz,
+        "EM_B_x": pl.getBx,
+        "EM_B_y": pl.getBy,
+        "EM_B_z": pl.getBz,
+        "EM_E_x": pl.getEx,
+        "EM_E_y": pl.getEy,
+        "EM_E_z": pl.getEz,
+        "flux_x": pl.getFx,
+        "flux_y": pl.getFy,
+        "flux_z": pl.getFz,
+        "particles": pl.getParticles,
+    }
 
 
 def isFieldQty(qty):
-    return qty in ("density",
-                   "bulkVelocity_x",
-                   "bulkVelocity_y",
-                   "bulkVelocity_z",
-                   "EM_B_x",
-                   "EM_B_y",
-                   "EM_B_z",
-                   "EM_E_x",
-                   "EM_E_y",
-                   "EM_E_z",
-                   "flux_x", "flux_y", "flux_z")
-
-
+    return qty in (
+        "density",
+        "bulkVelocity_x",
+        "bulkVelocity_y",
+        "bulkVelocity_z",
+        "EM_B_x",
+        "EM_B_y",
+        "EM_B_z",
+        "EM_E_x",
+        "EM_E_y",
+        "EM_E_z",
+        "flux_x",
+        "flux_y",
+        "flux_z",
+    )
 
 
 def hierarchy_from_sim(simulator, qty, pop=""):
@@ -1326,16 +1339,15 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     patch_levels = {}
 
     root_cell_width = simulator.cell_width()
-    domain_box = Box([0] * len(root_cell_width) , simulator.domain_box())
+    domain_box = Box([0] * len(root_cell_width), simulator.domain_box())
     assert len(domain_box.ndim) == len(simulator.domain_box().ndim)
 
     for ilvl in range(nbr_levels):
 
-        lvl_cell_width = root_cell_width / refinement_ratio ** ilvl
+        lvl_cell_width = root_cell_width / refinement_ratio**ilvl
 
-        patches = {ilvl : [] for ilvl in range(nbr_levels)}
+        patches = {ilvl: [] for ilvl in range(nbr_levels)}
         getters = quantidic(ilvl, dw)
-
 
         if isFieldQty(qty):
             wpatches = getters[qty]()
@@ -1344,18 +1356,23 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                 lower = patch.lower
                 upper = patch.upper
                 origin = patch.origin
-                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order = simulator.interporder())
+                layout = GridLayout(
+                    Box(lower, upper),
+                    origin,
+                    lvl_cell_width,
+                    interp_order=simulator.interporder(),
+                )
                 pdata = FieldData(layout, field_qties[qty], patch.data)
                 patch_datas[qty] = pdata
                 patches[ilvl].append(Patch(patch_datas))
 
         elif qty == "particles":
 
-            if pop=="":
+            if pop == "":
                 raise ValueError("must specify pop argument for particles")
             # here the getter returns a dict like this
             # {'protons': {'patchGhost': [<pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78970>,
-            #<pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78f70>],
+            # <pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78f70>],
             # 'domain': [<pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78d70>,
             # <pybindlibs.cpp.PatchDataContiguousParticles_1 at 0x119f78770>]}}
 
@@ -1364,34 +1381,39 @@ def hierarchy_from_sim(simulator, qty, pop=""):
 
             populationdict = getters[qty](pop)[pop]
 
-
             dom_dw_patches = populationdict["domain"]
             for patch in dom_dw_patches:
-                patch_datas= {}
+                patch_datas = {}
 
                 lower = patch.lower
                 upper = patch.upper
                 origin = patch.origin
-                layout = GridLayout(Box(lower, upper), origin, lvl_cell_width, interp_order=simulator.interp_order())
+                layout = GridLayout(
+                    Box(lower, upper),
+                    origin,
+                    lvl_cell_width,
+                    interp_order=simulator.interp_order(),
+                )
                 v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
 
-                domain_particles = Particles(icells = np.asarray(patch.data.iCell),
-                                             deltas = np.asarray(patch.data.delta),
-                                             v      = v,
-                                             weights = np.asarray(patch.data.weight),
-                                             charges = np.asarray(patch.data.charge))
+                domain_particles = Particles(
+                    icells=np.asarray(patch.data.iCell),
+                    deltas=np.asarray(patch.data.delta),
+                    v=v,
+                    weights=np.asarray(patch.data.weight),
+                    charges=np.asarray(patch.data.charge),
+                )
 
-                patch_datas[pop +"_particles"] = ParticleData(layout, domain_particles, pop)
+                patch_datas[pop + "_particles"] = ParticleData(
+                    layout, domain_particles, pop
+                )
                 patches[ilvl].append(Patch(patch_datas))
-
-
 
             # ok now let's add the patchGhost if present
             # note that patchGhost patches may not be the same list as the
             # domain patches... since not all patches may not have patchGhost while they do have
             # domain... while looping on the patchGhost items, we need to search in
             # the already created patches which one to which add the patchGhost particles
-
 
             for ghostParticles in ["patchGhost", "levelGhost"]:
                 if ghostParticles in populationdict:
@@ -1401,12 +1423,13 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                         s = v.size
                         v = v[:].reshape(int(s / 3), 3)
 
-
-                        patchGhost_part = Particles(icells=np.asarray(dwpatch.data.iCell),
-                                                     deltas=np.asarray(dwpatch.data.delta),
-                                                     v= v,
-                                                     weights=np.asarray(dwpatch.data.weight),
-                                                     charges=np.asarray(dwpatch.data.charge))
+                        patchGhost_part = Particles(
+                            icells=np.asarray(dwpatch.data.iCell),
+                            deltas=np.asarray(dwpatch.data.delta),
+                            v=v,
+                            weights=np.asarray(dwpatch.data.weight),
+                            charges=np.asarray(dwpatch.data.charge),
+                        )
 
                         box = Box(dwpatch.lower, dwpatch.upper)
 
@@ -1414,26 +1437,21 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                         # once found we add the new particles to the ones already present
 
                         patch = [p for p in patches[ilvl] if p.box == box][0]
-                        patch.patch_datas[pop+"_particles"].dataset.add(patchGhost_part)
-
-
-
-
-
+                        patch.patch_datas[pop + "_particles"].dataset.add(
+                            patchGhost_part
+                        )
 
         else:
             raise ValueError("{} is not a valid quantity".format(qty))
-
-
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
     return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
 
 
-
-
-def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=None, hier=None):
+def hierarchy_from(
+    simulator=None, qty=None, pop="", h5_filename=None, time=None, hier=None
+):
     """
     this function reads an HDF5 PHARE file and returns a PatchHierarchy from
     which data is accessible.
@@ -1457,18 +1475,26 @@ def hierarchy_from(simulator=None, qty= None, pop = "", h5_filename=None, time=N
     raise ValueError("can't make hierarchy")
 
 
-
-
 def merge_particles(hierarchy):
 
     for time, patch_levels in hierarchy.time_hier.items():
         for ilvl, plvl in patch_levels.items():
             for ip, patch in enumerate(plvl.patches):
                 pdatas = patch.patch_datas
-                domain_pdata = [(pdname,pd) for pdname, pd in pdatas.items() if "domain" in pdname][0]
+                domain_pdata = [
+                    (pdname, pd) for pdname, pd in pdatas.items() if "domain" in pdname
+                ][0]
 
-                pghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "patchGhost" in pdname]
-                lghost_pdatas = [(pdname,pd) for pdname, pd in pdatas.items() if "levelGhost" in pdname]
+                pghost_pdatas = [
+                    (pdname, pd)
+                    for pdname, pd in pdatas.items()
+                    if "patchGhost" in pdname
+                ]
+                lghost_pdatas = [
+                    (pdname, pd)
+                    for pdname, pd in pdatas.items()
+                    if "levelGhost" in pdname
+                ]
 
                 pghost_pdata = pghost_pdatas[0] if pghost_pdatas else None
                 lghost_pdata = lghost_pdatas[0] if lghost_pdatas else None
@@ -1481,23 +1507,20 @@ def merge_particles(hierarchy):
                     domain_pdata[1].dataset.add(lghost_pdata[1].dataset)
                     del pdatas[lghost_pdata[0]]
 
-                popname = domain_pdata[0].split('_')[0]
-                pdatas[popname+"_particles"] = pdatas[domain_pdata[0]]
+                popname = domain_pdata[0].split("_")[0]
+                pdatas[popname + "_particles"] = pdatas[domain_pdata[0]]
                 del pdatas[domain_pdata[0]]
-
-
 
 
 def h5_filename_from(diagInfo):
     # diagInfo.quantity starts with a / , hence   [1:]
-    return (diagInfo.quantity + ".h5").replace('/', '_')[1:]
-
-
+    return (diagInfo.quantity + ".h5").replace("/", "_")[1:]
 
 
 def get_times_from_h5(filepath):
     import h5py
-    f = h5py.File(filepath, 'r')
+
+    f = h5py.File(filepath, "r")
     times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
     f.close()
     return times
