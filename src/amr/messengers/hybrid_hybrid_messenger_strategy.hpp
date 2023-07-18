@@ -574,27 +574,6 @@ namespace amr
            ------------------------------------------------------------------------ */
 
 
-        /**
-         * @brief see IMessenger::fillMagneticGhosts for documentation
-
-         * Note on the HybridHybrid version:
-         * The function throws if the given magnetic field B has not been registered
-         * in the ghostMagnetic field of the HybridMessengerInfo
-         *
-         * The method finds if the name of the VecField is
-         *
-         */
-        void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime) override
-        {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillMagneticGhosts");
-            magneticSharedNodes_.fill(B, levelNumber, fillTime);
-            // magneticPatchGhosts_.fill(B, levelNumber, fillTime);
-            //  magneticLevelGhosts_.fill(B, levelNumber, fillTime);
-            magneticGhosts_.fill(B, levelNumber, fillTime);
-        }
-
-
-
 
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
@@ -821,7 +800,6 @@ namespace amr
                     *patch, hybridModel.state.electromag, hybridModel.state.J,
                     hybridModel.state.ions, Jold_, NiOldUser_, ViOld_);
 
-                // resourcesManager_->setTime(EM_old_, *patch, currentTime);
                 resourcesManager_->setTime(Jold_, *patch, currentTime);
                 resourcesManager_->setTime(NiOldUser_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
@@ -831,7 +809,6 @@ namespace amr
                 auto& Vi = hybridModel.state.ions.velocity();
                 auto& Ni = hybridModel.state.ions.density();
 
-                // EM_old_.copyData(EM);
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
                 NiOldUser_.copyData(Ni);
@@ -849,15 +826,8 @@ namespace amr
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            // magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber,
-            // initDataTime);
             electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
 
-            // magneticPatchGhosts_.fill(hybridModel.state.electromag.B, levelNumber,
-            // initDataTime); magneticLevelGhosts_.fill(hybridModel.state.electromag.B,
-            // levelNumber, initDataTime);
-            // magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber,
-            // initDataTime);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
             patchGhostParticles_.fill(levelNumber, initDataTime);
 
@@ -918,8 +888,6 @@ namespace amr
             // fine domain cell since its border face only received a fraction of the
             // induction that has occured on the shared coarse face.
             magneticPatchGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
-            // magneticLevelGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
-            // magneticGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
             electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, time);
             densityGhosts_.fill(levelNumber, time);
             bulkVelGhosts_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
@@ -928,29 +896,6 @@ namespace amr
     private:
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            // auto const& Eold = EM_old_.E;
-            // auto const& Bold = EM_old_.B;
-
-            // fillRefiners_(info->ghostElectric, info->modelElectric,
-            // VecFieldDescriptor{Eold},
-            //               electricSharedNodes_, EfieldNodeRefineOp_);
-            // fillRefiners_(info->ghostElectric, info->modelElectric,
-            // VecFieldDescriptor{Eold},
-            //               electricGhosts_, EfieldRefineOp_);
-
-            // fillRefiners_(info->ghostMagnetic, info->modelMagnetic,
-            // VecFieldDescriptor{Bold},
-            //               magneticSharedNodes_, BfieldNodeRefineOp_);
-            //  fillRefiners_(info->ghostMagnetic, info->modelMagnetic,
-            //  VecFieldDescriptor{Bold},
-            //                magneticPatchGhosts_, BfieldRefineOp_);
-            //  fillRefiners_(info->ghostMagnetic, info->modelMagnetic,
-            //  VecFieldDescriptor{Bold},
-            //                magneticLevelGhosts_, BfieldRefineOp_);
-            //  fillRefiners_(info->ghostMagnetic, info->modelMagnetic,
-            //  VecFieldDescriptor{Bold},
-            //                magneticGhosts_, BfieldRefineOp_);
-
             auto makeKeys = [](auto const& descriptor) {
                 std::vector<std::string> keys;
                 std::transform(std::begin(descriptor), std::end(descriptor),
@@ -978,13 +923,6 @@ namespace amr
             fillTimeRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
                               currentGhosts_, EfieldRefineOp_);
 
-            // no fillTimeRefiners overload for a scalar so do it manually for the density
-            // density and bulk velocity are OK on border node because it is obtained from
-            // domain particles and either patch ghost particles or levelghost[old,new]
-            // particles so we only need to fill pure ghost nodes. Therefore there is no
-            // need for a SharedNodes refiner
-            // TODO : weird the density is filled by static... why not time interp? to
-            // check....
             densityGhosts_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
                                           NiOldUser_.name, resourcesManager_, fieldRefineOp_,
                                           fieldTimeOp_, info->modelIonDensity);
@@ -1180,7 +1118,6 @@ namespace amr
         RefinerPool<RefinerType::SharedBorder> magneticSharedNodes_;
         RefinerPool<RefinerType::GhostField> magneticGhosts_;
         RefinerPool<RefinerType::PatchGhostField> magneticPatchGhosts_;
-        //  RefinerPool<RefinerType::LevelGhostField> magneticLevelGhosts_;
 
         //! store refiners for electric fields that need ghosts to be filled
         RefinerPool<RefinerType::SharedBorder> electricSharedNodes_;
@@ -1218,16 +1155,13 @@ namespace amr
         SynchronizerPool<dimension> magnetoSynchronizers_;
 
 
-        // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
-        // Note that refinement operator, via the boolean argument, serve as a relay for the
-        // the RefineAlgorithm to get the correct VariableFillPattern
-        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldNodeRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, DefaultFieldRefiner<dimension>>>(
-            /*node_only*/ true)};
 
         std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{std::make_shared<
             FieldRefineOperator<GridLayoutT, FieldT, DefaultFieldRefiner<dimension>>>()};
 
+        // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
+        // Note that refinement operator, via the boolean argument, serve as a relay for the
+        // the RefineAlgorithm to get the correct VariableFillPattern
         std::shared_ptr<SAMRAI::hier::RefineOperator> BfieldNodeRefineOp_{std::make_shared<
             FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>(
             /*node_only*/ true)};

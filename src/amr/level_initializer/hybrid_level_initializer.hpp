@@ -1,20 +1,19 @@
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
+#include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/messenger.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
-#include "core/numerics/moments/moments.hpp"
-#include "amr/level_initializer/level_initializer.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "core/data/ions/ions.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
-#include "core/numerics/ohm/ohm.hpp"
+#include "core/data/ions/ions.hpp"
 #include "core/numerics/ampere/ampere.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/moments/moments.hpp"
+#include "core/numerics/ohm/ohm.hpp"
 #include "initializer/data_provider.hpp"
-
 
 namespace PHARE
 {
@@ -34,10 +33,8 @@ namespace solver
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::interp_order;
 
-
         PHARE::core::Ohm<GridLayoutT> ohm_;
         PHARE::core::Ampere<GridLayoutT> ampere_;
-
 
         inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
 
@@ -57,7 +54,6 @@ namespace solver
 
             auto& hybMessenger = dynamic_cast<HybridMessenger&>(messenger);
 
-
             if (isRootLevel(levelNumber))
             {
                 PHARE_LOG_START("hybridLevelInitializer::initialize : root level init");
@@ -70,7 +66,7 @@ namespace solver
             {
                 if (isRegridding)
                 {
-                    std::cout << "reriding level " << levelNumber << "\n";
+                    std::cout << "regriding level " << levelNumber << "\n";
                     PHARE_LOG_START("hybridLevelInitializer::initialize : regriding block");
                     messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
                     PHARE_LOG_STOP("hybridLevelInitializer::initialize : regriding block");
@@ -93,11 +89,9 @@ namespace solver
                 auto dataOnPatch       = resourcesManager->setOnPatch(*patch, ions);
                 auto layout            = amr::layoutFromPatch<GridLayoutT>(*patch);
 
-
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
                 core::depositParticles(ions, layout, interpolate_, core::PatchGhostDeposit{});
-
 
                 if (!isRootLevel(levelNumber))
                 {
@@ -107,9 +101,11 @@ namespace solver
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
+            // TODO why is prepareStep called here and above, and why not at the end of this
+            // function after all quantites are computed? Preparestep for ex. copies J but it's only
+            // computed below.
             hybMessenger.prepareStep(hybridModel, level, initDataTime);
             hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
-
 
             if (isRootLevel(levelNumber))
             {
@@ -126,8 +122,6 @@ namespace solver
                     hybridModel.resourcesManager->setTime(J, *patch, 0.);
                 }
                 hybMessenger.fillCurrentGhosts(J, levelNumber, 0.);
-
-
 
                 auto& electrons = hybridModel.state.electrons;
                 auto& E         = hybridModel.state.electromag.E;

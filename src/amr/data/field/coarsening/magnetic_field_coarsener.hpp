@@ -21,6 +21,12 @@ using core::dirZ;
  * FieldCoarsenOperator is called and its operator() is called for each coarse index.
  * It is the default coarsening policy and used for any field that does not come with
  * specific constraints (such as conserving some property in the coarsening process).
+ *
+ *
+ * This coarsening operation is defined so to conserve the magnetic flux.
+ * This is done by assigning to a magnetic field component on a coarse face, the average
+ * of the enclosed fine faces
+ *
  */
 template<std::size_t dimension>
 class MagneticFieldCoarsener

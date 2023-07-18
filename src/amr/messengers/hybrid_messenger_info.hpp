@@ -83,7 +83,6 @@ namespace amr
 
 
         //! name of the magnetic quantities that will be communicated by
-        //! HybridMessenger::fillMagneticGhosts()
         std::vector<VecFieldDescriptor> ghostMagnetic;
 
 

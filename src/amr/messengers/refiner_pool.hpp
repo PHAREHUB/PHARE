@@ -3,7 +3,6 @@
 
 #include "communicator.hpp"
 
-#include "amr/data/field/patch_level_ghost_fill_pattern.hpp"
 
 #include <map>
 #include <memory>
@@ -18,7 +17,6 @@ namespace amr
     enum class RefinerType {
         GhostField,
         PatchGhostField,
-        LevelGhostField,
         InitField,
         InitInteriorPart,
         LevelBorderParticles,
@@ -162,15 +160,6 @@ namespace amr
                     else if constexpr (Type == RefinerType::PatchGhostField)
                     {
                         refiner.add(algo, algo->createSchedule(level), levelNumber);
-                    }
-
-                    else if constexpr (Type == RefinerType::LevelGhostField)
-                    {
-                        refiner.add(algo,
-                                    algo->createSchedule(
-                                        std::make_shared<PatchLevelGhostFillPattern>(), level,
-                                        level->getNextCoarserHierarchyLevelNumber(), hierarchy),
-                                    levelNumber);
                     }
 
                     // this createSchedule overload is used to initialize fields.

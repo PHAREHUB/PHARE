@@ -34,7 +34,8 @@ namespace amr
         }
 
         /**
-         * @brief allocate allocate the internal resources to the hybrid and MHD resourcesManagers
+         * @brief allocate allocate the internal resources to the hybrid and MHD
+         * resourcesManagers
          */
         void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
@@ -43,14 +44,11 @@ namespace amr
             hybridResourcesManager_->allocate(EM_old_, patch, allocateTime);
         }
 
-
-
         void registerQuantities(
             std::unique_ptr<IMessengerInfo> /*fromCoarserInfo*/,
             [[maybe_unused]] std::unique_ptr<IMessengerInfo> /*fromFinerInfo*/) override
         {
         }
-
 
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
                            int const /*levelNumber*/) override
@@ -67,9 +65,6 @@ namespace amr
             return std::make_unique<HybridMessengerInfo>();
         }
 
-
-
-
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
                     const int /*levelNumber*/,
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
@@ -78,14 +73,9 @@ namespace amr
             //
         }
 
-
-
-
         std::string fineModelName() const override { return HybridModel::model_name; }
 
         std::string coarseModelName() const override { return MHDModel::model_name; }
-
-
 
         void initLevel(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                        double const /*initDataTime*/) override
@@ -94,11 +84,6 @@ namespace amr
 
         virtual ~MHDHybridMessengerStrategy() = default;
 
-
-        void fillMagneticGhosts(VecFieldT& /*B*/, int const /*levelNumber*/,
-                                double const /*fillTime*/) override
-        {
-        }
         void fillElectricGhosts(VecFieldT& /*E*/, int const /*levelNumber*/,
                                 double const /*fillTime*/) override
         {
@@ -108,7 +93,6 @@ namespace amr
                                double const /*fillTime*/) override
         {
         }
-
 
         void fillIonGhostParticles(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
                                    double const /*fillTime*/) override
@@ -133,7 +117,6 @@ namespace amr
 
         void lastStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) override {}
 
-
         void prepareStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                          double /*currentTime*/) final
         {
@@ -144,8 +127,6 @@ namespace amr
         {
         }
 
-
-
         void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
         {
             // call coarsning schedules...
@@ -155,9 +136,6 @@ namespace amr
                              double const /*time*/) override
         {
         }
-
-
-
 
     private:
         using Electromag = decltype(std::declval<HybridModel>().state.electromag);
@@ -172,9 +150,7 @@ namespace amr
     const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
         = "MHDModel-HybridModel";
 
-
 } // namespace amr
 } // namespace PHARE
-
 
 #endif

@@ -128,14 +128,6 @@ private:
 
     void restoreState_(level_t& level, Ions& ions, ResourcesManager& rm);
 
-    /*
-    template<typename HybridMessenger>
-    void syncLevel(HybridMessenger& toCoarser)
-    {
-        toCoarser.syncMagnetic(model_.electromag.B);
-        toCoarser.syncElectric(model_.electromag.E);
-    }*/
-
 
     // extend lifespan
     std::unordered_map<std::string, ParticleArray> tmpDomain;
@@ -183,7 +175,6 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto const& Bpred = electromagPred_.B;
 
     modelInfo.ghostElectric.emplace_back(amr::VecFieldDescriptor{Eavg});
-    // modelInfo.ghostMagnetic.emplace_back(Bpred);
     modelInfo.initMagnetic.emplace_back(amr::VecFieldDescriptor{Bpred});
 }
 
@@ -287,7 +278,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
     auto& electromag       = hybridState.electromag;
     auto levelNumber       = level.getLevelNumber();
 
-    std::cout << "start pred 1 on level " << levelNumber << "\n";
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor1_.faraday");
@@ -306,10 +296,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
             resourcesManager->setTime(Bpred, *patch, newTime);
         }
-        std::cout << "faraday done on level " << levelNumber << "\n";
-
-        // TODO ghost degage car on fait Faraday sur ghost box.
-        // fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
     }
 
 
@@ -332,7 +318,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
         }
         fromCoarser.fillCurrentGhosts(J, levelNumber, newTime);
     }
-    std::cout << "ampere done on level " << levelNumber << "\n";
 
 
 
@@ -356,11 +341,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
             ohm_(Ne, Ve, Pe, Bpred, J, Epred);
             resourcesManager->setTime(Epred, *patch, newTime);
         }
-
-        // fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
     }
-    std::cout << "ohm done on level " << levelNumber << "\n";
-    std::cout << "end pred1 on level " << levelNumber << "\n";
 }
 
 
@@ -377,7 +358,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
     auto levelNumber       = level.getLevelNumber();
 
 
-    std::cout << "start pred 2 on level " << levelNumber << "\n";
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor2_.faraday");
@@ -395,9 +375,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
             resourcesManager->setTime(Bpred, *patch, newTime);
         }
-
-        std::cout << "faraday done on level " << levelNumber << "\n";
-        // fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
     }
 
 
@@ -420,7 +397,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
         fromCoarser.fillCurrentGhosts(J, levelNumber, newTime);
     }
 
-    std::cout << "ampere done on level " << levelNumber << "\n";
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor2_.ohm");
@@ -442,11 +418,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
             ohm_(Ne, Ve, Pe, Bpred, J, Epred);
             resourcesManager->setTime(Epred, *patch, newTime);
         }
-
-        // fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
-        std::cout << "ohm done on level " << levelNumber << "\n";
     }
-    std::cout << "end pred 2 on level " << levelNumber << "\n";
 }
 
 
@@ -464,7 +436,6 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     auto dt                = newTime - currentTime;
     auto levelNumber       = level.getLevelNumber();
 
-    std::cout << "start corrector on level " << levelNumber << "\n";
     {
         PHARE_LOG_SCOPE("SolverPPC::corrector_.faraday");
 
@@ -480,9 +451,6 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
             resourcesManager->setTime(B, *patch, newTime);
         }
-
-        std::cout << "faraday done on level " << levelNumber << "\n";
-        // fromCoarser.fillMagneticGhosts(B, levelNumber, newTime);
     }
 
     // TODO misses AMPERE here
@@ -509,9 +477,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
         }
 
         fromCoarser.fillElectricGhosts(E, levelNumber, newTime);
-        std::cout << "ohm done and E ghost filled on level " << levelNumber << "\n";
     }
-    std::cout << "end corrector on level " << levelNumber << "\n";
 }
 
 
