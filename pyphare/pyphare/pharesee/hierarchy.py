@@ -74,16 +74,20 @@ class FieldData(PatchData):
             )
         return self._z
 
+
     def primal_directions(self):
         return self.size - self.ghost_box.shape
+
 
     def __str__(self):
         return "FieldData: (box=({}, {}), key={})".format(
             self.layout.box, self.layout.box.shape, self.field_name
         )
 
+
     def __repr__(self):
         return self.__str__()
+
 
     def select(self, box):
         """
@@ -109,8 +113,10 @@ class FieldData(PatchData):
                 return self.dataset[lower[0] : upper[0] + 1, lower[1] : upper[1] + 1]
         return np.array([])
 
+
     def __getitem__(self, box):
         return self.select(box)
+
 
     def __init__(self, layout, field_name, data, **kwargs):
         """
@@ -128,6 +134,7 @@ class FieldData(PatchData):
         self.name = field_name
         self.dl = np.asarray(layout.dl)
         self.ndim = layout.box.ndim
+        self.box = layout.box
         self.ghosts_nbr = np.zeros(self.ndim, dtype=int)
 
         if field_name in layout.centering["X"]:
@@ -167,6 +174,218 @@ class FieldData(PatchData):
                 self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
+
+
+    # def to_primal_box(self):
+    #     """
+    #     projection of the dataset on the box w. a primal centering
+    #     """
+
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     print(self.name)
+
+    #     if self.name == "Bx":
+    #         return self.Bx_on_primal_box()
+    #     elif self.name == "By":
+    #         return self.By_on_primal_box()
+    #     elif self.name == "Bz":
+    #         return self.Bz_on_primal_box()
+
+
+    # def Bx_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = 0.5*(np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1] - 1 : upper[1] + 1])
+    #                       +np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1]     : upper[1] + 2]))
+    #     return dataset
+
+
+    # def By_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = 0.5*(np.asarray(self.dataset[lower[1] - 1 : upper[0] + 1, lower[1]     : upper[1] + 2])
+    #                       +np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1]     : upper[1] + 2]))
+    #     return dataset
+
+
+    # def Bz_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = 0.25*(np.asarray(self.dataset[lower[1] - 1 : upper[0] + 1, lower[1] - 1 : upper[1] + 1])
+    #                        +np.asarray(self.dataset[lower[0] - 1 : upper[0] + 1, lower[1]     : upper[1] + 2])
+    #                        +np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1] - 1 : upper[1] + 1])
+    #                        +np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1]     : upper[1] + 2]))
+    #     return dataset
+
+
+    # def Ex_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = 0.5*(np.asarray(self.dataset[lower[1] - 1 : upper[0] + 1, lower[1]     : upper[1] + 2])
+    #                       +np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1]     : upper[1] + 2]))
+    #     return dataset
+
+
+
+    # def Ey_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = 0.5*(np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1] - 1 : upper[1] + 1])
+    #                       +np.asarray(self.dataset[lower[0]     : upper[0] + 2, lower[1]     : upper[1] + 2]))
+    #     return dataset
+
+
+    # def Ez_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = np.asarray(self.dataset[lower[0] : upper[0] + 2, lower[1] : upper[1] + 2])
+    #     return dataset
+
+
+    # def Jx_on_primal_box(self):
+    #     return self.Ex_on_primal_box()
+
+
+    # def Jy_on_primal_box(self):
+    #     return self.Ey_on_primal_box()
+
+
+    # def Jz_on_primal_box(self):
+    #     return self.Ez_on_primal_box()
+
+
+    # def moments_on_primal_box(self):
+    #     box = self.box
+
+    #     lower = self.layout.AMRToLocal(box.lower)
+    #     upper = self.layout.AMRToLocal(box.upper)
+
+    #     if self.ndim == 2:
+    #         dataset = np.asarray(self.dataset[lower[0] : upper[0] + 2, lower[1] : upper[1] + 2])
+    #     return dataset
+
+
+    def to_given_centering(self, shape, centerings):
+
+        """
+        returns a FieldData from a input FieldData :
+        The shape and centering of the output is provided as parameter
+        The output contain in the box the data projected on the centering
+        and NaN in the ghost layer
+
+        """
+
+        dset = np.full(shape, np.nan)
+
+        nbrGhosts = self.layout.nbrGhosts(self.layout.interp_order, centerings)
+
+        lo = [None]*self.box.ndim
+        up = [None]*self.box.ndim
+        we = [None]*self.box.ndim
+
+        for i, centering in enumerate(self.centerings): # loop in each dir (2 for 2d)
+            if centerings[i] == centering:
+                lo[i] = [ nbrGhosts]
+                up[i] = [-nbrGhosts]
+                we[i] = [1]
+            else:
+                lo[i] = [ nbrGhosts-1,  nbrGhosts  ]
+                up[i] = [-nbrGhosts  , -nbrGhosts+1]
+                we[i] = [0.5, 0.5]
+
+        lowers = []
+        uppers = []
+        weights = []
+
+        if self.ndim == 1:
+            for lx, ux, wx in zip(lo[0], up[0], we[0]):
+                lowers.append([lx])
+                uppers.append([ux])
+                weights.append(wx)
+
+            dset[nbrGhosts:-nbrGhosts] = weighted_sum(self.dataset, lowers, uppers, weights)
+
+        if self.ndim == 2:
+            for lx, ux, wx in zip(lo[0], up[0], we[0]):
+                for ly, uy, wy in zip(lo[1], up[1], we[1]):
+                    lowers.append([lx, ly])
+                    uppers.append([ux, uy])
+                    weights.append(wx*wy)
+
+            dset[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts] = weighted_sum(self.dataset, lowers, uppers, weights)
+
+        if self.ndim == 3:
+            for lx, ux, wx in zip(lo[0], up[0], we[0]):
+                for ly, uy, wy in zip(lo[1], up[1], we[1]):
+                    for lz, uz, wz in zip(lo[2], up[2], we[2]):
+                        lowers.append([lx, ly, lz])
+                        uppers.append([ux, uy, uz])
+                        weights.append(wx*wy*wz)
+
+            dset[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts] = weighted_sum(self.dataset, lowers, uppers, weights)
+
+        return FieldData(self.layout, self.name, dset, centering = centerings)
+
+
+
+
+def weighted_sum(data, lowers, uppers, weights):
+
+   """
+   apply to a numpy array... typically a dataset
+
+   return a numpy array resulting from the weighted sum
+   of the data chunked with the given lower and upper indices
+   At 2D, this is
+   sum_i weights[i] * data[lower[O] : upper[0], lowere[1] : upper[1]]
+   """
+
+   ws = 0.
+
+   if len(data.shape) == 1:
+       for l, u, w in zip(lowers, uppers, weights):
+           ws += w*data[l[0] : u[0]]
+
+   if len(data.shape) == 2:
+       for l, u, w in zip(lowers, uppers, weights):
+           ws += w*data[l[0] : u[0], l[1] : u[1]]
+
+   if len(data.shape) == 3:
+       for l, u, w in zip(lowers, uppers, weights):
+           ws += w*data[l[0] : u[0], l[1] : u[1], l[2] : u[2]]
+
+   return ws
+
+
+
 
 
 class ParticleData(PatchData):
@@ -227,11 +446,14 @@ class Patch:
         self.patch_datas = patch_datas
         self.id = patch_id
 
+
     def __str__(self):
         return f"Patch: box( {self.box}), id({self.id})"
 
+
     def __repr__(self):
         return self.__str__()
+
 
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""
@@ -239,8 +461,10 @@ class Patch:
 
         return deepcopy(self)
 
+
     def __copy__(self):
         return self.copy()
+
 
     def __call__(self, qty, **kwargs):
         # take slice/slab of 1/2d array from 2/3d array
@@ -260,6 +484,99 @@ class Patch:
             return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
         elif idim == 1:
             return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+
+
+    def __mod__(self, operand):
+        """
+        The centerings of self and operands are compared in each direction :
+        if they are the same, the dset of self is preserved
+        if not, the dset of self is set on primal (so eventually not modified
+        if self was already on primal)
+
+        """
+        assert(len(self.patch_datas.keys()) == len(operand.patch_datas.keys()))
+
+        if len(self.patch_datas.keys()) == 1:
+            names = ['value']
+        elif len(self.patch_datas.keys()) == 3:
+            names = ['x', 'y', 'z']
+        elif len(self.patch_datas.keys()) == 6:
+            names = ['xx', 'xy', 'xz', 'yy', 'yz', 'zz']
+        elif len(self.patch_datas.keys()) == 9:
+            names = ['xx', 'xy', 'xz', 'yx', 'yy', 'yz', 'zx', 'zy', 'zz']
+
+        new_pd = {}
+
+        for (name, name_self, name_operand) in zip(names, self.patch_datas.keys(), operand.patch_datas.keys()):
+            pd_self = self.patch_datas[name_self]
+            pd_operand = operand.patch_datas[name_operand]
+
+            if pd_self.centerings == pd_operand.centerings:
+                dset = np.asarray(pd_self.dataset)
+                # pd = FieldData(self.layout, name, dset, centering=pd_self.centerings)
+                # new_pd[name] = pd
+                new_pd[name] = pd_self
+
+            else:
+                pd_shape = np.empty(self.box.ndim, dtype=int)
+                pd_centerings = [None]*self.box.ndim
+
+                for i, (cent_self, cent_operand) in enumerate(zip(pd_self.centerings, pd_operand.centerings)):
+                    if cent_self == cent_operand:
+                        pd_shape[i] = pd_self.dataset.shape[i]
+                        pd_centerings[i] = cent_self
+                    else:
+                        if cent_self == "primal":
+                            pd_shape[i] = pd_self.dataset.shape[i]
+                            pd_centerings[i] = cent_self
+                        else:
+                            pd_shape[i] = pd_operand.dataset.shape[i]
+                            pd_centerings[i] = cent_operand
+
+                pd = pd_self.to_given_centering(pd_shape, pd_centerings)
+                new_pd[name] = pd
+
+        return Patch(new_pd, self.id)
+
+
+    def __mul__(self, operand):
+        """
+        implementation of the product of 2 patches
+        caveats : yet only works for patches associated to vectors, that is w. 3 names/dset
+
+        """
+
+        assert(len(self.patch_datas.keys()) == len(operand.patch_datas.keys()))
+
+        if len(self.patch_datas.keys()) == 1:
+            names = ['value']
+
+        if len(self.patch_datas.keys()) == 3:
+            names = ['x', 'y', 'z']
+
+        if len(self.patch_datas.keys()) == 6:
+            names = ['xx', 'xy', 'xz', 'yy', 'yz', 'zz']
+
+        if len(self.patch_datas.keys()) == 9:
+            names = ['xx', 'xy', 'xz', 'yx', 'yy', 'yz', 'zx', 'zy', 'zz']
+
+        left_op = self % operand
+        right_op = operand % self
+
+        new_pd = {}
+
+        for (name, name_left, name_right) in zip(names, left_op.patch_datas.keys(), right_op.patch_datas.keys()):
+            pd_left = left_op.patch_datas[name_left]
+            pd_right = right_op.patch_datas[name_right]
+
+            dset = np.asarray(pd_left.dataset)*np.asarray(pd_right.dataset)
+            pd = FieldData(left_op.layout, name, dset, centering=pd_left.centerings)
+            new_pd[name] = pd
+
+        return Patch(new_pd, left_op.id)
+
+
+
 
 
 class PatchLevel:
@@ -1061,6 +1378,109 @@ class PatchHierarchy(object):
         return final, dp(final, **kwargs)
 
 
+
+
+class ScalarField(PatchHierarchy):
+
+    def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
+        super().__init__(patch_levels, domain_box, refinement_ratio, time, data_files)
+        assert(len(self.levels(time)[0].patches[0].patch_datas.keys()) == 1)
+
+
+
+
+class VectorField(PatchHierarchy):
+
+    # def __init__(self, patch_levels, domain_box, **kwargs):
+    def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
+        # refinement_ratio = kwargs.get("refinement_ratio", 2)
+        # time = kwargs.get("time", .0)
+        # data_files = kwargs.get("data_files", None)
+
+        super().__init__(patch_levels, domain_box, refinement_ratio, time, data_files)
+
+
+    def __mul__(self, right_operand):
+        if isinstance(right_operand, VectorField):
+
+            times_left = list(self.time_hier.keys())
+            times_right = list(right_operand.time_hier.keys())
+
+            patch_levels = self.patch_levels
+            domain_box = self.domain_box
+
+            assert(all(l == r for l, r in zip(times_left, times_right)))
+            for (time_left, time_right) in zip(list(self.time_hier.keys()), list(right_operand.time_hier.keys())):
+                new_patch_level = {}
+
+                assert(all (l == r for l, r in zip(self.levels(time_left).keys(), right_operand.levels(time_right).keys())))
+                for (ilvl_left, lvl_left), (ilvl_right, lvl_right) in zip(self.levels(time_left).items(), right_operand.levels(time_right).items()):
+                    new_patches = {}
+
+                    assert(all (l.id == r.id for l, r in zip(lvl_left.patches, lvl_right.patches)))
+                    for (patch_left, patch_right) in zip(lvl_left.patches, lvl_right.patches):
+                        layout = patch_left.layout
+
+                        if ilvl_left not in new_patches:
+                            new_patches[ilvl_left] = []
+
+                        new_patches[ilvl_left].append(patch_left * patch_right)
+
+                    new_patch_level[ilvl_left] = PatchLevel(ilvl_left, new_patches[ilvl_left])
+
+            return VectorField(new_patch_level, domain_box, time=time_left)
+
+        elif isinstance(right_operand, (int, float)):
+
+            patch_levels = self.patch_levels
+            domain_box = self.domain_box
+
+            names = ['x', 'y', 'z']
+
+            for time in list(self.time_hier.keys()):
+                new_patch_level = {}
+
+                for ilvl, lvl in self.levels(time).items():
+                    new_patches = {}
+
+                    for patch in lvl.patches:
+                        new_pd = {}
+                        layout = patch.layout
+
+                        for (name, pd_name) in zip(names, patch.patch_datas.keys()):
+                            dset = np.asarray(patch.patch_datas[pd_name].dataset)*right_operand
+                            pd = FieldData(layout, name, dset, centering=patch.patch_datas[pd_name].centerings)
+                            new_pd[name] = pd
+
+                        if ilvl not in new_patches:
+                            new_patches[ilvl] = []
+
+                        new_patches[ilvl].append(Patch(new_pd, patch.id))
+
+                    new_patch_level[ilvl] = PatchLevel(ilvl, new_patches[ilvl])
+
+            return VectorField(new_patch_level, domain_box, time=time)
+
+        else:
+            raise ValueError("Unsupported type of operand : {}".format(type(right_operand)))
+
+
+    def __rmul__(self, left_operand):
+        return self.__mul__(left_operand)
+
+
+
+
+class Tensor2Field(PatchHierarchy):
+
+    def __init__(self, patch_levels, domain_box, refinement_ratio=2, time=0., data_files=None):
+        super().__init__(patch_levels, domain_box, refinement_ratio, time, data_files)
+        assert(len(self.levels(time)[0].patches[0].patch_datas.keys()) == 6 or
+               len(self.levels(time)[0].patches[0].patch_datas.keys()) == 9   )
+
+
+
+
 def amr_grid(hierarchy, time):
     """returns a non-uniform contiguous primal grid
     associated to the given hierarchy
@@ -1335,6 +1755,10 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         t = time
 
         h5_time_grp = data_file[h5_time_grp_key][time]
+        l0 = h5_time_grp[next(iter(h5_time_grp))]
+        p0 = l0[next(iter(l0))]
+        num_of_components = len(p0.keys())
+
         patch_levels = {}
 
         for plvl_key in h5_time_grp.keys():
@@ -1362,11 +1786,17 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
                     patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-        diag_hier = PatchHierarchy(
-            patch_levels, domain_box, refinement_ratio, t, data_file
-        )
+        if num_of_components == 1:
+            return ScalarField(patch_levels, domain_box, refinement_ratio, t, data_file)
 
-        return diag_hier
+        elif num_of_components == 3:
+            return VectorField(patch_levels, domain_box, refinement_ratio, t, data_file)
+
+        elif num_of_components == 6 or num_of_components == 9:
+            pass
+
+        else:
+            raise ValueError("what the fuck is this patch data ?")
 
     if load_one_time(time, hier):
         if not silent:
