@@ -55,9 +55,9 @@ public:
         assert(box_.size() > 0);
     }
 
-    ParticleArray(ParticleArray const& from) = default;
-    ParticleArray(ParticleArray&& from)      = default;
-    ParticleArray& operator=(ParticleArray&& from) = default;
+    ParticleArray(ParticleArray const& from)            = default;
+    ParticleArray(ParticleArray&& from)                 = default;
+    ParticleArray& operator=(ParticleArray&& from)      = default;
     ParticleArray& operator=(ParticleArray const& from) = default;
 
     std::size_t size() const { return particles_.size(); }
