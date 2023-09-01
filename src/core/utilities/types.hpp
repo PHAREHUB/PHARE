@@ -249,12 +249,11 @@ constexpr Multiplies product(Container const& container, Multiplies init = 1)
     // using  :
     // return std::accumulate(container.begin(), container.end(), init,
     // std::multiplies<Multiplies>()); will not be constexpr until C++20.
-    auto result = init;
     for (auto const& element : container)
     {
-        result *= element;
+        init *= element;
     }
-    return result;
+    return init;
 }
 
 
