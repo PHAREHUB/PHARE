@@ -232,7 +232,10 @@ namespace core
             return std::string{val};
         return std::nullopt;
     }
-    inline std::optional<std::string> get_env(std::string&& key) { return get_env(key); }
+    inline std::optional<std::string> get_env(std::string&& key)
+    {
+        return get_env(key);
+    }
 
 } // namespace core
 } // namespace PHARE
@@ -241,10 +244,19 @@ namespace core
 namespace PHARE::core
 {
 template<typename Container, typename Multiplies = typename Container::value_type>
-Multiplies product(Container const& container, Multiplies mul = 1)
+constexpr Multiplies product(Container const& container, Multiplies init = 1)
 {
-    return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
+    // using  :
+    // return std::accumulate(container.begin(), container.end(), init,
+    // std::multiplies<Multiplies>()); will not be constexpr until C++20.
+    auto result = init;
+    for (auto const& element : container)
+    {
+        result *= element;
+    }
+    return result;
 }
+
 
 template<typename Container, typename Return = typename Container::value_type>
 Return sum(Container const& container, Return r = 0)
