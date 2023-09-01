@@ -44,7 +44,7 @@ public:
         }
 
         // compute histogram
-        for (int ip = 0; ip < tmp_.size(); ++ip)
+        for (std::size_t ip = 0; ip < tmp_.size(); ++ip)
         {
             auto const& item = toSort[ip];
             auto const& cell = getCell(item);
@@ -52,7 +52,7 @@ public:
         }
 
         int sum = 0;
-        for (int i = 0; i < hist_.size(); ++i)
+        for (std::size_t i = 0; i < hist_.size(); ++i)
         {
             // all particles in cell i will be in [sum, sum+hist_[i])
             int const tmp = hist_[i];
@@ -60,7 +60,7 @@ public:
             sum += tmp;
         }
 
-        for (int ip = 0; ip < toSort.size(); ++ip)
+        for (std::size_t ip = 0; ip < toSort.size(); ++ip)
         {
             auto const& cell    = getCell(toSort[ip]);
             tmp_[hist_[cell]++] = toSort[ip];
@@ -68,7 +68,7 @@ public:
 
         // now put items back in toSort
         // in the right order
-        for (int ip = 0; ip < toSort.size(); ++ip)
+        for (std::size_t ip = 0; ip < toSort.size(); ++ip)
         {
             toSort[ip] = tmp_[ip];
         }
