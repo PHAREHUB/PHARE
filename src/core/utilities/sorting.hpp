@@ -3,6 +3,7 @@
 
 #include "core/utilities/box/box.hpp"
 
+#include <iostream>
 #include <cstddef>
 #include <vector>
 
@@ -21,28 +22,16 @@ public:
     using value_type = typename Array::value_type;
     using SortBox    = core::Box<int, dim>;
 
-    void set_size(std::size_t size)
+    void setup(std::size_t nbr_elements, SortBox const& box)
     {
-        if (size > tmp_.size())
-        {
-            tmp_.resize(size);
-        }
+        tmp_.resize(nbr_elements);
+        hist_.resize(box.size());
     }
 
     template<typename CellGetter>
     void sort(Array& toSort, CellGetter getCell)
     {
-        // pay the price of reallocation if temporary
-        // array is too small
-        if (toSort.size() > tmp_.size())
-        {
-            set_size(toSort.size());
-        }
-        if (box_.isEmpty())
-        {
-            return;
-        }
-
+        assert(toSort.size() == tmp_.size());
         // compute histogram
         for (std::size_t ip = 0; ip < tmp_.size(); ++ip)
         {
@@ -76,7 +65,6 @@ public:
 
 private:
     std::vector<value_type> tmp_;
-    SortBox box_;
     std::vector<int> hist_;
 };
 
