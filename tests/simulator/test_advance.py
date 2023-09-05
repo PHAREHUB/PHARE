@@ -685,6 +685,8 @@ class AdvanceTestBase(SimulatorTest):
                                     except AssertionError as e:
                                         print(
                                             f"FAIL level ghost subcycle_coarsening qty {qty}",
+                                            fine_ghostbox_data,
+                                            refinedInterpGhostBox_data,
                                             e,
                                         )
                                         if self.rethrow_:

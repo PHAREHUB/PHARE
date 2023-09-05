@@ -857,7 +857,7 @@ namespace amr
 
             // call coarsning schedules...
             magnetoSynchronizers_.sync(levelNumber);
-            // electroSynchronizers_.sync(levelNumber);
+            electroSynchronizers_.sync(levelNumber);
             densitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
         }

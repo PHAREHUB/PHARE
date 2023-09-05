@@ -143,7 +143,7 @@ struct FieldCoarsenTestData
     }
 };
 
-template<std::size_t dimension, typename Coarsener>
+template<typename Coarsener, std::size_t dimension>
 void coarsen(std::size_t idx, SAMRAI::hier::Box& fineBox, SAMRAI::hier::Box& coarseBox,
              std::array<PHARE::core::QtyCentering, dimension>& centering,
              SAMRAI::hier::IntVector& ratio, EMData<dimension>& em)
@@ -253,9 +253,9 @@ void load(FieldCoarsenTestData<dimension>& param, Files& file_data)
 
     SAMRAI::hier::IntVector ratio{dim, 2};
 
-    coarsen<dimension, Coarsener>(0, fineBoxX, coarseBoxX, centeringX, ratio, em);
-    coarsen<dimension, Coarsener>(1, fineBoxY, coarseBoxY, centeringY, ratio, em);
-    coarsen<dimension, Coarsener>(2, fineBoxZ, coarseBoxZ, centeringZ, ratio, em);
+    coarsen<Coarsener>(0, fineBoxX, coarseBoxX, centeringX, ratio, em);
+    coarsen<Coarsener>(1, fineBoxY, coarseBoxY, centeringY, ratio, em);
+    coarsen<Coarsener>(2, fineBoxZ, coarseBoxZ, centeringZ, ratio, em);
 }
 
 
