@@ -68,8 +68,8 @@ namespace amr
 
 
         /**
-         * @brief  Add a Reginer
-         * add a QuantityCommunicator to the Communicators based on the given descroptors and
+         * @brief  Add a Refiner
+         * add a QuantityCommunicator to the Communicators based on the given descriptors and
          * spatial refinement operator and time interpolation operator. The created
          * QuantityCommunicator is associated with the given key.
          *
