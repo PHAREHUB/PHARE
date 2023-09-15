@@ -690,8 +690,7 @@ class AdvanceTestBase(SimulatorTest):
                                             e,
                                         )
                                         if self.rethrow_:
-                                            print("not :rethrowing")
-                                            # raise e
+                                            raise e
                                     #  error_boxes += diff_boxes(
                                     #      fine_ghostbox_data,
                                     #      refinedInterpGhostBox_data,
@@ -730,7 +729,7 @@ class AdvanceTestBase(SimulatorTest):
             return self.getHierarchy(
                 interp_order,
                 boxes,
-                "eb",
+                "moments",
                 cells=30,
                 time_step_nbr=1,
                 largest_patch_size=15,

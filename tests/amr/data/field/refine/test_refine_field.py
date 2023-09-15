@@ -34,6 +34,15 @@ refinement_ratio = 2
 #
 
 
+def fine_layout_from(field):
+    return GridLayout(
+        boxm.refine(field.box, refinement_ratio),
+        field.origin,
+        field.layout.dl / refinement_ratio,
+        interp_order=field.layout.interp_order,
+    )
+
+
 def cropToFieldData(fine_data, field):
     # reminder: we were working on "fine_data" that covers the whole ghost box of the given coarse field
     # here we drop the parts of data that are beyond the refined patch ghost box.
@@ -54,6 +63,48 @@ def cropToFieldData(fine_data, field):
     return FieldData(fine_layout, field.field_name, data=fine_data)
 
 
+def refine_electric(field, **kwargs):
+    """
+    This function refines the electric field from the given field
+    See electric_field_refiner.hpp for more details on the refinement algo.
+    """
+    fine_data = makeDataset(field, **kwargs)
+    coarse_data = kwargs.get("data", field.dataset[:])
+    if "data" in kwargs:
+        assert coarse_data.shape == field.dataset.shape
+    primal_directions = field.primal_directions()
+
+    if field.box.ndim == 1:
+        # in 1D Ex, Ey and Ey cell edges are on top of coarse cell edges
+        # the algo for electric refinement is that fine edges falling on top of coarse
+        # ones share their value. So here we just take the coarse value whatever the
+        # centering.
+        print(field.field_name)
+        print(field.box.shape)
+        print(field.dataset.shape)
+        fine_data[::2] = coarse_data
+        fine_data[1::2] = coarse_data
+
+    elif field.box.ndim == 2:
+        if primal_directions[0] and not primal_directions[1]:
+            # this is Ex
+            # in 2D along X Ex fine edges are collocate with coarse edges
+            # but along Y only even edges do, ones fall in  between 2 coarse edges
+            # and take the average of their value
+
+            # first do even Y indices
+            # same for even and odd X fine indices
+            fine_data[::2, ::2] = coarse_data[:, :]
+            fine_data[1::2, ::2] = coarse_data[:, :]
+
+            # now odd Y indices take the average of surrounding coarse edges
+            # again, same for odd and even X fine indices
+            fine_data[::2, 1::2] = 0.5 * (coarse_data[:, 1:] + coarse_data[:, :-1])
+            fine_data[1::2, 1::2] = 0.5 * (coarse_data[:, 1:] + coarse_data[:, :-1])
+
+    return cropToFieldData(fine_data, field)
+
+
 def refine_magnetic(field, **kwargs):
     """
     This function refines the magnetic field from the given field
@@ -62,8 +113,6 @@ def refine_magnetic(field, **kwargs):
 
     # reminder the "fine_data" we get covers the whole ghost box of the given coarse field
     fine_data = makeDataset(field, **kwargs)
-    ghostX = field.ghosts_nbr[0]
-    assert ghostX > 1
 
     coarse_data = kwargs.get("data", field.dataset[:])
     if "data" in kwargs:
@@ -127,15 +176,6 @@ def refine_magnetic(field, **kwargs):
             raise RuntimeError("impossible layout for a magnetic field")
 
     return cropToFieldData(fine_data, field)
-
-
-def fine_layout_from(field):
-    return GridLayout(
-        boxm.refine(field.box, refinement_ratio),
-        field.origin,
-        field.layout.dl / refinement_ratio,
-        interp_order=field.layout.interp_order,
-    )
 
 
 def makeDataset(field, **kwargs):
@@ -342,6 +382,8 @@ def refine_time_interpolate(
     for qty in quantities:
         if qty[0] == "B":
             refine_algo = refine_magnetic
+        elif qty[0] == "E":
+            refine_algo = refine_electric
         else:
             refine_algo = default_refine
 
