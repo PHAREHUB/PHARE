@@ -34,7 +34,7 @@ namespace amr
         }
 
         /**
-         * @brief allocate allocate the internal resources to the hybrid and MHD
+         * @brief allocate the internal resources to the hybrid and MHD
          * resourcesManagers
          */
         void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override

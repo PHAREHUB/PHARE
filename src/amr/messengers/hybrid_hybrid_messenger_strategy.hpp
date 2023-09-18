@@ -779,14 +779,12 @@ namespace amr
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
-         * This method copies the current model electromagnetic field E,B, the current
-         * density J, and the density and bulk velocity, defined at t=n. Since prepareStep()
-         * is called just before advancing the level, this operation actually saves the t=n
-         * versions of E,B,J,Ni,Vi into the messenger. When the time comes that the next
-         * finer level needs to time interpolate the electromagnetic field and current at
-         * its ghost nodes, this level will be able to interpolate at required time because
-         * the t=n Vi,Ni,E,B,J fields of previous next coarser step will be in the
-         * messenger.
+         * This method copies the  density J, and the density and bulk velocity, defined at t=n.
+         * Since prepareStep() is called just before advancing the level, this operation actually
+         * saves the t=n versions of J, Ni, Vi into the messenger. When the time comes that the
+         * next finer level needs to time interpolate the electromagnetic field and current at its
+         * ghost nodes, this level will be able to interpolate at required time because the t=n
+         * Vi,Ni,J fields of previous next coarser step will be in the messenger.
          */
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
@@ -804,7 +802,6 @@ namespace amr
                 resourcesManager_->setTime(NiOldUser_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
 
-                auto& EM = hybridModel.state.electromag;
                 auto& J  = hybridModel.state.J;
                 auto& Vi = hybridModel.state.ions.velocity();
                 auto& Ni = hybridModel.state.ions.density();

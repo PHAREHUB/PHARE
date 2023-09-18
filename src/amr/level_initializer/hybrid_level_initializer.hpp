@@ -76,11 +76,12 @@ namespace solver
                     PHARE_LOG_START("hybridLevelInitializer::initialize : initlevel");
                     messenger.initLevel(model, level, initDataTime);
                     PHARE_LOG_STOP("hybridLevelInitializer::initialize : initlevel");
-                    messenger.prepareStep(model, level, initDataTime);
+                    // messenger.prepareStep(model, level, initDataTime);
                 }
             }
 
             // now all particles are here
+            // we must compute moments.
 
             for (auto& patch : level)
             {
@@ -101,11 +102,14 @@ namespace solver
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
-            // TODO why is prepareStep called here and above, and why not at the end of this
-            // function after all quantites are computed? Preparestep for ex. copies J but it's only
-            // computed below.
             hybMessenger.prepareStep(hybridModel, level, initDataTime);
             hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
+
+
+            // now moments are known everywhere, compute J and E
+            // via Ampere and Ohm
+            // this only needs to be done for the root level
+            // since otherwise initLevel has done it already
 
             if (isRootLevel(levelNumber))
             {
