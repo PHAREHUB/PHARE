@@ -23,7 +23,7 @@ void fluid_test(Simulator&& sim, std::string out_dir)
             .addDiagDict(hi5.fluid("/ions/pop/protons/density"))
             .addDiagDict(hi5.fluid("/ions/pop/protons/flux"))
             .addDiagDict(hi5.fluid("/ions/pop/protons/momentum_tensor"));
-        sim.dump(hi5.dMan);
+        hi5.dump();
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, out_dir,
@@ -42,7 +42,7 @@ void electromag_test(Simulator&& sim, std::string out_dir)
     { // scoped to destruct after dump
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, out_dir, NEW_HI5_FILE};
         hi5.dMan.addDiagDict(hi5.electromag("/EM_B")).addDiagDict(hi5.electromag("/EM_E"));
-        sim.dump(hi5.dMan);
+        hi5.dump();
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, out_dir,
@@ -68,7 +68,7 @@ void particles_test(Simulator&& sim, std::string out_dir)
             .addDiagDict(hi5.particles("/ions/pop/protons/domain"))
             .addDiagDict(hi5.particles("/ions/pop/protons/levelGhost"))
             .addDiagDict(hi5.particles("/ions/pop/protons/patchGhost"));
-        sim.dump(hi5.dMan);
+        hi5.dump();
     }
 
     Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, out_dir,
@@ -83,11 +83,11 @@ void allFromPython_test(Simulator&& sim, std::string out_dir)
     using HybridModel = typename Simulator::HybridModel;
     using Hierarchy   = typename Simulator::Hierarchy;
 
-    sim.dump(*sim.dMan);
+    sim.dump(/*timestamp= */ 0, /*timestep= */ 1);
     // flush h5files, killing the DiagnosticsManager killes the H5TypeWriter shared_ptrs internally,
     //  and forces closed any open h5files, flushing any remaining contents, which we use below in
     //  this test
-    sim.dMan.reset();
+    sim.reset_dman();
 
     auto& hybridModel = *sim.getHybridModel();
     auto& hierarchy   = *sim.hierarchy;

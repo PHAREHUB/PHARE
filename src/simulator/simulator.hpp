@@ -38,6 +38,8 @@ public:
     virtual std::string to_str() = 0;
 
     virtual ~ISimulator() {}
+
+
     virtual bool dump(double timestamp, double timestep) { return false; } // overriding optional
 };
 
@@ -106,6 +108,9 @@ public:
 
     using Integrator = PHARE::amr::Integrator<dimension>;
 
+protected:
+    // provided to force flush for diags
+    void reset_dman() { this->dMan.reset(); }
 
 private:
     auto find_model(std::string name);
