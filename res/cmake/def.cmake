@@ -5,7 +5,9 @@ set (PHARE_FLAGS ${PHARE_FLAGS} )
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_FLAGS ${PHARE_FLAGS} )
 else() # !Clang
-  set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+  # --param=min-pagesize=0    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105523
+  # --param=evrp-mode=legacy  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
+  set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 --param=evrp-mode=legacy )
 endif() # clang
 
 set (PHARE_LINK_FLAGS )

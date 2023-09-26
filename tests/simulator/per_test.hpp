@@ -49,8 +49,6 @@ struct SimulatorTestParam : private HierarchyMaker<_dim>,
     using MHDModel    = typename PHARETypes::MHDModel_t;
     using HierarchyMaker<dim>::hierarchy;
 
-    std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
-
     auto& dict(std::string job_py)
     {
         auto& input = StaticIntepreter::INSTANCE().input;
@@ -68,21 +66,9 @@ struct SimulatorTestParam : private HierarchyMaker<_dim>,
         , Simulator{dict(job_py), this->hierarchy}
     {
         Simulator::initialize();
-
-        if (dict(job_py)["simulation"].contains("diagnostics"))
-        {
-            dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(
-                *this->hierarchy, *this->getHybridModel(),
-                dict(job_py)["simulation"]["diagnostics"]);
-        }
     }
 
-
-    template<typename DMan>
-    void dump(DMan& dman, double current_timestamp = 0, double current_timestep = 1)
-    {
-        dman.dump(current_timestamp, current_timestep);
-    }
+    void reset_dman() { Simulator::reset_dman(); }
 };
 
 template<typename SimulatorParam>

@@ -85,6 +85,11 @@ struct Hi5Diagnostic
         return Writer_t::getFullPatchPath(timestamp, level, patch);
     }
 
+    void dump(double current_timestamp = 0, double current_timestep = 1)
+    {
+        dMan.dump(current_timestamp, current_timestep);
+    }
+
     Hierarchy& hierarchy_;
     HybridModel& model_;
     std::string out_;
