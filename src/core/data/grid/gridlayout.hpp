@@ -552,7 +552,7 @@ namespace core
         /**
          * @brief the number of ghost nodes on each side of the mesh for a given centering
          */
-        NO_DISCARD auto static constexpr nbrGhosts(
+        NO_DISCARD std::uint32_t static constexpr nbrGhosts(
             QtyCentering /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
             static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
@@ -562,7 +562,7 @@ namespace core
 
 
         template<typename Centering, Centering centering>
-        NO_DISCARD auto static constexpr nbrGhosts()
+        NO_DISCARD std::uint32_t static constexpr nbrGhosts()
         {
             if constexpr (centering == QtyCentering::dual)
                 return nbrDualGhosts_();

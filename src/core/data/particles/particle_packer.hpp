@@ -15,6 +15,8 @@ template<std::size_t dim>
 class ParticlePacker
 {
 public:
+    static constexpr std::size_t n_keys = 5;
+
     ParticlePacker(ParticleArray<dim> const& particles)
         : particles_{particles}
     {
@@ -63,7 +65,8 @@ public:
 private:
     ParticleArray<dim> const& particles_;
     std::size_t it_ = 0;
-    static inline std::array<std::string, 5> keys_{"weight", "charge", "iCell", "delta", "v"};
+    static inline const std::array<std::string, n_keys> keys_{"weight", "charge", "iCell", "delta",
+                                                              "v"};
 };
 
 
