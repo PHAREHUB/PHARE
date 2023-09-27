@@ -76,7 +76,6 @@ namespace solver
                     PHARE_LOG_START("hybridLevelInitializer::initialize : initlevel");
                     messenger.initLevel(model, level, initDataTime);
                     PHARE_LOG_STOP("hybridLevelInitializer::initialize : initlevel");
-                    // messenger.prepareStep(model, level, initDataTime);
                 }
             }
 
@@ -102,7 +101,14 @@ namespace solver
                 ions.computeDensity();
                 ions.computeBulkVelocity();
             }
-            hybMessenger.prepareStep(hybridModel, level, initDataTime);
+
+            // on level i>0, this relies on 'prepareStep' having been called on when
+            // level i-1 was initialized (at the end of this function)
+            // it seems SAMRAI does not call timeInterpolate() at this point although
+            // both moments and J need time interpolation. It probably knows that
+            // we are at a sync time across levels and that the time interpolation
+            // is not needed. But is still seems to use the messenger tempoeraries like
+            // NiOld etc. so prepareStep() must be called, see end of the function.
             hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
 
 
@@ -145,6 +151,13 @@ namespace solver
 
                 hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
             }
+
+            // quantities have been computed on the level,like the moments and J
+            // that we later in the code need to get on level ghost nodes via
+            // space and TIME interpolation. We thus need to save current values
+            // in "old" messenger temporaries.
+            // NOTE :  this may probably be skipped for finest level since, TBC at some point
+            hybMessenger.prepareStep(hybridModel, level, initDataTime);
         }
     };
 } // namespace solver
