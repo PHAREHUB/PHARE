@@ -1,8 +1,8 @@
 #ifndef PHARE_HYBRID_MESSENGER_INFO_HPP
 #define PHARE_HYBRID_MESSENGER_INFO_HPP
 
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "messenger_info.hpp"
+#include "core/data/vecfield/vecfield.hpp"
 
 #include <string>
 #include <vector>
@@ -30,73 +30,42 @@ namespace amr
      *
      */
 
-    struct VecFieldDescriptor
-    {
-        std::string vecName;
-        std::string xName;
-        std::string yName;
-        std::string zName;
-
-        VecFieldDescriptor() = default;
-
-        template<typename VecFieldT>
-        explicit VecFieldDescriptor(VecFieldT const& v)
-            : vecName{v.name()}
-            , xName{v.getComponentName(core::Component::X)}
-            , yName{v.getComponentName(core::Component::Y)}
-            , zName{v.getComponentName(core::Component::Z)}
-
-        {
-        }
-    };
 
 
 
-    using FieldDescriptor      = std::string;
-    using PopulationDescriptor = std::string;
-
-
-    /// template<typename VecFieldT>
     class HybridMessengerInfo : public IMessengerInfo
     {
+        using VecFieldNames = core::VecFieldNames;
+
     public:
-        VecFieldDescriptor modelMagnetic;
-        VecFieldDescriptor modelElectric;
-        VecFieldDescriptor modelCurrent;
-        VecFieldDescriptor modelIonBulkVelocity;
-        FieldDescriptor modelIonDensity;
+        // store names of field and vector fields known to be part of the model
+        // i.e. that constitute the state of the model between two time steps.
+        VecFieldNames modelMagnetic;
+        VecFieldNames modelElectric;
+        VecFieldNames modelCurrent;
+        VecFieldNames modelIonBulkVelocity;
+        std::string modelIonDensity;
 
+        // store names of vector fields that need to be initialized by refinement
+        // moments are initialized by particles so only EM fields need to be init.
+        std::vector<VecFieldNames> initMagnetic;
+        std::vector<VecFieldNames> initElectric;
 
-        //! names of the magnetic quantities that will be communicated by
-        //! HybridMessenger::initghoLevel() and HybridMessenger::regrid()
-        std::vector<VecFieldDescriptor> initMagnetic;
+        // below are the names of the populations that need to be communicated
+        // this is for initialization
+        std::vector<std::string> interiorParticles;
 
+        // and the following are for ghost cells
+        std::vector<std::string> levelGhostParticlesNew;
+        std::vector<std::string> levelGhostParticlesOld;
+        std::vector<std::string> patchGhostParticles;
 
-        //! names of the electric quantities that will be communicated by
-        //! HybridMessenger::initLevel() and HybridMessenger::regrid()
-        std::vector<VecFieldDescriptor> initElectric;
-
-        std::vector<PopulationDescriptor> interiorParticles;
-        std::vector<PopulationDescriptor> levelGhostParticlesNew;
-        std::vector<PopulationDescriptor> levelGhostParticlesOld;
-        std::vector<PopulationDescriptor> patchGhostParticles;
-
-
-        //! name of the magnetic quantities that will be communicated by
-        std::vector<VecFieldDescriptor> ghostMagnetic;
-
-
-        //! name of the electric quantities that will be communicated by the
-        //! HybridMessenger::fillGhostElectric
-        std::vector<VecFieldDescriptor> ghostElectric;
-
-
-        //! name of the current quantities that will be communicated by the
-        //! HybridMessenger::fillGhostCurrent
-        std::vector<VecFieldDescriptor> ghostCurrent;
-
-
-        std::vector<VecFieldDescriptor> ghostBulkVelocity;
+        // below are the descriptions of the vector fields that for which
+        // ghosts need to be filled at some point.
+        std::vector<VecFieldNames> ghostMagnetic;
+        std::vector<VecFieldNames> ghostElectric;
+        std::vector<VecFieldNames> ghostCurrent;
+        std::vector<VecFieldNames> ghostBulkVelocity;
 
         virtual ~HybridMessengerInfo() = default;
     };

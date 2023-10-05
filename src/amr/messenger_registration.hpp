@@ -1,4 +1,3 @@
-
 #ifndef PHARE_MESSENGER_INITIALIZER_HPP
 #define PHARE_MESSENGER_INITIALIZER_HPP
 
@@ -12,6 +11,8 @@ namespace PHARE
 {
 namespace solver
 {
+
+    // This class is necessary to decouple models and solvers from the Messengers.
     class MessengerRegistration
     {
     public:

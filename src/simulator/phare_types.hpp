@@ -34,7 +34,7 @@ struct PHARE_Types
 
     using amr_types        = PHARE::amr::PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using hierarchy_t      = typename amr_types::hierarchy_t;
-    using Splitter         = typename amr_types::Splitter;
+    using Splitter         = typename amr_types::Splitter_t;
     using RefinementParams = typename amr_types::RefinementParams;
 
 

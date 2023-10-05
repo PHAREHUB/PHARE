@@ -27,11 +27,11 @@ namespace core
     class VecField
     {
     public:
-        VecField()                                 = delete;
-        VecField& Vecfield(VecField const& source) = delete;
-        VecField(VecField&& source)                = default;
+        VecField()                                  = delete;
+        VecField(VecField const& source)            = delete;
+        VecField(VecField&& source)                 = default;
         VecField& operator=(VecField const& source) = delete;
-        VecField& operator=(VecField&& source) = default;
+        VecField& operator=(VecField&& source)      = default;
 
         static constexpr std::size_t dimension = NdArrayImpl::dimension;
 
@@ -234,6 +234,26 @@ namespace core
                 Vavg.getComponent(Component::Z));
     }
 
+
+    struct VecFieldNames
+    {
+        std::string vecName;
+        std::string xName;
+        std::string yName;
+        std::string zName;
+
+        VecFieldNames() = default;
+
+        template<typename VecFieldT>
+        explicit VecFieldNames(VecFieldT const& v)
+            : vecName{v.name()}
+            , xName{v.getComponentName(core::Component::X)}
+            , yName{v.getComponentName(core::Component::Y)}
+            , zName{v.getComponentName(core::Component::Z)}
+
+        {
+        }
+    };
 
 
 } // namespace core

@@ -161,14 +161,13 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     std::unique_ptr<amr::IMessengerInfo> const& info) const
 {
-    auto& modelInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
+    auto& hybridInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
-    auto const& Epred = electromagPred_.E;
     auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
-    modelInfo.ghostElectric.emplace_back(amr::VecFieldDescriptor{Eavg});
-    modelInfo.initMagnetic.emplace_back(amr::VecFieldDescriptor{Bpred});
+    hybridInfo.ghostElectric.emplace_back(core::VecFieldNames{Eavg});
+    hybridInfo.initMagnetic.emplace_back(core::VecFieldNames{Bpred});
 }
 
 
