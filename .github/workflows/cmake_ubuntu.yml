@@ -1,0 +1,92 @@
+name: CMake Ubuntu
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Build Info
+      run: |
+        uname -a
+        gcc -v
+        clang -v
+
+    - name: CCache
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
+        restore-keys: ${{ runner.os }}-ccache-
+
+    - name: Cache PIP (Linux)
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Clone PHARE
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.11.1'
+
+    - name: Install system deps (openmpi, hdf5, ccache,...)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
+
+    - name: Ensure ccache uses ~/.ccache
+      run: |
+          mkdir -p ~/.ccache
+          ccache --set-config=cache_dir=~/.ccache
+          ccache --get-config=cache_dir
+
+    - name: Install python deps
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      # builds samrai with 2 threads as it does not OOM (yet)
+      working-directory: ${{runner.workspace}}/build
+      run: |
+        set -ex
+        cmake $GITHUB_WORKSPACE
+        cd ${{runner.workspace}}/PHARE/subprojects/samrai && mkdir build && cd build
+        cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+        make -j2 && sudo make install && cd ../.. && rm -rf samrai
+        cd ${{runner.workspace}}/build && rm -rf *
+        cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DlowResourceTests=ON \
+              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 -O2"
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      run: |
+        cmake --build . # OOM if more threads
+
+    - name: Test
+      working-directory: ${{runner.workspace}}/build
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: ctest -j 2
+
