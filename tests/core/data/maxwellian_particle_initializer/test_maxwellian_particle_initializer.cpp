@@ -62,7 +62,6 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
 {
     initializer->loadParticles(particles, layout);
-    auto i = 0u;
     for (auto const& particle : particles)
     {
         EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
@@ -72,7 +71,6 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
         if (!((pos[0] > 0.) and (pos[0] < endDomain)))
             std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << ")\n";
         EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
-        i++;
     }
 }
 
