@@ -41,7 +41,6 @@ namespace amr
      *
      * Ghost filling methods tuned for Hybrid quantities:
      *
-     * - fillMagneticGhosts()
      * - fillElectricGhosts()
      * - fillIonGhostParticles()
      * - fillIonMomentGhosts()
@@ -258,20 +257,6 @@ namespace amr
                             Start HybridMessenger Interface
            -------------------------------------------------------------------------*/
 
-
-
-
-        /**
-         * @brief fillMagneticGhosts is called by a ISolver solving hybrid equations to fill
-         * the ghost nodes of the magnetic field
-         * @param B is the magnetic field for which ghost nodes will be filled
-         * @param levelNumber
-         * @param fillTime
-         */
-        void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime)
-        {
-            strat_->fillMagneticGhosts(B, levelNumber, fillTime);
-        }
 
 
         /**

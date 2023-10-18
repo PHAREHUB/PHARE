@@ -4,6 +4,7 @@
 
 #include "amr/data/field/field_variable.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/field_refiner.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "test_tag_strategy.hpp"
 
@@ -104,7 +105,8 @@ public:
               dimension_, "ChopAndPackLoadBalancer",
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
-        , refineOperator_{std::make_shared<FieldRefineOperator<GridLayoutT, FieldT>>()}
+        , refineOperator_{std::make_shared<
+              FieldRefineOperator<GridLayoutT, FieldT, DefaultFieldRefiner<dimension>>>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<GridLayoutT, FieldT>>(variablesIds_,

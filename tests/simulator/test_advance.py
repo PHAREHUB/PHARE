@@ -536,9 +536,19 @@ class AdvanceTestBase(SimulatorTest):
                                 # 1e-16 seems to fail for some reason. Discrepency appears to be
                                 # on refined adjacent patches. Was way worse (1e-4 or so) when not
                                 # filling pure ghosts for Ni and Vi. 1e-15 seems good enough
-                                np.testing.assert_allclose(
-                                    coarse_pdDataset, afterCoarse, atol=1e-15, rtol=0
-                                )
+                                try:
+                                    np.testing.assert_allclose(
+                                        coarse_pdDataset,
+                                        afterCoarse,
+                                        atol=1e-15,
+                                        rtol=0,
+                                    )
+                                except AssertionError as e:
+                                    print("failing for {}".format(qty))
+                                    print(np.abs(coarse_pdDataset - afterCoarse).max())
+                                    print(coarse_pdDataset)
+                                    print(afterCoarse)
+                                    raise e
 
     def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(
         self, L0_datahier, L0L1_datahier, quantities=None
@@ -675,16 +685,18 @@ class AdvanceTestBase(SimulatorTest):
                                     except AssertionError as e:
                                         print(
                                             f"FAIL level ghost subcycle_coarsening qty {qty}",
+                                            fine_ghostbox_data,
+                                            refinedInterpGhostBox_data,
                                             e,
                                         )
                                         if self.rethrow_:
                                             raise e
-                                        error_boxes += diff_boxes(
-                                            fine_ghostbox_data,
-                                            refinedInterpGhostBox_data,
-                                            box,
-                                            atol=1e-15,
-                                        )
+                                    error_boxes += diff_boxes(
+                                        fine_ghostbox_data,
+                                        refinedInterpGhostBox_data,
+                                        box,
+                                        atol=1e-15,
+                                    )
                                     checks += 1
         if len(error_boxes):
             return error_boxes
@@ -717,7 +729,7 @@ class AdvanceTestBase(SimulatorTest):
             return self.getHierarchy(
                 interp_order,
                 boxes,
-                "eb",
+                "moments",
                 cells=30,
                 time_step_nbr=1,
                 largest_patch_size=15,

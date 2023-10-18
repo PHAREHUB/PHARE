@@ -65,11 +65,6 @@ namespace amr
 
         // ghost filling
 
-        // used during solver advance
-        virtual void fillMagneticGhosts(VecFieldT& B, int const levelNumber, double const fillTime)
-            = 0;
-
-
         virtual void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime)
             = 0;
 

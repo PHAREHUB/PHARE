@@ -115,11 +115,9 @@ namespace amr
 
 
     /**
-     * @brief makeGhostRefiner creates a QuantityRefiner for ghost filling of a VecField.
-     *
-     * The method basically calls registerRefine() on the QuantityRefiner algorithm,
-     * passing it the IDs of the ghost, model and old model patch datas associated to each component
-     * of the vector field.
+     * @Brief This overload creates a Refiner for communication with both spatial and
+     * time interpolation. Data is communicated from the model vector field defined at
+     * time t=n+1 and its version at time t=n (oldModel), onto the `ghost` vector field.
      *
      *
      * @param ghost is the VecFieldDescriptor of the VecField that needs its ghost nodes filled
@@ -131,8 +129,7 @@ namespace amr
      * @param refineOp is the spatial refinement operator
      * @param timeOp is the time interpolator
      *
-     * @return the function returns a QuantityRefiner which may be stored in a RefinerPool and to
-     * which later schedules will be added.
+     * @return the function returns a Refiner
      */
     template<typename ResourcesManager>
     Communicator<Refiner>
@@ -174,53 +171,120 @@ namespace amr
     }
 
 
+    /**
+     * @brief creates a Refiner for a scalar quantity with time refinement
+     */
+    template<typename ResourcesManager>
+    Communicator<Refiner> makeRefiner(FieldDescriptor const& ghost, FieldDescriptor const& model,
+                                      FieldDescriptor const& oldModel,
+                                      std::shared_ptr<ResourcesManager> const& rm,
+                                      std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
+                                      std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp)
+    {
+        constexpr auto dimension = ResourcesManager::dimension;
+        auto variableFillPattern = FieldFillPattern<dimension>::make_shared(refineOp);
+
+        Communicator<Refiner> com;
+
+        auto registerRefine
+            = [&rm, &com, &refineOp, &timeOp](std::string const& ghost_, std::string const& model_,
+                                              std::string const& oldModel_, auto& fillPattern) {
+                  auto src_id  = rm->getID(ghost_);
+                  auto dest_id = rm->getID(ghost_);
+                  auto new_id  = rm->getID(model_);
+                  auto old_id  = rm->getID(oldModel_);
+
+                  if (src_id && dest_id && old_id)
+                  {
+                      com.add_algorithm()->registerRefine(
+                          *dest_id, // dest
+                          *src_id,  // source at same time
+                          *old_id,  // source at past time (for time interp)
+                          *new_id,  // source at future time (for time interp)
+                          *dest_id, // scratch
+                          refineOp, timeOp, fillPattern);
+                  }
+              };
+
+        registerRefine(ghost, model, oldModel, variableFillPattern);
+
+        return com;
+    }
 
 
     /**
-     * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is
-     * called is the one that allows initialization of a vector field quantity.
+     * @brief this overload creates a Refiner for communication without time interpolation
+     * and from one quantity to the same quantity. It is typically used for initialization.
      */
     template<typename ResourcesManager>
     Communicator<Refiner> makeRefiner(VecFieldDescriptor const& descriptor,
                                       std::shared_ptr<ResourcesManager> const& rm,
                                       std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
     {
+        return makeRefiner(descriptor, descriptor, rm, refineOp);
+    }
+
+    /**
+     * @brief this overload creates a Refiner for communication without time interpolation
+     * and from one quantity to another quantity.
+     */
+    template<typename ResourcesManager>
+    Communicator<Refiner>
+    makeRefiner(VecFieldDescriptor const& source, VecFieldDescriptor const& destination,
+                std::shared_ptr<ResourcesManager> const& rm,
+                std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, bool ghosts = false)
+    {
+        constexpr auto dimension = ResourcesManager::dimension;
+        auto variableFillPattern = FieldFillPattern<dimension>::make_shared(refineOp);
         Communicator<Refiner> com;
 
-        auto registerRefine = [&com, &rm, &refineOp](std::string name) {
-            auto id = rm->getID(name);
-            if (id)
-            {
-                com.add_algorithm()->registerRefine(*id, *id, *id, refineOp);
-            }
-        };
-        registerRefine(descriptor.xName);
-        registerRefine(descriptor.yName);
-        registerRefine(descriptor.zName);
+        auto registerRefine
+            = [&com, &rm, &refineOp, ghosts](std::string src, std::string dst, auto& fillPattern) {
+                  auto idSrc  = rm->getID(src);
+                  auto idDest = rm->getID(dst);
+                  if (idSrc and idDest)
+                  {
+                      if (ghosts)
+                          com.add_algorithm()->registerRefine(*idDest, *idSrc, *idDest, refineOp,
+                                                              fillPattern);
+                      else
+                          com.add_algorithm()->registerRefine(*idDest, *idSrc, *idDest, refineOp);
+                  }
+              };
+        registerRefine(source.xName, destination.xName, variableFillPattern);
+        registerRefine(source.yName, destination.yName, variableFillPattern);
+        registerRefine(source.zName, destination.zName, variableFillPattern);
 
         return com;
     }
 
+    template<typename ResourcesManager>
+    Communicator<Refiner> makeRefiner(std::string const& dest, std::string const& src,
+                                      std::shared_ptr<ResourcesManager> const& rm,
+                                      std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, bool)
+    {
+        Communicator<Refiner> com;
 
+        auto idSrc  = rm->getID(src);
+        auto idDest = rm->getID(dest);
+        if (idSrc and idDest)
+        {
+            com.add_algorithm()->registerRefine(*idDest, *idSrc, *idDest, refineOp);
+        }
+        return com;
+    }
 
 
     /**
-     * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is
-     * called is the one that allows initialization of a field quantity.
+     * @brief This overload of makeRefiner creates a Refiner for communication from one
+     * scalar quantity to itself without time interpolation.
      */
     template<typename ResourcesManager>
     Communicator<Refiner> makeRefiner(std::string const& name,
                                       std::shared_ptr<ResourcesManager> const& rm,
                                       std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
     {
-        Communicator<Refiner> com;
-
-        auto id = rm->getID(name);
-        if (id)
-        {
-            com.add_algorithm()->registerRefine(*id, *id, *id, refineOp);
-        }
-        return com;
+        return makeRefiner(name, name, rm, refineOp);
     }
 
 

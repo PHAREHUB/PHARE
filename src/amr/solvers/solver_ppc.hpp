@@ -3,32 +3,25 @@
 
 #include <SAMRAI/hier/Patch.h>
 
-#include "initializer/data_provider.hpp"
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 
 #include "amr/solvers/solver.hpp"
 
-#include "core/numerics/pusher/pusher.hpp"
-#include "core/numerics/pusher/pusher_factory.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
-#include "core/numerics/boundary_condition/boundary_condition.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 
-#include "core/data/particles/particle_array.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
 
 
 #include <iomanip>
+#include <sstream>
 
 namespace PHARE::solver
 {
@@ -116,7 +109,7 @@ private:
                     double const currentTime, double const newTime);
 
 
-    void average_(level_t& level, HybridModel& model);
+    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser, double const newTime);
 
 
     void moveIons_(level_t& level, Ions& ions, Electromag& electromag, ResourcesManager& rm,
@@ -127,14 +120,6 @@ private:
     void saveState_(level_t& level, Ions& ions, ResourcesManager& rm);
 
     void restoreState_(level_t& level, Ions& ions, ResourcesManager& rm);
-
-    /*
-    template<typename HybridMessenger>
-    void syncLevel(HybridMessenger& toCoarser)
-    {
-        toCoarser.syncMagnetic(model_.electromag.B);
-        toCoarser.syncElectric(model_.electromag.E);
-    }*/
 
 
     // extend lifespan
@@ -179,11 +164,11 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto& modelInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
     auto const& Epred = electromagPred_.E;
+    auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
-    modelInfo.ghostElectric.emplace_back(Epred);
-    modelInfo.ghostMagnetic.emplace_back(Bpred);
-    modelInfo.initMagnetic.emplace_back(Bpred);
+    modelInfo.ghostElectric.emplace_back(amr::VecFieldDescriptor{Eavg});
+    modelInfo.initMagnetic.emplace_back(amr::VecFieldDescriptor{Bpred});
 }
 
 
@@ -247,19 +232,20 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 
     predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
-
-    average_(*level, hybridModel);
+    average_(*level, hybridModel, fromCoarser, newTime);
 
     saveState_(*level, hybridState.ions, resourcesManager);
+
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::domain_only);
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
 
-    average_(*level, hybridModel);
+    average_(*level, hybridModel, fromCoarser, newTime);
 
     restoreState_(*level, hybridState.ions, resourcesManager);
+
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
               newTime, core::UpdaterMode::all);
 
@@ -299,12 +285,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto __     = core::SetLayout(&layout, faraday_);
             faraday_(B, E, Bpred, dt);
-
-
             resourcesManager->setTime(Bpred, *patch, newTime);
         }
-
-        fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
     }
 
 
@@ -314,7 +296,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
         auto& Bpred = electromagPred_.B;
         auto& J     = hybridState.J;
-
 
         for (auto& patch : level)
         {
@@ -350,8 +331,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
             ohm_(Ne, Ve, Pe, Bpred, J, Epred);
             resourcesManager->setTime(Epred, *patch, newTime);
         }
-
-        fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
     }
 }
 
@@ -386,8 +365,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
             resourcesManager->setTime(Bpred, *patch, newTime);
         }
-
-        fromCoarser.fillMagneticGhosts(Bpred, levelNumber, newTime);
     }
 
 
@@ -431,8 +408,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
             ohm_(Ne, Ve, Pe, Bpred, J, Epred);
             resourcesManager->setTime(Epred, *patch, newTime);
         }
-
-        fromCoarser.fillElectricGhosts(Epred, levelNumber, newTime);
     }
 }
 
@@ -466,11 +441,9 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
             resourcesManager->setTime(B, *patch, newTime);
         }
-
-        fromCoarser.fillMagneticGhosts(B, levelNumber, newTime);
     }
 
-
+    // TODO misses AMPERE here
 
     {
         PHARE_LOG_SCOPE("SolverPPC::corrector_.ohm");
@@ -500,7 +473,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model)
+void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model,
+                                                 Messenger& fromCoarser, double const newTime)
 {
     PHARE_LOG_SCOPE("SolverPPC::average_");
 
@@ -521,6 +495,10 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
         PHARE::core::average(B, Bpred, Bavg);
         PHARE::core::average(E, Epred, Eavg);
     }
+    // the following will fill E on all edges of all ghost cells, including those
+    // on domain border. For level ghosts, electric field will be obtained from
+    // next coarser level E average
+    fromCoarser.fillElectricGhosts(Eavg, level.getLevelNumber(), newTime);
 }
 
 
@@ -533,33 +511,30 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
 {
     PHARE_LOG_SCOPE("SolverPPC::moveIons_");
 
-    std::size_t nbrDomainParticles        = 0;
-    std::size_t nbrPatchGhostParticles    = 0;
-    std::size_t nbrLevelGhostNewParticles = 0;
-    std::size_t nbrLevelGhostOldParticles = 0;
-    std::size_t nbrLevelGhostParticles    = 0;
-    for (auto& patch : level)
-    {
-        auto _ = rm.setOnPatch(*patch, ions);
+    PHARE_DEBUG_DO(std::size_t nbrDomainParticles = 0; std::size_t nbrPatchGhostParticles = 0;
+                   std::size_t nbrLevelGhostNewParticles                                  = 0;
+                   std::size_t nbrLevelGhostOldParticles                                  = 0;
+                   std::size_t nbrLevelGhostParticles = 0; for (auto& patch
+                                                                : level) {
+                       auto _ = rm.setOnPatch(*patch, ions);
 
-        for (auto& pop : ions)
-        {
-            nbrDomainParticles += pop.domainParticles().size();
-            nbrPatchGhostParticles += pop.patchGhostParticles().size();
-            nbrLevelGhostNewParticles += pop.levelGhostParticlesNew().size();
-            nbrLevelGhostOldParticles += pop.levelGhostParticlesOld().size();
-            nbrLevelGhostParticles += pop.levelGhostParticles().size();
-            nbrPatchGhostParticles += pop.patchGhostParticles().size();
+                       for (auto& pop : ions)
+                       {
+                           nbrDomainParticles += pop.domainParticles().size();
+                           nbrPatchGhostParticles += pop.patchGhostParticles().size();
+                           nbrLevelGhostNewParticles += pop.levelGhostParticlesNew().size();
+                           nbrLevelGhostOldParticles += pop.levelGhostParticlesOld().size();
+                           nbrLevelGhostParticles += pop.levelGhostParticles().size();
+                           nbrPatchGhostParticles += pop.patchGhostParticles().size();
 
-            if (nbrLevelGhostOldParticles < nbrLevelGhostParticles
-                and nbrLevelGhostOldParticles > 0)
-                throw std::runtime_error("Error - there are less old level ghost particles ("
-                                         + std::to_string(nbrLevelGhostOldParticles)
-                                         + ") than pushable ("
-                                         + std::to_string(nbrLevelGhostParticles) + ")");
-        }
-    }
-
+                           if (nbrLevelGhostOldParticles < nbrLevelGhostParticles
+                               and nbrLevelGhostOldParticles > 0)
+                               throw std::runtime_error(
+                                   "Error - there are less old level ghost particles ("
+                                   + std::to_string(nbrLevelGhostOldParticles) + ") than pushable ("
+                                   + std::to_string(nbrLevelGhostParticles) + ")");
+                       }
+                   })
 
 
     auto dt = newTime - currentTime;
