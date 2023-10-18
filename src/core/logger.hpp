@@ -1,4 +1,3 @@
-
 #ifndef PHARE_CORE_LOGGER_HPP
 #define PHARE_CORE_LOGGER_HPP
 
