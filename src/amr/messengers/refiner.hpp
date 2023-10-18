@@ -282,7 +282,8 @@ public:
                       /*if is a ghost field type Refiner, we need to add a fillPattern
                        * that will be used to overwrite or not the shared border node*/
                       if constexpr (Type == RefinerType::GhostField
-                                    or Type == RefinerType::PatchGhostField)
+                                    or Type == RefinerType::PatchGhostField
+                                    or Type == RefinerType::SharedBorder)
                           this->add_algorithm()->registerRefine(*idDest, *idSrc, *idDest, refineOp,
                                                                 fillPattern);
                       else
