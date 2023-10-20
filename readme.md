@@ -1,20 +1,31 @@
 
-[![License: GPL v3](https://img.shields.io/badge/PHARE-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![CPP17](https://img.shields.io/badge/Language-C++17-blue.svg)]()
-[![LGTM Total alerts](https://img.shields.io/lgtm/alerts/g/PHAREHUB/PHARE.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/PHAREHUB/PHARE/alerts/)
-<!--[![codefactor](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)](https://www.codefactor.io/repository/github/PHAREHUB/PHARE/badge?style=plastic)-->
-[![Documentation Status](https://readthedocs.org/projects/phare/badge/?version=latest)](https://phare.readthedocs.io/en/latest/?badge=latest)
 
-<!--![](https://user-images.githubusercontent.com/3200931/95620089-f13ebb80-0a6f-11eb-9af3-a1db08004bcc.png) -->
+<div align="center">
+<img src="https://user-images.githubusercontent.com/3200931/213649230-da966bb5-9384-4c58-8e77-24ebe46cf2bf.png" alt="PHARE snapshot">
 
-![image](https://user-images.githubusercontent.com/3200931/213649230-da966bb5-9384-4c58-8e77-24ebe46cf2bf.png)
+<p align="center">
+<a  href="https://www.gnu.org/licenses/gpl-3.0">
+<img src="https://img.shields.io/badge/PHARE-GPL%20v3-blue.svg" alt="License: GPL v3" />
+</a>
+<a  href="">
+<img src="https://img.shields.io/badge/Language-C++17-blue.svg" alt="CPP17" />
+</a>
+<a  href="https://phare.readthedocs.io/en/latest/?badge=latest">
+<img src="https://readthedocs.org/projects/phare/badge/?version=latest" alt="Documentation Status" />
+</a>
+</p>
+</div>
 
 # Parallel Hybrid PIC code with Adaptive mesh REfinement
 
 
-PHARE is a Hybrid Particle-In-Cell (PIC) code. It solves the evolution of the Vlasov equation of an arbitrary number of ion populations in a Lagrangian way. Electrons are modeled as a single fluid. Their momentum equation is used to compute the electric field, assuming quasineutrality.
+PHARE is a Hybrid Particle-In-Cell (PIC) code. It solves the evolution of the Vlasov equation
+of an arbitrary number of ion populations in a Lagrangian way. Electrons are modeled as a single fluid.
+Their momentum equation is used to compute the electric field, assuming quasineutrality.
 
-Using Adaptive Mesh Refinement, provided by the library [SAMRAI](https://github.com/llnl/samrai), PHARE aims at filling the gap between sub-ion scales and large "MHD" scales by increasing the mesh resolution wherever the solution needs it.
+Using Adaptive Mesh Refinement, provided by the library [SAMRAI](https://github.com/llnl/samrai),
+PHARE aims at filling the gap between sub-ion scales and large "MHD" scales by increasing the mesh 
+resolution wherever the solution needs it.
 
 **WARNING** - PHARE is under development ;-)
 
@@ -94,14 +105,33 @@ For system library requirements see the following [Docker File](https://github.c
 
 ## Publications
 
-- Smets R., Aunai, N., Ciardi, A., Drouin M., Campos-Pinto M., Deegan P., A new method to dispatch split particles in Particle-In-Cell codes, Computer Physics Communications, https://doi.org/10.1016/j.cpc.2020.107666
+To cite PHARE : 
+
+```bib
+@article{AUNAI2024108966,
+title = {PHARE: Parallel hybrid particle-in-cell code with patch-based adaptive mesh refinement},
+journal = {Computer Physics Communications},
+volume = {295},
+pages = {108966},
+year = {2024},
+issn = {0010-4655},
+doi = {https://doi.org/10.1016/j.cpc.2023.108966},
+url = {https://www.sciencedirect.com/science/article/pii/S0010465523003119},
+author = {Nicolas Aunai and Roch Smets and Andrea Ciardi and Philip Deegan and Alexis Jeandet and Thibault Payet and Nathan Guyot and Loic Darrieumerlou},
+keywords = {Particle in cell, Adaptive mesh refinement, Collisionless plasmas},
+}
+```
+
+
+
 
 ## Acknowledgments
 
 
 We acknowledge support from:
 
-- [Plas@Par](http://www.plasapar.com)
+- [Plas@Par](http://www.plasapar.sorbonne-universite.fr/)
 - [Laboratory of Plasma Physics (LPP)](https://www.lpp.polytechnique.fr)
 - [LERMA](https://lerma.obspm.fr)
+- [CNES](www.cnes.fr)
 
