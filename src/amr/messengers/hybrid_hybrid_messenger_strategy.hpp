@@ -116,40 +116,6 @@ namespace amr
             : HybridMessengerStrategy<HybridModel>{stratName}
             , resourcesManager_{std::move(manager)}
             , firstLevel_{firstLevel}
-            , magneticInitRefiners_{resourcesManager_}
-            , electricInitRefiners_{resourcesManager_}
-            , magSharedNodesRefiners_{resourcesManager_}
-            , magGhostsRefiners_{resourcesManager_}
-            , magPatchGhostsRefiners_{resourcesManager_}
-            , elecSharedNodesRefiners_{resourcesManager_}
-            , elecGhostsRefiners_{resourcesManager_}
-            , currentSharedNodesRefiners_{resourcesManager_}
-            , currentGhostsRefiners_{resourcesManager_}
-            , rhoGhostsRefiners_{resourcesManager_}
-            , velGhostsRefiners_{resourcesManager_}
-            , domainParticlesRefiners_{resourcesManager_}
-            , interiorParticleRefineOp_{std::make_shared<InteriorParticleRefineOp>()}
-            , lvlGhostPartOldRefiners_{resourcesManager_}
-            , lvlGhostPartNewRefiners_{resourcesManager_}
-            , levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()}
-            , levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()}
-            , patchGhostPartRefiners_{resourcesManager_}
-            , densitySynchronizers_{resourcesManager_}
-            , ionBulkVelSynchronizers_{resourcesManager_}
-            , electroSynchronizers_{resourcesManager_}
-            , magnetoSynchronizers_{resourcesManager_}
-            , fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()}
-            // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
-            // Note that refinement operator, via the boolean argument, serve as a relay for the
-            // the RefineAlgorithm to get the correct VariableFillPattern
-            , BfieldNodeRefineOp_{std::make_shared<MagneticFieldRefineOp>(/*node_only=*/true)}
-            , BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()}
-            , EfieldNodeRefineOp_{std::make_shared<ElectricFieldRefineOp>(/*node_only=*/true)}
-            , EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()}
-            , fieldTimeOp_{std::make_shared<FieldTimeInterp>()}
-            , fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()}
-            , magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()}
-
         {
             resourcesManager_->registerResources(Jold_);
             resourcesManager_->registerResources(NiOldUser_);
@@ -224,7 +190,7 @@ namespace amr
 
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
-            // TODO this  if may not be OK if L0 is regrided
+            // TODO this 'if' may not be OK if L0 is regrided
             if (levelNumber != rootLevelNumber)
             {
                 // those are for refinement
@@ -1002,17 +968,16 @@ namespace amr
 
                             // maybe we should keep these for some time
                             // as comments in case they are useful again
-                            const std::string before = "BEFORE";
-                            debug_print(B, layout, loc, ix, iy, before);
-
+                            PHARE_DEBUG_DO(const std::string before = "BEFORE";
+                                           debug_print(B, layout, loc, ix, iy, before);)
                             Bx(ix, iy - 1)
                                 = Bx(ix + 1, iy - 1) + dx / dy * (By(ix, iy) - By(ix, iy - 1));
 
                             By(ix - 1, iy)
                                 = By(ix - 1, iy + 1) + dy / dx * (Bx(ix, iy) - Bx(ix - 1, iy));
 
-                            const std::string after = "AFTER";
-                            debug_print(B, layout, loc, ix, iy, after);
+                            PHARE_DEBUG_DO(const std::string after = "AFTER";
+                                           debug_print(B, layout, loc, ix, iy, after);)
                         }
                     } // end corner loops
                 }     // end if 2D
@@ -1043,20 +1008,28 @@ namespace amr
 
         // these refiners are used to initialize electromagnetic fields when creating
         // a new level (initLevel) or regridding (regrid)
-        RefinerPool<rm_t, RefinerType::InitField> magneticInitRefiners_;
-        RefinerPool<rm_t, RefinerType::InitField> electricInitRefiners_;
+        using InitRefinerPool           = RefinerPool<rm_t, RefinerType::InitField>;
+        using SharedNodeRefinerPool     = RefinerPool<rm_t, RefinerType::SharedBorder>;
+        using GhostRefinerPool          = RefinerPool<rm_t, RefinerType::GhostField>;
+        using PatchGhostRefinerPool     = RefinerPool<rm_t, RefinerType::PatchGhostField>;
+        using InitDomPartRefinerPool    = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
+        using PatchGhostPartRefinerPool = RefinerPool<rm_t, RefinerType::InteriorGhostParticles>;
+
+        InitRefinerPool magneticInitRefiners_{resourcesManager_};
+        InitRefinerPool electricInitRefiners_{resourcesManager_};
 
         //! store communicators for magnetic fields that need ghosts to be filled
-        RefinerPool<rm_t, RefinerType::SharedBorder> magSharedNodesRefiners_;
-        RefinerPool<rm_t, RefinerType::GhostField> magGhostsRefiners_;
-        RefinerPool<rm_t, RefinerType::PatchGhostField> magPatchGhostsRefiners_;
+        SharedNodeRefinerPool magSharedNodesRefiners_{resourcesManager_};
+        GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+        PatchGhostRefinerPool magPatchGhostsRefiners_{resourcesManager_};
+
 
         //! store refiners for electric fields that need ghosts to be filled
-        RefinerPool<rm_t, RefinerType::SharedBorder> elecSharedNodesRefiners_;
-        RefinerPool<rm_t, RefinerType::GhostField> elecGhostsRefiners_;
+        SharedNodeRefinerPool elecSharedNodesRefiners_{resourcesManager_};
+        GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
 
-        RefinerPool<rm_t, RefinerType::GhostField> currentSharedNodesRefiners_;
-        RefinerPool<rm_t, RefinerType::GhostField> currentGhostsRefiners_;
+        GhostRefinerPool currentSharedNodesRefiners_{resourcesManager_};
+        GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
         // these do not need sharedNode refiners. The reason is that
@@ -1064,42 +1037,50 @@ namespace amr
         // these refiners are used to fill ghost nodes, and therefore, owing to
         // the GhostField tag, will only assign pur ghost nodes. Border nodes will
         // be overwritten only on level borders, which does not seem to be an issue.
-        RefinerPool<rm_t, RefinerType::GhostField> rhoGhostsRefiners_;
-        RefinerPool<rm_t, RefinerType::GhostField> velGhostsRefiners_;
+        GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};
+        GhostRefinerPool velGhostsRefiners_{resourcesManager_};
 
         // pool of refiners for interior particles of each population
         // and the associated refinement operator
-        RefinerPool<rm_t, RefinerType::InitInteriorPart> domainParticlesRefiners_;
-        std::shared_ptr<RefineOperator> interiorParticleRefineOp_;
+        InitDomPartRefinerPool domainParticlesRefiners_{resourcesManager_};
+
+        using RefOp_ptr = std::shared_ptr<RefineOperator>;
+
+        RefOp_ptr interiorParticleRefineOp_{std::make_shared<InteriorParticleRefineOp>()};
 
         //! store communicators for coarse to fine particles old
         // pools of refiners to fill level ghost particles, old and new ones
         // and their associated refinement operator
         static auto constexpr LGRefT = RefinerType::LevelBorderParticles;
-        RefinerPool<rm_t, LGRefT> lvlGhostPartOldRefiners_;
-        RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_;
-        std::shared_ptr<RefineOperator> levelGhostParticlesOldOp_;
-        std::shared_ptr<RefineOperator> levelGhostParticlesNewOp_;
+        RefinerPool<rm_t, LGRefT> lvlGhostPartOldRefiners_{resourcesManager_};
+        RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
+        RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
+        RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
+
 
         // this contains refiners for each population to exchange patch ghost particles
-        RefinerPool<rm_t, RefinerType::InteriorGhostParticles> patchGhostPartRefiners_;
+        PatchGhostPartRefinerPool patchGhostPartRefiners_{resourcesManager_};
 
-        SynchronizerPool<rm_t> densitySynchronizers_;
-        SynchronizerPool<rm_t> ionBulkVelSynchronizers_;
-        SynchronizerPool<rm_t> electroSynchronizers_;
-        SynchronizerPool<rm_t> magnetoSynchronizers_;
+        SynchronizerPool<rm_t> densitySynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> ionBulkVelSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> magnetoSynchronizers_{resourcesManager_};
 
 
-        std::shared_ptr<RefineOperator> fieldRefineOp_;
-        std::shared_ptr<RefineOperator> BfieldNodeRefineOp_;
-        std::shared_ptr<RefineOperator> BfieldRefineOp_;
-        std::shared_ptr<RefineOperator> EfieldNodeRefineOp_;
-        std::shared_ptr<RefineOperator> EfieldRefineOp_;
+        RefOp_ptr fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()};
+        // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
+        // note that refinement operator, via the boolean argument, serve as a relay for the
+        // the refinealgorithm to get the correct variablefillpattern
+        RefOp_ptr BfieldNodeRefineOp_{std::make_shared<MagneticFieldRefineOp>(/*node_only=*/true)};
+        RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
+        RefOp_ptr EfieldNodeRefineOp_{std::make_shared<ElectricFieldRefineOp>(/*node_only=*/true)};
+        RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
 
-        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_;
+        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
 
-        std::shared_ptr<SAMRAI::hier::CoarsenOperator> fieldCoarseningOp_;
-        std::shared_ptr<SAMRAI::hier::CoarsenOperator> magneticCoarseningOp_;
+        using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
+        CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
+        CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
     };
 
     template<typename HybridModel, typename RefinementParams>
