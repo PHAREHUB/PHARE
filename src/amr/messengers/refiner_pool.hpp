@@ -1,12 +1,13 @@
 #ifndef PHARE_REFINER_POOL_HPP
 #define PHARE_REFINER_POOL_HPP
 
-#include "communicator.hpp"
+#include "refiner.hpp"
 
 
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 
 
@@ -14,247 +15,116 @@ namespace PHARE
 {
 namespace amr
 {
-    enum class RefinerType {
-        GhostField,
-        PatchGhostField,
-        InitField,
-        InitInteriorPart,
-        LevelBorderParticles,
-        InteriorGhostParticles,
-        SharedBorder
-    };
-
 
     /**
-     * @brief The RefinerPool class is used by a Messenger to manipulate SAMRAI algorithms and
-     * schedules It contains a Refiner for all quantities registered to the Messenger
-     * for ghost, init etc.
+     * A RefinerPool is a container of Refiner objects that can (but not necessarily)
+     * be processed together.
      */
-    template<RefinerType Type>
+    template<typename ResourcesManager, RefinerType Type>
     class RefinerPool
     {
+        using Refiner_t      = Refiner<ResourcesManager, Type>;
+        using RefineOperator = SAMRAI::hier::RefineOperator;
+
     public:
+        /*@brief add a static communication between sources and destinations.
+         * This overload takes several sources/destinations/keys and add one refiner for each*/
+        template<typename Names>
+        void addStaticRefiners(Names const& destinations, Names const& sources,
+                               std::shared_ptr<RefineOperator> refineOp,
+                               std::vector<std::string> keys);
+
+
+        /*@brief convenience overload of the above when source = destination, for VecField*/
+        template<typename Names>
+        void addStaticRefiners(Names const& src_dest, std::shared_ptr<RefineOperator> refineOp,
+                               std::vector<std::string> key);
+
+        /* @brief add a static communication between a single source and destination.*/
+        template<typename Name>
+        void addStaticRefiner(Name const& ghostName, Name const& src,
+                              std::shared_ptr<RefineOperator> const& refineOp,
+                              std::string const key);
+
         /**
-         * @brief add a Refiner to the pool based on the given Descriptor and
-         * the refinement operator refineOp.
-         * This overload is used for communications that do not use time interpolation
-         */
-        template<typename Descriptor, typename ResourcesManager>
-        void addStaticRefiner(Descriptor const& ghostDesc, Descriptor const& srcDesc,
-                              std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                              std::string const key, std::shared_ptr<ResourcesManager> const& rm,
-                              bool ghosts = false)
-        {
-            auto const [it, success]
-                = refiners_.insert({key, makeRefiner(ghostDesc, srcDesc, rm, refineOp, ghosts)});
-
-            if (!success)
-                throw std::runtime_error(key + " is already registered");
-        }
-
-        /**
-         * @brief convenience overload of above addStaticRefiner taking only one descriptor.
-         * used for communications from a quantity to the same quantity.
-         */
-        template<typename Descriptor, typename ResourcesManager>
-        void addStaticRefiner(Descriptor const& descriptor,
-                              std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                              std::string const key, std::shared_ptr<ResourcesManager> const& rm,
-                              bool ghosts = false)
-        {
-            addStaticRefiner(descriptor, descriptor, refineOp, key, rm, ghosts);
-        }
-
+         * @brief convenience overload of above addStaticRefiner taking only one name
+         * used for communications from a quantity to the same quantity.*/
+        template<typename Name>
+        void addStaticRefiner(Name const& src_dest, std::shared_ptr<RefineOperator> const& refineOp,
+                              std::string const key);
 
 
         /**
-         * @brief  Add a Refiner
-         * add a QuantityCommunicator to the Communicators based on the given descriptors and
-         * spatial refinement operator and time interpolation operator. The created
-         * QuantityCommunicator is associated with the given key.
+         * @brief fill the given pool of refiners with a new refiner per VecField
+         * in ghostVecs. Data will be spatially refined using the specified refinement
+         * operator, and time interpolated between time n and n+1 of next coarser data,
+         * represented by modelVec and oldModelVec.*/
+        void addTimeRefiners(std::vector<core::VecFieldNames> const& ghostVecs,
+                             core::VecFieldNames const& modelVec,
+                             core::VecFieldNames const& oldModelVec,
+                             std::shared_ptr<RefineOperator>& refineOp,
+                             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp);
+
+
+
+        /**
+         * add a refiner that will use time and spatial interpolation.
+         * time interpolation will be done between data represented by model and oldModel
+         * , and use the timeOp operator. Spatial refinement of the result
+         * will be done using the refineOp operator and the result put in the data
+         * represented by `ghost`.
+         * The refiner added to the pool will be retrievable using the given key.
          *
-         * This overload is used for communications that involve time interpolation. In PHARE those
-         * are only for ghost nodes, which is only for VecField E and B.
-         */
-        template<typename ResourcesManager>
-        void addTimeRefiner(VecFieldDescriptor const& ghostDescriptor,
-                            VecFieldDescriptor const& modelDescriptor,
-                            VecFieldDescriptor const& oldModelDescriptor,
-                            std::shared_ptr<ResourcesManager> const& rm,
-                            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+         * This overload is for vector fields*/
+        void addTimeRefiner(core::VecFieldNames const& ghost, core::VecFieldNames const& model,
+                            core::VecFieldNames const& oldModel,
+                            std::shared_ptr<RefineOperator> const& refineOp,
                             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
-                            std::string key)
-        {
-            auto const [it, success]
-                = refiners_.insert({key, makeRefiner(ghostDescriptor, modelDescriptor,
-                                                     oldModelDescriptor, rm, refineOp, timeOp)});
-            if (!success)
-                throw std::runtime_error(key + " is already registered");
-        }
+                            std::string key);
 
 
-        template<typename ResourcesManager>
-        void addTimeRefiner(FieldDescriptor const& ghostDescriptor,
-                            FieldDescriptor const& modelDescriptor,
-                            FieldDescriptor const& oldModelDescriptor,
-                            std::shared_ptr<ResourcesManager> const& rm,
-                            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+        // this overload takes simple strings.
+        void addTimeRefiner(std::string const& ghost, std::string const& model,
+                            std::string const& oldModel,
+                            std::shared_ptr<RefineOperator> const& refineOp,
                             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
-                            std::string key)
-        {
-            auto const [it, success]
-                = refiners_.insert({key, makeRefiner(ghostDescriptor, modelDescriptor,
-                                                     oldModelDescriptor, rm, refineOp, timeOp)});
-            if (!success)
-                throw std::runtime_error(key + " is already registered");
-        }
+                            std::string key);
 
 
-        /**
-         * @brief registerLevel registers a level of the hierarchy to all QuantityCommunicators in
-         * the Communicators.
-         *
-         * For each QuantityCommunicator, the method takes the RefineAlgorithm and creates a
-         * schedule by calling one of the createSchedule() overloads. The specific overload that is
-         * called depends on the (compile-time) nature of the Communicators.
-         *
-         */
+
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
         {
             for (auto& [_, refiner] : refiners_)
             {
-                auto levelNumber = level->getLevelNumber();
-
-                for (auto& algo : refiner.algos)
-                {
-                    // for GhostField we need schedules that take on the level where there is an
-                    // overlap (there is always for patches lying inside the level) and goes to
-                    // coarser level where there is not (patch lying on the level border) Create a
-                    // communication schedule that communicates data within a single level and
-                    // interpolates data from coarser hierarchy levels where needed.
-
-                    // Data will be communicated from the interiors of the source data on the given
-                    // level to the interiors and ghosts of destination data on the same level where
-                    // those sources and destinations overlap. Where they do not overlap,
-                    // data will be interpolated from source data on coarser levels in the patch
-                    // hierarchy. Data is time interpolated between old and new sources on coarser
-                    // levels when and where time interpolation is needed and copied from the source
-                    // components on the patch level into the destination components otherwise. Note
-                    // that the next coarser level number must correspond to a level in the
-                    // hierarchy that represents a region of coarser index space than the
-                    // destination level. Note that the schedule remains valid as long as the levels
-                    // involved in its creation do not change; thus, it can be used for multiple
-                    // data communication cycles.
-                    if constexpr (Type == RefinerType::GhostField)
-                    {
-                        refiner.add(
-                            algo,
-                            algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                                 hierarchy),
-                            levelNumber);
-                    }
-
-                    // the following schedule will only fill patch ghost nodes
-                    // not level border ghosts
-                    else if constexpr (Type == RefinerType::PatchGhostField)
-                    {
-                        refiner.add(algo, algo->createSchedule(level), levelNumber);
-                    }
-
-                    // this createSchedule overload is used to initialize fields.
-                    // note that here we must take that createsSchedule() overload and put nullptr
-                    // as src since we want to take from coarser level everywhere. using the
-                    // createSchedule overload that takes level, next_coarser_level only would
-                    // result in interior ghost nodes to be filled with interior of neighbor patches
-                    // but there is nothing there.
-                    else if constexpr (Type == RefinerType::InitField)
-                    {
-                        refiner.add(
-                            algo, algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
-                            levelNumber);
-                    }
-
-
-                    // here we create the schedule that will intialize the particles that lie within
-                    // the interior of the patches (no ghost, no coarse to fine). We take almost the
-                    // same overload as for fields above but the version that takes a
-                    // PatchLevelFillPattern. Here the PatchLevelInteriorFillPattern is used because
-                    // we want to fill particles only within the interior of the patches of the
-                    // level. The reason is that filling the their ghost regions with refined
-                    // particles would not ensure the ghosts to be clones of neighbor patches
-                    // particles if the splitting from coarser levels is not deterministic.
-                    else if constexpr (Type == RefinerType::InitInteriorPart)
-                    {
-                        refiner.add(
-                            algo,
-                            algo->createSchedule(
-                                std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
-                                level, nullptr, levelNumber - 1, hierarchy),
-                            levelNumber);
-                    }
-
-                    // here we create a schedule that will refine particles from coarser level and
-                    // put them into the level coarse to fine boundary. These are the
-                    // levelGhostParticlesOld particles. we thus take the same createSchedule
-                    // overload as above but pass it a PatchLevelBorderFillPattern.
-                    else if constexpr (Type == RefinerType::LevelBorderParticles)
-                    {
-                        refiner.add(
-                            algo,
-                            algo->createSchedule(
-                                std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(),
-                                level, nullptr, levelNumber - 1, hierarchy),
-                            levelNumber);
-                    }
-
-                    // this branch is used to create a schedule that will transfer particles into
-                    // the patches' ghost zones.
-                    else if constexpr (Type == RefinerType::InteriorGhostParticles)
-                    {
-                        refiner.add(algo, algo->createSchedule(level), levelNumber);
-                    }
-
-                    // schedule to synchronize shared border values, and not include refinement
-                    else if constexpr (Type == RefinerType::SharedBorder)
-                    {
-                        refiner.add(algo, algo->createSchedule(level), levelNumber);
-                    }
-                }
+                refiner.registerLevel(hierarchy, level);
             }
         }
 
 
 
-
-        /**
-         * @brief initialize is used to initialize data on the level for all quantities in the
-         * Communicators.
-         *
-         * Basically the method just takes all QuantityCommunicator one by one, find the schedule
-         * associated with the given level number and executes fillData().
-         *
-         * The method registerLevel must have been called before for the given levelNumber otherwise
-         * no schedule will be found
-         */
+        /** @brief this overload will execute communications for all quantities in the pool. */
         void fill(int const levelNumber, double const initDataTime) const
         {
-            for (auto& [key, communicator] : refiners_)
+            for (auto const& [key, refiner] : refiners_)
             {
-                if (communicator.algos.size() == 0)
-                    throw std::runtime_error("Algorithms are not configured");
-
-                for (auto const& algo : communicator.algos)
-                    communicator.findSchedule(algo, levelNumber)->fillData(initDataTime);
+                refiner.fill(levelNumber, initDataTime);
             }
+        }
+
+        /** @brief filldGhosts is used to fill the ghost nodes of all the given VecField.*/
+        template<typename VecFieldT>
+        void fill(VecFieldT& vec, int const levelNumber, double const fillTime)
+        {
+            if (refiners_.count(vec.name()) == 0)
+                throw std::runtime_error("no refiner for " + vec.name());
+
+            refiners_.at(vec.name()).fill(vec, levelNumber, fillTime);
         }
 
 
 
-
-        /**
-         * @brief regrid is used to execute a regridding schedule for all quantities in the pool.
-         */
+        /** @brief executes a regridding for all quantities in the pool.*/
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                             const int levelNumber,
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
@@ -262,61 +132,113 @@ namespace amr
         {
             for (auto& [key, refiner] : refiners_)
             {
-                for (auto& algo : refiner.algos)
-                {
-                    auto const& level = hierarchy->getPatchLevel(levelNumber);
-
-                    if constexpr (Type == RefinerType::InitInteriorPart)
-                    {
-                        std::cout << "regriding adding " << key << " on level " << levelNumber
-                                  << " \n";
-                        auto schedule = algo->createSchedule(
-                            std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
-                            oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-                        schedule->fillData(initDataTime);
-                    }
-                    else
-                    {
-                        auto schedule = algo->createSchedule(
-                            level, oldLevel, level->getNextCoarserHierarchyLevelNumber(),
-                            hierarchy);
-                        schedule->fillData(initDataTime);
-                    }
-                }
+                refiner.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             }
         }
 
 
-
-
-        /**
-         * @brief filldGhosts is used to fill the ghost nodes of all the given VecField.
-         *
-         * The VecField must have been registered before to the pool for ghost filling, and the
-         * method createGhostSchedule must have been called for the given levelNumber otherwise no
-         * refine schedule will be found and the method will throw an axception.
-         */
-        template<typename VecFieldT>
-        void fill(VecFieldT& vec, int const levelNumber, double const fillTime)
+        RefinerPool(std::shared_ptr<ResourcesManager> const& rm)
+            : rm_{rm}
         {
-            if (refiners_.count(vec.name()) == 0)
-                throw std::runtime_error("no refiner for " + vec.name());
-
-            auto& refiner = refiners_[vec.name()];
-
-            for (auto const& algo : refiner.algos)
-                refiner.findSchedule(algo, levelNumber)->fillData(fillTime);
         }
 
 
-
     private:
-        std::map<std::string, Communicator<Refiner>> refiners_;
+        using Qty = std::string;
+        std::map<Qty, Refiner<ResourcesManager, Type>> refiners_;
+        std::shared_ptr<ResourcesManager> rm_;
     };
 
 
+    template<typename ResourcesManager, RefinerType Type>
+    template<typename Names>
+    void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
+        Names const& destinations, Names const& sources, std::shared_ptr<RefineOperator> refineOp,
+        std::vector<std::string> keys)
+    {
+        assert(destinations.size() == sources.size());
+        auto key = std::begin(keys);
+        for (std::size_t i = 0; i < destinations.size(); ++i)
+        {
+            addStaticRefiner(destinations[i], sources[i], refineOp, *key++);
+        }
+    }
 
 
+    template<typename ResourcesManager, RefinerType Type>
+    template<typename Names>
+    void
+    RefinerPool<ResourcesManager, Type>::addStaticRefiners(Names const& src_dest,
+                                                           std::shared_ptr<RefineOperator> refineOp,
+                                                           std::vector<std::string> key)
+    {
+        addStaticRefiners(src_dest, src_dest, refineOp, key);
+    }
+
+
+
+
+    template<typename ResourcesManager, RefinerType Type>
+    template<typename Name>
+    void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
+        Name const& ghostName, Name const& src, std::shared_ptr<RefineOperator> const& refineOp,
+        std::string const key)
+    {
+        auto const [it, success]
+            = refiners_.insert({key, Refiner_t(ghostName, src, rm_, refineOp)});
+
+        if (!success)
+            throw std::runtime_error(key + " is already registered");
+    }
+
+
+
+    template<typename ResourcesManager, RefinerType Type>
+    template<typename Name>
+    void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
+        Name const& descriptor, std::shared_ptr<RefineOperator> const& refineOp,
+        std::string const key)
+    {
+        addStaticRefiner(descriptor, descriptor, refineOp, key);
+    }
+
+
+    template<typename ResourcesManager, RefinerType Type>
+    void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
+        std::vector<core::VecFieldNames> const& ghostVecs, core::VecFieldNames const& modelVec,
+        core::VecFieldNames const& oldModelVec, std::shared_ptr<RefineOperator>& refineOp,
+        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp)
+    {
+        for (auto const& ghostVec : ghostVecs)
+        {
+            addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec.vecName);
+        }
+    }
+
+    template<typename ResourcesManager, RefinerType Type>
+    void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
+        core::VecFieldNames const& ghost, core::VecFieldNames const& model,
+        core::VecFieldNames const& oldModel, std::shared_ptr<RefineOperator> const& refineOp,
+        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
+    {
+        auto const [it, success]
+            = refiners_.insert({key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp)});
+        if (!success)
+            throw std::runtime_error(key + " is already registered");
+    }
+
+
+    template<typename ResourcesManager, RefinerType Type>
+    void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
+        std::string const& ghost, std::string const& model, std::string const& oldModel,
+        std::shared_ptr<RefineOperator> const& refineOp,
+        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
+    {
+        auto const [it, success]
+            = refiners_.insert({key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp)});
+        if (!success)
+            throw std::runtime_error(key + " is already registered");
+    }
 } // namespace amr
 } // namespace PHARE
 

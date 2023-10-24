@@ -9,6 +9,7 @@
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
+#include "core/data/vecfield/vecfield.hpp"
 
 namespace PHARE::solver
 {
@@ -139,31 +140,31 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::fillMessengerInfo(
     std::unique_ptr<amr::IMessengerInfo> const& info) const
 {
-    auto& modelInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
+    auto& hybridInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
-    modelInfo.modelMagnetic        = amr::VecFieldDescriptor{state.electromag.B};
-    modelInfo.modelElectric        = amr::VecFieldDescriptor{state.electromag.E};
-    modelInfo.modelIonDensity      = state.ions.densityName();
-    modelInfo.modelIonBulkVelocity = amr::VecFieldDescriptor{state.ions.velocity()};
-    modelInfo.modelCurrent         = amr::VecFieldDescriptor{state.J};
+    hybridInfo.modelMagnetic        = core::VecFieldNames{state.electromag.B};
+    hybridInfo.modelElectric        = core::VecFieldNames{state.electromag.E};
+    hybridInfo.modelIonDensity      = state.ions.densityName();
+    hybridInfo.modelIonBulkVelocity = core::VecFieldNames{state.ions.velocity()};
+    hybridInfo.modelCurrent         = core::VecFieldNames{state.J};
 
-    modelInfo.initElectric.emplace_back(amr::VecFieldDescriptor{state.electromag.E});
-    modelInfo.initMagnetic.emplace_back(amr::VecFieldDescriptor{state.electromag.B});
+    hybridInfo.initElectric.emplace_back(core::VecFieldNames{state.electromag.E});
+    hybridInfo.initMagnetic.emplace_back(core::VecFieldNames{state.electromag.B});
 
-    modelInfo.ghostElectric.push_back(modelInfo.modelElectric);
-    modelInfo.ghostMagnetic.push_back(modelInfo.modelMagnetic);
-    modelInfo.ghostCurrent.push_back(amr::VecFieldDescriptor{state.J});
-    modelInfo.ghostBulkVelocity.push_back(modelInfo.modelIonBulkVelocity);
+    hybridInfo.ghostElectric.push_back(hybridInfo.modelElectric);
+    hybridInfo.ghostMagnetic.push_back(hybridInfo.modelMagnetic);
+    hybridInfo.ghostCurrent.push_back(core::VecFieldNames{state.J});
+    hybridInfo.ghostBulkVelocity.push_back(hybridInfo.modelIonBulkVelocity);
 
 
     auto transform_ = [](auto& ions, auto& inserter) {
         std::transform(std::begin(ions), std::end(ions), std::back_inserter(inserter),
                        [](auto const& pop) { return pop.name(); });
     };
-    transform_(state.ions, modelInfo.interiorParticles);
-    transform_(state.ions, modelInfo.levelGhostParticlesOld);
-    transform_(state.ions, modelInfo.levelGhostParticlesNew);
-    transform_(state.ions, modelInfo.patchGhostParticles);
+    transform_(state.ions, hybridInfo.interiorParticles);
+    transform_(state.ions, hybridInfo.levelGhostParticlesOld);
+    transform_(state.ions, hybridInfo.levelGhostParticlesNew);
+    transform_(state.ions, hybridInfo.patchGhostParticles);
 }
 
 

@@ -1,4 +1,3 @@
-
 #ifndef PHARE_AMR_INCLUDE_HPP
 #define PHARE_AMR_INCLUDE_HPP
 
@@ -27,6 +26,8 @@
 #include "amr/wrappers/hierarchy.hpp"
 #include "amr/wrappers/integrator.hpp"
 #include "amr/messengers/messenger_factory.hpp"
+#include "amr/data/particles/refine/splitter.hpp"
+#include "amr/data/particles/refine/particles_data_split.hpp"
 
 
 
@@ -41,14 +42,14 @@ struct PHARE_Types
 
     using hierarchy_t = PHARE::amr::Hierarchy;
 
-    using Splitter = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>,
-                                          PHARE::core::InterpConst<interp_order>,
-                                          PHARE::core::RefinedParticlesConst<nbRefinedPart>>;
+    using Splitter_t = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>,
+                                            PHARE::core::InterpConst<interp_order>,
+                                            PHARE::core::RefinedParticlesConst<nbRefinedPart>>;
 
     using core_types = PHARE::core::PHARE_Types<dimension, interp_order>;
 
     using RefinementParams
-        = PHARE::amr::RefinementParams<typename core_types::ParticleArray_t, Splitter>;
+        = PHARE::amr::RefinementParams<typename core_types::ParticleArray_t, Splitter_t>;
 };
 
 } // namespace PHARE::amr

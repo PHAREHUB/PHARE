@@ -11,6 +11,8 @@
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
@@ -18,6 +20,10 @@
 
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/utilities/point/point.hpp"
 
 
 
@@ -30,6 +36,7 @@
 #include <utility>
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 
 namespace PHARE
@@ -45,9 +52,10 @@ namespace amr
         struct Property
         {
             std::string name;
-            typename HybridQuantity::Scalar qty;
+            typename PHARE::core::HybridQuantity::Scalar qty;
         };
-        FieldUser(std::string fieldName, FieldT* ptr, typename HybridQuantity::Scalar qty)
+        FieldUser(std::string fieldName, FieldT* ptr,
+                  typename PHARE::core::HybridQuantity::Scalar qty)
             : name{fieldName}
             , f{ptr}
             , quantity{qty}
@@ -55,7 +63,7 @@ namespace amr
         }
         std::string name;
         FieldT* f;
-        typename HybridQuantity::Scalar quantity;
+        typename PHARE::core::HybridQuantity::Scalar quantity;
         using field_type = FieldT;
 
         std::vector<Property> getFieldNamesAndQuantities() const { return {{name, quantity}}; }
@@ -86,6 +94,17 @@ namespace amr
         using CoarseToFineRefineOpOld  = typename RefinementParams::CoarseToFineRefineOpOld;
         using CoarseToFineRefineOpNew  = typename RefinementParams::CoarseToFineRefineOpNew;
 
+        template<typename Policy>
+        using BaseRefineOp          = FieldRefineOperator<GridLayoutT, FieldT, Policy>;
+        using DefaultFieldRefineOp  = BaseRefineOp<DefaultFieldRefiner<dimension>>;
+        using MagneticFieldRefineOp = BaseRefineOp<MagneticFieldRefiner<dimension>>;
+        using ElectricFieldRefineOp = BaseRefineOp<ElectricFieldRefiner<dimension>>;
+        using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, FieldT>;
+
+        template<typename Policy>
+        using BaseCoarsenOp     = FieldCoarsenOperator<GridLayoutT, FieldT, Policy>;
+        using MagneticCoarsenOp = BaseCoarsenOp<MagneticFieldCoarsener<dimension>>;
+        using DefaultCoarsenOp  = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
 
     public:
         static const std::string stratName;
@@ -98,7 +117,6 @@ namespace amr
             , resourcesManager_{std::move(manager)}
             , firstLevel_{firstLevel}
         {
-            // resourcesManager_->registerResources(EM_old_);
             resourcesManager_->registerResources(Jold_);
             resourcesManager_->registerResources(NiOldUser_);
             resourcesManager_->registerResources(ViOld_);
@@ -114,11 +132,11 @@ namespace amr
 
 
         /**
-         * @brief allocate the messenger strategy internal variables to the model resourceManager
+         * @brief allocate the messenger strategy internal variables to the model
+         * resourceManager
          */
         void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
-            // resourcesManager_->allocate(Eavg_, patch, allocateTime);
             resourcesManager_->allocate(Jold_, patch, allocateTime);
             resourcesManager_->allocate(NiOldUser_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
@@ -127,12 +145,12 @@ namespace amr
 
 
         /**
-         * @brief setup creates all SAMRAI algorithms to communicate data involved in a messenger
-         * between the coarse and fine levels.
+         * @brief setup creates all SAMRAI algorithms to communicate data involved in a
+         * messenger between the coarse and fine levels.
          *
-         * This method creates the SAMRAI algorithms for communications associated between pairs of
-         * variables. The function does not create the SAMRAI schedules since they depend on the
-         * levels
+         * This method creates the SAMRAI algorithms for communications associated between pairs
+         * of variables. The function does not create the SAMRAI schedules since they depend on
+         * the levels
          */
         void registerQuantities([[maybe_unused]] std::unique_ptr<IMessengerInfo> fromCoarserInfo,
                                 std::unique_ptr<IMessengerInfo> fromFinerInfo) override
@@ -148,62 +166,39 @@ namespace amr
 
 
         /**
-         * @brief registerLevel registers the level for all Communicators
-         *
-         * The level must always be registered to ghost Communicators but only to init Communicators
-         * if it is not the root level since root is not initialized by coarser data.
-         *
-         * Ghost communicators that need to know this level :
-         *
-         *  - magnetic fields
-         *  - electric fields
-         *  - patch ghost particles
-         *
-         *  ion moments :
-         *  do not need to be filled on shared border nodes by SAMRAI schedules
-         *  since they will be filled with levelGhostParticles[old,new] on level ghost nodes
-         *  and computed by ghost particles on interior patch ghost nodes
-         *  however they need to be filled on pure ghost nodes.
-         *  Note : they are filled for all pure ghost nodes for now although
-         *  only the first one is needed (for the coarsening stencil).
-         *
-         * Init communicators that need to know this level :
-         *
-         *  - magnetic fields
-         *  - electric fields
-         *  - ion interior particle arrays
-         *  - ion levelGhostParticlesOld particle arrays
+         * @brief all RefinerPool must be notified the level levelNumber now exist.
+         * not doing so will result in communication to/from that level being impossible
          */
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                            int const levelNumber) override
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
-            magneticSharedNodes_.registerLevel(hierarchy, level);
-            electricSharedNodes_.registerLevel(hierarchy, level);
-            currentSharedNodes_.registerLevel(hierarchy, level);
+            magSharedNodesRefiners_.registerLevel(hierarchy, level);
+            elecSharedNodesRefiners_.registerLevel(hierarchy, level);
+            currentSharedNodesRefiners_.registerLevel(hierarchy, level);
 
-            magneticPatchGhosts_.registerLevel(hierarchy, level);
-            // magneticLevelGhosts_.registerLevel(hierarchy, level);
-            magneticGhosts_.registerLevel(hierarchy, level);
-            electricGhosts_.registerLevel(hierarchy, level);
-            currentGhosts_.registerLevel(hierarchy, level);
+            magPatchGhostsRefiners_.registerLevel(hierarchy, level);
+            magGhostsRefiners_.registerLevel(hierarchy, level);
+            elecGhostsRefiners_.registerLevel(hierarchy, level);
+            currentGhostsRefiners_.registerLevel(hierarchy, level);
 
-            densityGhosts_.registerLevel(hierarchy, level);
-            bulkVelGhosts_.registerLevel(hierarchy, level);
+            rhoGhostsRefiners_.registerLevel(hierarchy, level);
+            velGhostsRefiners_.registerLevel(hierarchy, level);
 
-            patchGhostParticles_.registerLevel(hierarchy, level);
+            patchGhostPartRefiners_.registerLevel(hierarchy, level);
 
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
+            // TODO this 'if' may not be OK if L0 is regrided
             if (levelNumber != rootLevelNumber)
             {
                 // those are for refinement
-                magneticInit_.registerLevel(hierarchy, level);
-                electricInit_.registerLevel(hierarchy, level);
-                interiorParticles_.registerLevel(hierarchy, level);
-                levelGhostParticlesOld_.registerLevel(hierarchy, level);
-                levelGhostParticlesNew_.registerLevel(hierarchy, level);
+                magneticInitRefiners_.registerLevel(hierarchy, level);
+                electricInitRefiners_.registerLevel(hierarchy, level);
+                domainParticlesRefiners_.registerLevel(hierarchy, level);
+                lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
+                lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
                 // and these for coarsening
                 magnetoSynchronizers_.registerLevel(hierarchy, level);
@@ -226,10 +221,10 @@ namespace amr
         {
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
             auto level        = hierarchy->getPatchLevel(levelNumber);
-            magneticInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            electricInit_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            interiorParticles_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            patchGhostParticles_.fill(levelNumber, initDataTime);
+            magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            patchGhostPartRefiners_.fill(levelNumber, initDataTime);
 
             // regriding will fill the new level wherever it has points that overlap
             // old level. This will include its level border points.
@@ -241,12 +236,12 @@ namespace amr
             // This means that we now need to fill ghosts and border included
             auto& B = hybridModel.state.electromag.B;
             auto& E = hybridModel.state.electromag.E;
-            // magneticSharedNodes_.fill(B, levelNumber, initDataTime);
-            magneticGhosts_.fill(B, levelNumber, initDataTime);
-            // electricSharedNodes_.fill(E, levelNumber, initDataTime);
-            electricGhosts_.fill(E, levelNumber, initDataTime);
+            // magSharedNodesRefiners_.fill(B, levelNumber, initDataTime);
+            magGhostsRefiners_.fill(B, levelNumber, initDataTime);
+            // elecSharedNodesRefiners_.fill(E, levelNumber, initDataTime);
+            elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
 
-            fix_magnetic_divergence(*hierarchy, levelNumber, B);
+            fix_magnetic_divergence_(*hierarchy, levelNumber, B);
 
             // we now call only levelGhostParticlesOld.fill() and not .regrid()
             // regrid() would refine from next coarser in regions of level not overlaping
@@ -256,23 +251,16 @@ namespace amr
             // https://github.com/PHAREHUB/PHARE/issues/604 calling .fill() ensures that
             // levelGhostParticlesOld particles are filled exclusively from spliting next
             // coarser domain ones like when a new finest level is created.
-            levelGhostParticlesOld_.fill(levelNumber, initDataTime);
+            lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
             copyLevelGhostOldToPushable_(*level, model);
 
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
         }
 
-
-
-
         std::string fineModelName() const override { return HybridModel::model_name; }
 
-
-
         std::string coarseModelName() const override { return HybridModel::model_name; }
-
-
 
 
         std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
@@ -280,15 +268,10 @@ namespace amr
             return std::make_unique<HybridMessengerInfo>();
         }
 
-
-
-
         std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
         {
             return std::make_unique<HybridMessengerInfo>();
         }
-
-
 
         /**
          * @brief initLevel is used to initialize hybrid data on the level levelNumer at
@@ -299,27 +282,27 @@ namespace amr
         {
             auto levelNumber = level.getLevelNumber();
 
-            magneticInit_.fill(levelNumber, initDataTime);
-            electricInit_.fill(levelNumber, initDataTime);
+            magneticInitRefiners_.fill(levelNumber, initDataTime);
+            electricInitRefiners_.fill(levelNumber, initDataTime);
 
             // no need to call these :
-            // magneticGhosts_.fill(levelNumber, initDataTime);
-            // electricGhosts_.fill(levelNumber, initDataTime);
+            // magGhostsRefiners_.fill(levelNumber, initDataTime);
+            // elecGhostsRefiners_.fill(levelNumber, initDataTime);
             // because the SAMRAI schedules in the 'init' communicators
             // already fill the patch ghost box from the neighbor interior box.
             // so ghost nodes are already filled .
 
             PHARE_LOG_START("hybhybmessengerStrat::initLevel : interior part fill schedule");
-            interiorParticles_.fill(levelNumber, initDataTime);
+            domainParticlesRefiners_.fill(levelNumber, initDataTime);
             PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : interior part fill schedule");
             // however we need to call the ghost communicator for patch ghost particles
             // since the interior schedules have a restriction to the interior of the patch.
             PHARE_LOG_START("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
-            patchGhostParticles_.fill(levelNumber, initDataTime);
+            patchGhostPartRefiners_.fill(levelNumber, initDataTime);
             PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
 
 
-            levelGhostParticlesOld_.fill(levelNumber, initDataTime);
+            lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
 
 
             // levelGhostParticles will be pushed during the advance phase
@@ -340,9 +323,8 @@ namespace amr
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillElectricGhosts");
-            std::cout << "filling electric ghosts\n";
-            electricSharedNodes_.fill(E, levelNumber, fillTime);
-            electricGhosts_.fill(E, levelNumber, fillTime);
+            elecSharedNodesRefiners_.fill(E, levelNumber, fillTime);
+            elecGhostsRefiners_.fill(E, levelNumber, fillTime);
         }
 
 
@@ -351,8 +333,8 @@ namespace amr
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillCurrentGhosts");
-            currentSharedNodes_.fill(J, levelNumber, fillTime);
-            currentGhosts_.fill(J, levelNumber, fillTime);
+            currentSharedNodesRefiners_.fill(J, levelNumber, fillTime);
+            currentGhostsRefiners_.fill(J, levelNumber, fillTime);
         }
 
 
@@ -376,8 +358,7 @@ namespace amr
                     empty(pop.patchGhostParticles());
                 }
             }
-
-            patchGhostParticles_.fill(level.getLevelNumber(), fillTime);
+            patchGhostPartRefiners_.fill(level.getLevelNumber(), fillTime);
         }
 
 
@@ -442,8 +423,8 @@ namespace amr
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                          double const afterPushTime) override
         {
-            densityGhosts_.fill(level.getLevelNumber(), afterPushTime);
-            bulkVelGhosts_.fill(level.getLevelNumber(), afterPushTime);
+            rhoGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
+            velGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
         }
 
         /**
@@ -473,7 +454,7 @@ namespace amr
             if (levelNumber != 0)
             {
                 PHARE_LOG_START("HybridHybridMessengerStrategy::firstStep.fill");
-                levelGhostParticlesNew_.fill(levelNumber, currentTime);
+                lvlGhostPartNewRefiners_.fill(levelNumber, currentTime);
                 PHARE_LOG_STOP("HybridHybridMessengerStrategy::firstStep.fill");
 
                 // during firstStep() coarser level and current level are at the same time
@@ -542,11 +523,12 @@ namespace amr
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
          * This method copies the  density J, and the density and bulk velocity, defined at t=n.
-         * Since prepareStep() is called just before advancing the level, this operation actually
-         * saves the t=n versions of J, Ni, Vi into the messenger. When the time comes that the
-         * next finer level needs to time interpolate the electromagnetic field and current at its
-         * ghost nodes, this level will be able to interpolate at required time because the t=n
-         * Vi,Ni,J fields of previous next coarser step will be in the messenger.
+         * Since prepareStep() is called just before advancing the level, this operation
+         * actually saves the t=n versions of J, Ni, Vi into the messenger. When the time comes
+         * that the next finer level needs to time interpolate the electromagnetic field and
+         * current at its ghost nodes, this level will be able to interpolate at required time
+         * because the t=n Vi,Ni,J fields of previous next coarser step will be in the
+         * messenger.
          */
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
@@ -585,10 +567,11 @@ namespace amr
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
+            elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber,
+                                          initDataTime);
 
-            electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
-            patchGhostParticles_.fill(levelNumber, initDataTime);
+            elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
+            patchGhostPartRefiners_.fill(levelNumber, initDataTime);
 
             // at some point in the future levelGhostParticles could be filled with injected
             // particles depending on the domain boundary condition.
@@ -636,8 +619,8 @@ namespace amr
 
             std::cout << "postSynchronize level " << levelNumber << "\n";
 
-            magneticSharedNodes_.fill(hybridModel.state.electromag.B, levelNumber, time);
-            electricSharedNodes_.fill(hybridModel.state.electromag.E, levelNumber, time);
+            magSharedNodesRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
             // we fill magnetic field ghosts only on patch ghost nodes and not on level
             // ghosts the reason is that 1/ filling ghosts is necessary to prevent mismatch
@@ -646,48 +629,51 @@ namespace amr
             // level border with next coarser model B would invalidate divB on the first
             // fine domain cell since its border face only received a fraction of the
             // induction that has occured on the shared coarse face.
-            magneticPatchGhosts_.fill(hybridModel.state.electromag.B, levelNumber, time);
-            electricGhosts_.fill(hybridModel.state.electromag.E, levelNumber, time);
-            densityGhosts_.fill(levelNumber, time);
-            bulkVelGhosts_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
+            magPatchGhostsRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
+            rhoGhostsRefiners_.fill(levelNumber, time);
+            velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
         }
 
     private:
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            auto makeKeys = [](auto const& descriptor) {
+            auto makeKeys = [](auto const& vecFieldNames) {
                 std::vector<std::string> keys;
-                std::transform(std::begin(descriptor), std::end(descriptor),
+                std::transform(std::begin(vecFieldNames), std::end(vecFieldNames),
                                std::back_inserter(keys), [](auto const& d) { return d.vecName; });
                 return keys;
             };
-            fillStaticRefiners_(info->ghostMagnetic, BfieldNodeRefineOp_, magneticSharedNodes_,
-                                makeKeys(info->ghostMagnetic), /*ghosts=*/true);
+            magSharedNodesRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldNodeRefineOp_,
+                                                      makeKeys(info->ghostMagnetic));
 
-            fillStaticRefiners_(info->ghostMagnetic, BfieldRefineOp_, magneticGhosts_,
-                                makeKeys(info->ghostMagnetic), /*ghosts=*/true);
+            magGhostsRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldRefineOp_,
+                                                 makeKeys(info->ghostMagnetic));
 
-            fillStaticRefiners_(info->modelMagnetic, BfieldRefineOp_, magneticPatchGhosts_,
-                                info->modelMagnetic.vecName, /*ghosts=*/true);
+            magPatchGhostsRefiners_.addStaticRefiner(info->modelMagnetic, BfieldRefineOp_,
+                                                     info->modelMagnetic.vecName);
 
-            fillStaticRefiners_(info->ghostElectric, EfieldNodeRefineOp_, electricSharedNodes_,
-                                makeKeys(info->ghostElectric), /*ghosts=*/true);
+            elecSharedNodesRefiners_.addStaticRefiners(info->ghostElectric, EfieldNodeRefineOp_,
+                                                       makeKeys(info->ghostElectric));
 
-            fillStaticRefiners_(info->ghostElectric, EfieldRefineOp_, electricGhosts_,
-                                makeKeys(info->ghostElectric), /*ghosts=*/true);
+            elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
+                                                  makeKeys(info->ghostElectric));
 
-            fillTimeRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
-                              currentSharedNodes_, EfieldNodeRefineOp_);
+            currentSharedNodesRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
+                                                        core::VecFieldNames{Jold_},
+                                                        EfieldNodeRefineOp_, fieldTimeOp_);
 
-            fillTimeRefiners_(info->ghostCurrent, info->modelCurrent, VecFieldDescriptor{Jold_},
-                              currentGhosts_, EfieldRefineOp_);
+            currentGhostsRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
+                                                   core::VecFieldNames{Jold_}, EfieldRefineOp_,
+                                                   fieldTimeOp_);
 
-            densityGhosts_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
-                                          NiOldUser_.name, resourcesManager_, fieldRefineOp_,
-                                          fieldTimeOp_, info->modelIonDensity);
+            rhoGhostsRefiners_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
+                                              NiOldUser_.name, fieldRefineOp_, fieldTimeOp_,
+                                              info->modelIonDensity);
 
-            fillTimeRefiners_(info->ghostBulkVelocity, info->modelIonBulkVelocity,
-                              VecFieldDescriptor{ViOld_}, bulkVelGhosts_);
+            velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
+                                               core::VecFieldNames{ViOld_}, fieldRefineOp_,
+                                               fieldTimeOp_);
         }
 
 
@@ -702,27 +688,29 @@ namespace amr
                 return keys;
             };
 
-            fillStaticRefiners_(info->initMagnetic, BfieldRefineOp_, magneticInit_,
-                                makeKeys(info->initMagnetic));
+            magneticInitRefiners_.addStaticRefiners(info->initMagnetic, BfieldRefineOp_,
+                                                    makeKeys(info->initMagnetic));
 
-            fillStaticRefiners_(info->initElectric, EfieldRefineOp_, electricInit_,
-                                makeKeys(info->initElectric));
-
-
-            fillStaticRefiners_(info->interiorParticles, interiorParticleRefineOp_,
-                                interiorParticles_, info->interiorParticles);
+            electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
+                                                    makeKeys(info->initElectric));
 
 
-            fillStaticRefiners_(info->levelGhostParticlesOld, levelGhostParticlesOldOp_,
-                                levelGhostParticlesOld_, info->levelGhostParticlesOld);
+            domainParticlesRefiners_.addStaticRefiners(
+                info->interiorParticles, interiorParticleRefineOp_, info->interiorParticles);
 
 
-            fillStaticRefiners_(info->levelGhostParticlesNew, levelGhostParticlesNewOp_,
-                                levelGhostParticlesNew_, info->levelGhostParticlesNew);
+            lvlGhostPartOldRefiners_.addStaticRefiners(info->levelGhostParticlesOld,
+                                                       levelGhostParticlesOldOp_,
+                                                       info->levelGhostParticlesOld);
 
 
-            fillStaticRefiners_(info->patchGhostParticles, nullptr, patchGhostParticles_,
-                                info->patchGhostParticles);
+            lvlGhostPartNewRefiners_.addStaticRefiners(info->levelGhostParticlesNew,
+                                                       levelGhostParticlesNewOp_,
+                                                       info->levelGhostParticlesNew);
+
+
+            patchGhostPartRefiners_.addStaticRefiners(info->patchGhostParticles, nullptr,
+                                                      info->patchGhostParticles);
         }
 
 
@@ -730,87 +718,20 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            magnetoSynchronizers_.add(info->modelMagnetic, resourcesManager_, magneticCoarseningOp_,
+            magnetoSynchronizers_.add(info->modelMagnetic, magneticCoarseningOp_,
                                       info->modelMagnetic.vecName);
 
-            electroSynchronizers_.add(info->modelElectric, resourcesManager_, fieldCoarseningOp_,
+            electroSynchronizers_.add(info->modelElectric, fieldCoarseningOp_,
                                       info->modelElectric.vecName);
 
-            ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, resourcesManager_,
-                                         fieldCoarseningOp_, info->modelIonBulkVelocity.vecName);
-
+            ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, fieldCoarseningOp_,
+                                         info->modelIonBulkVelocity.vecName);
 
             densitySynchronizers_.add(info->modelIonDensity, fieldCoarseningOp_,
-                                      info->modelIonDensity, resourcesManager_);
+                                      info->modelIonDensity);
         }
 
 
-        /**
-         * @brief fill the given pool of refiners with a new refiner per VecFieldDescriptor
-         * in ghostVecs. Data will be spatially refined using the specified refinement
-         * operator, and time interpolated between time n and n+1 of next coarser data,
-         * represented by modelVec and oldModelVec descriptors.
-         */
-        template<typename RefinerT, RefinerT RefineType>
-        void fillTimeRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
-                               VecFieldDescriptor const& modelVec,
-                               VecFieldDescriptor const& oldModelVec,
-                               RefinerPool<RefineType>& refiners,
-                               std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp)
-        {
-            for (auto const& ghostVec : ghostVecs)
-            {
-                refiners.addTimeRefiner(ghostVec, modelVec, oldModelVec, resourcesManager_,
-                                        refineOp, fieldTimeOp_, ghostVec.vecName);
-            }
-        }
-
-
-        /** @brief convenience overload of above with defauled field refinement operator*/
-        template<typename RefinerT, RefinerT RefineType>
-        void fillTimeRefiners_(std::vector<VecFieldDescriptor> const& ghostVecs,
-                               VecFieldDescriptor const& modelVec,
-                               VecFieldDescriptor const& oldModelVec,
-                               RefinerPool<RefineType>& refiners)
-        {
-            fillTimeRefiners_(ghostVecs, modelVec, oldModelVec, refiners, fieldRefineOp_);
-        }
-
-
-
-        template<typename Descriptors, typename RefinerPool>
-        void fillStaticRefiners_(Descriptors const& dest, Descriptors const& source,
-                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                                 RefinerPool& refiners, std::vector<std::string> keys,
-                                 bool ghosts = false)
-        {
-            assert(dest.size() == source.size());
-            auto key = std::begin(keys);
-            for (std::size_t i = 0; i < dest.size(); ++i)
-            {
-                refiners.addStaticRefiner(dest[i], source[i], refineOp, *key++, resourcesManager_,
-                                          ghosts);
-            }
-        }
-
-        template<typename Descriptors, typename RefinerPool>
-        void fillStaticRefiners_(Descriptors const& descriptors,
-                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                                 RefinerPool& refiners, std::vector<std::string> keys,
-                                 bool ghosts = false)
-        {
-            fillStaticRefiners_(descriptors, descriptors, refineOp, refiners, keys, ghosts);
-        }
-
-
-        template<typename RefinerPool>
-        void fillStaticRefiners_(VecFieldDescriptor const& descriptor,
-                                 std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-                                 RefinerPool& refiners, std::string key, bool ghosts = false)
-        {
-            refiners.addStaticRefiner(descriptor, descriptor, refineOp, key, resourcesManager_,
-                                      ghosts);
-        }
 
 
         void copyLevelGhostOldToPushable_(SAMRAI::hier::PatchLevel& level, IPhysicalModel& model)
@@ -841,11 +762,45 @@ namespace amr
                    / (afterPushCoarseTime_[levelNumber] - beforePushCoarseTime_[levelNumber]);
         }
 
+
+        void debug_print(VecFieldT const& B, GridLayoutT const& layout, int loc, int ix, int iy,
+                         std::string const& aftbef)
+        {
+            auto& Bx       = B(core::Component::X);
+            auto& By       = B(core::Component::Y);
+            auto& Bz       = B(core::Component::Z);
+            auto const& dx = layout.meshSize()[0];
+            auto const& dy = layout.meshSize()[1];
+
+            if (loc == 3) // w hi, y hi
+            {
+                std::cout << aftbef << "\n";
+                std::cout << "cell 4 : "
+                          << (Bx(ix, iy) - Bx(ix - 1, iy)) / dx
+                                 + (By(ix - 1, iy + 1) - By(ix - 1, iy)) / dy
+                          << "\n";
+
+                std::cout << "cell 2 : "
+                          << (Bx(ix + 1, iy - 1) - Bx(ix, iy - 1)) / dx
+                                 + (By(ix, iy) - By(ix, iy - 1)) / dy
+                          << "\n";
+
+                std::cout << "cell 1 : "
+                          << (Bx(ix + 1, iy) - Bx(ix, iy)) / dx + (By(ix, iy + 1) - By(ix, iy)) / dy
+                          << "\n";
+
+                std::cout << "cell 3 : "
+                          << (Bx(ix, iy - 1) - Bx(ix - 1, iy - 1)) / dx
+                                 + (By(ix - 1, iy) - By(ix - 1, iy - 1)) / dy
+                          << "\n";
+            }
+        }
+
         /*
          *
          * */
-        void fix_magnetic_divergence(SAMRAI::hier::PatchHierarchy const& hierarchy, int levelNumber,
-                                     VecFieldT& B)
+        void fix_magnetic_divergence_(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                      int levelNumber, VecFieldT& B)
         {
             auto lvlBoundary = SAMRAI::hier::CoarseFineBoundary(
                 hierarchy, levelNumber,
@@ -857,9 +812,9 @@ namespace amr
                 {
                     auto _         = resourcesManager_->setOnPatch(*patch, B);
                     auto layout    = layoutFromPatch<GridLayoutT>(*patch);
-                    auto& Bx       = B(Component::X);
-                    auto& By       = B(Component::Y);
-                    auto& Bz       = B(Component::Z);
+                    auto& Bx       = B(core::Component::X);
+                    auto& By       = B(core::Component::Y);
+                    auto& Bz       = B(core::Component::Z);
                     auto const& dx = layout.meshSize()[0];
                     auto const& dy = layout.meshSize()[1];
 
@@ -882,7 +837,7 @@ namespace amr
                                 // coarse faces.
                                 if (!(iyAMR % 2 == 0))
                                 {
-                                    auto localIdx = layout.AMRToLocal(Point{ixAMR, iyAMR});
+                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
                                     auto ix       = localIdx[0];
                                     auto iy       = localIdx[1];
                                     By(ix, iy)
@@ -903,7 +858,7 @@ namespace amr
                                 // coarse faces.
                                 if (!(iyAMR % 2 == 0))
                                 {
-                                    auto localIdx = layout.AMRToLocal(Point{ixAMR, iyAMR});
+                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
                                     auto ix       = localIdx[0];
                                     auto iy       = localIdx[1];
                                     By(ix, iy)
@@ -923,7 +878,7 @@ namespace amr
                                 // coarse faces.
                                 if (!(ixAMR % 2 == 0))
                                 {
-                                    auto localIdx = layout.AMRToLocal(Point{ixAMR, iyAMR});
+                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
                                     auto ix       = localIdx[0];
                                     auto iy       = localIdx[1];
                                     Bx(ix, iy)
@@ -943,7 +898,7 @@ namespace amr
                                 // coarse faces.
                                 if (!(ixAMR % 2 == 0))
                                 {
-                                    auto localIdx = layout.AMRToLocal(Point{ixAMR, iyAMR});
+                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
                                     auto ix       = localIdx[0];
                                     auto iy       = localIdx[1];
                                     Bx(ix, iy)
@@ -1007,58 +962,22 @@ namespace amr
                             // we fix BX and BY
                             auto ixAMR    = box.lower()[0] - 1;
                             auto iyAMR    = box.lower()[1] - 1;
-                            auto localIdx = layout.AMRToLocal(Point{ixAMR, iyAMR});
+                            auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
                             auto ix       = localIdx[0];
                             auto iy       = localIdx[1];
 
-                            std::cout << "BEFORE\n";
-                            std::cout << "cell 4 : "
-                                      << (Bx(ix, iy) - Bx(ix - 1, iy)) / dx
-                                             + (By(ix - 1, iy + 1) - By(ix - 1, iy)) / dy
-                                      << "\n";
-
-                            std::cout << "cell 2 : "
-                                      << (Bx(ix + 1, iy - 1) - Bx(ix, iy - 1)) / dx
-                                             + (By(ix, iy) - By(ix, iy - 1)) / dy
-                                      << "\n";
-
-                            std::cout << "cell 1 : "
-                                      << (Bx(ix + 1, iy) - Bx(ix, iy)) / dx
-                                             + (By(ix, iy + 1) - By(ix, iy)) / dy
-                                      << "\n";
-
-                            std::cout << "cell 3 : "
-                                      << (Bx(ix, iy - 1) - Bx(ix - 1, iy - 1)) / dx
-                                             + (By(ix - 1, iy) - By(ix - 1, iy - 1)) / dy
-                                      << "\n";
-
+                            // maybe we should keep these for some time
+                            // as comments in case they are useful again
+                            PHARE_DEBUG_DO(const std::string before = "BEFORE";
+                                           debug_print(B, layout, loc, ix, iy, before);)
                             Bx(ix, iy - 1)
                                 = Bx(ix + 1, iy - 1) + dx / dy * (By(ix, iy) - By(ix, iy - 1));
 
                             By(ix - 1, iy)
                                 = By(ix - 1, iy + 1) + dy / dx * (Bx(ix, iy) - Bx(ix - 1, iy));
 
-
-                            std::cout << "AFTER";
-                            std::cout << "cell 4 : "
-                                      << (Bx(ix, iy) - Bx(ix - 1, iy)) / dx
-                                             + (By(ix - 1, iy + 1) - By(ix - 1, iy)) / dy
-                                      << "\n";
-
-                            std::cout << "cell 2 : "
-                                      << (Bx(ix + 1, iy - 1) - Bx(ix, iy - 1)) / dx
-                                             + (By(ix, iy) - By(ix, iy - 1)) / dy
-                                      << "\n";
-
-                            std::cout << "cell 1 : "
-                                      << (Bx(ix + 1, iy) - Bx(ix, iy)) / dx
-                                             + (By(ix, iy + 1) - By(ix, iy)) / dy
-                                      << "\n";
-
-                            std::cout << "cell 3 : "
-                                      << (Bx(ix, iy - 1) - Bx(ix - 1, iy - 1)) / dx
-                                             + (By(ix - 1, iy) - By(ix - 1, iy - 1)) / dy
-                                      << "\n";
+                            PHARE_DEBUG_DO(const std::string after = "AFTER";
+                                           debug_print(B, layout, loc, ix, iy, after);)
                         }
                     } // end corner loops
                 }     // end if 2D
@@ -1083,24 +1002,34 @@ namespace amr
 
         core::Interpolator<dimension, interpOrder> interpolate_;
 
-        //! store communicators for magnetic fields that need to be initialized
-        RefinerPool<RefinerType::InitField> magneticInit_;
-        //! store communicators for electric fields that need to be initializes
-        RefinerPool<RefinerType::InitField> electricInit_;
+        using rm_t                    = ResourcesManagerT;
+        using RefineOperator          = SAMRAI::hier::RefineOperator;
+        using TimeInterpolateOperator = SAMRAI::hier::TimeInterpolateOperator;
 
+        // these refiners are used to initialize electromagnetic fields when creating
+        // a new level (initLevel) or regridding (regrid)
+        using InitRefinerPool           = RefinerPool<rm_t, RefinerType::InitField>;
+        using SharedNodeRefinerPool     = RefinerPool<rm_t, RefinerType::SharedBorder>;
+        using GhostRefinerPool          = RefinerPool<rm_t, RefinerType::GhostField>;
+        using PatchGhostRefinerPool     = RefinerPool<rm_t, RefinerType::PatchGhostField>;
+        using InitDomPartRefinerPool    = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
+        using PatchGhostPartRefinerPool = RefinerPool<rm_t, RefinerType::InteriorGhostParticles>;
 
+        InitRefinerPool magneticInitRefiners_{resourcesManager_};
+        InitRefinerPool electricInitRefiners_{resourcesManager_};
 
         //! store communicators for magnetic fields that need ghosts to be filled
-        RefinerPool<RefinerType::SharedBorder> magneticSharedNodes_;
-        RefinerPool<RefinerType::GhostField> magneticGhosts_;
-        RefinerPool<RefinerType::PatchGhostField> magneticPatchGhosts_;
+        SharedNodeRefinerPool magSharedNodesRefiners_{resourcesManager_};
+        GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+        PatchGhostRefinerPool magPatchGhostsRefiners_{resourcesManager_};
+
 
         //! store refiners for electric fields that need ghosts to be filled
-        RefinerPool<RefinerType::SharedBorder> electricSharedNodes_;
-        RefinerPool<RefinerType::GhostField> electricGhosts_;
+        SharedNodeRefinerPool elecSharedNodesRefiners_{resourcesManager_};
+        GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
 
-        RefinerPool<RefinerType::GhostField> currentSharedNodes_;
-        RefinerPool<RefinerType::GhostField> currentGhosts_;
+        GhostRefinerPool currentSharedNodesRefiners_{resourcesManager_};
+        GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
         // these do not need sharedNode refiners. The reason is that
@@ -1108,70 +1037,50 @@ namespace amr
         // these refiners are used to fill ghost nodes, and therefore, owing to
         // the GhostField tag, will only assign pur ghost nodes. Border nodes will
         // be overwritten only on level borders, which does not seem to be an issue.
-        RefinerPool<RefinerType::GhostField> densityGhosts_;
-        RefinerPool<RefinerType::GhostField> bulkVelGhosts_;
+        GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};
+        GhostRefinerPool velGhostsRefiners_{resourcesManager_};
 
-        // algo and schedule used to initialize domain particles
-        // from coarser level using particleRefineOp<domain>
-        RefinerPool<RefinerType::InitInteriorPart> interiorParticles_;
+        // pool of refiners for interior particles of each population
+        // and the associated refinement operator
+        InitDomPartRefinerPool domainParticlesRefiners_{resourcesManager_};
+
+        using RefOp_ptr = std::shared_ptr<RefineOperator>;
+
+        RefOp_ptr interiorParticleRefineOp_{std::make_shared<InteriorParticleRefineOp>()};
 
         //! store communicators for coarse to fine particles old
-        RefinerPool<RefinerType::LevelBorderParticles> levelGhostParticlesOld_;
-
-        //! store communicators for coarse to fine particles new
-        RefinerPool<RefinerType::LevelBorderParticles> levelGhostParticlesNew_;
-
-        // keys : model particles (initialization and 2nd push), temporaryParticles
-        // (firstPush)
-        RefinerPool<RefinerType::InteriorGhostParticles> patchGhostParticles_;
-
-        SynchronizerPool<dimension> densitySynchronizers_;
-        SynchronizerPool<dimension> ionBulkVelSynchronizers_;
-        SynchronizerPool<dimension> electroSynchronizers_;
-        SynchronizerPool<dimension> magnetoSynchronizers_;
+        // pools of refiners to fill level ghost particles, old and new ones
+        // and their associated refinement operator
+        static auto constexpr LGRefT = RefinerType::LevelBorderParticles;
+        RefinerPool<rm_t, LGRefT> lvlGhostPartOldRefiners_{resourcesManager_};
+        RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
+        RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
+        RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
 
 
+        // this contains refiners for each population to exchange patch ghost particles
+        PatchGhostPartRefinerPool patchGhostPartRefiners_{resourcesManager_};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, DefaultFieldRefiner<dimension>>>()};
+        SynchronizerPool<rm_t> densitySynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> ionBulkVelSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> magnetoSynchronizers_{resourcesManager_};
 
+
+        RefOp_ptr fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()};
         // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
-        // Note that refinement operator, via the boolean argument, serve as a relay for the
-        // the RefineAlgorithm to get the correct VariableFillPattern
-        std::shared_ptr<SAMRAI::hier::RefineOperator> BfieldNodeRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>(
-            /*node_only*/ true)};
+        // note that refinement operator, via the boolean argument, serve as a relay for the
+        // the refinealgorithm to get the correct variablefillpattern
+        RefOp_ptr BfieldNodeRefineOp_{std::make_shared<MagneticFieldRefineOp>(/*node_only=*/true)};
+        RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
+        RefOp_ptr EfieldNodeRefineOp_{std::make_shared<ElectricFieldRefineOp>(/*node_only=*/true)};
+        RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> BfieldRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, MagneticFieldRefiner<dimension>>>()};
+        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
 
-        std::shared_ptr<SAMRAI::hier::RefineOperator> EfieldNodeRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, ElectricFieldRefiner<dimension>>>(
-            /*node_only*/ true)};
-
-        std::shared_ptr<SAMRAI::hier::RefineOperator> EfieldRefineOp_{std::make_shared<
-            FieldRefineOperator<GridLayoutT, FieldT, ElectricFieldRefiner<dimension>>>()};
-
-        // field data time op
-        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> fieldTimeOp_{
-            std::make_shared<FieldLinearTimeInterpolate<GridLayoutT, FieldT>>()};
-
-
-        std::shared_ptr<SAMRAI::hier::RefineOperator> interiorParticleRefineOp_{
-            std::make_shared<InteriorParticleRefineOp>()};
-
-        std::shared_ptr<SAMRAI::hier::RefineOperator> levelGhostParticlesOldOp_{
-            std::make_shared<CoarseToFineRefineOpOld>()};
-
-        std::shared_ptr<SAMRAI::hier::RefineOperator> levelGhostParticlesNewOp_{
-            std::make_shared<CoarseToFineRefineOpNew>()};
-
-
-        std::shared_ptr<SAMRAI::hier::CoarsenOperator> fieldCoarseningOp_{std::make_shared<
-            FieldCoarsenOperator<GridLayoutT, FieldT, DefaultFieldCoarsener<dimension>>>()};
-
-        std::shared_ptr<SAMRAI::hier::CoarsenOperator> magneticCoarseningOp_{std::make_shared<
-            FieldCoarsenOperator<GridLayoutT, FieldT, MagneticFieldCoarsener<dimension>>>()};
+        using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
+        CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
+        CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
     };
 
     template<typename HybridModel, typename RefinementParams>
