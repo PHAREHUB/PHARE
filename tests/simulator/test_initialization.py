@@ -713,7 +713,7 @@ class InitializationTest(SimulatorTest):
             any(
                 [
                     diagInfo.quantity.endswith("patchGhost")
-                    for diagInfo in ph.global_vars.sim.diagnostics
+                    for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
                 ]
             )
         )

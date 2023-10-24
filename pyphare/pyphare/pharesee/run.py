@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 from pyphare.pharesee.hierarchy import compute_hier_from
+from pyphare.pharesee.hierarchy import compute_hier_from_
 
 from .hierarchy import flat_finest_field, hierarchy_from
 
@@ -63,34 +64,35 @@ def _current2d(bx, by, bz, dx, dy):
     return jx, jy, jz
 
 
-def _compute_current(patch):
-    if patch.box.ndim == 1:
-        By = patch.patch_datas["By"].dataset[:]
-        xby = patch.patch_datas["By"].x
-        Bz = patch.patch_datas["Bz"].dataset[:]
-        xbz = patch.patch_datas["Bz"].x
+def _compute_current(patchdatas, **kwargs):
+    reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
+
+    ndim = reference_pd.box.ndim
+    if ndim == 1:
+        By = patchdatas["By"].dataset[:]
+        xby = patchdatas["By"].x
+        Bz = patchdatas["Bz"].dataset[:]
+        xbz = patchdatas["Bz"].x
         Jy, Jz = _current1d(By, Bz, xby, xbz)
         return (
             {"name": "Jy", "data": Jy, "centering": "primal"},
             {"name": "Jz", "data": Jz, "centering": "primal"},
         )
 
-    elif patch.box.ndim == 2:
-        Bx = patch.patch_datas["Bx"].dataset[:]
-        By = patch.patch_datas["By"].dataset[:]
-        Bz = patch.patch_datas["Bz"].dataset[:]
+    elif ndim == 2:
+        Bx = patchdatas["Bx"].dataset[:]
+        By = patchdatas["By"].dataset[:]
+        Bz = patchdatas["Bz"].dataset[:]
 
-        dx, dy = patch.dl
+        dx, dy = reference_pd.dl
 
         Jx, Jy, Jz = _current2d(Bx, By, Bz, dx, dy)
-        # return ({"name":"Jx", "data":Jx,"centering":"primal"},
-        #        {"name":"Jy", "data":Jy,"centering":"primal"},
-        #        {"name":"Jz", "data":Jz,"centering":"primal"})
 
         components = ("Jx", "Jy", "Jz")
         centering = {
             component: [
-                patch.layout.centering[direction][component] for direction in ("X", "Y")
+                reference_pd.layout.centering[direction][component]
+                for direction in ("X", "Y")
             ]
             for component in components
         }
@@ -108,15 +110,19 @@ def _divB2D(Bx, By, xBx, yBy):
     return dxbx + dyby
 
 
-def _compute_divB(patch):
-    if patch.box.ndim == 1:
+def _compute_divB(patchdatas, **kwargs):
+
+    reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
+    ndim = reference_pd.box.ndim
+
+    if ndim == 1:
         raise ValueError("divB is 0 by construction in 1D")
 
-    elif patch.box.ndim == 2:
-        By = patch.patch_datas["By"].dataset[:]
-        Bx = patch.patch_datas["Bx"].dataset[:]
-        xBx = patch.patch_datas["Bx"].x
-        yBy = patch.patch_datas["By"].y
+    elif ndim == 2:
+        By = patchdatas["By"].dataset[:]
+        Bx = patchdatas["Bx"].dataset[:]
+        xBx = patchdatas["Bx"].x
+        yBy = patchdatas["By"].y
         divB = _divB2D(Bx, By, xBx, yBy)
 
         return ({"name": "divB", "data": divB, "centering": ["dual", "dual"]},)
@@ -125,26 +131,100 @@ def _compute_divB(patch):
         raise RuntimeError("dimension not implemented")
 
 
-def _get_rank(patch):
+def _get_rank(patchdatas, **kwargs):
     """
     make a field dataset cell centered coding the MPI rank
     rank is obtained from patch global id == "rank#local_patch_id"
     """
     from pyphare.core.box import grow
 
-    layout = patch.layout
+    reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
+    ndim = reference_pd.box.ndim
+    pid = kwargs["id"]
+
+    layout = reference_pd.layout
     centering = "dual"
     nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
-    shape = grow(patch.box, [nbrGhosts] * 2).shape
+    shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
 
-    if patch.box.ndim == 1:
+    if ndim == 1:
         pass
 
-    if patch.box.ndim == 2:
-        data = np.zeros(shape) + int(patch.id.strip("p").split("#")[0])
+    elif ndim == 2:
+        data = np.zeros(shape) + int(pid.strip("p").split("#")[0])
         return ({"name": "rank", "data": data, "centering": [centering] * 2},)
     else:
         raise RuntimeError("Not Implemented yet")
+
+
+def _compute_pressure(patch_datas, **kwargs):
+    Mxx = patch_datas["Mxx"].dataset[:]
+    Mxy = patch_datas["Mxy"].dataset[:]
+    Mxz = patch_datas["Mxz"].dataset[:]
+    Myy = patch_datas["Myy"].dataset[:]
+    Myz = patch_datas["Myz"].dataset[:]
+    Mzz = patch_datas["Mzz"].dataset[:]
+    massDensity = patch_datas["rho"].dataset[:]
+    Vix = patch_datas["Vx"].dataset[:]
+    Viy = patch_datas["Vy"].dataset[:]
+    Viz = patch_datas["Vz"].dataset[:]
+
+    Pxx = Mxx - Vix * Vix * massDensity
+    Pxy = Mxy - Vix * Viy * massDensity
+    Pxz = Mxz - Vix * Viz * massDensity
+    Pyy = Myy - Viy * Viy * massDensity
+    Pyz = Myz - Viy * Viz * massDensity
+    Pzz = Mzz - Viz * Viz * massDensity
+
+    return (
+        {"name": "Pxx", "data": Pxx, "centering": ["primal", "primal"]},
+        {"name": "Pxy", "data": Pxy, "centering": ["primal", "primal"]},
+        {"name": "Pxz", "data": Pxz, "centering": ["primal", "primal"]},
+        {"name": "Pyy", "data": Pyy, "centering": ["primal", "primal"]},
+        {"name": "Pyz", "data": Pyz, "centering": ["primal", "primal"]},
+        {"name": "Pzz", "data": Pzz, "centering": ["primal", "primal"]},
+    )
+
+
+def _compute_pop_pressure(patch_datas, **kwargs):
+    """
+    computes the pressure tensor for a given population
+    this method is different from _compute_pressure in that:
+        P = M - V*V*n*mass
+    where V is the bulk velocity, n is the density and mass is the particle mass
+    but for populations we don't have V we have the Flux.
+    so the formula becomes:
+        P = M - F*F/N * mass
+    """
+    popname = kwargs["popname"]
+    Mxx = patch_datas[popname + "_Mxx"].dataset[:]
+    Mxy = patch_datas[popname + "_Mxy"].dataset[:]
+    Mxz = patch_datas[popname + "_Mxz"].dataset[:]
+    Myy = patch_datas[popname + "_Myy"].dataset[:]
+    Myz = patch_datas[popname + "_Myz"].dataset[:]
+    Mzz = patch_datas[popname + "_Mzz"].dataset[:]
+    Fx = patch_datas[popname + "_Fx"].dataset[:]
+    Fy = patch_datas[popname + "_Fy"].dataset[:]
+    Fz = patch_datas[popname + "_Fz"].dataset[:]
+    N = patch_datas[popname + "_rho"].dataset[:]
+
+    mass = kwargs["mass"]
+
+    Pxx = Mxx - Fx * Fx * mass / N
+    Pxy = Mxy - Fx * Fy * mass / N
+    Pxz = Mxz - Fx * Fz * mass / N
+    Pyy = Myy - Fy * Fy * mass / N
+    Pyz = Myz - Fy * Fz * mass / N
+    Pzz = Mzz - Fz * Fz * mass / N
+
+    return (
+        {"name": popname + "_Pxx", "data": Pxx, "centering": ["primal", "primal"]},
+        {"name": popname + "_Pxy", "data": Pxy, "centering": ["primal", "primal"]},
+        {"name": popname + "_Pxz", "data": Pxz, "centering": ["primal", "primal"]},
+        {"name": popname + "_Pyy", "data": Pyy, "centering": ["primal", "primal"]},
+        {"name": popname + "_Pyz", "data": Pyz, "centering": ["primal", "primal"]},
+        {"name": popname + "_Pzz", "data": Pzz, "centering": ["primal", "primal"]},
+    )
 
 
 def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
@@ -252,6 +332,10 @@ class Run:
         hier = self._get_hierarchy(time, "EM_E.h5")
         return self._get(hier, time, merged, interp)
 
+    def GetMassDensity(self, time, merged=False, interp="nearest"):
+        hier = self._get_hierarchy(time, "ions_mass_density.h5")
+        return self._get(hier, time, merged, interp)
+
     def GetNi(self, time, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, "ions_density.h5")
         return self._get(hier, time, merged, interp)
@@ -268,19 +352,44 @@ class Run:
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5")
         return self._get(hier, time, merged, interp)
 
+    def GetPressure(self, time, pop_name, merged=False, interp="nearest"):
+        M = self._get_hierarchy(time, f"ions_pop_{pop_name}_momentum_tensor.h5")
+        V = self.GetFlux(time, pop_name)
+        N = self.GetN(time, pop_name)
+        P = compute_hier_from(
+            _compute_pop_pressure,
+            (M, V, N),
+            popname=pop_name,
+            mass=self.GetMass(pop_name),
+        )
+        return self._get(P, time, merged, interp)
+
+    def GetPi(self, time, merged=False, interp="nearest"):
+        M = self._get_hierarchy(time, f"ions_momentum_tensor.h5")
+        massDensity = self.GetMassDensity(time)
+        Vi = self._get_hierarchy(time, f"ions_bulkVelocity.h5")
+        Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
+        return self._get(Pi, time, merged, interp)
+
     def GetJ(self, time, merged=False, interp="nearest"):
         B = self.GetB(time)
-        J = compute_hier_from(B, _compute_current)
+        J = compute_hier_from(_compute_current, B)
         return self._get(J, time, merged, interp)
 
     def GetDivB(self, time, merged=False, interp="nearest"):
         B = self.GetB(time)
-        db = compute_hier_from(B, _compute_divB)
+        db = compute_hier_from(_compute_divB, B)
         return self._get(db, time, merged, interp)
 
     def GetRanks(self, time, merged=False, interp="nearest"):
+        """
+        returns a hierarchy of MPI ranks
+        takes the information from magnetic field diagnostics arbitrarily
+        this fails if the magnetic field is not written and could at some point
+        be replace by a search of any available diag at the requested time.
+        """
         B = self.GetB(time)
-        ranks = compute_hier_from(B, _get_rank)
+        ranks = compute_hier_from(_get_rank, B)
         return self._get(ranks, time, merged, interp)
 
     def GetParticles(self, time, pop_name, hier=None):

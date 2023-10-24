@@ -8,6 +8,7 @@ from ..core.box import Box
 from ..core.gridlayout import GridLayout
 from ..core.phare_utilities import deep_copy, refinement_ratio
 from .particles import Particles
+from ..core.phare_utilities import listify
 
 
 class PatchData:
@@ -147,7 +148,7 @@ class FieldData(PatchData):
                 self.centerings = [kwargs["centering"]]
         else:
             raise ValueError(
-                "centering not specified and cannot be inferred from field name"
+                f"centering not specified and cannot be inferred from field name : {field_name}"
             )
 
         if self.field_name != "tags":
@@ -1156,7 +1157,14 @@ field_qties = {
     "bulkVelocity_x": "Vx",
     "bulkVelocity_y": "Vy",
     "bulkVelocity_z": "Vz",
+    "momentum_tensor_xx": "Mxx",
+    "momentum_tensor_xy": "Mxy",
+    "momentum_tensor_xz": "Mxz",
+    "momentum_tensor_yy": "Myy",
+    "momentum_tensor_yz": "Myz",
+    "momentum_tensor_zz": "Mzz",
     "density": "rho",
+    "mass_density": "rho",
     "tags": "tags",
 }
 
@@ -1206,7 +1214,7 @@ def load_one_time(time, hier):
     return time is not None and hier is not None
 
 
-def compute_hier_from(h, compute):
+def compute_hier_from_(h, compute):
     """
     returns a hierarchy resulting from calling 'compute'
     on each patch of the given hierarchy 'h'
@@ -1243,8 +1251,66 @@ def compute_hier_from(h, compute):
     return PatchHierarchy(patch_levels, h.domain_box, refinement_ratio, time=t)
 
 
+def are_compatible_hierarchies(hierarchies):
+    return True
+
+
+def extract_patchdatas(hierarchies, ilvl, ipatch):
+    """
+    returns a dict {patchdata_name:patchdata} from a list of hierarchies for patch ipatch at level ilvl
+    """
+    patches = [h.patch_levels[ilvl].patches[ipatch] for h in hierarchies]
+    patch_datas = {
+        pdname: pd for p in patches for pdname, pd in list(p.patch_datas.items())
+    }
+    return patch_datas
+
+
+def new_patchdatas_from(compute, patchdatas, layout, **kwargs):
+    new_patch_datas = {}
+    datas = compute(patchdatas, **kwargs)
+    for data in datas:
+        pd = FieldData(layout, data["name"], data["data"], centering=data["centering"])
+        new_patch_datas[data["name"]] = pd
+    return new_patch_datas
+
+
+def new_patches_from(compute, hierarchies, ilvl, **kwargs):
+    reference_hier = hierarchies[0]
+    new_patches = []
+    patch_nbr = len(reference_hier.patch_levels[ilvl].patches)
+    for ip in range(patch_nbr):
+        current_patch = reference_hier.patch_levels[ilvl].patches[ip]
+        layout = current_patch.layout
+        patch_datas = extract_patchdatas(hierarchies, ilvl, ip)
+        new_patch_datas = new_patchdatas_from(compute, patch_datas, layout, **kwargs)
+        new_patches.append(Patch(new_patch_datas, current_patch.id))
+    return new_patches
+
+
+def compute_hier_from(compute, hierarchies, **kwargs):
+    """return a new hierarchy using the callback 'compute' on all patchdatas
+    of the given hierarchies
+    """
+    if not are_compatible_hierarchies(hierarchies):
+        raise RuntimeError("hierarchies are not compatible")
+
+    hierarchies = listify(hierarchies)
+    reference_hier = hierarchies[0]
+    domain_box = reference_hier.domain_box
+    patch_levels = {}
+    for ilvl in range(reference_hier.levelNbr()):
+        patch_levels[ilvl] = PatchLevel(
+            ilvl, new_patches_from(compute, hierarchies, ilvl, **kwargs)
+        )
+
+    assert len(reference_hier.time_hier) == 1  # only single time hierarchies now
+    t = list(reference_hier.time_hier.keys())[0]
+    return PatchHierarchy(patch_levels, domain_box, refinement_ratio, time=t)
+
+
 def pop_name(basename):
-    return basename.strip(".h5").split("_")[-2]
+    return basename.strip(".h5").split("_")[2]
 
 
 def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
@@ -1486,6 +1552,12 @@ def isFieldQty(qty):
         "flux_x",
         "flux_y",
         "flux_z",
+        "momentumTensor_xx",
+        "momentumTensor_xy",
+        "momentumTensor_xz",
+        "momentumTensor_yy",
+        "momentumTensor_yz",
+        "momentumTensor_zz",
     )
 
 
@@ -1676,3 +1748,26 @@ def get_times_from_h5(filepath):
     times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
     f.close()
     return times
+
+
+def getPatch(hier, point):
+    """
+    convenience function mainly for debug. returns a dict
+    {ilevel:patch}  for patches in which the given point is
+    """
+    patches = {}
+    counts = {ilvl: 0 for ilvl in hier.levels().keys()}
+    for ilvl, lvl in hier.levels().items():
+        for p in lvl.patches:
+            px, py = point
+            dx, dy = p.layout.dl
+            ix = int(px / dx)
+            iy = int(py / dy)
+            if (ix, iy) in p.box:
+                patches[ilvl] = p
+                counts[ilvl] += 1
+    for k, v in counts.items():
+        if v > 1:
+            print("error : ", k, v)
+            raise RuntimeError("more than one patch found for point")
+    return patches

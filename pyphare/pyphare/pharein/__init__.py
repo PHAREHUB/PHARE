@@ -253,7 +253,7 @@ def populateDict():
 
     #### adding diagnostics
     diag_path = "simulation/diagnostics/"
-    for diag in simulation.diagnostics:
+    for _, diag in simulation.diagnostics.items():
         type_path = diag_path + diag.type + "/"
         name_path = type_path + diag.name
         add_string(name_path + "/" + "type", diag.type)

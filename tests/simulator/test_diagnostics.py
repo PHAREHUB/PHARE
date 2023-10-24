@@ -182,13 +182,13 @@ class DiagnosticsTest(unittest.TestCase):
                 any(
                     [
                         diagInfo.quantity.endswith("domain")
-                        for diagInfo in ph.global_vars.sim.diagnostics
+                        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
                     ]
                 )
             )
 
             particle_files = 0
-            for diagInfo in ph.global_vars.sim.diagnostics:
+            for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
                 h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
                 self.assertTrue(os.path.exists(h5_filepath))
 
@@ -233,11 +233,11 @@ class DiagnosticsTest(unittest.TestCase):
             self.simulator = None
             ph.global_vars.sim = None
 
-    def test_twice_register(self):
-        simulation = ph.Simulation(**simArgs.copy())
-        model = setup_model()
-        dump_all_diags(model.populations)  # first register
-        self.assertRaises(RuntimeError, dump_all_diags, model.populations)
+    # def test_twice_register(self):
+    #     simulation = ph.Simulation(**simArgs.copy())
+    #     model = setup_model()
+    #     dump_all_diags(model.populations)  # first register
+    #     self.assertRaises(RuntimeError, dump_all_diags, model.populations)
 
 
 if __name__ == "__main__":

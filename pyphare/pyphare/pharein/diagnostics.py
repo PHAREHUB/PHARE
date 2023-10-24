@@ -47,7 +47,6 @@ def diagnostics_checker(func):
 
 import numpy as np
 
-
 # ------------------------------------------------------------------------------
 def validate_timestamps(clazz, key, **kwargs):
     sim = global_vars.sim
@@ -127,18 +126,30 @@ class Diagnostics(object):
                 f"{self.__class__.__name__,}.flush_every cannot be negative"
             )
 
-        if any(
-            [
-                self.quantity == diagnostic.quantity
-                for diagnostic in global_vars.sim.diagnostics
-            ]
-        ):
-            raise RuntimeError(
-                f"Error: Diagnostic ({kwargs['quantity']}) already registered"
-            )
-
         self.__extent = None
-        global_vars.sim.add_diagnostics(self)
+
+        # if a diag already is registered we just contactenate the timestamps
+        addIt = True
+        registered_diags = global_vars.sim.diagnostics
+        for diagname, diag in registered_diags.items():
+            if self.quantity == diag.quantity:
+                print(
+                    f"{diag.name} already registered {self.quantity}, merging timestamps"
+                )
+                my_times = self.write_timestamps
+                existing_times = diag.write_timestamps
+                new_times = np.concatenate((my_times, existing_times))
+                new_times.sort()
+                mask = np.ones(len(new_times), dtype=bool)
+                mask[1:] = (
+                    np.diff(new_times) > 1e-10
+                )  # assumed smaller than any realistic dt
+                global_vars.sim.diagnostics[diagname].write_timestamps = new_times[mask]
+                addIt = False
+                break  # there can be only one
+
+        if addIt:
+            global_vars.sim.add_diagnostics(self)
 
     def extent(self):
         return self.__extent
@@ -162,6 +173,7 @@ class ElectromagDiagnostics(Diagnostics):
         )
 
     def _setSubTypeAttributes(self, **kwargs):
+
         if kwargs["quantity"] not in ElectromagDiagnostics.em_quantities:
             error_msg = "Error: '{}' not a valid electromag diagnostics : " + ", ".join(
                 ElectromagDiagnostics.em_quantities
@@ -188,14 +200,21 @@ def population_in_model(population):
     return population in [p for p in global_vars.sim.model.populations]
 
 
-class FluidDiagnostics(Diagnostics):
-    fluid_quantities = ["density", "flux", "bulkVelocity"]
+class FluidDiagnostics_(Diagnostics):
+
+    fluid_quantities = [
+        "density",
+        "mass_density",
+        "flux",
+        "bulkVelocity",
+        "momentum_tensor",
+    ]
     type = "fluid"
 
     def __init__(self, **kwargs):
-        super(FluidDiagnostics, self).__init__(
-            FluidDiagnostics.type
-            + str(global_vars.sim.count_diagnostics(FluidDiagnostics.type)),
+        super(FluidDiagnostics_, self).__init__(
+            FluidDiagnostics_.type
+            + str(global_vars.sim.count_diagnostics(FluidDiagnostics_.type)),
             **kwargs,
         )
 
@@ -206,15 +225,17 @@ class FluidDiagnostics(Diagnostics):
         elif "population_name" in kwargs:
             self.population_name = kwargs["population_name"]
 
-        if kwargs["quantity"] not in FluidDiagnostics.fluid_quantities:
+        if kwargs["quantity"] not in FluidDiagnostics_.fluid_quantities:
             error_msg = "Error: '{}' not a valid fluid diagnostics : " + ", ".join(
-                FluidDiagnostics.fluid_quantities
+                FluidDiagnostics_.fluid_quantities
             )
             raise ValueError(error_msg.format(kwargs["quantity"]))
         elif kwargs["quantity"] == "flux" and kwargs["population_name"] == "ions":
             raise ValueError(
                 "'flux' is only available for specific populations, try 'bulkVelocity"
             )
+        elif kwargs["quantity"] == "pressure_tensor":
+            raise ValueError("'pressure_tensor' is not available yet")
         else:
             self.quantity = kwargs["quantity"]
 
@@ -232,13 +253,32 @@ class FluidDiagnostics(Diagnostics):
     def to_dict(self):
         return {
             "name": self.name,
-            "type": FluidDiagnostics.type,
+            "type": FluidDiagnostics_.type,
             "quantity": self.quantity,
             "write_timestamps": self.write_timestamps,
             "compute_timestamps": self.compute_timestamps,
             "path": self.path,
             "population_name": self.population_name,
         }
+
+
+def for_total_ions(**kwargs):
+    return "population_name" not in kwargs
+
+
+class FluidDiagnostics:
+    def __init__(self, **kwargs):
+        if kwargs["quantity"] == "pressure_tensor":
+            if for_total_ions(**kwargs):
+                needed_quantities = ["mass_density", "bulkVelocity", "momentum_tensor"]
+            else:
+                needed_quantities = ["density", "flux", "momentum_tensor"]
+
+            for quantity in needed_quantities:
+                kwargs["quantity"] = quantity
+                FluidDiagnostics_(**kwargs)
+        else:
+            FluidDiagnostics_(**kwargs)
 
 
 # ------------------------------------------------------------------------------
@@ -256,6 +296,12 @@ class ParticleDiagnostics(Diagnostics):
         )
 
     def _setSubTypeAttributes(self, **kwargs):
+        if kwargs["quantity"] not in ParticleDiagnostics.particle_quantities:
+            error_msg = "Error: '{}' not a valid particle diagnostics : " + ", ".join(
+                ParticleDiagnostics.particle_quantities
+            )
+            raise ValueError(error_msg.format(kwargs["quantity"]))
+
         if kwargs["quantity"] not in ParticleDiagnostics.particle_quantities:
             error_msg = "Error: '{}' not a valid particle diagnostics : " + ", ".join(
                 ParticleDiagnostics.particle_quantities
@@ -281,6 +327,7 @@ class ParticleDiagnostics(Diagnostics):
         self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
     def space_box(self, **kwargs):
+
         if "extent" not in kwargs and self.quantity == "space_box":
             raise ValueError(
                 "Error: missing 'extent' parameter required by 'space_box' the ParticleDiagnostics type"
@@ -305,6 +352,7 @@ class ParticleDiagnostics(Diagnostics):
 
 
 class MetaDiagnostics(Diagnostics):
+
     meta_quantities = ["tags"]
     type = "info"
 

@@ -124,7 +124,7 @@ class DiagnosticsTest(unittest.TestCase):
         def make_time(stamp):
             return "{:.10f}".format(stamp)
 
-        for diagInfo in ph.global_vars.sim.diagnostics:
+        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
             h5_filename = os.path.join(out, h5_filename_from(diagInfo))
             self.assertTrue(os.path.exists(h5_filename))
 
@@ -166,7 +166,7 @@ class DiagnosticsTest(unittest.TestCase):
 
                 Simulator(simulation).run()
 
-                for diagInfo in simulation.diagnostics:
+                for diagname, diagInfo in simulation.diagnostics.items():
                     h5_filename = os.path.join(diag_outputs, h5_filename_from(diagInfo))
                     self.assertTrue(os.path.exists(h5_filename))
 

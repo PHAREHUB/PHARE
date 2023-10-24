@@ -172,14 +172,14 @@ class TaggingTest(unittest.TestCase):
                 any(
                     [
                         diagInfo.quantity.endswith("tags")
-                        for diagInfo in ph.global_vars.sim.diagnostics
+                        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
                     ]
                 )
             )
 
             checks = 0
             found = 0
-            for diagInfo in ph.global_vars.sim.diagnostics:
+            for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
                 h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
                 self.assertTrue(os.path.exists(h5_filepath))
 

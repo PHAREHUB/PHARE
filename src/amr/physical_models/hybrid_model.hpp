@@ -29,14 +29,15 @@ public:
     using patch_t   = typename AMR_Types::patch_t;
     using level_t   = typename AMR_Types::level_t;
     static const std::string model_name;
-    using gridlayout_type           = GridLayoutT;
-    using electromag_type           = Electromag;
-    using vecfield_type             = typename Electromag::vecfield_type;
-    using field_type                = typename vecfield_type::field_type;
-    using ions_type                 = Ions;
-    using particle_array_type       = typename Ions::particle_array_type;
-    using resources_manager_type    = amr::ResourcesManager<gridlayout_type>;
-    static constexpr auto dimension = GridLayoutT::dimension;
+    using gridlayout_type              = GridLayoutT;
+    using electromag_type              = Electromag;
+    using vecfield_type                = typename Electromag::vecfield_type;
+    using field_type                   = typename vecfield_type::field_type;
+    using ions_type                    = Ions;
+    using particle_array_type          = typename Ions::particle_array_type;
+    using resources_manager_type       = amr::ResourcesManager<gridlayout_type>;
+    static constexpr auto dimension    = GridLayoutT::dimension;
+    static constexpr auto interp_order = GridLayoutT::interp_order;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
