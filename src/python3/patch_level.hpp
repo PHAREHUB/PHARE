@@ -79,7 +79,7 @@ public:
 
         auto& inner = container.at(outer_key);
 
-        for (auto& [id, type] : core::Components::componentMap)
+        for (auto& [id, type] : core::Components::componentMap())
         {
             auto& field = vecField.getComponent(type);
 
@@ -97,7 +97,7 @@ public:
         auto& ions = model_.state.ions;
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto& [id, type] : core::Components::componentMap)
+            for (auto& [id, type] : core::Components::componentMap())
             {
                 auto& field = ions.velocity().getComponent(type);
 
@@ -162,7 +162,7 @@ public:
         auto& B = model_.state.electromag.B;
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap.at(componentName);
+            auto compo = PHARE::core::Components::componentMap().at(componentName);
             setPatchDataFromField(patchDatas.emplace_back(), B.getComponent(compo), grid, patchID);
         };
 
@@ -180,7 +180,7 @@ public:
         auto& E = model_.state.electromag.E;
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap.at(componentName);
+            auto compo = PHARE::core::Components::componentMap().at(componentName);
             setPatchDataFromField(patchDatas.emplace_back(), E.getComponent(compo), grid, patchID);
         };
 
@@ -199,7 +199,7 @@ public:
         auto& V = model_.state.ions.velocity();
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap.at(componentName);
+            auto compo = PHARE::core::Components::componentMap().at(componentName);
             setPatchDataFromField(patchDatas.emplace_back(), V.getComponent(compo), grid, patchID);
         };
 
@@ -218,7 +218,7 @@ public:
         auto& ions = model_.state.ions;
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap.at(component);
+            auto compo = PHARE::core::Components::componentMap().at(component);
             for (auto const& pop : ions)
                 if (pop.name() == popName)
                     setPatchDataFromField(patchDatas.emplace_back(), pop.flux().getComponent(compo),

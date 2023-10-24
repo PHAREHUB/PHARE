@@ -10,12 +10,10 @@
 
 
 #include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
 #include "particle_initializers/particle_initializer_factory.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
 
 namespace PHARE
 {
@@ -25,8 +23,9 @@ namespace core
     class Ions
     {
     public:
-        using field_type          = typename IonPopulation::field_type;
-        using vecfield_type       = typename IonPopulation::vecfield_type;
+        using field_type    = typename IonPopulation::field_type;
+        using vecfield_type = typename IonPopulation::vecfield_type;
+        // using tensorfield_type    = typename IonPopulation::tensorfield_type;
         using particle_array_type = typename IonPopulation::particle_array_type;
         using ParticleInitializerFactoryT
             = ParticleInitializerFactory<particle_array_type, GridLayout>;

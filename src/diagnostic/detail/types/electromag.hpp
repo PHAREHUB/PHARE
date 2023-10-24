@@ -69,7 +69,7 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
-        for (auto& [id, type] : core::Components::componentMap)
+        for (auto& [id, type] : core::Components::componentMap())
         {
             // highfive doesn't accept uint32 which ndarray.shape() is
             auto const& array_shape = vecF.getComponent(type).shape();
@@ -104,7 +104,7 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
     auto vecFields = h5Writer.modelView().getElectromagFields();
 
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
-        for (auto& [id, type] : core::Components::componentMap)
+        for (auto& [id, type] : core::Components::componentMap())
         {
             auto vFPath = path + "/" + key + "_" + id;
             h5Writer.template createDataSet<FloatType>(

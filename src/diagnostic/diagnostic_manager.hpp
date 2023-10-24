@@ -1,4 +1,3 @@
-
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
@@ -9,6 +8,7 @@
 #include <utility>
 #include <cmath>
 #include <memory>
+#include <map>
 
 namespace PHARE::diagnostic
 {
@@ -91,10 +91,10 @@ public:
     Writer& writer() { return *writer_.get(); }
 
 
-    DiagnosticsManager(DiagnosticsManager const&) = delete;
-    DiagnosticsManager(DiagnosticsManager&&)      = delete;
+    DiagnosticsManager(DiagnosticsManager const&)            = delete;
+    DiagnosticsManager(DiagnosticsManager&&)                 = delete;
     DiagnosticsManager& operator=(DiagnosticsManager const&) = delete;
-    DiagnosticsManager& operator=(DiagnosticsManager&&) = delete;
+    DiagnosticsManager& operator=(DiagnosticsManager&&)      = delete;
 
 private:
     bool needsAction_(double nextTime, double timeStamp, double timeStep)
