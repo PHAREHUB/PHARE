@@ -20,6 +20,7 @@ set( SOURCES_INC
      data/ions/particle_initializers/particle_initializer.hpp
      data/ions/particle_initializers/maxwellian_particle_initializer.hpp
      data/ions/particle_initializers/particle_initializer_factory.hpp
+     data/tensorfield/tensorfield.hpp
      data/vecfield/vecfield.hpp
      data/vecfield/vecfield_component.hpp
      data/vecfield/vecfield_initializer.hpp

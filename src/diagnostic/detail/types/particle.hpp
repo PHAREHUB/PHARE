@@ -4,8 +4,8 @@
 #include "diagnostic/detail/h5typewriter.hpp"
 
 #include "core/data/particles/particle_packer.hpp"
+#include "core/data/grid/gridlayout.hpp"
 
-#include "amr/data/particles/particles_data.hpp"
 
 #include "hdf5/writer/particle_writer.hpp"
 
