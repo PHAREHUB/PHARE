@@ -61,6 +61,49 @@ auto mpi_type_for()
     // don't return anything = compile failure if tried to use this function
 }
 
+
+template<typename Fn, typename... Args>
+auto all_get_from(int const& rank_, Fn&& fn, Args&&... args)
+{
+    using Data = std::decay_t<std::result_of_t<Fn&(Args & ...)>>;
+
+    Data var;
+    auto local_rank = rank();
+    if (local_rank == rank_)
+        var = fn(args...);
+    void* data = &var;
+
+    int count = 1; // default
+    MPI_Datatype sendtype;
+    if constexpr (std::is_same_v<std::string, Data> or core::is_std_vector_v<Data>)
+    {
+        sendtype = mpi_type_for<typename Data::value_type>();
+        count    = all_get_from(rank_, [&]() { return var.size(); });
+        if (local_rank != rank_)
+            var.reserve(count);
+        data = var.data();
+    }
+    else
+        sendtype = mpi_type_for<Data>();
+
+    MPI_Bcast(         // MPI_Bcast
+        data,          //   void *buffer
+        count,         //   int count
+        sendtype,      //   MPI_Datatype sendtype
+        0,             //   int root == 0
+        MPI_COMM_WORLD //   MPI_Comm comm
+    );
+    return var;
+}
+
+
+template<typename Fn, typename... Args>
+auto all_get_from_rank_0(Fn&& fn, Args&&... args)
+{
+    return all_get_from(0, std::forward<Fn>(fn), std::forward<Args>(args)...);
+}
+
+
 template<typename Data>
 void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
               std::size_t const sendcount = 1, std::size_t const recvcount = 1)

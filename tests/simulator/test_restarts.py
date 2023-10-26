@@ -99,7 +99,7 @@ class RestartsTest(SimulatorTest):
         return self._testMethodName.split("_")[-1]
 
 
-    def check_diags(self, diag_dir0, diag_dir1, pops, timestamps):
+    def check_diags(self, diag_dir0, diag_dir1, pops, timestamps, expected_num_levels):
 
         def count_levels_and_patches(qty):
             n_levels = len(qty.levels())
@@ -140,7 +140,7 @@ class RestartsTest(SimulatorTest):
                         checks += 1
 
             n_levels, n_patches = count_levels_and_patches(run0.GetB(time))
-            self.assertEqual(n_levels, 2) # at least 2 levels
+            self.assertEqual(n_levels, expected_num_levels)
             self.assertGreaterEqual(n_patches, n_levels) # at least one patch per level
             self.assertEqual(checks, n_quantities_per_patch * n_patches)
 
@@ -213,7 +213,7 @@ class RestartsTest(SimulatorTest):
         self.register_diag_dir_for_cleanup(local_out)
         diag_dir1 = local_out
 
-        self.check_diags(diag_dir0, diag_dir1, model.populations, timestamps)
+        self.check_diags(diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels)
 
 
 
@@ -221,11 +221,11 @@ class RestartsTest(SimulatorTest):
       *permute(dup(dict(
           max_nbr_levels=2,
           refinement="tagging",
-      ))),
-      *permute(dup(dict())), # refinement boxes set later
+      )), expected_num_levels=2),
+      *permute(dup(dict()), expected_num_levels=2), # refinement boxes set later
     )
     @unpack
-    def test_restarts_elapsed_time(self, dim, interp, simInput):
+    def test_restarts_elapsed_time(self, dim, interp, simInput, expected_num_levels):
         print(f"test_restarts_elapsed_time dim/interp:{dim}/{interp}")
 
         simput = copy.deepcopy(simInput)
@@ -234,7 +234,9 @@ class RestartsTest(SimulatorTest):
             simput[key] = [simput[key]] * dim
 
         if "refinement" not in simput:
-            b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
+            lo_cell = 10
+            hi_cell = 19
+            b0 = [ [lo_cell]*dim, [hi_cell]*dim ]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
         else: # https://github.com/LLNL/SAMRAI/issues/199
           # tagging can handle more than one timestep as it does not
@@ -272,7 +274,7 @@ class RestartsTest(SimulatorTest):
         for i in range(restart_idx - 1):
             simulator.advance()
         import time
-        time.sleep(10)
+        time.sleep(seconds+1)
         simulator.run().reset() # should trigger restart on "restart_idx" advance
         self.register_diag_dir_for_cleanup(local_out)
         diag_dir0 = local_out
@@ -291,7 +293,7 @@ class RestartsTest(SimulatorTest):
         self.register_diag_dir_for_cleanup(local_out)
         diag_dir1 = local_out
 
-        self.check_diags(diag_dir0, diag_dir1, model.populations, timestamps)
+        self.check_diags(diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels)
 
 
 

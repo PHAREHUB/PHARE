@@ -55,7 +55,7 @@ std::string date_time(std::string format)
 
 std::int64_t unix_timestamp_now()
 { // static cast as std::time_t typedef can vary across operating systems
-    return collect(static_cast<std::int64_t>(std::time(NULL)))[0];
+    return all_get_from_rank_0([]() { return static_cast<std::int64_t>(std::time(NULL)); });
 }
 
 } // namespace PHARE::core::mpi
