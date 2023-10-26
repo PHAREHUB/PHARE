@@ -395,12 +395,14 @@ def check_diag_options(**kwargs):
 
 def check_restart_options(**kwargs):
 
+    valid_keys = ["dir", "elapsed_timestamps", "timestamps", "mode", "restart_time"]
     restart_options = kwargs.get("restart_options", None)
 
     if restart_options is not None:
 
-        if "timestamps" not in restart_options:
-            raise ValueError (f"restart_options expects a list of timestamps")
+        for key in restart_options.keys():
+            if key not in valid_keys:
+                raise ValueError(f"invalid option ({key}), valid options are {valid_keys}")
 
         valid_modes = ["conserve", "overwrite"]
         if "mode" not in restart_options:
@@ -602,6 +604,7 @@ class Simulation(object):
                    restart_options={"dir": restart_outputs,
                                    "mode": "overwrite" or "conserve",
                                    "timestamps" : [.009, 99999]
+                                   "elapsed_timestamps" : [datetime.timedelta(hours=1)],
                                    "restart_time" : 99999.99999 },
                    strict=True (turns warnings to errors, false by default),
                   )
