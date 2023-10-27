@@ -4,6 +4,7 @@
 
 
 from pyphare.cpp import cpp_lib
+
 cpp = cpp_lib()
 from tests.simulator import populate_simulation
 import numpy as np
@@ -12,17 +13,15 @@ import unittest
 
 # TODO - validate data from somewhere!
 
-class DataWranglerTest(unittest.TestCase):
 
+class DataWranglerTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(DataWranglerTest, self).__init__(*args, **kwargs)
         self.dw = None
         self.simulator = None
 
     def test_1d(self):
-
         for interp in range(1, 4):
-
             self.simulator = Simulator(populate_simulation(1, interp))
             self.simulator.initialize()
             self.dw = self.simulator.data_wrangler()
@@ -45,7 +44,6 @@ class DataWranglerTest(unittest.TestCase):
         del self.dw
         if self.simulator is not None:
             self.simulator.reset()
-
 
 
 if __name__ == "__main__":

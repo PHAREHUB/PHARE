@@ -192,7 +192,6 @@ def diff_boxes(slice1, slice2, box, atol=None):
 
 
 class SimulatorTest(unittest.TestCase):
-
     test_kwargs = ["rethrow"]
 
     def tearDown(self):
