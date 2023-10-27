@@ -169,6 +169,19 @@ class FieldData(PatchData):
         self.dataset = data
 
 
+    def meshgrid(self, select=None):
+        def grid():
+            if self.ndim == 1:
+                return [self.x]
+            if self.ndim == 2:
+                return np.meshgrid(self.x, self.y, indexing="ij")
+            return np.meshgrid(self.x, self.y, self.z, indexing="ij")
+        mesh = grid()
+        if select is not None:
+            return tuple(g[select] for g in mesh)
+        return mesh
+
+
 class ParticleData(PatchData):
     """
     Concrete type of PatchData representing particles in a region

@@ -23,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class InitializationTest(InitializationTest):
+class Initialization1DTest(InitializationTest):
     @data(*interp_orders)
     def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")
@@ -42,13 +42,12 @@ class InitializationTest(InitializationTest):
         now = self.datetime_now()
         self._test_levelghostparticles_have_correct_split_from_coarser_particle(
             self.getHierarchy(
+                ndim,
                 interp_order,
                 refinement_boxes,
                 "particles",
-                ndim=ndim,
                 cells=30,
                 nbr_part_per_cell=ppc,
-                diag_outputs=f"phare_outputs/test_levelghost/{ndim}/{interp_order}/{self.ddt_test_id()}",
             )
         )
         print(

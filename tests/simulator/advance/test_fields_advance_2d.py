@@ -34,15 +34,14 @@ class AdvanceTest(AdvanceTestBase):
         print(f"{self._testMethodName}_{ndim}d")
         time_step_nbr = 3
         time_step = 0.001
-        diag_outputs = f"phare_overlaped_fields_are_equal_{ndim}_{self.ddt_test_id()}"
+
         datahier = self.getHierarchy(
+            ndim,
             interp_order,
             refinement_boxes,
             "fields",
-            diag_outputs=diag_outputs,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
-            ndim=ndim,
             nbr_part_per_cell=ppc,
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
@@ -60,20 +59,18 @@ class AdvanceTest(AdvanceTestBase):
         time_step = 0.001
         from pyphare.pharein.simulation import check_patch_size
 
-        diag_outputs = f"phare_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts/{ndim}/{interp_order}/{self.ddt_test_id()}"
         largest_patch_size, smallest_patch_size = check_patch_size(
             ndim, interp_order=interp_order, cells=[60] * ndim
         )
         datahier = self.getHierarchy(
+            ndim,
             interp_order,
             refinement_boxes,
             "eb",
-            diag_outputs=diag_outputs,
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=smallest_patch_size,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
-            ndim=ndim,
             nbr_part_per_cell=ppc,
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)

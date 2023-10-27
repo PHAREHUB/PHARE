@@ -33,10 +33,11 @@ class InitializationTest(SimulatorTest):
 
     def getHierarchy(
         self,
+        ndim,
         interp_order,
         refinement_boxes,
         qty,
-        diag_outputs,
+        diag_outputs="",
         nbr_part_per_cell=100,
         density=_density,
         extra_diag_options={},
@@ -46,10 +47,12 @@ class InitializationTest(SimulatorTest):
         largest_patch_size=10,
         cells=120,
         dl=0.1,
-        ndim=1,
         **kwargs,
     ):
-        diag_outputs = f"phare_outputs/init/{diag_outputs}"
+        diag_outputs = self.unique_diag_dir_for_test_case(
+            "phare_outputs/init", ndim, interp_order, diag_outputs
+        )
+
         from pyphare.pharein import global_vars
 
         global_vars.sim = None
@@ -260,11 +263,10 @@ class InitializationTest(SimulatorTest):
             )
         )
         hier = self.getHierarchy(
+            dim,
             interp_order,
             refinement_boxes=None,
             qty="b",
-            ndim=dim,
-            diag_outputs=f"test_b/{dim}/{interp_order}/{self.ddt_test_id()}",
             **kwargs,
         )
 
@@ -326,13 +328,12 @@ class InitializationTest(SimulatorTest):
 
     def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order):
         hier = self.getHierarchy(
+            dim,
             interp_order,
             {"L0": {"B0": nDBox(dim, 10, 19)}},
             "moments",
             nbr_part_per_cell=100,
             beam=True,
-            ndim=dim,  # ppc needs to be 10000?
-            diag_outputs=f"test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}",
         )
 
         from pyphare.pharein import global_vars
@@ -455,13 +456,12 @@ class InitializationTest(SimulatorTest):
             )
         )
         hier = self.getHierarchy(
+            dim,
             interp_order,
             {"L0": {"B0": nDBox(dim, 10, 20)}},
             qty="moments",
             nbr_part_per_cell=nbParts[dim],
             beam=True,
-            ndim=dim,
-            diag_outputs=f"test_density/{dim}/{interp_order}/{self.ddt_test_id()}",
         )
 
         from pyphare.pharein import global_vars
@@ -526,54 +526,61 @@ class InitializationTest(SimulatorTest):
                         dev, empirical_dim_devs[dim], f"{name} has dev = {dev}"
                     )
 
-    def _test_density_decreases_as_1overSqrtN(self, dim, interp_order):
+    def _test_density_decreases_as_1overSqrtN(
+        self, dim, interp_order, nbr_particles=None, cells=960
+    ):
         import matplotlib.pyplot as plt
 
         print(f"test_density_decreases_as_1overSqrtN, interp_order = {interp_order}")
 
-        nbr_particles = np.asarray([100, 1000, 5000, 10000])
+        if nbr_particles is None:
+            nbr_particles = np.asarray([100, 1000, 5000, 10000])
+
         noise = np.zeros(len(nbr_particles))
 
         for inbr, nbrpart in enumerate(nbr_particles):
             hier = self.getHierarchy(
+                dim,
                 interp_order,
                 None,
                 "moments",
                 nbr_part_per_cell=nbrpart,
-                diag_outputs=f"1overSqrtN/{dim}/{interp_order}/{nbrpart}",
-                density=lambda x: np.zeros_like(x) + 1.0,
-                smallest_patch_size=480,
-                largest_patch_size=480,
-                cells=960,
+                diag_outputs=f"{nbrpart}",
+                density=lambda *xyz: np.zeros(tuple(_.shape[0] for _ in xyz)) + 1.0,
+                smallest_patch_size=int(cells / 2),
+                largest_patch_size=int(cells / 2),
+                cells=cells,
                 dl=0.0125,
             )
 
             from pyphare.pharein import global_vars
 
             model = global_vars.sim.model
-            protons = model.model_dict["protons"]
-            density_fn = protons["density"]
+            density_fn = model.model_dict["protons"]["density"]
 
             patch = hier.level(0).patches[0]
-            ion_density = patch.patch_datas["rho"].dataset[:]
-            x = patch.patch_datas["rho"].x
-
             layout = patch.patch_datas["rho"].layout
+
             centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
             nbrGhosts = layout.nbrGhosts(interp_order, centering)
+            select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(dim)])
+            ion_density = patch.patch_datas["rho"].dataset[:]
+            mesh = patch.patch_datas["rho"].meshgrid(select)
 
-            expected = density_fn(x[nbrGhosts:-nbrGhosts])
-            actual = ion_density[nbrGhosts:-nbrGhosts]
+            expected = density_fn(*mesh)
+            actual = ion_density[select]
             noise[inbr] = np.std(expected - actual)
-            print("noise is {} for {} particles per cell".format(noise[inbr], nbrpart))
+            print(f"noise is {noise[inbr]} for {nbrpart} particles per cell")
 
-            plt.figure()
-            plt.plot(x[nbrGhosts:-nbrGhosts], actual, label="actual")
-            plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
-            plt.legend()
-            plt.title(r"$\sigma =$ {}".format(noise[inbr]))
-            plt.savefig("noise_{}_interp_{}_{}.png".format(nbrpart, dim, interp_order))
-            plt.close("all")
+            if dim == 1:
+                x = patch.patch_datas["rho"].x
+                plt.figure()
+                plt.plot(x[nbrGhosts:-nbrGhosts], actual, label="actual")
+                plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
+                plt.legend()
+                plt.title(r"$\sigma =$ {}".format(noise[inbr]))
+                plt.savefig(f"noise_{nbrpart}_interp_{dim}_{interp_order}.png")
+                plt.close("all")
 
         plt.figure()
         plt.plot(nbr_particles, noise / noise[0], label=r"$\sigma/\sigma_0$")
@@ -584,7 +591,7 @@ class InitializationTest(SimulatorTest):
         )
         plt.xlabel("nbr_particles")
         plt.legend()
-        plt.savefig("noise_nppc_interp_{}_{}.png".format(dim, interp_order))
+        plt.savefig(f"noise_nppc_interp_{dim}_{interp_order}.png")
         plt.close("all")
 
         noiseMinusTheory = noise / noise[0] - 1 / np.sqrt(
@@ -598,22 +605,18 @@ class InitializationTest(SimulatorTest):
         )
         plt.xlabel("nbr_particles")
         plt.legend()
-        plt.savefig(
-            "noise_nppc_minus_theory_interp_{}_{}.png".format(dim, interp_order)
-        )
+        plt.savefig(f"noise_nppc_minus_theory_interp_{dim}_{interp_order}.png")
         plt.close("all")
         self.assertGreater(3e-2, noiseMinusTheory[1:].mean())
 
     def _test_nbr_particles_per_cell_is_as_provided(
         self, dim, interp_order, default_ppc=100
     ):
-        ddt_test_id = self.ddt_test_id()
         datahier = self.getHierarchy(
+            dim,
             interp_order,
             {"L0": {"B0": nDBox(dim, 10, 20)}},
             "particles",
-            ndim=dim,
-            diag_outputs=f"ppc/{dim}/{interp_order}/{ddt_test_id}",
         )
 
         for patch in datahier.level(0).patches:
@@ -646,13 +649,11 @@ class InitializationTest(SimulatorTest):
                 ndim, interp_order
             )
         )
-        ddt_test_id = self.ddt_test_id()
         datahier = self.getHierarchy(
+            ndim,
             interp_order,
             refinement_boxes,
             "particles",
-            ndim=ndim,
-            diag_outputs=f"coarser_split/{ndim}/{interp_order}/{ddt_test_id}",
             cells=30,
             **kwargs,
         )
@@ -698,18 +699,13 @@ class InitializationTest(SimulatorTest):
         import pyphare.pharein as ph
 
         out = "phare_outputs"
-
-        test_id = self.ddt_test_id()
-
         refinement_boxes = {"L0": [nDBox(dim, 10, 19)]}
-
         kwargs["interp_order"] = kwargs.get("interp_order", 1)
-        local_out = f"{out}/dim{dim}_interp{kwargs['interp_order']}_mpi_n_{cpp.mpi_size()}_id{test_id}/{str(has_patch_ghost)}"
-        kwargs["diag_outputs"] = local_out
+        kwargs["diag_outputs"] = f"{has_patch_ghost}"
         datahier = self.getHierarchy(
+            ndim=dim,
             refinement_boxes=refinement_boxes,
             qty="particles_patch_ghost",
-            ndim=dim,
             **kwargs,
         )
 
