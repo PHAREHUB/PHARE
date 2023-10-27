@@ -39,8 +39,10 @@ the mesh resolution wherever the solution needs it.
    </style>
 
 
-Theory
-------
+
+
+.. Theory
+.. ------
 .. toctree::
    :caption: THEORY
    :maxdepth: 1
@@ -55,8 +57,8 @@ Theory
 
 
 
-Getting and Building
---------------------
+.. Getting and Building
+.. --------------------
 .. toctree::
    :caption: BUILDING
    :maxdepth: 1
@@ -67,23 +69,23 @@ Getting and Building
 
 
 
-Usage
------
+.. Usage
+.. -----
 .. toctree::
    :caption: USAGE
    :maxdepth: 1
    :hidden:
 
-   usage/simulation_inputs
    usage/run_from_python
    usage/run_from_exe
+   usage/simulation_inputs
    usage/examples
 
 
 
 
-Data analysis
--------------
+.. Data analysis
+.. -------------
 .. toctree::
    :caption: ANALYSIS
    :maxdepth: 1
@@ -96,8 +98,8 @@ Data analysis
 
 
 
-Development
------------
+.. Development
+.. -----------
 .. toctree::
    :caption: DEVELOPMENT
    :maxdepth: 1
@@ -105,8 +107,8 @@ Development
 
    development/tests
 
-Indices and tables
-------------------
+.. Indices and tables
+.. ------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
