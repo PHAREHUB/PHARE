@@ -254,7 +254,6 @@ class InitializationTest(SimulatorTest):
             return mom_hier
 
     def _test_B_is_as_provided_by_user(self, dim, interp_order, **kwargs):
-
         print(
             "test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(
                 dim, interp_order
@@ -280,7 +279,6 @@ class InitializationTest(SimulatorTest):
             self.assertTrue(ilvl == 0)  # only level 0 is expected perfect precision
             print("checking level {}".format(ilvl))
             for patch in level.patches:
-
                 bx_pd = patch.patch_datas["Bx"]
                 by_pd = patch.patch_datas["By"]
                 bz_pd = patch.patch_datas["Bz"]
@@ -445,7 +443,6 @@ class InitializationTest(SimulatorTest):
                         self.assertTrue(np.std(vexp - vact) < 1e-2)
 
     def _test_density_is_as_provided_by_user(self, dim, interp_order):
-
         empirical_dim_devs = {
             1: 6e-3,
             2: 3e-2,
@@ -538,7 +535,6 @@ class InitializationTest(SimulatorTest):
         noise = np.zeros(len(nbr_particles))
 
         for inbr, nbrpart in enumerate(nbr_particles):
-
             hier = self.getHierarchy(
                 interp_order,
                 None,
@@ -741,7 +737,6 @@ class InitializationTest(SimulatorTest):
 
         self.assertTrue(len(particle_level_ghost_boxes_per_level.items()) > 0)
         for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
-
             self.assertTrue(ilvl > 0)  # has no level 0
 
             lvlParticles = self._domainParticles_for(datahier, ilvl - 1)
