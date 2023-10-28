@@ -1,0 +1,20 @@
+pandas
+appdirs
+requests
+urllib3>=1.26.0
+packaging
+numpy
+python_dateutil
+tqdm
+matplotlib
+PyYAML
+sphinx!=5.2.0.post0
+sphinx-rtd-theme
+argh
+numpydoc
+sphinx-gallery  < 0.11.0
+nbsphinx
+ipympl
+ipywidgets
+sphinx-codeautolink
+sphinxcontrib-apidoc
