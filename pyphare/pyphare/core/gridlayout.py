@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-
+import sys
+sys.path.append('/Users/al/anaconda3/lib/python3.10/site-packages')
 import numpy as np
 
 from .box import Box

@@ -10,6 +10,7 @@ from pyphare.pharesee.run import Run
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
+from datetime import datetime
 mpl.use('Agg')
 
 
@@ -217,6 +218,7 @@ def make_figure():
 
     for ax in (ax0, ax1, ax2):
         ax.axvline(wT0+plot_time*v, color="r")
+    fig.suptitle(datetime.now())
 
     fig.savefig("tdtagged1d.png")
 
@@ -278,7 +280,6 @@ def main():
 
     if cpp.mpi_rank() == 0:
         make_figure()
-
 
 
 
