@@ -1,10 +1,10 @@
-
 #include "initializer/data_provider.hpp"
 
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
 #include "core/data/electromag/electromag.hpp"
@@ -126,12 +126,14 @@ struct ElectronsTest : public ::testing::Test
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
-    using VecFieldND = VecField<NdArrayVector<dim>, HybridQuantity>;
-    using FieldND    = typename VecFieldND::field_type;
+    using VecFieldND       = VecField<NdArrayVector<dim>, HybridQuantity>;
+    using SymTensorFieldND = SymTensorField<NdArrayVector<dim>, HybridQuantity>;
+    using FieldND          = typename VecFieldND::field_type;
 
-    using IonPopulationND = IonPopulation<ParticleArray<dim>, VecFieldND, GridYee>;
-    using IonsT           = Ions<IonPopulationND, GridYee>;
-    using PartPackND      = ParticlesPack<typename IonPopulationND::particle_array_type>;
+    using IonPopulationND
+        = IonPopulation<ParticleArray<dim>, VecFieldND, SymTensorFieldND, GridYee>;
+    using IonsT      = Ions<IonPopulationND, GridYee>;
+    using PartPackND = ParticlesPack<typename IonPopulationND::particle_array_type>;
     using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
 
 

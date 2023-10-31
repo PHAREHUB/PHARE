@@ -1,4 +1,3 @@
-
 #include "amr/types/amr_types.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -8,6 +7,7 @@
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "initializer/data_provider.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/messenger.hpp"
@@ -33,14 +33,15 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 using VecField1D                         = VecField<NdArrayVector<1>, HybridQuantity>;
+using SymTensorField1D                   = SymTensorField<NdArrayVector<1>, HybridQuantity>;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using ParticleArray1D                    = ParticleArray<dim>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray1D, GridYee1D>;
-using IonsPop1D                       = IonPopulation<ParticleArray1D, VecField1D, GridYee1D>;
-using Ions1D                          = Ions<IonsPop1D, GridYee1D>;
-using Electromag1D                    = Electromag<VecField1D>;
-using Electrons1D                     = Electrons<Ions1D>;
+using IonsPop1D         = IonPopulation<ParticleArray1D, VecField1D, SymTensorField1D, GridYee1D>;
+using Ions1D            = Ions<IonsPop1D, GridYee1D>;
+using Electromag1D      = Electromag<VecField1D>;
+using Electrons1D       = Electrons<Ions1D>;
 using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types>;
 using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
 using ResourcesManagerT = ResourcesManager<GridYee1D>;

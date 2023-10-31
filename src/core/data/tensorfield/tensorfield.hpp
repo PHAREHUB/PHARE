@@ -36,8 +36,9 @@ public:
 
     using value_type                       = typename NdArrayImpl::type;
     static constexpr std::size_t dimension = NdArrayImpl::dimension;
+    using tensor_t                         = typename PhysicalQuantity::template TensorType<rank>;
 
-    TensorField(std::string const& name, typename PhysicalQuantity::Vector physQty)
+    TensorField(std::string const& name, tensor_t physQty)
         : name_{name}
         , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
     {

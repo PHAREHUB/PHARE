@@ -68,6 +68,8 @@ private:
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
+    // auto& h5Writer = this->h5Writer_;
+    // auto& ions     = h5writer.modelView().getIons();
 }
 
 

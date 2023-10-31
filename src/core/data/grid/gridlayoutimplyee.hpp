@@ -90,11 +90,25 @@ namespace core
             const std::array<QtyCentering, NBR_COMPO> Vz
                 = {{data.primal, data.primal, data.primal}};
 
+            const std::array<QtyCentering, NBR_COMPO> Mxx
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Mxy
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Mxz
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Myy
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Myz
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Mzz
+                = {{data.primal, data.primal, data.primal}};
+
             const std::array<QtyCentering, NBR_COMPO> P = {{data.primal, data.primal, data.primal}};
 
             const std::array<std::array<QtyCentering, NBR_COMPO>,
                              static_cast<std::size_t>(HybridQuantity::Scalar::count)>
-                hybridQtyCentering{Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, Rho, Vx, Vy, Vz, P};
+                hybridQtyCentering{Bx, By, Bz, Ex, Ey,  Ez,  Jx,  Jy,  Jz,  Rho,
+                                   Vx, Vy, Vz, P,  Mxx, Mxy, Mxz, Myy, Myz, Mzz};
 
 
             return hybridQtyCentering;

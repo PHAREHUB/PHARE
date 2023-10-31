@@ -12,8 +12,34 @@ namespace PHARE::core
 class HybridQuantity
 {
 public:
-    enum class Scalar { Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, rho, Vx, Vy, Vz, P, count };
+    enum class Scalar {
+        Bx, // magnetic field components
+        By,
+        Bz,
+        Ex, // electric field components
+        Ey,
+        Ez,
+        Jx, // current density components
+        Jy,
+        Jz,
+        rho, // charge density
+        Vx,  // bulk velocity components
+        Vy,
+        Vz,
+        P,   // pressure
+        Mxx, // momentum tensor components
+        Mxy,
+        Mxz,
+        Myy,
+        Myz,
+        Mzz,
+        count
+    };
     enum class Vector { B, E, J, V };
+    enum class Tensor { M, count };
+
+    template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>
+    using TensorType = std::conditional_t<rank == 1, Vector, Tensor>;
 
     static constexpr auto B() { return componentsQuantities(Vector::B); }
     static constexpr auto E() { return componentsQuantities(Vector::E); }
@@ -35,6 +61,11 @@ public:
             return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
 
         throw std::runtime_error("Error - invalid Vector");
+    }
+    static constexpr std::array<Scalar, 6> componentsQuantities(Tensor qty)
+    {
+        // no condition, for now there's only then momentum tensor M
+        return {{Scalar::Mxx, Scalar::Mxy, Scalar::Mxz, Scalar::Myy, Scalar::Myz, Scalar::Mzz}};
     }
 
     static constexpr auto B_items()
