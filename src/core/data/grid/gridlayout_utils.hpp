@@ -15,7 +15,7 @@ protected:
 public:
     void setLayout(GridLayout* ptr) { layout_ = ptr; }
 
-    bool hasLayout() const { return layout_ != nullptr; }
+    [[nodiscard]] bool hasLayout() const { return layout_ != nullptr; }
 };
 
 

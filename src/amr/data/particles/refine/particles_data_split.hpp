@@ -30,7 +30,7 @@ namespace amr
 
 
     template<std::size_t interp, typename Particle>
-    Particle toFineGrid(Particle toFine)
+    [[nodiscard]] Particle toFineGrid(Particle toFine)
     {
         constexpr auto dim   = Particle::dimension;
         constexpr auto ratio = PHARE::amr::refinementRatio;

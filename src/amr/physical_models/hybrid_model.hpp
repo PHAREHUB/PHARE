@@ -67,7 +67,10 @@ public:
     virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
 
-    auto setOnPatch(patch_t& patch) { return resourcesManager->setOnPatch(patch, *this); }
+    [[nodiscard]] auto setOnPatch(patch_t& patch)
+    {
+        return resourcesManager->setOnPatch(patch, *this);
+    }
 
 
     HybridModel(PHARE::initializer::PHAREDict const& dict,
@@ -85,13 +88,16 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    bool isUsable() const { return state.isUsable(); }
+    [[nodiscard]] bool isUsable() const { return state.isUsable(); }
 
-    bool isSettable() const { return state.isSettable(); }
+    [[nodiscard]] bool isSettable() const { return state.isSettable(); }
 
-    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(state); }
+    [[nodiscard]] auto getCompileTimeResourcesUserList() const
+    {
+        return std::forward_as_tuple(state);
+    }
 
-    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
+    [[nodiscard]] auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface

@@ -58,7 +58,7 @@ public:
         }
     }
 
-    auto static getRestartFileFullPath(std::string path, int idx = 0)
+    [[nodiscard]] auto static getRestartFileFullPath(std::string path, int idx = 0)
     {
         // https://github.com/LLNL/SAMRAI/pull/198
         // there's a PR for this next line, but until then the code below is the same
@@ -72,7 +72,7 @@ public:
 
     void closeRestartFile() { SAMRAI::tbox::RestartManager::getManager()->closeRestartFile(); }
 
-    bool isFromRestart() const
+    [[nodiscard]] bool isFromRestart() const
     {
         return SAMRAI::tbox::RestartManager::getManager()->isFromRestart();
     }
@@ -86,15 +86,15 @@ public:
 class Hierarchy : public HierarchyRestarter, public SAMRAI::hier::PatchHierarchy
 {
 public:
-    static auto make();
-    auto const& cellWidth() const { return cellWidth_; }
-    auto const& domainBox() const { return domainBox_; }
-    auto const& origin() const { return origin_; }
+    [[nodiscard]] static auto make();
+    [[nodiscard]] auto const& cellWidth() const { return cellWidth_; }
+    [[nodiscard]] auto const& domainBox() const { return domainBox_; }
+    [[nodiscard]] auto const& origin() const { return origin_; }
 
 
     auto writeRestartFile(std::string directory) const;
 
-    auto static restartFilePathForTime(std::string path, double timestamp)
+    [[nodiscard]] auto static restartFilePathForTime(std::string path, double timestamp)
     {
         std::size_t constexpr precision = 5;
         std::size_t constexpr width     = 11;

@@ -1,4 +1,3 @@
-
 #ifndef PHARE_AMR_UTILITIES_BOX_BOX_HPP
 #define PHARE_AMR_UTILITIES_BOX_BOX_HPP
 
@@ -10,7 +9,7 @@
 namespace PHARE::amr
 {
 template<typename Type, std::size_t dim>
-auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId = 0)
+[[nodiscard]] auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId = 0)
 {
     SAMRAI::tbox::Dimension dimension{dim};
     SAMRAI::hier::BlockId blockId{samrai_blockId};
@@ -19,7 +18,7 @@ auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId 
 }
 
 template<std::size_t dim, typename Type = int>
-auto phare_box_from(SAMRAI::hier::Box const& box)
+[[nodiscard]] auto phare_box_from(SAMRAI::hier::Box const& box)
 {
     std::array<Type, dim> lower = *reinterpret_cast<std::array<int, dim> const*>(&box.lower()[0]);
     std::array<Type, dim> upper = *reinterpret_cast<std::array<int, dim> const*>(&box.upper()[0]);
@@ -27,7 +26,7 @@ auto phare_box_from(SAMRAI::hier::Box const& box)
     return PHARE::core::Box<Type, dim>{core::Point{lower}, core::Point{upper}};
 }
 
-inline bool operator==(SAMRAI::hier::Box const& b1, SAMRAI::hier::Box const& b2)
+[[nodiscard]] inline bool operator==(SAMRAI::hier::Box const& b1, SAMRAI::hier::Box const& b2)
 {
     auto dim1 = b1.getDim().getValue();
     auto dim2 = b2.getDim().getValue();
@@ -69,9 +68,9 @@ struct Box : public PHARE::core::Box<Type, dim>
     {
     }
 
-    operator SAMRAI::hier::Box() const { return samrai_box_from(*this); }
+    [[nodiscard]] operator SAMRAI::hier::Box() const { return samrai_box_from(*this); }
 
-    bool operator==(SAMRAI::hier::Box const& that) const
+    [[nodiscard]] bool operator==(SAMRAI::hier::Box const& that) const
     {
         bool eq = 1;
 

@@ -44,12 +44,12 @@ public:
     {
     }
 
-    std::vector<VecField*> getElectromagFields() const
+    [[nodiscard]] std::vector<VecField*> getElectromagFields() const
     {
         return {&model_.state.electromag.B, &model_.state.electromag.E};
     }
 
-    auto& getIons() const { return model_.state.ions; }
+    [[nodiscard]] auto& getIons() const { return model_.state.ions; }
 
 
     template<typename Action>
@@ -60,15 +60,18 @@ public:
                                                model_);
     }
 
-    auto domainBox() const { return hierarchy_.domainBox(); }
+    [[nodiscard]] auto domainBox() const { return hierarchy_.domainBox(); }
 
-    auto origin() const { return hierarchy_.origin(); }
+    [[nodiscard]] auto origin() const { return hierarchy_.origin(); }
 
-    auto cellWidth() const { return hierarchy_.cellWidth(); }
+    [[nodiscard]] auto cellWidth() const { return hierarchy_.cellWidth(); }
 
-    std::string getLayoutTypeString() const { return std::string{GridLayout::implT::type}; }
+    [[nodiscard]] std::string getLayoutTypeString() const
+    {
+        return std::string{GridLayout::implT::type};
+    }
 
-    auto getPatchProperties(std::string patchID, GridLayout const& grid) const
+    [[nodiscard]] auto getPatchProperties(std::string patchID, GridLayout const& grid) const
     {
         PatchProperties dict;
         dict["origin"]   = grid.origin().toVector();
@@ -80,7 +83,7 @@ public:
     }
 
 
-    static auto getEmptyPatchProperties()
+    [[nodiscard]] static auto getEmptyPatchProperties()
     {
         PatchProperties dict;
         dict["origin"]   = std::vector<double>{};
@@ -91,12 +94,12 @@ public:
         return dict;
     }
 
-    bool hasTagsVectorFor(int ilevel, std::string patch_id) const
+    [[nodiscard]] bool hasTagsVectorFor(int ilevel, std::string patch_id) const
     {
         auto key = std::to_string(ilevel) + "_" + patch_id;
         return model_.tags.count(key);
     }
-    auto& getTagsVectorFor(int ilevel, std::string patch_id) const
+    [[nodiscard]] auto& getTagsVectorFor(int ilevel, std::string patch_id) const
     {
         auto key = std::to_string(ilevel) + "_" + patch_id;
         return model_.tags.at(key);

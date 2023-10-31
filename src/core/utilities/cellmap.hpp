@@ -1,4 +1,3 @@
-
 #ifndef PHARE_CELLMAP_H
 #define PHARE_CELLMAP_H
 #include <cstddef>
@@ -37,15 +36,15 @@ public:
     {
     }
 
-    CellMap(CellMap const& from) = default;
-    CellMap(CellMap&& from)      = default;
+    CellMap(CellMap const& from)            = default;
+    CellMap(CellMap&& from)                 = default;
     CellMap& operator=(CellMap const& from) = default;
-    CellMap& operator=(CellMap&& from) = default;
+    CellMap& operator=(CellMap&& from)      = default;
 
-    auto nbr_cells() const { return cellIndexes_.size(); }
+    [[nodiscard]] auto nbr_cells() const { return cellIndexes_.size(); }
 
 
-    bool check_unique() const
+    [[nodiscard]] bool check_unique() const
     {
         std::unordered_map<std::size_t, std::size_t> counts;
         for (auto const& cell : box_)
@@ -106,17 +105,17 @@ public:
 
 
     // number of indexes stored in that cell of the cellmap
-    std::size_t size(cell_t cell) const { return cellIndexes_(local_(cell)).size(); }
-    std::size_t size(cell_t cell) { return cellIndexes_(local_(cell)).size(); }
+    [[nodiscard]] std::size_t size(cell_t cell) const { return cellIndexes_(local_(cell)).size(); }
+    [[nodiscard]] std::size_t size(cell_t cell) { return cellIndexes_(local_(cell)).size(); }
 
     // total number of mapped indexes
-    auto size() const;
+    [[nodiscard]] auto size() const;
 
     // number of indexes mapped in the given box
-    auto size(box_t const& box) const;
+    [[nodiscard]] auto size(box_t const& box) const;
 
     // total capacity over all cells
-    auto capacity() const;
+    [[nodiscard]] auto capacity() const;
 
     // remove all indexes
     void clear()
@@ -127,10 +126,10 @@ public:
 
     void empty();
 
-    bool is_empty() const { return size() == 0; }
+    [[nodiscard]] bool is_empty() const { return size() == 0; }
 
 
-    float used_mem_ratio() const { return static_cast<float>(size()) / capacity(); }
+    [[nodiscard]] float used_mem_ratio() const { return static_cast<float>(size()) / capacity(); }
 
 
     // export from 'from' into 'dest' items indexed in the map found withing 'box'
@@ -186,20 +185,20 @@ public:
     template<typename CellIndex>
     void print(CellIndex const& cell) const;
 
-    auto& box() { return box_; }
-    auto const& box() const { return box_; }
+    [[nodiscard]] auto& box() { return box_; }
+    [[nodiscard]] auto const& box() const { return box_; }
 
-    auto begin() { return cellIndexes_.begin(); }
-    auto end() { return cellIndexes_.end(); }
+    [[nodiscard]] auto begin() { return cellIndexes_.begin(); }
+    [[nodiscard]] auto end() { return cellIndexes_.end(); }
 
     template<typename Cell>
-    auto& operator()(Cell const& cell)
+    [[nodiscard]] auto& operator()(Cell const& cell)
     {
         return cellIndexes_(local_(cell));
     }
 
     template<typename Cell>
-    auto const& operator()(Cell const& cell) const
+    [[nodiscard]] auto const& operator()(Cell const& cell) const
     {
         return cellIndexes_(local_(cell));
     }

@@ -56,10 +56,10 @@ namespace core
         {
         }
 
-        std::string name() const { return name_; }
+        [[nodiscard]] std::string name() const { return name_; }
 
 
-        constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
+        [[nodiscard]] constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
 
         void copyData(Field const& source)
         {

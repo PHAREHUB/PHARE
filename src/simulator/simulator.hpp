@@ -1,4 +1,3 @@
-
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
@@ -45,10 +44,10 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class Simulator : public ISimulator
 {
 public:
-    double startTime() override { return startTime_; }
-    double endTime() override { return finalTime_; }
-    double timeStep() override { return dt_; }
-    double currentTime() override { return currentTime_; }
+    [[nodiscard]] double startTime() override { return startTime_; }
+    [[nodiscard]] double endTime() override { return finalTime_; }
+    [[nodiscard]] double timeStep() override { return dt_; }
+    [[nodiscard]] double currentTime() override { return currentTime_; }
 
     void initialize() override;
     double advance(double dt) override;
@@ -57,11 +56,11 @@ public:
     std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
     std::size_t interporder() const override { return interp_order; }
 
-    auto& getHybridModel() { return hybridModel_; }
-    auto& getMHDModel() { return mhdModel_; }
-    auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+    [[nodiscard]] auto& getHybridModel() { return hybridModel_; }
+    [[nodiscard]] auto& getMHDModel() { return mhdModel_; }
+    [[nodiscard]] auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
 
-    std::string to_str() override;
+    [[nodiscard]] std::string to_str() override;
 
     bool dump(double timestamp, double timestep) override
     {

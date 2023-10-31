@@ -18,7 +18,7 @@ namespace solver
         using AMRTypes = typename HybridModel::amr_types;
 
     public:
-        static std::unique_ptr<LevelInitializer<AMRTypes>>
+        [[nodiscard]] static std::unique_ptr<LevelInitializer<AMRTypes>>
         create(std::string modelName, PHARE::initializer::PHAREDict const& dict)
         {
             if (modelName == "HybridModel")

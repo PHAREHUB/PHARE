@@ -6,10 +6,7 @@
 
 #include "SAMRAI/hier/IntVector.h"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 
 #include "field_overlap.hpp"
 

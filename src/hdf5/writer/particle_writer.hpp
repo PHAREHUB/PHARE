@@ -36,7 +36,7 @@ public:
 
 
     template<std::size_t dim, typename T, typename Size>
-    auto static size_for(T const& type, Size const& n_particles)
+    [[nodiscard]] auto static size_for(T const& type, Size const& n_particles)
     {
         if (n_particles == 0)
             return std::vector<std::size_t>{0};

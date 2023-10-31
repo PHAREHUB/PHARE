@@ -44,7 +44,7 @@ namespace core
         VecField J;
         Electrons electrons;
 
-        std::string to_str()
+        [[nodiscard]] std::string to_str()
         {
             std::stringstream ss;
             ss << "Hybrid State\n";
@@ -58,22 +58,25 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return electromag.isUsable() and ions.isUsable() && J.isUsable(); }
+        [[nodiscard]] bool isUsable() const
+        {
+            return electromag.isUsable() and ions.isUsable() && J.isUsable();
+        }
 
 
 
-        bool isSettable() const
+        [[nodiscard]] bool isSettable() const
         {
             return electromag.isSettable() and ions.isSettable() && J.isSettable();
         }
 
 
-        auto getCompileTimeResourcesUserList() const
+        [[nodiscard]] auto getCompileTimeResourcesUserList() const
         {
             return std::forward_as_tuple(electromag, ions, electrons);
         }
 
-        auto getCompileTimeResourcesUserList()
+        [[nodiscard]] auto getCompileTimeResourcesUserList()
         {
             return std::forward_as_tuple(electromag, ions, electrons);
         }

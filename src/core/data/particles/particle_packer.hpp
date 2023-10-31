@@ -19,7 +19,7 @@ public:
     {
     }
 
-    static auto get(Particle<dim> const& particle)
+    [[nodiscard]] static auto get(Particle<dim> const& particle)
     {
         return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
                                      particle.delta, particle.v);
@@ -33,13 +33,13 @@ public:
 
     // sometimes we use this to infer the size of an ParticleArray
     // could be "charge" either
-    static auto arbitrarySingleValueKey() { return "weight"; }
+    [[nodiscard]] static auto arbitrarySingleValueKey() { return "weight"; }
 
-    static auto& keys() { return keys_; }
+    [[nodiscard]] static auto& keys() { return keys_; }
 
-    auto get(std::size_t i) const { return get(particles_[i]); }
-    bool hasNext() const { return it_ < particles_.size(); }
-    auto next() { return get(it_++); }
+    [[nodiscard]] auto get(std::size_t i) const { return get(particles_[i]); }
+    [[nodiscard]] bool hasNext() const { return it_ < particles_.size(); }
+    [[nodiscard]] auto next() { return get(it_++); }
 
     void pack(ContiguousParticles<dim>& copy)
     {

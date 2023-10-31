@@ -77,7 +77,7 @@ namespace amr
             }
         }
 
-        core::Point<int, dimension>
+        [[nodiscard]] core::Point<int, dimension>
         computeStartIndexes(core::Point<int, dimension> const& coarseIndex)
         {
             core::Point<int, dimension> fineIndex{coarseIndex};
@@ -95,7 +95,7 @@ namespace amr
         }
 
 
-        std::vector<double> const& weights(core::Direction dir) const
+        [[nodiscard]] std::vector<double> const& weights(core::Direction dir) const
         {
             return weighters_[static_cast<std::size_t>(dir)].weights();
         }

@@ -40,7 +40,7 @@ private:
 
 struct TimeStamperFactory
 {
-    static std::unique_ptr<ITimeStamper> create(initializer::PHAREDict const& dict)
+    [[nodiscard]] static std::unique_ptr<ITimeStamper> create(initializer::PHAREDict const& dict)
     {
         assert(dict.contains("time_step"));
         auto time_step  = dict["time_step"].template to<double>();

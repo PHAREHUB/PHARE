@@ -1,5 +1,3 @@
-
-
 #ifndef PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 #define PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 
@@ -53,13 +51,16 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return E.isUsable() && B.isUsable(); }
+        [[nodiscard]] bool isUsable() const { return E.isUsable() && B.isUsable(); }
 
-        bool isSettable() const { return E.isSettable() && B.isSettable(); }
+        [[nodiscard]] bool isSettable() const { return E.isSettable() && B.isSettable(); }
 
-        auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(E, B); }
+        [[nodiscard]] auto getCompileTimeResourcesUserList() const
+        {
+            return std::forward_as_tuple(E, B);
+        }
 
-        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
+        [[nodiscard]] auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
 
 
         //-------------------------------------------------------------------------

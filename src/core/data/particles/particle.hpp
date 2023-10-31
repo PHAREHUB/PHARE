@@ -20,7 +20,7 @@ template<typename T = float>
 struct ParticleDeltaDistribution
 {
     template<typename Generator>
-    T operator()(Generator& generator)
+    [[nodiscard]] T operator()(Generator& generator)
     {
         return dist(generator);
     }
@@ -29,7 +29,7 @@ struct ParticleDeltaDistribution
 
 
 template<typename Particle>
-auto cellAsPoint(Particle const& particle)
+[[nodiscard]] auto cellAsPoint(Particle const& particle)
 {
     return Point<int, Particle::dimension>{particle.iCell};
 }
@@ -63,7 +63,7 @@ struct Particle
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
 
-    bool operator==(Particle<dim> const& that) const
+    [[nodiscard]] bool operator==(Particle<dim> const& that) const
     {
         return (this->weight == that.weight) && //
                (this->charge == that.charge) && //
@@ -131,9 +131,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-typename std::enable_if_t<
-    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
-    bool>
+[[nodiscard]] typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                            and is_phare_particle_type<dim, ParticleB<dim>>,
+                                        bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //
@@ -150,8 +150,8 @@ namespace std
 {
 
 template<size_t dim, template<std::size_t> typename Particle_t>
-typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
-                          PHARE::core::Particle<dim>>
+[[nodiscard]] typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
+                                        PHARE::core::Particle<dim>>
 copy(Particle_t<dim> const& from)
 {
     return {from.weight, from.charge, from.iCell, from.delta, from.v};

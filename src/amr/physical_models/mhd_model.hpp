@@ -1,6 +1,3 @@
-
-
-
 #ifndef PHARE_MHD_MODEL_HPP
 #define PHARE_MHD_MODEL_HPP
 
@@ -55,7 +52,10 @@ namespace solver
         {
         }
 
-        auto setOnPatch(patch_t& patch) { return resourcesManager->setOnPatch(patch, *this); }
+        [[nodiscard]] auto setOnPatch(patch_t& patch)
+        {
+            return resourcesManager->setOnPatch(patch, *this);
+        }
 
 
         virtual ~MHDModel() override = default;

@@ -42,9 +42,12 @@ struct Box
     {
     }
 
-    bool operator==(Box const& box) const { return box.lower == lower && box.upper == upper; }
+    [[nodiscard]] bool operator==(Box const& box) const
+    {
+        return box.lower == lower && box.upper == upper;
+    }
 
-    auto operator*(Box const& other) const
+    [[nodiscard]] auto operator*(Box const& other) const
     {
         Box intersection{other};
         for (auto idim = 0u; idim < dim; ++idim)
@@ -57,9 +60,12 @@ struct Box
         return std::optional<Box>{intersection};
     }
 
-    auto operator-(Box const& that) const { return Box{lower - that.lower, upper - that.upper}; }
+    [[nodiscard]] auto operator-(Box const& that) const
+    {
+        return Box{lower - that.lower, upper - that.upper};
+    }
 
-    bool isEmpty() const { return (*this) == Box{}; }
+    [[nodiscard]] bool isEmpty() const { return (*this) == Box{}; }
 
     void grow(Type const& size)
     {
@@ -74,18 +80,18 @@ struct Box
         }
     }
 
-    auto shape() const { return upper - lower + 1; }
-    auto size() const { return core::product(shape()); }
+    [[nodiscard]] auto shape() const { return upper - lower + 1; }
+    [[nodiscard]] auto size() const { return core::product(shape()); }
 
 
     using iterator = box_iterator<Type, dim>;
-    auto begin() { return iterator{this, lower}; }
+    [[nodiscard]] auto begin() { return iterator{this, lower}; }
 
     //   // since the 1D scan of the multidimensional box is done assuming C ordering
     //   // the end (in the sense of container.end()) is one beyond last for the last
     //   // direction only, previous dimensions have not reached the end.
-    auto begin() const { return iterator{this, lower}; }
-    auto end()
+    [[nodiscard]] auto begin() const { return iterator{this, lower}; }
+    [[nodiscard]] auto end()
     {
         static_assert(dim <= 3 and dim > 0);
         // following could maybe be a one liner?
@@ -103,7 +109,7 @@ struct Box
         }
     }
 
-    auto end() const
+    [[nodiscard]] auto end() const
     {
         static_assert(dim <= 3 and dim > 0);
         if constexpr (dim == 1)
@@ -122,7 +128,7 @@ struct Box
     using value_type = Type;
 
 
-    constexpr static std::size_t nbrRemainBoxes()
+    [[nodiscard]] constexpr static std::size_t nbrRemainBoxes()
     {
         if constexpr (dim == 1)
         {
@@ -231,7 +237,8 @@ bool isIn(Point const& point, BoxContainer const& boxes)
  * one box.
  */
 template<typename Point>
-bool isIn(Point const& point, Box<typename Point::value_type, Point::dimension> const& box)
+[[nodiscard]] bool isIn(Point const& point,
+                        Box<typename Point::value_type, Point::dimension> const& box)
 {
     auto isIn1D = [](typename Point::value_type pos, typename Point::value_type lower,
                      typename Point::value_type upper) { return pos >= lower && pos <= upper; };
@@ -258,7 +265,7 @@ Box<Type, dim> grow(Box<Type, dim> const& box, Type const& size)
 }
 
 template<typename Type, std::size_t dim>
-Box<Type, dim> emptyBox()
+[[nodiscard]] Box<Type, dim> emptyBox()
 {
     return Box<Type, dim>{};
 }

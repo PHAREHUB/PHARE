@@ -39,7 +39,7 @@ namespace amr
 
 
     template<typename T, std::size_t... Is>
-    std::array<LinearWeighter, sizeof...(Is)>
+    [[nodiscard]] std::array<LinearWeighter, sizeof...(Is)>
     make_weighters(const std::array<T, sizeof...(Is)>& values, SAMRAI::hier::IntVector ratio,
                    std::index_sequence<Is...>)
     {

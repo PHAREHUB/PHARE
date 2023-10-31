@@ -134,7 +134,7 @@ class MeshToParticle
 
 
 template<std::size_t dimdex, typename GridLayout, auto quantity, typename IndexWeights>
-auto static start_index_and_weights_for_qty(IndexWeights const& indexWeights)
+[[nodiscard]] auto static start_index_and_weights_for_qty(IndexWeights const& indexWeights)
 {
     auto constexpr centerings                              = GridLayout::centering(quantity);
     auto const& [d_starts, d_weights, p_starts, p_weights] = indexWeights;
@@ -158,7 +158,7 @@ public:
      * the field \param[in] weights are the nbrPointsSupport weights used for the interpolation
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    [[nodiscard]] inline auto operator()(Field const& field, IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -189,7 +189,7 @@ public:
      * weights used for the interpolation in both directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    [[nodiscard]] inline auto operator()(Field const& field, IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -230,7 +230,7 @@ public:
      * weights used for the interpolation in the 3 directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    inline auto operator()(Field const& field, IndexWeights const& indexWeights)
+    [[nodiscard]] inline auto operator()(Field const& field, IndexWeights const& indexWeights)
     {
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
@@ -554,7 +554,7 @@ public:
      * traversing from
      */
     template<typename CenteringT, CenteringT Centering>
-    static int computeStartLeftShift([[maybe_unused]] double delta)
+    [[nodiscard]] static int computeStartLeftShift([[maybe_unused]] double delta)
     {
         static_assert(interpOrder > 0 and interpOrder < 4);
 

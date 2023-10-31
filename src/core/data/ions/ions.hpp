@@ -50,10 +50,10 @@ namespace core
         }
 
 
-        auto nbrPopulations() const { return populations_.size(); }
+        [[nodiscard]] auto nbrPopulations() const { return populations_.size(); }
 
 
-        field_type const& density() const
+        [[nodiscard]] field_type const& density() const
         {
             if (isUsable())
             {
@@ -67,7 +67,7 @@ namespace core
 
 
 
-        field_type& density()
+        [[nodiscard]] field_type& density()
         {
             if (isUsable())
             {
@@ -82,11 +82,11 @@ namespace core
 
 
 
-        vecfield_type const& velocity() const { return bulkVelocity_; }
+        [[nodiscard]] vecfield_type const& velocity() const { return bulkVelocity_; }
 
-        vecfield_type& velocity() { return bulkVelocity_; }
+        [[nodiscard]] vecfield_type& velocity() { return bulkVelocity_; }
 
-        std::string densityName() const { return "rho"; }
+        [[nodiscard]] std::string densityName() const { return "rho"; }
 
 
         void computeDensity()
@@ -139,14 +139,14 @@ namespace core
 
         // TODO 3347 compute ion bulk velocity
 
-        auto begin() { return std::begin(populations_); }
-        auto end() { return std::end(populations_); }
+        [[nodiscard]] auto begin() { return std::begin(populations_); }
+        [[nodiscard]] auto end() { return std::end(populations_); }
 
-        auto begin() const { return std::begin(populations_); }
-        auto end() const { return std::end(populations_); }
+        [[nodiscard]] auto begin() const { return std::begin(populations_); }
+        [[nodiscard]] auto end() const { return std::end(populations_); }
 
 
-        bool isUsable() const
+        [[nodiscard]] bool isUsable() const
         {
             bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
             for (auto const& pop : populations_)
@@ -158,7 +158,7 @@ namespace core
 
 
 
-        bool isSettable() const
+        [[nodiscard]] bool isSettable() const
         {
             bool settable = rho_ == nullptr && bulkVelocity_.isSettable();
             for (auto const& pop : populations_)
@@ -183,7 +183,7 @@ namespace core
 
         using MomentProperties = std::vector<MomentsProperty>;
 
-        MomentProperties getFieldNamesAndQuantities() const
+        [[nodiscard]] MomentProperties getFieldNamesAndQuantities() const
         {
             return {{{densityName(), HybridQuantity::Scalar::rho}}};
         }
@@ -204,9 +204,15 @@ namespace core
 
 
 
-        std::vector<IonPopulation>& getRunTimeResourcesUserList() { return populations_; }
+        [[nodiscard]] std::vector<IonPopulation>& getRunTimeResourcesUserList()
+        {
+            return populations_;
+        }
 
-        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(bulkVelocity_); }
+        [[nodiscard]] auto getCompileTimeResourcesUserList()
+        {
+            return std::forward_as_tuple(bulkVelocity_);
+        }
 
 
 
@@ -215,7 +221,7 @@ namespace core
         //-------------------------------------------------------------------------
 
 
-        std::string to_str()
+        [[nodiscard]] std::string to_str()
         {
             std::stringstream ss;
             ss << "Ions\n";

@@ -64,11 +64,11 @@ namespace core
 
         constexpr Point() { core::fill(Type{0}, r); }
 
-        auto& operator[](std::size_t i) { return r[i]; }
-        auto const& operator[](std::size_t i) const { return r[i]; }
+        [[nodiscard]] auto& operator[](std::size_t i) { return r[i]; }
+        [[nodiscard]] auto const& operator[](std::size_t i) const { return r[i]; }
 
 
-        bool operator==(Point const& p) const
+        [[nodiscard]] bool operator==(Point const& p) const
         {
             bool areEqual = true;
             for (std::size_t i = 0; i < dim; ++i)
@@ -81,11 +81,11 @@ namespace core
             return areEqual;
         }
 
-        bool operator!=(Point const& other) const { return !(*this == other); }
+        [[nodiscard]] bool operator!=(Point const& other) const { return !(*this == other); }
 
 
         template<typename DestType>
-        auto toArray() const
+        [[nodiscard]] auto toArray() const
         {
             std::array<DestType, dimension> destArray;
             for (auto i = 0u; i < dimension; ++i)
@@ -96,12 +96,12 @@ namespace core
         }
 
 
-        std::vector<Type> toVector() const
+        [[nodiscard]] std::vector<Type> toVector() const
         {
             return std::vector<Type>(r.data(), r.data() + dimension);
         }
 
-        std::string str() const
+        [[nodiscard]] std::string str() const
         {
             std::stringstream ss;
             ss << r[0];
@@ -112,7 +112,7 @@ namespace core
             return ss.str();
         }
 
-        static Point fromString(std::string csv)
+        [[nodiscard]] static Point fromString(std::string csv)
         {
             Point p;
             std::istringstream split(csv);
@@ -164,11 +164,11 @@ namespace core
         auto operator-(Point<Type, dim> const& value) const { return (*this) - value.r; }
 
 
-        constexpr auto size() const { return dim; }
-        auto begin() { return r.begin(); }
-        auto begin() const { return r.begin(); }
-        auto end() { return r.end(); }
-        auto end() const { return r.end(); }
+        [[nodiscard]] constexpr auto size() const { return dim; }
+        [[nodiscard]] auto begin() { return r.begin(); }
+        [[nodiscard]] auto begin() const { return r.begin(); }
+        [[nodiscard]] auto end() { return r.end(); }
+        [[nodiscard]] auto end() const { return r.end(); }
 
 
     private:
@@ -195,7 +195,7 @@ namespace core
 namespace std
 {
 template<typename Type, std::size_t dim>
-PHARE::core::Point<Type, dim> abs(PHARE::core::Point<Type, dim> const& point)
+[[nodiscard]] PHARE::core::Point<Type, dim> abs(PHARE::core::Point<Type, dim> const& point)
 {
     std::array<Type, dim> postive;
     for (std::size_t i = 0; i < dim; ++i)

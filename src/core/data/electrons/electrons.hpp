@@ -33,13 +33,25 @@ public:
     //-------------------------------------------------------------------------
 
 
-    bool isUsable() const { return ions_.isUsable() && J_.isUsable() && Ve_.isUsable(); }
+    [[nodiscard]] bool isUsable() const
+    {
+        return ions_.isUsable() && J_.isUsable() && Ve_.isUsable();
+    }
 
-    bool isSettable() const { return Ve_.isSettable() && ions_.isSettable() && J_.isSettable(); }
+    [[nodiscard]] bool isSettable() const
+    {
+        return Ve_.isSettable() && ions_.isSettable() && J_.isSettable();
+    }
 
-    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(Ve_, ions_, J_); }
+    [[nodiscard]] auto getCompileTimeResourcesUserList() const
+    {
+        return std::forward_as_tuple(Ve_, ions_, J_);
+    }
 
-    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(Ve_, ions_, J_); }
+    [[nodiscard]] auto getCompileTimeResourcesUserList()
+    {
+        return std::forward_as_tuple(Ve_, ions_, J_);
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -48,7 +60,7 @@ public:
 
 
 
-    Field const& density() const
+    [[nodiscard]] Field const& density() const
     {
         if (isUsable())
         {
@@ -61,7 +73,7 @@ public:
         }
     }
 
-    Field& density()
+    [[nodiscard]] Field& density()
     {
         if (isUsable())
         {
@@ -75,7 +87,7 @@ public:
     }
 
 
-    VecField& velocity()
+    [[nodiscard]] VecField& velocity()
     {
         if (isUsable())
         {
@@ -152,9 +164,9 @@ public:
 
     using field_type = Field;
 
-    bool isUsable() { return Pe_ != nullptr; }
+    [[nodiscard]] bool isUsable() { return Pe_ != nullptr; }
 
-    bool isSettable() { return Pe_ == nullptr; }
+    [[nodiscard]] bool isSettable() { return Pe_ == nullptr; }
 
     struct PressureProperty
     {
@@ -164,7 +176,7 @@ public:
 
     using PressureProperties = std::vector<PressureProperty>;
 
-    PressureProperties getFieldNamesAndQuantities() const
+    [[nodiscard]] PressureProperties getFieldNamesAndQuantities() const
     {
         return {{{"Pe", HybridQuantity::Scalar::P}}};
     }
@@ -186,14 +198,14 @@ public:
 
 
 
-    Field& pressure()
+    [[nodiscard]] Field& pressure()
     {
         if (Pe_ != nullptr)
             return *Pe_;
         else
             throw std::runtime_error("Error - isothermal closure pressure not usable");
     }
-    Field const& pressure() const { return *Pe_; }
+    [[nodiscard]] Field const& pressure() const { return *Pe_; }
 
     void computePressure([[maybe_unused]] GridLayout const& layout)
     {
@@ -238,16 +250,16 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    bool isUsable() const { return fluxComput_.isUsable(); }
+    [[nodiscard]] bool isUsable() const { return fluxComput_.isUsable(); }
 
-    bool isSettable() const { return fluxComput_.isSettable(); }
+    [[nodiscard]] bool isSettable() const { return fluxComput_.isSettable(); }
 
-    auto getCompileTimeResourcesUserList() const
+    [[nodiscard]] auto getCompileTimeResourcesUserList() const
     {
         return std::forward_as_tuple(fluxComput_, pressureClosure_);
     }
 
-    auto getCompileTimeResourcesUserList()
+    [[nodiscard]] auto getCompileTimeResourcesUserList()
     {
         return std::forward_as_tuple(fluxComput_, pressureClosure_);
     }
@@ -257,18 +269,18 @@ public:
     //-------------------------------------------------------------------------
 
 
-    Field const& density() const { return fluxComput_.density(); }
+    [[nodiscard]] Field const& density() const { return fluxComput_.density(); }
 
-    Field& density() { return fluxComput_.density(); }
-
-
-    VecField const& velocity() const { return fluxComput_.velocity(); }
-
-    VecField& velocity() { return fluxComput_.velocity(); }
+    [[nodiscard]] Field& density() { return fluxComput_.density(); }
 
 
-    Field const& pressure() const { return pressureClosure_.pressure(); }
-    Field& pressure() { return pressureClosure_.pressure(); }
+    [[nodiscard]] VecField const& velocity() const { return fluxComput_.velocity(); }
+
+    [[nodiscard]] VecField& velocity() { return fluxComput_.velocity(); }
+
+
+    [[nodiscard]] Field const& pressure() const { return pressureClosure_.pressure(); }
+    [[nodiscard]] Field& pressure() { return pressureClosure_.pressure(); }
 
 
 
@@ -313,13 +325,19 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    bool isUsable() const { return momentModel_.isUsable(); }
+    [[nodiscard]] bool isUsable() const { return momentModel_.isUsable(); }
 
-    bool isSettable() const { return momentModel_.isSettable(); }
+    [[nodiscard]] bool isSettable() const { return momentModel_.isSettable(); }
 
-    auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(momentModel_); }
+    [[nodiscard]] auto getCompileTimeResourcesUserList() const
+    {
+        return std::forward_as_tuple(momentModel_);
+    }
 
-    auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(momentModel_); }
+    [[nodiscard]] auto getCompileTimeResourcesUserList()
+    {
+        return std::forward_as_tuple(momentModel_);
+    }
 
 
 
@@ -330,14 +348,14 @@ public:
 
 
 
-    Field const& density() const { return momentModel_.density(); }
-    VecField const& velocity() const { return momentModel_.velocity(); }
-    Field const& pressure() const { return momentModel_.pressure(); }
+    [[nodiscard]] Field const& density() const { return momentModel_.density(); }
+    [[nodiscard]] VecField const& velocity() const { return momentModel_.velocity(); }
+    [[nodiscard]] Field const& pressure() const { return momentModel_.pressure(); }
 
 
-    Field& density() { return momentModel_.density(); }
-    VecField& velocity() { return momentModel_.velocity(); }
-    Field& pressure() { return momentModel_.pressure(); }
+    [[nodiscard]] Field& density() { return momentModel_.density(); }
+    [[nodiscard]] VecField& velocity() { return momentModel_.velocity(); }
+    [[nodiscard]] Field& pressure() { return momentModel_.pressure(); }
 
 private:
     ElectronMomentModel<Ions> momentModel_;

@@ -35,7 +35,7 @@ namespace core
 
 
     template<typename T>
-    std::vector<T> arange(T start, T stop, T step = 1)
+    [[nodiscard]] std::vector<T> arange(T start, T stop, T step = 1)
     {
         std::vector<T> values;
         for (T value = start; value < stop; value += step)
@@ -44,7 +44,7 @@ namespace core
     }
 
     template<typename T>
-    T norm(std::array<T, 3> vec)
+    [[nodiscard]] T norm(std::array<T, 3> vec)
     {
         auto squarreSum = std::inner_product(std::begin(vec), std::end(vec), std::begin(vec), 0.);
         return std::sqrt(squarreSum);
@@ -136,7 +136,8 @@ namespace core
     };
 
     template<std::size_t To_Size, std::size_t From_Size, typename Type>
-    constexpr std::array<Type, To_Size> sized_array(std::array<Type, From_Size> const& from)
+    [[nodiscard]] constexpr std::array<Type, To_Size>
+    sized_array(std::array<Type, From_Size> const& from)
     {
         static_assert(To_Size <= From_Size, "invalid sized_array Size template, too large");
 
@@ -153,7 +154,7 @@ namespace core
 
 
     template<std::size_t To_Size, typename... Args>
-    constexpr auto as_sized_array(Args&&... args)
+    [[nodiscard]] constexpr auto as_sized_array(Args&&... args)
     {
         auto arr = std::array{std::forward<decltype(args)>(args)...};
 
@@ -161,7 +162,7 @@ namespace core
     }
 
     template<typename Type, std::size_t size>
-    constexpr std::array<Type, size> ConstArray(Type val = 0)
+    [[nodiscard]] constexpr std::array<Type, size> ConstArray(Type val = 0)
     {
         std::array<Type, size> arr{};
         for (uint8_t i = 0; i < size; i++)
@@ -170,7 +171,7 @@ namespace core
     }
 
     template<typename Type>
-    std::vector<Type> displacementFrom(std::vector<Type> const& input)
+    [[nodiscard]] std::vector<Type> displacementFrom(std::vector<Type> const& input)
     {
         std::vector<Type> displs(input.size());
         Type off = 0;
@@ -191,7 +192,7 @@ namespace core
     };
 
     template<typename T>
-    std::string to_string_with_precision(T const& a_value, std::size_t const len)
+    [[nodiscard]] std::string to_string_with_precision(T const& a_value, std::size_t const len)
     {
         std::ostringstream out;
         out.precision(len);
@@ -204,8 +205,8 @@ namespace core
     }
 
     template<typename T>
-    auto to_string_fixed_width(T const& value, std::size_t const& precision,
-                               std::size_t const& width, char const& fill = '0')
+    [[nodiscard]] auto to_string_fixed_width(T const& value, std::size_t const& precision,
+                                             std::size_t const& width, char const& fill = '0')
     {
         std::ostringstream out;
         out.width(width);
@@ -226,13 +227,16 @@ namespace core
 
 
 
-    inline std::optional<std::string> get_env(std::string const& key)
+    [[nodiscard]] inline std::optional<std::string> get_env(std::string const& key)
     {
         if (const char* val = std::getenv(key.c_str()))
             return std::string{val};
         return std::nullopt;
     }
-    inline std::optional<std::string> get_env(std::string&& key) { return get_env(key); }
+    [[nodiscard]] inline std::optional<std::string> get_env(std::string&& key)
+    {
+        return get_env(key);
+    }
 
 } // namespace core
 } // namespace PHARE
@@ -241,13 +245,13 @@ namespace core
 namespace PHARE::core
 {
 template<typename Container, typename Multiplies = typename Container::value_type>
-Multiplies product(Container const& container, Multiplies mul = 1)
+[[nodiscard]] Multiplies product(Container const& container, Multiplies mul = 1)
 {
     return std::accumulate(container.begin(), container.end(), mul, std::multiplies<Multiplies>());
 }
 
 template<typename Container, typename Return = typename Container::value_type>
-Return sum(Container const& container, Return r = 0)
+[[nodiscard]] Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
@@ -256,7 +260,7 @@ Return sum(Container const& container, Return r = 0)
 
 
 template<typename F>
-auto generate(F&& f, std::size_t from, std::size_t to)
+[[nodiscard]] auto generate(F&& f, std::size_t from, std::size_t to)
 {
     assert(from <= to);
     using value_type = std::decay_t<std::result_of_t<F&(std::size_t const&)>>;
@@ -270,14 +274,14 @@ auto generate(F&& f, std::size_t from, std::size_t to)
 }
 
 template<typename F>
-auto generate(F&& f, std::size_t count)
+[[nodiscard]] auto generate(F&& f, std::size_t count)
 {
     return generate(std::forward<F>(f), 0, count);
 }
 
 
 template<typename F, typename Container>
-auto generate(F&& f, Container& container)
+[[nodiscard]] auto generate(F&& f, Container& container)
 {
     using T          = typename Container::value_type;
     using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
@@ -290,26 +294,26 @@ auto generate(F&& f, Container& container)
 }
 
 template<typename F, typename T>
-auto generate(F&& f, std::vector<T>&& v)
+[[nodiscard]] auto generate(F&& f, std::vector<T>&& v)
 {
     return generate(std::forward<F>(f), v);
 }
 
 template<std::size_t Idx, typename F, typename Type, std::size_t Size>
-auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
+[[nodiscard]] auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
 {
     return f(arr[Idx]);
 }
 
 template<typename Type, std::size_t Size, typename F, std::size_t... Is>
-auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
-                               std::integer_sequence<std::size_t, Is...>)
+[[nodiscard]] auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
+                                             std::integer_sequence<std::size_t, Is...>)
 {
     return std::array{generate_array__<Is>(f, arr)...};
 }
 
 template<typename F, typename Type, std::size_t Size>
-auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+[[nodiscard]] auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
 {
     return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
 }
@@ -320,19 +324,19 @@ auto constexpr static to_bool = [](auto const& v) { return bool{v}; };
 
 
 template<typename Container>
-auto all(Container const& container)
+[[nodiscard]] auto all(Container const& container)
 {
     return std::all_of(container.begin(), container.end(), to_bool);
 }
 
 template<typename Container>
-auto any(Container const& container)
+[[nodiscard]] auto any(Container const& container)
 {
     return std::any_of(container.begin(), container.end(), to_bool);
 }
 
 template<typename Container>
-auto none(Container const& container)
+[[nodiscard]] auto none(Container const& container)
 {
     return std::none_of(container.begin(), container.end(), to_bool);
 }

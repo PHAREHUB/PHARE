@@ -36,7 +36,7 @@ namespace amr
 
 
     template<typename T, std::size_t... Is>
-    std::array<CoarsenWeighter, sizeof...(Is)>
+    [[nodiscard]] std::array<CoarsenWeighter, sizeof...(Is)>
     make_weighters(const std::array<T, sizeof...(Is)>& nbrPoints, std::index_sequence<Is...>)
     {
         return {{(CoarsenWeighter{nbrPoints[Is]})...}};

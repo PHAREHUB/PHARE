@@ -110,10 +110,10 @@ namespace amr
         }
 
 
-        ResourcesManager(ResourcesManager const&) = delete;
-        ResourcesManager(ResourcesManager&&)      = delete;
+        ResourcesManager(ResourcesManager const&)                   = delete;
+        ResourcesManager(ResourcesManager&&)                        = delete;
         ResourcesManager& operator=(ResourcesManager const& source) = delete;
-        ResourcesManager& operator=(ResourcesManager&&) = delete;
+        ResourcesManager& operator=(ResourcesManager&&)             = delete;
 
 
         /** @brief registerResources takes a ResourcesUser to register its resources
@@ -221,7 +221,7 @@ namespace amr
          * At the end of the scope of dataOnPatch, obj1 and obj2 will become unusable again
          */
         template<typename... ResourcesUsers>
-        constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
+        [[nodiscard]] constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
         setOnPatch(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resourcesUsers)
         {
             return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this,
@@ -234,7 +234,7 @@ namespace amr
          * ResourcesUser on the given patch.
          */
         template<typename ResourcesUser>
-        auto getTimes(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
+        [[nodiscard]] auto getTimes(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
         {
             auto IDs = getIDs(obj);
             std::vector<double> times;
@@ -274,7 +274,7 @@ namespace amr
          *  have registered via the ResourcesManager
          */
         template<typename ResourcesUser>
-        std::vector<int> getIDs(ResourcesUser& obj) const
+        [[nodiscard]] std::vector<int> getIDs(ResourcesUser& obj) const
         {
             std::vector<int> IDs;
             this->getIDs_(obj, IDs);
@@ -286,7 +286,7 @@ namespace amr
         /** \brief Get all the names and resources id that the resource user
          *  have registered via the ResourcesManager
          */
-        std::optional<int> getID(std::string const& resourceName) const
+        [[nodiscard]] std::optional<int> getID(std::string const& resourceName) const
         {
             auto id = nameToResourceInfo_.find(resourceName);
 
@@ -317,7 +317,7 @@ namespace amr
         }
 
         template<typename ResourcesUser>
-        auto restart_patch_data_ids(ResourcesUser const& user) const
+        [[nodiscard]] auto restart_patch_data_ids(ResourcesUser const& user) const
         {
             // // true for now with https://github.com/PHAREHUB/PHARE/issues/664
             constexpr bool ALL_IDS = true;

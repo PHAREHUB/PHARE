@@ -1,4 +1,3 @@
-
 #ifndef PHARE_SOLVER_HPP
 #define PHARE_SOLVER_HPP
 
@@ -31,14 +30,14 @@ namespace solver
         /**
          * @brief return the name of the ISolver
          */
-        std::string name() const { return solverName; }
+        [[nodiscard]] std::string name() const { return solverName; }
 
 
 
         /**
          * @brief return the name of the model the ISolver is compatible with
          */
-        virtual std::string modelName() const = 0;
+        [[nodiscard]] virtual std::string modelName() const = 0;
 
 
 
@@ -80,7 +79,8 @@ namespace solver
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
         virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
-                              double const allocateTime) const = 0;
+                              double const allocateTime) const
+            = 0;
 
 
 

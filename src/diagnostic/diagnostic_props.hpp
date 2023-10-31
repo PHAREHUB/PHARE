@@ -21,10 +21,10 @@ struct DiagnosticProperties
     Params params{}; // supports arbitrary values for specific diagnostic writers
                      // for instance "flushEvery" for H5 file writers
 
-    auto& operator[](std::string const& paramKey) { return params[paramKey]; }
+    [[nodiscard]] auto& operator[](std::string const& paramKey) { return params[paramKey]; }
 
     template<typename T>
-    auto const& param(std::string const& paramKey) const
+    [[nodiscard]] auto const& param(std::string const& paramKey) const
     {
         return params[paramKey].template to<T>();
     }

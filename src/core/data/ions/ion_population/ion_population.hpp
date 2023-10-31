@@ -39,22 +39,25 @@ namespace core
         }
 
 
-        double mass() const { return mass_; }
+        [[nodiscard]] double mass() const { return mass_; }
 
-        std::string const& name() const { return name_; }
-
-
-        auto const& particleInitializerInfo() const { return particleInitializerInfo_; }
+        [[nodiscard]] std::string const& name() const { return name_; }
 
 
+        [[nodiscard]] auto const& particleInitializerInfo() const
+        {
+            return particleInitializerInfo_;
+        }
 
-        bool isUsable() const
+
+
+        [[nodiscard]] bool isUsable() const
         {
             return particles_ != nullptr && rho_ != nullptr && flux_.isUsable();
         }
 
 
-        bool isSettable() const
+        [[nodiscard]] bool isSettable() const
         {
             return particles_ == nullptr && rho_ == nullptr && flux_.isSettable();
         }
@@ -62,7 +65,7 @@ namespace core
 
 
 
-        auto nbrParticles() const
+        [[nodiscard]] auto nbrParticles() const
         {
             if (isUsable())
             {
@@ -77,7 +80,7 @@ namespace core
 
 
 
-        auto& domainParticles() const
+        [[nodiscard]] auto& domainParticles() const
         {
             if (isUsable())
             {
@@ -89,7 +92,7 @@ namespace core
             }
         }
 
-        auto& domainParticles()
+        [[nodiscard]] auto& domainParticles()
         {
             return const_cast<ParticleArray&>(
                 static_cast<IonPopulation const*>(this)->domainParticles());
@@ -97,7 +100,7 @@ namespace core
 
 
 
-        auto& patchGhostParticles() const
+        [[nodiscard]] auto& patchGhostParticles() const
         {
             if (isUsable())
             {
@@ -109,14 +112,14 @@ namespace core
             }
         }
 
-        auto& patchGhostParticles()
+        [[nodiscard]] auto& patchGhostParticles()
         {
             return const_cast<ParticleArray&>(
                 static_cast<IonPopulation const*>(this)->patchGhostParticles());
         }
 
 
-        auto& levelGhostParticles() const
+        [[nodiscard]] auto& levelGhostParticles() const
         {
             if (isUsable())
             {
@@ -128,7 +131,7 @@ namespace core
             }
         }
 
-        auto& levelGhostParticles()
+        [[nodiscard]] auto& levelGhostParticles()
         {
             return const_cast<ParticleArray&>(
                 static_cast<IonPopulation const*>(this)->levelGhostParticles());
@@ -137,7 +140,7 @@ namespace core
 
 
 
-        ParticleArray& levelGhostParticlesOld()
+        [[nodiscard]] ParticleArray& levelGhostParticlesOld()
         {
             if (isUsable())
             {
@@ -151,7 +154,7 @@ namespace core
 
 
 
-        ParticleArray& levelGhostParticlesNew()
+        [[nodiscard]] ParticleArray& levelGhostParticlesNew()
         {
             if (isUsable())
             {
@@ -165,7 +168,7 @@ namespace core
 
 
 
-        field_type const& density() const
+        [[nodiscard]] field_type const& density() const
         {
             if (isUsable())
             {
@@ -178,17 +181,17 @@ namespace core
         }
 
 
-        field_type& density()
+        [[nodiscard]] field_type& density()
         {
             return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
         }
 
 
 
-        VecField const& flux() const { return flux_; }
+        [[nodiscard]] VecField const& flux() const { return flux_; }
 
 
-        VecField& flux() { return flux_; }
+        [[nodiscard]] VecField& flux() { return flux_; }
 
 
 
@@ -208,7 +211,7 @@ namespace core
 
 
 
-        MomentProperties getFieldNamesAndQuantities() const
+        [[nodiscard]] MomentProperties getFieldNamesAndQuantities() const
         {
             return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
         }
@@ -224,7 +227,7 @@ namespace core
 
         using ParticleProperties = std::vector<ParticleProperty>;
 
-        ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
+        [[nodiscard]] ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
 
 
 
@@ -254,7 +257,10 @@ namespace core
 
 
 
-        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(flux_); }
+        [[nodiscard]] auto getCompileTimeResourcesUserList()
+        {
+            return std::forward_as_tuple(flux_);
+        }
 
 
         //-------------------------------------------------------------------------
@@ -263,7 +269,7 @@ namespace core
 
 
 
-        std::string to_str()
+        [[nodiscard]] std::string to_str()
         {
             std::stringstream ss;
             ss << "Ions Population\n";

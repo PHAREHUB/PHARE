@@ -2,7 +2,7 @@
 
 namespace PHARE::amr
 {
-double CoarsenWeighter::findX_(std::size_t nbrPoints) const
+[[nodiscard]] double CoarsenWeighter::findX_(std::size_t nbrPoints) const
 {
     double x = 0.;
 

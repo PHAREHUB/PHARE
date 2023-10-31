@@ -1,4 +1,3 @@
-
 #ifndef RESTART_RESTARTS_HPP
 #define RESTART_RESTARTS_HPP
 
@@ -33,8 +32,8 @@ struct NullOpRestartsManager : public IRestartsManager
 struct RestartsManagerResolver
 {
     template<typename Hierarchy, typename Model>
-    static std::unique_ptr<IRestartsManager> make_unique(Hierarchy& hier, Model& model,
-                                                         initializer::PHAREDict const& dict)
+    [[nodiscard]] static std::unique_ptr<IRestartsManager>
+    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
 #if PHARE_HAS_HIGHFIVE
         using ModelView_t = ModelView<Hierarchy, Model>;

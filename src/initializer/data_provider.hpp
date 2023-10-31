@@ -55,13 +55,13 @@ namespace initializer
     class PHAREDictHandler
     {
     public:
-        static PHAREDictHandler& INSTANCE();
+        [[nodiscard]] static PHAREDictHandler& INSTANCE();
 
         void init() { phareDict = std::make_unique<PHAREDict>(); }
 
         void stop() { phareDict.release(); }
 
-        auto& dict()
+        [[nodiscard]] auto& dict()
         {
             if (!phareDict)
                 init();

@@ -68,9 +68,9 @@ namespace core
 
 
         */
-    MeshIndex<1> make_index(std::uint32_t i);
-    MeshIndex<2> make_index(std::uint32_t i, std::uint32_t j);
-    MeshIndex<3> make_index(std::uint32_t i, std::uint32_t j, std::uint32_t k);
+    [[nodiscard]] MeshIndex<1> make_index(std::uint32_t i);
+    [[nodiscard]] MeshIndex<2> make_index(std::uint32_t i, std::uint32_t j);
+    [[nodiscard]] MeshIndex<3> make_index(std::uint32_t i, std::uint32_t j, std::uint32_t k);
 
 
 } // namespace core

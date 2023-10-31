@@ -1,4 +1,3 @@
-
 #include <type_traits>
 
 
@@ -153,7 +152,7 @@ TEST_F(theIons, areSettableUponConstruction)
 
 TEST_F(theIons, throwIfAccessingDensityWhileNotUsable)
 {
-    EXPECT_ANY_THROW(ions.density());
+    EXPECT_ANY_THROW(auto& n = ions.density());
 }
 
 

@@ -15,12 +15,12 @@ struct Span
 {
     using value_type = T;
 
-    auto& operator[](SIZE i) { return ptr[i]; }
-    auto& operator[](SIZE i) const { return ptr[i]; }
-    T const* const& data() const { return ptr; }
-    T const* const& begin() const { return ptr; }
-    T* end() const { return ptr + s; }
-    SIZE const& size() const { return s; }
+    [[nodiscard]] auto& operator[](SIZE i) { return ptr[i]; }
+    [[nodiscard]] auto& operator[](SIZE i) const { return ptr[i]; }
+    [[nodiscard]] T const* const& data() const { return ptr; }
+    [[nodiscard]] T const* const& begin() const { return ptr; }
+    [[nodiscard]] T* end() const { return ptr + s; }
+    [[nodiscard]] SIZE const& size() const { return s; }
 
     T const* ptr = nullptr;
     SIZE s       = 0;
@@ -77,12 +77,12 @@ struct SpanSet
     {
     }
 
-    Span<T, SIZE> operator[](SIZE i) const
+    [[nodiscard]] Span<T, SIZE> operator[](SIZE i) const
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
     }
 
-    T* data() const { return const_cast<T*>(vec.data()); }
+    [[nodiscard]] T* data() const { return const_cast<T*>(vec.data()); }
 
     struct iterator
     {
@@ -102,11 +102,11 @@ struct SpanSet
         SIZE curr_pos = 0, curr_ptr = 0;
     };
 
-    auto begin() { return iterator(this); }
-    auto cbegin() const { return iterator(this); }
+    [[nodiscard]] auto begin() { return iterator(this); }
+    [[nodiscard]] auto cbegin() const { return iterator(this); }
 
-    auto end() { return iterator(this); }
-    auto cend() const { return iterator(this); }
+    [[nodiscard]] auto end() { return iterator(this); }
+    [[nodiscard]] auto cend() const { return iterator(this); }
 
     SIZE size;
     std::vector<SIZE> sizes;

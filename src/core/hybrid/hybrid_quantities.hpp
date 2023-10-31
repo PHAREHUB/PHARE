@@ -15,12 +15,12 @@ public:
     enum class Scalar { Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, rho, Vx, Vy, Vz, P, count };
     enum class Vector { B, E, J, V };
 
-    static constexpr auto B() { return componentsQuantities(Vector::B); }
-    static constexpr auto E() { return componentsQuantities(Vector::E); }
-    static constexpr auto J() { return componentsQuantities(Vector::J); }
-    static constexpr auto V() { return componentsQuantities(Vector::V); }
+    [[nodiscard]] static constexpr auto B() { return componentsQuantities(Vector::B); }
+    [[nodiscard]] static constexpr auto E() { return componentsQuantities(Vector::E); }
+    [[nodiscard]] static constexpr auto J() { return componentsQuantities(Vector::J); }
+    [[nodiscard]] static constexpr auto V() { return componentsQuantities(Vector::V); }
 
-    static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
+    [[nodiscard]] static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
     {
         if (qty == Vector::B)
             return {{Scalar::Bx, Scalar::By, Scalar::Bz}};
@@ -37,13 +37,13 @@ public:
         throw std::runtime_error("Error - invalid Vector");
     }
 
-    static constexpr auto B_items()
+    [[nodiscard]] static constexpr auto B_items()
     {
         auto const& [Bx, By, Bz] = B();
         return std::make_tuple(std::make_pair("Bx", Bx), std::make_pair("By", By),
                                std::make_pair("Bz", Bz));
     }
-    static constexpr auto E_items()
+    [[nodiscard]] static constexpr auto E_items()
     {
         auto const& [Ex, Ey, Ez] = E();
         return std::make_tuple(std::make_pair("Ex", Ex), std::make_pair("Ey", Ey),

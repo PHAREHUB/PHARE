@@ -17,7 +17,6 @@
 
 
 #include "core/data/ions/ion_population/particle_pack.hpp"
-#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
@@ -35,7 +34,7 @@ namespace amr
 
 
     template<typename Particle>
-    inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
+    [[nodiscard]] inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
     {
         constexpr auto dim = Particle::dimension;
 

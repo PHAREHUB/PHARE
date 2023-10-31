@@ -1,4 +1,3 @@
-
 #include <array>
 #include <random>
 
@@ -24,8 +23,9 @@ namespace core
 
 
 
-    std::array<double, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
-                                         std::array<double, 3> const& vec)
+    [[nodiscard]] std::array<double, 3>
+    basisTransform(std::array<std::array<double, 3>, 3> const& basis,
+                   std::array<double, 3> const& vec)
     {
         std::array<double, 3> newVec;
 

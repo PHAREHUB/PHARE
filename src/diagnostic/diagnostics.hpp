@@ -1,4 +1,3 @@
-
 #ifndef DIAGNOSTIC_DIAGNOSTICS_HPP
 #define DIAGNOSTIC_DIAGNOSTICS_HPP
 
@@ -50,8 +49,8 @@ struct NullOpDiagnosticsManager : public IDiagnosticsManager
 struct DiagnosticsManagerResolver
 {
     template<typename Hierarchy, typename Model>
-    static std::unique_ptr<IDiagnosticsManager> make_unique(Hierarchy& hier, Model& model,
-                                                            initializer::PHAREDict const& dict)
+    [[nodiscard]] static std::unique_ptr<IDiagnosticsManager>
+    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
 #if PHARE_HAS_HIGHFIVE
         using ModelView_t = ModelView<Hierarchy, Model>;

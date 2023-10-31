@@ -23,16 +23,19 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return B.isUsable() and V.isUsable(); }
+        [[nodiscard]] bool isUsable() const { return B.isUsable() and V.isUsable(); }
 
 
 
-        bool isSettable() const { return B.isSettable() and V.isSettable(); }
+        [[nodiscard]] bool isSettable() const { return B.isSettable() and V.isSettable(); }
 
 
-        auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(B, V); }
+        [[nodiscard]] auto getCompileTimeResourcesUserList() const
+        {
+            return std::forward_as_tuple(B, V);
+        }
 
-        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(B, V); }
+        [[nodiscard]] auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(B, V); }
 
 
         //-------------------------------------------------------------------------

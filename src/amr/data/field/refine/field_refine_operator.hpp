@@ -53,13 +53,14 @@ public:
     /** This implementation have the top priority for refine operation
      *
      */
-    int getOperatorPriority() const override { return 0; }
+    [[nodiscard]] int getOperatorPriority() const override { return 0; }
 
     /**
      * @brief This operator needs to have at least 1 ghost cell to work properly
      *
      */
-    SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
+    [[nodiscard]] SAMRAI::hier::IntVector
+    getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
         return SAMRAI::hier::IntVector::getOne(dim);
     }

@@ -15,7 +15,8 @@ template<typename GridLayout>
  * @brief positionAsPoint returns a point holding the physical position of the macroparticle.
  * The function assumes the iCell of the particle is in AMR index space.
  */
-auto positionAsPoint(Particle<GridLayout::dimension> const& particle, GridLayout const& layout)
+[[nodiscard]] auto positionAsPoint(Particle<GridLayout::dimension> const& particle,
+                                   GridLayout const& layout)
 {
     Point<double, GridLayout::dimension> position;
     auto origin       = layout.origin();

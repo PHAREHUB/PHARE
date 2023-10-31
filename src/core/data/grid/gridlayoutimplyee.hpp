@@ -113,7 +113,7 @@ namespace core
         //                          PUBLIC INTERFACE
         // ------------------------------------------------------------------------
     public:
-        constexpr static std::array<QtyCentering, dim>
+        [[nodiscard]] constexpr static std::array<QtyCentering, dim>
         centering(HybridQuantity::Scalar hybridQuantity)
         {
             constexpr gridDataT gridData_{};
@@ -271,7 +271,7 @@ namespace core
 
 
 
-        constexpr static std::array<std::array<QtyCentering, dim>, 3>
+        [[nodiscard]] constexpr static std::array<std::array<QtyCentering, dim>, 3>
         centering(HybridQuantity::Vector hybridQuantity)
         {
             switch (hybridQuantity)
@@ -304,7 +304,7 @@ namespace core
 
 
 
-        auto static constexpr dualToPrimal()
+        [[nodiscard]] auto static constexpr dualToPrimal()
         {
             /*
              * the following is only valid when dual and primal do not have the same number of
@@ -323,7 +323,7 @@ namespace core
 
 
 
-        auto static constexpr primalToDual()
+        [[nodiscard]] auto static constexpr primalToDual()
         {
             return 1;
             /*
@@ -342,7 +342,7 @@ namespace core
 
 
 
-        auto static constexpr momentsToEx()
+        [[nodiscard]] auto static constexpr momentsToEx()
         {
             // Ex is dual primal primal
             // moments are primal primal primal
@@ -375,7 +375,7 @@ namespace core
 
 
 
-        auto static constexpr momentsToEy()
+        [[nodiscard]] auto static constexpr momentsToEy()
         {
             // Ey is primal dual primal
             // moments are primal primal primal
@@ -408,7 +408,7 @@ namespace core
 
 
 
-        auto static constexpr momentsToEz()
+        [[nodiscard]] auto static constexpr momentsToEz()
         {
             // Ez is primal  primal dual
             // moments are primal primal primal
@@ -441,7 +441,7 @@ namespace core
 
 
 
-        auto static constexpr ExToMoments()
+        [[nodiscard]] auto static constexpr ExToMoments()
         {
             // Ex is dual primal primal
             // moments are primal primal primal
@@ -472,7 +472,7 @@ namespace core
 
 
 
-        auto static constexpr EyToMoments()
+        [[nodiscard]] auto static constexpr EyToMoments()
         {
             // Ey is       primal dual   primal
             // moments are primal primal primal
@@ -502,7 +502,7 @@ namespace core
 
 
 
-        auto static constexpr EzToMoments()
+        [[nodiscard]] auto static constexpr EzToMoments()
         {
             // Ez is       primal primal dual
             // moments are primal primal primal
@@ -529,7 +529,7 @@ namespace core
         }
 
 
-        auto static constexpr JxToMoments()
+        [[nodiscard]] auto static constexpr JxToMoments()
         {
             // Jx is dual primal primal
             // moments are primal primal primal
@@ -559,7 +559,7 @@ namespace core
         }
 
 
-        auto static constexpr JyToMoments()
+        [[nodiscard]] auto static constexpr JyToMoments()
         {
             // Jy is primal dual primal
             // moments are primal primal primal
@@ -589,7 +589,7 @@ namespace core
 
 
 
-        auto static constexpr JzToMoments()
+        [[nodiscard]] auto static constexpr JzToMoments()
         {
             // Jy is primal primal dual
             // moments are primal primal primal
@@ -618,7 +618,7 @@ namespace core
 
 
 
-        auto static constexpr ByToEx()
+        [[nodiscard]] auto static constexpr ByToEx()
         { // By is dual primal dual
             // Ex is dual primal primal
             // operation is thus dpD to dpP
@@ -646,7 +646,7 @@ namespace core
 
 
 
-        auto static constexpr BzToEx()
+        [[nodiscard]] auto static constexpr BzToEx()
         {
             // Bz is dual dual primal
             // Ex is dual primal primal
@@ -677,7 +677,7 @@ namespace core
 
 
 
-        auto static constexpr ByToEz()
+        [[nodiscard]] auto static constexpr ByToEz()
         {
             // By is dual primal dual
             // Ez is primal primal dual
@@ -710,7 +710,7 @@ namespace core
 
 
 
-        auto static constexpr BxToEz()
+        [[nodiscard]] auto static constexpr BxToEz()
         {
             // Bx is primal dual dual
             // Ez is primal primal dual
@@ -741,7 +741,7 @@ namespace core
 
 
 
-        auto static constexpr BxToEy()
+        [[nodiscard]] auto static constexpr BxToEy()
         {
             // Bx is primal dual dual
             // Ey is primal dual primal
@@ -771,7 +771,7 @@ namespace core
 
 
 
-        auto static constexpr BzToEy()
+        [[nodiscard]] auto static constexpr BzToEy()
         {
             // Bz is dual dual primal
             // Ey is primal dual primal
@@ -801,7 +801,7 @@ namespace core
 
 
 
-        auto static constexpr JxToEx()
+        [[nodiscard]] auto static constexpr JxToEx()
         {
             // Jx is dual primal primal
             // Ex is dual primal primal
@@ -827,7 +827,7 @@ namespace core
 
 
 
-        auto static constexpr JyToEy()
+        [[nodiscard]] auto static constexpr JyToEy()
         {
             // Jy is primal dual primal
             // Ey is primal dual primal
@@ -853,7 +853,7 @@ namespace core
 
 
 
-        auto static constexpr JzToEz()
+        [[nodiscard]] auto static constexpr JzToEz()
         {
             // Jz is primal primal dual
             // Ez is primal primal dual

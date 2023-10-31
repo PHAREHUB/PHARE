@@ -26,7 +26,7 @@ struct MessengerDescriptor
 
 
 
-std::vector<MessengerDescriptor> makeDescriptors(std::vector<std::string> modelNames);
+[[nodiscard]] std::vector<MessengerDescriptor> makeDescriptors(std::vector<std::string> modelNames);
 
 
 
@@ -54,8 +54,8 @@ public:
 
 
 
-    std::optional<std::string> name(IPhysicalModel const& coarseModel,
-                                    IPhysicalModel const& fineModel) const
+    [[nodiscard]] std::optional<std::string> name(IPhysicalModel const& coarseModel,
+                                                  IPhysicalModel const& fineModel) const
     {
         auto finder = [&coarseModel, &fineModel](MessengerDescriptor const& desc) {
             return desc.coarseModel == coarseModel.name() && desc.fineModel == fineModel.name();
@@ -76,10 +76,9 @@ public:
 
 
 
-    std::unique_ptr<IMessenger<IPhysicalModel>> create(std::string messengerName,
-                                                       IPhysicalModel const& coarseModel,
-                                                       IPhysicalModel const& fineModel,
-                                                       int const firstLevel) const
+    [[nodiscard]] std::unique_ptr<IMessenger<IPhysicalModel>>
+    create(std::string messengerName, IPhysicalModel const& coarseModel,
+           IPhysicalModel const& fineModel, int const firstLevel) const
     {
         if (messengerName == HybridHybridMessengerStrategy_t::stratName)
         {

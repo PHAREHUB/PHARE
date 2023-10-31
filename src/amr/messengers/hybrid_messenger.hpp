@@ -201,7 +201,7 @@ namespace amr
          * @brief IMessenger::fineModelName
          * @return
          */
-        std::string fineModelName() const override { return strat_->fineModelName(); }
+        [[nodiscard]] std::string fineModelName() const override { return strat_->fineModelName(); }
 
 
 
@@ -210,7 +210,10 @@ namespace amr
          * @brief see IMessenger::coarseModelName
          * @return
          */
-        std::string coarseModelName() const override { return strat_->coarseModelName(); }
+        [[nodiscard]] std::string coarseModelName() const override
+        {
+            return strat_->coarseModelName();
+        }
 
 
 
@@ -218,7 +221,7 @@ namespace amr
         /**
          * @brief see IMessenger::emptyInfoFromCoarser
          */
-        std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
+        [[nodiscard]] std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
         {
             return strat_->emptyInfoFromCoarser();
         }
@@ -228,7 +231,7 @@ namespace amr
         /**
          * @brief see IMessenger::emptyInfoFromFiner
          */
-        std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
+        [[nodiscard]] std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
         {
             return strat_->emptyInfoFromFiner();
         }
@@ -239,7 +242,7 @@ namespace amr
          * @brief returns the name of the concrete IMessenger, which in the case of a
          * HybridMessenger is just the name of its strategy.
          */
-        std::string name() override
+        [[nodiscard]] std::string name() override
         {
             if (strat_ != nullptr)
             {

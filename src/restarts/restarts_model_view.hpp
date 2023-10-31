@@ -41,19 +41,19 @@ public:
         return hierarchy_.writeRestartFile(path);
     }
 
-    auto static restartFilePathForTime(std::string path, double timestamp)
+    [[nodiscard]] auto static restartFilePathForTime(std::string path, double timestamp)
     {
         return Hierarchy::restartFilePathForTime(path, timestamp);
     }
 
 
-    auto patch_data_ids() const { return model_.patch_data_ids(); }
+    [[nodiscard]] auto patch_data_ids() const { return model_.patch_data_ids(); }
 
 
-    ModelView(ModelView const&) = delete;
-    ModelView(ModelView&&)      = delete;
+    ModelView(ModelView const&)            = delete;
+    ModelView(ModelView&&)                 = delete;
     ModelView& operator=(ModelView const&) = delete;
-    ModelView& operator=(ModelView&&) = delete;
+    ModelView& operator=(ModelView&&)      = delete;
 
 protected:
     Model const& model_;

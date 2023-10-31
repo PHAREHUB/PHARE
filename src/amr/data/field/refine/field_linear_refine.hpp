@@ -60,7 +60,7 @@ namespace amr
 
 
 
-        core::Point<int, dimension>
+        [[nodiscard]] core::Point<int, dimension>
         coarseStartIndex(core::Point<int, dimension> const& fineIndex) const
         {
             auto coarseIndex{fineIndex};
@@ -90,7 +90,8 @@ namespace amr
 
 
 
-        typename LinearWeighter::FineIndexWeights const& weights(core::Direction dir) const
+        [[nodiscard]] typename LinearWeighter::FineIndexWeights const&
+        weights(core::Direction dir) const
         {
             return weighters_[static_cast<std::size_t>(dir)].weights();
         }
@@ -100,7 +101,7 @@ namespace amr
 
         /** @brief Compute the index of weigths for a given fineIndex
          */
-        core::Point<int, dimension>
+        [[nodiscard]] core::Point<int, dimension>
         computeWeightIndex(core::Point<int, dimension> const& fineIndex) const
         {
             auto indexesWeights{std::abs(fineIndex)};

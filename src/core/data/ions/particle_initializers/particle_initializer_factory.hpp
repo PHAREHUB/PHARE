@@ -21,7 +21,8 @@ namespace core
 
 
     public:
-        static std::unique_ptr<ParticleInitializerT> create(initializer::PHAREDict const& dict)
+        [[nodiscard]] static std::unique_ptr<ParticleInitializerT>
+        create(initializer::PHAREDict const& dict)
         {
             using FunctionType = initializer::InitFunction<dimension>;
 

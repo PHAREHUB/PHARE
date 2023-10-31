@@ -1,4 +1,3 @@
-
 #ifndef PHARE_TAGGER_FACTORY_HPP
 #define PHARE_TAGGER_FACTORY_HPP
 
@@ -17,7 +16,8 @@ class TaggerFactory
 {
 public:
     TaggerFactory() = delete;
-    static std::unique_ptr<Tagger> make(std::string modelName, std::string methodName);
+    [[nodiscard]] static std::unique_ptr<Tagger> make(std::string modelName,
+                                                      std::string methodName);
 };
 
 template<typename PHARE_T>
