@@ -121,7 +121,6 @@ def dup(dic):
 
 @ddt
 class DiagnosticsTest(unittest.TestCase):
-
     _test_cases = (
         dup({"smallest_patch_size": 10, "largest_patch_size": 20}),
         dup({"smallest_patch_size": 20, "largest_patch_size": 20}),

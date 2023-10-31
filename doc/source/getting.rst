@@ -7,7 +7,7 @@ Getting PHARE
 Lastest commit
 --------------
 
-.. code-block::bash
+.. code-block:: bash
 
        git clone --recursive https://github.com/PHAREHUB/PHARE
 

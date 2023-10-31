@@ -121,7 +121,7 @@ class Simulator:
         self._check_init()
         perf = []
         end_time = self.cpp_sim.endTime()
-        t = self.cpp_sim.startTime()
+        t = self.cpp_sim.currentTime()
 
         while t < end_time:
             tick  = timem.time()

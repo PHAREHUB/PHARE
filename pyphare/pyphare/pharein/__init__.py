@@ -288,8 +288,11 @@ def populateDict():
 
         add_string(restarts_path + "filePath", restart_file_path)
 
+        if "elapsed_timestamps" in restart_options:
+            pp.add_array_as_vector(restarts_path + "elapsed_timestamps", restart_options["elapsed_timestamps"])
 
-        pp.add_array_as_vector(restarts_path + "write_timestamps", restart_options["timestamps"])
+        if "timestamps" in restart_options:
+            pp.add_array_as_vector(restarts_path + "write_timestamps", restart_options["timestamps"])
 
         add_string(restarts_path + "serialized_simulation", serialize_sim(simulation))
     #### restarts added

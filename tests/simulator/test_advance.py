@@ -53,7 +53,6 @@ class AdvanceTestBase(SimulatorTest):
         ndim=1,
         block_merging_particles=False,
     ):
-
         diag_outputs = f"phare_outputs/advance/{diag_outputs}"
         from pyphare.pharein import global_vars
 
@@ -252,7 +251,6 @@ class AdvanceTestBase(SimulatorTest):
                 self.assertEqual(pd1.quantity, pd2.quantity)
 
                 if pd1.quantity == "field":
-
                     # we need to transform the AMR overlap box, which is thus
                     # (because AMR) common to both pd1 and pd2 into local index
                     # boxes that will allow to slice the data
@@ -359,7 +357,6 @@ class AdvanceTestBase(SimulatorTest):
             overlaps = hierarchy_overlaps(datahier, coarsest_time)
 
             for ilvl, lvl in datahier.patch_levels.items():
-
                 print("testing level {}".format(ilvl))
                 for overlap in overlaps[ilvl]:
                     pd1, pd2 = overlap["pdatas"]
@@ -369,7 +366,6 @@ class AdvanceTestBase(SimulatorTest):
                     self.assertEqual(pd1.quantity, pd2.quantity)
 
                     if "particles" in pd1.quantity:
-
                         # the following uses 'offset', we need to remember that offset
                         # is the quantity by which a patch has been moved to detect
                         # overlap with the other one.
@@ -554,7 +550,6 @@ class AdvanceTestBase(SimulatorTest):
     def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(
         self, L0_datahier, L0L1_datahier, quantities=None
     ):
-
         if quantities is None:
             quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
@@ -606,11 +601,9 @@ class AdvanceTestBase(SimulatorTest):
             )
             for qty in quantities:
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
-
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
 
                     for fine_level_ghost_box_info in fine_level_ghost_box_data["boxes"]:
-
                         # trim the border level ghost nodes from the primal fields to ignore them in comparison checks
                         fine_level_ghost_boxes = fine_level_ghost_box_info - boxm.grow(
                             fine_subcycle_pd.box, fine_subcycle_pd.primal_directions()
@@ -627,14 +620,12 @@ class AdvanceTestBase(SimulatorTest):
                             )
 
                         for fine_level_ghost_box in fine_level_ghost_boxes:
-
                             upper_dims = (
                                 fine_level_ghost_box.lower > fine_subcycle_pd.box.upper
                             )
                             for refinedInterpolatedField in interpolated_fields[qty][
                                 fine_subcycle_time
                             ]:
-
                                 lvlOverlap = (
                                     refinedInterpolatedField.box * fine_level_ghost_box
                                 )

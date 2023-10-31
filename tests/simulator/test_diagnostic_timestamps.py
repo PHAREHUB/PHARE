@@ -12,33 +12,31 @@ import pyphare.pharein as ph
 from ddt import data, ddt
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
-from pyphare.pharesee.hierarchy import (h5_filename_from, h5_time_grp_key,
-                                        hierarchy_from)
+from pyphare.pharesee.hierarchy import h5_filename_from, h5_time_grp_key, hierarchy_from
 from pyphare.simulator.simulator import Simulator
 
 
 def setup_model(ppc):
-
     def density(x):
-        return 1.
+        return 1.0
 
     def by(x):
-        return 0.
+        return 0.0
 
     def bz(x):
-        return 0.
+        return 0.0
 
     def bx(x):
-        return 1.
+        return 1.0
 
     def vx(x):
-        return 0.
+        return 0.0
 
     def vy(x):
-        return 0.
+        return 0.0
 
     def vz(x):
-        return 0.
+        return 0.0
 
     def vthx(x):
         return 1.00
@@ -49,15 +47,20 @@ def setup_model(ppc):
     def vthz(x):
         return 1.00
 
-
     vvv = {
-        "vbulkx": vx, "vbulky": vy, "vbulkz": vz,
-        "vthx": vthx, "vthy": vthy, "vthz": vthz
+        "vbulkx": vx,
+        "vbulky": vy,
+        "vbulkz": vz,
+        "vthx": vthx,
+        "vthy": vthy,
+        "vthz": vthz,
     }
 
     model = ph.MaxwellianFluidModel(
-        bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "nbr_part_per_cell":ppc}
+        bx=bx,
+        by=by,
+        bz=bz,
+        protons={"charge": 1, "density": density, **vvv, "nbr_part_per_cell": ppc},
     )
     ElectronModel(closure="isothermal", Te=0.12)
     return model
@@ -65,40 +68,36 @@ def setup_model(ppc):
 
 out = "phare_outputs/diagnostic_ts_test/"
 simArgs = {
-  "smallest_patch_size": 10, "largest_patch_size": 10,
-  "time_step_nbr":1e5, # is sufficient based on https://github.com/PHARCHIVE/test_snippets/blob/main/numeric/double/increment_error.cpp
-  "time_step": .001,
-  "boundary_types":"periodic",
-  "cells":10,
-  "dl":0.2,
-  "diag_options": {"format": "phareh5", "options": {"dir": out, "mode":"overwrite"}},
-  "strict": True,
+    "smallest_patch_size": 10,
+    "largest_patch_size": 10,
+    "time_step_nbr": 1e5,  # is sufficient based on https://github.com/PHARCHIVE/test_snippets/blob/main/numeric/double/increment_error.cpp
+    "time_step": 0.001,
+    "boundary_types": "periodic",
+    "cells": 10,
+    "dl": 0.2,
+    "diag_options": {"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}},
+    "strict": True,
 }
 
 
 @ddt
 class DiagnosticsTest(unittest.TestCase):
-
     def __init__(self, *args, **kwargs):
         super(DiagnosticsTest, self).__init__(*args, **kwargs)
         self.simulator = None
 
-
-
     def setUp(self):
         from pyphare.simulator.simulator import startMPI
-        startMPI()
 
+        startMPI()
 
     def tearDown(self):
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
 
-
     def ddt_test_id(self):
         return self._testMethodName.split("_")[-1]
-
 
     def test_dump_diags_timestamps(self):
         print("test_dump_diags dim/interp:{}/{}".format(1, 1))
@@ -107,7 +106,9 @@ class DiagnosticsTest(unittest.TestCase):
         sim = simulation
 
         dump_every = 1
-        timestamps = np.arange(0, sim.final_time + sim.time_step, dump_every*sim.time_step)
+        timestamps = np.arange(
+            0, sim.final_time + sim.time_step, dump_every * sim.time_step
+        )
         setup_model(10)
 
         for quantity in ["B"]:
@@ -132,23 +133,21 @@ class DiagnosticsTest(unittest.TestCase):
             for timestamp in timestamps:
                 self.assertIn(make_time(timestamp), h5_file[h5_time_grp_key])
 
-
-
     @data(
-       ({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
+        ({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
     )
     def test_hierarchy_timestamp_cadence(self, refinement_boxes):
         dim = refinement_boxes["L0"]["B0"].ndim
 
-        time_step     = .001
+        time_step = 0.001
         # time_step_nbr chosen to force diagnostics dumping double imprecision cadence calculations accuracy testing
         time_step_nbr = 101
-        final_time    = time_step * time_step_nbr
+        final_time = time_step * time_step_nbr
 
-        for trailing in [0, 1]: # 1 = skip init dumps
+        for trailing in [0, 1]:  # 1 = skip init dumps
             for i in [2, 3]:
                 simInput = simArgs.copy()
-                diag_outputs=f"phare_outputs_hierarchy_timestamp_cadence_{dim}_{self.ddt_test_id()}_{i}"
+                diag_outputs = f"phare_outputs_hierarchy_timestamp_cadence_{dim}_{self.ddt_test_id()}_{i}"
                 simInput["diag_options"]["options"]["dir"] = diag_outputs
                 simInput["time_step_nbr"] = time_step_nbr
 
@@ -156,7 +155,7 @@ class DiagnosticsTest(unittest.TestCase):
                 simulation = ph.Simulation(**simInput)
                 setup_model(10)
 
-                timestamps = np.arange(0, final_time, time_step*i)[trailing:]
+                timestamps = np.arange(0, final_time, time_step * i)[trailing:]
                 for quantity in ["B"]:
                     ElectromagDiagnostics(
                         quantity=quantity,
@@ -177,8 +176,9 @@ class DiagnosticsTest(unittest.TestCase):
                     self.assertEqual(len(time_hier_keys), len(timestamps))
 
                     for i, timestamp in enumerate(time_hier_keys):
-                        self.assertEqual(hier.format_timestamp(timestamps[i]), timestamp)
-
+                        self.assertEqual(
+                            hier.format_timestamp(timestamps[i]), timestamp
+                        )
 
 
 if __name__ == "__main__":

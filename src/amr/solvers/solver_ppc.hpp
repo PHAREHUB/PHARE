@@ -442,7 +442,23 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
         }
     }
 
-    // TODO misses AMPERE here
+    {
+        PHARE_LOG_SCOPE("SolverPPC::corrector_.ampere");
+
+        auto& B = hybridState.electromag.B;
+        auto& J = hybridState.J;
+
+        for (auto& patch : level)
+        {
+            auto _      = resourcesManager->setOnPatch(*patch, B, J);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto __     = core::SetLayout(&layout, ampere_);
+            ampere_(B, J);
+
+            resourcesManager->setTime(J, *patch, newTime);
+        }
+        fromCoarser.fillCurrentGhosts(J, levelNumber, newTime);
+    }
 
     {
         PHARE_LOG_SCOPE("SolverPPC::corrector_.ohm");

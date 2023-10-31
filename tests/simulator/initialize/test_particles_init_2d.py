@@ -17,17 +17,17 @@ ndim = 2
 interp_orders = [1, 2, 3]
 ppc = 10
 
+
 def per_interp(dic):
     return [(interp, dic) for interp in interp_orders]
 
+
 @ddt
 class InitializationTest(InitializationTest):
-
     @data(*interp_orders)
     def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")
         self._test_nbr_particles_per_cell_is_as_provided(ndim, interp_order)
-
 
     @data(
         *per_interp(({"L0": {"B0": Box2D(10, 14)}})),
@@ -46,12 +46,14 @@ class InitializationTest(InitializationTest):
                 refinement_boxes,
                 "particles",
                 ndim=ndim,
-                cells=30, nbr_part_per_cell=ppc,
+                cells=30,
+                nbr_part_per_cell=ppc,
                 diag_outputs=f"phare_outputs/test_levelghost/{ndim}/{interp_order}/{self.ddt_test_id()}",
             )
         )
-        print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
-
+        print(
+            f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds"
+        )
 
     @data(
         *per_interp(({"L0": {"B0": Box2D(10, 14)}})),
@@ -67,27 +69,39 @@ class InitializationTest(InitializationTest):
         self._test_domainparticles_have_correct_split_from_coarser_particle(
             ndim, interp_order, refinement_boxes, nbr_part_per_cell=ppc
         )
-        print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
+        print(
+            f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds"
+        )
 
-
-
-    @data({"cells": 40, "smallest_patch_size": 20, "largest_patch_size": 20, "nbr_part_per_cell" : ppc})
+    @data(
+        {
+            "cells": 40,
+            "smallest_patch_size": 20,
+            "largest_patch_size": 20,
+            "nbr_part_per_cell": ppc,
+        }
+    )
     def test_no_patch_ghost_on_refined_level_case(self, simInput):
         print(f"\n{self._testMethodName}_{ndim}d")
         now = self.datetime_now()
         self._test_patch_ghost_on_refined_level_case(ndim, False, **simInput)
-        print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
+        print(
+            f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds"
+        )
 
-    @data({"cells": 40, "interp_order": 1, "nbr_part_per_cell" : ppc})
+    @data({"cells": 40, "interp_order": 1, "nbr_part_per_cell": ppc})
     def test_has_patch_ghost_on_refined_level_case(self, simInput):
         print(f"\n{self._testMethodName}_{ndim}d")
         from pyphare.pharein.simulation import check_patch_size
+
         _, smallest_patch_size = check_patch_size(ndim, **simInput)
         simInput["smallest_patch_size"] = smallest_patch_size
         simInput["largest_patch_size"] = smallest_patch_size
         now = self.datetime_now()
         self._test_patch_ghost_on_refined_level_case(ndim, True, **simInput)
-        print(f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds")
+        print(
+            f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds"
+        )
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ struct RestartsProperties
 {
     using FileAttributes = cppdict::Dict<std::string>;
 
-    std::vector<double> writeTimestamps;
+    std::vector<double> writeTimestamps, elapsedTimestamps;
 
     FileAttributes fileAttributes{};
 };
