@@ -9,6 +9,8 @@
 #include "core/utilities/point/point.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 namespace PHARE::core
 {

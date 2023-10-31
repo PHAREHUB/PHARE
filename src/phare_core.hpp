@@ -1,4 +1,3 @@
-
 #ifndef PHARE_CORE_INCLUDE_HPP
 #define PHARE_CORE_INCLUDE_HPP
 
@@ -34,12 +33,13 @@ struct PHARE_Types
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
 
-    using Array_t      = PHARE::core::NdArrayVector<dimension>;
-    using VecField_t   = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
-    using Field_t      = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
-    using Electromag_t = PHARE::core::Electromag<VecField_t>;
-    using YeeLayout_t  = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
-    using GridLayout_t = PHARE::core::GridLayout<YeeLayout_t>;
+    using Array_t          = PHARE::core::NdArrayVector<dimension>;
+    using SymTensorField_t = PHARE::core::SymTensorField<Array_t, PHARE::core::HybridQuantity>;
+    using VecField_t       = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
+    using Field_t          = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
+    using Electromag_t     = PHARE::core::Electromag<VecField_t>;
+    using YeeLayout_t      = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
+    using GridLayout_t     = PHARE::core::GridLayout<YeeLayout_t>;
 
     using Particle_t      = PHARE::core::Particle<dimension>;
     using ParticleAoS_t   = PHARE::core::ParticleArray<dimension>;
@@ -49,9 +49,10 @@ struct PHARE_Types
 
     using MaxwellianParticleInitializer_t
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
-    using IonPopulation_t = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, GridLayout_t>;
-    using Ions_t          = PHARE::core::Ions<IonPopulation_t, GridLayout_t>;
-    using Electrons_t     = PHARE::core::Electrons<Ions_t>;
+    using IonPopulation_t
+        = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, SymTensorField_t, GridLayout_t>;
+    using Ions_t      = PHARE::core::Ions<IonPopulation_t, GridLayout_t>;
+    using Electrons_t = PHARE::core::Electrons<Ions_t>;
 
     using ParticleInitializerFactory
         = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;

@@ -7,6 +7,8 @@
 #include <sstream>
 #include <string>
 #include <cmath>
+#include <vector>
+#include <array>
 
 
 #include "core/def.hpp"
@@ -24,9 +26,9 @@ namespace core
     class Ions
     {
     public:
-        using field_type    = typename IonPopulation::field_type;
-        using vecfield_type = typename IonPopulation::vecfield_type;
-        // using tensorfield_type    = typename IonPopulation::tensorfield_type;
+        using field_type          = typename IonPopulation::field_type;
+        using vecfield_type       = typename IonPopulation::vecfield_type;
+        using tensorfield_type    = typename IonPopulation::tensorfield_type;
         using particle_array_type = typename IonPopulation::particle_array_type;
         using ParticleInitializerFactoryT
             = ParticleInitializerFactory<particle_array_type, GridLayout>;
@@ -38,6 +40,7 @@ namespace core
 
         explicit Ions(PHARE::initializer::PHAREDict const& dict)
             : bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
+            , momentumTensor_{"momentumTensor", HybridQuantity::Tensor::M}
             , populations_{}
         {
             auto nbrPop = dict["nbrPopulations"].template to<int>();
@@ -88,6 +91,9 @@ namespace core
 
         NO_DISCARD std::string densityName() const { return "rho"; }
 
+        tensorfield_type const& momentumTensor() const { return momentumTensor_; }
+
+        tensorfield_type& momentumTensor() { return momentumTensor_; }
 
         void computeDensity()
         {
@@ -137,21 +143,37 @@ namespace core
         }
 
 
-        // TODO 3347 compute ion bulk velocity
+        void computeFullMomentumTensor()
+        {
+            momentumTensor_.zero();
+            auto& mom = momentumTensor_;
+
+            for (auto& pop : populations_)
+            {
+                auto& p_mom = pop.momentumTensor();
+                for (auto &p_mij = p_mom.begin(), mij = mom.begin(); p_mij != p_mom.end();
+                     ++p_mij, ++mij)
+                {
+                    std::transform(std::begin(mij), std::end(mij), std::begin(p_mij),
+                                   std::begin(mij), std::plus<typename field_type::type>{});
+                }
+            }
+        }
+
 
         NO_DISCARD auto begin() { return std::begin(populations_); }
         NO_DISCARD auto end() { return std::end(populations_); }
-
         NO_DISCARD auto begin() const { return std::begin(populations_); }
         NO_DISCARD auto end() const { return std::end(populations_); }
 
 
         NO_DISCARD bool isUsable() const
         {
-            bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
+            bool usable
+                = rho_ != nullptr and bulkVelocity_.isUsable() and momentumTensor_.isUsable();
             for (auto const& pop : populations_)
             {
-                usable = usable && pop.isUsable();
+                usable = usable and pop.isUsable();
             }
             return usable;
         }
@@ -160,10 +182,11 @@ namespace core
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable = rho_ == nullptr && bulkVelocity_.isSettable();
+            bool settable
+                = rho_ == nullptr and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
             for (auto const& pop : populations_)
             {
-                settable = settable && pop.isSettable();
+                settable = settable and pop.isSettable();
             }
             return settable;
         }
@@ -181,7 +204,7 @@ namespace core
             typename HybridQuantity::Scalar qty;
         };
 
-        using MomentProperties = std::vector<MomentsProperty>;
+        using MomentProperties = std::array<MomentsProperty, 1>;
 
         NO_DISCARD MomentProperties getFieldNamesAndQuantities() const
         {
@@ -211,7 +234,7 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesUserList()
         {
-            return std::forward_as_tuple(bulkVelocity_);
+            return std::forward_as_tuple(bulkVelocity_, momentumTensor_);
         }
 
 
@@ -236,8 +259,8 @@ namespace core
     private:
         field_type* rho_{nullptr};
         vecfield_type bulkVelocity_;
-        std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
-                                                 // although only 1 Ions should exist.
+        tensorfield_type momentumTensor_;
+        std::vector<IonPopulation> populations_;
     };
 } // namespace core
 } // namespace PHARE

@@ -68,6 +68,20 @@ private:
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
+    auto& h5Writer = this->h5Writer_;
+    auto& ions     = h5Writer.modelView().getIons();
+    // compute the momentum tensor for each population that requires it
+    // compute for all ions but that requires the computation of all pop
+    std::string tree{"/ions/"};
+    if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
+        for (auto& pop : ions)
+        {
+            std::string tree{"/ions/pop/" + pop.name() + "/"};
+            auto& pop_momentum_tensor = pop.momentumTensor();
+            // use some interpolator to calculate the momentum tensor
+            // from the domain particles and ghost particles
+        }
+    ions.computeFulMomentumTensor();
 }
 
 

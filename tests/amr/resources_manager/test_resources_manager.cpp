@@ -1,12 +1,12 @@
-
 #include "test_resources_manager.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/models/hybrid_state.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 
 
 #include <string>
@@ -17,7 +17,6 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
@@ -30,11 +29,12 @@ static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using VecField1D                      = VecField<NdArrayVector<1>, HybridQuantity>;
-using IonPopulation1D                 = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
-using Ions1D                          = Ions<IonPopulation1D, GridYee1D>;
-using Electromag1D                    = Electromag<VecField1D>;
-using Electrons1D                     = Electrons<Ions1D>;
+using VecField1D       = VecField<NdArrayVector<1>, HybridQuantity>;
+using SymTensorField1D = SymTensorField<NdArrayVector<1>, HybridQuantity>;
+using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D, GridYee1D>;
+using Ions1D           = Ions<IonPopulation1D, GridYee1D>;
+using Electromag1D     = Electromag<VecField1D>;
+using Electrons1D      = Electrons<Ions1D>;
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
 using HybridState1D                   = HybridState<Electromag1D, Ions1D, Electrons1D>;
 

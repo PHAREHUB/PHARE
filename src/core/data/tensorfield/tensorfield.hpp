@@ -7,6 +7,7 @@
 #include <vector>
 #include <unordered_map>
 
+#include "core/def.hpp"
 #include "core/data/field/field.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -36,8 +37,9 @@ public:
 
     using value_type                       = typename NdArrayImpl::type;
     static constexpr std::size_t dimension = NdArrayImpl::dimension;
+    using tensor_t                         = typename PhysicalQuantity::template TensorType<rank>;
 
-    TensorField(std::string const& name, typename PhysicalQuantity::Vector physQty)
+    TensorField(std::string const& name, tensor_t physQty)
         : name_{name}
         , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
     {
@@ -57,7 +59,7 @@ public:
     using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
 
-    [[nodiscard]] resources_properties getFieldNamesAndQuantities() const
+    NO_DISCARD resources_properties getFieldNamesAndQuantities() const
     {
         return makeResProp_(std::make_index_sequence<dimFromRank()>{});
     }
@@ -68,21 +70,23 @@ public:
         if (auto it = nameToIndex_.find(bufferName); it != std::end(nameToIndex_))
             components_[it->second] = field;
         else
+        {
             throw std::runtime_error(
                 "TensorField Error - invalid component name, cannot set buffer");
+        }
     }
 
 
 
 
     //! return true if the TensorField can be used to access component data
-    [[nodiscard]] bool isUsable() const
+    NO_DISCARD bool isUsable() const
     {
         return std::all_of(std::begin(components_), std::end(components_),
                            [](auto const& c) { return c != nullptr; });
     }
 
-    [[nodiscard]] bool isSettable() const
+    NO_DISCARD bool isSettable() const
     {
         return std::all_of(std::begin(components_), std::end(components_),
                            [](auto const& c) { return c == nullptr; });
@@ -108,11 +112,11 @@ public:
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    [[nodiscard]] std::string const& name() const { return name_; }
+    NO_DISCARD std::string const& name() const { return name_; }
 
 
 
-    [[nodiscard]] field_type& getComponent(Component component)
+    NO_DISCARD field_type& getComponent(Component component)
     {
         if (isUsable())
         {
@@ -136,7 +140,7 @@ public:
 
 
 
-    [[nodiscard]] field_type const& getComponent(Component component) const
+    NO_DISCARD field_type const& getComponent(Component component) const
     {
         if (isUsable())
         {
@@ -159,7 +163,7 @@ public:
 
 
 
-    [[nodiscard]] std::string getComponentName(Component component) const
+    NO_DISCARD std::string getComponentName(Component component) const
     {
         switch (component)
         {
@@ -177,35 +181,35 @@ public:
     }
 
     template<std::size_t... Index>
-    [[nodiscard]] auto components(std::index_sequence<Index...>) const
+    NO_DISCARD auto components(std::index_sequence<Index...>) const
     {
         return std::forward_as_tuple((*this)[Index]...); //(*this)[0], (*this)[1], ...);
     }
 
     template<std::size_t... Index>
-    [[nodiscard]] auto components() const
+    NO_DISCARD auto components() const
     {
         return components(std::make_index_sequence<dimFromRank()>{});
     }
     template<std::size_t... Index>
-    [[nodiscard]] auto components(std::index_sequence<sizeof...(Index)>)
+    NO_DISCARD auto components(std::index_sequence<sizeof...(Index)>)
     {
         return std::forward_as_tuple((*this)[Index]...); //(*this)[0], (*this)[1], ...);
     }
 
     template<std::size_t... Index>
-    [[nodiscard]] auto components()
+    NO_DISCARD auto components()
     {
         return components(std::make_index_sequence<dimFromRank()>{});
     }
-    [[nodiscard]] auto& operator()(Component component) const { return getComponent(component); }
-    [[nodiscard]] auto& operator()(Component component) { return getComponent(component); }
+    NO_DISCARD auto& operator()(Component component) const { return getComponent(component); }
+    NO_DISCARD auto& operator()(Component component) { return getComponent(component); }
 
-    [[nodiscard]] auto operator()() const { return components(); }
-    [[nodiscard]] auto operator()() { return components(); }
+    NO_DISCARD auto operator()() const { return components(); }
+    NO_DISCARD auto operator()() { return components(); }
 
-    [[nodiscard]] auto& operator[](std::size_t i) { return *components_[i]; }
-    [[nodiscard]] auto& operator[](std::size_t i) const { return *components_[i]; }
+    NO_DISCARD auto& operator[](std::size_t i) { return *components_[i]; }
+    NO_DISCARD auto& operator[](std::size_t i) const { return *components_[i]; }
 
 
     void copyData(TensorField const& source)
@@ -224,10 +228,10 @@ public:
     }
 
 
-    [[nodiscard]] auto begin() { return std::begin(components_); }
-    [[nodiscard]] auto cbegin() const { return std::cbegin(components_); }
-    [[nodiscard]] auto end() { return std::end(components_); }
-    [[nodiscard]] auto cend() const { return std::cend(components_); }
+    NO_DISCARD auto begin() { return std::begin(components_); }
+    NO_DISCARD auto cbegin() const { return std::cbegin(components_); }
+    NO_DISCARD auto end() { return std::end(components_); }
+    NO_DISCARD auto cend() const { return std::cend(components_); }
 
 
 

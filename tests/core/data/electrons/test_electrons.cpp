@@ -1,10 +1,10 @@
-
 #include "initializer/data_provider.hpp"
 
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
 #include "core/data/electromag/electromag.hpp"
@@ -126,12 +126,14 @@ struct ElectronsTest : public ::testing::Test
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
-    using VecFieldND = VecField<NdArrayVector<dim>, HybridQuantity>;
-    using FieldND    = typename VecFieldND::field_type;
+    using VecFieldND       = VecField<NdArrayVector<dim>, HybridQuantity>;
+    using SymTensorFieldND = SymTensorField<NdArrayVector<dim>, HybridQuantity>;
+    using FieldND          = typename VecFieldND::field_type;
 
-    using IonPopulationND = IonPopulation<ParticleArray<dim>, VecFieldND, GridYee>;
-    using IonsT           = Ions<IonPopulationND, GridYee>;
-    using PartPackND      = ParticlesPack<typename IonPopulationND::particle_array_type>;
+    using IonPopulationND
+        = IonPopulation<ParticleArray<dim>, VecFieldND, SymTensorFieldND, GridYee>;
+    using IonsT      = Ions<IonPopulationND, GridYee>;
+    using PartPackND = ParticlesPack<typename IonPopulationND::particle_array_type>;
     using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
 
 
@@ -147,6 +149,18 @@ struct ElectronsTest : public ::testing::Test
     FieldND Fxi;
     FieldND Fyi;
     FieldND Fzi;
+    FieldND Mxx;
+    FieldND Mxy;
+    FieldND Mxz;
+    FieldND Myy;
+    FieldND Myz;
+    FieldND Mzz;
+    FieldND protons_Mxx;
+    FieldND protons_Mxy;
+    FieldND protons_Mxz;
+    FieldND protons_Myy;
+    FieldND protons_Myz;
+    FieldND protons_Mzz;
     PartPackND pack;
     FieldND Vex;
     FieldND Vey;
@@ -174,6 +188,30 @@ struct ElectronsTest : public ::testing::Test
               layout.allocSize(HybridQuantity::Scalar::Vy)}
         , Fzi{"protons_flux_z", HybridQuantity::Scalar::Vz,
               layout.allocSize(HybridQuantity::Scalar::Vz)}
+        , Mxx{"momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+              layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , Mxy{"momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+              layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , Mxz{"momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+              layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , Myy{"momentumTensor_yy", HybridQuantity::Scalar::Myy,
+              layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , Myz{"momentumTensor_yz", HybridQuantity::Scalar::Myz,
+              layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , Mzz{"momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+              layout.allocSize(HybridQuantity::Scalar::Mzz)}
+        , protons_Mxx{"protons_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+                      layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , protons_Mxy{"protons_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+                      layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , protons_Mxz{"protons_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+                      layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , protons_Myy{"protons_momentumTensor_yy", HybridQuantity::Scalar::Myy,
+                      layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , protons_Myz{"protons_momentumTensor_yz", HybridQuantity::Scalar::Myz,
+                      layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , protons_Mzz{"protons_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+                      layout.allocSize(HybridQuantity::Scalar::Mzz)}
         , Vex{"StandardHybridElectronFluxComputer_Ve_x", HybridQuantity::Scalar::Vx,
               layout.allocSize(HybridQuantity::Scalar::Vx)}
         , Vey{"StandardHybridElectronFluxComputer_Ve_y", HybridQuantity::Scalar::Vy,
@@ -194,6 +232,13 @@ struct ElectronsTest : public ::testing::Test
         ions.velocity().setBuffer(Vix.name(), &Vix);
         ions.velocity().setBuffer(Viy.name(), &Viy);
         ions.velocity().setBuffer(Viz.name(), &Viz);
+        auto& M = ions.momentumTensor();
+        M.setBuffer("momentumTensor_xx", &Mxx);
+        M.setBuffer("momentumTensor_xy", &Mxy);
+        M.setBuffer("momentumTensor_xz", &Mxz);
+        M.setBuffer("momentumTensor_yy", &Myy);
+        M.setBuffer("momentumTensor_yz", &Myz);
+        M.setBuffer("momentumTensor_zz", &Mzz);
 
         auto& pops = ions.getRunTimeResourcesUserList();
 
@@ -202,6 +247,12 @@ struct ElectronsTest : public ::testing::Test
         pops[0].flux().setBuffer(Fyi.name(), &Fyi);
         pops[0].flux().setBuffer(Fzi.name(), &Fzi);
         pops[0].setBuffer("protons", &pack);
+        pops[0].momentumTensor().setBuffer("protons_momentumTensor_xx", &protons_Mxx);
+        pops[0].momentumTensor().setBuffer("protons_momentumTensor_xy", &protons_Mxy);
+        pops[0].momentumTensor().setBuffer("protons_momentumTensor_xz", &protons_Mxz);
+        pops[0].momentumTensor().setBuffer("protons_momentumTensor_yy", &protons_Myy);
+        pops[0].momentumTensor().setBuffer("protons_momentumTensor_yz", &protons_Myz);
+        pops[0].momentumTensor().setBuffer("protons_momentumTensor_zz", &protons_Mzz);
 
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
