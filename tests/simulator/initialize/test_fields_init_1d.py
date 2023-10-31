@@ -17,7 +17,7 @@ interp_orders = [1, 2, 3]
 
 
 @ddt
-class InitializationTest(InitializationTest):
+class Initialization1DTest(InitializationTest):
     @data(*interp_orders)
     def test_B_is_as_provided_by_user(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")

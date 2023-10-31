@@ -240,6 +240,12 @@ class SimulatorTest(unittest.TestCase):
         self._outcome = result
         super().run(result)
 
+    def unique_diag_dir_for_test_case(self, base_path, ndim, interp, post_path=""):
+        from pyphare.cpp import cpp_lib
+
+        cpp = cpp_lib()
+        return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
+
     def clean_up_diags_dirs(self):
         from pyphare.cpp import cpp_lib
 

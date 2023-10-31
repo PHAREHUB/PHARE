@@ -20,7 +20,7 @@ from tests.diagnostic import dump_all_diags
 
 def permute(dic, expected_num_levels):
     # from pyphare.pharein.simulation import supported_dimensions # eventually
-    dims = [1]  # supported_dimensions()
+    dims = [1] # supported_dimensions()
     return [
         [dim, interp, dic, expected_num_levels] for dim in dims for interp in [1, 2, 3]
     ]
@@ -193,17 +193,17 @@ class RestartsTest(SimulatorTest):
         *permute(dup(dict()), expected_num_levels=2),  # refinement boxes set later
     )
     @unpack
-    def test_restarts(self, dim, interp, simInput, expected_num_levels):
-        print(f"test_restarts dim/interp:{dim}/{interp}")
+    def test_restarts(self, ndim, interp, simInput, expected_num_levels):
+        print(f"test_restarts dim/interp:{ndim}/{interp}")
 
         simput = copy.deepcopy(simInput)
 
         for key in ["cells", "dl", "boundary_types"]:
-            simput[key] = [simput[key]] * dim
+            simput[key] = [simput[key]] * ndim
 
         if "refinement" not in simput:
             # three levels has issues with refinementboxes and possibly regridding
-            b0 = [[10] * dim, [19] * dim]
+            b0 = [[10] * ndim, [19] * ndim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
         else:  # https://github.com/LLNL/SAMRAI/issues/199
             # tagging can handle more than one timestep as it does not
@@ -224,9 +224,7 @@ class RestartsTest(SimulatorTest):
         timestamps = [time_step * restart_idx, time_step * time_step_nbr]
 
         # first simulation
-        local_out = (
-            f"{out}/test/{dim}/{interp}/mpi_n/{cpp.mpi_size()}/id{self.ddt_test_id()}"
-        )
+        local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)
         simput["restart_options"]["dir"] = local_out
         simput["restart_options"]["timestamps"] = [timestep * 4]
         simput["diag_options"]["options"]["dir"] = local_out
@@ -269,18 +267,18 @@ class RestartsTest(SimulatorTest):
         *permute(dup(dict()), expected_num_levels=2),  # refinement boxes set later
     )
     @unpack
-    def test_restarts_elapsed_time(self, dim, interp, simInput, expected_num_levels):
-        print(f"test_restarts_elapsed_time dim/interp:{dim}/{interp}")
+    def test_restarts_elapsed_time(self, ndim, interp, simInput, expected_num_levels):
+        print(f"test_restarts_elapsed_time dim/interp:{ndim}/{interp}")
 
         simput = copy.deepcopy(simInput)
 
         for key in ["cells", "dl", "boundary_types"]:
-            simput[key] = [simput[key]] * dim
+            simput[key] = [simput[key]] * ndim
 
         if "refinement" not in simput:
             lo_cell = 10
             hi_cell = 19
-            b0 = [[lo_cell] * dim, [hi_cell] * dim]
+            b0 = [[lo_cell] * ndim, [hi_cell] * ndim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
         else:  # https://github.com/LLNL/SAMRAI/issues/199
             # tagging can handle more than one timestep as it does not
@@ -301,7 +299,9 @@ class RestartsTest(SimulatorTest):
         timestamps = [time_step * restart_idx, time_step * time_step_nbr]
 
         # first simulation
-        local_out = f"{out}/elapsed_test/{dim}/{interp}/mpi_n/{cpp.mpi_size()}/id{self.ddt_test_id()}"
+        local_out = self.unique_diag_dir_for_test_case(
+            f"{out}/elapsed_test", ndim, interp
+        )
         simput["restart_options"]["dir"] = local_out
         import datetime
 
@@ -347,14 +347,14 @@ class RestartsTest(SimulatorTest):
             diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
         )
 
-    def test_mode_conserve(self, dim=1, interp=1, simput=dup(simArgs)):
-        print(f"test_mode_conserve dim/interp:{dim}/{interp}")
+    def test_mode_conserve(self, ndim=1, interp=1, simput=dup(simArgs)):
+        print(f"test_mode_conserve dim/interp:{ndim}/{interp}")
 
         for key in ["cells", "dl", "boundary_types"]:
-            simput[key] = [simput[key]] * dim
+            simput[key] = [simput[key]] * ndim
 
         # first simulation
-        local_out = f"{out}/conserve/{dim}/{interp}/mpi_n/{cpp.mpi_size()}/id{self.ddt_test_id()}"
+        local_out = self.unique_diag_dir_for_test_case(f"{out}/conserve", ndim, interp)
         self.register_diag_dir_for_cleanup(local_out)
 
         simput["restart_options"]["dir"] = local_out

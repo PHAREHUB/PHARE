@@ -5,6 +5,7 @@
 
 import unittest
 
+import numpy as np
 import matplotlib
 from ddt import data, ddt
 
@@ -18,7 +19,7 @@ ppc = 100
 
 
 @ddt
-class InitializationTest(InitializationTest):
+class Initialization2DTest(InitializationTest):
     @data(*interp_orders)
     def test_B_is_as_provided_by_user(self, interp_order):
         print(f"\n{self._testMethodName}_{ndim}d")
@@ -36,8 +37,10 @@ class InitializationTest(InitializationTest):
 
     @data(*interp_orders)
     def test_density_decreases_as_1overSqrtN(self, interp_order):
-        print(f"\n{self._testMethodName}_{ndim}d")
-        self._test_density_decreases_as_1overSqrtN(ndim, interp_order)
+        print(f"{self._testMethodName}_{ndim}d")
+        self._test_density_decreases_as_1overSqrtN(
+            ndim, interp_order, np.asarray([50, 500, 1000, 2222]), cells=220
+        )
 
 
 if __name__ == "__main__":

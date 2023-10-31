@@ -35,10 +35,10 @@ class AdvanceTestBase(SimulatorTest):
 
     def getHierarchy(
         self,
+        ndim,
         interp_order,
         refinement_boxes,
         qty,
-        diag_outputs,
         nbr_part_per_cell=100,
         density=_density,
         smallest_patch_size=None,
@@ -50,10 +50,13 @@ class AdvanceTestBase(SimulatorTest):
         extra_diag_options={},
         time_step_nbr=1,
         timestamps=None,
-        ndim=1,
         block_merging_particles=False,
+        diag_outputs="",
     ):
-        diag_outputs = f"phare_outputs/advance/{diag_outputs}"
+        diag_outputs = self.unique_diag_dir_for_test_case(
+            "phare_outputs/advance", ndim, interp_order, diag_outputs
+        )
+
         from pyphare.pharein import global_vars
 
         global_vars.sim = None
@@ -338,13 +341,12 @@ class AdvanceTestBase(SimulatorTest):
 
         time_step_nbr = 3
         time_step = 0.001
-        diag_outputs = f"phare_overlapped_particledatas_have_identical_particles/{ndim}/{interp_order}/{self.ddt_test_id()}"
+
         datahier = self.getHierarchy(
+            ndim,
             interp_order,
             refinement_boxes,
             "particles",
-            diag_outputs=diag_outputs,
-            ndim=ndim,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
             nbr_part_per_cell=ppc,
@@ -393,18 +395,15 @@ class AdvanceTestBase(SimulatorTest):
 
         n_particles = ppc * (cells**ndim)
 
-        diag_outputs = f"phare_L0_particle_number_conservation_{ndim}_{interp_order}"
-
         datahier = self.getHierarchy(
+            ndim,
             interp_order,
             None,
             "particles",
-            diag_outputs=diag_outputs,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
             nbr_part_per_cell=ppc,
             cells=cells,
-            ndim=ndim,
         )
 
         for time_step_idx in range(time_step_nbr + 1):
@@ -431,18 +430,16 @@ class AdvanceTestBase(SimulatorTest):
 
         time_step_nbr = 3
 
-        diag_outputs = f"subcycle_coarsening/{dim}/{interp_order}/{self.ddt_test_id()}"
         datahier = self.getHierarchy(
+            dim,
             interp_order,
             refinement_boxes,
             "fields",
             cells=60,
-            diag_outputs=diag_outputs,
             time_step=0.001,
             extra_diag_options={"fine_dump_lvl_max": 10},
             time_step_nbr=time_step_nbr,
             largest_patch_size=30,
-            ndim=dim,
             **kwargs,
         )
 
@@ -719,26 +716,21 @@ class AdvanceTestBase(SimulatorTest):
 
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(
+                ndim,
                 interp_order,
                 boxes,
                 "moments",
                 cells=30,
                 time_step_nbr=1,
                 largest_patch_size=15,
-                diag_outputs=diag_dir,
                 extra_diag_options={"fine_dump_lvl_max": 10},
                 time_step=0.001,
                 model_init={"seed": rando},
-                ndim=ndim,
+                diag_outputs=diag_dir,
             )
 
-        L0_datahier = _getHier(
-            f"phare_lvl_ghost_interpolation_L0_diags/{ndim}/{interp_order}/{self.ddt_test_id()}"
-        )
-        L0L1_datahier = _getHier(
-            f"phare_lvl_ghost_interpolation_L0L1_diags/{ndim}/{interp_order}/{self.ddt_test_id()}",
-            refinement_boxes,
-        )
+        L0_datahier = _getHier(f"L0_diags")
+        L0L1_datahier = _getHier(f"L0L1_diags", refinement_boxes)
 
         quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
         checks = (
@@ -772,21 +764,15 @@ class AdvanceTestBase(SimulatorTest):
         time_step = 0.001
 
         out = "domain_particles"
-        test_id = self.ddt_test_id()
-
-        local_out = (
-            f"{out}/dim{ndim}_interp{interp_order}_mpi_n_{cpp.mpi_size()}_id{test_id}"
-        )
 
         self.base_test_domain_particles_on_refined_level(
             self.getHierarchy(
+                ndim,
                 interp_order,
                 refinement_boxes,
                 qty="particles",
                 time_step=time_step,
                 time_step_nbr=time_step_nbr,
-                ndim=ndim,
-                diag_outputs=local_out,
                 block_merging_particles=True,
                 **kwargs,
             )
