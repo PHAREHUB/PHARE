@@ -13,6 +13,12 @@
 <a  href="https://phare.readthedocs.io/en/latest/?badge=latest">
 <img src="https://readthedocs.org/projects/phare/badge/?version=latest" alt="Documentation Status" />
 </a>
+<a href="https://doi.org/10.1016/j.cpc.2023.108966">
+<img src="https://img.shields.io/badge/DOI%20(paper)-10.1016/j.cpc.2023.108966-blue.svg"
+</a>
+<a href="https://arxiv.org/abs/2210.14580">
+<img src="https://img.shields.io/badge/DOI%20(arXiv)-https://arxiv.org/abs/2210.14580-blue.svg"
+</a>
 </p>
 </div>
 
@@ -59,7 +65,7 @@ PHARE input and post-processing scripts are in python. Install dependencies with
   python3 -m pip install -r requirements.txt
 ```
 
-PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manager the adaptive mesh refinement. You can either
+PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manage the adaptive mesh refinement. You can either
 
 - build PHARE with the latest version of [SAMRAI](https://github.com/llnl/samrai):
 
@@ -121,6 +127,8 @@ author = {Nicolas Aunai and Roch Smets and Andrea Ciardi and Philip Deegan and A
 keywords = {Particle in cell, Adaptive mesh refinement, Collisionless plasmas},
 }
 ```
+- [ArXiv free version of PHARE's CPC paper](https://arxiv.org/abs/2210.14580)
+- [Particle Splitting](https://doi.org/10.1016/j.cpc.2020.107666): Roch Smets et al. *A new method to dispatch split particles in Particle-In-Cell codes.* Computer Physics Communications, 2021, 261, pp.107666. ⟨10.1016/j.cpc.2020.107666⟩. ([Free Version here](https://universite-paris-saclay.hal.science/hal-03203893/)) 
 
 
 
@@ -134,4 +142,5 @@ We acknowledge support from:
 - [Laboratory of Plasma Physics (LPP)](https://www.lpp.polytechnique.fr)
 - [LERMA](https://lerma.obspm.fr)
 - [CNES](www.cnes.fr)
+- [CIEDS](https://www.ip-paris.fr/cieds) and [AID](https://www.defense.gouv.fr/aid)
 
