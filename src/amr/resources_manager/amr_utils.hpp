@@ -12,6 +12,7 @@
 #include "amr/types/amr_types.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/def.hpp"
 
 #include "amr/utilities/box/amr_box.hpp"
 
@@ -26,14 +27,14 @@ namespace amr
     /**
      * @brief offsetIsZero_ returns true of the transformation has zero offset
      */
-    [[nodiscard]] bool offsetIsZero(SAMRAI::hier::Transformation const& transformation);
+    NO_DISCARD bool offsetIsZero(SAMRAI::hier::Transformation const& transformation);
 
 
 
     /**
      * @brief isSameBlock returns true if the transformation is not changing block
      */
-    [[nodiscard]] bool isSameBlock(SAMRAI::hier::Transformation const& transformation);
+    NO_DISCARD bool isSameBlock(SAMRAI::hier::Transformation const& transformation);
 
 
 
@@ -47,8 +48,8 @@ namespace amr
     /**
      * @brief AMRToLocal returns a local indexed box relative to the referenceAMRBox from the AMRBox
      */
-    [[nodiscard]] SAMRAI::hier::Box AMRToLocal(SAMRAI::hier::Box const& AMRBox,
-                                               SAMRAI::hier::Box const& referenceAMRBox);
+    NO_DISCARD SAMRAI::hier::Box AMRToLocal(SAMRAI::hier::Box const& AMRBox,
+                                            SAMRAI::hier::Box const& referenceAMRBox);
 
 
 
@@ -56,15 +57,14 @@ namespace amr
      * @brief AMRToLocal returns the vector to add to a box to put it in the local index space
      * relative to the referenceAMRBox
      */
-    [[nodiscard]] SAMRAI::hier::IntVector AMRToLocal(SAMRAI::hier::Box const& referenceAMRBox);
+    NO_DISCARD SAMRAI::hier::IntVector AMRToLocal(SAMRAI::hier::Box const& referenceAMRBox);
 
 
     /**
      * @brief localToAMR returns the vector to add to a box to put it in AMR index space from a
      * local index relative to referenceAMRBox
      */
-    [[nodiscard]] SAMRAI::hier::IntVector
-    localToAMRVector(SAMRAI::hier::Box const& referenceAMRBox);
+    NO_DISCARD SAMRAI::hier::IntVector localToAMRVector(SAMRAI::hier::Box const& referenceAMRBox);
 
 
     /**
@@ -72,8 +72,8 @@ namespace amr
      *
      */
     template<std::size_t dimension, template<typename, std::size_t> typename Index>
-    [[nodiscard]] Index<int, dimension> AMRToLocal(Index<int, dimension> index,
-                                                   SAMRAI::hier::Box const& referenceAMRBox)
+    NO_DISCARD Index<int, dimension> AMRToLocal(Index<int, dimension> index,
+                                                SAMRAI::hier::Box const& referenceAMRBox)
     {
         index[dirX] = index[dirX] - referenceAMRBox.lower(dirX);
         if constexpr (dimension > 1)
@@ -92,8 +92,8 @@ namespace amr
      *
      */
     template<std::size_t dimension, template<typename, std::size_t> typename Index>
-    [[nodiscard]] Index<int, dimension> localToAMR(Index<int, dimension> index,
-                                                   SAMRAI::hier::Box const& referenceAMRBox)
+    NO_DISCARD Index<int, dimension> localToAMR(Index<int, dimension> index,
+                                                SAMRAI::hier::Box const& referenceAMRBox)
     {
         index[dirX] = index[dirX] + referenceAMRBox.lower(dirX);
         if constexpr (dimension > 1)
@@ -113,8 +113,8 @@ namespace amr
      *
      */
     template<std::size_t dimension, template<typename, std::size_t> typename Index>
-    [[nodiscard]] Index<int, dimension> refinedPosition(Index<int, dimension> index,
-                                                        SAMRAI::hier::IntVector const& ratio)
+    NO_DISCARD Index<int, dimension> refinedPosition(Index<int, dimension> index,
+                                                     SAMRAI::hier::IntVector const& ratio)
     {
         index[dirX] *= ratio(dirX);
         if constexpr (dimension > 1)
@@ -130,7 +130,7 @@ namespace amr
 
 
     template<typename GridLayoutT>
-    [[nodiscard]] GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
+    NO_DISCARD GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
     {
         int constexpr dimension = GridLayoutT::dimension;
 

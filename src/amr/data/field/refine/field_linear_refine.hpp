@@ -2,6 +2,7 @@
 #define PHARE_FIELD_LINEAR_REFINE_HPP
 
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/field/field.hpp"
 #include "linear_weighter.hpp"
@@ -60,7 +61,7 @@ namespace amr
 
 
 
-        [[nodiscard]] core::Point<int, dimension>
+        NO_DISCARD core::Point<int, dimension>
         coarseStartIndex(core::Point<int, dimension> const& fineIndex) const
         {
             auto coarseIndex{fineIndex};
@@ -90,7 +91,7 @@ namespace amr
 
 
 
-        [[nodiscard]] typename LinearWeighter::FineIndexWeights const&
+        NO_DISCARD typename LinearWeighter::FineIndexWeights const&
         weights(core::Direction dir) const
         {
             return weighters_[static_cast<std::size_t>(dir)].weights();
@@ -101,7 +102,7 @@ namespace amr
 
         /** @brief Compute the index of weigths for a given fineIndex
          */
-        [[nodiscard]] core::Point<int, dimension>
+        NO_DISCARD core::Point<int, dimension>
         computeWeightIndex(core::Point<int, dimension> const& fineIndex) const
         {
             auto indexesWeights{std::abs(fineIndex)};

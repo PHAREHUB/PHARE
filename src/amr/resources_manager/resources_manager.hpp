@@ -8,6 +8,7 @@
 #include "particle_resource.hpp"
 #include "resources_guards.hpp"
 #include "resources_manager_utilities.hpp"
+#include "core/def.hpp"
 
 
 #include <SAMRAI/hier/Patch.h>
@@ -221,7 +222,7 @@ namespace amr
          * At the end of the scope of dataOnPatch, obj1 and obj2 will become unusable again
          */
         template<typename... ResourcesUsers>
-        [[nodiscard]] constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
+        NO_DISCARD constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
         setOnPatch(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resourcesUsers)
         {
             return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this,
@@ -234,7 +235,7 @@ namespace amr
          * ResourcesUser on the given patch.
          */
         template<typename ResourcesUser>
-        [[nodiscard]] auto getTimes(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
+        NO_DISCARD auto getTimes(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
         {
             auto IDs = getIDs(obj);
             std::vector<double> times;
@@ -274,7 +275,7 @@ namespace amr
          *  have registered via the ResourcesManager
          */
         template<typename ResourcesUser>
-        [[nodiscard]] std::vector<int> getIDs(ResourcesUser& obj) const
+        NO_DISCARD std::vector<int> getIDs(ResourcesUser& obj) const
         {
             std::vector<int> IDs;
             this->getIDs_(obj, IDs);
@@ -286,7 +287,7 @@ namespace amr
         /** \brief Get all the names and resources id that the resource user
          *  have registered via the ResourcesManager
          */
-        [[nodiscard]] std::optional<int> getID(std::string const& resourceName) const
+        NO_DISCARD std::optional<int> getID(std::string const& resourceName) const
         {
             auto id = nameToResourceInfo_.find(resourceName);
 
@@ -317,7 +318,7 @@ namespace amr
         }
 
         template<typename ResourcesUser>
-        [[nodiscard]] auto restart_patch_data_ids(ResourcesUser const& user) const
+        NO_DISCARD auto restart_patch_data_ids(ResourcesUser const& user) const
         {
             // // true for now with https://github.com/PHAREHUB/PHARE/issues/664
             constexpr bool ALL_IDS = true;

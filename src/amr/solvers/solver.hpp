@@ -9,6 +9,7 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
+#include "core/def.hpp"
 
 
 
@@ -30,14 +31,14 @@ namespace solver
         /**
          * @brief return the name of the ISolver
          */
-        [[nodiscard]] std::string name() const { return solverName; }
+        NO_DISCARD std::string name() const { return solverName; }
 
 
 
         /**
          * @brief return the name of the model the ISolver is compatible with
          */
-        [[nodiscard]] virtual std::string modelName() const = 0;
+        NO_DISCARD virtual std::string modelName() const = 0;
 
 
 

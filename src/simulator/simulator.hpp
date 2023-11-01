@@ -6,6 +6,7 @@
 #include "phare_core.hpp"
 #include "phare_types.hpp"
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
@@ -44,10 +45,10 @@ template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefin
 class Simulator : public ISimulator
 {
 public:
-    [[nodiscard]] double startTime() override { return startTime_; }
-    [[nodiscard]] double endTime() override { return finalTime_; }
-    [[nodiscard]] double timeStep() override { return dt_; }
-    [[nodiscard]] double currentTime() override { return currentTime_; }
+    NO_DISCARD double startTime() override { return startTime_; }
+    NO_DISCARD double endTime() override { return finalTime_; }
+    NO_DISCARD double timeStep() override { return dt_; }
+    NO_DISCARD double currentTime() override { return currentTime_; }
 
     void initialize() override;
     double advance(double dt) override;
@@ -56,11 +57,11 @@ public:
     std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
     std::size_t interporder() const override { return interp_order; }
 
-    [[nodiscard]] auto& getHybridModel() { return hybridModel_; }
-    [[nodiscard]] auto& getMHDModel() { return mhdModel_; }
-    [[nodiscard]] auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+    NO_DISCARD auto& getHybridModel() { return hybridModel_; }
+    NO_DISCARD auto& getMHDModel() { return mhdModel_; }
+    NO_DISCARD auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
 
-    [[nodiscard]] std::string to_str() override;
+    NO_DISCARD std::string to_str() override;
 
     bool dump(double timestamp, double timestep) override
     {

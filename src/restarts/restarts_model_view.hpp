@@ -4,6 +4,7 @@
 #include "cppdict/include/dict.hpp"
 
 
+#include "core/def.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "hdf5/phare_hdf5.hpp"
@@ -41,13 +42,13 @@ public:
         return hierarchy_.writeRestartFile(path);
     }
 
-    [[nodiscard]] auto static restartFilePathForTime(std::string path, double timestamp)
+    NO_DISCARD auto static restartFilePathForTime(std::string path, double timestamp)
     {
         return Hierarchy::restartFilePathForTime(path, timestamp);
     }
 
 
-    [[nodiscard]] auto patch_data_ids() const { return model_.patch_data_ids(); }
+    NO_DISCARD auto patch_data_ids() const { return model_.patch_data_ids(); }
 
 
     ModelView(ModelView const&)            = delete;

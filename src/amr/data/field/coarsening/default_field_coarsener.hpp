@@ -1,6 +1,7 @@
 #ifndef PHARE_DEFAULT_FIELD_COARSENER_HPP
 #define PHARE_DEFAULT_FIELD_COARSENER_HPP
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"

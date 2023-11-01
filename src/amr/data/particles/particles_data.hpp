@@ -16,6 +16,7 @@
 #include "SAMRAI/hier/Transformation.h"
 
 
+#include "core/def.hpp"
 #include "core/data/ions/ion_population/particle_pack.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
@@ -34,7 +35,7 @@ namespace amr
 
 
     template<typename Particle>
-    [[nodiscard]] inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
+    NO_DISCARD inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
     {
         constexpr auto dim = Particle::dimension;
 

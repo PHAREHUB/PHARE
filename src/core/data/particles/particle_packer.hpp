@@ -7,6 +7,7 @@
 
 #include "particle.hpp"
 #include "particle_array.hpp"
+#include "core/def.hpp"
 
 namespace PHARE::core
 {
@@ -19,7 +20,7 @@ public:
     {
     }
 
-    [[nodiscard]] static auto get(Particle<dim> const& particle)
+    NO_DISCARD static auto get(Particle<dim> const& particle)
     {
         return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
                                      particle.delta, particle.v);
@@ -33,13 +34,13 @@ public:
 
     // sometimes we use this to infer the size of an ParticleArray
     // could be "charge" either
-    [[nodiscard]] static auto arbitrarySingleValueKey() { return "weight"; }
+    NO_DISCARD static auto arbitrarySingleValueKey() { return "weight"; }
 
-    [[nodiscard]] static auto& keys() { return keys_; }
+    NO_DISCARD static auto& keys() { return keys_; }
 
-    [[nodiscard]] auto get(std::size_t i) const { return get(particles_[i]); }
-    [[nodiscard]] bool hasNext() const { return it_ < particles_.size(); }
-    [[nodiscard]] auto next() { return get(it_++); }
+    NO_DISCARD auto get(std::size_t i) const { return get(particles_[i]); }
+    NO_DISCARD bool hasNext() const { return it_ < particles_.size(); }
+    NO_DISCARD auto next() { return get(it_++); }
 
     void pack(ContiguousParticles<dim>& copy)
     {

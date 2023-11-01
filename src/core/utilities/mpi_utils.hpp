@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_UTILITIES_MPI_HPP
 #define PHARE_CORE_UTILITIES_MPI_HPP
 
+#include "core/def.hpp"
 #include <chrono>
 #include <vector>
 #include <string>
@@ -21,24 +22,24 @@ ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
 namespace PHARE::core::mpi
 {
 template<typename Data>
-[[nodiscard]] std::vector<Data> collect(Data const& data, int mpi_size = 0);
+NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
-[[nodiscard]] std::size_t max(std::size_t const local, int mpi_size = 0);
+NO_DISCARD std::size_t max(std::size_t const local, int mpi_size = 0);
 
-[[nodiscard]] bool any(bool);
+NO_DISCARD bool any(bool);
 
-[[nodiscard]] int size();
+NO_DISCARD int size();
 
-[[nodiscard]] int rank();
+NO_DISCARD int rank();
 
 void barrier();
 
-[[nodiscard]] std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
+NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
-[[nodiscard]] std::int64_t unix_timestamp_now();
+NO_DISCARD std::int64_t unix_timestamp_now();
 
 template<typename Data>
-[[nodiscard]] auto mpi_type_for()
+NO_DISCARD auto mpi_type_for()
 {
     if constexpr (std::is_same_v<double, Data>)
         return MPI_DOUBLE;
@@ -143,7 +144,7 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
 }
 
 template<typename Vector>
-[[nodiscard]] std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
+NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
 {
     using Data = typename Vector::value_type;
 
@@ -166,7 +167,7 @@ template<typename Vector>
 }
 
 template<typename T, typename Vector>
-[[nodiscard]] SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
+NO_DISCARD SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -180,7 +181,7 @@ template<typename T, typename Vector>
 
 
 template<typename T, std::size_t size>
-[[nodiscard]] auto collectArrays(std::array<T, size> const& arr, int mpi_size)
+NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
 {
     using Array = std::array<T, size>;
     using Data  = typename Array::value_type;
@@ -201,8 +202,7 @@ template<typename T, std::size_t size>
 
 
 template<typename Vector>
-[[nodiscard]] SpanSet<typename Vector::value_type, int> collect_raw(Vector const& data,
-                                                                    int mpi_size)
+NO_DISCARD SpanSet<typename Vector::value_type, int> collect_raw(Vector const& data, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -212,7 +212,7 @@ template<typename Vector>
 
 
 template<typename Data>
-[[nodiscard]] std::vector<Data> collect(Data const& data, int mpi_size)
+NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);

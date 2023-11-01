@@ -10,6 +10,7 @@
 #include "core/models/mhd_state.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
+#include "core/def.hpp"
 
 
 
@@ -52,7 +53,7 @@ namespace solver
         {
         }
 
-        [[nodiscard]] auto setOnPatch(patch_t& patch)
+        NO_DISCARD auto setOnPatch(patch_t& patch)
         {
             return resourcesManager->setOnPatch(patch, *this);
         }

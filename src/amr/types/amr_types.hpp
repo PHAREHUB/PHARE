@@ -6,6 +6,7 @@
 #include "SAMRAI/hier/PatchHierarchy.h"
 #include "SAMRAI/hier/PatchLevel.h"
 #include "SAMRAI/hier/PatchHierarchy.h"
+#include "core/def.hpp"
 
 namespace PHARE
 {
@@ -17,7 +18,7 @@ namespace amr
         using level_t     = SAMRAI::hier::PatchLevel;
         using hierarchy_t = SAMRAI::hier::PatchHierarchy;
 
-        [[nodiscard]] static level_t& getLevel(hierarchy_t const& hierarchy, int levelNumber)
+        NO_DISCARD static level_t& getLevel(hierarchy_t const& hierarchy, int levelNumber)
         {
             return *hierarchy.getPatchLevel(levelNumber);
         }

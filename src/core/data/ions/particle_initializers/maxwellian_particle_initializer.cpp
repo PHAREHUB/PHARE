@@ -2,6 +2,7 @@
 #include <random>
 
 #include "core/utilities/types.hpp"
+#include "core/def.hpp"
 
 
 namespace PHARE
@@ -23,7 +24,7 @@ namespace core
 
 
 
-    [[nodiscard]] std::array<double, 3>
+    NO_DISCARD std::array<double, 3>
     basisTransform(std::array<std::array<double, 3>, 3> const& basis,
                    std::array<double, 3> const& vec)
     {

@@ -1,6 +1,8 @@
 #ifndef PHARE_COARSEN_WEIGHTER_HPP
 #define PHARE_COARSEN_WEIGHTER_HPP
 
+#include "core/def.hpp"
+
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -36,7 +38,7 @@ namespace amr
 
 
     template<typename T, std::size_t... Is>
-    [[nodiscard]] std::array<CoarsenWeighter, sizeof...(Is)>
+    NO_DISCARD std::array<CoarsenWeighter, sizeof...(Is)>
     make_weighters(const std::array<T, sizeof...(Is)>& nbrPoints, std::index_sequence<Is...>)
     {
         return {{(CoarsenWeighter{nbrPoints[Is]})...}};

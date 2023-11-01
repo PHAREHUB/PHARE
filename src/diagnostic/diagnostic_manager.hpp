@@ -1,6 +1,7 @@
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
+#include "core/def.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 #include "diagnostic_props.hpp"
@@ -70,7 +71,7 @@ public:
 
 
     template<typename Hierarchy, typename Model>
-    [[nodiscard]] static std::unique_ptr<DiagnosticsManager>
+    NO_DISCARD static std::unique_ptr<DiagnosticsManager>
     make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
         auto dMan = std::make_unique<DiagnosticsManager>(Writer::make_unique(hier, model, dict));
@@ -85,10 +86,10 @@ public:
     DiagnosticsManager& addDiagDict(initializer::PHAREDict&& dict) { return addDiagDict(dict); }
 
 
-    [[nodiscard]] auto& diagnostics() const { return diagnostics_; }
+    NO_DISCARD auto& diagnostics() const { return diagnostics_; }
 
 
-    [[nodiscard]] Writer& writer() { return *writer_.get(); }
+    NO_DISCARD Writer& writer() { return *writer_.get(); }
 
 
     DiagnosticsManager(DiagnosticsManager const&)            = delete;
@@ -97,14 +98,14 @@ public:
     DiagnosticsManager& operator=(DiagnosticsManager&&)      = delete;
 
 private:
-    [[nodiscard]] bool needsAction_(double nextTime, double timeStamp, double timeStep)
+    NO_DISCARD bool needsAction_(double nextTime, double timeStamp, double timeStep)
     {
         // casting to float to truncate double to avoid trailing imprecision
         return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
     }
 
 
-    [[nodiscard]] bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    NO_DISCARD bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextWrite = nextWrite_[diag.type + diag.quantity];
         return nextWrite < diag.writeTimestamps.size()
@@ -112,7 +113,7 @@ private:
     }
 
 
-    [[nodiscard]] bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    NO_DISCARD bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextCompute = nextCompute_[diag.type + diag.quantity];
         return nextCompute < diag.computeTimestamps.size()

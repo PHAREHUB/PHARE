@@ -1,6 +1,8 @@
 #ifndef RANGE_HPP
 #define RANGE_HPP
 
+#include "core/def.hpp"
+
 #include <iterator>
 #include <type_traits>
 
@@ -29,9 +31,9 @@ namespace core
             , end_{end}
         {
         }
-        [[nodiscard]] Iterator begin() const { return first_; }
-        [[nodiscard]] Iterator end() const { return end_; }
-        [[nodiscard]] std::size_t size() const { return std::distance(first_, end_); }
+        NO_DISCARD Iterator begin() const { return first_; }
+        NO_DISCARD Iterator end() const { return end_; }
+        NO_DISCARD std::size_t size() const { return std::distance(first_, end_); }
 
     private:
         Iterator first_;
@@ -64,13 +66,13 @@ namespace core
         IndexRange(IndexRange&& from)                 = default;
         IndexRange(IndexRange const& from)            = default;
 
-        [[nodiscard]] auto size() const { return end_ - first_; }
-        [[nodiscard]] auto ibegin() const { return first_; }
-        [[nodiscard]] auto iend() const { return end_; }
-        [[nodiscard]] auto begin() const { return std::begin(*array_) + first_; }
-        [[nodiscard]] auto end() const { return std::begin(*array_) + end_; }
-        [[nodiscard]] auto& array() { return *array_; }
-        [[nodiscard]] auto const& array() const { return *array_; }
+        NO_DISCARD auto size() const { return end_ - first_; }
+        NO_DISCARD auto ibegin() const { return first_; }
+        NO_DISCARD auto iend() const { return end_; }
+        NO_DISCARD auto begin() const { return std::begin(*array_) + first_; }
+        NO_DISCARD auto end() const { return std::begin(*array_) + end_; }
+        NO_DISCARD auto& array() { return *array_; }
+        NO_DISCARD auto const& array() const { return *array_; }
 
         // these ones are not used for now... they give access to the array element
         // via a range index (i.e. not an array index, but relative to the array index
@@ -89,20 +91,20 @@ namespace core
     };
 
     template<typename Array>
-    [[nodiscard]] auto makeRange(Array& arr, std::size_t begin, std::size_t end)
+    NO_DISCARD auto makeRange(Array& arr, std::size_t begin, std::size_t end)
     {
         return IndexRange{arr, begin, end};
     }
 
     template<typename Iterator>
-    [[nodiscard]] Range<Iterator> makeRange(Iterator&& begin, Iterator&& end)
+    NO_DISCARD Range<Iterator> makeRange(Iterator&& begin, Iterator&& end)
     {
         return Range{std::forward<Iterator>(begin), std::forward<Iterator>(end)};
     }
 
 
     template<typename Array, typename Index>
-    [[nodiscard]] auto makeRange(IndexRange<Array, Index> irange)
+    NO_DISCARD auto makeRange(IndexRange<Array, Index> irange)
     {
         auto& arr  = irange.array();
         auto begin = std::begin(arr) + irange.ibegin();
@@ -111,13 +113,13 @@ namespace core
     }
 
     template<typename Container>
-    [[nodiscard]] auto makeIndexRange(Container& container)
+    NO_DISCARD auto makeIndexRange(Container& container)
     {
         return IndexRange<Container>{container, 0, container.size()};
     }
 
     template<typename Container>
-    [[nodiscard]] auto makeRange(Container& container)
+    NO_DISCARD auto makeRange(Container& container)
     {
         return makeRange(std::begin(container), std::end(container));
     }

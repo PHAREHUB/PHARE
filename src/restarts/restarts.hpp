@@ -1,6 +1,7 @@
 #ifndef RESTART_RESTARTS_HPP
 #define RESTART_RESTARTS_HPP
 
+#include "core/def.hpp"
 #if !defined(PHARE_HAS_HIGHFIVE)
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
 #endif
@@ -32,7 +33,7 @@ struct NullOpRestartsManager : public IRestartsManager
 struct RestartsManagerResolver
 {
     template<typename Hierarchy, typename Model>
-    [[nodiscard]] static std::unique_ptr<IRestartsManager>
+    NO_DISCARD static std::unique_ptr<IRestartsManager>
     make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
 #if PHARE_HAS_HIGHFIVE

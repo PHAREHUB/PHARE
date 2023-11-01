@@ -9,6 +9,7 @@
 #include <cmath>
 
 
+#include "core/def.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -50,10 +51,10 @@ namespace core
         }
 
 
-        [[nodiscard]] auto nbrPopulations() const { return populations_.size(); }
+        NO_DISCARD auto nbrPopulations() const { return populations_.size(); }
 
 
-        [[nodiscard]] field_type const& density() const
+        NO_DISCARD field_type const& density() const
         {
             if (isUsable())
             {
@@ -67,7 +68,7 @@ namespace core
 
 
 
-        [[nodiscard]] field_type& density()
+        NO_DISCARD field_type& density()
         {
             if (isUsable())
             {
@@ -82,11 +83,11 @@ namespace core
 
 
 
-        [[nodiscard]] vecfield_type const& velocity() const { return bulkVelocity_; }
+        NO_DISCARD vecfield_type const& velocity() const { return bulkVelocity_; }
 
-        [[nodiscard]] vecfield_type& velocity() { return bulkVelocity_; }
+        NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
-        [[nodiscard]] std::string densityName() const { return "rho"; }
+        NO_DISCARD std::string densityName() const { return "rho"; }
 
 
         void computeDensity()
@@ -139,14 +140,14 @@ namespace core
 
         // TODO 3347 compute ion bulk velocity
 
-        [[nodiscard]] auto begin() { return std::begin(populations_); }
-        [[nodiscard]] auto end() { return std::end(populations_); }
+        NO_DISCARD auto begin() { return std::begin(populations_); }
+        NO_DISCARD auto end() { return std::end(populations_); }
 
-        [[nodiscard]] auto begin() const { return std::begin(populations_); }
-        [[nodiscard]] auto end() const { return std::end(populations_); }
+        NO_DISCARD auto begin() const { return std::begin(populations_); }
+        NO_DISCARD auto end() const { return std::end(populations_); }
 
 
-        [[nodiscard]] bool isUsable() const
+        NO_DISCARD bool isUsable() const
         {
             bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
             for (auto const& pop : populations_)
@@ -158,7 +159,7 @@ namespace core
 
 
 
-        [[nodiscard]] bool isSettable() const
+        NO_DISCARD bool isSettable() const
         {
             bool settable = rho_ == nullptr && bulkVelocity_.isSettable();
             for (auto const& pop : populations_)
@@ -183,7 +184,7 @@ namespace core
 
         using MomentProperties = std::vector<MomentsProperty>;
 
-        [[nodiscard]] MomentProperties getFieldNamesAndQuantities() const
+        NO_DISCARD MomentProperties getFieldNamesAndQuantities() const
         {
             return {{{densityName(), HybridQuantity::Scalar::rho}}};
         }
@@ -204,12 +205,12 @@ namespace core
 
 
 
-        [[nodiscard]] std::vector<IonPopulation>& getRunTimeResourcesUserList()
+        NO_DISCARD std::vector<IonPopulation>& getRunTimeResourcesUserList()
         {
             return populations_;
         }
 
-        [[nodiscard]] auto getCompileTimeResourcesUserList()
+        NO_DISCARD auto getCompileTimeResourcesUserList()
         {
             return std::forward_as_tuple(bulkVelocity_);
         }
@@ -221,7 +222,7 @@ namespace core
         //-------------------------------------------------------------------------
 
 
-        [[nodiscard]] std::string to_str()
+        NO_DISCARD std::string to_str()
         {
             std::stringstream ss;
             ss << "Ions\n";

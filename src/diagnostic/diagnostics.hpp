@@ -1,6 +1,7 @@
 #ifndef DIAGNOSTIC_DIAGNOSTICS_HPP
 #define DIAGNOSTIC_DIAGNOSTICS_HPP
 
+#include "core/def.hpp"
 #include <memory>
 
 #if !defined(PHARE_HAS_HIGHFIVE)
@@ -49,7 +50,7 @@ struct NullOpDiagnosticsManager : public IDiagnosticsManager
 struct DiagnosticsManagerResolver
 {
     template<typename Hierarchy, typename Model>
-    [[nodiscard]] static std::unique_ptr<IDiagnosticsManager>
+    NO_DISCARD static std::unique_ptr<IDiagnosticsManager>
     make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
 #if PHARE_HAS_HIGHFIVE

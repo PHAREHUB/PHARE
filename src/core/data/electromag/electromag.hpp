@@ -7,6 +7,7 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "initializer/data_provider.hpp"
+#include "core/def.hpp"
 
 
 namespace PHARE
@@ -51,16 +52,16 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        [[nodiscard]] bool isUsable() const { return E.isUsable() && B.isUsable(); }
+        NO_DISCARD bool isUsable() const { return E.isUsable() && B.isUsable(); }
 
-        [[nodiscard]] bool isSettable() const { return E.isSettable() && B.isSettable(); }
+        NO_DISCARD bool isSettable() const { return E.isSettable() && B.isSettable(); }
 
-        [[nodiscard]] auto getCompileTimeResourcesUserList() const
+        NO_DISCARD auto getCompileTimeResourcesUserList() const
         {
             return std::forward_as_tuple(E, B);
         }
 
-        [[nodiscard]] auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
+        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
 
 
         //-------------------------------------------------------------------------

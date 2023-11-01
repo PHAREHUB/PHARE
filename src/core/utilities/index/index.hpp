@@ -6,6 +6,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
+#include "core/def.hpp"
 
 namespace PHARE
 {
@@ -68,9 +69,9 @@ namespace core
 
 
         */
-    [[nodiscard]] MeshIndex<1> make_index(std::uint32_t i);
-    [[nodiscard]] MeshIndex<2> make_index(std::uint32_t i, std::uint32_t j);
-    [[nodiscard]] MeshIndex<3> make_index(std::uint32_t i, std::uint32_t j, std::uint32_t k);
+    NO_DISCARD MeshIndex<1> make_index(std::uint32_t i);
+    NO_DISCARD MeshIndex<2> make_index(std::uint32_t i, std::uint32_t j);
+    NO_DISCARD MeshIndex<3> make_index(std::uint32_t i, std::uint32_t j, std::uint32_t k);
 
 
 } // namespace core

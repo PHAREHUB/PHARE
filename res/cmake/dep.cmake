@@ -15,3 +15,6 @@ include("${PHARE_PROJECT_DIR}/res/cmake/dep/pybind.cmake")
 
 # HighFive
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/highfive.cmake")
+
+
+add_subdirectory(subprojects/cppdict)

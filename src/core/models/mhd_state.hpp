@@ -3,6 +3,7 @@
 
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/models/physical_state.hpp"
+#include "core/def.hpp"
 
 namespace PHARE
 {
@@ -23,19 +24,19 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        [[nodiscard]] bool isUsable() const { return B.isUsable() and V.isUsable(); }
+        NO_DISCARD bool isUsable() const { return B.isUsable() and V.isUsable(); }
 
 
 
-        [[nodiscard]] bool isSettable() const { return B.isSettable() and V.isSettable(); }
+        NO_DISCARD bool isSettable() const { return B.isSettable() and V.isSettable(); }
 
 
-        [[nodiscard]] auto getCompileTimeResourcesUserList() const
+        NO_DISCARD auto getCompileTimeResourcesUserList() const
         {
             return std::forward_as_tuple(B, V);
         }
 
-        [[nodiscard]] auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(B, V); }
+        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(B, V); }
 
 
         //-------------------------------------------------------------------------

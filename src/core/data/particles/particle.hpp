@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <iostream>
 
+#include "core/def.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
@@ -20,7 +21,7 @@ template<typename T = float>
 struct ParticleDeltaDistribution
 {
     template<typename Generator>
-    [[nodiscard]] T operator()(Generator& generator)
+    NO_DISCARD T operator()(Generator& generator)
     {
         return dist(generator);
     }
@@ -29,7 +30,7 @@ struct ParticleDeltaDistribution
 
 
 template<typename Particle>
-[[nodiscard]] auto cellAsPoint(Particle const& particle)
+NO_DISCARD auto cellAsPoint(Particle const& particle)
 {
     return Point<int, Particle::dimension>{particle.iCell};
 }
@@ -63,7 +64,7 @@ struct Particle
     double Ex = 0, Ey = 0, Ez = 0;
     double Bx = 0, By = 0, Bz = 0;
 
-    [[nodiscard]] bool operator==(Particle<dim> const& that) const
+    NO_DISCARD bool operator==(Particle<dim> const& that) const
     {
         return (this->weight == that.weight) && //
                (this->charge == that.charge) && //
@@ -131,9 +132,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-[[nodiscard]] typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
-                                            and is_phare_particle_type<dim, ParticleB<dim>>,
-                                        bool>
+NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                         and is_phare_particle_type<dim, ParticleB<dim>>,
+                                     bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //
@@ -150,8 +151,8 @@ namespace std
 {
 
 template<size_t dim, template<std::size_t> typename Particle_t>
-[[nodiscard]] typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
-                                        PHARE::core::Particle<dim>>
+NO_DISCARD typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
+                                     PHARE::core::Particle<dim>>
 copy(Particle_t<dim> const& from)
 {
     return {from.weight, from.charge, from.iCell, from.delta, from.v};

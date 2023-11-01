@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/def.hpp"
 
 
 
@@ -56,10 +57,10 @@ namespace core
         {
         }
 
-        [[nodiscard]] std::string name() const { return name_; }
+        NO_DISCARD std::string name() const { return name_; }
 
 
-        [[nodiscard]] constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
+        NO_DISCARD constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
 
         void copyData(Field const& source)
         {

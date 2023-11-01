@@ -1,6 +1,8 @@
 #ifndef PHARE_RESTART_MANAGER_HPP_
 #define PHARE_RESTART_MANAGER_HPP_
 
+
+#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -45,7 +47,7 @@ public:
 
 
     template<typename Hierarchy, typename Model>
-    [[nodiscard]] static std::unique_ptr<RestartsManager>
+    NO_DISCARD static std::unique_ptr<RestartsManager>
     make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
         auto rMan = std::make_unique<RestartsManager>(Writer::make_unique(hier, model, dict));
@@ -63,7 +65,7 @@ public:
     RestartsManager& addRestartDict(initializer::PHAREDict&& dict) { return addRestartDict(dict); }
 
 
-    [[nodiscard]] Writer& writer() { return *writer_.get(); }
+    NO_DISCARD Writer& writer() { return *writer_.get(); }
 
 
     RestartsManager(RestartsManager const&)            = delete;

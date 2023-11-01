@@ -17,6 +17,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/utilities/range/range.hpp"
+#include "core/def.hpp"
 
 
 namespace PHARE::core
@@ -41,10 +42,10 @@ public:
     CellMap& operator=(CellMap const& from) = default;
     CellMap& operator=(CellMap&& from)      = default;
 
-    [[nodiscard]] auto nbr_cells() const { return cellIndexes_.size(); }
+    NO_DISCARD auto nbr_cells() const { return cellIndexes_.size(); }
 
 
-    [[nodiscard]] bool check_unique() const
+    NO_DISCARD bool check_unique() const
     {
         std::unordered_map<std::size_t, std::size_t> counts;
         for (auto const& cell : box_)
@@ -105,17 +106,17 @@ public:
 
 
     // number of indexes stored in that cell of the cellmap
-    [[nodiscard]] std::size_t size(cell_t cell) const { return cellIndexes_(local_(cell)).size(); }
-    [[nodiscard]] std::size_t size(cell_t cell) { return cellIndexes_(local_(cell)).size(); }
+    NO_DISCARD std::size_t size(cell_t cell) const { return cellIndexes_(local_(cell)).size(); }
+    NO_DISCARD std::size_t size(cell_t cell) { return cellIndexes_(local_(cell)).size(); }
 
     // total number of mapped indexes
-    [[nodiscard]] auto size() const;
+    NO_DISCARD auto size() const;
 
     // number of indexes mapped in the given box
-    [[nodiscard]] auto size(box_t const& box) const;
+    NO_DISCARD auto size(box_t const& box) const;
 
     // total capacity over all cells
-    [[nodiscard]] auto capacity() const;
+    NO_DISCARD auto capacity() const;
 
     // remove all indexes
     void clear()
@@ -126,10 +127,10 @@ public:
 
     void empty();
 
-    [[nodiscard]] bool is_empty() const { return size() == 0; }
+    NO_DISCARD bool is_empty() const { return size() == 0; }
 
 
-    [[nodiscard]] float used_mem_ratio() const { return static_cast<float>(size()) / capacity(); }
+    NO_DISCARD float used_mem_ratio() const { return static_cast<float>(size()) / capacity(); }
 
 
     // export from 'from' into 'dest' items indexed in the map found withing 'box'
@@ -185,20 +186,20 @@ public:
     template<typename CellIndex>
     void print(CellIndex const& cell) const;
 
-    [[nodiscard]] auto& box() { return box_; }
-    [[nodiscard]] auto const& box() const { return box_; }
+    NO_DISCARD auto& box() { return box_; }
+    NO_DISCARD auto const& box() const { return box_; }
 
-    [[nodiscard]] auto begin() { return cellIndexes_.begin(); }
-    [[nodiscard]] auto end() { return cellIndexes_.end(); }
+    NO_DISCARD auto begin() { return cellIndexes_.begin(); }
+    NO_DISCARD auto end() { return cellIndexes_.end(); }
 
     template<typename Cell>
-    [[nodiscard]] auto& operator()(Cell const& cell)
+    NO_DISCARD auto& operator()(Cell const& cell)
     {
         return cellIndexes_(local_(cell));
     }
 
     template<typename Cell>
-    [[nodiscard]] auto const& operator()(Cell const& cell) const
+    NO_DISCARD auto const& operator()(Cell const& cell) const
     {
         return cellIndexes_(local_(cell));
     }

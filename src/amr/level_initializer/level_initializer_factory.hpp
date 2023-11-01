@@ -4,6 +4,7 @@
 #include "hybrid_level_initializer.hpp"
 #include "level_initializer.hpp"
 #include "initializer/data_provider.hpp"
+#include "core/def.hpp"
 
 #include <memory>
 #include <string>
@@ -18,7 +19,7 @@ namespace solver
         using AMRTypes = typename HybridModel::amr_types;
 
     public:
-        [[nodiscard]] static std::unique_ptr<LevelInitializer<AMRTypes>>
+        NO_DISCARD static std::unique_ptr<LevelInitializer<AMRTypes>>
         create(std::string modelName, PHARE::initializer::PHAREDict const& dict)
         {
             if (modelName == "HybridModel")

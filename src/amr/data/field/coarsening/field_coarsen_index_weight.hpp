@@ -1,6 +1,7 @@
 #ifndef PHARE_FIELD_COARSEN_HPP
 #define PHARE_FIELD_COARSEN_HPP
 
+#include "core/def.hpp"
 #include "coarsen_weighter.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -77,7 +78,7 @@ namespace amr
             }
         }
 
-        [[nodiscard]] core::Point<int, dimension>
+        NO_DISCARD core::Point<int, dimension>
         computeStartIndexes(core::Point<int, dimension> const& coarseIndex)
         {
             core::Point<int, dimension> fineIndex{coarseIndex};
@@ -95,7 +96,7 @@ namespace amr
         }
 
 
-        [[nodiscard]] std::vector<double> const& weights(core::Direction dir) const
+        NO_DISCARD std::vector<double> const& weights(core::Direction dir) const
         {
             return weighters_[static_cast<std::size_t>(dir)].weights();
         }

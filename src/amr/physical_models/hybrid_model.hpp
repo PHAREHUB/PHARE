@@ -10,6 +10,7 @@
 #include "amr/resources_manager/resources_manager.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/def.hpp"
 
 namespace PHARE::solver
 {
@@ -67,7 +68,7 @@ public:
     virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
 
-    [[nodiscard]] auto setOnPatch(patch_t& patch)
+    NO_DISCARD auto setOnPatch(patch_t& patch)
     {
         return resourcesManager->setOnPatch(patch, *this);
     }
@@ -88,16 +89,13 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    [[nodiscard]] bool isUsable() const { return state.isUsable(); }
+    NO_DISCARD bool isUsable() const { return state.isUsable(); }
 
-    [[nodiscard]] bool isSettable() const { return state.isSettable(); }
+    NO_DISCARD bool isSettable() const { return state.isSettable(); }
 
-    [[nodiscard]] auto getCompileTimeResourcesUserList() const
-    {
-        return std::forward_as_tuple(state);
-    }
+    NO_DISCARD auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(state); }
 
-    [[nodiscard]] auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface

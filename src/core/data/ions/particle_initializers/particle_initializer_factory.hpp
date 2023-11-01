@@ -2,6 +2,7 @@
 #define PHARE_PARTICLE_INITIALIZER_FACTORY_HPP
 
 
+#include "core/def.hpp"
 #include "core/utilities/types.hpp"
 #include "initializer/data_provider.hpp"
 #include "maxwellian_particle_initializer.hpp"
@@ -21,7 +22,7 @@ namespace core
 
 
     public:
-        [[nodiscard]] static std::unique_ptr<ParticleInitializerT>
+        NO_DISCARD static std::unique_ptr<ParticleInitializerT>
         create(initializer::PHAREDict const& dict)
         {
             using FunctionType = initializer::InitFunction<dimension>;
