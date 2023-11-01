@@ -218,7 +218,7 @@ def make_figure():
 
     for ax in (ax0, ax1, ax2):
         ax.axvline(wT0+plot_time*v, color="r")
-    fig.suptitle(datetime.now())
+    fig.suptitle(f"Date={datetime.now()}, Nb de processus MPI={cpp.mpi_size()}")
 
     fig.savefig("tdtagged1d.png")
 
