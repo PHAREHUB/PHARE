@@ -1,0 +1,24 @@
+settings:
+  # Enables automatic reviewing of draft pull requests.
+  enable_draft_pr_reviews: true
+  # Specifies additional base/target branches to be reviewed.  
+  additional_branches_to_be_reviewed:
+    - "master"
+  # Disables generation of release notes.    
+  disable_high_level_summary: false
+  # Specific review instructions for certain file paths.  
+  path_based_instructions:
+    - path: "**.hpp"
+      instructions: "Review the C++ code, point out issues relative to principles of clean code, expressiveness, and performance."
+  # Comma separated list of keywords in the title that should be ignored.          
+  ignored_pr_titles: "WIP"
+  disable_poem: true
+  #exclude_file_pattern:  TBC
+  # ISO Code for the review language.  
+  review_language: "en"
+  # Disables review and other status comments.  
+  disable_review_status: false
+  # Add walkthrough comment in a collapsible section.  
+  collapse_walkthrough_comment: true
+  # Disable automatic code reviews for this repository.  
+  disable_review: false
