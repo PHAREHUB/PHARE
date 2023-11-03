@@ -100,6 +100,8 @@ function(print_phare_options)
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
 
+  message("MPI_LIBRARY_PATH                            : " ${MPI_LIBRARY_PATH})
+
   if(${devMode})
     message("PHARE_EXEC_LEVEL_MIN                        : " ${PHARE_EXEC_LEVEL_MIN})
     message("PHARE_EXEC_LEVEL_MAX                        : " ${PHARE_EXEC_LEVEL_MAX})
