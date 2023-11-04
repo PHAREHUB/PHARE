@@ -24,6 +24,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${GTEST_LIBS})
 
 
-add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 
