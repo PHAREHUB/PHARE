@@ -1,6 +1,7 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
+#include "core/def.hpp"
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -53,13 +54,14 @@ public:
     /** This implementation have the top priority for refine operation
      *
      */
-    int getOperatorPriority() const override { return 0; }
+    NO_DISCARD int getOperatorPriority() const override { return 0; }
 
     /**
      * @brief This operator needs to have at least 1 ghost cell to work properly
      *
      */
-    SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
+    NO_DISCARD SAMRAI::hier::IntVector
+    getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
         return SAMRAI::hier::IntVector::getOne(dim);
     }

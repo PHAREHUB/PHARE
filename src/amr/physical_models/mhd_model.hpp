@@ -1,6 +1,3 @@
-
-
-
 #ifndef PHARE_MHD_MODEL_HPP
 #define PHARE_MHD_MODEL_HPP
 
@@ -13,6 +10,7 @@
 #include "core/models/mhd_state.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
+#include "core/def.hpp"
 
 
 
@@ -55,7 +53,10 @@ namespace solver
         {
         }
 
-        auto setOnPatch(patch_t& patch) { return resourcesManager->setOnPatch(patch, *this); }
+        NO_DISCARD auto setOnPatch(patch_t& patch)
+        {
+            return resourcesManager->setOnPatch(patch, *this);
+        }
 
 
         virtual ~MHDModel() override = default;

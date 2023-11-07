@@ -1,4 +1,3 @@
-
 #include <type_traits>
 
 
@@ -97,9 +96,9 @@ TEST_F(AnIonPopulation, isSettableIfNonUsable)
 
 TEST_F(AnIonPopulation, throwsIfOneWantsToAccessParticleBuffersWhileNotUsable)
 {
-    EXPECT_ANY_THROW(protons.domainParticles());
-    EXPECT_ANY_THROW(protons.patchGhostParticles());
-    EXPECT_ANY_THROW(protons.levelGhostParticles());
+    EXPECT_ANY_THROW(auto& p = protons.domainParticles());
+    EXPECT_ANY_THROW(auto& p = protons.patchGhostParticles());
+    EXPECT_ANY_THROW(auto& p = protons.levelGhostParticles());
 }
 
 

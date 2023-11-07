@@ -2,6 +2,7 @@
 #define PHARE_INDEXER_H
 
 #include "core/utilities/types.hpp"
+#include "core/def.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -23,11 +24,11 @@ namespace PHARE::core
 class Indexer
 {
 public:
-    Indexer()                     = default;
-    Indexer(Indexer const& other) = default;
-    Indexer(Indexer&& other)      = default;
+    Indexer()                                = default;
+    Indexer(Indexer const& other)            = default;
+    Indexer(Indexer&& other)                 = default;
     Indexer& operator=(Indexer const& other) = default;
-    Indexer& operator=(Indexer&& other) = default;
+    Indexer& operator=(Indexer&& other)      = default;
 
     void add(std::size_t itemIndex) { indexes_.push_back(itemIndex); }
     void remove(std::size_t itemIndex)
@@ -39,7 +40,7 @@ public:
         }
         assert(!is_indexed(itemIndex));
     }
-    bool is_indexed(std::size_t itemIndex)
+    NO_DISCARD bool is_indexed(std::size_t itemIndex)
     {
         return std::end(indexes_) != std::find(std::begin(indexes_), std::end(indexes_), itemIndex);
     }
@@ -60,17 +61,17 @@ public:
 
     // empty the bucketlist, but leaves the capacity untouched
     void empty() { indexes_.resize(0); };
-    bool is_empty() const { return indexes_.size() == 0; }
+    NO_DISCARD bool is_empty() const { return indexes_.size() == 0; }
 
-    std::size_t size() const { return indexes_.size(); }
-    std::size_t capacity() const { return indexes_.capacity(); }
+    NO_DISCARD std::size_t size() const { return indexes_.size(); }
+    NO_DISCARD std::size_t capacity() const { return indexes_.capacity(); }
 
-    auto begin() { return indexes_.begin(); }
-    auto begin() const { return indexes_.begin(); }
-    auto cbegin() const { return indexes_.begin(); }
-    auto end() { return indexes_.end(); }
-    auto end() const { return indexes_.end(); }
-    auto cend() const { return indexes_.end(); }
+    NO_DISCARD auto begin() { return indexes_.begin(); }
+    NO_DISCARD auto begin() const { return indexes_.begin(); }
+    NO_DISCARD auto cbegin() const { return indexes_.begin(); }
+    NO_DISCARD auto end() { return indexes_.end(); }
+    NO_DISCARD auto end() const { return indexes_.end(); }
+    NO_DISCARD auto cend() const { return indexes_.end(); }
     void sort() { std::sort(indexes_.begin(), indexes_.end()); }
     void clear() { indexes_.clear(); }
 

@@ -2,6 +2,7 @@
 #define PHARE_LINEAR_WEIGHTER_HPP
 
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/field/field.hpp"
 #include "core/utilities/constants.hpp"
@@ -39,7 +40,7 @@ namespace amr
 
 
     template<typename T, std::size_t... Is>
-    std::array<LinearWeighter, sizeof...(Is)>
+    NO_DISCARD std::array<LinearWeighter, sizeof...(Is)>
     make_weighters(const std::array<T, sizeof...(Is)>& values, SAMRAI::hier::IntVector ratio,
                    std::index_sequence<Is...>)
     {

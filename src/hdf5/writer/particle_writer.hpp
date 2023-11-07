@@ -7,6 +7,7 @@
 #include "hdf5/detail/hdf5_utils.hpp"
 #include "hdf5/detail/h5/h5_file.hpp"
 
+#include "core/def.hpp"
 #include "core/data/particles/particle_packer.hpp"
 
 
@@ -36,7 +37,7 @@ public:
 
 
     template<std::size_t dim, typename T, typename Size>
-    auto static size_for(T const& type, Size const& n_particles)
+    NO_DISCARD auto static size_for(T const& type, Size const& n_particles)
     {
         if (n_particles == 0)
             return std::vector<std::size_t>{0};

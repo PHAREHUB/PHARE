@@ -7,6 +7,7 @@
 
 #include "core/logger.hpp"
 #include "initializer/data_provider.hpp"
+#include "core/def.hpp"
 
 namespace PHARE::core
 {
@@ -40,7 +41,7 @@ private:
 
 struct TimeStamperFactory
 {
-    static std::unique_ptr<ITimeStamper> create(initializer::PHAREDict const& dict)
+    NO_DISCARD static std::unique_ptr<ITimeStamper> create(initializer::PHAREDict const& dict)
     {
         assert(dict.contains("time_step"));
         auto time_step  = dict["time_step"].template to<double>();

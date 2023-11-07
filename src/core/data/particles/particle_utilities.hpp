@@ -4,6 +4,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/def.hpp"
 
 #include <array>
 
@@ -15,7 +16,8 @@ template<typename GridLayout>
  * @brief positionAsPoint returns a point holding the physical position of the macroparticle.
  * The function assumes the iCell of the particle is in AMR index space.
  */
-auto positionAsPoint(Particle<GridLayout::dimension> const& particle, GridLayout const& layout)
+NO_DISCARD auto positionAsPoint(Particle<GridLayout::dimension> const& particle,
+                                GridLayout const& layout)
 {
     Point<double, GridLayout::dimension> position;
     auto origin       = layout.origin();

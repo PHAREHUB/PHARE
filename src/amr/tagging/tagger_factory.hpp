@@ -1,4 +1,3 @@
-
 #ifndef PHARE_TAGGER_FACTORY_HPP
 #define PHARE_TAGGER_FACTORY_HPP
 
@@ -9,6 +8,7 @@
 #include "hybrid_tagger.hpp"
 #include "hybrid_tagger_strategy.hpp"
 #include "default_hybrid_tagger_strategy.hpp"
+#include "core/def.hpp"
 
 namespace PHARE::amr
 {
@@ -17,7 +17,7 @@ class TaggerFactory
 {
 public:
     TaggerFactory() = delete;
-    static std::unique_ptr<Tagger> make(std::string modelName, std::string methodName);
+    NO_DISCARD static std::unique_ptr<Tagger> make(std::string modelName, std::string methodName);
 };
 
 template<typename PHARE_T>

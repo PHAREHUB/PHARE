@@ -13,6 +13,7 @@
 #include "core/data/particles/particle.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/def.hpp"
 
 
 namespace PHARE::core
@@ -65,7 +66,7 @@ public:
     virtual ~MaxwellianParticleInitializer() = default;
 
 
-    static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
+    NO_DISCARD static std::mt19937_64 getRNG(std::optional<std::size_t> const& seed)
     {
         if (!seed.has_value())
         {
@@ -111,12 +112,12 @@ public:
                 _B[i] = magneticField[i](coords...);
     }
 
-    std::array<double const*, 3> B() const { return ptrs(_B); }
+    NO_DISCARD std::array<double const*, 3> B() const { return ptrs(_B); }
 
-    auto operator()() const { return std::make_tuple(_n->data(), ptrs(_V), ptrs(_Vth)); }
+    NO_DISCARD auto operator()() const { return std::make_tuple(_n->data(), ptrs(_V), ptrs(_Vth)); }
 
 private:
-    std::array<double const*, 3>
+    NO_DISCARD std::array<double const*, 3>
     ptrs(std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> const& v) const
     {
         return {v[0]->data(), v[1]->data(), v[2]->data()};

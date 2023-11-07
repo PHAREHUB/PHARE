@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "cppdict/include/dict.hpp"
+#include "core/def.hpp"
 #include "core/utilities/span.hpp"
 
 namespace PHARE
@@ -55,13 +56,13 @@ namespace initializer
     class PHAREDictHandler
     {
     public:
-        static PHAREDictHandler& INSTANCE();
+        NO_DISCARD static PHAREDictHandler& INSTANCE();
 
         void init() { phareDict = std::make_unique<PHAREDict>(); }
 
         void stop() { phareDict.release(); }
 
-        auto& dict()
+        NO_DISCARD auto& dict()
         {
             if (!phareDict)
                 init();

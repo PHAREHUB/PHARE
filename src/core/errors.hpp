@@ -1,9 +1,11 @@
-
 #ifndef PHARE_CORE_ERRORS_HPP
 #define PHARE_CORE_ERRORS_HPP
 
+#include "core/def.hpp"
 #include <vector>
 #include <unordered_map>
+#include <string>
+#include <iostream>
 
 
 namespace PHARE::core
@@ -11,13 +13,13 @@ namespace PHARE::core
 class Errors
 {
 public:
-    static Errors& instance()
+    NO_DISCARD static Errors& instance()
     {
         static Errors i;
         return i;
     }
 
-    bool any() { return errors.size() > 0; }
+    NO_DISCARD bool any() { return errors.size() > 0; }
 
     void log(std::string const key, std::string const val)
     {

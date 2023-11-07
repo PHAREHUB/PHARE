@@ -2,6 +2,7 @@
 #define PHARE_ALGORITHM_HPP
 
 #include "core/utilities/types.hpp"
+#include "core/def.hpp"
 
 
 
@@ -13,7 +14,7 @@ namespace PHARE
 namespace core
 {
     template<std::uint32_t lhs, std::uint32_t rhs>
-    constexpr std::uint32_t max()
+    NO_DISCARD constexpr std::uint32_t max()
     {
         if constexpr (lhs < rhs)
         {
@@ -27,7 +28,7 @@ namespace core
 
 
     template<typename T>
-    std::string to_str(T&& t)
+    NO_DISCARD std::string to_str(T&& t)
     {
         return t.to_str();
     }
@@ -35,7 +36,7 @@ namespace core
 
 
     template<typename Container, typename ContainedT = typename Container::value_type>
-    bool notIn(ContainedT& obj, Container& list)
+    NO_DISCARD bool notIn(ContainedT& obj, Container& list)
     {
         auto sameItem = std::find_if(std::begin(list), std::end(list), [&obj](auto& currentItem) {
             return obj->name() == currentItem->name();

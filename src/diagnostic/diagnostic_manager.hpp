@@ -1,7 +1,7 @@
-
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
+#include "core/def.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 #include "diagnostic_props.hpp"
@@ -9,6 +9,7 @@
 #include <utility>
 #include <cmath>
 #include <memory>
+#include <map>
 
 namespace PHARE::diagnostic
 {
@@ -70,8 +71,8 @@ public:
 
 
     template<typename Hierarchy, typename Model>
-    static std::unique_ptr<DiagnosticsManager> make_unique(Hierarchy& hier, Model& model,
-                                                           initializer::PHAREDict const& dict)
+    NO_DISCARD static std::unique_ptr<DiagnosticsManager>
+    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
         auto dMan = std::make_unique<DiagnosticsManager>(Writer::make_unique(hier, model, dict));
         registerDiagnostics(*dMan, dict);
@@ -85,26 +86,26 @@ public:
     DiagnosticsManager& addDiagDict(initializer::PHAREDict&& dict) { return addDiagDict(dict); }
 
 
-    auto& diagnostics() const { return diagnostics_; }
+    NO_DISCARD auto& diagnostics() const { return diagnostics_; }
 
 
-    Writer& writer() { return *writer_.get(); }
+    NO_DISCARD Writer& writer() { return *writer_.get(); }
 
 
-    DiagnosticsManager(DiagnosticsManager const&) = delete;
-    DiagnosticsManager(DiagnosticsManager&&)      = delete;
+    DiagnosticsManager(DiagnosticsManager const&)            = delete;
+    DiagnosticsManager(DiagnosticsManager&&)                 = delete;
     DiagnosticsManager& operator=(DiagnosticsManager const&) = delete;
-    DiagnosticsManager& operator=(DiagnosticsManager&&) = delete;
+    DiagnosticsManager& operator=(DiagnosticsManager&&)      = delete;
 
 private:
-    bool needsAction_(double nextTime, double timeStamp, double timeStep)
+    NO_DISCARD bool needsAction_(double nextTime, double timeStamp, double timeStep)
     {
         // casting to float to truncate double to avoid trailing imprecision
         return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
     }
 
 
-    bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    NO_DISCARD bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextWrite = nextWrite_[diag.type + diag.quantity];
         return nextWrite < diag.writeTimestamps.size()
@@ -112,7 +113,7 @@ private:
     }
 
 
-    bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
+    NO_DISCARD bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto nextCompute = nextCompute_[diag.type + diag.quantity];
         return nextCompute < diag.computeTimestamps.size()

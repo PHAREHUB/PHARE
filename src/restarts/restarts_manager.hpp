@@ -1,7 +1,8 @@
-
 #ifndef PHARE_RESTART_MANAGER_HPP_
 #define PHARE_RESTART_MANAGER_HPP_
 
+
+#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -46,8 +47,8 @@ public:
 
 
     template<typename Hierarchy, typename Model>
-    static std::unique_ptr<RestartsManager> make_unique(Hierarchy& hier, Model& model,
-                                                        initializer::PHAREDict const& dict)
+    NO_DISCARD static std::unique_ptr<RestartsManager>
+    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
         auto rMan = std::make_unique<RestartsManager>(Writer::make_unique(hier, model, dict));
         auto restarts_are_written = core::any(
@@ -64,13 +65,13 @@ public:
     RestartsManager& addRestartDict(initializer::PHAREDict&& dict) { return addRestartDict(dict); }
 
 
-    Writer& writer() { return *writer_.get(); }
+    NO_DISCARD Writer& writer() { return *writer_.get(); }
 
 
-    RestartsManager(RestartsManager const&) = delete;
-    RestartsManager(RestartsManager&&)      = delete;
+    RestartsManager(RestartsManager const&)            = delete;
+    RestartsManager(RestartsManager&&)                 = delete;
     RestartsManager& operator=(RestartsManager const&) = delete;
-    RestartsManager& operator=(RestartsManager&&) = delete;
+    RestartsManager& operator=(RestartsManager&&)      = delete;
 
 private:
     bool needsCadenceAction_(double const nextTime, double const timeStamp,

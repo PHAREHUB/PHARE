@@ -8,8 +8,6 @@
 
 #include <utility>
 
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 #include "field_data.hpp"
 
 namespace PHARE

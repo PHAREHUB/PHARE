@@ -20,6 +20,7 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 
+#include "core/def.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
@@ -58,7 +59,7 @@ public:
         }
     }
 
-    auto static getRestartFileFullPath(std::string path, int idx = 0)
+    NO_DISCARD auto static getRestartFileFullPath(std::string path, int idx = 0)
     {
         // https://github.com/LLNL/SAMRAI/pull/198
         // there's a PR for this next line, but until then the code below is the same
@@ -72,7 +73,7 @@ public:
 
     void closeRestartFile() { SAMRAI::tbox::RestartManager::getManager()->closeRestartFile(); }
 
-    bool isFromRestart() const
+    NO_DISCARD bool isFromRestart() const
     {
         return SAMRAI::tbox::RestartManager::getManager()->isFromRestart();
     }
@@ -86,15 +87,15 @@ public:
 class Hierarchy : public HierarchyRestarter, public SAMRAI::hier::PatchHierarchy
 {
 public:
-    static auto make();
-    auto const& cellWidth() const { return cellWidth_; }
-    auto const& domainBox() const { return domainBox_; }
-    auto const& origin() const { return origin_; }
+    NO_DISCARD static auto make();
+    NO_DISCARD auto const& cellWidth() const { return cellWidth_; }
+    NO_DISCARD auto const& domainBox() const { return domainBox_; }
+    NO_DISCARD auto const& origin() const { return origin_; }
 
 
     auto writeRestartFile(std::string directory) const;
 
-    auto static restartFilePathForTime(std::string path, double timestamp)
+    NO_DISCARD auto static restartFilePathForTime(std::string path, double timestamp)
     {
         std::size_t constexpr precision = 5;
         std::size_t constexpr width     = 11;

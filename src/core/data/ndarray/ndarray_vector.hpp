@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
+#include "core/def.hpp"
 #include <stdexcept>
 #include <array>
 #include <cstdint>
@@ -16,7 +17,8 @@ template<std::size_t dim, bool c_ordering = true, typename DataType = double>
 struct NdArrayViewer
 {
     template<typename NCells, typename... Indexes>
-    static DataType const& at(DataType const* data, NCells const& nCells, Indexes const&... indexes)
+    NO_DISCARD static DataType const& at(DataType const* data, NCells const& nCells,
+                                         Indexes const&... indexes)
     {
         auto params = std::forward_as_tuple(indexes...);
         static_assert(sizeof...(Indexes) == dim);
@@ -55,8 +57,8 @@ struct NdArrayViewer
     }
 
     template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
-    static DataType const& at(DataType const* data, NCells const& nCells,
-                              Indexes<Index, dim> const& indexes)
+    NO_DISCARD static DataType const& at(DataType const* data, NCells const& nCells,
+                                         Indexes<Index, dim> const& indexes)
 
     {
         if constexpr (dim == 1)
@@ -95,27 +97,27 @@ public:
     }
 
     template<typename... Indexes>
-    DataType const& operator()(Indexes... indexes) const
+    NO_DISCARD DataType const& operator()(Indexes... indexes) const
     {
         return NdArrayViewer<dimension, true, DataType>::at(array_.data(), shape_, indexes...);
     }
 
     template<typename... Indexes>
-    DataType& operator()(Indexes... indexes)
+    NO_DISCARD DataType& operator()(Indexes... indexes)
     {
         return const_cast<DataType&>(static_cast<MaskedView const&>(*this)(indexes...));
     }
 
-    auto operator=(data_type value) { mask_.fill(array_, value); }
+    NO_DISCARD auto operator=(data_type value) { mask_.fill(array_, value); }
 
-    auto xstart() const { return mask_.min(); }
+    NO_DISCARD auto xstart() const { return mask_.min(); }
 
-    auto xend() const { return shape_[0] - 1 - mask_.max(); }
+    NO_DISCARD auto xend() const { return shape_[0] - 1 - mask_.max(); }
 
 
-    auto ystart() const { return mask_.min(); }
+    NO_DISCARD auto ystart() const { return mask_.min(); }
 
-    auto yend() const { return shape_[1] - 1 - mask_.max(); }
+    NO_DISCARD auto yend() const { return shape_[1] - 1 - mask_.max(); }
 
 
 private:
@@ -148,35 +150,35 @@ public:
     }
 
     template<typename... Indexes>
-    DataType const& operator()(Indexes... indexes) const
+    NO_DISCARD DataType const& operator()(Indexes... indexes) const
     {
         return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes...);
     }
 
     template<typename... Indexes>
-    DataType& operator()(Indexes... indexes)
+    NO_DISCARD DataType& operator()(Indexes... indexes)
     {
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes...));
     }
 
     template<typename Index>
-    DataType const& operator()(std::array<Index, dim> const& indexes) const
+    NO_DISCARD DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
         return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
-    DataType& operator()(std::array<Index, dim> const& indexes)
+    NO_DISCARD DataType& operator()(std::array<Index, dim> const& indexes)
     {
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes));
     }
 
-    auto data() const { return ptr_; }
-    std::size_t size() const
+    NO_DISCARD auto data() const { return ptr_; }
+    NO_DISCARD std::size_t size() const
     {
         return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
     }
-    auto shape() const { return nCells_; }
+    NO_DISCARD auto shape() const { return nCells_; }
 
 private:
     Pointer ptr_ = nullptr;
@@ -210,21 +212,21 @@ public:
     {
     }
 
-    NdArrayVector(NdArrayVector const& source) = default;
-    NdArrayVector(NdArrayVector&& source)      = default;
+    NdArrayVector(NdArrayVector const& source)            = default;
+    NdArrayVector(NdArrayVector&& source)                 = default;
     NdArrayVector& operator=(NdArrayVector const& source) = default;
-    NdArrayVector& operator=(NdArrayVector&& source) = default;
+    NdArrayVector& operator=(NdArrayVector&& source)      = default;
 
-    auto data() const { return data_.data(); }
-    auto data() { return data_.data(); }
+    NO_DISCARD auto data() const { return data_.data(); }
+    NO_DISCARD auto data() { return data_.data(); }
 
-    auto size() const { return data_.size(); }
+    NO_DISCARD auto size() const { return data_.size(); }
 
-    auto begin() const { return std::begin(data_); }
-    auto begin() { return std::begin(data_); }
+    NO_DISCARD auto begin() const { return std::begin(data_); }
+    NO_DISCARD auto begin() { return std::begin(data_); }
 
-    auto end() const { return std::end(data_); }
-    auto end() { return std::end(data_); }
+    NO_DISCARD auto end() const { return std::end(data_); }
+    NO_DISCARD auto end() { return std::end(data_); }
 
     void zero() { std::fill(data_.begin(), data_.end(), 0); }
 
@@ -232,41 +234,41 @@ public:
 
 
     template<typename... Indexes>
-    DataType const& operator()(Indexes... indexes) const
+    NO_DISCARD DataType const& operator()(Indexes... indexes) const
     {
         return NdArrayViewer<dim, c_ordering, DataType>::at(data_.data(), nCells_, indexes...);
     }
 
     template<typename... Indexes>
-    DataType& operator()(Indexes... indexes)
+    NO_DISCARD DataType& operator()(Indexes... indexes)
     {
         return const_cast<DataType&>(static_cast<NdArrayVector const&>(*this)(indexes...));
     }
 
     template<typename Index>
-    DataType const& operator()(std::array<Index, dim> const& indexes) const
+    NO_DISCARD DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
         return NdArrayViewer<dim, c_ordering, DataType>::at(data_.data(), nCells_, indexes);
     }
 
     template<typename Index>
-    DataType& operator()(std::array<Index, dim> const& indexes)
+    NO_DISCARD DataType& operator()(std::array<Index, dim> const& indexes)
     {
         return const_cast<DataType&>(static_cast<NdArrayVector const&>(*this)(indexes));
     }
 
 
-    auto& shape() const { return nCells_; }
+    NO_DISCARD auto& shape() const { return nCells_; }
 
     template<typename Mask>
-    auto operator[](Mask&& mask)
+    NO_DISCARD auto operator[](Mask&& mask)
     {
         return MaskedView{*this, std::forward<Mask>(mask)};
     }
 
 
-    auto& vector() { return data_; }
-    auto& vector() const { return data_; }
+    NO_DISCARD auto& vector() { return data_; }
+    NO_DISCARD auto& vector() const { return data_; }
 
 
 private:
@@ -350,7 +352,7 @@ public:
     }
 
     template<typename Array>
-    auto nCells(Array const& array)
+    NO_DISCARD auto nCells(Array const& array)
     {
         auto shape = array.shape();
 
@@ -371,8 +373,8 @@ public:
     }
 
 
-    auto min() const { return min_; };
-    auto max() const { return max_; };
+    NO_DISCARD auto min() const { return min_; };
+    NO_DISCARD auto max() const { return max_; };
 
 private:
     std::size_t min_, max_;

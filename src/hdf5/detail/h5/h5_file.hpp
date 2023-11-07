@@ -1,6 +1,7 @@
 #ifndef PHARE_HDF5_H5FILE_HPP
 #define PHARE_HDF5_H5FILE_HPP
 
+#include "core/def.hpp"
 #include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
 
@@ -13,7 +14,7 @@ using HiFile = HighFive::File;
   Highfive cannot accept a single flat array into >= 2d shaped datasets
 */
 template<std::size_t dim, typename Data>
-auto pointer_dim_caster(Data* data)
+NO_DISCARD auto pointer_dim_caster(Data* data)
 {
     if constexpr (dim == 1)
         return data;
@@ -23,7 +24,7 @@ auto pointer_dim_caster(Data* data)
         return reinterpret_cast<Data const*** const>(data);
 }
 template<std::size_t dim, typename Data>
-auto pointer_dim_caster(Data const* const data)
+NO_DISCARD auto pointer_dim_caster(Data const* const data)
 {
     if constexpr (dim == 1)
         return data;
@@ -36,7 +37,7 @@ auto pointer_dim_caster(Data const* const data)
 
 
 template<std::size_t dim, typename Data>
-auto decay_to_pointer(Data& data)
+NO_DISCARD auto decay_to_pointer(Data& data)
 {
     if constexpr (dim == 1)
         return data.data();
@@ -47,7 +48,7 @@ auto decay_to_pointer(Data& data)
 }
 
 template<typename Data, std::size_t dim>
-auto vector_for_dim()
+NO_DISCARD auto vector_for_dim()
 {
     if constexpr (dim == 1)
         return std::vector<Data>();
@@ -83,11 +84,11 @@ public:
 
     ~HighFiveFile() {}
 
-    HiFile& file() { return h5file_; }
+    NO_DISCARD HiFile& file() { return h5file_; }
 
 
     template<typename T, std::size_t dim = 1>
-    auto read_data_set_flat(std::string path) const
+    NO_DISCARD auto read_data_set_flat(std::string path) const
     {
         std::vector<T> data(H5Easy::getSize(h5file_, path));
         h5file_.getDataSet(path).read(pointer_dim_caster<dim>(data.data()));
@@ -95,7 +96,7 @@ public:
     }
 
     template<typename T, std::size_t dim = 1>
-    auto read_data_set(std::string path) const
+    NO_DISCARD auto read_data_set(std::string path) const
     {
         auto data = vector_for_dim<T, dim>();
         h5file_.getDataSet(path).read(data);
@@ -218,9 +219,9 @@ public:
     }
 
 
-    HighFiveFile(const HighFiveFile&)  = delete;
-    HighFiveFile(const HighFiveFile&&) = delete;
-    HighFiveFile& operator=(const HighFiveFile&) = delete;
+    HighFiveFile(const HighFiveFile&)             = delete;
+    HighFiveFile(const HighFiveFile&&)            = delete;
+    HighFiveFile& operator=(const HighFiveFile&)  = delete;
     HighFiveFile& operator=(const HighFiveFile&&) = delete;
 
 private:

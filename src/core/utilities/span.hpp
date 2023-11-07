@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <numeric>
 #include "core/utilities/types.hpp"
+#include "core/def.hpp"
 
 namespace PHARE::core
 {
@@ -15,12 +16,12 @@ struct Span
 {
     using value_type = T;
 
-    auto& operator[](SIZE i) { return ptr[i]; }
-    auto& operator[](SIZE i) const { return ptr[i]; }
-    T const* const& data() const { return ptr; }
-    T const* const& begin() const { return ptr; }
-    T* end() const { return ptr + s; }
-    SIZE const& size() const { return s; }
+    NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
+    NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
+    NO_DISCARD T const* const& data() const { return ptr; }
+    NO_DISCARD T const* const& begin() const { return ptr; }
+    NO_DISCARD T* end() const { return ptr + s; }
+    NO_DISCARD SIZE const& size() const { return s; }
 
     T const* ptr = nullptr;
     SIZE s       = 0;
@@ -77,12 +78,12 @@ struct SpanSet
     {
     }
 
-    Span<T, SIZE> operator[](SIZE i) const
+    NO_DISCARD Span<T, SIZE> operator[](SIZE i) const
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
     }
 
-    T* data() const { return const_cast<T*>(vec.data()); }
+    NO_DISCARD T* data() const { return const_cast<T*>(vec.data()); }
 
     struct iterator
     {
@@ -102,11 +103,11 @@ struct SpanSet
         SIZE curr_pos = 0, curr_ptr = 0;
     };
 
-    auto begin() { return iterator(this); }
-    auto cbegin() const { return iterator(this); }
+    NO_DISCARD auto begin() { return iterator(this); }
+    NO_DISCARD auto cbegin() const { return iterator(this); }
 
-    auto end() { return iterator(this); }
-    auto cend() const { return iterator(this); }
+    NO_DISCARD auto end() { return iterator(this); }
+    NO_DISCARD auto cend() const { return iterator(this); }
 
     SIZE size;
     std::vector<SIZE> sizes;

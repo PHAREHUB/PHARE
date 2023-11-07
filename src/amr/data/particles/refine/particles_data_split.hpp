@@ -2,6 +2,7 @@
 #define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
+#include "core/def.hpp"
 #include "amr/data/particles/particles_data.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "split.hpp"
@@ -30,7 +31,7 @@ namespace amr
 
 
     template<std::size_t interp, typename Particle>
-    Particle toFineGrid(Particle toFine)
+    NO_DISCARD Particle toFineGrid(Particle toFine)
     {
         constexpr auto dim   = Particle::dimension;
         constexpr auto ratio = PHARE::amr::refinementRatio;

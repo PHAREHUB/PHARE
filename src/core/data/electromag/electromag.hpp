@@ -1,5 +1,3 @@
-
-
 #ifndef PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 #define PHARE_CORE_DATA_ELECTROMAG_ELECTROMAG_HPP
 
@@ -9,6 +7,7 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "initializer/data_provider.hpp"
+#include "core/def.hpp"
 
 
 namespace PHARE
@@ -53,13 +52,16 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return E.isUsable() && B.isUsable(); }
+        NO_DISCARD bool isUsable() const { return E.isUsable() && B.isUsable(); }
 
-        bool isSettable() const { return E.isSettable() && B.isSettable(); }
+        NO_DISCARD bool isSettable() const { return E.isSettable() && B.isSettable(); }
 
-        auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(E, B); }
+        NO_DISCARD auto getCompileTimeResourcesUserList() const
+        {
+            return std::forward_as_tuple(E, B);
+        }
 
-        auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
+        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
 
 
         //-------------------------------------------------------------------------

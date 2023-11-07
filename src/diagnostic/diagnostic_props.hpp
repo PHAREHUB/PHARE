@@ -1,6 +1,7 @@
 #ifndef DIAGNOSTIC_DAO_HPP
 #define DIAGNOSTIC_DAO_HPP
 
+#include "core/def.hpp"
 #include <string>
 #include <vector>
 #include <cstddef>
@@ -21,10 +22,10 @@ struct DiagnosticProperties
     Params params{}; // supports arbitrary values for specific diagnostic writers
                      // for instance "flushEvery" for H5 file writers
 
-    auto& operator[](std::string const& paramKey) { return params[paramKey]; }
+    NO_DISCARD auto& operator[](std::string const& paramKey) { return params[paramKey]; }
 
     template<typename T>
-    auto const& param(std::string const& paramKey) const
+    NO_DISCARD auto const& param(std::string const& paramKey) const
     {
         return params[paramKey].template to<T>();
     }

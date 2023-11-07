@@ -13,6 +13,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
+#include "core/def.hpp"
 
 namespace PHARE::core
 {
@@ -55,13 +56,13 @@ public:
         assert(box_.size() > 0);
     }
 
-    ParticleArray(ParticleArray const& from) = default;
-    ParticleArray(ParticleArray&& from)      = default;
-    ParticleArray& operator=(ParticleArray&& from) = default;
+    ParticleArray(ParticleArray const& from)            = default;
+    ParticleArray(ParticleArray&& from)                 = default;
+    ParticleArray& operator=(ParticleArray&& from)      = default;
     ParticleArray& operator=(ParticleArray const& from) = default;
 
-    std::size_t size() const { return particles_.size(); }
-    std::size_t capacity() const { return particles_.capacity(); }
+    NO_DISCARD std::size_t size() const { return particles_.size(); }
+    NO_DISCARD std::size_t capacity() const { return particles_.capacity(); }
 
     void clear()
     {
@@ -71,19 +72,19 @@ public:
     void reserve(std::size_t newSize) { return particles_.reserve(newSize); }
     void resize(std::size_t newSize) { return particles_.resize(newSize); }
 
-    auto const& operator[](std::size_t i) const { return particles_[i]; }
-    auto& operator[](std::size_t i) { return particles_[i]; }
+    NO_DISCARD auto const& operator[](std::size_t i) const { return particles_[i]; }
+    NO_DISCARD auto& operator[](std::size_t i) { return particles_[i]; }
 
-    bool operator==(ParticleArray<dim> const& that) const
+    NO_DISCARD bool operator==(ParticleArray<dim> const& that) const
     {
         return (this->particles_ == that.particles_);
     }
 
-    auto begin() const { return particles_.begin(); }
-    auto begin() { return particles_.begin(); }
+    NO_DISCARD auto begin() const { return particles_.begin(); }
+    NO_DISCARD auto begin() { return particles_.begin(); }
 
-    auto end() const { return particles_.end(); }
-    auto end() { return particles_.end(); }
+    NO_DISCARD auto end() const { return particles_.end(); }
+    NO_DISCARD auto end() { return particles_.end(); }
 
     template<class InputIterator>
     void insert(iterator position, InputIterator first, InputIterator last)
@@ -91,8 +92,8 @@ public:
         particles_.insert(position, first, last);
     }
 
-    auto back() { return particles_.back(); }
-    auto front() { return particles_.front(); }
+    NO_DISCARD auto back() { return particles_.back(); }
+    NO_DISCARD auto front() { return particles_.front(); }
 
     auto erase(IndexRange_& range) { cellMap_.erase(particles_, range); }
     auto erase(IndexRange_&& range)
@@ -149,7 +150,7 @@ public:
     void empty_map() { cellMap_.empty(); }
 
 
-    auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
+    NO_DISCARD auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
 
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
@@ -204,7 +205,7 @@ public:
     }
 
 
-    bool is_mapped() const
+    NO_DISCARD bool is_mapped() const
     {
         bool ok = true;
         if (particles_.size() != cellMap_.size())
@@ -227,8 +228,8 @@ public:
 
     void sortMapping() const { cellMap_.sort(); }
 
-    auto& vector() { return particles_; }
-    auto& vector() const { return particles_; }
+    NO_DISCARD auto& vector() { return particles_; }
+    NO_DISCARD auto& vector() const { return particles_; }
 
 private:
     Vector particles_;
@@ -288,16 +289,16 @@ namespace core
         {
         }
 
-        std::size_t size() const { return weight.size(); }
+        NO_DISCARD std::size_t size() const { return weight.size(); }
 
         template<std::size_t S, typename T>
-        static std::array<T, S>* _array_cast(T const* array)
+        NO_DISCARD static std::array<T, S>* _array_cast(T const* array)
         {
             return reinterpret_cast<std::array<T, S>*>(const_cast<T*>(array));
         }
 
         template<typename Return>
-        Return _to(std::size_t i)
+        NO_DISCARD Return _to(std::size_t i)
         {
             return {
                 *const_cast<double*>(weight.data() + i),     //
@@ -308,11 +309,11 @@ namespace core
             };
         }
 
-        auto copy(std::size_t i) { return _to<Particle<dim>>(i); }
-        auto view(std::size_t i) { return _to<ParticleView<dim>>(i); }
+        NO_DISCARD auto copy(std::size_t i) { return _to<Particle<dim>>(i); }
+        NO_DISCARD auto view(std::size_t i) { return _to<ParticleView<dim>>(i); }
 
-        auto operator[](std::size_t i) const { return view(i); }
-        auto operator[](std::size_t i) { return view(i); }
+        NO_DISCARD auto operator[](std::size_t i) const { return view(i); }
+        NO_DISCARD auto operator[](std::size_t i) { return view(i); }
 
         struct iterator
         {
@@ -328,22 +329,31 @@ namespace core
                 return *this;
             }
 
-            bool operator!=(iterator const& other) const { return curr_pos != views.size(); }
-            auto& operator*() { return views[curr_pos]; }
-            auto& operator*() const { return views[curr_pos]; }
+            NO_DISCARD bool operator!=(iterator const& other) const
+            {
+                return curr_pos != views.size();
+            }
+            NO_DISCARD auto& operator*() { return views[curr_pos]; }
+            NO_DISCARD auto& operator*() const { return views[curr_pos]; }
 
             std::size_t curr_pos = 0;
             std::vector<ParticleView<dim>> views;
         };
 
-        auto as_tuple() { return std::forward_as_tuple(weight, charge, iCell, delta, v); }
-        auto as_tuple() const { return std::forward_as_tuple(weight, charge, iCell, delta, v); }
+        NO_DISCARD auto as_tuple()
+        {
+            return std::forward_as_tuple(weight, charge, iCell, delta, v);
+        }
+        NO_DISCARD auto as_tuple() const
+        {
+            return std::forward_as_tuple(weight, charge, iCell, delta, v);
+        }
 
-        auto begin() { return iterator(this); }
-        auto cbegin() const { return iterator(this); }
+        NO_DISCARD auto begin() { return iterator(this); }
+        NO_DISCARD auto cbegin() const { return iterator(this); }
 
-        auto end() { return iterator(this); }
-        auto cend() const { return iterator(this); }
+        NO_DISCARD auto end() { return iterator(this); }
+        NO_DISCARD auto cend() const { return iterator(this); }
 
         container_t<int> iCell;
         container_t<double> delta;

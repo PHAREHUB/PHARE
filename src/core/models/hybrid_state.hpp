@@ -7,6 +7,7 @@
 
 #include "core/utilities/algorithm.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
+#include "core/def.hpp"
 
 
 #include <cstddef>
@@ -44,7 +45,7 @@ namespace core
         VecField J;
         Electrons electrons;
 
-        std::string to_str()
+        NO_DISCARD std::string to_str()
         {
             std::stringstream ss;
             ss << "Hybrid State\n";
@@ -58,22 +59,25 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        bool isUsable() const { return electromag.isUsable() and ions.isUsable() && J.isUsable(); }
+        NO_DISCARD bool isUsable() const
+        {
+            return electromag.isUsable() and ions.isUsable() && J.isUsable();
+        }
 
 
 
-        bool isSettable() const
+        NO_DISCARD bool isSettable() const
         {
             return electromag.isSettable() and ions.isSettable() && J.isSettable();
         }
 
 
-        auto getCompileTimeResourcesUserList() const
+        NO_DISCARD auto getCompileTimeResourcesUserList() const
         {
             return std::forward_as_tuple(electromag, ions, electrons);
         }
 
-        auto getCompileTimeResourcesUserList()
+        NO_DISCARD auto getCompileTimeResourcesUserList()
         {
             return std::forward_as_tuple(electromag, ions, electrons);
         }

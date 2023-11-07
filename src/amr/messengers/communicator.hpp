@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 
+#include "core/def.hpp"
 
 
 namespace PHARE
@@ -77,7 +78,7 @@ namespace amr
          * @brief findSchedule returns the schedule at a given level number if there is one
          * (optional).
          */
-        auto& findSchedule(std::unique_ptr<Algorithm> const& algo, int levelNumber) const
+        NO_DISCARD auto& findSchedule(std::unique_ptr<Algorithm> const& algo, int levelNumber) const
         {
             if (!schedules_.count(levelNumber))
                 throw std::runtime_error("no schedule for level " + std::to_string(levelNumber));

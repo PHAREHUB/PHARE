@@ -1,7 +1,7 @@
 #ifndef PHARE_CORE_UTILITIES_CONSTANTS_HPP
 #define PHARE_CORE_UTILITIES_CONSTANTS_HPP
 
-#include "types.hpp"
+#include <cstdint>
 namespace PHARE
 {
 namespace core

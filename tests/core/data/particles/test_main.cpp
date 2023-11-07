@@ -1,4 +1,3 @@
-
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
 #include "core/data/particles/particle.hpp"
@@ -99,8 +98,7 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     for (auto i = 0u; i < 3; ++i)
     {
         expectedPosition[i]
-            = origin[i] + meshSize[i] * (iCell[i] - startIndexes[i] + part.delta[i]),
-            p[i];
+            = origin[i] + meshSize[i] * (iCell[i] - startIndexes[i] + part.delta[i]);
         EXPECT_DOUBLE_EQ(expectedPosition[i], p[i]);
     }
 }

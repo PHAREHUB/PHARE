@@ -3,7 +3,6 @@
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"
-#include "field_coarsen_index_weight.hpp"
 #include "default_field_coarsener.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
@@ -55,7 +54,7 @@ namespace amr
          *  this return 0, meaning that this operator
          * have the most priority
          */
-        int getOperatorPriority() const override { return 0; }
+        NO_DISCARD int getOperatorPriority() const override { return 0; }
 
 
 
@@ -69,7 +68,8 @@ namespace amr
          * In our case, we allow a RF up to 10, so having 5 ghost width is sufficient
          *
          */
-        SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
+        NO_DISCARD SAMRAI::hier::IntVector
+        getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
         {
             return SAMRAI::hier::IntVector{dim, 2};
         }

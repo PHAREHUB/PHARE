@@ -1,6 +1,7 @@
 #ifndef PHARE_GRIDLAYOUT_UTILS_HPP
 #define PHARE_GRIDLAYOUT_UTILS_HPP
 
+#include "core/def.hpp"
 #include <tuple>
 #include <stdexcept>
 
@@ -15,7 +16,7 @@ protected:
 public:
     void setLayout(GridLayout* ptr) { layout_ = ptr; }
 
-    bool hasLayout() const { return layout_ != nullptr; }
+    NO_DISCARD bool hasLayout() const { return layout_ != nullptr; }
 };
 
 
