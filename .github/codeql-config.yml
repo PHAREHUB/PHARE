@@ -1,0 +1,9 @@
+# only for python/non-compiled languages
+
+name: "CodeQL config"
+paths:
+  - pyphare
+  - src
+paths-ignore:
+  - subprojects/
+  - tests/
