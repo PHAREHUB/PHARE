@@ -176,12 +176,9 @@ TEST_F(APusher3D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i]
-            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
-        actual[1][i]
-            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
-        actual[2][i]
-            = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * static_cast<float>(dxyz[2]);
+        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
+        actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
+        actual[2][i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * dxyz[2];
 
         pusher->move(
             rangeIn, rangeOut, em, mass, interpolator, layout,
@@ -206,10 +203,8 @@ TEST_F(APusher2D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i]
-            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
-        actual[1][i]
-            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * static_cast<float>(dxyz[1]);
+        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
+        actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
 
         pusher->move(
             rangeIn, rangeOut, em, mass, interpolator, layout, [](auto& rge) { return rge; },
@@ -232,8 +227,7 @@ TEST_F(APusher1D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i]
-            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * static_cast<float>(dxyz[0]);
+        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
 
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
@@ -270,7 +264,7 @@ public:
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(0, 9);
-        std::uniform_real_distribution<float> delta(0, 1);
+        std::uniform_real_distribution<double> delta(0, 1);
 
         for (std::size_t iPart = 0; iPart < 1000; ++iPart)
         {
