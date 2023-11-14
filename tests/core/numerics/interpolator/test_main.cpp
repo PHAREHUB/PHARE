@@ -274,7 +274,7 @@ public:
         for (auto& part : particles)
         {
             part.iCell[0] = 5;
-            part.delta[0] = 0.32f;
+            part.delta[0] = 0.32;
         }
     }
 };
@@ -397,7 +397,7 @@ public:
         for (auto& part : particles)
         {
             part.iCell[0] = 5;
-            part.delta[0] = 0.32f;
+            part.delta[0] = 0.32;
         }
     }
 };
@@ -525,7 +525,7 @@ public:
         for (auto& part : particles)
         {
             part.iCell[0] = 5;
-            part.delta[0] = 0.32f;
+            part.delta[0] = 0.32;
         }
     }
 };
@@ -641,7 +641,7 @@ public:
         if constexpr (Interpolator::interp_order == 1)
         {
             part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -649,7 +649,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 0.4;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -657,7 +657,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 0.6;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -668,7 +668,7 @@ public:
         if constexpr (Interpolator::interp_order == 2)
         {
             part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.0f;
+            part.delta[0] = 0.0;
             part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -676,7 +676,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.0f;
+            part.delta[0] = 0.0;
             part.weight   = 0.2;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -684,7 +684,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.0f;
+            part.delta[0] = 0.0;
             part.weight   = 0.8;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -692,7 +692,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.0f;
+            part.delta[0] = 0.0;
             part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -703,7 +703,7 @@ public:
         if constexpr (Interpolator::interp_order == 3)
         {
             part.iCell[0] = 18; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -711,7 +711,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -719,7 +719,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 1.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -727,7 +727,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 0.1;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
@@ -735,7 +735,7 @@ public:
             particles.push_back(part);
 
             part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.5f;
+            part.delta[0] = 0.5;
             part.weight   = 0.9;
             part.v[0]     = +2.;
             part.v[1]     = -1.;

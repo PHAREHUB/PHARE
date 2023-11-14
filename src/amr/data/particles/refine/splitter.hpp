@@ -55,6 +55,9 @@ private:
     template<typename Particle, typename Particles>
     void dispatch(Particle const& particle, Particles& particles, size_t idx) const
     {
+        using Weight_t = std::decay_t<decltype(particle.weight)>;
+        using Delta_t  = std::decay_t<decltype(particle.delta[0])>;
+
         constexpr auto dimension = Particle::dimension;
         constexpr auto refRatio  = PHARE::amr::refinementRatio;
         constexpr std::array power{refRatio, refRatio * refRatio, refRatio * refRatio * refRatio};
@@ -67,7 +70,8 @@ private:
             for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)
             {
                 FineParticle fineParticle = particles[idx++];
-                fineParticle.weight = particle.weight * pattern.weight_ * power[dimension - 1];
+                fineParticle.weight       = particle.weight * static_cast<Weight_t>(pattern.weight_)
+                                      * power[dimension - 1];
                 fineParticle.charge = particle.charge;
                 fineParticle.iCell  = particle.iCell;
                 fineParticle.delta  = particle.delta;
@@ -75,8 +79,9 @@ private:
 
                 for (size_t iDim = 0; iDim < dimension; iDim++)
                 {
-                    fineParticle.delta[iDim] += pattern.deltas_[rpIndex][iDim];
-                    float integra = std::floor(fineParticle.delta[iDim]);
+                    fineParticle.delta[iDim]
+                        += static_cast<Delta_t>(pattern.deltas_[rpIndex][iDim]);
+                    Delta_t integra = std::floor(fineParticle.delta[iDim]);
                     fineParticle.delta[iDim] -= integra;
                     fineParticle.iCell[iDim] += static_cast<int32_t>(integra);
                 }
