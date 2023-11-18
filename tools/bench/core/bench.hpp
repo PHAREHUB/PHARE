@@ -2,7 +2,7 @@
 #define PHARE_BENCH_CORE_BENCH_H
 
 #include "phare_core.hpp"
-#include "benchmark/benchmark.hpp"
+#include "benchmark/benchmark.h"
 
 
 namespace PHARE::core::bench
@@ -165,5 +165,60 @@ private:
 };
 
 } // namespace PHARE::core::bench
+
+namespace PHARE::core
+{
+template<typename Box_t, typename RValue = std::uint32_t>
+struct LocalisedCellFlattener
+{
+    static const size_t dim = Box_t::dimension;
+
+    RValue operator()(std::array<int, dim> icell) const
+    {
+        for (std::size_t i = 0; i < dim; ++i)
+            icell[i] -= box.lower[i];
+
+        if constexpr (dim == 2)
+            return icell[1] + icell[0] * shape[1];
+        if constexpr (dim == 3)
+            return icell[2] + icell[1] * shape[2] + icell[0] * shape[1] * shape[2];
+        return icell[0];
+    }
+    template<typename Particle>
+    RValue operator()(Particle const& particle) const
+    {
+        return (*this)(particle.iCell);
+    }
+
+    Box_t const box;
+    std::array<int, dim> shape = box.shape().toArray();
+};
+} // namespace PHARE::core
+
+
+namespace std
+{
+
+template<std::size_t dim>
+auto& sort(PHARE::core::ParticleArray<dim>& particles)
+{
+    using box_t = typename PHARE::core::ParticleArray<dim>::box_t;
+    PHARE::core::LocalisedCellFlattener<box_t> cell_flattener{grow(particles.box(), 1)};
+    std::sort(particles.vector().begin(), particles.vector().end(),
+              [&](auto const& a, auto const& b) {
+                  return cell_flattener(a.iCell) < cell_flattener(b.iCell);
+              });
+    return particles;
+}
+
+template<std::size_t dim>
+auto sort(PHARE::core::ParticleArray<dim>&& particles)
+{
+    return sort(particles);
+}
+
+
+} // namespace std
+
 
 #endif /*PHARE_BENCH_CORE_BENCH_H*/

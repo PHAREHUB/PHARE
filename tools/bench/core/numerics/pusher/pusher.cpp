@@ -1,92 +1,60 @@
+#include "tools/bench/core/bench.hpp"
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
-#include "benchmark/benchmark.hpp"
-
-#include "phare_core.hpp"
 #include "core/numerics/pusher/boris.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 
-template<std::size_t dim>
-using Field = PHARE::core::Field<PHARE::core::NdArrayVector<dim>,
-                                 typename PHARE::core::HybridQuantity::Scalar>;
-template<std::size_t dim>
-using VecField
-    = PHARE::core::VecField<PHARE::core::NdArrayVector<dim>, typename PHARE::core::HybridQuantity>;
-
-template<std::size_t dim>
-PHARE::core::Particle<dim> particle()
-{
-    return {//
-            /*.weight = */ 0,
-            /*.charge = */ 1,
-            /*.iCell  = */ PHARE::core::ConstArray<int, dim>(35),
-            /*.delta  = */ PHARE::core::ConstArray<double, dim>(.01),
-            /*.v      = */ {{0, 10., 0}}};
-}
-
-template<typename GridLayout, typename Quantity, std::size_t dim = GridLayout::dimension>
-Field<dim> field(std::string key, Quantity type, GridLayout const& layout)
-{
-    Field<dim> feeld{key, type, layout.allocSize(type)};
-    std::fill(feeld.begin(), feeld.end(), 1);
-    return feeld;
-}
+using namespace PHARE;
 
 template<std::size_t dim, std::size_t interp>
 void push(benchmark::State& state)
 {
-    constexpr std::uint32_t cells = 65;
-    constexpr std::uint32_t parts = 1e7;
+    constexpr std::uint32_t cells   = 65;
+    constexpr std::uint32_t n_parts = 1e7;
 
     using PHARE_Types       = PHARE::core::PHARE_Types<dim, interp>;
+    using GridLayout_t      = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Interpolator      = PHARE::core::Interpolator<dim, interp>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
+    using Electromag_t      = core::bench::Electromag<GridLayout_t>;
     using Ions_t            = typename PHARE_Types::Ions_t;
-    using Electromag_t      = typename PHARE_Types::Electromag_t;
-    using GridLayout_t      = typename PHARE_Types::GridLayout_t;
     using ParticleArray     = typename Ions_t::particle_array_type;
-    using PartIterator      = typename ParticleArray::iterator;
+    using Particle_t        = typename ParticleArray::value_type;
+    using ParticleRange     = core::IndexRange<ParticleArray>;
 
-    using BorisPusher_t = PHARE::core::BorisPusher<dim, PartIterator, Electromag_t, Interpolator,
+    using BorisPusher_t = PHARE::core::BorisPusher<dim, ParticleRange, Electromag_t, Interpolator,
                                                    BoundaryCondition, GridLayout_t>;
 
-    Interpolator interpolator;
-    ParticleArray domainParticles{parts, particle<dim>()};
-    ParticleArray tmpDomain{domainParticles.size(), particle<dim>()};
 
-    auto rangeIn  = PHARE::core::makeRange(domainParticles);
-    auto rangeOut = PHARE::core::makeRange(tmpDomain);
+    GridLayout_t layout{cells};
+    Electromag_t em{layout};
 
-    auto meshSize = PHARE::core::ConstArray<double, dim>(1.0 / cells);
-    auto nCells   = PHARE::core::ConstArray<std::uint32_t, dim>(cells);
-    auto origin   = PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)};
-    GridLayout_t layout{meshSize, nCells, origin};
+    ParticleArray domainParticles{layout.AMRBox()};
+    domainParticles.vector() = std::vector<Particle_t>(n_parts, core::bench::particle<dim>());
+    core::bench::disperse(domainParticles, 0, cells - 1, 13337);
+    // std::sort(domainParticles);
 
-    Field<dim> bx = field("Bx", PHARE::core::HybridQuantity::Scalar::Bx, layout);
-    Field<dim> by = field("By", PHARE::core::HybridQuantity::Scalar::By, layout);
-    Field<dim> bz = field("Bz", PHARE::core::HybridQuantity::Scalar::Bz, layout);
+    ParticleArray tmpDomain{layout.AMRBox()};
+    tmpDomain.vector() = domainParticles.vector();
 
-    Field<dim> ex = field("Ex", PHARE::core::HybridQuantity::Scalar::Ex, layout);
-    Field<dim> ey = field("Ey", PHARE::core::HybridQuantity::Scalar::Ey, layout);
-    Field<dim> ez = field("Ez", PHARE::core::HybridQuantity::Scalar::Ez, layout);
-
-    PHARE::core::Electromag<VecField<dim>> emFields{std::string{"EM"}};
-    emFields.B.setBuffer("EM_B_x", &bx);
-    emFields.B.setBuffer("EM_B_y", &by);
-    emFields.B.setBuffer("EM_B_z", &bz);
-    emFields.E.setBuffer("EM_E_x", &ex);
-    emFields.E.setBuffer("EM_E_y", &ey);
-    emFields.E.setBuffer("EM_E_z", &ez);
+    auto rangeIn  = PHARE::core::makeIndexRange(domainParticles);
+    auto rangeOut = PHARE::core::makeIndexRange(tmpDomain);
 
     BorisPusher_t pusher;
     pusher.setMeshAndTimeStep(layout.meshSize(), .001);
 
-    while (state.KeepRunning())
+    Interpolator interpolator;
+    auto const no_op = [](auto& particleRange) { return particleRange; };
+    while (state.KeepRunningBatch(1))
     {
         pusher.move(
-            /*ParticleRange const&*/ rangeIn, /*ParticleRange&*/ rangeOut,
-            /*Electromag const&*/ emFields, /*double mass*/ 1, /*Interpolator&*/ interpolator,
-            /*ParticleSelector const&*/ [](auto const& /*part*/) { return true; },
-            /*GridLayout const&*/ layout);
+            /*ParticleRange const&*/ rangeIn,  //
+            /*ParticleRange&      */ rangeOut, //
+            /*Electromag const&   */ em,       //
+            /*double mass         */ 1,
+            /*Interpolator&*/ interpolator,
+            /*GridLayout const&*/ layout, //
+            no_op, no_op);
     }
 }
 BENCHMARK_TEMPLATE(push, /*dim=*/1, /*interp=*/1)->Unit(benchmark::kMicrosecond);

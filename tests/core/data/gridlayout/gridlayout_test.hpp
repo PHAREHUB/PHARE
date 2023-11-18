@@ -5,6 +5,7 @@
 #include "core/data/grid/gridlayoutimplyee.hpp"
 #include "core/utilities/types.hpp"
 
+#include "test_gridlayout.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

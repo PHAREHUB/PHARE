@@ -85,7 +85,7 @@ namespace core
         NO_DISCARD bool operator!=(Point const& other) const { return !(*this == other); }
 
 
-        template<typename DestType>
+        template<typename DestType = Type>
         NO_DISCARD auto toArray() const
         {
             std::array<DestType, dimension> destArray;
