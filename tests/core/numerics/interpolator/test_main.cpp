@@ -298,32 +298,20 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ex - this->ex0) < 1e-8; }));
+    for (auto const& part : this->particles)
+    {
+        auto const [E, B]        = this->interp(part, this->em, this->layout);
+        auto const& [Ex, Ey, Ez] = E;
+        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ey - this->ey0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ez - this->ez0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bx - this->bx0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.By - this->by0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bz - this->bz0) < 1e-8; }));
-
+        auto const& [Bx, By, Bz] = B;
+        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
+        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+    }
 
     this->em.E.setBuffer("EM_E_x", nullptr);
     this->em.E.setBuffer("EM_E_y", nullptr);
@@ -421,32 +409,19 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(makeIndexRange(this->particles), this->em, this->layout);
+    for (auto const& part : this->particles)
+    {
+        auto const [E, B]        = this->interp(part, this->em, this->layout);
+        auto const& [Ex, Ey, Ez] = E;
+        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ex - this->ex0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ey - this->ey0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ez - this->ez0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bx - this->bx0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.By - this->by0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bz - this->bz0) < 1e-8; }));
-
+        auto const& [Bx, By, Bz] = B;
+        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
+        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+    }
 
     this->em.E.setBuffer("EM_E_x", nullptr);
     this->em.E.setBuffer("EM_E_y", nullptr);
@@ -549,31 +524,20 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by_);
     this->em.B.setBuffer("EM_B_z", &this->bz_);
 
-    this->interp(makeIndexRange(this->particles), this->em, this->layout);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ex - this->ex0) < 1e-8; }));
+    for (auto const& part : this->particles)
+    {
+        auto const [E, B]        = this->interp(part, this->em, this->layout);
+        auto const& [Ex, Ey, Ez] = E;
+        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
+        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
 
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ey - this->ey0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Ez - this->ez0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bx - this->bx0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.By - this->by0) < 1e-8; }));
-
-    EXPECT_TRUE(
-        std::all_of(std::begin(this->particles), std::end(this->particles),
-                    [this](auto const& part) { return std::abs(part.Bz - this->bz0) < 1e-8; }));
+        auto const& [Bx, By, Bz] = B;
+        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
+        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
+        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+    }
 
 
     this->em.E.setBuffer("EM_E_x", nullptr);

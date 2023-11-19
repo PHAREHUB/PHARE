@@ -61,26 +61,17 @@ struct Particle
     std::array<double, dim> delta = ConstArray<double, dim>();
     std::array<double, 3> v       = ConstArray<double, 3>();
 
-    double Ex = 0, Ey = 0, Ez = 0;
-    double Bx = 0, By = 0, Bz = 0;
-
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {
         return (this->weight == that.weight) && //
                (this->charge == that.charge) && //
                (this->iCell == that.iCell) &&   //
                (this->delta == that.delta) &&   //
-               (this->v == that.v) &&           //
-               (this->Ex == that.Ex) &&         //
-               (this->Ey == that.Ey) &&         //
-               (this->Ez == that.Ez) &&         //
-               (this->Bx == that.Bx) &&         //
-               (this->By == that.By) &&         //
-               (this->Bz == that.Bz);
+               (this->v == that.v);
     }
 
     template<std::size_t dimension>
-    friend std::ostream& operator<<(std::ostream& out, const Particle<dimension>& particle);
+    friend std::ostream& operator<<(std::ostream& out, Particle<dimension> const& particle);
 };
 
 template<std::size_t dim>
@@ -102,8 +93,6 @@ std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
         out << v << ",";
     }
     out << "), charge : " << particle.charge << ", weight : " << particle.weight;
-    out << ", Exyz : " << particle.Ex << "," << particle.Ey << "," << particle.Ez;
-    out << ", Bxyz : " << particle.Bx << "," << particle.By << "," << particle.Bz;
     out << '\n';
     return out;
 }
@@ -132,9 +121,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
-                                         and is_phare_particle_type<dim, ParticleB<dim>>,
-                                     bool>
+NO_DISCARD typename std::enable_if_t<
+    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
+    bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //

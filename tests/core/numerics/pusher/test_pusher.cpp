@@ -20,6 +20,7 @@
 using namespace PHARE::core;
 
 
+
 struct Trajectory
 {
     std::vector<float> x, y, z;
@@ -70,19 +71,25 @@ Trajectory readExpectedTrajectory()
 // to test the pusher.
 class Interpolator
 {
+    using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
+
 public:
-    template<typename ParticleRange, typename Electromag, typename GridLayout>
-    void operator()(ParticleRange particles, Electromag const&, GridLayout&)
+    template<typename Particle_t, typename Electromag, typename GridLayout>
+    auto operator()(Particle_t& particle, Electromag const&, GridLayout&)
     {
-        for (auto currPart = std::begin(particles); currPart != std::end(particles); ++currPart)
-        {
-            currPart->Ex = 0.01;
-            currPart->Ey = -0.05;
-            currPart->Ez = 0.05;
-            currPart->Bx = 1.;
-            currPart->By = 1.;
-            currPart->Bz = 1.;
-        }
+        E_B_tuple eb_interop;
+        auto& [pE, pB]        = eb_interop;
+        auto& [pEx, pEy, pEz] = pE;
+        auto& [pBx, pBy, pBz] = pB;
+
+        pEx = 0.01;
+        pEy = -0.05;
+        pEz = 0.05;
+        pBx = 1.;
+        pBy = 1.;
+        pBz = 1.;
+
+        return eb_interop;
     }
 };
 
@@ -132,6 +139,7 @@ public:
         , tstart{0}
         , tend{10}
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
+
     {
         particlesIn.emplace_back(
             Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
@@ -180,9 +188,7 @@ TEST_F(APusher3D, trajectoryIsOk)
         actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
         actual[2][i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * dxyz[2];
 
-        pusher->move(
-            rangeIn, rangeOut, em, mass, interpolator, layout,
-            [](decltype(rangeIn)& rge) { return rge; }, selector);
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -206,9 +212,7 @@ TEST_F(APusher2D, trajectoryIsOk)
         actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
         actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
 
-        pusher->move(
-            rangeIn, rangeOut, em, mass, interpolator, layout, [](auto& rge) { return rge; },
-            selector);
+        pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
