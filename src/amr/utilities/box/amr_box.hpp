@@ -2,6 +2,9 @@
 #define PHARE_AMR_UTILITIES_BOX_BOX_HPP
 
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include "SAMRAI/hier/Box.h"
 #include "core/utilities/box/box.hpp"
 #include "core/def.hpp"

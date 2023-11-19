@@ -2,6 +2,9 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
 #include <utility>
@@ -72,9 +75,9 @@ namespace amr
         {
         }
 
-        FieldData()                 = delete;
-        FieldData(FieldData const&) = delete;
-        FieldData(FieldData&&)      = default;
+        FieldData()                            = delete;
+        FieldData(FieldData const&)            = delete;
+        FieldData(FieldData&&)                 = default;
         FieldData& operator=(FieldData const&) = delete;
 
 

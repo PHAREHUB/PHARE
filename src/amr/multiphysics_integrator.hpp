@@ -10,6 +10,8 @@
 #include <unordered_map>
 
 
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 

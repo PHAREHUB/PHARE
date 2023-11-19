@@ -3,6 +3,8 @@
 
 #include "core/data/grid/gridlayout.hpp" // particle ghost width
 #include "particles_data_factory.hpp"
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/Variable.h>
 #include <SAMRAI/tbox/Dimension.h>
 

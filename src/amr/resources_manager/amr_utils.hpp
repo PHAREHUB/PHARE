@@ -1,6 +1,8 @@
 #ifndef PHARE_AMR_UTILS_HPP
 #define PHARE_AMR_UTILS_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxOverlap.h>

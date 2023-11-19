@@ -3,6 +3,8 @@
 
 #include "particles_data.hpp"
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/hier/BoxGeometry.h>
 #include <SAMRAI/hier/Patch.h>

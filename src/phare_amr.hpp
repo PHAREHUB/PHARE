@@ -2,6 +2,8 @@
 #define PHARE_AMR_INCLUDE_HPP
 
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>

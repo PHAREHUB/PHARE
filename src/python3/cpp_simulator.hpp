@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstddef>
 
-#include "mpi.h"
+#include "core/def/phare_mpi.hpp"
 
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/particles/particle.hpp"

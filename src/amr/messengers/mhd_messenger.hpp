@@ -4,6 +4,8 @@
 
 #include <memory>
 #include <string>
+#include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/hier/CoarsenOperator.h>
 #include <SAMRAI/hier/PatchLevel.h>

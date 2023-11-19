@@ -1,6 +1,8 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 #include "SAMRAI/hier/CoarseFineBoundary.h"
 #include "SAMRAI/hier/IntVector.h"
 #include "refiner_pool.hpp"

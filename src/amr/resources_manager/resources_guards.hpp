@@ -1,6 +1,8 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_GUARDS_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_GUARDS_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 #include "resources_manager_utilities.hpp"
 
 #include <memory>
@@ -64,11 +66,11 @@ namespace amr
 
 
         // We just need the move constructor for using ResourceManager::createResourcesGuards
-        ResourcesGuard(ResourcesGuard&&)      = default;
-        ResourcesGuard()                      = delete;
-        ResourcesGuard(ResourcesGuard const&) = delete;
+        ResourcesGuard(ResourcesGuard&&)                        = default;
+        ResourcesGuard()                                        = delete;
+        ResourcesGuard(ResourcesGuard const&)                   = delete;
         ResourcesGuard& operator=(ResourcesGuard const& source) = delete;
-        ResourcesGuard& operator=(ResourcesGuard&&) = delete;
+        ResourcesGuard& operator=(ResourcesGuard&&)             = delete;
 
 
 

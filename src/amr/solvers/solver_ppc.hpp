@@ -1,6 +1,8 @@
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/Patch.h>
 
 

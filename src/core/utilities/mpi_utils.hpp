@@ -9,13 +9,8 @@
 #include <cstring>
 #include <exception>
 
-// clang-format off
-#include "initializer/pragma_disable.hpp"
-DISABLE_WARNING(cast-function-type, bad-function-cast, 42)
-#include "mpi.h"
-ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
-// clang-format on
 
+#include "core/def/phare_mpi.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
 

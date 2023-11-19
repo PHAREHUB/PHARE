@@ -4,6 +4,9 @@
 #include <cassert>
 #include <iostream>
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include "SAMRAI/hier/IntVector.h"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/grid/gridlayout.hpp"

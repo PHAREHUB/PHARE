@@ -3,8 +3,16 @@
 set (PHARE_FLAGS ${PHARE_FLAGS})
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
-
 set (PHARE_BASE_LIBS )
+
+# now we see if we are running with configurator
+if (phare_configurator)
+  execute_process(
+    COMMAND ./tools/config/cmake.sh
+    WORKING_DIRECTORY ${PHARE_PROJECT_DIR}
+  )
+  include("${PHARE_PROJECT_DIR}/tools/config/local.cmake")
+endif(phare_configurator)
 
 # Link Time Optimisation flags - is disabled if coverage is enabled
 set (PHARE_INTERPROCEDURAL_OPTIMIZATION FALSE)

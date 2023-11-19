@@ -1,6 +1,9 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_OVERLAP_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_OVERLAP_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/Transformation.h>

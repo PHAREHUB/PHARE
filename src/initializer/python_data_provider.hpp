@@ -7,7 +7,7 @@
 
 #include "initializer/data_provider.hpp"
 
-#include "pragma_disable.hpp"
+#include "core/def/pragma_disable.hpp"
 
 // clang-format off
 DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)

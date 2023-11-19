@@ -1,6 +1,8 @@
 #ifndef PHARE_TEST_BASIC_HIERARCHY_HPP
 #define PHARE_TEST_BASIC_HIERARCHY_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include "amr/data/particles/particles_variable.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"

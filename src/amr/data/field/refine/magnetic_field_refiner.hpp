@@ -1,6 +1,9 @@
 #ifndef PHARE_MAGNETIC_FIELD_REFINER_HPP
 #define PHARE_MAGNETIC_FIELD_REFINER_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/Box.h>
 
 #include "amr/resources_manager/amr_utils.hpp"

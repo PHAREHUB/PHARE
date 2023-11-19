@@ -1,4 +1,7 @@
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include "test_resources_manager.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"

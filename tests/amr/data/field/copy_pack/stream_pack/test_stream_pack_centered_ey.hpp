@@ -1,6 +1,9 @@
 #ifndef PHARE_TEST_STREAM_PACK_CENTERED_EY_HPP
 #define PHARE_TEST_STREAM_PACK_CENTERED_EY_HPP
 
+#include "core/def/phare_mpi.hpp"
+
+
 
 #include "field_data_test_param.hpp"
 
@@ -91,7 +94,7 @@ struct Setup1DCenteredOnEy
             iStart = testReference.param.sourceFieldData->gridLayout.ghostStartIndex(sourceField,
                                                                                      Direction::X);
             iEnd   = testReference.param.sourceFieldData->gridLayout.ghostEndIndex(sourceField,
-                                                                                 Direction::X);
+                                                                                   Direction::X);
 
 
             for (auto ix = iStart; ix <= iEnd; ++ix)

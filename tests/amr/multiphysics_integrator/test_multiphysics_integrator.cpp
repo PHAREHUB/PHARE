@@ -1,5 +1,5 @@
 
-#include <mpi.h>
+#include "core/def/phare_mpi.hpp"
 
 #include "tests/simulator/per_test.hpp"
 

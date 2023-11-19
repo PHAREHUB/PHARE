@@ -2,6 +2,9 @@
 #ifndef PHARE_HYBRID_TAGGER_HPP
 #define PHARE_HYBRID_TAGGER_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include "tagger.hpp"
 #include "hybrid_tagger_strategy.hpp"
 #include "amr/physical_models/hybrid_model.hpp"

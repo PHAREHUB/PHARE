@@ -1,3 +1,6 @@
+
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/pdat/CellGeometry.h>
 #include <SAMRAI/pdat/NodeGeometry.h>

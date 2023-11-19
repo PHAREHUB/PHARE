@@ -1,6 +1,8 @@
 #ifndef INTEGRATOR_HPP
 #define INTEGRATOR_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
 #include <SAMRAI/hier/Box.h>

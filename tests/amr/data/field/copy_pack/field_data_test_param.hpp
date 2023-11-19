@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <string>
+#include "core/def/phare_mpi.hpp"
 
 #include <SAMRAI/pdat/CellData.h>
 #include <SAMRAI/pdat/CellDataFactory.h>

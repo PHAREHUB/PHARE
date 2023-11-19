@@ -2,6 +2,8 @@
 #define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
+#include "core/def/phare_mpi.hpp"
+
 #include "core/def.hpp"
 #include "amr/data/particles/particles_data.hpp"
 #include "amr/resources_manager/amr_utils.hpp"

@@ -3,6 +3,8 @@
 
 #include "amr/messengers/messenger_info.hpp"
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/PatchLevel.h>
