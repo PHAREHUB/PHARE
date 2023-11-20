@@ -1,3 +1,7 @@
+
+#include "core/def/phare_mpi.hpp"
+
+
 #include <SAMRAI/tbox/SAMRAIManager.hpp>
 #include <SAMRAI/tbox/SAMRAI_MPI.hpp>
 

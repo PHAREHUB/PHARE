@@ -2,11 +2,7 @@ cmake_minimum_required (VERSION 3.9)
 
 project(test-field-overlap)
 
-# configure_file(input_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/input_config.h)
-
-set(SOURCES_INC
-  # ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
-   )
+set(SOURCES_INC)
 
 set(SOURCES_CPP
   test_field_overlap.cpp

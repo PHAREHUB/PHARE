@@ -82,6 +82,10 @@ endif()
 option(bench "Compile PHARE Benchmarks" OFF)
 
 
+# -Dphare_configurator=OFF
+option(phare_configurator "Best guess setup for compile" OFF)
+
+
 # print options
 function(print_phare_options)
 

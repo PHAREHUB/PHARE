@@ -1,4 +1,6 @@
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include <memory>
 #include <cstdint>

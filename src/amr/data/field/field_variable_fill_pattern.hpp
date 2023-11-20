@@ -3,6 +3,8 @@
 
 #include <cassert>
 
+#include "core/def/phare_mpi.hpp"
+
 #include "SAMRAI/xfer/VariableFillPattern.h"
 
 #include "core/utilities/types.hpp"
@@ -110,7 +112,10 @@ public:
                                              transformation);
     }
 
-    std::string const& getPatternName() const { return s_name_id; }
+    std::string const& getPatternName() const
+    {
+        return s_name_id;
+    }
 
 private:
     FieldFillPattern(FieldFillPattern const&)            = delete;

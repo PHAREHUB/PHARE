@@ -1,6 +1,7 @@
 #ifndef PHARE_TEST_TAG_STRATEGY_HPP
 #define PHARE_TEST_TAG_STRATEGY_HPP
 
+#include "core/def/phare_mpi.hpp"
 
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/mesh/StandardTagAndInitStrategy.h>

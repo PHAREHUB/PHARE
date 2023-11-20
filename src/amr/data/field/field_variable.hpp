@@ -1,6 +1,9 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/Variable.h>
 
 #include <utility>

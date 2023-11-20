@@ -9,6 +9,9 @@
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include <SAMRAI/hier/TimeInterpolateOperator.h>
 
 

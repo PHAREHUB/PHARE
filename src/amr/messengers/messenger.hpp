@@ -4,6 +4,8 @@
 
 #include <string>
 
+#include "core/def/phare_mpi.hpp"
+
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 

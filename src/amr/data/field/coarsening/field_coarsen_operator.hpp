@@ -1,6 +1,9 @@
 #ifndef PHARE_FIELD_DATA_COARSEN_HPP
 #define PHARE_FIELD_DATA_COARSEN_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "default_field_coarsener.hpp"

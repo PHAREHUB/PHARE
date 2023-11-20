@@ -7,6 +7,9 @@
 #include <stdexcept>
 #include <vector>
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>

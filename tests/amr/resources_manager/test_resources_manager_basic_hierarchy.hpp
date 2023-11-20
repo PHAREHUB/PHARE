@@ -1,6 +1,9 @@
 #ifndef PHARE_TESTS_AMR_TOOLS_BUFFER_BASIC_HIERARCHY_HPP
 #define PHARE_TESTS_AMR_TOOLS_BUFFER_BASIC_HIERARCHY_HPP
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include <SAMRAI/geom/CartesianGridGeometry.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/pdat/CellVariable.h>

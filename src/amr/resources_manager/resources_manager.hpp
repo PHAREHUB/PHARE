@@ -1,6 +1,8 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 #include "core/logger.hpp"
 
 #include "field_resource.hpp"

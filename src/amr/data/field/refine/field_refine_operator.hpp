@@ -1,6 +1,9 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include "core/def.hpp"
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"

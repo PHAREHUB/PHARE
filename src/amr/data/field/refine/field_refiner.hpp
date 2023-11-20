@@ -2,6 +2,9 @@
 #define PHARE_FIELD_REFINER_HPP
 
 
+#include "core/def/phare_mpi.hpp"
+
+
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/field/field.hpp"
 #include "field_linear_refine.hpp"

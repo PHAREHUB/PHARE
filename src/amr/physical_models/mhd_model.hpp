@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/hier/PatchLevel.h>
 

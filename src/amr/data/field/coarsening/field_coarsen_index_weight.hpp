@@ -1,6 +1,9 @@
 #ifndef PHARE_FIELD_COARSEN_HPP
 #define PHARE_FIELD_COARSEN_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include "core/def.hpp"
 #include "coarsen_weighter.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"

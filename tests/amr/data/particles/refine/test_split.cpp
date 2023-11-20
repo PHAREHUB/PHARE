@@ -1,5 +1,7 @@
 #include <cstdint>
 
+#include "core/def/phare_mpi.hpp"
+
 #include "core/utilities/types.hpp"
 #include "amr/data/particles/refine/split.hpp"
 

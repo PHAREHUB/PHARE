@@ -2,6 +2,7 @@
 #define PHARE_SOLVER_HPP
 
 #include <string>
+#include "core/def/phare_mpi.hpp"
 
 #include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/PatchLevel.h>
@@ -80,8 +81,7 @@ namespace solver
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
         virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
-                              double const allocateTime) const
-            = 0;
+                              double const allocateTime) const = 0;
 
 
 

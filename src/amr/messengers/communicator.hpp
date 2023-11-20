@@ -1,6 +1,8 @@
 #ifndef PHARE_QUANTITY_REFINER_HPP
 #define PHARE_QUANTITY_REFINER_HPP
 
+#include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/xfer/CoarsenAlgorithm.h>
