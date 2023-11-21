@@ -298,19 +298,17 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
     this->em.B.setBuffer("EM_B_y", &this->by1d_);
     this->em.B.setBuffer("EM_B_z", &this->bz1d_);
 
-
     for (auto const& part : this->particles)
     {
         auto const [E, B]        = this->interp(part, this->em, this->layout);
         auto const& [Ex, Ey, Ez] = E;
-        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
-        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
-        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
-
         auto const& [Bx, By, Bz] = B;
-        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
-        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
-        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+        EXPECT_NEAR(Ex, this->ex0, 1e-8);
+        EXPECT_NEAR(Ey, this->ey0, 1e-8);
+        EXPECT_NEAR(Ez, this->ez0, 1e-8);
+        EXPECT_NEAR(Bx, this->bx0, 1e-8);
+        EXPECT_NEAR(By, this->by0, 1e-8);
+        EXPECT_NEAR(Bz, this->bz0, 1e-8);
     }
 
     this->em.E.setBuffer("EM_E_x", nullptr);
@@ -413,14 +411,13 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
     {
         auto const [E, B]        = this->interp(part, this->em, this->layout);
         auto const& [Ex, Ey, Ez] = E;
-        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
-        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
-        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
-
         auto const& [Bx, By, Bz] = B;
-        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
-        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
-        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+        EXPECT_NEAR(Ex, this->ex0, 1e-8);
+        EXPECT_NEAR(Ey, this->ey0, 1e-8);
+        EXPECT_NEAR(Ez, this->ez0, 1e-8);
+        EXPECT_NEAR(Bx, this->bx0, 1e-8);
+        EXPECT_NEAR(By, this->by0, 1e-8);
+        EXPECT_NEAR(Bz, this->bz0, 1e-8);
     }
 
     this->em.E.setBuffer("EM_E_x", nullptr);
@@ -529,14 +526,13 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
     {
         auto const [E, B]        = this->interp(part, this->em, this->layout);
         auto const& [Ex, Ey, Ez] = E;
-        EXPECT_TRUE(std::abs(Ex - this->ex0) < 1e-8);
-        EXPECT_TRUE(std::abs(Ey - this->ey0) < 1e-8);
-        EXPECT_TRUE(std::abs(Ez - this->ez0) < 1e-8);
-
         auto const& [Bx, By, Bz] = B;
-        EXPECT_TRUE(std::abs(Bx - this->bx0) < 1e-8);
-        EXPECT_TRUE(std::abs(By - this->by0) < 1e-8);
-        EXPECT_TRUE(std::abs(Bz - this->bz0) < 1e-8);
+        EXPECT_NEAR(Ex, this->ex0, 1e-8);
+        EXPECT_NEAR(Ey, this->ey0, 1e-8);
+        EXPECT_NEAR(Ez, this->ez0, 1e-8);
+        EXPECT_NEAR(Bx, this->bx0, 1e-8);
+        EXPECT_NEAR(By, this->by0, 1e-8);
+        EXPECT_NEAR(Bz, this->bz0, 1e-8);
     }
 
 
