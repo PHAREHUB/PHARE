@@ -227,6 +227,7 @@ struct IonsBuffers
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
     Field ionDensity;
+    Field ionMassDensity;
     Field protonDensity;
     Field alphaDensity;
     Field protonFx;
@@ -258,6 +259,8 @@ struct IonsBuffers
     IonsBuffers(GridLayout const& layout)
         : ionDensity{"rho", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonDensity{"protons_rho", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
@@ -304,6 +307,8 @@ struct IonsBuffers
     IonsBuffers(IonsBuffers const& source, GridLayout const& layout)
         : ionDensity{"rho", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonDensity{"protons_rho", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
@@ -336,6 +341,7 @@ struct IonsBuffers
 
     {
         ionDensity.copyData(source.ionDensity);
+        ionMassDensity.copyData(source.ionMassDensity);
         protonDensity.copyData(source.protonDensity);
         alphaDensity.copyData(source.alphaDensity);
 
@@ -366,6 +372,7 @@ struct IonsBuffers
     void setBuffers(Ions& ions)
     {
         ions.setBuffer("rho", &ionDensity);
+        ions.setBuffer("massDensity", &ionMassDensity);
         auto& v = ions.velocity();
         v.setBuffer("bulkVel_x", &Vx);
         v.setBuffer("bulkVel_y", &Vy);

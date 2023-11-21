@@ -673,6 +673,7 @@ namespace amr
                                               NiOldUser_.name, fieldRefineOp_, fieldTimeOp_,
                                               info->modelIonDensity);
 
+
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
                                                core::VecFieldNames{ViOld_}, fieldRefineOp_,
                                                fieldTimeOp_);

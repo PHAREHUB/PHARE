@@ -28,6 +28,7 @@ namespace core
     public:
         using field_type          = typename IonPopulation::field_type;
         using vecfield_type       = typename IonPopulation::vecfield_type;
+        using Float               = typename field_type::type;
         using particle_array_type = typename IonPopulation::particle_array_type;
         using ParticleInitializerFactoryT
             = ParticleInitializerFactory<particle_array_type, GridLayout>;
@@ -48,6 +49,7 @@ namespace core
                 auto const& pop = dict["pop" + std::to_string(ipop)];
                 populations_.emplace_back(pop);
             }
+            sameMasses_ = allSameMass_();
         }
 
 
@@ -57,13 +59,9 @@ namespace core
         NO_DISCARD field_type const& density() const
         {
             if (isUsable())
-            {
                 return *rho_;
-            }
             else
-            {
                 throw std::runtime_error("Error - cannot access density data");
-            }
         }
 
 
@@ -71,15 +69,10 @@ namespace core
         NO_DISCARD field_type& density()
         {
             if (isUsable())
-            {
                 return *rho_;
-            }
             else
-            {
                 throw std::runtime_error("Error - cannot access density data");
-            }
         }
-
 
 
 
@@ -88,6 +81,7 @@ namespace core
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
         NO_DISCARD std::string densityName() const { return "rho"; }
+        NO_DISCARD std::string massDensityName() const { return "massDensity"; }
 
 
         void computeDensity()
@@ -102,13 +96,39 @@ namespace core
 
                 auto& popDensity = pop.density();
                 std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
-                               std::begin(*rho_), std::plus<typename field_type::type>{});
+                               std::begin(*rho_), std::plus<Float>{});
+            }
+        }
+        void computeMassDensity()
+        {
+            massDensity_->zero();
+
+            for (auto const& pop : populations_)
+            {
+                // we sum over all nodes contiguously, including ghosts
+                // nodes. This is more efficient and easier to code as we don't
+                // have to account for the field dimensionality.
+
+                auto& popDensity = pop.density();
+                std::transform(
+                    std::begin(*massDensity_), std::end(*massDensity_), std::begin(popDensity),
+                    std::begin(*massDensity_),
+                    [&pop](auto const& n, auto const& pop_n) { return n + pop_n * pop.mass(); });
             }
         }
 
 
         void computeBulkVelocity()
         {
+            // the bulk velocity is sum(pop_mass * pop_flux) / sum(pop_mass * pop_density)
+            // if all populations have the same mass, this is equivalent to sum(pop_flux) /
+            // sum(pop_density) sum(pop_density) is rho_ and already known by the time we get here.
+            // sum(pop_mass * pop_flux) is massDensity_ and is computed by computeMassDensity() if
+            // needed
+            if (!sameMasses_)
+                computeMassDensity();
+            auto const& density = (sameMasses_) ? rho_ : massDensity_;
+
             bulkVelocity_.zero();
             auto& vx = bulkVelocity_.getComponent(Component::X);
             auto& vy = bulkVelocity_.getComponent(Component::Y);
@@ -116,29 +136,33 @@ namespace core
 
             for (auto& pop : populations_)
             {
-                auto& flux = pop.flux();
-                auto& fx   = flux.getComponent(Component::X);
-                auto& fy   = flux.getComponent(Component::Y);
-                auto& fz   = flux.getComponent(Component::Z);
+                // account for mass only if populations have different masses
+                std::function<Float(Float, Float)> plus = std::plus<Float>{};
+                std::function<Float(Float, Float)> plusMass
+                    = [&pop](Float const& v, Float const& f) { return v + f * pop.mass(); };
+
+                auto const& flux    = pop.flux();
+                auto&& [fx, fy, fz] = flux();
+
 
                 std::transform(std::begin(vx), std::end(vx), std::begin(fx), std::begin(vx),
-                               std::plus<typename field_type::type>{});
+                               sameMasses_ ? plus : plusMass);
                 std::transform(std::begin(vy), std::end(vy), std::begin(fy), std::begin(vy),
-                               std::plus<typename field_type::type>{});
+                               sameMasses_ ? plus : plusMass);
                 std::transform(std::begin(vz), std::end(vz), std::begin(fz), std::begin(vz),
-                               std::plus<typename field_type::type>{});
+                               sameMasses_ ? plus : plusMass);
             }
 
-            std::transform(std::begin(vx), std::end(vx), std::begin(*rho_), std::begin(vx),
-                           std::divides<typename field_type::type>{});
-            std::transform(std::begin(vy), std::end(vy), std::begin(*rho_), std::begin(vy),
-                           std::divides<typename field_type::type>{});
-            std::transform(std::begin(vz), std::end(vz), std::begin(*rho_), std::begin(vz),
-                           std::divides<typename field_type::type>{});
+
+            std::transform(std::begin(vx), std::end(vx), std::begin(*density), std::begin(vx),
+                           std::divides<Float>{});
+            std::transform(std::begin(vy), std::end(vy), std::begin(*density), std::begin(vy),
+                           std::divides<Float>{});
+            std::transform(std::begin(vz), std::end(vz), std::begin(*density), std::begin(vz),
+                           std::divides<Float>{});
         }
 
 
-        // TODO 3347 compute ion bulk velocity
 
         NO_DISCARD auto begin() { return std::begin(populations_); }
         NO_DISCARD auto end() { return std::end(populations_); }
@@ -147,6 +171,8 @@ namespace core
         NO_DISCARD auto end() const { return std::end(populations_); }
 
 
+        // in the following isUsable and isSettable the massDensity_ is not checked
+        // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
             bool usable = rho_ != nullptr && bulkVelocity_.isUsable();
@@ -186,20 +212,25 @@ namespace core
 
         NO_DISCARD MomentProperties getFieldNamesAndQuantities() const
         {
-            return {{{densityName(), HybridQuantity::Scalar::rho}}};
+            return {{{densityName(), HybridQuantity::Scalar::rho},
+                     {massDensityName(), HybridQuantity::Scalar::rho}}};
         }
 
 
 
         void setBuffer(std::string const& bufferName, field_type* field)
         {
-            if (bufferName == "rho")
+            if (bufferName == densityName())
             {
                 rho_ = field;
             }
+            else if (bufferName == massDensityName())
+            {
+                massDensity_ = field;
+            }
             else
             {
-                throw std::runtime_error("Error - invalid density buffer name");
+                throw std::runtime_error("Error - invalid density buffer name : " + bufferName);
             }
         }
 
@@ -235,10 +266,27 @@ namespace core
 
 
     private:
+        bool allSameMass_() const
+        {
+            auto const& firstPop = populations_.front();
+            return std::all_of(
+                std::begin(populations_), std::end(populations_), [&firstPop](auto const& pop) {
+                    return std::abs(pop.mass() - firstPop.mass()) < 1e-10; // arbitrary small diff
+                });
+        }
+
+
+
+
         field_type* rho_{nullptr};
+        field_type* massDensity_{nullptr};
         vecfield_type bulkVelocity_;
-        std::vector<IonPopulation> populations_; // TODO we have to name this so they are unique
-                                                 // although only 1 Ions should exist.
+        std::vector<IonPopulation> populations_;
+
+        // note this is set at construction when all populations are added
+        // in the future if some populations are dynamically created during the simulation
+        // this should be updated accordingly
+        bool sameMasses_{false};
     };
 } // namespace core
 } // namespace PHARE
