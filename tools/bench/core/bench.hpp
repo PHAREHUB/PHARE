@@ -169,9 +169,16 @@ private:
 namespace PHARE::core
 {
 template<typename Box_t, typename RValue = std::uint32_t>
-struct LocalisedCellFlattener
+class LocalisedCellFlattener
 {
-    static const size_t dim = Box_t::dimension;
+public:
+    static constexpr std::size_t dim = Box_t::dimension;
+
+    LocalisedCellFlattener(Box_t const& b)
+        : box{b}
+        , shape{box.shape().toArray()}
+    {
+    }
 
     RValue operator()(std::array<int, dim> icell) const
     {
@@ -190,8 +197,11 @@ struct LocalisedCellFlattener
         return (*this)(particle.iCell);
     }
 
+
     Box_t const box;
-    std::array<int, dim> shape = box.shape().toArray();
+
+private:
+    std::array<int, dim> const shape = box.shape().toArray();
 };
 } // namespace PHARE::core
 
