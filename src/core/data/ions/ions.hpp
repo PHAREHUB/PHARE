@@ -40,16 +40,13 @@ namespace core
 
         explicit Ions(PHARE::initializer::PHAREDict const& dict)
             : bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
-            , populations_{}
+            , populations_{generate(
+                  [&dict](auto ipop) { //
+                      return IonPopulation{dict["pop" + std::to_string(ipop)]};
+                  },
+                  dict["nbrPopulations"].template to<std::size_t>())}
+            , sameMasses_{allSameMass_()}
         {
-            auto nbrPop = dict["nbrPopulations"].template to<int>();
-
-            for (int ipop = 0; ipop < nbrPop; ++ipop)
-            {
-                auto const& pop = dict["pop" + std::to_string(ipop)];
-                populations_.emplace_back(pop);
-            }
-            sameMasses_ = allSameMass_();
         }
 
 
@@ -268,11 +265,9 @@ namespace core
     private:
         bool allSameMass_() const
         {
-            auto const& firstPop = populations_.front();
-            return std::all_of(
-                std::begin(populations_), std::end(populations_), [&firstPop](auto const& pop) {
-                    return std::abs(pop.mass() - firstPop.mass()) < 1e-10; // arbitrary small diff
-                });
+            return all(populations_, [this](auto const& pop) { // arbitrary small diff
+                return float_equals(pop.mass(), populations_.front().mass(), /*abs_tol=*/1e-10);
+            });
         }
 
 

@@ -4,7 +4,7 @@ project(phare_python3)
 
 pybind11_add_module(cpp cpp_simulator.cpp)
 target_link_libraries(cpp PUBLIC phare_simulator)
-target_compile_options(cpp PRIVATE ${PHARE_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}) # pybind fails with Werror
+target_compile_options(cpp PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
 set_target_properties(cpp
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
@@ -15,7 +15,7 @@ set_property(TARGET cpp PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCE
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   pybind11_add_module(cpp_dbg cpp_simulator.cpp)
   target_link_libraries(cpp_dbg PUBLIC phare_simulator)
-  target_compile_options(cpp_dbg PRIVATE ${PHARE_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE} -DPHARE_DIAG_DOUBLES=1 -DPHARE_CPP_MOD_NAME=cpp_dbg)
+  target_compile_options(cpp_dbg PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE} -DPHARE_DIAG_DOUBLES=1 -DPHARE_CPP_MOD_NAME=cpp_dbg)
   set_target_properties(cpp_dbg
       PROPERTIES
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
@@ -26,7 +26,7 @@ endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 pybind11_add_module(cpp_etc cpp_etc.cpp)
 target_link_libraries(cpp_etc PUBLIC phare_simulator)
-target_compile_options(cpp_etc PRIVATE ${PHARE_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}) # pybind fails with Werror
+target_compile_options(cpp_etc PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
 set_target_properties(cpp_etc
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"

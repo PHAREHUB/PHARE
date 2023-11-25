@@ -1,6 +1,13 @@
 
 
-set (PHARE_FLAGS ${PHARE_FLAGS})
+# Per compiler CXXFLAGS
+set (PHARE_FLAGS ${PHARE_FLAGS} )
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set (PHARE_FLAGS ${PHARE_FLAGS} )
+else() # !Clang
+  set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+endif() # clang
+
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 set (PHARE_BASE_LIBS )
@@ -28,7 +35,7 @@ if(devMode) # -DdevMode=ON
   # Having quotes on strings here has lead to quotes being added to the compile string, so avoid.
 
   set (_Werr ${PHARE_WERROR_FLAGS} -Wall -Wextra -pedantic -Werror -Wno-unused-variable -Wno-unused-parameter)
-  set (_Werr ${_Werr} -Wdouble-promotion)
+  set (_Werr ${_Werr} -Wdouble-promotion -Wuninitialized )
 
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set (_Werr ${_Werr} -Wno-gnu-zero-variadic-macro-arguments)

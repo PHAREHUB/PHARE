@@ -229,12 +229,12 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     auto& hybridModel = *sim.getHybridModel();
     auto& dict        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
 
-    int nbrPop = dict["simulation"]["ions"]["nbrPopulations"].template to<int>();
+    auto nbrPop = dict["simulation"]["ions"]["nbrPopulations"].template to<std::size_t>();
     EXPECT_EQ(nbrPop, expectedPopNbr);
 
     std::vector<std::string> h5FileTypes{"/EM_B", "/EM_E", "/ions/density", "/ions/bulkVelocity"};
 
-    for (int i = 0; i < nbrPop; i++)
+    for (std::size_t i = 0; i < nbrPop; ++i)
     {
         std::string popName = dict["simulation"]["ions"]["pop" + std::to_string(i)]["name"]
                                   .template to<std::string>();
