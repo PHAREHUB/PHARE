@@ -5,6 +5,7 @@
 #include "core/data/grid/gridlayoutimplyee.hpp"
 #include "core/utilities/types.hpp"
 
+#include "test_gridlayout.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -23,22 +24,5 @@ public:
     Param<GridLayoutImpl> param;
 };
 
-template<typename GridLayout>
-class TestGridLayout : public GridLayout
-{ // to expose a default constructor
-public:
-    auto static constexpr dim = GridLayout::dimension;
-
-    TestGridLayout() = default;
-
-    TestGridLayout(std::uint32_t cells)
-        : GridLayout{PHARE::core::ConstArray<double, dim>(1.0 / cells),
-                     PHARE::core::ConstArray<std::uint32_t, dim>(cells),
-                     PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)}}
-    {
-    }
-
-    auto static make(std::uint32_t cells) { return TestGridLayout{cells}; }
-};
 
 #endif

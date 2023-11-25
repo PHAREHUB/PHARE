@@ -1,5 +1,5 @@
 
-#include "benchmark/benchmark.hpp"
+#include "benchmark/benchmark.h"
 #define PHARE_DIAG_DOUBLES 0
 #include "diagnostic/detail/h5writer.hpp"
 #include "diagnostic/detail/h5_utils.hpp"

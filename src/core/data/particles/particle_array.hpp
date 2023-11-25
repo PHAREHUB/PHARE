@@ -231,6 +231,8 @@ public:
     NO_DISCARD auto& vector() { return particles_; }
     NO_DISCARD auto& vector() const { return particles_; }
 
+    auto& box() const { return box_; }
+
 private:
     Vector particles_;
     box_t box_;
