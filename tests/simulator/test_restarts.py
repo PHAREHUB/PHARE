@@ -2,6 +2,7 @@ import copy
 
 import unittest
 import numpy as np
+from pathlib import Path
 from datetime import timedelta
 
 from ddt import ddt, data, unpack
@@ -329,10 +330,23 @@ class RestartsTest(SimulatorTest):
         self.register_diag_dir_for_cleanup(local_out)
         diag_dir0 = local_out
 
+        def _find_restart_time():
+            maxRestartTime = 35
+            # elapsedtime restarts are stored with the simulation time (timestep * time_step_idx)
+            #  so we have to find it in the output directory cause we can't know in advance
+            #  which timestep index will write to disk
+            from pyphare.cpp import cpp_etc_lib
+            for i in range(1, maxRestartTime):
+                restart_time = i*time_step
+                if Path(cpp_etc_lib().restart_path_for_time(diag_dir0, restart_time)).exists():
+                    return restart_time
+            raise RuntimeError("tests_restarts::test_restarts_elapsed_time No restart file found")
+
         # second restarted simulation
         local_out = f"{local_out}_n2"
         simput["diag_options"]["options"]["dir"] = local_out
-        simput["restart_options"]["restart_time"] = restart_time
+
+        simput["restart_options"]["restart_time"] = _find_restart_time()
         ph.global_vars.sim = None
         del simput["restart_options"]["elapsed_timestamps"]
         ph.global_vars.sim = ph.Simulation(**simput)
