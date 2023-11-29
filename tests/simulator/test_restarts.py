@@ -1,5 +1,7 @@
 import copy
 
+import time
+import datetime
 import unittest
 import numpy as np
 from pathlib import Path
@@ -136,6 +138,9 @@ class RestartsTest(SimulatorTest):
         return self._testMethodName.split("_")[-1]
 
     def check_diags(self, diag_dir0, diag_dir1, pops, timestamps, expected_num_levels):
+        if cpp.mpi_rank() > 0:
+            return
+
         def count_levels_and_patches(qty):
             n_levels = len(qty.levels())
             n_patches = 0
@@ -265,27 +270,19 @@ class RestartsTest(SimulatorTest):
             ),
             expected_num_levels=2,
         ),
-        *permute(dup(dict()), expected_num_levels=2),  # refinement boxes set later
     )
     @unpack
     def test_restarts_elapsed_time(self, ndim, interp, simInput, expected_num_levels):
         print(f"test_restarts_elapsed_time dim/interp:{ndim}/{interp}")
 
         simput = copy.deepcopy(simInput)
+        simput["time_step_nbr"] = 2 # forcing restart after first advance
 
         for key in ["cells", "dl", "boundary_types"]:
             simput[key] = [simput[key]] * ndim
 
         if "refinement" not in simput:
-            lo_cell = 10
-            hi_cell = 19
-            b0 = [[lo_cell] * ndim, [hi_cell] * ndim]
-            simput["refinement_boxes"] = {"L0": {"B0": b0}}
-        else:  # https://github.com/LLNL/SAMRAI/issues/199
-            # tagging can handle more than one timestep as it does not
-            #  appear subject to regridding issues, so we make more timesteps
-            #  to confirm simulations are still equivalent
-            simput["time_step_nbr"] = 10
+            raise RuntimeError("No refinement box version due to regridding!")
 
         # if restart time exists it "loads" from restart file
         #  otherwise just saves restart files based on timestamps
@@ -295,22 +292,23 @@ class RestartsTest(SimulatorTest):
         time_step = simput["time_step"]
         time_step_nbr = simput["time_step_nbr"]
 
-        restart_idx = 4
+        restart_idx = 1
         restart_time = time_step * restart_idx
-        timestamps = [time_step * restart_idx, time_step * time_step_nbr]
+        timestamps = [time_step * time_step_nbr]
 
         # first simulation
         local_out = self.unique_diag_dir_for_test_case(
             f"{out}/elapsed_test", ndim, interp
         )
-        simput["restart_options"]["dir"] = local_out
-        import datetime
+        diag_dir0 = local_out
+        diag_dir1 = f"{local_out}_n2"
 
-        seconds = 9
+        seconds=1 # dump on first advance always!
         simput["restart_options"]["elapsed_timestamps"] = [
             datetime.timedelta(seconds=seconds)
         ]
-        simput["diag_options"]["options"]["dir"] = local_out
+        simput["restart_options"]["dir"] = diag_dir0
+        simput["diag_options"]["options"]["dir"] = diag_dir0
         ph.global_vars.sim = None
         ph.global_vars.sim = ph.Simulation(**simput)
         self.assertEqual(
@@ -320,33 +318,19 @@ class RestartsTest(SimulatorTest):
         assert "restart_time" not in ph.global_vars.sim.restart_options
         model = setup_model()
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        simulator = Simulator(ph.global_vars.sim).initialize()
-        for i in range(restart_idx - 1):
-            simulator.advance()
-        import time
 
-        time.sleep(seconds + 1)
-        simulator.run().reset()  # should trigger restart on "restart_idx" advance
-        self.register_diag_dir_for_cleanup(local_out)
-        diag_dir0 = local_out
+        # autodump false to ignore possible init dump
+        simulator = Simulator(ph.global_vars.sim, auto_dump=False).initialize()
 
-        def _find_restart_time():
-            maxRestartTime = 35
-            # elapsedtime restarts are stored with the simulation time (timestep * time_step_idx)
-            #  so we have to find it in the output directory cause we can't know in advance
-            #  which timestep index will write to disk
-            from pyphare.cpp import cpp_etc_lib
-            for i in range(1, maxRestartTime):
-                restart_time = i*time_step
-                if Path(cpp_etc_lib().restart_path_for_time(diag_dir0, restart_time)).exists():
-                    return restart_time
-            raise RuntimeError("tests_restarts::test_restarts_elapsed_time No restart file found")
+        time.sleep(5)
+        simulator.advance().dump() # should trigger restart on "restart_idx" advance
+        simulator.advance().dump()
+        simulator.reset()
+        self.register_diag_dir_for_cleanup(diag_dir0)
 
         # second restarted simulation
-        local_out = f"{local_out}_n2"
-        simput["diag_options"]["options"]["dir"] = local_out
-
-        simput["restart_options"]["restart_time"] = _find_restart_time()
+        simput["diag_options"]["options"]["dir"] = diag_dir1
+        simput["restart_options"]["restart_time"] = time_step
         ph.global_vars.sim = None
         del simput["restart_options"]["elapsed_timestamps"]
         ph.global_vars.sim = ph.Simulation(**simput)
@@ -354,8 +338,7 @@ class RestartsTest(SimulatorTest):
         model = setup_model()
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
         Simulator(ph.global_vars.sim).run().reset()
-        self.register_diag_dir_for_cleanup(local_out)
-        diag_dir1 = local_out
+        self.register_diag_dir_for_cleanup(diag_dir1)
 
         self.check_diags(
             diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
