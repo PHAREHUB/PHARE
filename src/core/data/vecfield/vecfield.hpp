@@ -23,17 +23,21 @@ namespace core
      *  VecField class is templated by the type of NdArray Field use and which
      *  physical quantities they represent.
      */
-    template<typename NdArrayImpl, typename PhysicalQuantity, typename DataType = double>
+    template<typename Grid_t, typename PhysicalQuantity, typename DataType = double>
     class VecField
     {
     public:
+        static constexpr std::size_t dimension = Grid_t::dimension;
+
+        using grid_type  = Grid_t;
+        using field_type = typename Grid_t::field_type;
+
+
         VecField()                                  = delete;
-        VecField(VecField const& source)            = delete;
+        VecField(VecField const& source)            = default;
         VecField(VecField&& source)                 = default;
         VecField& operator=(VecField const& source) = delete;
         VecField& operator=(VecField&& source)      = default;
-
-        static constexpr std::size_t dimension = NdArrayImpl::dimension;
 
 
         /**
@@ -62,7 +66,6 @@ namespace core
 
         using resources_properties = std::vector<VecFieldProperties>;
 
-        using field_type = Field<NdArrayImpl, typename PhysicalQuantity::Scalar>;
 
         resources_properties getFieldNamesAndQuantities() const
         {
@@ -121,7 +124,7 @@ namespace core
 
 
 
-        Field<NdArrayImpl, typename PhysicalQuantity::Scalar>& getComponent(Component component)
+        auto& getComponent(Component component)
         {
             if (isUsable())
             {
@@ -138,8 +141,7 @@ namespace core
 
 
 
-        Field<NdArrayImpl, typename PhysicalQuantity::Scalar> const&
-        getComponent(Component component) const
+        auto const& getComponent(Component component) const
         {
             if (isUsable())
             {

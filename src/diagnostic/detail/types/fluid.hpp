@@ -191,7 +191,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 
     auto checkActive = [&](auto& tree, auto var) { return diagnostic.quantity == tree + var; };
     auto writeDS     = [&](auto path, auto& field) {
-        h5file.template write_data_set_flat<GridLayout::dimension>(path, &(*field.begin()));
+        h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
     };
     auto writeVF
         = [&](auto path, auto& vecF) { h5Writer.writeVecFieldAsDataset(h5file, path, vecF); };

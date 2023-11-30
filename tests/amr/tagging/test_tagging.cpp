@@ -161,7 +161,7 @@ struct TestTagger : public ::testing::Test
     using Electromag  = typename phare_types::Electromag_t;
     using Ions        = typename phare_types::Ions_t;
     using Electrons   = typename phare_types::Electrons_t;
-    using Field       = typename phare_types::Field_t;
+    using Field       = typename phare_types::Grid_t;
     using GridLayoutT = GridLayout<GridLayoutImplYee<dim, interp_order>>;
 
     struct SinglePatchHybridModel

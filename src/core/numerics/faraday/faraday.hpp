@@ -47,6 +47,17 @@ public:
                                 [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
     }
 
+    template<typename ViewStates, typename Accessor>
+    void operator()(ViewStates& states, Accessor fn, double dt)
+    {
+        // not thread safe, would probably need to copy (*this) per thread
+        for (auto& state : states)
+        {
+            auto const& [layout, B, E, Bnew] = fn(state);
+            this->layout_                    = &layout;
+            (*this)(B, E, Bnew, dt);
+        }
+    }
 
 private:
     double dt_;

@@ -48,30 +48,43 @@ namespace amr
 
     // this structure is a wrapper of a field*
     // so to serve as a ResourcesUser for the ResourcesManager
-    template<typename FieldT>
+    template<typename GridT>
     struct FieldUser
     {
+        using grid_type  = GridT;
+        using field_type = typename GridT::field_type;
+
         struct Property
         {
             std::string name;
             typename PHARE::core::HybridQuantity::Scalar qty;
         };
-        FieldUser(std::string fieldName, FieldT* ptr,
+
+        FieldUser(std::string fieldName, field_type* ptr,
                   typename PHARE::core::HybridQuantity::Scalar qty)
             : name{fieldName}
             , f{ptr}
             , quantity{qty}
         {
         }
-        std::string name;
-        FieldT* f;
-        typename PHARE::core::HybridQuantity::Scalar quantity;
-        using field_type = FieldT;
 
         std::vector<Property> getFieldNamesAndQuantities() const { return {{name, quantity}}; }
 
-        void setBuffer(std::string const& /*bufferName*/, FieldT* field) { f = field; }
-        void copyData(FieldT const& source) { f->copyData(source); }
+        void setBuffer(std::string const& /*bufferName*/, field_type* field)
+        {
+            f = field;
+        }
+
+        template<typename That>
+        void copyData(That const& that)
+        {
+            assert(f);
+            f->copyData(that);
+        }
+
+        std::string name;
+        field_type* f{nullptr};
+        typename PHARE::core::HybridQuantity::Scalar quantity;
     };
 
 
@@ -82,29 +95,31 @@ namespace amr
     template<typename HybridModel, typename RefinementParams>
     class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
     {
-        using IonsT                              = typename HybridModel::ions_type;
-        using ElectromagT                        = typename HybridModel::electromag_type;
-        using VecFieldT                          = typename HybridModel::vecfield_type;
-        using GridLayoutT                        = typename HybridModel::gridlayout_type;
-        using FieldT                             = typename VecFieldT::field_type;
-        using ResourcesManagerT                  = typename HybridModel::resources_manager_type;
+        using GridT             = typename HybridModel::grid_type;
+        using IonsT             = typename HybridModel::ions_type;
+        using ElectromagT       = typename HybridModel::electromag_type;
+        using VecFieldT         = typename HybridModel::vecfield_type;
+        using GridLayoutT       = typename HybridModel::gridlayout_type;
+        using FieldT            = typename VecFieldT::field_type;
+        using ResourcesManagerT = typename HybridModel::resources_manager_type;
+        using IPhysicalModel    = typename HybridModel::Interface;
+
         static constexpr std::size_t dimension   = GridLayoutT::dimension;
         static constexpr std::size_t interpOrder = GridLayoutT::interp_order;
-        using IPhysicalModel                     = typename HybridModel::Interface;
 
         using InteriorParticleRefineOp = typename RefinementParams::InteriorParticleRefineOp;
         using CoarseToFineRefineOpOld  = typename RefinementParams::CoarseToFineRefineOpOld;
         using CoarseToFineRefineOpNew  = typename RefinementParams::CoarseToFineRefineOpNew;
 
         template<typename Policy>
-        using BaseRefineOp          = FieldRefineOperator<GridLayoutT, FieldT, Policy>;
+        using BaseRefineOp          = FieldRefineOperator<GridLayoutT, GridT, Policy>;
         using DefaultFieldRefineOp  = BaseRefineOp<DefaultFieldRefiner<dimension>>;
         using MagneticFieldRefineOp = BaseRefineOp<MagneticFieldRefiner<dimension>>;
         using ElectricFieldRefineOp = BaseRefineOp<ElectricFieldRefiner<dimension>>;
-        using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, FieldT>;
+        using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
 
         template<typename Policy>
-        using BaseCoarsenOp     = FieldCoarsenOperator<GridLayoutT, FieldT, Policy>;
+        using BaseCoarsenOp     = FieldCoarsenOperator<GridLayoutT, GridT, Policy>;
         using MagneticCoarsenOp = BaseCoarsenOp<MagneticFieldCoarsener<dimension>>;
         using DefaultCoarsenOp  = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
 
@@ -991,8 +1006,8 @@ namespace amr
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT* NiOld_{nullptr};
-        FieldUser<FieldT> NiOldUser_{stratName + "_NiOld", NiOld_,
-                                     core::HybridQuantity::Scalar::rho};
+        FieldUser<GridT> NiOldUser_{stratName + "_NiOld", NiOld_,
+                                    core::HybridQuantity::Scalar::rho};
 
 
         //! ResourceManager shared with other objects (like the HybridModel)

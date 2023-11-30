@@ -66,26 +66,27 @@ struct OhmTest : public ::testing::Test
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
     using GridYee  = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using Grid_t   = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     GridYee layout = NDlayout<dim, interp>::create();
 
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> n;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vy;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> P;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Exnew;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Eynew;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Eznew;
-    VecField<NdArrayVector<dim>, HybridQuantity> V;
-    VecField<NdArrayVector<dim>, HybridQuantity> B;
-    VecField<NdArrayVector<dim>, HybridQuantity> J;
-    VecField<NdArrayVector<dim>, HybridQuantity> Enew;
+    Grid_t n;
+    Grid_t Vx;
+    Grid_t Vy;
+    Grid_t Vz;
+    Grid_t P;
+    Grid_t Bx;
+    Grid_t By;
+    Grid_t Bz;
+    Grid_t Jx;
+    Grid_t Jy;
+    Grid_t Jz;
+    Grid_t Exnew;
+    Grid_t Eynew;
+    Grid_t Eznew;
+    VecField<Grid_t, HybridQuantity> V;
+    VecField<Grid_t, HybridQuantity> B;
+    VecField<Grid_t, HybridQuantity> J;
+    VecField<Grid_t, HybridQuantity> Enew;
     Ohm<GridYee> ohm;
 
     OhmTest()

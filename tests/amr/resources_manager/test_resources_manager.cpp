@@ -5,6 +5,7 @@
 #include "test_resources_manager.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
@@ -30,19 +31,21 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
-using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using VecField1D                      = VecField<NdArrayVector<1>, HybridQuantity>;
-using IonPopulation1D                 = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
-using Ions1D                          = Ions<IonPopulation1D, GridYee1D>;
-using Electromag1D                    = Electromag<VecField1D>;
-using Electrons1D                     = Electrons<Ions1D>;
-using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
-using HybridState1D                   = HybridState<Electromag1D, Ions1D, Electrons1D>;
+using GridImplYee1D   = GridLayoutImplYee<dim, interpOrder>;
+using GridYee1D       = GridLayout<GridImplYee1D>;
+using Grid1D          = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+using VecField1D      = VecField<Grid1D, HybridQuantity>;
+using IonPopulation1D = IonPopulation<ParticleArray<dim>, VecField1D, GridYee1D>;
+using Ions1D          = Ions<IonPopulation1D, GridYee1D>;
+using Electromag1D    = Electromag<VecField1D>;
+using Electrons1D     = Electrons<Ions1D>;
+using HybridState1D   = HybridState<Electromag1D, Ions1D, Electrons1D>;
 
+using MaxwellianParticleInitializer1D
+    = MaxwellianParticleInitializer<ParticleArray<dim>, GridYee1D>;
 
-using InitFunctionT = PHARE::initializer::InitFunction<1>;
+using InitFunctionT = PHARE::initializer::InitFunction<dim>;
 
 PHARE::initializer::PHAREDict createInitDict()
 {

@@ -26,6 +26,7 @@ namespace core
     class Ions
     {
     public:
+        using grid_type           = typename IonPopulation::grid_type;
         using field_type          = typename IonPopulation::field_type;
         using vecfield_type       = typename IonPopulation::vecfield_type;
         using Float               = typename field_type::type;
@@ -36,6 +37,8 @@ namespace core
         static constexpr auto dimension = GridLayout::dimension;
 
 
+        Ions(Ions const&) = default;
+        Ions(Ions&&)      = default;
 
 
         explicit Ions(PHARE::initializer::PHAREDict const& dict)

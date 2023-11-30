@@ -8,8 +8,8 @@
 
 #include "gtest/gtest.h"
 
-#include "core/data/field/field.hpp"
 #include "amr/data/field/field_variable.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
@@ -50,7 +50,7 @@ struct FieldVariableTest : public ::testing::TestWithParam<FieldVariableTestPara
 
 template<std::size_t dim, std::size_t interporder>
 using FieldVar = FieldVariable<GridLayout<GridLayoutImplYee<dim, interporder>>,
-                               Field<NdArrayVector<dim>, HybridQuantity::Scalar>>;
+                               Grid<NdArrayVector<dim>, HybridQuantity::Scalar>>;
 
 
 // The interp order is of no importance to know if a quantity

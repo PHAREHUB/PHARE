@@ -11,7 +11,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include "amr/solvers/solver.hpp"
-
+#include "amr/solvers/solver_ppc_model_view.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
 #include "core/numerics/ampere/ampere.hpp"
@@ -46,6 +46,7 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
+    using HybridModelView_t = HybridPPCModelView<HybridModel>;
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
@@ -73,50 +74,54 @@ public:
     {
     }
 
-    virtual ~SolverPPC() = default;
+    ~SolverPPC() override = default;
 
 
-    virtual std::string modelName() const override { return HybridModel::model_name; }
+    std::string modelName() const override { return HybridModel::model_name; }
 
-    virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
-
-
-    virtual void registerResources(IPhysicalModel_t& model) override;
+    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
 
-    virtual void allocate(IPhysicalModel_t& model, SAMRAI::hier::Patch& patch,
-                          double const allocateTime) const override;
+    void registerResources(IPhysicalModel_t& model) override;
+
+
+    void allocate(IPhysicalModel_t& model, SAMRAI::hier::Patch& patch,
+                  double const allocateTime) const override;
 
 
 
-    virtual void advanceLevel(std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber,
-                              IPhysicalModel_t& model, IMessenger& fromCoarserMessenger,
-                              double const currentTime, double const newTime) override;
+    void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
+                      IMessenger& fromCoarserMessenger, double const currentTime,
+                      double const newTime, ISolverModelView& view) override;
 
-
+    std::shared_ptr<ISolverModelView> make_view(level_t& level, IPhysicalModel_t& model) override
+    {
+        return std::make_shared<HybridModelView_t>(level, dynamic_cast<HybridModel&>(model));
+    }
 
 private:
     using Messenger = amr::HybridMessenger<HybridModel>;
 
 
     void predictor1_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                     double const currentTime, double const newTime);
+                     double const currentTime, double const newTime, HybridModelView_t& view);
 
 
     void predictor2_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                     double const currentTime, double const newTime);
+                     double const currentTime, double const newTime, HybridModelView_t& view);
 
 
     void corrector_(level_t& level, HybridModel& model, Messenger& fromCoarser,
-                    double const currentTime, double const newTime);
+                    double const currentTime, double const newTime, HybridModelView_t& view);
 
 
-    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser, double const newTime);
+    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser, double const newTime,
+                  HybridModelView_t& view);
 
 
     void moveIons_(level_t& level, Ions& ions, Electromag& electromag, ResourcesManager& rm,
                    Messenger& fromCoarser, double const currentTime, double const newTime,
-                   core::UpdaterMode mode);
+                   core::UpdaterMode mode, HybridModelView_t& view);
 
 
     void saveState_(level_t& level, Ions& ions, ResourcesManager& rm);
@@ -217,43 +222,42 @@ void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, Ions& ions
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
+void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarchy,
                                                      int const levelNumber, IPhysicalModel_t& model,
                                                      IMessenger& fromCoarserMessenger,
-                                                     double const currentTime, double const newTime)
+                                                     double const currentTime, double const newTime,
+                                                     ISolverModelView& view)
 {
     PHARE_LOG_SCOPE("SolverPPC::advanceLevel");
 
     auto& hybridModel      = dynamic_cast<HybridModel&>(model);
+    auto& modelView        = dynamic_cast<HybridModelView_t&>(view);
     auto& hybridState      = hybridModel.state;
     auto& fromCoarser      = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
     auto& resourcesManager = *hybridModel.resourcesManager;
-    auto level             = hierarchy->getPatchLevel(levelNumber);
+    auto level             = hierarchy.getPatchLevel(levelNumber);
 
 
-    predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime);
+    predictor1_(*level, hybridModel, fromCoarser, currentTime, newTime, modelView);
 
-    average_(*level, hybridModel, fromCoarser, newTime);
+    average_(*level, hybridModel, fromCoarser, newTime, modelView);
 
     saveState_(*level, hybridState.ions, resourcesManager);
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
-              newTime, core::UpdaterMode::domain_only);
+              newTime, core::UpdaterMode::domain_only, modelView);
 
-    predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
+    predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime, modelView);
 
 
-    average_(*level, hybridModel, fromCoarser, newTime);
+    average_(*level, hybridModel, fromCoarser, newTime, modelView);
 
     restoreState_(*level, hybridState.ions, resourcesManager);
 
     moveIons_(*level, hybridState.ions, electromagAvg_, resourcesManager, fromCoarser, currentTime,
-              newTime, core::UpdaterMode::all);
+              newTime, core::UpdaterMode::all, modelView);
 
-    corrector_(*level, hybridModel, fromCoarser, currentTime, newTime);
-
-
-    // return newTime;
+    corrector_(*level, hybridModel, fromCoarser, currentTime, newTime, modelView);
 }
 
 
@@ -262,76 +266,37 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(std::shared_ptr<hierarchy_t
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel& model,
                                                     Messenger& fromCoarser,
-                                                    double const currentTime, double const newTime)
+                                                    double const currentTime, double const newTime,
+                                                    HybridModelView_t& view)
 {
     PHARE_LOG_SCOPE("SolverPPC::predictor1_");
 
-    auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
-    auto& electromag       = hybridState.electromag;
-    auto levelNumber       = level.getLevelNumber();
-
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor1_.faraday");
-
-        auto& Bpred = electromagPred_.B;
-        auto& B     = electromag.B;
-        auto& E     = electromag.E;
-
-        for (auto& patch : level)
-        {
-            auto _      = resourcesManager->setOnPatch(*patch, Bpred, B, E);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto __     = core::SetLayout(&layout, faraday_);
-            faraday_(B, E, Bpred, dt);
-            resourcesManager->setTime(Bpred, *patch, newTime);
-        }
+        faraday_(
+            view, [](auto& state) { return state.ppc_predictor1_faraday(); }, dt);
+        for (auto& state : view)
+            resourcesManager->setTime(state.electromagPred.B, *state.patch, newTime);
     }
-
-
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor1_.ampere");
-
-        auto& Bpred = electromagPred_.B;
-        auto& J     = hybridState.J;
-
-        for (auto& patch : level)
-        {
-            auto _      = resourcesManager->setOnPatch(*patch, Bpred, J);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto __     = core::SetLayout(&layout, ampere_);
-            ampere_(Bpred, J);
-
-            resourcesManager->setTime(J, *patch, newTime);
-        }
-        fromCoarser.fillCurrentGhosts(J, levelNumber, newTime);
+        ampere_.op(view, [](auto& state) { return state.ppc_predictor1_ampere(); });
+        for (auto& state : view)
+            resourcesManager->setTime(state.J, *state.patch, newTime);
+        fromCoarser.fillCurrentGhosts(model.state.J, level.getLevelNumber(), newTime);
     }
-
-
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor1_.ohm");
-
-        auto& electrons = hybridState.electrons;
-        auto& Bpred     = electromagPred_.B;
-        auto& Epred     = electromagPred_.E;
-        auto& J         = hybridState.J;
-
-        for (auto& patch : level)
-        {
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto _      = resourcesManager->setOnPatch(*patch, Bpred, Epred, J, electrons);
-            electrons.update(layout);
-            auto& Ve = electrons.velocity();
-            auto& Ne = electrons.density();
-            auto& Pe = electrons.pressure();
-            auto __  = core::SetLayout(&layout, ohm_);
-            ohm_(Ne, Ve, Pe, Bpred, J, Epred);
-            resourcesManager->setTime(Epred, *patch, newTime);
-        }
+        for (auto& state : view)
+            state.electrons.update(state.layout);
+        ohm_(view, [](auto& state) { return state.ppc_predictor1_ohm(); });
+        for (auto& state : view)
+            resourcesManager->setTime(state.electromagPred.E, *state.patch, newTime);
     }
 }
 
@@ -339,76 +304,37 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel& model,
                                                     Messenger& fromCoarser,
-                                                    double const currentTime, double const newTime)
+                                                    double const currentTime, double const newTime,
+                                                    HybridModelView_t& view)
 {
     PHARE_LOG_SCOPE("SolverPPC::predictor2_");
 
-    auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
-    auto levelNumber       = level.getLevelNumber();
-
-
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor2_.faraday");
-
-        auto& Bpred = electromagPred_.B;
-        auto& B     = hybridState.electromag.B;
-        auto& Eavg  = electromagAvg_.E;
-
-        for (auto& patch : level)
-        {
-            auto _      = resourcesManager->setOnPatch(*patch, Bpred, B, Eavg);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto __     = core::SetLayout(&layout, faraday_);
-            faraday_(B, Eavg, Bpred, dt);
-
-            resourcesManager->setTime(Bpred, *patch, newTime);
-        }
+        faraday_(
+            view, [](auto& state) { return state.ppc_predictor2_faraday(); }, dt);
+        for (auto& state : view)
+            resourcesManager->setTime(state.electromagPred.B, *state.patch, newTime);
     }
-
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor2_.ampere");
-
-        auto& Bpred = electromagPred_.B;
-        auto& J     = hybridState.J;
-
-
-        for (auto& patch : level)
-        {
-            auto _      = resourcesManager->setOnPatch(*patch, Bpred, J);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto __     = core::SetLayout(&layout, ampere_);
-            ampere_(Bpred, J);
-
-            resourcesManager->setTime(J, *patch, newTime);
-        }
-        fromCoarser.fillCurrentGhosts(J, levelNumber, newTime);
+        ampere_.op(view, [](auto& state) { return state.ppc_predictor2_ampere(); });
+        for (auto& state : view)
+            resourcesManager->setTime(state.J, *state.patch, newTime);
+        fromCoarser.fillCurrentGhosts(model.state.J, level.getLevelNumber(), newTime);
     }
-
 
     {
         PHARE_LOG_SCOPE("SolverPPC::predictor2_.ohm");
-
-        auto& electrons = hybridState.electrons;
-        auto& Bpred     = electromagPred_.B;
-        auto& Epred     = electromagPred_.E;
-        auto& J         = hybridState.J;
-
-        for (auto& patch : level)
-        {
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto _      = resourcesManager->setOnPatch(*patch, Bpred, Epred, J, electrons);
-            electrons.update(layout);
-            auto& Ve = electrons.velocity();
-            auto& Ne = electrons.density();
-            auto& Pe = electrons.pressure();
-            auto __  = core::SetLayout(&layout, ohm_);
-            ohm_(Ne, Ve, Pe, Bpred, J, Epred);
-            resourcesManager->setTime(Epred, *patch, newTime);
-        }
+        for (auto& state : view)
+            state.electrons.update(state.layout);
+        ohm_(view, [](auto& state) { return state.ppc_predictor2_ohm(); });
+        for (auto& state : view)
+            resourcesManager->setTime(state.electromagPred.E, *state.patch, newTime);
     }
 }
 
@@ -418,72 +344,39 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& model,
                                                    Messenger& fromCoarser, double const currentTime,
-                                                   double const newTime)
+                                                   double const newTime, HybridModelView_t& view)
 {
     PHARE_LOG_SCOPE("SolverPPC::corrector_");
 
-    auto& hybridState      = model.state;
     auto& resourcesManager = model.resourcesManager;
     auto dt                = newTime - currentTime;
     auto levelNumber       = level.getLevelNumber();
 
     {
         PHARE_LOG_SCOPE("SolverPPC::corrector_.faraday");
-
-        auto& B    = hybridState.electromag.B;
-        auto& Eavg = electromagAvg_.E;
-
-        for (auto& patch : level)
-        {
-            auto _      = resourcesManager->setOnPatch(*patch, B, Eavg);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto __     = core::SetLayout(&layout, faraday_);
-            faraday_(B, Eavg, B, dt);
-
-            resourcesManager->setTime(B, *patch, newTime);
-        }
+        faraday_(
+            view, [](auto& state) { return state.ppc_corrector_faraday(); }, dt);
+        for (auto& state : view)
+            resourcesManager->setTime(state.electromag.B, *state.patch, newTime);
     }
 
     {
         PHARE_LOG_SCOPE("SolverPPC::corrector_.ampere");
-
-        auto& B = hybridState.electromag.B;
-        auto& J = hybridState.J;
-
-        for (auto& patch : level)
-        {
-            auto _      = resourcesManager->setOnPatch(*patch, B, J);
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto __     = core::SetLayout(&layout, ampere_);
-            ampere_(B, J);
-
-            resourcesManager->setTime(J, *patch, newTime);
-        }
-        fromCoarser.fillCurrentGhosts(J, levelNumber, newTime);
+        ampere_.op(view, [](auto& state) { return state.ppc_corrector_ampere(); });
+        for (auto& state : view)
+            resourcesManager->setTime(state.J, *state.patch, newTime);
+        fromCoarser.fillCurrentGhosts(model.state.J, level.getLevelNumber(), newTime);
     }
 
     {
         PHARE_LOG_SCOPE("SolverPPC::corrector_.ohm");
+        for (auto& state : view)
+            state.electrons.update(state.layout);
+        ohm_(view, [](auto& state) { return state.ppc_corrector_ohm(); });
+        for (auto& state : view)
+            resourcesManager->setTime(state.electromag.E, *state.patch, newTime);
 
-        auto& electrons = hybridState.electrons;
-        auto& B         = hybridState.electromag.B;
-        auto& E         = hybridState.electromag.E;
-        auto& J         = hybridState.J;
-
-        for (auto& patch : level)
-        {
-            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto _      = resourcesManager->setOnPatch(*patch, B, E, J, electrons);
-            electrons.update(layout);
-            auto& Ve = electrons.velocity();
-            auto& Ne = electrons.density();
-            auto& Pe = electrons.pressure();
-            auto __  = core::SetLayout(&layout, ohm_);
-            ohm_(Ne, Ve, Pe, B, J, E);
-            resourcesManager->setTime(E, *patch, newTime);
-        }
-
-        fromCoarser.fillElectricGhosts(E, levelNumber, newTime);
+        fromCoarser.fillElectricGhosts(model.state.electromag.E, levelNumber, newTime);
     }
 }
 
@@ -491,31 +384,22 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model,
-                                                 Messenger& fromCoarser, double const newTime)
+                                                 Messenger& fromCoarser, double const newTime,
+                                                 HybridModelView_t& view)
 {
     PHARE_LOG_SCOPE("SolverPPC::average_");
 
-    auto& hybridState      = model.state;
-    auto& resourcesManager = model.resourcesManager;
-
-    auto& Epred = electromagPred_.E;
-    auto& Bpred = electromagPred_.B;
-    auto& Bavg  = electromagAvg_.B;
-    auto& Eavg  = electromagAvg_.E;
-    auto& B     = hybridState.electromag.B;
-    auto& E     = hybridState.electromag.E;
-
-    for (auto& patch : level)
+    auto _average = [](auto&... args) { PHARE::core::average(args...); };
+    for (auto& state : view)
     {
-        auto _ = resourcesManager->setOnPatch(*patch, electromagAvg_, electromagPred_,
-                                              hybridState.electromag);
-        PHARE::core::average(B, Bpred, Bavg);
-        PHARE::core::average(E, Epred, Eavg);
+        std::apply(_average, state.ppc_average_B());
+        std::apply(_average, state.ppc_average_E());
     }
+
     // the following will fill E on all edges of all ghost cells, including those
     // on domain border. For level ghosts, electric field will be obtained from
     // next coarser level E average
-    fromCoarser.fillElectricGhosts(Eavg, level.getLevelNumber(), newTime);
+    fromCoarser.fillElectricGhosts(electromagAvg_.E, level.getLevelNumber(), newTime);
 }
 
 
@@ -524,7 +408,8 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
                                                   Electromag& electromag, ResourcesManager& rm,
                                                   Messenger& fromCoarser, double const currentTime,
-                                                  double const newTime, core::UpdaterMode mode)
+                                                  double const newTime, core::UpdaterMode mode,
+                                                  HybridModelView_t& view)
 {
     PHARE_LOG_SCOPE("SolverPPC::moveIons_");
 
@@ -556,34 +441,33 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
 
     auto dt = newTime - currentTime;
 
-    for (auto& patch : level)
+    for (auto& state : view)
     {
-        auto _ = rm.setOnPatch(*patch, electromag, ions);
-
-        auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-        ionUpdater_.updatePopulations(ions, electromag, layout, dt, mode);
-
+        auto const& [layout, ionz, em] = state.ppc_update_populations();
+        ionUpdater_.updatePopulations(ionz, em, layout, dt, mode);
         // this needs to be done before calling the messenger
-        rm.setTime(ions, *patch, newTime);
+        rm.setTime(ionz, *state.patch, newTime);
     }
-
 
     fromCoarser.fillIonGhostParticles(ions, level, newTime);
     fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
 
-    for (auto& patch : level)
+    for (auto& state : view)
     {
-        auto _      = rm.setOnPatch(*patch, electromag, ions);
-        auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-        ionUpdater_.updateIons(ions, layout);
-
+        ionUpdater_.updateIons(state.ions, state.layout);
         // no need to update time, since it has been done before
     }
+
     // now Ni and Vi are calculated we can fill pure ghost nodes
     // these were not completed by the deposition of patch and levelghost particles
     fromCoarser.fillIonMomentGhosts(ions, level, newTime);
 }
+
+
+
 } // namespace PHARE::solver
+
+
 
 
 #endif

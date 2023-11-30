@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield.hpp"
@@ -26,13 +27,16 @@ public:
 
 protected:
     std::string vf2_name = "vf";
-    VecField<NdArrayImpl, HybridQuantity::Scalar> vf2;
+    VecField<Grid<NdArrayImpl, HybridQuantity::Scalar>, HybridQuantity> vf2;
 };
 
-using NdArrays = ::testing::Types<NdArrayVector<1>, NdArrayVector<2>, NdArrayVector<3>>;
-
+using NdArrays = ::testing::Types<NdArrayView<1>, NdArrayView<2>, NdArrayView<3>>;
 
 TYPED_TEST_SUITE(VecFieldGeneric, NdArrays);
+
+
+template<std::size_t dim>
+using VecField_t = VecField<Grid<NdArrayVector<dim>, HybridQuantity::Scalar>, HybridQuantity>;
 
 
 class VecFieldTest : public ::testing::Test
@@ -88,21 +92,21 @@ protected:
     static const std::uint32_t nx;
     static const std::uint32_t ny;
     static const std::uint32_t nz;
-    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
-    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
-    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
+    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
+    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
+    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
 
-    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bx2d_;
-    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> by2d_;
-    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bz2d_;
+    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> bx2d_;
+    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> by2d_;
+    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> bz2d_;
 
-    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bx3d_;
-    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> by3d_;
-    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bz3d_;
+    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> bx3d_;
+    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> by3d_;
+    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> bz3d_;
 
-    VecField<NdArrayVector<1>, HybridQuantity> B1D_;
-    VecField<NdArrayVector<2>, HybridQuantity> B2D_;
-    VecField<NdArrayVector<3>, HybridQuantity> B3D_;
+    VecField_t<1> B1D_;
+    VecField_t<2> B2D_;
+    VecField_t<3> B3D_;
 };
 
 const std::uint32_t VecFieldTest::nx = 10;
@@ -299,10 +303,10 @@ TEST(aVecField, dataCanBeCopiedIntoAnother)
 {
     using Scalar = typename HybridQuantity::Scalar;
 
-    Field<NdArrayVector<3>, Scalar> bx1{"B1_bx1", Scalar::Bx, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> by1{"B1_by1", Scalar::By, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> bz1{"B1_bz1", Scalar::Bz, 2u, 3u, 4u};
-    VecField<NdArrayVector<3>, HybridQuantity> B1{"B1", HybridQuantity::Vector::B};
+    Grid<NdArrayVector<3>, Scalar> bx1{"B1_bx1", Scalar::Bx, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> by1{"B1_by1", Scalar::By, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> bz1{"B1_bz1", Scalar::Bz, 2u, 3u, 4u};
+    VecField_t<3> B1{"B1", HybridQuantity::Vector::B};
     B1.setBuffer("B1_x", &bx1);
     B1.setBuffer("B1_y", &by1);
     B1.setBuffer("B1_z", &bz1);
@@ -311,10 +315,10 @@ TEST(aVecField, dataCanBeCopiedIntoAnother)
     by1(1, 1, 1) = 13;
     bz1(1, 1, 1) = 14;
 
-    Field<NdArrayVector<3>, Scalar> bx2{"B2_bx2", Scalar::Bx, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> by2{"B2_by2", Scalar::By, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> bz2{"B2_bz2", Scalar::Bz, 2u, 3u, 4u};
-    VecField<NdArrayVector<3>, HybridQuantity> B2{"B2", HybridQuantity::Vector::B};
+    Grid<NdArrayVector<3>, Scalar> bx2{"B2_bx2", Scalar::Bx, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> by2{"B2_by2", Scalar::By, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> bz2{"B2_bz2", Scalar::Bz, 2u, 3u, 4u};
+    VecField_t<3> B2{"B2", HybridQuantity::Vector::B};
     B2.setBuffer("B2_x", &bx2);
     B2.setBuffer("B2_y", &by2);
     B2.setBuffer("B2_z", &bz2);

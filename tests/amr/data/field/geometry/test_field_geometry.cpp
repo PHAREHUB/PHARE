@@ -10,6 +10,7 @@
 
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/field_variable.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 
@@ -31,7 +32,7 @@ using namespace PHARE::amr;
 
 
 
-using Field1D = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
+using Field1D = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 template<typename GridLayoutT, typename FieldImpl>
 struct FieldGeometryParam

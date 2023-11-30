@@ -166,7 +166,7 @@ template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
     using PHARETypes = PHARE::core::PHARE_Types<dim, interp_order>;
-    using Field      = typename PHARETypes::Field_t;
+    using Field      = typename PHARETypes::Grid_t;
     using GridLayout = typename PHARETypes::GridLayout_t;
     using Electromag = typename PHARETypes::Electromag_t;
 
@@ -220,7 +220,7 @@ template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
     using PHARETypes                 = PHARE::core::PHARE_Types<dim, interp_order>;
-    using Field                      = typename PHARETypes::Field_t;
+    using Field                      = typename PHARETypes::Grid_t;
     using GridLayout                 = typename PHARETypes::GridLayout_t;
     using Ions                       = typename PHARETypes::Ions_t;
     using ParticleArray              = typename PHARETypes::ParticleArray_t;
@@ -424,7 +424,7 @@ struct IonUpdaterTest : public ::testing::Test
 
 
     // data for electromagnetic fields
-    using Field    = typename PHARETypes::Field_t;
+    using Field    = typename PHARETypes::Grid_t;
     using VecField = typename PHARETypes::VecField_t;
 
     ElectromagBuffers<dim, interp_order> emBuffers;

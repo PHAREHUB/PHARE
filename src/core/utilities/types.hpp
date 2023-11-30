@@ -72,6 +72,7 @@ namespace core
     template<typename... Args> // this is so we can specialize
     struct type_list           // templates with only the outter most type
     {
+        using Tuple = std::tuple<Args...>; //
     };
 
     template<typename T>
@@ -327,23 +328,24 @@ auto constexpr static to_bool = [](auto const& v) { return bool{v}; };
 
 
 template<typename Container, typename Fn = decltype(to_bool)>
-NO_DISCARD auto all(Container const& container, Fn fn = to_bool)
+NO_DISCARD auto constexpr all(Container const& container, Fn fn = to_bool)
 {
     return std::all_of(container.begin(), container.end(), fn);
 }
 
-
 template<typename Container, typename Fn = decltype(to_bool)>
-NO_DISCARD auto any(Container const& container, Fn fn = to_bool)
+NO_DISCARD auto constexpr any(Container const& container, Fn fn = to_bool)
 {
     return std::any_of(container.begin(), container.end(), fn);
 }
 
 template<typename Container, typename Fn = decltype(to_bool)>
-NO_DISCARD auto none(Container const& container, Fn fn = to_bool)
+NO_DISCARD auto constexpr none(Container const& container, Fn fn = to_bool)
 {
     return std::none_of(container.begin(), container.end(), fn);
 }
+
+
 
 auto inline float_equals(float const& a, float const& b, float diff = 1e-6)
 {
@@ -353,6 +355,109 @@ auto inline float_equals(float const& a, float const& b, float diff = 1e-6)
 auto inline float_equals(double const& a, double const& b, double diff = 1e-12)
 {
     return std::abs(a - b) < diff;
+}
+
+template<typename T = std::uint16_t>
+struct Apply
+{
+    template<T i>
+    auto constexpr operator()()
+    {
+        return std::integral_constant<T, i>{};
+    }
+};
+
+template<typename Apply, std::uint16_t... Is>
+constexpr auto apply_N(Apply& f, std::integer_sequence<std::uint16_t, Is...> const&)
+{
+    if constexpr (!std::is_same_v<decltype(f.template operator()<0>()), void>)
+        return std::make_tuple(f.template operator()<Is>()...);
+    (f.template operator()<Is>(), ...);
+}
+
+template<std::uint16_t N, typename Apply>
+constexpr auto apply_N(Apply&& f)
+{
+    return apply_N(f, std::make_integer_sequence<std::uint16_t, N>{});
+}
+
+enum class for_N_R_mode {
+    make_tuple = 0,
+    make_array,
+    forward_tuple,
+};
+
+template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
+constexpr auto for_N(Fn& fn)
+{
+    /*  // how to use
+        for_N<2>([](auto ic) {
+            constexpr auto i = ic();
+            // ...
+        });
+    */
+
+    static_assert(std::is_same_v<decltype(M), for_N_R_mode>);
+    using return_type
+        = std::decay_t<std::result_of_t<Fn(std::integral_constant<std::uint16_t, 0>)>>;
+    constexpr bool returns = !std::is_same_v<return_type, void>;
+
+    if constexpr (returns)
+    {
+        return std::apply(
+            [&](auto... ics) {
+                if constexpr (M == for_N_R_mode::make_tuple)
+                    return std::make_tuple(fn(ics)...);
+                else if constexpr (M == for_N_R_mode::make_array)
+                    return std::array{fn(ics)...};
+                else if constexpr (M == for_N_R_mode::forward_tuple)
+                    return std::forward_as_tuple(fn(ics)...);
+                else
+                    throw std::runtime_error("unknown return mode");
+            },
+            apply_N<N>(Apply{}));
+    }
+    else
+        std::apply([&](auto... ics) { (fn(ics), ...); }, apply_N<N>(Apply{}));
+}
+
+template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
+constexpr auto for_N(Fn&& fn)
+{
+    return for_N<N, M>(fn);
+}
+
+template<std::uint16_t N, typename Fn>
+NO_DISCARD constexpr auto for_N_all(Fn&& fn)
+{
+    return all(for_N<N, for_N_R_mode::make_array>(fn));
+}
+
+template<std::uint16_t N, typename Fn>
+NO_DISCARD constexpr auto for_N_any(Fn&& fn)
+{
+    return any(for_N<N, for_N_R_mode::make_array>(fn));
+}
+
+
+
+template<typename Tuple, std::size_t... Is>
+constexpr auto named_pair_seq_(Tuple, std::index_sequence<Is...> const&&)
+    -> decltype(std::make_tuple(
+        (Is, std::declval<std::pair<std::string, std::tuple_element_t<Is, Tuple>>>())...));
+
+template<typename... Args>
+auto constexpr named_pair_seq()
+    -> decltype(named_pair_seq_(std::tuple<Args...>{},
+                                std::make_index_sequence<sizeof...(Args)>{}));
+
+template<typename... Args>
+using NamedTuple = decltype(named_pair_seq<Args...>());
+
+template<typename... Pairs>
+auto make_named_tuple(Pairs&&... pairs)
+{
+    return std::make_tuple(pairs...);
 }
 
 } // namespace PHARE::core

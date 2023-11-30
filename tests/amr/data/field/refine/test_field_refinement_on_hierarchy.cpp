@@ -20,7 +20,7 @@ struct ALinearFieldRefineTest : public ::testing::Test
     static constexpr auto refine = 2;
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using FieldND = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using FieldND = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
 public:
     void SetUp() override
@@ -51,7 +51,7 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
     auto constexpr interp = pair.second();
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using FieldND = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using FieldND = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
 
     auto& basicHierarchy = this->basicHierarchy_;

@@ -37,6 +37,17 @@ public:
         layout_->evalOnBox(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
     }
 
+    template<typename ViewStates, typename Accessor>
+    void op(ViewStates& states, Accessor fn)
+    {
+        for (auto& state : states)
+        {
+            auto const& [layout, B, J] = fn(state);
+            this->layout_              = &layout;
+            (*this)(B, J);
+        }
+    }
+
 private:
     template<typename VecField, typename Field, typename... Indexes>
     void JxEq_(Field& Jx, VecField const& B, Indexes const&... ijk) const

@@ -24,6 +24,7 @@ struct DummyField
 struct DummyVecField
 {
     static constexpr std::size_t dimension = 1;
+    using grid_type                        = DummyField;
     using field_type                       = DummyField;
     DummyVecField(std::string name, [[maybe_unused]] HybridQuantity::Vector v) { (void)name; }
     bool isUsable() const { return false; }

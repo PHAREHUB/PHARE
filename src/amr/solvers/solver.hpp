@@ -12,6 +12,21 @@
 #include "amr/physical_models/physical_model.hpp"
 #include "core/def.hpp"
 
+namespace PHARE::solver
+{
+
+
+class ISolverModelView
+{
+public:
+    using This = ISolverModelView;
+
+    virtual ~ISolverModelView() = default;
+};
+
+
+} // namespace PHARE::solver
+
 
 
 namespace PHARE
@@ -29,6 +44,10 @@ namespace solver
     class ISolver
     {
     public:
+        using patch_t     = typename AMR_Types::patch_t;
+        using level_t     = typename AMR_Types::level_t;
+        using hierarchy_t = typename AMR_Types::hierarchy_t;
+
         /**
          * @brief return the name of the ISolver
          */
@@ -67,10 +86,11 @@ namespace solver
         /**
          * @brief advanceLevel advances the given level from t to t+dt
          */
-        virtual void advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                  int const levelNumber, IPhysicalModel<AMR_Types>& model,
+        virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
+                                  IPhysicalModel<AMR_Types>& model,
                                   amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarser,
-                                  const double currentTime, const double newTime)
+                                  const double currentTime, const double newTime,
+                                  ISolverModelView& view)
             = 0;
 
 
@@ -80,7 +100,7 @@ namespace solver
          * @brief allocate is used to allocate ISolver variables previously registered to the
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
-        virtual void allocate(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::Patch& patch,
+        virtual void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
                               double const allocateTime) const = 0;
 
 
@@ -88,6 +108,9 @@ namespace solver
 
         virtual ~ISolver() = default;
 
+
+        virtual std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&)
+            = 0;
 
     protected:
         explicit ISolver(std::string name)

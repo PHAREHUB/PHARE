@@ -5,6 +5,7 @@
 #include <memory>
 
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
@@ -34,14 +35,8 @@ struct GridLayoutMock1D
     }
 
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
 };
 
 struct GridLayoutMock2D
@@ -69,17 +64,12 @@ struct GridLayoutMock3D
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
-                                   [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
-                                 [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 };
+
+template<std::size_t dim>
+using Grid_t = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
 
 
@@ -135,19 +125,20 @@ std::vector<double> read(std::string filename)
 class Ampere1DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<1, 1>;
+    static constexpr std::size_t dim          = 1;
+    static constexpr std::size_t interp_order = 1;
+    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
+    Grid_t<dim> Bx;
+    Grid_t<dim> By;
+    Grid_t<dim> Bz;
+    Grid_t<dim> Jx;
+    Grid_t<dim> Jy;
+    Grid_t<dim> Jz;
 
-    VecField<NdArrayVector<1>, HybridQuantity> B;
-    VecField<NdArrayVector<1>, HybridQuantity> J;
+    VecField<Grid_t<dim>, HybridQuantity> B;
+    VecField<Grid_t<dim>, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -176,19 +167,20 @@ public:
 class Ampere2DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<2, 1>;
+    static constexpr std::size_t dim          = 2;
+    static constexpr std::size_t interp_order = 1;
+    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
+    Grid_t<dim> Bx;
+    Grid_t<dim> By;
+    Grid_t<dim> Bz;
+    Grid_t<dim> Jx;
+    Grid_t<dim> Jy;
+    Grid_t<dim> Jz;
 
-    VecField<NdArrayVector<2>, HybridQuantity> B;
-    VecField<NdArrayVector<2>, HybridQuantity> J;
+    VecField<Grid_t<dim>, HybridQuantity> B;
+    VecField<Grid_t<dim>, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
@@ -217,19 +209,21 @@ public:
 class Ampere3DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<3, 1>;
+    static constexpr std::size_t dim          = 3;
+    static constexpr std::size_t interp_order = 1;
+    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
 
-    VecField<NdArrayVector<3>, HybridQuantity> B;
-    VecField<NdArrayVector<3>, HybridQuantity> J;
+    Grid_t<dim> Bx;
+    Grid_t<dim> By;
+    Grid_t<dim> Bz;
+    Grid_t<dim> Jx;
+    Grid_t<dim> Jy;
+    Grid_t<dim> Jz;
+
+    VecField<Grid_t<dim>, HybridQuantity> B;
+    VecField<Grid_t<dim>, HybridQuantity> J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 

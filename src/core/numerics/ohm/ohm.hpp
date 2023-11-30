@@ -50,6 +50,18 @@ public:
         });
     }
 
+
+    template<typename ViewStates, typename Accessor>
+    void operator()(ViewStates& states, Accessor fn)
+    {
+        for (auto& state : states)
+        {
+            auto const& [layout, n, Ve, Pe, B, J, Enew] = fn(state);
+            this->layout_                               = &layout;
+            (*this)(n, Ve, Pe, B, J, Enew);
+        }
+    }
+
     double const eta_;
     double const nu_;
 

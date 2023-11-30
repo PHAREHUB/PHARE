@@ -128,22 +128,23 @@ private:
 
 
 
-template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*,
-         bool c_ordering = true>
-class NdArrayView : NdArrayViewer<dim, c_ordering, DataType>
+template<std::size_t dim, typename DataType = double, bool c_ordering = true>
+class NdArrayView
 {
 public:
     static constexpr bool is_contiguous = 1;
     static const std::size_t dimension  = dim;
     using type                          = DataType;
+    using pointer_type                  = DataType*;
+    using viewer                        = NdArrayViewer<dim, c_ordering, DataType>;
 
-    explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
+    explicit NdArrayView(pointer_type ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
         , nCells_{nCells}
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v,
+    explicit NdArrayView(std::vector<std::decay_t<DataType>> const& v,
                          std::array<std::uint32_t, dim> const& nbCell)
         : NdArrayView{v.data(), nbCell}
     {
@@ -152,7 +153,7 @@ public:
     template<typename... Indexes>
     NO_DISCARD DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes...);
+        return viewer::at(ptr_, nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -164,7 +165,7 @@ public:
     template<typename Index>
     NO_DISCARD DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes);
+        return viewer::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
@@ -180,8 +181,23 @@ public:
     }
     NO_DISCARD auto shape() const { return nCells_; }
 
+    void fill_from(NdArrayView const& that)
+    {
+        if (size() != that.size())
+            throw std::runtime_error("ArrayView::fill_from: Incompatible input size");
+        std::copy(that.data(), that.data() + size(), data());
+    }
+
+    NO_DISCARD auto begin() const { return ptr_; }
+    NO_DISCARD auto begin() { return ptr_; }
+
+    NO_DISCARD auto end() const { return ptr_ + size(); }
+    NO_DISCARD auto end() { return ptr_ + size(); }
+
+    void zero() { std::fill(begin(), end(), 0); }
+
 private:
-    Pointer ptr_ = nullptr;
+    pointer_type ptr_ = nullptr;
     std::array<std::uint32_t, dim> nCells_;
 };
 
@@ -227,10 +243,6 @@ public:
 
     NO_DISCARD auto end() const { return std::end(data_); }
     NO_DISCARD auto end() { return std::end(data_); }
-
-    void zero() { std::fill(data_.begin(), data_.end(), 0); }
-
-
 
 
     template<typename... Indexes>

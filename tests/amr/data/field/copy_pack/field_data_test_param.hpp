@@ -15,10 +15,11 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 
-
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_overlap.hpp"
 #include "amr/data/field/field_variable.hpp"
+
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/utilities/point/point.hpp"
@@ -277,7 +278,7 @@ struct AFieldData1DCenteredOnEy : public ::testing::Test
 
 // Using used later in test
 
-using Field1D = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
+using Field1D = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 using FieldDataTest1DOrder1 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 1>>, Field1D>;
 using FieldDataTest1DOrder2 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 2>>, Field1D>;

@@ -5,7 +5,7 @@
 #include <memory>
 
 
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -29,19 +29,13 @@ struct GridLayoutMock1D
     static const auto dimension = 1u;
 
     template<auto direction>
-    double deriv([[maybe_unused]] FieldMock<1> const& f, [[maybe_unused]] MeshIndex<1u> mi)
+    double deriv(FieldMock<1> const& /*f*/, MeshIndex<1u> /*mi*/)
     {
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
 };
 
 struct GridLayoutMock2D
@@ -49,21 +43,13 @@ struct GridLayoutMock2D
     static const auto dimension = 2u;
 
     template<auto direction>
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi)
+    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<2u> /*mi*/)
     {
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
-                                   [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
-                                 [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 };
 
 struct GridLayoutMock3D
@@ -72,21 +58,13 @@ struct GridLayoutMock3D
 
 
     template<auto direction>
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi)
+    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<3u> /*mi*/)
     {
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
-                                   [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
-                                 [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 };
 
 
@@ -158,21 +136,25 @@ std::vector<double> read(std::string filename)
 class Faraday1DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<1, 1>;
+    static constexpr auto dim          = 1;
+    static constexpr auto interp_order = 1;
+
+    using Grid_t         = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridLayoutImpl = GridLayoutImplYee<dim, interp_order>;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector<1>, HybridQuantity> B;
-    VecField<NdArrayVector<1>, HybridQuantity> E;
-    VecField<NdArrayVector<1>, HybridQuantity> Bnew;
+    Grid_t Bx;
+    Grid_t By;
+    Grid_t Bz;
+    Grid_t Ex;
+    Grid_t Ey;
+    Grid_t Ez;
+    Grid_t Bxnew;
+    Grid_t Bynew;
+    Grid_t Bznew;
+    VecField<Grid_t, HybridQuantity> B;
+    VecField<Grid_t, HybridQuantity> E;
+    VecField<Grid_t, HybridQuantity> Bnew;
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
@@ -209,21 +191,25 @@ public:
 class Faraday2DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<2, 1>;
+    static constexpr auto dim          = 2;
+    static constexpr auto interp_order = 1;
+
+    using Grid_t         = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridLayoutImpl = GridLayoutImplYee<dim, interp_order>;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector<2>, HybridQuantity> B;
-    VecField<NdArrayVector<2>, HybridQuantity> E;
-    VecField<NdArrayVector<2>, HybridQuantity> Bnew;
+    Grid_t Bx;
+    Grid_t By;
+    Grid_t Bz;
+    Grid_t Ex;
+    Grid_t Ey;
+    Grid_t Ez;
+    Grid_t Bxnew;
+    Grid_t Bynew;
+    Grid_t Bznew;
+    VecField<Grid_t, HybridQuantity> B;
+    VecField<Grid_t, HybridQuantity> E;
+    VecField<Grid_t, HybridQuantity> Bnew;
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
@@ -260,21 +246,26 @@ public:
 class Faraday3DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<3, 1>;
+    static constexpr auto dim          = 3;
+    static constexpr auto interp_order = 1;
+
+    using Grid_t         = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridLayoutImpl = GridLayoutImplYee<dim, interp_order>;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector<3>, HybridQuantity> B;
-    VecField<NdArrayVector<3>, HybridQuantity> E;
-    VecField<NdArrayVector<3>, HybridQuantity> Bnew;
+
+    Grid_t Bx;
+    Grid_t By;
+    Grid_t Bz;
+    Grid_t Ex;
+    Grid_t Ey;
+    Grid_t Ez;
+    Grid_t Bxnew;
+    Grid_t Bynew;
+    Grid_t Bznew;
+    VecField<Grid_t, HybridQuantity> B;
+    VecField<Grid_t, HybridQuantity> E;
+    VecField<Grid_t, HybridQuantity> Bnew;
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:

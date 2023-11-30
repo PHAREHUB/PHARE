@@ -571,9 +571,8 @@ namespace amr
 
         //! \brief Allocate the data on the given level
         template<typename ResourcesUser, typename ResourcesProperties>
-        void allocate_([[maybe_unused]] ResourcesUser const& obj,
-                       ResourcesProperties const& resourcesProperties, SAMRAI::hier::Patch& patch,
-                       double const allocateTime) const
+        void allocate_(ResourcesUser const& /*obj*/, ResourcesProperties const& resourcesProperties,
+                       SAMRAI::hier::Patch& patch, double const allocateTime) const
         {
             for (auto const& properties : resourcesProperties)
             {

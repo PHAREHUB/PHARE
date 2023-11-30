@@ -4,6 +4,7 @@
 #include <string>
 
 #include "initializer/data_provider.hpp"
+#include "core/data/grid/grid.hpp" // !?!
 #include "core/models/hybrid_state.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
@@ -23,22 +24,25 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 class HybridModel : public IPhysicalModel<AMR_Types>
 {
 public:
+    static constexpr auto dimension = GridLayoutT::dimension;
     using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
     using Interface = IPhysicalModel<AMR_Types>;
     using amr_types = AMR_Types;
     using patch_t   = typename AMR_Types::patch_t;
     using level_t   = typename AMR_Types::level_t;
-    static const std::string model_name;
-    using gridlayout_type           = GridLayoutT;
-    using electromag_type           = Electromag;
-    using vecfield_type             = typename Electromag::vecfield_type;
-    using field_type                = typename vecfield_type::field_type;
-    using ions_type                 = Ions;
-    using particle_array_type       = typename Ions::particle_array_type;
-    using resources_manager_type    = amr::ResourcesManager<gridlayout_type>;
-    static constexpr auto dimension = GridLayoutT::dimension;
+    using gridlayout_type = GridLayoutT;
+    using electromag_type = Electromag;
+    using vecfield_type   = typename Electromag::vecfield_type;
+    using field_type      = typename vecfield_type::field_type;
+    using grid_type = core::Grid<core::NdArrayVector<dimension, typename field_type::value_type>,
+                                 typename field_type::physical_quantity_type>;
+    using ions_type = Ions;
+    using particle_array_type    = typename Ions::particle_array_type;
+    using resources_manager_type = amr::ResourcesManager<gridlayout_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+
+    static const std::string model_name;
 
 
     core::HybridState<Electromag, Ions, Electrons> state;

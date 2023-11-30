@@ -226,8 +226,10 @@ public:
     using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
     using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
     using NdArray_t       = typename PHARE_TYPES::Array_t;
+    using ArrayView_t     = typename PHARE_TYPES::ArrayView_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using Grid_t          = Grid<NdArray_t, typename HybridQuantity::Scalar>;
+    using VF              = VecField<Grid_t, HybridQuantity>;
 
     Electromag<VF> em;
     GridLayout_t layout{{0.1}, {nx}, {0.}};
@@ -236,12 +238,12 @@ public:
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> bx1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> by1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> bz1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ex1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ey1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ez1d_;
+    Grid_t bx1d_;
+    Grid_t by1d_;
+    Grid_t bz1d_;
+    Grid_t ex1d_;
+    Grid_t ey1d_;
+    Grid_t ez1d_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -334,8 +336,10 @@ public:
     using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
     using GridLayoutImpl  = GridLayoutImplYee<dimension, interp_order>;
     using NdArray_t       = typename PHARE_TYPES::Array_t;
+    using ArrayView_t     = typename PHARE_TYPES::ArrayView_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using Grid_t          = typename PHARE_TYPES::Grid_t;
+    using VF              = typename PHARE_TYPES::VecField_t;
 
     Electromag<VF> em;
     GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
@@ -343,12 +347,12 @@ public:
     InterpolatorT interp;
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> by_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> bz_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ex_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ey_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ez_;
+    Grid_t bx_;
+    Grid_t by_;
+    Grid_t bz_;
+    Grid_t ex_;
+    Grid_t ey_;
+    Grid_t ez_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -445,8 +449,10 @@ public:
     using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
     using GridLayoutImpl  = GridLayoutImplYee<dimension, interp_order>;
     using NdArray_t       = typename PHARE_TYPES::Array_t;
+    using ArrayView_t     = typename PHARE_TYPES::ArrayView_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using Grid_t          = Grid<NdArrayVector<dimension>, HybridQuantity::Scalar>;
+    using VF              = VecField<Grid_t, HybridQuantity>;
 
     GridLayout<GridLayoutImpl> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
@@ -454,12 +460,12 @@ public:
     ParticleArray_t particles;
     InterpolatorT interp;
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> by_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> bz_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ex_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ey_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ez_;
+    Grid_t bx_;
+    Grid_t by_;
+    Grid_t bz_;
+    Grid_t ex_;
+    Grid_t ey_;
+    Grid_t ez_;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -561,6 +567,8 @@ class ACollectionOfParticles_1d : public ::testing::Test
 
     using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
     using NdArray_t       = typename PHARE_TYPES::Array_t;
+    using ArrayView_t     = typename PHARE_TYPES::ArrayView_t;
+    using Grid_t          = typename PHARE_TYPES::Grid_t;
     using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
     using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
     using Particle_t      = typename ParticleArray_t::Particle_t;
@@ -576,11 +584,11 @@ public:
     Particle_t part;
     ParticleArray_t particles;
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> rho;
-    Field<NdArray_t, typename HybridQuantity::Scalar> vx;
-    Field<NdArray_t, typename HybridQuantity::Scalar> vy;
-    Field<NdArray_t, typename HybridQuantity::Scalar> vz;
-    VecField<NdArray_t, HybridQuantity> v;
+    Grid_t rho;
+    Grid_t vx;
+    Grid_t vy;
+    Grid_t vz;
+    VecField<Grid_t, HybridQuantity> v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
 
 
@@ -736,12 +744,14 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     static constexpr std::size_t dim   = 2;
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
+    static constexpr auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
-    using PHARE_TYPES               = PHARE::core::PHARE_Types<dim, interp_order>;
-    using NdArray_t                 = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t           = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t              = typename PHARE_TYPES::GridLayout_t;
-    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+    using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interp_order>;
+    using NdArray_t       = typename PHARE_TYPES::Array_t;
+    using ArrayView_t     = typename PHARE_TYPES::ArrayView_t;
+    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
+    using Grid_t          = typename PHARE_TYPES::Grid_t;
 
     ACollectionOfParticles_2d()
         : particles{grow(layout.AMRBox(), safeLayer)}
@@ -772,8 +782,8 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
 
     ParticleArray_t particles;
-    Field<NdArray_t, typename HybridQuantity::Scalar> rho, vx, vy, vz;
-    VecField<NdArray_t, HybridQuantity> v;
+    Grid_t rho, vx, vy, vz;
+    VecField<Grid_t, HybridQuantity> v;
     Interpolator interpolator;
 };
 TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);

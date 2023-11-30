@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.9)
 
-project(test-field)
+project(test-grid)
 
-set(SOURCES test_field.cpp)
+set(SOURCES test_grid.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

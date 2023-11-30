@@ -14,8 +14,8 @@ namespace amr
     template<typename ResourcesUser, typename GridLayoutT>
     struct UserFieldType
     {
-        using patch_data_type   = FieldData<GridLayoutT, typename ResourcesUser::field_type>;
-        using variable_type     = FieldVariable<GridLayoutT, typename ResourcesUser::field_type>;
+        using patch_data_type   = FieldData<GridLayoutT, typename ResourcesUser::grid_type>;
+        using variable_type     = FieldVariable<GridLayoutT, typename ResourcesUser::grid_type>;
         using internal_type_ptr = typename ResourcesUser::field_type*;
     };
 

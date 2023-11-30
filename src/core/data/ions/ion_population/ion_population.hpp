@@ -24,6 +24,7 @@ namespace core
     class IonPopulation
     {
     public:
+        using grid_type                        = typename VecField::grid_type;
         using field_type                       = typename VecField::field_type;
         static constexpr std::size_t dimension = VecField::dimension;
         using particle_array_type              = ParticleArray;

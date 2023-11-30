@@ -12,7 +12,7 @@
 
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -48,7 +48,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
     using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using FieldND    = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using FieldND    = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldDataT = FieldData<GridYee, FieldND>;
 
     FieldLinearTimeInterpolate<GridYee, FieldND> timeOp{};
