@@ -94,6 +94,7 @@ public:
                               double const currentTime, double const newTime) override;
 
 
+    void regrid() override { ionUpdater_.reset(); }
 
 private:
     using Messenger = amr::HybridMessenger<HybridModel>;

@@ -335,6 +335,7 @@ namespace solver
                 {
                     messenger.registerLevel(hierarchy, ilvl);
                 }
+                solver.regrid();
             }
             else
             {

@@ -233,6 +233,17 @@ public:
 
     auto& box() const { return box_; }
 
+
+    auto& update_from(This const& that)
+    {
+        this->resize(that.size());
+        std::copy(that.begin(), that.end(), this->begin());
+        this->box_     = that.box_;
+        this->cellMap_ = that.cellMap_;
+        return *this;
+    }
+
+
 private:
     Vector particles_;
     box_t box_;
