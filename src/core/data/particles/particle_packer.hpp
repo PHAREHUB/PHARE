@@ -28,7 +28,7 @@ public:
 
     static auto empty()
     {
-        Particle<dim> particle;
+        Particle<dim> particle{};
         return get(particle);
     }
 

@@ -326,26 +326,34 @@ NO_DISCARD auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
 auto constexpr static to_bool = [](auto const& v) { return bool{v}; };
 
 
-template<typename Container>
-NO_DISCARD auto all(Container const& container)
+template<typename Container, typename Fn = decltype(to_bool)>
+NO_DISCARD auto all(Container const& container, Fn fn = to_bool)
 {
-    return std::all_of(container.begin(), container.end(), to_bool);
-}
-
-template<typename Container>
-NO_DISCARD auto any(Container const& container)
-{
-    return std::any_of(container.begin(), container.end(), to_bool);
-}
-
-template<typename Container>
-NO_DISCARD auto none(Container const& container)
-{
-    return std::none_of(container.begin(), container.end(), to_bool);
+    return std::all_of(container.begin(), container.end(), fn);
 }
 
 
+template<typename Container, typename Fn = decltype(to_bool)>
+NO_DISCARD auto any(Container const& container, Fn fn = to_bool)
+{
+    return std::any_of(container.begin(), container.end(), fn);
+}
 
+template<typename Container, typename Fn = decltype(to_bool)>
+NO_DISCARD auto none(Container const& container, Fn fn = to_bool)
+{
+    return std::none_of(container.begin(), container.end(), fn);
+}
+
+auto inline float_equals(float const& a, float const& b, float diff = 1e-6)
+{
+    return std::abs(a - b) < diff;
+}
+
+auto inline float_equals(double const& a, double const& b, double diff = 1e-12)
+{
+    return std::abs(a - b) < diff;
+}
 
 } // namespace PHARE::core
 

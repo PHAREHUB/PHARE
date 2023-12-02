@@ -1,4 +1,3 @@
-
 // this file includes python which has conflicting #defines with SAMRAI
 //  so include it last
 
@@ -13,7 +12,7 @@
 DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
 
 #undef HAVE_SYS_TIMES_H // included in python again, possibly with different value
-#undef HAVE_UNISTD_HPP
+#undef HAVE_UNISTD_H
 
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/functional.h>

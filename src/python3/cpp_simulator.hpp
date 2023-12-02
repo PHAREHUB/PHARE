@@ -13,13 +13,13 @@
 #include "phare/phare.hpp"
 #include "simulator/simulator.hpp"
 
+#include "python3/pybind_def.hpp"
 #include "pybind11/stl.h"
 #include "pybind11/numpy.h"
 #include "pybind11/chrono.h"
 #include "pybind11/complex.h"
 #include "pybind11/functional.h"
 
-#include "python3/pybind_def.hpp"
 #include "python3/particles.hpp"
 #include "python3/patch_data.hpp"
 #include "python3/patch_level.hpp"

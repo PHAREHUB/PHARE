@@ -68,11 +68,11 @@ TEST(APythonDataProvider, providesAValidTree)
         = input["simulation"]["algo"]["ion_updater"]["pusher"]["name"].to<std::string>();
 
 
-    auto nbrPopulations              = input["simulation"]["ions"]["nbrPopulations"].to<int>();
-    auto& pop0                       = input["simulation"]["ions"]["pop0"];
-    auto pop0Name                    = pop0["name"].to<std::string>();
-    auto pop0Mass                    = pop0["mass"].to<double>();
-    auto& pop0ParticleInitializer    = pop0["particle_initializer"];
+    auto nbrPopulations           = input["simulation"]["ions"]["nbrPopulations"].to<std::size_t>();
+    auto& pop0                    = input["simulation"]["ions"]["pop0"];
+    auto pop0Name                 = pop0["name"].to<std::string>();
+    auto pop0Mass                 = pop0["mass"].to<double>();
+    auto& pop0ParticleInitializer = pop0["particle_initializer"];
     auto pop0ParticleInitializerName = pop0ParticleInitializer["name"].to<std::string>();
     auto pop0density                 = pop0ParticleInitializer["density"].to<InitFunction<1>>();
     auto bulk0x             = pop0ParticleInitializer["bulk_velocity_x"].to<InitFunction<1>>();

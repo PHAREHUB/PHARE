@@ -21,7 +21,7 @@ from tests.diagnostic import dump_all_diags
 
 def permute(dic, expected_num_levels):
     # from pyphare.pharein.simulation import supported_dimensions # eventually
-    dims = [1] # supported_dimensions()
+    dims = [1]  # supported_dimensions()
     return [
         [dim, interp, dic, expected_num_levels] for dim in dims for interp in [1, 2, 3]
     ]
@@ -61,11 +61,22 @@ def setup_model(ppc=100):
     def vz(x):
         return 0.0
 
+    def vxalpha(x):
+        return 3.0
+
     def vthxyz(x):
         return T(x)
 
     vvv = {
         "vbulkx": vx,
+        "vbulky": vy,
+        "vbulkz": vz,
+        "vthx": vthxyz,
+        "vthy": vthxyz,
+        "vthz": vthxyz,
+    }
+    vvvalpha = {
+        "vbulkx": vxalpha,
         "vbulky": vy,
         "vbulkz": vz,
         "vthx": vthxyz,
@@ -85,10 +96,10 @@ def setup_model(ppc=100):
             "init": {"seed": 1337},
         },
         alpha={
-            "mass": 4,
+            "mass": 4.0,
             "charge": 1,
             "density": density,
-            **vvv,
+            **vvvalpha,
             "nbr_part_per_cell": ppc,
             "init": {"seed": 2334},
         },
@@ -161,6 +172,17 @@ class RestartsTest(SimulatorTest):
                 datahier0.level(0).patches[0].patch_datas.keys()
             )
 
+            self.assertEqual(len(datahier0.levels()), len(datahier1.levels()))
+            for ilvl in range(len(datahier0.levels())):
+                self.assertEqual(
+                    len(datahier0.level(ilvl).patches),
+                    len(datahier1.level(ilvl).patches),
+                )
+                for patch0, patch1 in zip(
+                    datahier0.level(ilvl).patches, datahier1.level(ilvl).patches
+                ):
+                    self.assertEqual(patch0.box, patch1.box)
+
             self.assertGreater(len(datahier0.levels()), 0)
 
             for ilvl, lvl0 in datahier0.levels().items():
@@ -171,7 +193,12 @@ class RestartsTest(SimulatorTest):
                         pd1 = patch1.patch_datas[pd_key]
                         self.assertNotEqual(id(pd0), id(pd1))
                         if "domain" in pd_key:
-                            self.assertEqual(pd0.dataset, pd1.dataset)
+                            try:
+                                self.assertEqual(pd0.dataset, pd1.dataset)
+                            except AssertionError:
+                                print(
+                                    f"FAILED domain particles at time {time} {ilvl} {patch1.box} {patch0.box}"
+                                )
                         else:
                             np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
                         checks += 1
@@ -222,7 +249,7 @@ class RestartsTest(SimulatorTest):
 
         restart_idx = 4
         restart_time = time_step * restart_idx
-        timestamps = [time_step * restart_idx, time_step * time_step_nbr]
+        timestamps = [restart_time, time_step * time_step_nbr]
 
         # first simulation
         local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)

@@ -47,7 +47,7 @@ using InitFunctionT = PHARE::initializer::InitFunction<1>;
 PHARE::initializer::PHAREDict createInitDict()
 {
     PHARE::initializer::PHAREDict dict;
-    dict["ions"]["nbrPopulations"] = int{2};
+    dict["ions"]["nbrPopulations"] = std::size_t{2};
     dict["ions"]["pop0"]["name"]   = std::string{"protons"};
     dict["ions"]["pop0"]["mass"]   = 1.;
     dict["ions"]["pop0"]["particle_initializer"]["name"]

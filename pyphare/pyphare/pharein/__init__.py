@@ -100,7 +100,10 @@ def populateDict():
     def add_double(path, val):
         pp.add_double(path, float(val))
     def add_size_t(path, val):
-        pp.add_size_t(path, int(val))
+        casted = int(val)
+        if casted < 0:
+            raise RuntimeError("pyphare.__init__::add_size_t received negative value")
+        pp.add_size_t(path, casted)
     def add_vector_int(path, val):
         pp.add_vector_int(path, list(val))
 
@@ -192,8 +195,9 @@ def populateDict():
     init_model = simulation.model
     modelDict  = init_model.model_dict
 
-    add_int("simulation/ions/nbrPopulations", init_model.nbr_populations())
-
+    if init_model.nbr_populations() < 0:
+        raise RuntimeError("Number of populations cannot be negative")
+    add_size_t("simulation/ions/nbrPopulations", init_model.nbr_populations())
 
     partinit = "particle_initializer"
     for pop_index, pop in enumerate(init_model.populations):
