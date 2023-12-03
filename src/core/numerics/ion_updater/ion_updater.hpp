@@ -74,10 +74,6 @@ private:
 
     void updateAndDepositAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
 
-    auto& tmp_particles_from(ParticleArray const& particles)
-    {
-        return tmp_particles_.update_from(particles);
-    }
 
     // dealloced on regridding/load balancing coarsest
     ParticleArray tmp_particles_{Box{}}; //{std::make_unique<ParticleArray>(Box{})};
@@ -177,7 +173,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // deposit moments on those which leave to go inDomainBox
 
         auto pushAndAccumulateGhosts = [&](auto& inputArray, bool copyInDomain = false) {
-            auto& outputArray = tmp_particles_from(inputArray);
+            auto& outputArray = tmp_particles_.replace_from(inputArray);
 
             inRange  = makeIndexRange(inputArray);
             outRange = makeIndexRange(outputArray);
