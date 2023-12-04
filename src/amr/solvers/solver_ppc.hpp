@@ -272,7 +272,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModelV
                 return std::forward_as_tuple( //
                     state.layout, state.electromag.B, state.electromag.E, state.electromagPred.B);
             },
-            newTime);
+            dt);
 
         for (auto& state : view)
             resourcesManager->setTime(state.electromagPred.B, *state.patch, newTime);
