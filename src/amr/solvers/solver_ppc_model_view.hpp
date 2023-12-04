@@ -1,10 +1,51 @@
 #ifndef PHARE_SOLVER_SOLVER_PPC_MODEL_VIEW_HPP
 #define PHARE_SOLVER_SOLVER_PPC_MODEL_VIEW_HPP
 
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/numerics/faraday/faraday.hpp"
+#include "core/numerics/ohm/ohm.hpp"
+
 #include "amr/solvers/solver.hpp"
 
 namespace PHARE::solver
 {
+
+template<typename GridLayout>
+class FaradayTransformer
+{
+    using core_type = PHARE::core::Faraday<GridLayout>;
+
+public:
+    template<typename ViewStates, typename Accessor>
+    void operator()(ViewStates& states, Accessor fn, double dt)
+    {
+        // not thread safe, would probably need to copy (*this) per thread
+        for (auto& state : states)
+        {
+            auto const& [layout, B, E, Bnew] = fn(state);
+            auto _                           = core::SetLayout(&layout, faraday_);
+            faraday_(B, E, Bnew, dt);
+        }
+    }
+
+    core_type faraday_;
+};
+
+template<typename GridLayout>
+class AmpereTransformer
+{
+    using core_type = PHARE::core::Ampere<GridLayout>;
+
+public:
+};
+
+template<typename GridLayout>
+class OhmTransformer
+{
+    using core_type = PHARE::core::Ohm<GridLayout>;
+
+public:
+};
 
 template<typename HybridModel_>
 struct HybridPPCModelView : public ISolverModelView
@@ -23,6 +64,9 @@ struct HybridPPCModelView : public ISolverModelView
     using Particle_t      = typename ParticleArray_t::value_type;
     using VecFieldT       = typename HybridModel_t::vecfield_type;
     using GridLayout      = typename HybridModel_t::gridlayout_type;
+    using Faraday_t       = FaradayTransformer<GridLayout>;
+    using Ampere_t        = AmpereTransformer<GridLayout>;
+    using Ohm_t           = OhmTransformer<GridLayout>;
 
     struct PatchState_t;
 
@@ -31,14 +75,13 @@ struct HybridPPCModelView : public ISolverModelView
     template<bool _const_ = false>
     struct iterator;
 
-    HybridPPCModelView(level_t& level, IPhysicalModel_t& model) { regrid(level, model); }
+    HybridPPCModelView(level_t& level, IPhysicalModel_t& model)
+        : model_{dynamic_cast<HybridModel_t&>(model)}
+    {
+        regrid(level, model_);
+    }
 
     void regrid(level_t& level, HybridModel_t& hybridModel);
-
-    void regrid(level_t& level, IPhysicalModel_t& model)
-    {
-        regrid(level, dynamic_cast<HybridModel_t&>(model));
-    }
 
     auto begin() { return iterator</*const=*/false>{*this}; }
     auto begin() const { return iterator</*const=*/true>{*this}; }
@@ -46,6 +89,10 @@ struct HybridPPCModelView : public ISolverModelView
     auto end() { return iterator</*const=*/false>{*this, states.size()}; }
     auto end() const { return iterator</*const=*/true>{*this, states.size()}; }
 
+    auto& model() { return model_; }
+    auto& model() const { return model_; }
+
+    HybridModel_t& model_;
     std::vector<core::aggregate_adapter<PatchState_t>> states;
 
     Electromag electromagPred_{"EMPred"};
@@ -85,7 +132,10 @@ template<typename HybridModel>
 template<bool _const_>
 struct HybridPPCModelView<HybridModel>::iterator
 {
-    iterator(HybridPPCModelView<HybridModel>& view_, std::size_t const& i = 0)
+    using View = std::conditional_t<!_const_, HybridPPCModelView<HybridModel>,
+                                    HybridPPCModelView<HybridModel> const>;
+
+    iterator(View& view_, std::size_t const& i = 0)
         : view{view_}
         , idx{i}
     {
@@ -110,7 +160,7 @@ struct HybridPPCModelView<HybridModel>::iterator
 
     bool operator!=(iterator const& that) const { return &view != &that.view or idx != that.idx; }
 
-    HybridPPCModelView<HybridModel>& view;
+    View& view;
     std::size_t idx = 0;
 };
 
@@ -202,6 +252,8 @@ struct HybridPPCModelView<HybridModel>::PatchState_t
         );
     }
 };
+
+
 
 
 } // namespace PHARE::solver

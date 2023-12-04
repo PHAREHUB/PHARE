@@ -44,10 +44,9 @@ namespace solver
         }
 
         virtual void advanceLevel(hierarchy_t const& /*hierarchy*/, int const /*levelNumber*/,
-                                  IPhysicalModel<AMR_Types>& /*model*/,
+                                  ISolverModelView& /*view*/,
                                   amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
-                                  const double /*currentTime*/, const double /*newTime*/,
-                                  ISolverModelView& /*view*/) override
+                                  const double /*currentTime*/, const double /*newTime*/) override
         {
         }
 

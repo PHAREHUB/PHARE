@@ -495,8 +495,8 @@ namespace solver
 
             fromCoarser.prepareStep(model, *level, currentTime);
 
-            solver.advanceLevel(*hierarchy, iLevel, model, fromCoarser, currentTime, newTime,
-                                getModelView_(iLevel));
+            solver.advanceLevel(*hierarchy, iLevel, getModelView_(iLevel), fromCoarser, currentTime,
+                                newTime);
 
             if (lastStep)
             {

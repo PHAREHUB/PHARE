@@ -322,7 +322,7 @@ namespace amr
         template<typename ResourcesUser>
         NO_DISCARD auto restart_patch_data_ids(ResourcesUser const& user) const
         {
-            // // true for now with https://github.com/PHAREHUB/PHARE/issues/664
+            // true for now with https://github.com/PHAREHUB/PHARE/issues/664
             constexpr bool ALL_IDS = true;
 
             std::vector<int> ids;

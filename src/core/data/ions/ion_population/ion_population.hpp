@@ -151,6 +151,11 @@ namespace core
             }
         }
 
+        NO_DISCARD ParticleArray const& levelGhostParticlesOld() const
+        {
+            return const_cast<IonPopulation*>(this)->levelGhostParticlesOld();
+        }
+
 
 
         NO_DISCARD ParticleArray& levelGhostParticlesNew()
@@ -163,6 +168,11 @@ namespace core
             {
                 throw std::runtime_error("Error - cannot provide access to particle buffers");
             }
+        }
+
+        NO_DISCARD ParticleArray const& levelGhostParticlesNew() const
+        {
+            return const_cast<IonPopulation*>(this)->levelGhostParticlesNew();
         }
 
 
@@ -182,7 +192,7 @@ namespace core
 
         NO_DISCARD field_type& density()
         {
-            return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
+            return const_cast<field_type&>(static_cast<IonPopulation const*>(this)->density());
         }
 
 
