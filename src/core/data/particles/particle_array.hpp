@@ -236,6 +236,8 @@ public:
 
     auto& replace_from(ParticleArray const& that)
     {
+        if (this == &that) // just in case
+            return *this;
         this->resize(that.size());
         std::copy(that.begin(), that.end(), this->begin());
         this->box_     = that.box_;
