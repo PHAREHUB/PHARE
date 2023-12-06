@@ -234,7 +234,6 @@ template<std::size_t dim, typename cell_index_t>
 template<typename Array, typename CellExtractor, typename>
 inline void CellMap<dim, cell_index_t>::add(Array const& items, CellExtractor extract)
 {
-    PHARE_LOG_SCOPE("CellMap::add (array)");
     for (std::size_t itemIndex = 0; itemIndex < items.size(); ++itemIndex)
     {
         addToCell(extract(items[itemIndex]), itemIndex);
@@ -247,7 +246,6 @@ inline void CellMap<dim, cell_index_t>::add(Array const& items, std::size_t firs
                                             CellExtractor extract)
 
 {
-    PHARE_LOG_SCOPE("CellMap::add (iterator)");
     for (auto itemIndex = first; itemIndex <= last; ++itemIndex)
     {
         addToCell(extract(items[itemIndex]), itemIndex);
@@ -260,7 +258,6 @@ template<typename Array, typename CellExtractor, typename>
 inline void CellMap<dim, cell_index_t>::add(Array const& items, std::size_t itemIndex,
                                             CellExtractor extract)
 {
-    PHARE_LOG_SCOPE("CellMap::add (add 1 index)");
     addToCell(extract(items[itemIndex]), itemIndex);
 }
 

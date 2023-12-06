@@ -473,8 +473,6 @@ public:
     template<typename Particle_t, typename Electromag, typename GridLayout>
     inline auto operator()(Particle_t& currPart, Electromag const& Em, GridLayout const& layout)
     {
-        PHARE_LOG_SCOPE("Interpolator::operator()");
-
         using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
         using Scalar    = HybridQuantity::Scalar;
 
@@ -483,8 +481,6 @@ public:
         // electromagnetic component, we use Interpol to actually perform the
         // interpolation. the trick here is that the StartIndex and weights have only been
         // calculated twice, and not for each E,B component.
-
-        PHARE_LOG_START("MeshToParticle::operator()");
 
         auto& iCell = currPart.iCell;
         auto& delta = currPart.delta;
@@ -509,7 +505,6 @@ public:
         pBy = meshToParticle_.template operator()<GridLayout, Scalar::By>(By, indexWeights);
         pBz = meshToParticle_.template operator()<GridLayout, Scalar::Bz>(Bz, indexWeights);
 
-        PHARE_LOG_STOP("MeshToParticle::operator()");
         return particle_EB;
     }
 
