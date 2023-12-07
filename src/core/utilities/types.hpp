@@ -236,10 +236,7 @@ namespace core
             return std::string{val};
         return std::nullopt;
     }
-    NO_DISCARD inline std::optional<std::string> get_env(std::string&& key)
-    {
-        return get_env(key);
-    }
+
 
 } // namespace core
 } // namespace PHARE
@@ -338,6 +335,7 @@ NO_DISCARD auto any(Container const& container, Fn fn = to_bool)
 {
     return std::any_of(container.begin(), container.end(), fn);
 }
+
 
 template<typename Container, typename Fn = decltype(to_bool)>
 NO_DISCARD auto none(Container const& container, Fn fn = to_bool)

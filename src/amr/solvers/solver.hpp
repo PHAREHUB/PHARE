@@ -85,6 +85,8 @@ namespace solver
 
 
 
+        virtual void onRegrid() {} // do what you need to do on regrid
+
 
         virtual ~ISolver() = default;
 

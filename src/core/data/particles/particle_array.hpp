@@ -173,7 +173,7 @@ public:
     }
 
     template<typename Predicate>
-    void export_particles(This& dest, Predicate&& pred) const
+    void export_particles(ParticleArray& dest, Predicate&& pred) const
     {
         PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn,vector)");
         cellMap_.export_if(particles_.data(), dest, std::forward<Predicate>(pred));
@@ -232,6 +232,19 @@ public:
     NO_DISCARD auto& vector() const { return particles_; }
 
     auto& box() const { return box_; }
+
+
+    auto& replace_from(ParticleArray const& that)
+    {
+        if (this == &that) // just in case
+            return *this;
+        this->resize(that.size());
+        std::copy(that.begin(), that.end(), this->begin());
+        this->box_     = that.box_;
+        this->cellMap_ = that.cellMap_;
+        return *this;
+    }
+
 
 private:
     Vector particles_;
