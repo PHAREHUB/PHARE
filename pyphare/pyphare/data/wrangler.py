@@ -1,9 +1,7 @@
-
-
 from pyphare.core import gridlayout
 
-class DataWrangler:
 
+class DataWrangler:
     def __init__(self, simulator):
         from .. import pharein as ph
         from pyphare.cpp import cpp_lib
@@ -11,12 +9,13 @@ class DataWrangler:
         self.dim = ph.global_vars.sim.ndim
         self.interp = ph.global_vars.sim.interp_order
         self.refined_particle_nbr = ph.global_vars.sim.refined_particle_nbr
-        self.cpp = getattr(cpp_lib(), f"DataWrangler_{self.dim}_{self.interp}_{self.refined_particle_nbr}")\
-                                            (simulator.cpp_sim, simulator.cpp_hier)
+        self.cpp = getattr(
+            cpp_lib(),
+            f"DataWrangler_{self.dim}_{self.interp}_{self.refined_particle_nbr}",
+        )(simulator.cpp_sim, simulator.cpp_hier)
 
     def kill(self):
         del self.cpp
-
 
     def getNumberOfLevels(self):
         return self.cpp.getNumberOfLevels()
@@ -49,14 +48,17 @@ class DataWrangler:
         }
 
     def extract_is_primal_key_from(self, em_xyz):
-        """ extract "Ex" from "EM_E_x"  """
+        """extract "Ex" from "EM_E_x" """
         return "".join(em_xyz.split("_"))[2:]
 
     def lvl0EM(self):
         return {
             em: {
                 em_xyz: self.cpp.sync_merge(
-                    data, gridlayout.yee_element_is_primal(self.extract_is_primal_key_from(em_xyz))
+                    data,
+                    gridlayout.yee_element_is_primal(
+                        self.extract_is_primal_key_from(em_xyz)
+                    ),
                 )
                 for em_xyz, data in xyz_map.items()
             }

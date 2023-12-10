@@ -303,7 +303,7 @@ class RestartsTest(SimulatorTest):
         print(f"test_restarts_elapsed_time dim/interp:{ndim}/{interp}")
 
         simput = copy.deepcopy(simInput)
-        simput["time_step_nbr"] = 2 # forcing restart after first advance
+        simput["time_step_nbr"] = 2  # forcing restart after first advance
 
         for key in ["cells", "dl", "boundary_types"]:
             simput[key] = [simput[key]] * ndim
@@ -330,7 +330,7 @@ class RestartsTest(SimulatorTest):
         diag_dir0 = local_out
         diag_dir1 = f"{local_out}_n2"
 
-        seconds=1 # dump on first advance always!
+        seconds = 1  # dump on first advance always!
         simput["restart_options"]["elapsed_timestamps"] = [
             datetime.timedelta(seconds=seconds)
         ]
@@ -350,7 +350,7 @@ class RestartsTest(SimulatorTest):
         simulator = Simulator(ph.global_vars.sim, auto_dump=False).initialize()
 
         time.sleep(5)
-        simulator.advance().dump() # should trigger restart on "restart_idx" advance
+        simulator.advance().dump()  # should trigger restart on "restart_idx" advance
         simulator.advance().dump()
         simulator.reset()
         self.register_diag_dir_for_cleanup(diag_dir0)

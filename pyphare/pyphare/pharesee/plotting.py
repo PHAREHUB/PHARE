@@ -1,14 +1,14 @@
-from matplotlib.transforms import (
-    Bbox, TransformedBbox, blended_transform_factory)
+from matplotlib.transforms import Bbox, TransformedBbox, blended_transform_factory
 from mpl_toolkits.axes_grid1.inset_locator import (
-    BboxPatch, BboxConnector, BboxConnectorPatch)
+    BboxPatch,
+    BboxConnector,
+    BboxConnectorPatch,
+)
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, Normalize
-
-
 
 
 def dist_plot(particles, **kwargs):
@@ -50,33 +50,37 @@ def dist_plot(particles, **kwargs):
     else:
         ax = kwargs["ax"]
         fig = ax.figure
-    axis = kwargs.get("axis",("Vx","Vy"))
-    vaxis = {"Vx":0, "Vy":1, "Vz":2}
+    axis = kwargs.get("axis", ("Vx", "Vy"))
+    vaxis = {"Vx": 0, "Vy": 1, "Vz": 2}
 
     if axis[0] in vaxis:
-        x = particles.v[:,vaxis[axis[0]]]
+        x = particles.v[:, vaxis[axis[0]]]
     elif axis[0] == "x":
         x = particles.x
     if axis[1] in vaxis:
-        y = particles.v[:,vaxis[axis[1]]]
+        y = particles.v[:, vaxis[axis[1]]]
 
-    bins = kwargs.get("bins", (50,50))
-    h, xh, yh  = np.histogram2d(x, y,
-              bins=kwargs.get("bins", bins),
-              weights=particles.weights[:,0])
+    bins = kwargs.get("bins", (50, 50))
+    h, xh, yh = np.histogram2d(
+        x, y, bins=kwargs.get("bins", bins), weights=particles.weights[:, 0]
+    )
 
-    if "gaussian_filter_sigma" in kwargs and "median_filter_size" not in kwargs: 
+    if "gaussian_filter_sigma" in kwargs and "median_filter_size" not in kwargs:
         from scipy.ndimage import gaussian_filter
-        sig = kwargs.get("gaussian_filter_sigma", (0,0))
+
+        sig = kwargs.get("gaussian_filter_sigma", (0, 0))
         image = gaussian_filter(h.T, sigma=sig)
-    elif "median_filter_size" in kwargs and "gaussian_filter_sigma" not in kwargs: 
+    elif "median_filter_size" in kwargs and "gaussian_filter_sigma" not in kwargs:
         from scipy.ndimage import median_filter
-        siz = kwargs.get("median_filter_size", (0,0))
+
+        siz = kwargs.get("median_filter_size", (0, 0))
         image = median_filter(h.T, size=siz)
     elif "gaussian_filter_sigma" not in kwargs and "median_filter_size" not in kwargs:
         image = h.T
     else:
-        raise ValueError("gaussian and median filters can not be called at the same time")
+        raise ValueError(
+            "gaussian and median filters can not be called at the same time"
+        )
 
     cmap = kwargs.get("cmap", "jet")
 
@@ -90,15 +94,16 @@ def dist_plot(particles, **kwargs):
     elif color_scale == "linear":
         norm = Normalize(cmin, cmax)
 
-    im = ax.pcolormesh(xh, yh, image, cmap = cmap, norm = norm)
+    im = ax.pcolormesh(xh, yh, image, cmap=cmap, norm=norm)
 
     fig.colorbar(im, ax=ax)
 
-    if kwargs.get("kde",False) is True:
+    if kwargs.get("kde", False) is True:
         import seaborn as sns
+
         sns.kdeplot(x=x, y=y, ax=ax, color="w")
 
-    ax.set_title(kwargs.get("title",""))
+    ax.set_title(kwargs.get("title", ""))
     ax.set_xlabel(kwargs.get("xlabel", axis[0]))
     ax.set_ylabel(kwargs.get("ylabel", axis[1]))
     if "xlim" in kwargs:
@@ -109,12 +114,21 @@ def dist_plot(particles, **kwargs):
     if "bulk" in kwargs:
         if kwargs["bulk"] is True:
             if axis[0] in vaxis:
-                ax.axvline(np.average(particles.v[:,vaxis[axis[0]]],
-                                         weights=particles.weights), color="w",ls="--")
+                ax.axvline(
+                    np.average(
+                        particles.v[:, vaxis[axis[0]]], weights=particles.weights
+                    ),
+                    color="w",
+                    ls="--",
+                )
             if axis[1] in vaxis:
-                ax.axhline(np.average(particles.v[:,vaxis[axis[1]]],
-                                      weights=particles.weights), color="w",ls="--")
-
+                ax.axhline(
+                    np.average(
+                        particles.v[:, vaxis[axis[1]]], weights=particles.weights
+                    ),
+                    color="w",
+                    ls="--",
+                )
 
     if "filename" in kwargs:
         fig.savefig(kwargs["filename"])
@@ -122,19 +136,18 @@ def dist_plot(particles, **kwargs):
     interp = kwargs.get("interp", False)
 
     if interp:
-        xbins = 0.5*(xh[1:]+xh[:-1])
-        ybins = 0.5*(yh[1:]+yh[:-1])
-        xx,yy = np.meshgrid(xbins,ybins, indexing='ij')
-        interpdist = interp2d(xx,yy,image.T)
-        return fig,ax,interpdist, xbins,ybins
+        xbins = 0.5 * (xh[1:] + xh[:-1])
+        ybins = 0.5 * (yh[1:] + yh[:-1])
+        xx, yy = np.meshgrid(xbins, ybins, indexing="ij")
+        interpdist = interp2d(xx, yy, image.T)
+        return fig, ax, interpdist, xbins, ybins
 
-    return fig,ax
+    return fig, ax
 
 
-
-def connect_bbox(bbox1, bbox2,
-                 loc1a, loc2a, loc1b, loc2b,
-                 prop_lines, prop_patches=None):
+def connect_bbox(
+    bbox1, bbox2, loc1a, loc2a, loc1b, loc2b, prop_lines, prop_patches=None
+):
     if prop_patches is None:
         prop_patches = {
             **prop_lines,
@@ -145,18 +158,22 @@ def connect_bbox(bbox1, bbox2,
     c1.set_clip_on(False)
     c2 = BboxConnector(bbox1, bbox2, loc1=loc1b, loc2=loc2b, **prop_lines)
     c2.set_clip_on(False)
-    bbox_patch1 = BboxPatch(bbox1, ec='k', fc="none", ls='--')
-    bbox_patch2 = BboxPatch(bbox2, ec='k', fc="none", ls='--')
+    bbox_patch1 = BboxPatch(bbox1, ec="k", fc="none", ls="--")
+    bbox_patch2 = BboxPatch(bbox2, ec="k", fc="none", ls="--")
 
-    p = BboxConnectorPatch(bbox1, bbox2,
-                           # loc1a=3, loc2a=2, loc1b=4, loc2b=1,
-                           loc1a=loc1a, loc2a=loc2a, loc1b=loc1b, loc2b=loc2b,
-                           **prop_patches)
+    p = BboxConnectorPatch(
+        bbox1,
+        bbox2,
+        # loc1a=3, loc2a=2, loc1b=4, loc2b=1,
+        loc1a=loc1a,
+        loc2a=loc2a,
+        loc1b=loc1b,
+        loc2b=loc2b,
+        **prop_patches
+    )
     p.set_clip_on(False)
 
     return c1, c2, bbox_patch1, bbox_patch2, p
-
-
 
 
 def zoom_effect(ax1, ax2, xmin, xmax, **kwargs):
@@ -187,9 +204,15 @@ def zoom_effect(ax1, ax2, xmin, xmax, **kwargs):
     prop_patches = {**kwargs, "ec": "none", "alpha": 0.2}
 
     c1, c2, bbox_patch1, bbox_patch2, p = connect_bbox(
-        mybbox1, mybbox2,
-        loc1a=3, loc2a=2, loc1b=4, loc2b=1,
-        prop_lines=kwargs, prop_patches=prop_patches)
+        mybbox1,
+        mybbox2,
+        loc1a=3,
+        loc2a=2,
+        loc1b=4,
+        loc2b=1,
+        prop_lines=kwargs,
+        prop_patches=prop_patches,
+    )
 
     ax1.add_patch(bbox_patch1)
     ax2.add_patch(bbox_patch2)
@@ -198,8 +221,6 @@ def zoom_effect(ax1, ax2, xmin, xmax, **kwargs):
     ax2.add_patch(p)
 
     return c1, c2, bbox_patch1, bbox_patch2, p
-
-
 
 
 def finest_field_plot(run_path, qty, **kwargs):
@@ -222,7 +243,6 @@ def finest_field_plot(run_path, qty, **kwargs):
     return value : fig,ax
     """
 
-
     import os
     from pyphare.pharesee.hierarchy import get_times_from_h5
     from pyphare.pharesee.run import Run
@@ -232,48 +252,45 @@ def finest_field_plot(run_path, qty, **kwargs):
     r = Run(run_path)
 
     time = kwargs.get("time", None)
-    dim = r.GetDl('finest', time).shape[0]
+    dim = r.GetDl("finest", time).shape[0]
     interp = kwargs.get("interp", "nearest")
     domain = r.GetDomainSize()
 
-    if qty in ['Bx', 'By', 'Bz']:
+    if qty in ["Bx", "By", "Bz"]:
         file = os.path.join(run_path, "EM_B.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetB(time, merged=True,\
-                                             interp=interp)[qty]
-    elif qty in ['Ex', 'Ey', 'Ez']:
+        interpolator, finest_coords = r.GetB(time, merged=True, interp=interp)[qty]
+    elif qty in ["Ex", "Ey", "Ez"]:
         file = os.path.join(run_path, "EM_E.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetE(time, merged=True,\
-                                             interp=interp)[qty]
-    elif qty in ['Vx', 'Vy', 'Vz']:
+        interpolator, finest_coords = r.GetE(time, merged=True, interp=interp)[qty]
+    elif qty in ["Vx", "Vy", "Vz"]:
         file = os.path.join(run_path, "ions_bulkVelocity.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetVi(time, merged=True,\
-                                              interp=interp)[qty]
-    elif qty == 'rho':
+        interpolator, finest_coords = r.GetVi(time, merged=True, interp=interp)[qty]
+    elif qty == "rho":
         file = os.path.join(run_path, "ions_density.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetNi(time, merged=True,\
-                                              interp=interp)[qty]
+        interpolator, finest_coords = r.GetNi(time, merged=True, interp=interp)[qty]
     elif qty in ("Jx", "Jy", "Jz"):
         file = os.path.join(run_path, "EM_B.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetJ(time, merged=True,\
-                                              interp=interp)[qty]
+        interpolator, finest_coords = r.GetJ(time, merged=True, interp=interp)[qty]
     else:
         # ___ TODO : should also include the files for a given population
-        raise ValueError("qty should be in ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']")
+        raise ValueError(
+            "qty should be in ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']"
+        )
 
     if "ax" not in kwargs:
         fig, ax = plt.subplots()
@@ -284,11 +301,8 @@ def finest_field_plot(run_path, qty, **kwargs):
     if dim == 1:
         drawstyle = kwargs.get("drawstyle", "steps-mid")
 
-        ax.plot(finest_coords[0], interpolator(finest_coords[0]),\
-                drawstyle=drawstyle)
+        ax.plot(finest_coords[0], interpolator(finest_coords[0]), drawstyle=drawstyle)
     elif dim == 2:
-
-
         x = finest_coords[0]
         y = finest_coords[1]
         dx = x[1] - x[0]
@@ -297,26 +311,22 @@ def finest_field_plot(run_path, qty, **kwargs):
         # pcolormesh considers DATA_ij to be the center of the pixel
         # and X,Y are the corners so XY need to be made 1 value larger
         # and shifted around DATA_ij
-        x -= dx/2
-        x= np.append(x, x[-1]+dx)
-        y -= dy/2
-        y= np.append(y, y[-1]+dy)
+        x -= dx / 2
+        x = np.append(x, x[-1] + dx)
+        y -= dy / 2
+        y = np.append(y, y[-1] + dy)
 
         X, Y = np.meshgrid(x, y)
         DATA = interpolator(X, Y)
 
         vmin = kwargs.get("vmin", np.nanmin(DATA))
         vmax = kwargs.get("vmax", np.nanmax(DATA))
-        cmap = kwargs.get("cmap", 'Spectral_r')
-        im = ax.pcolormesh(x,y,
-                   DATA,
-                   cmap = cmap,
-                   vmin = vmin,
-                   vmax = vmax)
+        cmap = kwargs.get("cmap", "Spectral_r")
+        im = ax.pcolormesh(x, y, DATA, cmap=cmap, vmin=vmin, vmax=vmax)
         ax.set_aspect("equal")
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.08)
-        cb = plt.colorbar( im, ax=ax, cax=cax )
+        cb = plt.colorbar(im, ax=ax, cax=cax)
     else:
         raise ValueError("finest_field_plot not yet ready for 3d")
 
@@ -334,4 +344,3 @@ def finest_field_plot(run_path, qty, **kwargs):
         fig.savefig(kwargs["filename"])
 
     return fig, ax
-

@@ -1,6 +1,6 @@
-
 # continue to use override if set
 _cpp_lib_override = None
+
 
 def cpp_lib(override=None):
     import importlib
@@ -21,11 +21,13 @@ def cpp_lib(override=None):
 
 def cpp_etc_lib():
     import importlib
+
     return importlib.import_module("pybindlibs.cpp_etc")
 
 
 def splitter_type(dim, interp, n_particles):
     return getattr(cpp_lib(), f"Splitter_{dim}_{interp}_{n_particles}")
+
 
 def create_splitter(dim, interp, n_particles):
     return splitter_type(dim, interp, n_particles)()

@@ -168,7 +168,6 @@ class FieldData(PatchData):
 
         self.dataset = data
 
-
     def meshgrid(self, select=None):
         def grid():
             if self.ndim == 1:
@@ -176,6 +175,7 @@ class FieldData(PatchData):
             if self.ndim == 2:
                 return np.meshgrid(self.x, self.y, indexing="ij")
             return np.meshgrid(self.x, self.y, self.z, indexing="ij")
+
         mesh = grid()
         if select is not None:
             return tuple(g[select] for g in mesh)
@@ -402,14 +402,12 @@ def flat_finest_field(hierarchy, qty, time=None):
 
 
 def flat_finest_field_1d(hierarchy, qty, time=None):
-
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-
             pdata = patch.patch_datas[qty]
 
             # all but 1 ghost nodes are removed in order to limit
@@ -444,14 +442,12 @@ def flat_finest_field_1d(hierarchy, qty, time=None):
 
 
 def flat_finest_field_2d(hierarchy, qty, time=None):
-
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-
             pdata = patch.patch_datas[qty]
 
             # all but 1 ghost nodes are removed in order to limit
@@ -529,7 +525,6 @@ def finest_part_data(hierarchy, time=None):
         for ip, patch in enumerate(plvl.patches):
             lvlPatchBoxes[ilvl].append(patch.box)
             for popname, pdata in patch.patch_datas.items():
-
                 # if we're at the finest level
                 # we need to keep all particles
                 if ilvl == hierarchy.finest_level(time):
@@ -1083,7 +1078,6 @@ def amr_grid(hierarchy, time):
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
-
         sorted_patches = sorted(lvl[ilvl].patches, key=lambda p: p.layout.box.lower[0])
 
         for ip, patch in enumerate(sorted_patches):
@@ -1260,7 +1254,6 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
     """
 
     if is_particle_file(basename):
-
         v = np.asarray(h5_patch_grp["v"])
         s = v.size
         v = v[:].reshape(int(s / 3), 3)
@@ -1286,7 +1279,6 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
 
     else:
         for dataset_name in h5_patch_grp.keys():
-
             dataset = h5_patch_grp[dataset_name]
 
             if dataset_name not in field_qties:
@@ -1351,7 +1343,6 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         patch_levels = {}
 
         for plvl_key in h5_time_grp.keys():
-
             h5_patch_lvl_grp = h5_time_grp[plvl_key]
             ilvl = int(plvl_key[2:])
             lvl_cell_width = root_cell_width / refinement_ratio**ilvl
@@ -1361,7 +1352,6 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
                 patches[ilvl] = []
 
             for pkey in h5_patch_lvl_grp.keys():
-
                 h5_patch_grp = h5_patch_lvl_grp[pkey]
 
                 if patch_has_datasets(h5_patch_grp):
@@ -1509,7 +1499,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     assert len(domain_box.ndim) == len(simulator.domain_box().ndim)
 
     for ilvl in range(nbr_levels):
-
         lvl_cell_width = root_cell_width / refinement_ratio**ilvl
 
         patches = {ilvl: [] for ilvl in range(nbr_levels)}
@@ -1533,7 +1522,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                 patches[ilvl].append(Patch(patch_datas))
 
         elif qty == "particles":
-
             if pop == "":
                 raise ValueError("must specify pop argument for particles")
             # here the getter returns a dict like this
@@ -1584,7 +1572,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for ghostParticles in ["patchGhost", "levelGhost"]:
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
-
                         v = np.asarray(dwpatch.data.v)
                         s = v.size
                         v = v[:].reshape(int(s / 3), 3)
@@ -1642,7 +1629,6 @@ def hierarchy_from(
 
 
 def merge_particles(hierarchy):
-
     for time, patch_levels in hierarchy.time_hier.items():
         for ilvl, plvl in patch_levels.items():
             for ip, patch in enumerate(plvl.patches):

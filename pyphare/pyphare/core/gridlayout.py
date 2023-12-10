@@ -102,7 +102,6 @@ class YeeCentering(object):
 def yeeCoordsFor(
     origin, nbrGhosts, dl, nbrCells, qty, direction, withGhosts=False, **kwargs
 ):
-
     assert direction in direction_to_dim, f"direction ({direction} not supported)"
     if qty in yee_centering_lower[direction] and qty not in yee_centering[direction]:
         qty = qty[0].upper() + qty[1:]
@@ -391,7 +390,6 @@ class GridLayout(object):
     #   changeCentering( qtyCentering(qty, direct), 1 )
     #
     def changeCentering(self, centering, derivOrder=0):
-
         newCentering = centering
 
         # if derivOrder is odd the centering is changed
@@ -402,7 +400,6 @@ class GridLayout(object):
 
     # -------------------------------------------------------
     def swapCentering(self, centering):
-
         newCentering = "primal"
 
         if centering == "primal":

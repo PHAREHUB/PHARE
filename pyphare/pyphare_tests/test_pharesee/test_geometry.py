@@ -90,7 +90,6 @@ class GeometryTest(unittest.TestCase):
             self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
 
             for exp, actual in zip(expected[ilvl], overlaps[ilvl]):
-
                 act_box = actual["box"]
                 act_offset = actual["offset"]
                 exp_box = exp["box"]
@@ -171,14 +170,12 @@ class GeometryTest(unittest.TestCase):
 
         lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
         for ilvl in range(1, len(hierarchy.patch_levels)):
-
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
             key = list(lvl_gaboxes[ilvl].keys())[0]
 
             for actual, exp in zip(lvl_gaboxes[ilvl][key], expected[ilvl]):
-
                 act_boxes = actual["boxes"]
                 exp_boxes = exp["boxes"]
 
@@ -191,7 +188,6 @@ class GeometryTest(unittest.TestCase):
         lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
 
         for ilvl in range(1, len(hierarchy.patch_levels)):
-
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
@@ -362,7 +358,6 @@ class GeometryTest(unittest.TestCase):
 
         lvl_gaboxes = level_ghost_boxes(hierarchy, "Bx")
         for ilvl in range(1, len(hierarchy.patch_levels)):
-
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
@@ -378,7 +373,6 @@ class GeometryTest(unittest.TestCase):
         dim, interp_order, nbr_cells = (1, 1, 20)
 
         for qty in ["Bx", "By"]:
-
             hierarchy = self.setup_hierarchy(
                 dim, interp_order, nbr_cells, {}, quantities=qty
             )
