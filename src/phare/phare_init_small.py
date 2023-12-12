@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
-
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectronModel
 import numpy as np
+
+import pyphare.pharein as ph
 
 # configure the simulation
 
-Simulation(
+ph.Simulation(
     smallest_patch_size=20,
     largest_patch_size=20,
     time_step_nbr=300,  # number of time steps (not specified if time_step and final_time provided)
@@ -88,14 +85,14 @@ vvv = {
     "vthz": vthz,
 }
 
-MaxwellianFluidModel(
+ph.MaxwellianFluidModel(
     bx=bx,
     by=by,
     bz=bz,
     protons={"charge": 1, "density": density, **vvv, "init": {"seed": 1337}},
 )
 
-ElectronModel(closure="isothermal", Te=0.12)
+ph.ElectronModel(closure="isothermal", Te=0.12)
 
 
 sim = ph.global_vars.sim

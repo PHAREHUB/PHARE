@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharein import global_vars as gv
 from pyphare.pharesee.run import Run
 
 
@@ -108,13 +107,11 @@ def simulation_params(diagdir, **extra):
 
 
 def config(**options):
-    ph.Simulation(**options)
+    sim = ph.Simulation(**options)
     ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
     )
     ph.ElectronModel(closure="isothermal", Te=0.12)
-
-    sim = ph.global_vars.sim
 
     timestamps = all_timestamps(sim)
 
@@ -140,13 +137,15 @@ def config(**options):
                 population_name=pop,
             )
 
+    return sim
+
 
 def withTagging(diagdir):
-    config(**simulation_params(diagdir, refinement="tagging", max_nbr_levels=3))
+    return config(**simulation_params(diagdir, refinement="tagging", max_nbr_levels=3))
 
 
 def noRefinement(diagdir):
-    config(**simulation_params(diagdir))
+    return config(**simulation_params(diagdir))
 
 
 def make_figure():
@@ -273,18 +272,16 @@ def post_advance(new_time):
         and cpp.mpi_rank() == 0
     ):
         particle_diagnostics["idx"] += 1
-        datahier = get_time(gv.sim.diag_options["options"]["dir"], new_time)
+        datahier = get_time(ph.global_vars.sim.diag_options["options"]["dir"], new_time)
         test.base_test_domain_particles_on_refined_level(datahier, new_time)
 
 
 def main():
-    noRefinement(diagdir="noRefinement")
-    Simulator(gv.sim).run()
-    gv.sim = None
+    Simulator(noRefinement(diagdir="noRefinement")).run()
+    ph.global_vars.sim = None
 
-    withTagging(diagdir="withTagging")
-    Simulator(gv.sim, post_advance=post_advance).run()
-    gv.sim = None
+    Simulator(withTagging(diagdir="withTagging"), post_advance=post_advance).run()
+    ph.global_vars.sim = None
 
     if cpp.mpi_rank() == 0:
         make_figure()

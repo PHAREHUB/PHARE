@@ -1,16 +1,11 @@
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics, ParticleDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharein import global_vars as gv
-from pyphare.pharesee.hierarchy import get_times_from_h5
-from tests.diagnostic import all_timestamps
-from pyphare.pharesee.run import Run
 import os
-from pyphare.pharein.global_vars import sim
 
+import pyphare.pharein as ph
+from pyphare.simulator.simulator import Simulator
+from pyphare.pharesee.hierarchy import get_times_from_h5
+from pyphare.pharesee.run import Run
+
+from tests.diagnostic import all_timestamps
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -27,7 +22,7 @@ def config():
     # most unstable mode at k=0.19, that is lambda = 33
     # hence the length of the box is 33, and the fourier mode will be 1
 
-    Simulation(
+    sim = ph.Simulation(
         smallest_patch_size=20,
         largest_patch_size=60,
         final_time=100,
@@ -88,7 +83,7 @@ def config():
         "vthz": vth,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
@@ -96,30 +91,25 @@ def config():
         beam={"charge": 1, "density": densityBeam, **vBulk},
     )
 
-    ElectronModel(closure="isothermal", Te=0.0)
-
-    sim = ph.global_vars.sim
+    ph.ElectronModel(closure="isothermal", Te=0.0)
 
     timestamps = np.arange(0, sim.final_time, 0.1)
 
     for quantity in ["B", "E"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
-    ParticleDiagnostics(
-        quantity="domain",
-        population_name="main",
-        write_timestamps=timestamps,
-        compute_timestamps=timestamps,
-    )
-    ParticleDiagnostics(
-        quantity="domain",
-        population_name="beam",
-        write_timestamps=timestamps,
-        compute_timestamps=timestamps,
-    )
+
+    for pop_name in ["main", "beam"]:
+        ph.ParticleDiagnostics(
+            quantity="domain",
+            population_name=pop_name,
+            write_timestamps=timestamps,
+            compute_timestamps=timestamps,
+        )
+    return sim
 
 
 def yaebx(x, a, b):
@@ -189,11 +179,7 @@ def main():
     # until the time at which the B value gets the greater... but is rather before with an offset
     # given by time_offset : the exponential fit is performed on [0, times[imax] - time_offset]
 
-    config()
-    simulator = Simulator(gv.sim)
-    simulator.initialize()
-
-    simulator.run()
+    Simulator(config()).run()
 
     if mpi_rank() == 0:
         times, first_mode, ampl, gamma, damped_mode, omega = growth_b_right_hand(

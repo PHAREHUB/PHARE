@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
-from pyphare.pharein import ElectronModel
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharein import global_vars as gv
 from pyphare.pharesee.hierarchy import get_times_from_h5
-from tests.diagnostic import all_timestamps
 from pyphare.pharesee.run import Run
 from pyphare.pharesee.hierarchy import flat_finest_field
 
+from tests.diagnostic import all_timestamps
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -28,7 +23,7 @@ mpl.use("Agg")
 def config():
     # configure the simulation
 
-    Simulation(
+    sim = ph.Simulation(
         smallest_patch_size=50,
         largest_patch_size=50,
         time_step_nbr=100000,  # number of time steps (not specified if time_step and final_time provided)
@@ -48,14 +43,10 @@ def config():
         return 1.0
 
     def by(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()
         return 0.01 * np.cos(2 * np.pi * x / L[0])
 
     def bz(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()
         return 0.01 * np.sin(2 * np.pi * x / L[0])
 
@@ -66,14 +57,10 @@ def config():
         return 0.0
 
     def vy(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()
         return 0.01 * np.cos(2 * np.pi * x / L[0])
 
     def vz(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()
         return 0.01 * np.sin(2 * np.pi * x / L[0])
 
@@ -95,27 +82,29 @@ def config():
         "vthz": vthz,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.0)
+    ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    timestamps = all_timestamps(gv.sim)
+    timestamps = all_timestamps(sim)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
 
     for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
+
+    return sim
 
 
 ####################################################################
@@ -158,8 +147,8 @@ def main():
     from pyphare.pharesee.run import Run
     from pyphare.pharesee.hierarchy import flat_finest_field
 
-    config()
-    Simulator(gv.sim).run()
+    sim = config()
+    Simulator(sim).run()
 
     if cpp.mpi_rank() == 0:
         vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)

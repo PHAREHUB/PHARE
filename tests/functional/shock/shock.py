@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
-from pyphare.pharein import ElectronModel
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharein import global_vars as gv
-
+from pyphare.pharesee.run import Run
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -26,7 +21,7 @@ def config(interp_order):
     This function defines the Simulation object,
     user initialization model and diagnostics.
     """
-    Simulation(
+    sim = ph.Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
         time_step=0.005,  # number of time steps (not specified if time_step and final_time provided)
@@ -46,8 +41,6 @@ def config(interp_order):
     )
 
     def density(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()[0]
         v1 = 1
         v2 = 1.0
@@ -60,8 +53,6 @@ def config(interp_order):
         return 0.0
 
     def by(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()[0]
         v1 = 0.125
         v2 = 4.0
@@ -74,8 +65,6 @@ def config(interp_order):
         return 0.1
 
     def vx(x):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()[0]
         v1 = 0.0
         v2 = 0.0
@@ -105,31 +94,31 @@ def config(interp_order):
         "vthz": vthz,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.12)
-
-    from pyphare.pharein.global_vars import sim
+    ph.ElectronModel(closure="isothermal", Te=0.12)
 
     dt = 10 * sim.time_step
     nt = sim.final_time / dt + 1
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
 
     for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
+
+    return sim
 
 
 def main():
@@ -139,13 +128,10 @@ def main():
     import shlex
 
     for interp_order in (1, 2, 3):
-        config(interp_order)
-        Simulator(gv.sim).run()
+        sim = config(interp_order)
+        Simulator(sim).run()
 
         if cpp.mpi_rank() == 0:
-            from pyphare.pharein.global_vars import sim
-            from pyphare.pharesee.run import Run
-
             dt = 10 * sim.time_step
             nt = sim.final_time / dt + 1
             times = dt * np.arange(nt)
@@ -173,15 +159,12 @@ def main():
             )
             subprocess.call(cmd)
 
-        gv.sim = None
+        ph.global_vars.sim = None
     pngs = glob.glob("shock*/*.png")
     for png in pngs:
         os.remove(png)
 
     if cpp.mpi_rank() == 0:
-        from pyphare.pharein.global_vars import sim
-        from pyphare.pharesee.run import Run
-
         t = 30
         runs = [Run(f"shock_{i+1}") for i in range(3)]
         fig, ax = plt.subplots()

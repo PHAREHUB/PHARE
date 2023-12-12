@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics
-from pyphare.pharein import ElectronModel
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharein import global_vars as gv
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,7 +19,7 @@ def config_uni(**kwargs):
     This function defines the Simulation object,
     user initialization model and diagnostics.
     """
-    Simulation(
+    sim = ph.Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
         time_step_nbr=2000,  # number of time steps (not specified if time_step and final_time provided)
@@ -81,27 +76,29 @@ def config_uni(**kwargs):
         "vthz": vthz,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.12)
+    ph.ElectronModel(closure="isothermal", Te=0.12)
 
-    timestamps = all_timestamps(gv.sim)
+    timestamps = all_timestamps(sim)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
 
     for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
+
+    return sim
 
 
 def config_td(**kwargs):
@@ -110,7 +107,7 @@ def config_td(**kwargs):
     This function defines the Simulation object,
     user initialization model and diagnostics.
     """
-    Simulation(
+    sim = ph.Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
         time_step_nbr=2000,  # number of time steps (not specified if time_step and final_time provided)
@@ -182,27 +179,29 @@ def config_td(**kwargs):
         "vthz": vthz,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.12)
+    ph.ElectronModel(closure="isothermal", Te=0.12)
 
-    timestamps = all_timestamps(gv.sim)
+    timestamps = all_timestamps(sim)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
 
     for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
+
+    return sim
 
 
 def main():
@@ -217,11 +216,9 @@ def main():
             print("-----------------------------------")
             print(param)
             print("-----------------------------------")
-            config(**param)
-            simulator = Simulator(gv.sim)
-            simulator.initialize()
-            simulator.run()
-            gv.sim = None
+
+            Simulator(config(**param)).run()
+            ph.global_vars.sim = None
 
 
 if __name__ == "__main__":

@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics, ParticleDiagnostics
-from pyphare.pharein import ElectronModel
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
-
-from pyphare.pharein import global_vars as gv
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,7 +19,7 @@ from datetime import datetime
 
 
 def config():
-    Simulation(
+    sim = ph.Simulation(
         smallest_patch_size=15,
         largest_patch_size=25,
         time_step_nbr=1000,
@@ -44,8 +38,6 @@ def config():
     )
 
     def density(x, y):
-        from pyphare.pharein.global_vars import sim
-
         L = sim.simulation_domain()[1]
         return (
             0.2
@@ -57,8 +49,6 @@ def config():
         return 0.5 * (1.0 + np.tanh((y - y0) / l))
 
     def by(x, y):
-        from pyphare.pharein.global_vars import sim
-
         Lx = sim.simulation_domain()[0]
         Ly = sim.simulation_domain()[1]
         w1 = 0.2
@@ -72,8 +62,6 @@ def config():
         return (w5 * x0 * w3) + (-w5 * x0 * w4)
 
     def bx(x, y):
-        from pyphare.pharein.global_vars import sim
-
         Lx = sim.simulation_domain()[0]
         Ly = sim.simulation_domain()[1]
         w1 = 0.2
@@ -133,26 +121,27 @@ def config():
         "nbr_part_per_cell": 100,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
         protons={"charge": 1, "density": density, **vvv, "init": {"seed": 12334}},
     )
 
-    ElectronModel(closure="isothermal", Te=0.0)
+    ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    sim = ph.global_vars.sim
     dt = 10 * sim.time_step
     nt = sim.final_time / dt + 1
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
+
+    return sim
 
 
 def get_time(path, time, datahier=None):
@@ -177,8 +166,7 @@ def post_advance(new_time):
 
 
 def main():
-    config()
-    s = Simulator(gv.sim, post_advance=post_advance)
+    s = Simulator(config(), post_advance=post_advance)
     s.initialize()
     post_advance(0)
     s.run()
