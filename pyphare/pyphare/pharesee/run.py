@@ -336,14 +336,18 @@ class Run:
     def GetAllAvailableQties(self, time, pops):
         assert self.single_hier_for_all_quantities == True # can't work otherwise
 
-        self.GetParticles(time, pops)
-        self.GetB(time)
-        self.GetE(time)
-        self.GetNi(time)
-        self.GetVi(time)
+        for fn in [self.GetB, self.GetE, self.GetNi, self.GetVi]:
+            try:
+                fn(time)
+            except:
+                pass
 
-        for pop in pops:
-            self.GetFlux(time, pop)
-            self.GetN(time, pop)
+        try:
+            self.GetParticles(time, pops)
+            for pop in pops:
+                self.GetFlux(time, pop)
+                self.GetN(time, pop)
+        except:
+            pass
 
         return self.hier

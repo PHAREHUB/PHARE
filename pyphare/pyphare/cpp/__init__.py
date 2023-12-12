@@ -1,6 +1,7 @@
 
 # continue to use override if set
 _cpp_lib_override = None
+_globals = dict(module=None)
 
 def cpp_lib(override=None):
     import importlib
@@ -8,15 +9,21 @@ def cpp_lib(override=None):
     global _cpp_lib_override
     if override is not None:
         _cpp_lib_override = override
-    if _cpp_lib_override is not None:
-        return importlib.import_module(_cpp_lib_override)
 
-    if not __debug__:
-        return importlib.import_module("pybindlibs.cpp")
-    try:
-        return importlib.import_module("pybindlibs.cpp_dbg")
-    except ImportError as err:
-        return importlib.import_module("pybindlibs.cpp")
+    def get_module():
+        if _cpp_lib_override is not None:
+            return importlib.import_module(_cpp_lib_override)
+        if not __debug__:
+            return importlib.import_module("pybindlibs.cpp")
+        try:
+            return importlib.import_module("pybindlibs.cpp_dbg")
+        except ImportError as err:
+            return importlib.import_module("pybindlibs.cpp")
+
+    if _globals["module"] is None:
+        _globals["module"] = get_module()
+        print("Loaded C++ module", _globals["module"].__file__)
+    return _globals["module"]
 
 
 def cpp_etc_lib():

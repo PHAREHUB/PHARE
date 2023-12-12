@@ -18,6 +18,11 @@ import matplotlib as mpl
 import numpy as np
 mpl.use('Agg')
 
+# Override if you do want it seeded
+MODEL_INIT={}
+TIME_STEP_NBR=100000
+TIMESTEP=.01
+
 
 
 ####################################################################
@@ -32,8 +37,8 @@ def config():
     Simulation(
         smallest_patch_size=50,
         largest_patch_size=50,
-        time_step_nbr=100000,        # number of time steps (not specified if time_step and final_time provided)
-        final_time=1000,             # simulation final time (not specified if time_step and time_step_nbr provided)
+        time_step_nbr=TIME_STEP_NBR,     # number of time steps (not specified if time_step and final_time provided)
+        time_step=TIMESTEP,              # simulation time_step (not specified if final_time and time_step_nbr provided)
         boundary_types="periodic", # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=1000,                # integer or tuple length == dimension
         dl=1,                  # mesh size of the root level, float or tuple
@@ -98,7 +103,7 @@ def config():
 
     MaxwellianFluidModel(
         bx=bx, by=by, bz=bz,
-        protons={"charge": 1, "density": density, **vvv}
+        protons={"charge": 1, "density": density, **vvv, "init": MODEL_INIT},
     )
 
     ElectronModel(closure="isothermal", Te=0.0)
@@ -119,6 +124,8 @@ def config():
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
             )
+
+    return gv.sim
 
 
 

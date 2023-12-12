@@ -1,5 +1,7 @@
-from tools.python3 import decode_bytes, run
+
+import atexit
 import subprocess
+from tools.python3 import decode_bytes, run
 
 
 def current_branch():
@@ -30,6 +32,13 @@ def checkout(branch, create=False, recreate=False):
         create = True
 
     if create and not branch_exists(branch):
-        run(f"git checkout -b {branch}")
+        run(f"git checkout -b {branch}", check=True)
     else:
-        run(f"git checkout {branch}")
+        run(f"git checkout {branch}", check=True)
+
+def git_branch_reset_at_exit():
+    current_git_branch = current_branch()
+
+    @atexit.register
+    def _reset_():
+        checkout(current_git_branch)

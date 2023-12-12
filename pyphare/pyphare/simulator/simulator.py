@@ -144,6 +144,10 @@ class Simulator:
         return self.auto_dump and self.dump()
 
 
+    def finished(self):
+        return self.cpp_sim.currentTime() >= self.cpp_sim.endTime()
+
+
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
 

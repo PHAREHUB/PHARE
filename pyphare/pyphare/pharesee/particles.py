@@ -194,11 +194,11 @@ def all_assert_sorted(part1, part2):
     deltol = 1e-6 if any([part.deltas.dtype == np.float32 for part in [part1, part2]] ) else 1e-12
 
     np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
-    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=deltol)
+    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], rtol=0, atol=deltol)
 
-    np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], atol=1e-12)
-    np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], atol=1e-12)
-    np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], atol=1e-12)
+    np.testing.assert_allclose(part1.v[idx1,0], part2.v[idx2,0], rtol=0, atol=1e-12)
+    np.testing.assert_allclose(part1.v[idx1,1], part2.v[idx2,1], rtol=0, atol=1e-12)
+    np.testing.assert_allclose(part1.v[idx1,2], part2.v[idx2,2], rtol=0, atol=1e-12)
 
 
 def any_assert(part1, part2):
