@@ -20,7 +20,6 @@ GHOST_NBR = 5
 
 
 def init(ghost_box, layout, L, qty, fn):
-
     assert layout.impl == "yee"
 
     ndim = ghost_box.ndim
@@ -72,13 +71,11 @@ def Ez(ghost_box, layout, L):
 
 
 def build_boxes(domain_box, **kwargs):
-
     refinement_ratio = kwargs["refinement_ratio"]
     ndim = domain_box.ndim
 
     boxes = {}
     for ilvl, boxes_data in kwargs["refinement_boxes"].items():
-
         level_number = int(ilvl.strip("L")) + 1
 
         if level_number not in boxes:
@@ -170,8 +167,7 @@ def build_patch_datas(domain_box, boxes, **kwargs):
     patch_datas = {}
 
     for ilvl, lvl_box in boxes.items():
-
-        lvl_cell_width = cell_width / (refinement_ratio ** ilvl)
+        lvl_cell_width = cell_width / (refinement_ratio**ilvl)
 
         if not skip_particles:
             if ilvl == 0:
@@ -186,10 +182,11 @@ def build_patch_datas(domain_box, boxes, **kwargs):
             patch_datas[ilvl] = []
 
         for box in lvl_box:
-
             ghost_box = boxm.grow(box, [GHOST_NBR] * ndim)
             origin = box.lower * lvl_cell_width
-            layout = GridLayout(box, origin, lvl_cell_width, interp_order, field_ghosts_nbr=GHOST_NBR)
+            layout = GridLayout(
+                box, origin, lvl_cell_width, interp_order, field_ghosts_nbr=GHOST_NBR
+            )
 
             datas = {
                 qty: globals()[qty](ghost_box, layout, domain_size)
@@ -214,7 +211,6 @@ def build_patch_datas(domain_box, boxes, **kwargs):
 
 
 def build_kwargs(**kwargs):
-
     quantities = ["Bx", "By", "Bz", "Ex", "Ey", "Ez", "particles"]
 
     if "simulation" in kwargs:

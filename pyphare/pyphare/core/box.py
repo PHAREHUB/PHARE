@@ -2,9 +2,6 @@ import numpy as np
 from .phare_utilities import np_array_ify, is_scalar, is_nd_array
 
 
-
-
-
 class Box:
     """represents a box in AMR index cell
     lower, upper : lower and upper cell AMR indexes
@@ -14,10 +11,9 @@ class Box:
         lower, upper = [np_array_ify(arr) for arr in [lower, upper]]
         assert lower.shape == upper.shape
         assert (lower <= upper).all()
-        self.lower = lower.astype(int) # can't slice with floats
+        self.lower = lower.astype(int)  # can't slice with floats
         self.upper = upper.astype(int)
         self.ndim = len(self.lower)
-
 
     def __mul__(self, box2):
         """
@@ -32,24 +28,20 @@ class Box:
         if (lower <= upper).all():
             return Box(lower, upper)
 
-
     @property
     def shape(self):
         """returns the length per dimension"""
         return (self.upper - self.lower) + 1
 
-
     def nCells(self):
         """returns the number of cells in the box"""
         return self.shape.prod()
-
 
     def __str__(self):
         return "Box({},{})".format(self.lower.tolist(), self.upper.tolist())
 
     def __repr__(self):
         return self.__str__()
-
 
     def __contains__(self, item):
         """true if item is completely within self"""
@@ -62,9 +54,12 @@ class Box:
 
         return (item.lower >= self.lower).all() and (item.upper <= self.upper).all()
 
-
     def __eq__(self, other):
-        return isinstance(other, Box) and (self.lower == other.lower).all() and (self.upper == other.upper).all()
+        return (
+            isinstance(other, Box)
+            and (self.lower == other.lower).all()
+            and (self.upper == other.upper).all()
+        )
 
     def __sub__(self, other):
         assert isinstance(other, Box)
@@ -80,7 +75,6 @@ class nDBox(Box):
             return np.asarray([p] * dim)
 
         super().__init__(_get(dim, l), _get(dim, u))
-
 
 
 class Box1D(nDBox):
@@ -120,6 +114,7 @@ def grow(box, size):
     if (np.asarray(size) < 0).any():
         raise ValueError("size must be >=0")
     return Box(box.lower - size, box.upper + size)
+
 
 def shrink(box, size):
     if is_scalar(size) and box.ndim > 1:
@@ -171,7 +166,8 @@ def remove(box, to_remove):
         miny = intersection.lower[1] if "down" in boxes else box.lower[1]
         maxy = intersection.upper[1] if "up" in boxes else box.upper[1]
         if intersection.lower[2] > box.lower[2]:
-            boxes["back"] = Box(copy(box.lower, {0: minx, 1: miny}),
+            boxes["back"] = Box(
+                copy(box.lower, {0: minx, 1: miny}),
                 copy(intersection.lower - 1, {0: maxx, 1: maxy}),
             )
         if intersection.upper[2] < box.upper[2]:

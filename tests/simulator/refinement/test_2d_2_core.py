@@ -12,14 +12,7 @@
 import matplotlib as mpl
 import numpy as np
 import pyphare.core.box as boxm
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import (
-    ElectromagDiagnostics,
-    ElectronModel,
-    FluidDiagnostics,
-    MaxwellianFluidModel,
-    Simulation,
-)
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
 
 mpl.use("Agg")
@@ -28,7 +21,7 @@ mpl.use("Agg")
 def config(diag_outputs, model_init={}, refinement_boxes=None):
     ph.global_vars.sim = None
 
-    Simulation(
+    sim = ph.Simulation(
         # smallest_patch_size=6,
         # largest_patch_size=(30, 15),
         time_step_nbr=1,
@@ -96,25 +89,24 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
         "init": model_init,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
     )
 
-    ElectronModel(closure="isothermal", Te=0.0)
-    sim = ph.global_vars.sim
+    ph.ElectronModel(closure="isothermal", Te=0.0)
     dt = 1 * sim.time_step
     nt = sim.final_time / dt + 1
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,
         )
 
     for quantity in ["density", "bulkVelocity"]:
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
             compute_timestamps=timestamps,

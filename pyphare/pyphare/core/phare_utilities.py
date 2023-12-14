@@ -1,6 +1,7 @@
 import math
 import numpy as np
 
+
 def all_iterables(*args):
     """
     return true if all arguments are either lists or tuples
@@ -12,7 +13,9 @@ def none_iterable(*args):
     """
     return true if none of the arguments are either lists or tuples
     """
-    return all([not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args])
+    return all(
+        [not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args]
+    )
 
 
 def equal_size(*args):
@@ -51,7 +54,7 @@ def is_nd_array(arg):
     return isinstance(arg, np.ndarray)
 
 
-def np_array_ify(arg, size = 1):
+def np_array_ify(arg, size=1):
     if is_scalar(arg):
         return np.asarray([arg] * size)
     if not is_nd_array(arg):
@@ -62,7 +65,7 @@ def np_array_ify(arg, size = 1):
 refinement_ratio = 2
 
 
-def not_in_keywords_list(kwd_list,**kwargs):
+def not_in_keywords_list(kwd_list, **kwargs):
     """
     return the list of kwargs keys that are not in 'kwd_list'
     """
@@ -76,7 +79,7 @@ def check_mandatory_keywords(mandatory_kwd_list, **kwargs):
     """
     return those of mandatory_kwd_list not found in the kwargs keys
     """
-    keys  = [k for k in kwargs.keys()]
+    keys = [k for k in kwargs.keys()]
     check = [(mk, mk in keys) for mk in mandatory_kwd_list]
     return [mk[0] for mk in check if mk[1] is False]
 
@@ -84,15 +87,18 @@ def check_mandatory_keywords(mandatory_kwd_list, **kwargs):
 def fp_equal(a, b, atol=1e-6):
     return math.isclose(a, b, abs_tol=atol)
 
+
 def fp_less_equal(a, b, atol=1e-6):
     return fp_equal(a, b, atol=atol) or a < b
+
 
 def fp_gtr_equal(a, b, atol=1e-6):
     return fp_equal(a, b, atol=atol) or a > b
 
+
 class FloatingPoint_comparator:
     def __init__(self, fp, atol=1e-6):
-        self.fp   = fp
+        self.fp = fp
         self.atol = atol
 
     def __eq__(self, other):
@@ -120,27 +126,33 @@ def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=Fal
     https://docs.python.org/3/library/subprocess.html
     """
     import subprocess
+
     if print_cmd:
         print(f"running: {cmd}")
     try:
-        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check)
-    except subprocess.CalledProcessError as e: # only triggers on failure if check=True
+        return subprocess.run(
+            cmd, shell=shell, capture_output=capture_output, check=check
+        )
+    except subprocess.CalledProcessError as e:  # only triggers on failure if check=True
         raise RuntimeError(decode_bytes(e.stderr))
 
 
 def git_hashes(N=1):
-    return decode_bytes(run_cli_cmd(f"git log -{N} --pretty=format:%h").stdout).splitlines()
+    return decode_bytes(
+        run_cli_cmd(f"git log -{N} --pretty=format:%h").stdout
+    ).splitlines()
 
 
 def top_git_hash():
     hashes = git_hashes(1)
     if len(hashes) > 0:
         return hashes[0]
-    return "master" # github actions fails?
+    return "master"  # github actions fails?
 
 
 def print_trace():
     import sys, traceback
+
     _, _, tb = sys.exc_info()
     traceback.print_tb(tb)
 
@@ -158,4 +170,3 @@ def deep_copy(item, memo, excludes=[]):
         else:
             setattr(that, key, deepcopy(value, memo))
     return that
-

@@ -197,7 +197,6 @@ class GeometryTest(AGeometryTest):
         )
         fig.savefig(f"hierarchy_2d_lvl_0_large_patch_test_{test_id}.png")
 
-
     def test_touch_border(self):
         print("GeometryTest.test_touch_border")
         hierarchy = super().basic_hierarchy()
@@ -414,8 +413,6 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
             )
             fig.savefig(f"{type(self).__name__}_lvl_{ilvl}_{self._testMethodName}.png")
             self.assertEqual(expected[ilvl], ghost_area_box_list)
-
-
 
     @data(
         (

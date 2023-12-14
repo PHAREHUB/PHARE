@@ -40,7 +40,6 @@ functionList = [cos, sin]
 
 
 def dump(ndim, path, quantity):
-
     origin = [0] * ndim
 
     coarseLayout = gridlayout.GridLayout(
@@ -93,7 +92,6 @@ def dump(ndim, path, quantity):
 
 
 def main(path="./"):
-
     if len(sys.argv) > 1:
         path = sys.argv[1]
 
