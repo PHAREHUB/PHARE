@@ -8,9 +8,26 @@ else() # !Clang
   set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
 endif() # clang
 
+set (PHARE_LINK_FLAGS )
+set (PHARE_BASE_LIBS )
+
+if(PGO_GEN)
+  if(PGO_USE)
+    message(FATAL_ERROR "cannot generate and use pgo at the same time.")
+  endif()
+  set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-generate -fprofile-update=prefer-atomic )
+  set (PHARE_LINK_FLAGS "${PHARE_LINK_FLAGS} -fprofile-generate -fprofile-update=prefer-atomic" )
+endif()
+
+if(PGO_USE)
+  set (PHARE_LINK_FLAGS ${PHARE_LINK_FLAGS} -fprofile-use )
+  set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-use )
+endif()
+
+
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
-set (PHARE_BASE_LIBS )
+
 
 # now we see if we are running with configurator
 if (phare_configurator)

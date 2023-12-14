@@ -70,6 +70,12 @@ option(lowResourceTests "Disable heavy tests for CI (2d/3d/etc" OFF)
 option(testDuringBuild "Runs C++ unit tests after they are built" OFF)
 
 
+# -DPGO_GEN=OFF profile guided optimization generate
+option(PGO_GEN "profile guided optimization generate" OFF)
+# -DPGO_USE=OFF
+option(PGO_USE "profile guided optimization use" OFF)
+
+
 # Controlling the activation of tests
 if (NOT DEFINED PHARE_EXEC_LEVEL_MIN)
   set(PHARE_EXEC_LEVEL_MIN 1)
@@ -103,6 +109,8 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
+  message("profile guided optimization generate        : " ${PGO_GEN})
+  message("profile guided optimization use             : " ${PGO_USE})
 
   message("MPI_LIBRARY_PATH                            : " ${MPI_LIBRARY_PATH})
 

@@ -11,6 +11,7 @@ set_target_properties(cpp
 )
 # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
 set_property(TARGET cpp PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
+set_property(TARGET cpp APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   pybind11_add_module(cpp_dbg cpp_simulator.cpp)
@@ -21,6 +22,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
   )
   set_property(TARGET cpp_dbg PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
+  set_property(TARGET cpp_dbg APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
 endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 
@@ -33,3 +35,4 @@ set_target_properties(cpp_etc
 )
 # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
 set_property(TARGET cpp_etc PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
+set_property(TARGET cpp_etc APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")

@@ -54,8 +54,8 @@ struct Particle
 
     Particle() = default;
 
-    double weight;
-    double charge;
+    double weight = 0;
+    double charge = 0;
 
     std::array<int, dim> iCell    = ConstArray<int, dim>();
     std::array<double, dim> delta = ConstArray<double, dim>();

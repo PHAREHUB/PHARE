@@ -112,7 +112,7 @@ public:
 
 
     /** see Pusher::move() documentation*/
-    void setMeshAndTimeStep(std::array<double, dim> ms, double ts) override
+    void setMeshAndTimeStep(std::array<double, dim> ms, double const ts) override
     {
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
                        [ts](double& x) { return 0.5 * ts / x; });
