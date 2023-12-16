@@ -25,14 +25,6 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename UserField_t, typename ResourcesType>
-    using isUserFieldType = std::is_same<std::decay_t<ResourcesType>, UserField_t>;
-
-
-    template<typename UserParticle_t, typename ResourcesType>
-    using isUserParticleType = std::is_same<typename std::decay_t<ResourcesType>, UserParticle_t>;
-
-
     /**
      * \brief ResourcesInfo contains the SAMRAI variable and patchdata ID to retrieve data from the
      * SAMRAI database
@@ -105,6 +97,7 @@ namespace amr
         template<typename ResourcesUser>
         using UserParticle_t = UserParticleType<ResourcesUser, interp_order>;
 
+
         ResourcesManager()
             : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
             , context_{variableDatabase_->getContext(contextName_)}
@@ -137,19 +130,18 @@ namespace amr
         {
             if constexpr (has_field<ResourcesUser>::value)
             {
-                registerResources_<ResourcesUser, UserField_t<ResourcesUser>>(obj);
+                registerFieldResources_<UserField_t<ResourcesUser>>(obj);
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
             {
-                registerResources_<ResourcesUser, UserParticle_t<ResourcesUser>>(obj);
+                registerParticleResources_<UserParticle_t<ResourcesUser>>(obj);
             }
 
 
             if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
             {
-                auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
-                for (auto& resourcesUser : resourcesUsers)
+                for (auto& resourcesUser : obj.getRunTimeResourcesUserList())
                 {
                     this->registerResources(resourcesUser);
                 }
@@ -158,14 +150,11 @@ namespace amr
 
             if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
             {
-                // get a tuple here
-                auto&& subResources = obj.getCompileTimeResourcesUserList();
-
                 // unpack the tuple subResources and apply for each element registerResources()
                 // (recursively)
                 std::apply(
                     [this](auto&... subResource) { (this->registerResources(subResource), ...); },
-                    subResources);
+                    obj.getCompileTimeResourcesUserList());
             }
         }
 
@@ -194,8 +183,7 @@ namespace amr
 
             if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
             {
-                auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
-                for (auto& resourcesUser : resourcesUsers)
+                for (auto& resourcesUser : obj.getRunTimeResourcesUserList())
                 {
                     this->allocate(resourcesUser, patch, allocateTime);
                 }
@@ -203,13 +191,10 @@ namespace amr
 
             if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
             {
-                // get a tuple here
-                auto&& subResources = obj.getCompileTimeResourcesUserList();
-
                 // unpack the tuple subResources and apply for each element registerResources()
                 std::apply([this, &patch, allocateTime](auto&... subResource) //
                            { (this->allocate(subResource, patch, allocateTime), ...); },
-                           subResources);
+                           obj.getCompileTimeResourcesUserList());
             }
         }
 
@@ -263,8 +248,7 @@ namespace amr
         template<typename ResourcesUser>
         void setTime(ResourcesUser& obj, SAMRAI::hier::Patch const& patch, double time) const
         {
-            auto IDs = getIDs(obj);
-            for (auto const& id : IDs)
+            for (auto const& id : getIDs(obj))
             {
                 auto patchdata = patch.getPatchData(id);
                 patchdata->setTime(time);
@@ -433,7 +417,8 @@ namespace amr
 
             else if constexpr (std::is_same_v<RequestedPtr, UseNullPtr>)
             {
-                return static_cast<typename ResourceType::internal_type_ptr>(nullptr);
+                return static_cast<decltype(getPatchData_(resourceType, resourcesVariableInfo,
+                                                          patch))>(nullptr);
             }
         }
 
@@ -483,56 +468,44 @@ namespace amr
 
 
 
-
-        template<typename ResourcesUser, typename ResourcesType>
-        void registerResources_(ResourcesUser const& user)
+        template<typename ResourcesType, typename ResourcesUser>
+        void registerFieldResources_(ResourcesUser const& user)
         {
-            auto notInMap = [](auto& key, auto& map) {
-                auto foundResource = map.find(key);
-                return foundResource == std::end(map);
-            };
-
-            if constexpr (isUserFieldType<UserField_t<ResourcesUser>, ResourcesType>::value)
+            for (auto const& properties : user.getFieldNamesAndQuantities())
             {
-                auto const& resourcesProperties = user.getFieldNamesAndQuantities();
-                for (auto const& properties : resourcesProperties)
+                auto const& resourcesName = properties.name;
+
+                if (nameToResourceInfo_.count(resourcesName) == 0)
                 {
-                    std::string const& resourcesName = properties.name;
-                    auto const& qty                  = properties.qty;
+                    ResourcesInfo info;
+                    info.variable = std::make_shared<typename ResourcesType::variable_type>(
+                        resourcesName, properties.qty);
 
-                    if (notInMap(resourcesName, nameToResourceInfo_))
-                    {
-                        ResourcesInfo info;
-                        info.variable = std::make_shared<typename ResourcesType::variable_type>(
-                            resourcesName, qty);
+                    info.id = variableDatabase_->registerVariableAndContext(
+                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                        info.id = variableDatabase_->registerVariableAndContext(
-                            info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
-
-                        nameToResourceInfo_.emplace(resourcesName, info);
-                    }
+                    nameToResourceInfo_.emplace(resourcesName, info);
                 }
             }
+        }
 
-            if constexpr (isUserParticleType<UserParticle_t<ResourcesUser>, ResourcesType>::value)
+        template<typename ResourcesType, typename ResourcesUser>
+        void registerParticleResources_(ResourcesUser const& user)
+        {
+            for (auto const& properties : user.getParticleArrayNames())
             {
-                auto const& resourcesProperties = user.getParticleArrayNames();
-                for (auto const& properties : resourcesProperties)
+                auto const& name = properties.name;
+
+                if (nameToResourceInfo_.count(name) == 0)
                 {
-                    auto const& name = properties.name;
+                    ResourcesInfo info;
 
-                    if (notInMap(name, nameToResourceInfo_))
-                    {
-                        ResourcesInfo info;
+                    info.variable = std::make_shared<typename ResourcesType::variable_type>(name);
 
-                        info.variable
-                            = std::make_shared<typename ResourcesType::variable_type>(name);
+                    info.id = variableDatabase_->registerVariableAndContext(
+                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                        info.id = variableDatabase_->registerVariableAndContext(
-                            info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
-
-                        nameToResourceInfo_.emplace(name, info);
-                    }
+                    nameToResourceInfo_.emplace(name, info);
                 }
             }
         }
