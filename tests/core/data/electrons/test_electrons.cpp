@@ -1,4 +1,3 @@
-
 #include "initializer/data_provider.hpp"
 
 #include "core/data/electrons/electrons.hpp"
@@ -259,11 +258,11 @@ struct ElectronsTest : public ::testing::Test
 
             fill(Vix, [](double x, double y) { return std::cosh(0.2 * x) * std::cosh(0.2 * y); });
             fill(Viy, [](double x, double y) { return std::cosh(0.3 * x) * std::cosh(0.3 * y); });
-            fill(Viy, [](double x, double y) { return std::cosh(0.4 * x) * std::cosh(0.4 * y); });
+            fill(Viz, [](double x, double y) { return std::cosh(0.4 * x) * std::cosh(0.4 * y); });
 
             fill(Jx, [](double x, double y) { return std::sinh(0.2 * x) * std::sinh(0.2 * y); });
             fill(Jy, [](double x, double y) { return std::sinh(0.3 * x) * std::sinh(0.3 * y); });
-            fill(Jy, [](double x, double y) { return std::sinh(0.4 * x) * std::sinh(0.4 * y); });
+            fill(Jz, [](double x, double y) { return std::sinh(0.4 * x) * std::sinh(0.4 * y); });
 
             fill(Nibuffer,
                  [](double x, double y) { return std::cosh(0.1 * x) * std::cosh(0.1 * y); });
@@ -298,7 +297,7 @@ struct ElectronsTest : public ::testing::Test
             fill(Viy, [](double x, double y, double z) {
                 return std::cosh(0.3 * x) * std::cosh(0.3 * y) * std::cosh(0.3 * z);
             });
-            fill(Viy, [](double x, double y, double z) {
+            fill(Viz, [](double x, double y, double z) {
                 return std::cosh(0.4 * x) * std::cosh(0.4 * y) * std::cosh(0.4 * z);
             });
 
@@ -308,7 +307,7 @@ struct ElectronsTest : public ::testing::Test
             fill(Jy, [](double x, double y, double z) {
                 return std::sinh(0.3 * x) * std::sinh(0.3 * y) * std::sinh(0.3 * z);
             });
-            fill(Jy, [](double x, double y, double z) {
+            fill(Jz, [](double x, double y, double z) {
                 return std::sinh(0.4 * x) * std::sinh(0.4 * y) * std::sinh(0.4 * z);
             });
 
