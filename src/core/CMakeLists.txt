@@ -56,15 +56,8 @@ set( SOURCES_CPP
      utilities/mpi_utils.cpp
     )
 
-find_package(MPI)
-
-add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})
-target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES}
-    PUBLIC ${PHARE_BASE_LIBS}
-  )
+add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
+target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PHARE_BASE_LIBS} MPI::MPI_C phare_initializer)
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
-target_include_directories(${PROJECT_NAME}  PUBLIC ${MPI_C_INCLUDE_DIRS}
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
-

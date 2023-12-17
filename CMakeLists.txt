@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.20.1) # released April 8, 2021 - https://www.kitware.com/cmake-3-20-1-available-for-download/
 
-project(PHARE VERSION 0.1 LANGUAGES CXX)
+project(PHARE VERSION 0.1 LANGUAGES CXX C)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
@@ -22,7 +22,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
 find_program(Git git)
-find_package(PythonInterp  3.8 REQUIRED)
+find_package(PythonInterp 3.8 REQUIRED)
+find_package(MPI REQUIRED COMPONENTS C)
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)

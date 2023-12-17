@@ -18,16 +18,12 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
 
-target_include_directories(${PROJECT_NAME}  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
+target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PHARE_PROJECT_DIR}/subprojects>)
 
 
 # this is the python module that wraps the add() method
 pybind11_add_module(dictator dictator.cpp)
 target_link_libraries(dictator PUBLIC phare_initializer pybind11::embed)
 set_property(TARGET dictator PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
-set_target_properties(dictator
-    PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
-)
+set_target_properties(dictator PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs")
 set_property(TARGET dictator APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
