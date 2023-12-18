@@ -16,5 +16,6 @@ target_link_libraries(phare-exe PUBLIC
     phare_simulator
     pybind11::embed
 )
+set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
 
 

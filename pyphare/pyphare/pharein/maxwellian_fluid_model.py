@@ -140,7 +140,7 @@ class MaxwellianFluidModel(object):
     # ------------------------------------------------------------------------------
 
     def validate(self, sim, atol=1e-15):
-        print(f"validating dim={sim.ndim}")
+        phare_utilities.debug_print(f"validating dim={sim.ndim}")
         if sim.ndim == 1:
             self.validate1d(sim, atol)
         elif sim.ndim == 2:
@@ -205,11 +205,11 @@ class MaxwellianFluidModel(object):
             else:
                 return (np.zeros_like(L), L), (np.zeros_like(R), R)
 
-        print("2d periodic validation")
+        phare_utilities.debug_print("2d periodic validation")
         for idir in np.arange(sim.ndim):
-            print("validating direction ...", idir)
+            phare_utilities.debug_print("validating direction ...", idir)
             if sim.boundary_types[idir] == "periodic":
-                print(f"direction {idir} is periodic?")
+                phare_utilities.debug_print(f"direction {idir} is periodic?")
                 dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[0]
                 dual_right = dual_left + domain[0]
                 primal_left = np.arange(-nbrPrimalGhosts, nbrPrimalGhosts) * sim.dl[0]
@@ -239,7 +239,7 @@ class MaxwellianFluidModel(object):
                         fL = f(*coordsL)
                         fR = f(*coordsR)
                         check = np.allclose(fL, fR, atol=atol, rtol=0)
-                        print(
+                        phare_utilities.debug_print(
                             f"checked {fn} : fL = {fL} and fR = {fR} and check = {check}"
                         )
                         if not check:

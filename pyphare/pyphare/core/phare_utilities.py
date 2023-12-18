@@ -2,6 +2,11 @@ import math
 import numpy as np
 
 
+def debug_print(*args):
+    if __debug__:
+        print(*args)
+
+
 def all_iterables(*args):
     """
     return true if all arguments are either lists or tuples

@@ -334,8 +334,8 @@ private:
 
     template<auto component, typename VecField>
     auto hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
-    {
-        return -nu_ * layout_->laplacian(J(component), index); // TODO : issue 3391
+    { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
+        return -nu_ * layout_->laplacian(J(component), index);
     }
 };
 

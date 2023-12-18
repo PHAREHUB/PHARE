@@ -391,7 +391,7 @@ inline void CellMap<dim, cell_index_t>::empty()
 template<std::size_t dim, typename cell_index_t>
 template<typename Array, typename CellIndex, typename CellExtractor>
 inline void CellMap<dim, cell_index_t>::update(Array& items, std::size_t itemIndex,
-                                               CellIndex const& oldCell, CellExtractor extract)
+                                               CellIndex const& oldCell, CellExtractor /*extract*/)
 {
     // we want to check first if the particle is in the map
     // already. if is, needs to remove it before inserting it again

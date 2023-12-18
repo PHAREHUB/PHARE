@@ -185,6 +185,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
             if (copyInDomain)
             {
+                domain.reserve(domain.size() + enteredInDomain.size());
                 std::copy(enteredInDomain.begin(), enteredInDomain.end(),
                           std::back_inserter(domain));
             }
