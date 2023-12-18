@@ -9,7 +9,7 @@ namespace PHARE
 {
 namespace core
 {
-    enum class Component { X, Y, Z, XX, XY, XZ, YY, YZ, ZZ };
+    enum class Component : std::uint16_t { X = 0, Y, Z, XX, XY, XZ, YY, YZ, ZZ };
 
     struct Components
     {

@@ -20,12 +20,22 @@ template<typename NdArrayImpl, typename PhysicalQuantity, std::size_t rank_ = 1>
 class TensorField
 {
 private:
+    template<std::size_t _rank = rank_>
     constexpr static std::size_t dimFromRank()
     {
-        if constexpr (rank_ == 1) // Vector field
+        if constexpr (_rank == 1) // Vector field
             return 3;
-        else if constexpr (rank_ == 2) // symmetric 3x3 tensor field
+        else if constexpr (_rank == 2) // symmetric 3x3 tensor field
             return 6;
+    }
+
+    auto static _get_index_for(Component component)
+    {
+        auto val = static_cast<std::underlying_type_t<Component>>(component);
+        if constexpr (rank == 1)
+            return val;
+        else if constexpr (rank == 2)
+            return val - dimFromRank<1>();
     }
 
 public:
@@ -116,24 +126,7 @@ public:
     NO_DISCARD std::string const& name() const { return name_; }
 
 
-    template<typename Arg>
-    NO_DISCARD decltype(auto) static _switcheroo(Component component, Arg& arg)
-    {
-        switch (component)
-        {
-            case Component::X: return arg[0];
-            case Component::Y: return arg[1];
-            case Component::Z: return arg[2];
 
-            case Component::XX: return arg[0];
-            case Component::XY: return arg[1];
-            case Component::XZ: return arg[2];
-            case Component::YY: return arg[3];
-            case Component::YZ: return arg[4];
-            case Component::ZZ: return arg[5];
-        }
-        throw std::runtime_error("Error - TensorField not usable");
-    }
 
     void _check() const
     {
@@ -144,7 +137,7 @@ public:
     NO_DISCARD field_type& getComponent(Component component)
     {
         _check();
-        return *_switcheroo(component, components_);
+        return *components_[_get_index_for(component)];
     }
 
 
@@ -153,14 +146,14 @@ public:
     NO_DISCARD field_type const& getComponent(Component component) const
     {
         _check();
-        return *_switcheroo(component, components_);
+        return *components_[_get_index_for(component)];
     }
 
 
 
     NO_DISCARD std::string getComponentName(Component component) const
     {
-        return _switcheroo(component, componentNames_);
+        return componentNames_[_get_index_for(component)];
     }
 
 
