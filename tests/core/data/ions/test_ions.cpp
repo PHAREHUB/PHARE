@@ -9,7 +9,7 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 
-#include "core/data/tensorfield//tensorfield.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"

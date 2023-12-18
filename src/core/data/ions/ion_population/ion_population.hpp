@@ -191,8 +191,8 @@ namespace core
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }
 
-        TensorField const& momentumTensor() const { return momentumTensor_; }
-        TensorField& momentumTensor() { return momentumTensor_; }
+        NO_DISCARD TensorField const& momentumTensor() const { return momentumTensor_; }
+        NO_DISCARD TensorField& momentumTensor() { return momentumTensor_; }
 
 
 

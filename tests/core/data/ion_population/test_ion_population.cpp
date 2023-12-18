@@ -24,7 +24,7 @@ struct DummyVecField
 {
     static constexpr std::size_t dimension = 1;
     using field_type                       = DummyField;
-    DummyVecField(std::string name, [[maybe_unused]] HybridQuantity::Vector v) { (void)name; }
+    DummyVecField(std::string name, HybridQuantity::Vector /*v*/) { (void)name; }
     bool isUsable() const { return false; }
     bool isSettable() const { return true; }
 };
@@ -32,7 +32,7 @@ struct DummyVecField
 struct DummyTensorField
 {
     static constexpr std::size_t dimension = 1;
-    DummyTensorField(std::string name, [[maybe_unused]] HybridQuantity::Tensor v) { (void)name; }
+    DummyTensorField(std::string name, HybridQuantity::Tensor /*v*/) { (void)name; }
     bool isUsable() const { return false; }
     bool isSettable() const { return true; }
 };

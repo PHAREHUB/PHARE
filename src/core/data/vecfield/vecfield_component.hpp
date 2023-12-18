@@ -46,6 +46,16 @@ namespace core
         {"xx", Component::XX}, {"xy", Component::XY}, {"xz", Component::XZ},
         {"yy", Component::YY}, {"yz", Component::YZ}, {"zz", Component::ZZ}};
 
+    struct VectorComponents
+    {
+        auto static map() { return Components::componentMap(); }
+    };
+
+    struct TensorComponents
+    {
+        auto static map() { return Components::componentMap<2>(); }
+    };
+
 } // namespace core
 } // namespace PHARE
 

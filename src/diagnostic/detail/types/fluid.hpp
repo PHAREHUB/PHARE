@@ -184,12 +184,12 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
     };
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
-        for (auto const& [id, type] : core::Components::componentMap<1>())
+        for (auto const& [id, type] : core::VectorComponents::map())
             infoDS(vecF.getComponent(type), name + "_" + id, attr);
     };
 
     auto infoTF = [&](auto& tensorF, std::string name, auto& attr) {
-        for (auto const& [id, type] : core::Components::componentMap<2>())
+        for (auto const& [id, type] : core::TensorComponents::map())
             infoDS(tensorF.getComponent(type), name + "_" + id, attr);
     };
 

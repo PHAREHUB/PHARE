@@ -116,26 +116,35 @@ public:
     NO_DISCARD std::string const& name() const { return name_; }
 
 
+    template<typename Arg>
+    NO_DISCARD decltype(auto) static _switcheroo(Component component, Arg& arg)
+    {
+        switch (component)
+        {
+            case Component::X: return arg[0];
+            case Component::Y: return arg[1];
+            case Component::Z: return arg[2];
+
+            case Component::XX: return arg[0];
+            case Component::XY: return arg[1];
+            case Component::XZ: return arg[2];
+            case Component::YY: return arg[3];
+            case Component::YZ: return arg[4];
+            case Component::ZZ: return arg[5];
+        }
+        throw std::runtime_error("Error - TensorField not usable");
+    }
+
+    void _check() const
+    {
+        if (!isUsable())
+            throw std::runtime_error("Error - TensorField not usable");
+    }
 
     NO_DISCARD field_type& getComponent(Component component)
     {
-        if (isUsable())
-        {
-            switch (component)
-            {
-                case Component::X: return *components_[0];
-                case Component::Y: return *components_[1];
-                case Component::Z: return *components_[2];
-
-                case Component::XX: return *components_[0];
-                case Component::XY: return *components_[1];
-                case Component::XZ: return *components_[2];
-                case Component::YY: return *components_[3];
-                case Component::YZ: return *components_[4];
-                case Component::ZZ: return *components_[5];
-            }
-        }
-        throw std::runtime_error("Error - TensorField not usable");
+        _check();
+        return *_switcheroo(component, components_);
     }
 
 
@@ -143,43 +152,17 @@ public:
 
     NO_DISCARD field_type const& getComponent(Component component) const
     {
-        if (isUsable())
-        {
-            switch (component)
-            {
-                case Component::X: return *components_[0];
-                case Component::Y: return *components_[1];
-                case Component::Z: return *components_[2];
-
-                case Component::XX: return *components_[0];
-                case Component::XY: return *components_[1];
-                case Component::XZ: return *components_[2];
-                case Component::YY: return *components_[3];
-                case Component::YZ: return *components_[4];
-                case Component::ZZ: return *components_[5];
-            }
-        }
-        throw std::runtime_error("Error - TensorField not usable");
+        _check();
+        return *_switcheroo(component, components_);
     }
 
 
 
     NO_DISCARD std::string getComponentName(Component component) const
     {
-        switch (component)
-        {
-            case Component::X: return componentNames_[0];
-            case Component::Y: return componentNames_[1];
-            case Component::Z: return componentNames_[2];
-            case Component::XX: return componentNames_[0];
-            case Component::XY: return componentNames_[1];
-            case Component::XZ: return componentNames_[2];
-            case Component::YY: return componentNames_[3];
-            case Component::YZ: return componentNames_[4];
-            case Component::ZZ: return componentNames_[5];
-        }
-        throw std::runtime_error("Error - TensorField not usable");
+        return _switcheroo(component, componentNames_);
     }
+
 
     template<std::size_t... Index>
     NO_DISCARD auto components(std::index_sequence<Index...>) const

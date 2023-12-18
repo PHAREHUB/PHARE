@@ -77,8 +77,7 @@ namespace core
         {
             if (isUsable())
                 return sameMasses_ ? *rho_ : *massDensity_;
-            else
-                throw std::runtime_error("Error - cannot access density data");
+            throw std::runtime_error("Error - cannot access density data");
         }
 
 
