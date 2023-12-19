@@ -34,6 +34,7 @@ if (phare_configurator)
   execute_process(
     COMMAND ./tools/config/cmake.sh
     WORKING_DIRECTORY ${PHARE_PROJECT_DIR}
+    COMMAND_ERROR_IS_FATAL ANY
   )
   include("${PHARE_PROJECT_DIR}/tools/config/local.cmake")
 endif(phare_configurator)
@@ -285,4 +286,13 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   enable_testing()
 
 endif()
+
+# useful to see what's available after importing a package
+function(phare_print_all_cmake_vars)
+  get_cmake_property(_variableNames VARIABLES)
+  list (SORT _variableNames)
+  foreach (_variableName ${_variableNames})
+      message(STATUS "${_variableName}=${${_variableName}}")
+  endforeach()
+endfunction(phare_print_all_cmake_vars)
 

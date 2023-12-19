@@ -1,11 +1,104 @@
-import os
+import json
+import subprocess
 from pathlib import Path
+from dataclasses import dataclass, field
+import dataclasses
 
 FILE_DIR = Path(__file__).resolve().parent
+BUILD_DIR = FILE_DIR / "build"
 ROOT_DIR = FILE_DIR.parent.parent
-FILES = [f for f in Path(FILE_DIR).glob("build/PHARE_*")]
+FILES = [f for f in BUILD_DIR.glob("PHARE_*")]
+DEF_DIR = ROOT_DIR / "src" / "core" / "def"
+GENERATED_CONFIGS = dict(
+    mpi=DEF_DIR / "_gen_mpi.hpp",
+    system=DEF_DIR / "_gen_sys.hpp",
+)
 
-GENERATED_CONFIGS = dict(mpi=ROOT_DIR / "src" / "core" / "def" / "_gen_mpi.hpp")
+
+@dataclass
+class SystemSettings:
+    cmake_binary: str  # field(default_factory=lambda: "Couldn't parse cmake binary path")
+    cmake_version: str  # field(default_factory=lambda: "Couldn't parse cmake version")
+    hdf5_version: str  # field(default_factory=lambda: "Couldn't parse cmake hdf5 version")
+    mpi_version: str  # field(default_factory=lambda: "Couldn't parse cmake mpi version")
+    uname: str  # field(default_factory=lambda: "Couldn't parse uname")
+
+
+system_cpp_ = """
+#include <string_view>
+
+namespace PHARE {{
+struct SystemConfig {{
+
+    constexpr static std::string_view UNAME = R"({})";
+    constexpr static std::string_view MPI_VERSION = R"({})";
+    constexpr static std::string_view HDF5_VERSION = R"({})";
+    constexpr static std::string_view CMAKE_VERSION = R"({})";
+    constexpr static std::string_view CMAKE_BINARY = R"({})";
+
+}};
+
+}}
+
+"""
+
+
+def exec(cmd):
+    proc = subprocess.run(cmd.split(" "), check=False, capture_output=True)
+    return (proc.stdout + proc.stderr).decode().strip()
+
+
+def file_string_or(filename, fail=None):
+    if not fail:
+        fail = f"couldn't open file {filename}"
+    filepath = BUILD_DIR / filename
+    if not filepath.exists():
+        return fail
+    with open(filepath) as f:
+        return f.readline().strip()
+
+
+def cmake_cache_line_to_key_value_pair(line):
+    bits = line.split("=")
+    return bits[0], "=".join(bits[1:])
+
+
+def parse_cmake_cache_file():
+    cmaka_cache_file = BUILD_DIR / "CMakeCache.txt"
+    dic = {}
+    with open(cmaka_cache_file) as f:
+        for line in f.readlines():
+            line = line.strip()
+            if any([line.startswith("#"), "=" not in line]):
+                continue
+            key, val = cmake_cache_line_to_key_value_pair(line)
+            dic[key] = val
+    return dic
+
+
+def cmake_version_from(cmake_cache: dict) -> str:
+    if all(
+        [
+            "CMAKE_CACHE_MAJOR_VERSION:INTERNAL" in cmake_cache,
+            "CMAKE_CACHE_MINOR_VERSION:INTERNAL" in cmake_cache,
+            "CMAKE_CACHE_PATCH_VERSION:INTERNAL" in cmake_cache,
+        ]
+    ):
+        major = cmake_cache["CMAKE_CACHE_MAJOR_VERSION:INTERNAL"]
+        minor = cmake_cache["CMAKE_CACHE_MINOR_VERSION:INTERNAL"]
+        patch = cmake_cache["CMAKE_CACHE_PATCH_VERSION:INTERNAL"]
+        return f"{major}.{minor}.{patch}"
+
+    return "Failed to find version in cache file"
+
+
+def cmake_binary_path_from(cmake_cache: dict) -> str:
+    """With this we should be able to guarantee future cmake
+    calls by us if needed for whatever reason"""
+    path_key = "CMAKE_COMMAND:INTERNAL"
+    if path_key in cmake_cache:
+        return cmake_cache[path_key]
+    return "Failed to find cmake binary path in cache file"
 
 
 def local_file_format(filename):
@@ -42,6 +135,34 @@ def config_mpi_version(txtfile, h_file):
         f.write(buf)
 
 
+def gen_system_file():
+    out_file = GENERATED_CONFIGS["system"]
+    cmake_cache: dict = parse_cmake_cache_file()
+
+    settings = SystemSettings(
+        cmake_binary=cmake_binary_path_from(cmake_cache),
+        cmake_version=cmake_version_from(cmake_cache),
+        hdf5_version=file_string_or("PHARE_HDF5_version.txt", "HDF5 version failed"),
+        mpi_version=file_string_or(
+            "PHARE_MPI_Get_library_version.txt", "MPI version failed"
+        ),
+        uname=exec("uname -a"),
+    )
+    with open(ROOT_DIR/".phare_config.json", "w") as f:
+        json.dump(dataclasses.asdict(settings), f)
+
+    with open(out_file, "w") as f:
+        f.write(
+            system_cpp_.format(
+                settings.uname,
+                settings.hdf5_version,
+                settings.mpi_version,
+                settings.cmake_version,
+                settings.cmake_binary,
+            )
+        )
+
+
 def config_mpi():
     h_file = GENERATED_CONFIGS["mpi"]
     create_file(h_file)
@@ -54,6 +175,7 @@ def config_mpi():
 
 def main():
     config_mpi()
+    gen_system_file()
 
 
 if __name__ == "__main__":
