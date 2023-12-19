@@ -604,6 +604,7 @@ def checker(func):
             "strict",
             "restart_options",
             "tag_buffer",
+            "description",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -619,6 +620,8 @@ def checker(func):
         kwargs["dl"] = dl
         kwargs["cells"] = cells
         kwargs["refinement_ratio"] = 2
+
+        kwargs["description"] = kwargs.get("description", None)
 
         kwargs["clustering"] = check_clustering(**kwargs)
 
@@ -796,6 +799,8 @@ class Simulation(object):
               number of refined particle per coarse particle.
             * *tag_buffer* (``int``) --
               [default=1] value representing the number of cells by which tagged cells are buffered before clustering into boxes.
+            * *description* (``string``) --
+              [default=None] arbitrary string for per simulation context - injected in output files when feasible
     """
 
     @checker
