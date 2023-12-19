@@ -8,7 +8,18 @@
 #include "core/logger.hpp"
 
 #include <algorithm>
+#include <csignal>
+#include <atomic>
 
+namespace
+{
+std::atomic<int> gSignalStatus = 0;
+}
+
+void signal_handler(int signal)
+{
+    gSignalStatus = signal;
+}
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
@@ -34,6 +45,13 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
 
 int main(int argc, char** argv)
 {
+    if (std::signal(SIGINT, signal_handler) == SIG_ERR) {
+        throw std::runtime_error("PHARE Error: Failed to register SIGINT signal handler");
+    }
+    if (std::signal(SIGABRT, signal_handler) == SIG_ERR) {
+        throw std::runtime_error("PHARE Error: Failed to register SIGABRT signal handler");
+    }
+
     std::string const welcome = R"~(
                   _____   _    _            _____   ______
                  |  __ \ | |  | |    /\    |  __ \ |  ____|
@@ -71,9 +89,12 @@ int main(int argc, char** argv)
 
     while (simulator->currentTime() < simulator->endTime())
     {
+        if (gSignalStatus)
+            return gSignalStatus;
+
         simulator->dump(simulator->currentTime(), simulator->timeStep());
         simulator->advance(simulator->timeStep());
-        std::cout << simulator->currentTime() << "\n";
-        //    time += simulator.timeStep();
     }
+
+    return gSignalStatus;
 }
