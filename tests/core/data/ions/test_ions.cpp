@@ -9,7 +9,7 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 
-
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
@@ -34,10 +34,12 @@ using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleAr
 class theIons : public ::testing::Test
 {
 protected:
-    using VecField1D    = VecField<NdArrayVector<1>, HybridQuantity>;
-    using InitFunctionT = PHARE::initializer::InitFunction<1>;
+    using VecField1D       = VecField<NdArrayVector<1>, HybridQuantity>;
+    using SymTensorField1D = SymTensorField<NdArrayVector<1>, HybridQuantity>;
+    using InitFunctionT    = PHARE::initializer::InitFunction<1>;
 
-    using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, GridYee1D>;
+    using IonPopulation1D
+        = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D, GridYee1D>;
     Ions<IonPopulation1D, GridYee1D> ions;
 
     PHARE::initializer::PHAREDict createIonsDict()

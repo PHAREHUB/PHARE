@@ -239,6 +239,24 @@ struct IonsBuffers
     Field Vx;
     Field Vy;
     Field Vz;
+    Field Mxx;
+    Field Mxy;
+    Field Mxz;
+    Field Myy;
+    Field Myz;
+    Field Mzz;
+    Field protons_Mxx;
+    Field protons_Mxy;
+    Field protons_Mxz;
+    Field protons_Myy;
+    Field protons_Myz;
+    Field protons_Mzz;
+    Field alpha_Mxx;
+    Field alpha_Mxy;
+    Field alpha_Mxz;
+    Field alpha_Myy;
+    Field alpha_Myz;
+    Field alpha_Mzz;
     static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
 
     ParticleArray protonDomain;
@@ -280,6 +298,43 @@ struct IonsBuffers
         , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
         , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
         , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
+        , Mxx{"momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+              layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , Mxy{"momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+              layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , Mxz{"momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+              layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , Myy{"momentumTensor_yy", HybridQuantity::Scalar::Myy,
+              layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , Myz{"momentumTensor_yz", HybridQuantity::Scalar::Myz,
+              layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , Mzz{"momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+              layout.allocSize(HybridQuantity::Scalar::Mzz)}
+        , protons_Mxx{"protons_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+                      layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , protons_Mxy{"protons_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+                      layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , protons_Mxz{"protons_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+                      layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , protons_Myy{"protons_momentumTensor_yy", HybridQuantity::Scalar::Myy,
+                      layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , protons_Myz{"protons_momentumTensor_yz", HybridQuantity::Scalar::Myz,
+                      layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , protons_Mzz{"protons_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+                      layout.allocSize(HybridQuantity::Scalar::Mzz)}
+
+        , alpha_Mxx{"alpha_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+                    layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , alpha_Mxy{"alpha_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+                    layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , alpha_Mxz{"alpha_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+                    layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , alpha_Myy{"alpha_momentumTensor_yy", HybridQuantity::Scalar::Myy,
+                    layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , alpha_Myz{"alpha_momentumTensor_yz", HybridQuantity::Scalar::Myz,
+                    layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , alpha_Mzz{"alpha_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+                    layout.allocSize(HybridQuantity::Scalar::Mzz)}
         , protonDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , protonPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , protonLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
@@ -328,6 +383,45 @@ struct IonsBuffers
         , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
         , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
         , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
+        , Mxx{"momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+              layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , Mxy{"momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+              layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , Mxz{"momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+              layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , Myy{"momentumTensor_yy", HybridQuantity::Scalar::Myy,
+              layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , Myz{"momentumTensor_yz", HybridQuantity::Scalar::Myz,
+              layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , Mzz{"momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+              layout.allocSize(HybridQuantity::Scalar::Mzz)}
+
+        , protons_Mxx{"protons_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+                      layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , protons_Mxy{"protons_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+                      layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , protons_Mxz{"protons_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+                      layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , protons_Myy{"protons_momentumTensor_yy", HybridQuantity::Scalar::Myy,
+                      layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , protons_Myz{"protons_momentumTensor_yz", HybridQuantity::Scalar::Myz,
+                      layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , protons_Mzz{"protons_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+                      layout.allocSize(HybridQuantity::Scalar::Mzz)}
+
+        , alpha_Mxx{"alpha_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
+                    layout.allocSize(HybridQuantity::Scalar::Mxx)}
+        , alpha_Mxy{"alpha_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
+                    layout.allocSize(HybridQuantity::Scalar::Mxy)}
+        , alpha_Mxz{"alpha_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
+                    layout.allocSize(HybridQuantity::Scalar::Mxz)}
+        , alpha_Myy{"alpha_momentumTensor_yy", HybridQuantity::Scalar::Myy,
+                    layout.allocSize(HybridQuantity::Scalar::Myy)}
+        , alpha_Myz{"alpha_momentumTensor_yz", HybridQuantity::Scalar::Myz,
+                    layout.allocSize(HybridQuantity::Scalar::Myz)}
+        , alpha_Mzz{"alpha_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
+                    layout.allocSize(HybridQuantity::Scalar::Mzz)}
+
         , protonDomain{source.protonDomain}
         , protonPatchGhost{source.protonPatchGhost}
         , protonLevelGhost{source.protonLevelGhost}
@@ -372,11 +466,19 @@ struct IonsBuffers
     void setBuffers(Ions& ions)
     {
         ions.setBuffer("rho", &ionDensity);
-        ions.setBuffer("massDensity", &ionMassDensity);
+        if (!ions.sameMasses())
+            ions.setBuffer("massDensity", &ionMassDensity);
         auto& v = ions.velocity();
         v.setBuffer("bulkVel_x", &Vx);
         v.setBuffer("bulkVel_y", &Vy);
         v.setBuffer("bulkVel_z", &Vz);
+        auto& M = ions.momentumTensor();
+        M.setBuffer("momentumTensor_xx", &Mxx);
+        M.setBuffer("momentumTensor_xy", &Mxy);
+        M.setBuffer("momentumTensor_xz", &Mxz);
+        M.setBuffer("momentumTensor_yy", &Myy);
+        M.setBuffer("momentumTensor_yz", &Myz);
+        M.setBuffer("momentumTensor_zz", &Mzz);
 
         auto& populations = ions.getRunTimeResourcesUserList();
 
@@ -385,6 +487,12 @@ struct IonsBuffers
         populations[0].flux().setBuffer("protons_flux_y", &protonFy);
         populations[0].flux().setBuffer("protons_flux_z", &protonFz);
 
+        populations[0].momentumTensor().setBuffer("protons_momentumTensor_xx", &protons_Mxx);
+        populations[0].momentumTensor().setBuffer("protons_momentumTensor_xy", &protons_Mxy);
+        populations[0].momentumTensor().setBuffer("protons_momentumTensor_xz", &protons_Mxz);
+        populations[0].momentumTensor().setBuffer("protons_momentumTensor_yy", &protons_Myy);
+        populations[0].momentumTensor().setBuffer("protons_momentumTensor_yz", &protons_Myz);
+        populations[0].momentumTensor().setBuffer("protons_momentumTensor_zz", &protons_Mzz);
 
         populations[0].setBuffer("protons", &protonPack);
 
@@ -393,6 +501,12 @@ struct IonsBuffers
         populations[1].flux().setBuffer("alpha_flux_y", &alphaFy);
         populations[1].flux().setBuffer("alpha_flux_z", &alphaFz);
 
+        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_xx", &alpha_Mxx);
+        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_xy", &alpha_Mxy);
+        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_xz", &alpha_Mxz);
+        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_yy", &alpha_Myy);
+        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_yz", &alpha_Myz);
+        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_zz", &alpha_Mzz);
 
         populations[1].setBuffer("alpha", &alphaPack);
     }

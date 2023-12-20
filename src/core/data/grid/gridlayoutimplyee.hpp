@@ -91,11 +91,25 @@ namespace core
             const std::array<QtyCentering, NBR_COMPO> Vz
                 = {{data.primal, data.primal, data.primal}};
 
+            const std::array<QtyCentering, NBR_COMPO> Mxx
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Mxy
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Mxz
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Myy
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Myz
+                = {{data.primal, data.primal, data.primal}};
+            const std::array<QtyCentering, NBR_COMPO> Mzz
+                = {{data.primal, data.primal, data.primal}};
+
             const std::array<QtyCentering, NBR_COMPO> P = {{data.primal, data.primal, data.primal}};
 
             const std::array<std::array<QtyCentering, NBR_COMPO>,
                              static_cast<std::size_t>(HybridQuantity::Scalar::count)>
-                hybridQtyCentering{Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, Rho, Vx, Vy, Vz, P};
+                hybridQtyCentering{Bx, By, Bz, Ex, Ey,  Ez,  Jx,  Jy,  Jz,  Rho,
+                                   Vx, Vy, Vz, P,  Mxx, Mxy, Mxz, Myy, Myz, Mzz};
 
 
             return hybridQtyCentering;
@@ -150,6 +164,18 @@ namespace core
                         return {{hybridQtyCentering_[gridData_.iVz][gridData_.idirX]}};
                     case HybridQuantity::Scalar::P:
                         return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::Mxx:
+                        return {{hybridQtyCentering_[gridData_.iMxx][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::Mxy:
+                        return {{hybridQtyCentering_[gridData_.iMxy][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::Mxz:
+                        return {{hybridQtyCentering_[gridData_.iMxz][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::Myy:
+                        return {{hybridQtyCentering_[gridData_.iMyy][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::Myz:
+                        return {{hybridQtyCentering_[gridData_.iMyz][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::Mzz:
+                        return {{hybridQtyCentering_[gridData_.iMzz][gridData_.idirX]}};
                     default: throw std::runtime_error("Wrong hybridQuantity");
                 }
             }
@@ -200,6 +226,24 @@ namespace core
                     case HybridQuantity::Scalar::P:
                         return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::Mxx:
+                        return {{hybridQtyCentering_[gridData_.iMxx][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMxx][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::Mxy:
+                        return {{hybridQtyCentering_[gridData_.iMxy][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMxy][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::Mxz:
+                        return {{hybridQtyCentering_[gridData_.iMxz][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMxz][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::Myy:
+                        return {{hybridQtyCentering_[gridData_.iMyy][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMyy][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::Myz:
+                        return {{hybridQtyCentering_[gridData_.iMyz][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMyz][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::Mzz:
+                        return {{hybridQtyCentering_[gridData_.iMzz][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMzz][gridData_.idirY]}};
                     default: throw std::runtime_error("Wrong hybridQuantity");
                 }
             }
@@ -264,6 +308,30 @@ namespace core
                         return {{hybridQtyCentering_[gridData_.iP][gridData_.idirX],
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirY],
                                  hybridQtyCentering_[gridData_.iP][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::Mxx:
+                        return {{hybridQtyCentering_[gridData_.iMxx][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMxx][gridData_.idirY],
+                                 hybridQtyCentering_[gridData_.iMxx][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::Mxy:
+                        return {{hybridQtyCentering_[gridData_.iMxy][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMxy][gridData_.idirY],
+                                 hybridQtyCentering_[gridData_.iMxy][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::Mxz:
+                        return {{hybridQtyCentering_[gridData_.iMxz][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMxz][gridData_.idirY],
+                                 hybridQtyCentering_[gridData_.iMxz][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::Myy:
+                        return {{hybridQtyCentering_[gridData_.iMyy][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMyy][gridData_.idirY],
+                                 hybridQtyCentering_[gridData_.iMyy][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::Myz:
+                        return {{hybridQtyCentering_[gridData_.iMyz][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMyz][gridData_.idirY],
+                                 hybridQtyCentering_[gridData_.iMyz][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::Mzz:
+                        return {{hybridQtyCentering_[gridData_.iMzz][gridData_.idirX],
+                                 hybridQtyCentering_[gridData_.iMzz][gridData_.idirY],
+                                 hybridQtyCentering_[gridData_.iMzz][gridData_.idirZ]}};
                     default: throw std::runtime_error("Wrong hybridQuantity");
                 }
             }

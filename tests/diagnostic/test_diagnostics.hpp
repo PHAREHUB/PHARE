@@ -36,7 +36,7 @@ template<typename GridLayout, typename VecField, typename FieldFilter = PHARE::F
 void checkVecField(HighFiveFile const& file, GridLayout const& layout, VecField const& vecField,
                    std::string const path, FieldFilter const ff = FieldFilter{})
 {
-    for (auto& [id, type] : core::Components::componentMap)
+    for (auto& [id, type] : core::Components::componentMap())
         checkField(file, layout, vecField.getComponent(type), path + "_" + id, ff);
 }
 
@@ -45,7 +45,7 @@ template<typename Hierarchy, typename HybridModel>
 struct Hi5Diagnostic
 {
     using ModelView_t = ModelView<Hierarchy, HybridModel>;
-    using Writer_t    = Writer<ModelView_t>;
+    using Writer_t    = H5Writer<ModelView_t>;
 
     Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, std::string out,
                   unsigned flags = NEW_HI5_FILE)

@@ -6,21 +6,19 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
-#include <vector>
+#include <array>
 
 
 #include "core/def.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer.hpp"
 #include "initializer/data_provider.hpp"
 #include "particle_pack.hpp"
-#include "core/utilities/algorithm.hpp"
 
 namespace PHARE
 {
 namespace core
 {
-    template<typename ParticleArray, typename VecField, typename GridLayout>
+    template<typename ParticleArray, typename VecField, typename TensorField, typename GridLayout>
     class IonPopulation
     {
     public:
@@ -29,12 +27,14 @@ namespace core
         using particle_array_type              = ParticleArray;
         using particle_resource_type           = ParticlesPack<ParticleArray>;
         using vecfield_type                    = VecField;
+        using tensorfield_type                 = TensorField;
 
 
         IonPopulation(initializer::PHAREDict const& initializer)
             : name_{initializer["name"].template to<std::string>()}
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
+            , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
             , particleInitializerInfo_{initializer["particle_initializer"]}
         {
         }
@@ -51,13 +51,15 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return particles_ != nullptr && rho_ != nullptr && flux_.isUsable();
+            return particles_ != nullptr && rho_ != nullptr && flux_.isUsable()
+                   && momentumTensor_.isUsable();
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            return particles_ == nullptr && rho_ == nullptr && flux_.isSettable();
+            return particles_ == nullptr && rho_ == nullptr && flux_.isSettable()
+                   && momentumTensor_.isSettable();
         }
 
 
@@ -187,9 +189,10 @@ namespace core
 
 
         NO_DISCARD VecField const& flux() const { return flux_; }
-
-
         NO_DISCARD VecField& flux() { return flux_; }
+
+        NO_DISCARD TensorField const& momentumTensor() const { return momentumTensor_; }
+        NO_DISCARD TensorField& momentumTensor() { return momentumTensor_; }
 
 
 
@@ -205,7 +208,7 @@ namespace core
             typename HybridQuantity::Scalar qty;
         };
 
-        using MomentProperties = std::vector<MomentsProperty>;
+        using MomentProperties = std::array<MomentsProperty, 1>;
 
 
 
@@ -223,7 +226,7 @@ namespace core
 
 
 
-        using ParticleProperties = std::vector<ParticleProperty>;
+        using ParticleProperties = std::array<ParticleProperty, 1>;
 
         NO_DISCARD ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
 
@@ -255,7 +258,10 @@ namespace core
 
 
 
-        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(flux_); }
+        NO_DISCARD auto getCompileTimeResourcesUserList()
+        {
+            return std::forward_as_tuple(flux_, momentumTensor_);
+        }
 
 
         //-------------------------------------------------------------------------
@@ -277,6 +283,7 @@ namespace core
         std::string name_;
         double mass_;
         VecField flux_;
+        TensorField momentumTensor_;
         field_type* rho_{nullptr};
         ParticlesPack<ParticleArray>* particles_{nullptr};
         initializer::PHAREDict const& particleInitializerInfo_;

@@ -74,6 +74,19 @@ namespace core
         static constexpr std::uint32_t iVy = static_cast<std::uint32_t>(HybridQuantity::Scalar::Vy);
         static constexpr std::uint32_t iVz = static_cast<std::uint32_t>(HybridQuantity::Scalar::Vz);
 
+        static constexpr std::uint32_t iMxx
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::Mxx);
+        static constexpr std::uint32_t iMxy
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::Mxy);
+        static constexpr std::uint32_t iMxz
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::Mxz);
+        static constexpr std::uint32_t iMyy
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::Myy);
+        static constexpr std::uint32_t iMyz
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::Myz);
+        static constexpr std::uint32_t iMzz
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::Mzz);
+
         static constexpr std::uint32_t iP = static_cast<std::uint32_t>(HybridQuantity::Scalar::P);
     };
 } // namespace core

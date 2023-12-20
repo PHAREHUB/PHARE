@@ -16,10 +16,13 @@ void fluid_test(Simulator&& sim, std::string out_dir)
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, out_dir, NEW_HI5_FILE};
         hi5.dMan.addDiagDict(hi5.fluid("/ions/density"))
             .addDiagDict(hi5.fluid("/ions/bulkVelocity"))
+            .addDiagDict(hi5.fluid("/ions/momentum_tensor"))
             .addDiagDict(hi5.fluid("/ions/pop/alpha/density"))
             .addDiagDict(hi5.fluid("/ions/pop/alpha/flux"))
+            .addDiagDict(hi5.fluid("/ions/pop/alpha/momentum_tensor"))
             .addDiagDict(hi5.fluid("/ions/pop/protons/density"))
-            .addDiagDict(hi5.fluid("/ions/pop/protons/flux"));
+            .addDiagDict(hi5.fluid("/ions/pop/protons/flux"))
+            .addDiagDict(hi5.fluid("/ions/pop/protons/momentum_tensor"));
         sim.dump(hi5.dMan);
     }
 

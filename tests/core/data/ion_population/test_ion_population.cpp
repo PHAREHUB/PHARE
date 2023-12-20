@@ -8,7 +8,6 @@
 #include "initializer/data_provider.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 using namespace PHARE::core;
@@ -25,11 +24,18 @@ struct DummyVecField
 {
     static constexpr std::size_t dimension = 1;
     using field_type                       = DummyField;
-    DummyVecField(std::string name, [[maybe_unused]] HybridQuantity::Vector v) { (void)name; }
+    DummyVecField(std::string name, HybridQuantity::Vector /*v*/) { (void)name; }
     bool isUsable() const { return false; }
     bool isSettable() const { return true; }
 };
 
+struct DummyTensorField
+{
+    static constexpr std::size_t dimension = 1;
+    DummyTensorField(std::string name, HybridQuantity::Tensor /*v*/) { (void)name; }
+    bool isUsable() const { return false; }
+    bool isSettable() const { return true; }
+};
 
 struct DummyParticleInitializer
 {
@@ -51,7 +57,8 @@ PHAREDict getDict()
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField, DummyLayout> protons{getDict()};
+    IonPopulation<ParticleArray<1>, DummyVecField, DummyTensorField, DummyLayout> protons{
+        getDict()};
     virtual ~AnIonPopulation();
 };
 

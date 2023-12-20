@@ -6,12 +6,12 @@
 #include <array>
 #include <cstddef>
 
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/point/point.hpp"
-
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/range/range.hpp"
 
 
 
@@ -281,37 +281,20 @@ class ParticleToMesh
 template<>
 class ParticleToMesh<1>
 {
-public: /** Performs the 1D interpolation
-         * \param[in] density is the field that will be interpolated from the particle Particle
-         * \param[in] xFlux is the field that will be interpolated from the particle Particle
-         * \param[in] yFlux is the field that will be interpolated from the particle Particle
-         * \param[in] zFlux is the field that will be interpolated from the particle Particle
-         * \param[in] fieldCentering is the centering (dual or primal) of the field in each
-         * direction \param[in] particle is the single particle used for the interpolation of
-         * density and flux \param[in] startIndex is the first index for which a particle will
-         * contribute \param[in] weights is the arrays of weights for the associated index
-         */
-    template<typename Field, typename VecField, typename Particle, typename Indexes,
-             typename Weights>
-    inline void operator()(Field& density, VecField& flux, Particle const& particle,
+public:
+    template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
+    inline void operator()(Field& field, Particle const& particle, Func&& func,
                            Indexes const& startIndex, Weights const& weights, double coef = 1.)
     {
-        auto const& [xFlux, yFlux, zFlux] = flux();
-        auto const& [xStartIndex]         = startIndex;
-        auto const& [xWeights]            = weights;
-        auto const& order_size            = xWeights.size();
+        auto const& [xStartIndex] = startIndex;
+        auto const& [xWeights]    = weights;
+        auto const& order_size    = xWeights.size();
 
-        auto const partRho   = particle.weight * coef;
-        auto const xPartFlux = particle.v[0] * particle.weight * coef;
-        auto const yPartFlux = particle.v[1] * particle.weight * coef;
-        auto const zPartFlux = particle.v[2] * particle.weight * coef;
+        auto const deposit = func(particle) * particle.weight * coef;
 
         for (auto ik = 0u; ik < order_size; ++ik)
         {
-            density(xStartIndex + ik) += partRho * xWeights[ik];
-            xFlux(xStartIndex + ik) += xPartFlux * xWeights[ik];
-            yFlux(xStartIndex + ik) += yPartFlux * xWeights[ik];
-            zFlux(xStartIndex + ik) += zPartFlux * xWeights[ik];
+            field(xStartIndex + ik) += deposit * xWeights[ik];
         }
     }
 };
@@ -323,30 +306,16 @@ public: /** Performs the 1D interpolation
 template<>
 class ParticleToMesh<2>
 {
-public: /** Performs the 2D interpolation
-         * \param[in] density is the field that will be interpolated from the particle Particle
-         * \param[in] xFlux is the field that will be interpolated from the particle Particle
-         * \param[in] yFlux is the field that will be interpolated from the particle Particle
-         * \param[in] zFlux is the field that will be interpolated from the particle Particle
-         * \param[in] fieldCentering is the centering (dual or primal) of the field in each
-         * direction \param[in] particle is the single particle used for the interpolation of
-         * density and flux \param[in] startIndex is the first index for which a particle will
-         * contribute \param[in] weights is the arrays of weights for the associated index
-         */
-    template<typename Field, typename VecField, typename Particle, typename Indexes,
-             typename Weights>
-    inline void operator()(Field& density, VecField& flux, Particle const& particle,
+public:
+    template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
+    inline void operator()(Field& field, Particle const& particle, Func&& func,
                            Indexes const& startIndex, Weights const& weights, double coef = 1.)
     {
-        auto const& [xFlux, yFlux, zFlux]      = flux();
         auto const& [xStartIndex, yStartIndex] = startIndex;
         auto const& [xWeights, yWeights]       = weights;
         auto const& order_size                 = xWeights.size();
 
-        auto const partRho   = particle.weight * coef;
-        auto const xPartFlux = particle.v[0] * particle.weight * coef;
-        auto const yPartFlux = particle.v[1] * particle.weight * coef;
-        auto const zPartFlux = particle.v[2] * particle.weight * coef;
+        auto const deposit = func(particle) * particle.weight * coef;
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
@@ -355,10 +324,7 @@ public: /** Performs the 2D interpolation
                 auto x = xStartIndex + ix;
                 auto y = yStartIndex + iy;
 
-                density(x, y) += partRho * xWeights[ix] * yWeights[iy];
-                xFlux(x, y) += xPartFlux * xWeights[ix] * yWeights[iy];
-                yFlux(x, y) += yPartFlux * xWeights[ix] * yWeights[iy];
-                zFlux(x, y) += zPartFlux * xWeights[ix] * yWeights[iy];
+                field(x, y) += deposit * xWeights[ix] * yWeights[iy];
             }
         }
     }
@@ -371,30 +337,16 @@ public: /** Performs the 2D interpolation
 template<>
 class ParticleToMesh<3>
 {
-public: /** Performs the 3D interpolation
-         * \param[in] density is the field that will be interpolated from the particle Particle
-         * \param[in] xFlux is the field that will be interpolated from the particle Particle
-         * \param[in] yFlux is the field that will be interpolated from the particle Particle
-         * \param[in] zFlux is the field that will be interpolated from the particle Particle
-         * \param[in] fieldCentering is the centering (dual or primal) of the field in each
-         * direction \param[in] particle is the single particle used for the interpolation of
-         * density and flux \param[in] startIndex is the first index for which a particle will
-         * contribute \param[in] weights is the arrays of weights for the associated index
-         */
-    template<typename Field, typename VecField, typename Particle, typename Indexes,
-             typename Weights>
-    inline void operator()(Field& density, VecField& flux, Particle const& particle,
+public:
+    template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
+    inline void operator()(Field& field, Particle const& particle, Func&& func,
                            Indexes const& startIndex, Weights const& weights, double coef = 1.)
     {
-        auto const& [xFlux, yFlux, zFlux]                   = flux();
         auto const& [xStartIndex, yStartIndex, zStartIndex] = startIndex;
         auto const& [xWeights, yWeights, zWeights]          = weights;
         auto const& order_size                              = xWeights.size();
 
-        auto const partRho   = particle.weight * coef;
-        auto const xPartFlux = particle.v[0] * particle.weight * coef;
-        auto const yPartFlux = particle.v[1] * particle.weight * coef;
-        auto const zPartFlux = particle.v[2] * particle.weight * coef;
+        auto const deposit = func(particle) * particle.weight * coef;
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
@@ -406,10 +358,7 @@ public: /** Performs the 3D interpolation
                     auto y = yStartIndex + iy;
                     auto z = zStartIndex + iz;
 
-                    density(x, y, z) += partRho * xWeights[ix] * yWeights[iy] * zWeights[iz];
-                    xFlux(x, y, z) += xPartFlux * xWeights[ix] * yWeights[iy] * zWeights[iz];
-                    yFlux(x, y, z) += yPartFlux * xWeights[ix] * yWeights[iy] * zWeights[iz];
-                    zFlux(x, y, z) += zPartFlux * xWeights[ix] * yWeights[iy] * zWeights[iz];
+                    field(x, y, z) += deposit * xWeights[ix] * yWeights[iy] * zWeights[iz];
                 }
             }
         }
@@ -425,6 +374,7 @@ public: /** Performs the 3D interpolation
 template<std::size_t dim, std::size_t interpOrder>
 class Interpolator : private Weighter<interpOrder>
 {
+protected:
     // this calculates the startIndex and the nbrPointsSupport() weights for
     // dual field interpolation and puts this at the corresponding location
     // in 'startIndex' and 'weights'. For dual fields, the normalizedPosition
@@ -522,27 +472,32 @@ public:
     inline void operator()(ParticleRange& particleRange, Field& density, VecField& flux,
                            GridLayout const& layout, double coef = 1.)
     {
-        auto begin        = particleRange.begin();
-        auto end          = particleRange.end();
-        auto& startIndex_ = primal_startIndex_;
-        auto& weights_    = primal_weights_;
+        auto begin                        = particleRange.begin();
+        auto end                          = particleRange.end();
+        auto& startIndex_                 = primal_startIndex_;
+        auto& weights_                    = primal_weights_;
+        auto const& [xFlux, yFlux, zFlux] = flux();
 
-        // for each particle, first calculate the startIndex and weights
-        // for dual and primal quantities.
-        // then, knowing the centering (primal or dual) of each electromagnetic
-        // component, we use Interpol to actually perform the interpolation.
-        // the trick here is that the StartIndex and weights have only been calculated
-        // twice, and not for each E,B component.
 
         PHARE_LOG_START("ParticleToMesh::operator()");
 
         for (auto currPart = begin; currPart != end; ++currPart)
         {
-            // TODO #3375
             indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, currPart->iCell,
                                                                  currPart->delta);
 
-            particleToMesh_(density, flux, *currPart, startIndex_, weights_, coef);
+            particleToMesh_(
+                density, *currPart, [](auto const& part) { return 1.; }, startIndex_, weights_,
+                coef);
+            particleToMesh_(
+                xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
+                coef);
+            particleToMesh_(
+                yFlux, *currPart, [](auto const& part) { return part.v[1]; }, startIndex_, weights_,
+                coef);
+            particleToMesh_(
+                zFlux, *currPart, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
+                coef);
         }
         PHARE_LOG_STOP("ParticleToMesh::operator()");
     }
@@ -552,6 +507,8 @@ public:
     {
         (*this)(range, density, flux, layout, coef);
     }
+
+
 
 
     /**
@@ -591,7 +548,7 @@ public:
     }
 
 
-private:
+protected:
     static_assert(dimension <= 3 && dimension > 0 && interpOrder >= 1 && interpOrder <= 3, "error");
 
     using Starts  = std::array<std::uint32_t, dimension>;
@@ -608,6 +565,49 @@ private:
     Weights primal_weights_;
 };
 
+template<std::size_t dim, std::size_t interpOrder>
+class MomentumTensorInterpolator : public Interpolator<dim, interpOrder>
+{
+public:
+    template<typename ParticleRange, typename TensorField, typename GridLayout>
+    inline void operator()(ParticleRange&& particleRange, TensorField& momentumTensor,
+                           GridLayout const& layout, double mass = 1.)
+    {
+        auto begin                           = particleRange.begin();
+        auto end                             = particleRange.end();
+        auto& startIndex_                    = this->primal_startIndex_;
+        auto& weights_                       = this->primal_weights_;
+        auto const& [xx, xy, xz, yy, yz, zz] = momentumTensor();
+
+        PHARE_LOG_START("ParticleToMesh::operator()");
+
+        for (auto currPart = begin; currPart != end; ++currPart)
+        {
+            this->template indexAndWeights_<QtyCentering, QtyCentering::primal>(
+                layout, currPart->iCell, currPart->delta);
+
+            this->particleToMesh_(
+                xx, *currPart, [](auto const& part) { return part.v[0] * part.v[0]; }, startIndex_,
+                weights_, mass);
+            this->particleToMesh_(
+                xy, *currPart, [](auto const& part) { return part.v[0] * part.v[1]; }, startIndex_,
+                weights_, mass);
+            this->particleToMesh_(
+                xz, *currPart, [](auto const& part) { return part.v[0] * part.v[2]; }, startIndex_,
+                weights_, mass);
+            this->particleToMesh_(
+                yy, *currPart, [](auto const& part) { return part.v[1] * part.v[1]; }, startIndex_,
+                weights_, mass);
+            this->particleToMesh_(
+                yz, *currPart, [](auto const& part) { return part.v[1] * part.v[2]; }, startIndex_,
+                weights_, mass);
+            this->particleToMesh_(
+                zz, *currPart, [](auto const& part) { return part.v[2] * part.v[2]; }, startIndex_,
+                weights_, mass);
+        }
+        PHARE_LOG_STOP("ParticleToMesh::operator()");
+    }
+};
 
 } // namespace PHARE::core
 

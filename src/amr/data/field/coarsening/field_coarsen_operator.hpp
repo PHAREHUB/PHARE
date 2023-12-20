@@ -57,7 +57,7 @@ namespace amr
          *  this return 0, meaning that this operator
          * have the most priority
          */
-        NO_DISCARD int getOperatorPriority() const override { return 0; }
+        int getOperatorPriority() const override { return 0; }
 
 
 
@@ -71,8 +71,7 @@ namespace amr
          * In our case, we allow a RF up to 10, so having 5 ghost width is sufficient
          *
          */
-        NO_DISCARD SAMRAI::hier::IntVector
-        getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
+        SAMRAI::hier::IntVector getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
         {
             return SAMRAI::hier::IntVector{dim, 2};
         }

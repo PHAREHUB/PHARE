@@ -815,7 +815,7 @@ class Simulation(object):
 
         self.ndim = compute_dimension(self.cells)
 
-        self.diagnostics = []
+        self.diagnostics = {}
         self.model = None
         self.electrons = None
 
@@ -874,7 +874,7 @@ class Simulation(object):
     # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
-        if diag.name in [diagnostic.name for diagnostic in self.diagnostics]:
+        if diag.name in self.diagnostics:
             raise ValueError(
                 "Error: diagnostics {} already registered".format(diag.name)
             )
@@ -885,7 +885,7 @@ class Simulation(object):
         ):
             raise RuntimeError("Error: invalid diagnostics spatial extent")
 
-        self.diagnostics.append(diag)
+        self.diagnostics[diag.name] = diag
 
     # ------------------------------------------------------------------------------
 
@@ -898,7 +898,13 @@ class Simulation(object):
     # ------------------------------------------------------------------------------
 
     def count_diagnostics(self, type_name):
-        return len([diag for diag in self.diagnostics if diag.type == type_name])
+        return len(
+            [
+                diag
+                for diagname, diag in self.diagnostics.items()
+                if diag.type == type_name
+            ]
+        )
 
     # ------------------------------------------------------------------------------
 

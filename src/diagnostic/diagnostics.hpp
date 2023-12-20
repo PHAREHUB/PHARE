@@ -55,7 +55,7 @@ struct DiagnosticsManagerResolver
     {
 #if PHARE_HAS_HIGHFIVE
         using ModelView_t = ModelView<Hierarchy, Model>;
-        using Writer_t    = h5::Writer<ModelView_t>;
+        using Writer_t    = h5::H5Writer<ModelView_t>;
         return DiagnosticsManager<Writer_t>::make_unique(hier, model, dict);
 #else
         return std::make_unique<NullOpDiagnosticsManager>();
