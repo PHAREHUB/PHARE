@@ -5,7 +5,7 @@
 
 
 #include "test_resources_manager_basic_hierarchy.hpp"
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
@@ -29,8 +29,9 @@ template<typename ResourcesUsers>
 class aResourceUserCollection : public ::testing::Test
 {
 public:
+    using Grid_t = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager;
+    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid_t> resourcesManager;
 
     ResourcesUsers users;
 

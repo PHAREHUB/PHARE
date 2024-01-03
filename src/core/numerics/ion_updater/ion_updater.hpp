@@ -59,7 +59,7 @@ public:
                            UpdaterMode = UpdaterMode::all);
 
 
-    void updateIons(Ions& ions, GridLayout const& layout);
+    void updateIons(Ions& ions);
 
 
     void reset()
@@ -105,7 +105,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 
 
 template<typename Ions, typename Electromag, typename GridLayout>
-void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions, GridLayout const& layout)
+void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 {
     ions.computeDensity();
     ions.computeBulkVelocity();

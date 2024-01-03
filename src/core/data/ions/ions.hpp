@@ -38,10 +38,14 @@ namespace core
         static constexpr auto dimension = GridLayout::dimension;
 
 
+        Ions(Ions const&) = default;
+        Ions(Ions&&)      = default;
 
 
         explicit Ions(PHARE::initializer::PHAREDict const& dict)
-            : bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
+            : rho_{densityName(), HybridQuantity::Scalar::rho}
+            , massDensity_{massDensityName(), HybridQuantity::Scalar::rho}
+            , bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
             , populations_{generate(
                   [&dict](auto ipop) { //
                       return IonPopulation{dict["pop" + std::to_string(ipop)]};
@@ -58,26 +62,22 @@ namespace core
 
         NO_DISCARD field_type const& density() const
         {
-            if (isUsable())
-                return *rho_;
-            else
+            if (!isUsable())
                 throw std::runtime_error("Error - cannot access density data");
+            return rho_;
         }
-
-
 
         NO_DISCARD field_type& density()
         {
-            if (isUsable())
-                return *rho_;
-            else
+            if (!isUsable())
                 throw std::runtime_error("Error - cannot access density data");
+            return rho_;
         }
 
         NO_DISCARD field_type const& massDensity() const
         {
             if (isUsable())
-                return sameMasses_ ? *rho_ : *massDensity_;
+                return sameMasses_ ? rho_ : massDensity_;
             throw std::runtime_error("Error - cannot access density data");
         }
 
@@ -86,7 +86,7 @@ namespace core
         NO_DISCARD field_type& massDensity()
         {
             if (isUsable())
-                return sameMasses_ ? *rho_ : *massDensity_;
+                return sameMasses_ ? rho_ : massDensity_;
             else
                 throw std::runtime_error("Error - cannot access density data");
         }
@@ -96,8 +96,8 @@ namespace core
 
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
-        NO_DISCARD std::string densityName() const { return "rho"; }
-        NO_DISCARD std::string massDensityName() const { return "massDensity"; }
+        NO_DISCARD std::string static densityName() { return "rho"; }
+        NO_DISCARD std::string static massDensityName() { return "massDensity"; }
 
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
 
@@ -105,7 +105,7 @@ namespace core
 
         void computeDensity()
         {
-            rho_->zero();
+            rho_.zero();
 
             for (auto const& pop : populations_)
             {
@@ -114,13 +114,13 @@ namespace core
                 // have to account for the field dimensionality.
 
                 auto& popDensity = pop.density();
-                std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
-                               std::begin(*rho_), std::plus<Float>{});
+                std::transform(std::begin(rho_), std::end(rho_), std::begin(popDensity),
+                               std::begin(rho_), std::plus<Float>{});
             }
         }
         void computeMassDensity()
         {
-            massDensity_->zero();
+            massDensity_.zero();
 
             for (auto const& pop : populations_)
             {
@@ -130,8 +130,8 @@ namespace core
 
                 auto& popDensity = pop.density();
                 std::transform(
-                    std::begin(*massDensity_), std::end(*massDensity_), std::begin(popDensity),
-                    std::begin(*massDensity_),
+                    std::begin(massDensity_), std::end(massDensity_), std::begin(popDensity),
+                    std::begin(massDensity_),
                     [&pop](auto const& n, auto const& pop_n) { return n + pop_n * pop.mass(); });
             }
         }
@@ -173,11 +173,11 @@ namespace core
             }
 
 
-            std::transform(std::begin(vx), std::end(vx), std::begin(*density), std::begin(vx),
+            std::transform(std::begin(vx), std::end(vx), std::begin(density), std::begin(vx),
                            std::divides<Float>{});
-            std::transform(std::begin(vy), std::end(vy), std::begin(*density), std::begin(vy),
+            std::transform(std::begin(vy), std::end(vy), std::begin(density), std::begin(vy),
                            std::divides<Float>{});
-            std::transform(std::begin(vz), std::end(vz), std::begin(*density), std::begin(vz),
+            std::transform(std::begin(vz), std::end(vz), std::begin(density), std::begin(vz),
                            std::divides<Float>{});
         }
 
@@ -193,8 +193,8 @@ namespace core
                 for (auto p_mij = p_mom.begin(), mij = mom.begin(); p_mij != p_mom.end();
                      ++p_mij, ++mij)
                 {
-                    std::transform(std::begin(**mij), std::end(**mij), std::begin(**p_mij),
-                                   std::begin(**mij), std::plus<typename field_type::type>{});
+                    std::transform(std::begin(*mij), std::end(*mij), std::begin(*p_mij),
+                                   std::begin(*mij), std::plus<typename field_type::type>{});
                 }
             }
         }
@@ -211,10 +211,10 @@ namespace core
         NO_DISCARD bool isUsable() const
         {
             bool usable
-                = rho_ != nullptr and bulkVelocity_.isUsable() and momentumTensor_.isUsable();
+                = rho_.isUsable() and bulkVelocity_.isUsable() and momentumTensor_.isUsable();
 
             // if all populations have the same mass, we don't need the massDensity_
-            usable &= (sameMasses_) ? true : massDensity_ != nullptr;
+            usable &= (sameMasses_) ? true : massDensity_.isUsable();
 
             for (auto const& pop : populations_)
             {
@@ -228,10 +228,10 @@ namespace core
         NO_DISCARD bool isSettable() const
         {
             bool settable
-                = rho_ == nullptr and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
+                = rho_.isSettable() and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
 
             // if all populations have the same mass, we don't need the massDensity_
-            settable &= (sameMasses_) ? true : massDensity_ == nullptr;
+            settable &= (sameMasses_) ? true : massDensity_.isSettable();
 
             for (auto const& pop : populations_)
             {
@@ -255,34 +255,6 @@ namespace core
 
         using MomentProperties = std::vector<MomentsProperty>;
 
-        NO_DISCARD MomentProperties getFieldNamesAndQuantities() const
-        {
-            if (sameMasses_)
-                return {{{densityName(), HybridQuantity::Scalar::rho}}};
-            else
-                return {{{densityName(), HybridQuantity::Scalar::rho},
-                         {massDensityName(), HybridQuantity::Scalar::rho}}};
-        }
-
-
-
-        void setBuffer(std::string const& bufferName, field_type* field)
-        {
-            if (bufferName == densityName())
-            {
-                rho_ = field;
-            }
-            else if (bufferName == massDensityName())
-            {
-                assert(sameMasses_ == false);
-                massDensity_ = field;
-            }
-            else
-            {
-                throw std::runtime_error("Error - invalid density buffer name : " + bufferName);
-            }
-        }
-
 
 
         NO_DISCARD std::vector<IonPopulation>& getRunTimeResourcesUserList()
@@ -292,7 +264,7 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesUserList()
         {
-            return std::forward_as_tuple(bulkVelocity_, momentumTensor_);
+            return std::forward_as_tuple(bulkVelocity_, momentumTensor_, rho_, massDensity_);
         }
 
 
@@ -327,8 +299,8 @@ namespace core
 
 
 
-        field_type* rho_{nullptr};
-        field_type* massDensity_{nullptr};
+        field_type rho_;         //{nullptr};
+        field_type massDensity_; //{nullptr};
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
 

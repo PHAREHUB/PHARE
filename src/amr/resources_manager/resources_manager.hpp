@@ -84,15 +84,14 @@ namespace amr
      *
      *
      */
-    template<typename GridLayoutT>
+    template<typename GridLayoutT, typename Grid_t>
     class ResourcesManager
     {
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
-        template<typename ResourcesUser>
-        using UserField_t = UserFieldType<ResourcesUser, GridLayoutT>;
+        using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
 
         template<typename ResourcesUser>
         using UserParticle_t = UserParticleType<ResourcesUser, interp_order>;
@@ -128,9 +127,14 @@ namespace amr
         template<typename ResourcesUser>
         void registerResources(ResourcesUser& obj)
         {
+            if constexpr (is_field<ResourcesUser>::value)
+            {
+                registerFieldResources_<UserField_t>(obj);
+            }
+
             if constexpr (has_field<ResourcesUser>::value)
             {
-                registerFieldResources_<UserField_t<ResourcesUser>>(obj);
+                registerHasFieldResources_<UserField_t>(obj);
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
@@ -174,6 +178,11 @@ namespace amr
             if constexpr (has_field<ResourcesUser>::value)
             {
                 allocate_(obj, obj.getFieldNamesAndQuantities(), patch, allocateTime);
+            }
+
+            if constexpr (is_field<ResourcesUser>::value)
+            {
+                allocate_(obj, std::array{obj.getFieldNameAndQuantity()}, patch, allocateTime);
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
@@ -306,7 +315,7 @@ namespace amr
         template<typename ResourcesUser>
         NO_DISCARD auto restart_patch_data_ids(ResourcesUser const& user) const
         {
-            // // true for now with https://github.com/PHAREHUB/PHARE/issues/664
+            // true for now with https://github.com/PHAREHUB/PHARE/issues/664
             constexpr bool ALL_IDS = true;
 
             std::vector<int> ids;
@@ -327,20 +336,24 @@ namespace amr
         template<typename ResourcesUser>
         void getIDs_(ResourcesUser& obj, std::vector<int>& IDs) const
         {
-            if constexpr (has_field<ResourcesUser>::value)
-            {
-                for (auto const& properties : obj.getFieldNamesAndQuantities())
+            auto do_fields = [&](auto const& nameAndQtys) {
+                for (auto const& properties : nameAndQtys)
                 {
                     auto foundIt = nameToResourceInfo_.find(properties.name);
-                    if (foundIt != nameToResourceInfo_.end())
-                    {
-                        IDs.push_back(foundIt->second.id);
-                    }
-                    else
-                    {
+                    if (foundIt == nameToResourceInfo_.end())
                         throw std::runtime_error("Cannot find " + properties.name);
-                    }
+                    IDs.push_back(foundIt->second.id);
                 }
+            };
+
+            if constexpr (has_field<ResourcesUser>::value)
+            {
+                do_fields(obj.getFieldNamesAndQuantities());
+            }
+
+            if constexpr (is_field<ResourcesUser>::value)
+            {
+                do_fields(std::array{obj.getFieldNameAndQuantity()});
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
@@ -348,14 +361,9 @@ namespace amr
                 for (auto const& properties : obj.getParticleArrayNames())
                 {
                     auto foundIt = nameToResourceInfo_.find(properties.name);
-                    if (foundIt != nameToResourceInfo_.end())
-                    {
-                        IDs.push_back(foundIt->second.id);
-                    }
-                    else
-                    {
+                    if (foundIt == nameToResourceInfo_.end())
                         throw std::runtime_error("Cannot find " + properties.name);
-                    }
+                    IDs.push_back(foundIt->second.id);
                 }
             }
 
@@ -429,10 +437,15 @@ namespace amr
         void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
                            SAMRAI::hier::Patch const& patch) const
         {
+            if constexpr (is_field<ResourcesUser>::value)
+            {
+                setFieldResourcesInternal_(obj, UserField_t{}, patch, nullOrResourcePtr);
+            }
+
             if constexpr (has_field<ResourcesUser>::value)
             {
-                setResourcesInternal_(obj, UserField_t<ResourcesUser>{},
-                                      obj.getFieldNamesAndQuantities(), patch, nullOrResourcePtr);
+                setResourcesInternal_(obj, UserField_t{}, obj.getFieldNamesAndQuantities(), patch,
+                                      nullOrResourcePtr);
             }
 
             if constexpr (has_particles<ResourcesUser>::value)
@@ -467,9 +480,26 @@ namespace amr
         }
 
 
-
         template<typename ResourcesType, typename ResourcesUser>
         void registerFieldResources_(ResourcesUser const& user)
+        {
+            auto const& properties    = user.getFieldNameAndQuantity();
+            auto const& resourcesName = properties.name;
+            if (nameToResourceInfo_.count(resourcesName) == 0)
+            {
+                ResourcesInfo info;
+                info.variable = std::make_shared<typename ResourcesType::variable_type>(
+                    resourcesName, properties.qty);
+
+                info.id = variableDatabase_->registerVariableAndContext(
+                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+
+                nameToResourceInfo_.emplace(resourcesName, info);
+            }
+        }
+
+        template<typename ResourcesType, typename ResourcesUser>
+        void registerHasFieldResources_(ResourcesUser const& user)
         {
             for (auto const& properties : user.getFieldNamesAndQuantities())
             {
@@ -539,14 +569,30 @@ namespace amr
             }
         }
 
+        template<typename ResourcesUser, typename ResourcesType, typename RequestedPtr>
+        void setFieldResourcesInternal_(ResourcesUser& obj, ResourcesType resourceType,
+                                        // ResourcesProperties const& resourcesProperties,
+                                        SAMRAI::hier::Patch const& patch, RequestedPtr) const
+        {
+            // PHARE_LOG_LINE_STR("setFieldResourcesInternal_ " << obj.name());
+            std::string const& resourcesName = obj.name();
+            auto const& resourceInfoIt       = nameToResourceInfo_.find(resourcesName);
+
+            if (resourceInfoIt == nameToResourceInfo_.end())
+                throw std::runtime_error("Resources not found !");
+
+            auto data = getResourcesPointer_<ResourcesType, RequestedPtr>(
+                resourceType, resourceInfoIt->second, patch);
+            obj.setBuffer(data);
+        }
+
 
 
 
         //! \brief Allocate the data on the given level
         template<typename ResourcesUser, typename ResourcesProperties>
-        void allocate_([[maybe_unused]] ResourcesUser const& obj,
-                       ResourcesProperties const& resourcesProperties, SAMRAI::hier::Patch& patch,
-                       double const allocateTime) const
+        void allocate_(ResourcesUser const& /*obj*/, ResourcesProperties const& resourcesProperties,
+                       SAMRAI::hier::Patch& patch, double const allocateTime) const
         {
             for (auto const& properties : resourcesProperties)
             {

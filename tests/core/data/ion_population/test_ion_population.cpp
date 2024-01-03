@@ -17,12 +17,20 @@ using namespace PHARE::initializer;
 
 struct DummyField
 {
+    template<typename A, typename B>
+    DummyField(A const&, B const&)
+    {
+    }
+
+    auto isUsable() const { return false; }
+    auto isSettable() const { return true; }
 };
 
 
 struct DummyVecField
 {
     static constexpr std::size_t dimension = 1;
+    using grid_type                        = DummyField;
     using field_type                       = DummyField;
     DummyVecField(std::string name, HybridQuantity::Vector /*v*/) { (void)name; }
     bool isUsable() const { return false; }
@@ -118,14 +126,6 @@ TEST_F(AnIonPopulation, isResourceUserAndHasGetParticleArrayNamesOK)
     EXPECT_EQ(protons.name(), bufferNames[0].name);
 }
 
-
-
-TEST_F(AnIonPopulation, isResourceUserAndHasFieldNamesAndQuantitiesOK)
-{
-    auto fieldProperties = protons.getFieldNamesAndQuantities();
-    EXPECT_EQ(protons.name() + std::string{"_rho"}, fieldProperties[0].name);
-    EXPECT_EQ(HybridQuantity::Scalar::rho, fieldProperties[0].qty);
-}
 
 
 

@@ -1,6 +1,7 @@
 #include "initializer/data_provider.hpp"
 
 #include "core/data/electrons/electrons.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/vecfield/vecfield.hpp"
@@ -14,7 +15,11 @@
 #include "gtest/gtest.h"
 
 #include "tests/initializer/init_functions.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
 
+
+#include <string_view>
 
 using namespace PHARE::core;
 
@@ -121,14 +126,17 @@ public:
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
 struct ElectronsTest : public ::testing::Test
 {
-    static constexpr auto dim    = typename TypeInfo::first_type{}();
-    static constexpr auto interp = typename TypeInfo::second_type{}();
+    static constexpr auto dim         = typename TypeInfo::first_type{}();
+    static constexpr auto interp      = typename TypeInfo::second_type{}();
+    static constexpr auto densityName = std::string_view{"rho"};
+
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
-    using VecFieldND       = VecField<NdArrayVector<dim>, HybridQuantity>;
-    using SymTensorFieldND = SymTensorField<NdArrayVector<dim>, HybridQuantity>;
-    using FieldND          = typename VecFieldND::field_type;
+    using GridND           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using FieldND          = Field<dim, HybridQuantity::Scalar>;
+    using VecFieldND       = VecField<FieldND, HybridQuantity>;
+    using SymTensorFieldND = SymTensorField<FieldND, HybridQuantity>;
 
     using IonPopulationND
         = IonPopulation<ParticleArray<dim>, VecFieldND, SymTensorFieldND, GridYee>;
@@ -138,137 +146,77 @@ struct ElectronsTest : public ::testing::Test
 
 
     GridYee layout = NDlayout<dim, interp>::create();
-    IonsT ions;
+
     Electromag<VecFieldND> electromag;
-    VecFieldND J;
-    FieldND Nibuffer;
-    FieldND NiProtons;
-    FieldND Vix;
-    FieldND Viy;
-    FieldND Viz;
-    FieldND Fxi;
-    FieldND Fyi;
-    FieldND Fzi;
-    FieldND Mxx;
-    FieldND Mxy;
-    FieldND Mxz;
-    FieldND Myy;
-    FieldND Myz;
-    FieldND Mzz;
-    FieldND protons_Mxx;
-    FieldND protons_Mxy;
-    FieldND protons_Mxz;
-    FieldND protons_Myy;
-    FieldND protons_Myz;
-    FieldND protons_Mzz;
-    PartPackND pack;
-    FieldND Vex;
-    FieldND Vey;
-    FieldND Vez;
-    FieldND Jx;
-    FieldND Jy;
-    FieldND Jz;
+
+    UsableVecField<dim> J, F, Ve, Vi;
+    UsableTensorField<dim> M, protons_M;
+
+    GridND Nibuffer, NiProtons, Pe;
+
+    IonsT ions;
     Electrons<IonsT> electrons;
-    FieldND Pe;
+    PartPackND pack{};
+
+    template<typename... Args>
+    auto static _ions(Args&... args)
+    {
+        auto const& [Fi, Nibuffer, NiProtons, Vi, M, protons_M, pack]
+            = std::forward_as_tuple(args...);
+        IonsT ions{createDict<dim>()["ions"]};
+        {
+            auto const& [V, m, d, md] = ions.getCompileTimeResourcesUserList();
+            d.setBuffer(&Nibuffer);
+            Vi.set_on(V);
+            M.set_on(m);
+        }
+        auto& pops = ions.getRunTimeResourcesUserList();
+        assert(pops.size() == 1);
+
+        auto const& [F, m, d] = pops[0].getCompileTimeResourcesUserList();
+        d.setBuffer(&NiProtons);
+        Fi.set_on(F);
+        protons_M.set_on(m);
+
+        pops[0].setBuffer("protons", &pack);
+        return ions;
+    }
+
 
     ElectronsTest()
-        : ions{createDict<dim>()["ions"]}
-        , electromag{createDict<dim>()["electromag"]}
-        , J{"J", HybridQuantity::Vector::J}
-        , Nibuffer{ions.densityName(), HybridQuantity::Scalar::rho,
+        : electromag{createDict<dim>()["electromag"]}
+        , J{"J", layout, HybridQuantity::Vector::J}
+        , F{"protons_flux", layout, HybridQuantity::Vector::V}
+        , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
+        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
+        , Nibuffer{std::string{densityName}, HybridQuantity::Scalar::rho,
                    layout.allocSize(HybridQuantity::Scalar::rho)}
         , NiProtons{"protons_rho", HybridQuantity::Scalar::rho,
                     layout.allocSize(HybridQuantity::Scalar::rho)}
-        , Vix{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Viy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Viz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Fxi{"protons_flux_x", HybridQuantity::Scalar::Vx,
-              layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Fyi{"protons_flux_y", HybridQuantity::Scalar::Vy,
-              layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Fzi{"protons_flux_z", HybridQuantity::Scalar::Vz,
-              layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Mxx{"momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-              layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , Mxy{"momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-              layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , Mxz{"momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-              layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , Myy{"momentumTensor_yy", HybridQuantity::Scalar::Myy,
-              layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , Myz{"momentumTensor_yz", HybridQuantity::Scalar::Myz,
-              layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , Mzz{"momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-              layout.allocSize(HybridQuantity::Scalar::Mzz)}
-        , protons_Mxx{"protons_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-                      layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , protons_Mxy{"protons_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-                      layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , protons_Mxz{"protons_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-                      layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , protons_Myy{"protons_momentumTensor_yy", HybridQuantity::Scalar::Myy,
-                      layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , protons_Myz{"protons_momentumTensor_yz", HybridQuantity::Scalar::Myz,
-                      layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , protons_Mzz{"protons_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-                      layout.allocSize(HybridQuantity::Scalar::Mzz)}
-        , Vex{"StandardHybridElectronFluxComputer_Ve_x", HybridQuantity::Scalar::Vx,
-              layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Vey{"StandardHybridElectronFluxComputer_Ve_y", HybridQuantity::Scalar::Vy,
-              layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Vez{"StandardHybridElectronFluxComputer_Ve_z", HybridQuantity::Scalar::Vz,
-              layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Jx{"J_x", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"J_y", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"J_z", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , electrons{createDict<dim>()["electrons"], ions, J}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
+        , ions{_ions(F, Nibuffer, NiProtons, Vi, M, protons_M, pack)}
+        , electrons{createDict<dim>()["electrons"], ions, J}
     {
-        J.setBuffer(Jx.name(), &Jx);
-        J.setBuffer(Jy.name(), &Jy);
-        J.setBuffer(Jz.name(), &Jz);
-
-        ions.setBuffer(ions.densityName(), &Nibuffer);
-        ions.velocity().setBuffer(Vix.name(), &Vix);
-        ions.velocity().setBuffer(Viy.name(), &Viy);
-        ions.velocity().setBuffer(Viz.name(), &Viz);
-        auto& M = ions.momentumTensor();
-        M.setBuffer("momentumTensor_xx", &Mxx);
-        M.setBuffer("momentumTensor_xy", &Mxy);
-        M.setBuffer("momentumTensor_xz", &Mxz);
-        M.setBuffer("momentumTensor_yy", &Myy);
-        M.setBuffer("momentumTensor_yz", &Myz);
-        M.setBuffer("momentumTensor_zz", &Mzz);
-
-        auto& pops = ions.getRunTimeResourcesUserList();
-
-        pops[0].setBuffer(NiProtons.name(), &NiProtons);
-        pops[0].flux().setBuffer(Fxi.name(), &Fxi);
-        pops[0].flux().setBuffer(Fyi.name(), &Fyi);
-        pops[0].flux().setBuffer(Fzi.name(), &Fzi);
-        pops[0].setBuffer("protons", &pack);
-        pops[0].momentumTensor().setBuffer("protons_momentumTensor_xx", &protons_Mxx);
-        pops[0].momentumTensor().setBuffer("protons_momentumTensor_xy", &protons_Mxy);
-        pops[0].momentumTensor().setBuffer("protons_momentumTensor_xz", &protons_Mxz);
-        pops[0].momentumTensor().setBuffer("protons_momentumTensor_yy", &protons_Myy);
-        pops[0].momentumTensor().setBuffer("protons_momentumTensor_yz", &protons_Myz);
-        pops[0].momentumTensor().setBuffer("protons_momentumTensor_zz", &protons_Mzz);
-
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
-        auto&& Ve  = std::get<0>(fc.getCompileTimeResourcesUserList());
 
-        Ve.setBuffer(Vex.name(), &Vex);
-        Ve.setBuffer(Vey.name(), &Vey);
-        Ve.setBuffer(Vez.name(), &Vez);
 
-        auto&& pc = std::get<1>(emm.getCompileTimeResourcesUserList());
+        Ve.set_on(std::get<0>(fc.getCompileTimeResourcesUserList()));
 
-        pc.setBuffer(Pe.name(), &Pe);
+
+        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesUserList());
+        auto const& [_, P] = pc.getCompileTimeResourcesUserList();
+        P.setBuffer(&Pe);
+
+        auto const& [Jx, Jy, Jz]    = J();
+        auto const& [Vix, Viy, Viz] = Vi();
+
 
         if constexpr (dim == 1)
         {
-            auto fill = [this](FieldND& field, auto const& filler) {
+            auto fill = [this](auto& field, auto const& filler) {
                 auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
                 auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
 
@@ -291,7 +239,7 @@ struct ElectronsTest : public ::testing::Test
         }
         else if constexpr (dim == 2)
         {
-            auto fill = [this](FieldND& field, auto const& filler) {
+            auto fill = [this](auto& field, auto const& filler) {
                 auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
                 auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
                 auto gsi_Y = this->layout.ghostStartIndex(field, Direction::Y);
@@ -321,7 +269,7 @@ struct ElectronsTest : public ::testing::Test
         }
         else if constexpr (dim == 3)
         {
-            auto fill = [this](FieldND& field, auto const& filler) {
+            auto fill = [this](auto& field, auto const& filler) {
                 auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
                 auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
                 auto gsi_Y = this->layout.ghostStartIndex(field, Direction::Y);
@@ -368,38 +316,6 @@ struct ElectronsTest : public ::testing::Test
             });
         }
     }
-
-    ~ElectronsTest()
-    {
-        J.setBuffer(Jx.name(), nullptr);
-        J.setBuffer(Jy.name(), nullptr);
-        J.setBuffer(Jz.name(), nullptr);
-
-        ions.setBuffer(ions.densityName(), nullptr);
-        ions.velocity().setBuffer(Vix.name(), nullptr);
-        ions.velocity().setBuffer(Viy.name(), nullptr);
-        ions.velocity().setBuffer(Viz.name(), nullptr);
-
-        auto& pops = ions.getRunTimeResourcesUserList();
-
-        pops[0].setBuffer(NiProtons.name(), static_cast<FieldND*>(nullptr));
-        pops[0].flux().setBuffer(Fxi.name(), nullptr);
-        pops[0].flux().setBuffer(Fyi.name(), nullptr);
-        pops[0].flux().setBuffer(Fzi.name(), nullptr);
-        pops[0].setBuffer("protons", static_cast<PartPackND*>(nullptr));
-
-        auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
-        auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
-        auto&& Ve  = std::get<0>(fc.getCompileTimeResourcesUserList());
-
-        Ve.setBuffer(Vex.name(), nullptr);
-        Ve.setBuffer(Vey.name(), nullptr);
-        Ve.setBuffer(Vez.name(), nullptr);
-
-        auto&& pc = std::get<1>(emm.getCompileTimeResourcesUserList());
-
-        pc.setBuffer(Pe.name(), nullptr);
-    }
 };
 
 
@@ -410,7 +326,7 @@ using ElectronsTupleInfos
                      std::pair<DimConst<3>, InterpConst<1>>, std::pair<DimConst<3>, InterpConst<2>>,
                      std::pair<DimConst<3>, InterpConst<3>>>;
 
-TYPED_TEST_SUITE(ElectronsTest, ElectronsTupleInfos);
+TYPED_TEST_SUITE(ElectronsTest, ElectronsTupleInfos, );
 
 
 
@@ -499,21 +415,17 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 {
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
+    using GridYee                = GridLayout<GridLayoutImplYee<dim, interp>>;
 
     auto& electrons = this->electrons;
     auto& layout    = this->layout;
-
-    using VecFieldND = VecField<NdArrayVector<dim>, HybridQuantity>;
-    using FieldND    = typename VecFieldND::field_type;
-    using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
-
 
     electrons.update(layout);
 
     auto& Ne = electrons.density();
 
-    auto check = [&layout](FieldND const& Vecomp, FieldND const& Vicomp, FieldND const& Jcomp,
-                           FieldND const& Ne_, auto const& projector) -> void {
+    auto check = [&layout](auto const& Vecomp, auto const& Vicomp, auto const& Jcomp,
+                           auto const& Ne_, auto const& projector) -> void {
         if constexpr (dim == 1)
         {
             auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
@@ -567,9 +479,12 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
         }
     };
 
-    check(this->Vex, this->Vix, this->Jx, Ne, &GridYee::JxToMoments);
-    check(this->Vey, this->Viy, this->Jy, Ne, &GridYee::JyToMoments);
-    check(this->Vez, this->Viz, this->Jz, Ne, &GridYee::JzToMoments);
+    auto const& [Jx, Jy, Jz]    = this->J();
+    auto const& [Vix, Viy, Viz] = this->Vi();
+    auto const& [Vex, Vey, Vez] = this->Ve();
+    check(Vex, Vix, Jx, Ne, &GridYee::JxToMoments);
+    check(Vey, Viy, Jy, Ne, &GridYee::JyToMoments);
+    check(Vez, Viz, Jz, Ne, &GridYee::JzToMoments);
 }
 
 
@@ -632,6 +547,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
         }
     }
 }
+
 
 
 

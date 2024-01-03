@@ -20,7 +20,7 @@ namespace PHARE
 {
 namespace solver
 {
-    template<typename GridLayoutT, typename VecFieldT, typename AMR_Types>
+    template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
     class MHDModel : public IPhysicalModel<AMR_Types>
     {
     public:
@@ -28,9 +28,9 @@ namespace solver
         using level_t   = typename AMR_Types::level_t;
         using Interface = IPhysicalModel<AMR_Types>;
 
-        static const std::string model_name;
-        static constexpr auto dimension = GridLayoutT::dimension;
-        using resources_manager_type    = amr::ResourcesManager<GridLayoutT>;
+        static const inline std::string model_name = "MHDModel";
+        static constexpr auto dimension            = GridLayoutT::dimension;
+        using resources_manager_type               = amr::ResourcesManager<GridLayoutT, Grid_t>;
 
 
         explicit MHDModel(std::shared_ptr<resources_manager_type> const& _resourcesManager)
@@ -67,8 +67,6 @@ namespace solver
         std::shared_ptr<resources_manager_type> resourcesManager;
     };
 
-    template<typename GridLayoutT, typename VecFieldT, typename AMR_Types>
-    const std::string MHDModel<GridLayoutT, VecFieldT, AMR_Types>::model_name = "MHDModel";
 
 
 } // namespace solver

@@ -4,6 +4,9 @@
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
 
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
+
 using namespace PHARE::core;
 
 
@@ -165,51 +168,32 @@ struct DimInterp
 template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
-    using PHARETypes = PHARE::core::PHARE_Types<dim, interp_order>;
-    using Field      = typename PHARETypes::Field_t;
-    using GridLayout = typename PHARETypes::GridLayout_t;
-    using Electromag = typename PHARETypes::Electromag_t;
+    using PHARETypes       = PHARE::core::PHARE_Types<dim, interp_order>;
+    using Grid             = typename PHARETypes::Grid_t;
+    using GridLayout       = typename PHARETypes::GridLayout_t;
+    using Electromag       = typename PHARETypes::Electromag_t;
+    using UsableVecFieldND = UsableVecField<dim>;
 
-    Field Bx, By, Bz;
-    Field Ex, Ey, Ez;
+    UsableVecFieldND B, E;
 
     ElectromagBuffers(GridLayout const& layout)
-        : Bx{"EM_B_x", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"EM_B_y", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"EM_B_z", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"EM_E_x", HybridQuantity::Scalar::Ex, layout.allocSize(HybridQuantity::Scalar::Ex)}
-        , Ey{"EM_E_x", HybridQuantity::Scalar::Ey, layout.allocSize(HybridQuantity::Scalar::Ey)}
-        , Ez{"EM_E_x", HybridQuantity::Scalar::Ez, layout.allocSize(HybridQuantity::Scalar::Ez)}
+        : B{"EM_B", layout, HybridQuantity::Vector::B}
+        , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
     }
 
     ElectromagBuffers(ElectromagBuffers const& source, GridLayout const& layout)
-        : Bx{"EM_B_x", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"EM_B_y", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"EM_B_z", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"EM_E_x", HybridQuantity::Scalar::Ex, layout.allocSize(HybridQuantity::Scalar::Ex)}
-        , Ey{"EM_E_x", HybridQuantity::Scalar::Ey, layout.allocSize(HybridQuantity::Scalar::Ey)}
-        , Ez{"EM_E_x", HybridQuantity::Scalar::Ez, layout.allocSize(HybridQuantity::Scalar::Ez)}
+        : ElectromagBuffers{layout}
     {
-        Bx.copyData(source.Bx);
-        By.copyData(source.By);
-        Bz.copyData(source.Bz);
-
-        Ex.copyData(source.Ex);
-        Ey.copyData(source.Ey);
-        Ez.copyData(source.Ez);
+        B.copyData(source.B);
+        E.copyData(source.E);
     }
 
 
     void setBuffers(Electromag& EM)
     {
-        EM.B.setBuffer("EM_B_x", &Bx);
-        EM.B.setBuffer("EM_B_y", &By);
-        EM.B.setBuffer("EM_B_z", &Bz);
-
-        EM.E.setBuffer("EM_E_x", &Ex);
-        EM.E.setBuffer("EM_E_y", &Ey);
-        EM.E.setBuffer("EM_E_z", &Ez);
+        B.set_on(EM.B);
+        E.set_on(EM.E);
     }
 };
 
@@ -220,43 +204,21 @@ template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
     using PHARETypes                 = PHARE::core::PHARE_Types<dim, interp_order>;
-    using Field                      = typename PHARETypes::Field_t;
+    using UsableVecFieldND           = UsableVecField<dim>;
+    using Grid                       = typename PHARETypes::Grid_t;
     using GridLayout                 = typename PHARETypes::GridLayout_t;
     using Ions                       = typename PHARETypes::Ions_t;
     using ParticleArray              = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
-    Field ionDensity;
-    Field ionMassDensity;
-    Field protonDensity;
-    Field alphaDensity;
-    Field protonFx;
-    Field protonFy;
-    Field protonFz;
-    Field alphaFx;
-    Field alphaFy;
-    Field alphaFz;
-    Field Vx;
-    Field Vy;
-    Field Vz;
-    Field Mxx;
-    Field Mxy;
-    Field Mxz;
-    Field Myy;
-    Field Myz;
-    Field Mzz;
-    Field protons_Mxx;
-    Field protons_Mxy;
-    Field protons_Mxz;
-    Field protons_Myy;
-    Field protons_Myz;
-    Field protons_Mzz;
-    Field alpha_Mxx;
-    Field alpha_Mxy;
-    Field alpha_Mxz;
-    Field alpha_Myy;
-    Field alpha_Myz;
-    Field alpha_Mzz;
+    Grid ionDensity;
+    Grid ionMassDensity;
+    Grid protonDensity;
+    Grid alphaDensity;
+
+    UsableVecFieldND protonF, alphaF, Vi;
+    UsableTensorField<dim> M, alpha_M, protons_M;
+
     static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
 
     ParticleArray protonDomain;
@@ -283,58 +245,12 @@ struct IonsBuffers
                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonFx{"protons_flux_x", HybridQuantity::Scalar::Vx,
-                   layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , protonFy{"protons_flux_y", HybridQuantity::Scalar::Vy,
-                   layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , protonFz{"protons_flux_z", HybridQuantity::Scalar::Vz,
-                   layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , alphaFx{"alpha_flux_x", HybridQuantity::Scalar::Vx,
-                  layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , alphaFy{"alpha_flux_y", HybridQuantity::Scalar::Vy,
-                  layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , alphaFz{"alpha_flux_z", HybridQuantity::Scalar::Vz,
-                  layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Mxx{"momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-              layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , Mxy{"momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-              layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , Mxz{"momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-              layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , Myy{"momentumTensor_yy", HybridQuantity::Scalar::Myy,
-              layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , Myz{"momentumTensor_yz", HybridQuantity::Scalar::Myz,
-              layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , Mzz{"momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-              layout.allocSize(HybridQuantity::Scalar::Mzz)}
-        , protons_Mxx{"protons_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-                      layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , protons_Mxy{"protons_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-                      layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , protons_Mxz{"protons_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-                      layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , protons_Myy{"protons_momentumTensor_yy", HybridQuantity::Scalar::Myy,
-                      layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , protons_Myz{"protons_momentumTensor_yz", HybridQuantity::Scalar::Myz,
-                      layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , protons_Mzz{"protons_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-                      layout.allocSize(HybridQuantity::Scalar::Mzz)}
-
-        , alpha_Mxx{"alpha_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-                    layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , alpha_Mxy{"alpha_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-                    layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , alpha_Mxz{"alpha_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-                    layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , alpha_Myy{"alpha_momentumTensor_yy", HybridQuantity::Scalar::Myy,
-                    layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , alpha_Myz{"alpha_momentumTensor_yz", HybridQuantity::Scalar::Myz,
-                    layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , alpha_Mzz{"alpha_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-                    layout.allocSize(HybridQuantity::Scalar::Mzz)}
+        , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
+        , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
+        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
+        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , protonPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , protonLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
@@ -368,60 +284,12 @@ struct IonsBuffers
                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonFx{"protons_flux_x", HybridQuantity::Scalar::Vx,
-                   layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , protonFy{"protons_flux_y", HybridQuantity::Scalar::Vy,
-                   layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , protonFz{"protons_flux_z", HybridQuantity::Scalar::Vz,
-                   layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , alphaFx{"alpha_flux_x", HybridQuantity::Scalar::Vx,
-                  layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , alphaFy{"alpha_flux_y", HybridQuantity::Scalar::Vy,
-                  layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , alphaFz{"alpha_flux_z", HybridQuantity::Scalar::Vz,
-                  layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Vx{"bulkVel_x", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Vy{"bulkVel_y", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Vz{"bulkVel_z", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
-        , Mxx{"momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-              layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , Mxy{"momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-              layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , Mxz{"momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-              layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , Myy{"momentumTensor_yy", HybridQuantity::Scalar::Myy,
-              layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , Myz{"momentumTensor_yz", HybridQuantity::Scalar::Myz,
-              layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , Mzz{"momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-              layout.allocSize(HybridQuantity::Scalar::Mzz)}
-
-        , protons_Mxx{"protons_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-                      layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , protons_Mxy{"protons_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-                      layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , protons_Mxz{"protons_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-                      layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , protons_Myy{"protons_momentumTensor_yy", HybridQuantity::Scalar::Myy,
-                      layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , protons_Myz{"protons_momentumTensor_yz", HybridQuantity::Scalar::Myz,
-                      layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , protons_Mzz{"protons_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-                      layout.allocSize(HybridQuantity::Scalar::Mzz)}
-
-        , alpha_Mxx{"alpha_momentumTensor_xx", HybridQuantity::Scalar::Mxx,
-                    layout.allocSize(HybridQuantity::Scalar::Mxx)}
-        , alpha_Mxy{"alpha_momentumTensor_xy", HybridQuantity::Scalar::Mxy,
-                    layout.allocSize(HybridQuantity::Scalar::Mxy)}
-        , alpha_Mxz{"alpha_momentumTensor_xz", HybridQuantity::Scalar::Mxz,
-                    layout.allocSize(HybridQuantity::Scalar::Mxz)}
-        , alpha_Myy{"alpha_momentumTensor_yy", HybridQuantity::Scalar::Myy,
-                    layout.allocSize(HybridQuantity::Scalar::Myy)}
-        , alpha_Myz{"alpha_momentumTensor_yz", HybridQuantity::Scalar::Myz,
-                    layout.allocSize(HybridQuantity::Scalar::Myz)}
-        , alpha_Mzz{"alpha_momentumTensor_zz", HybridQuantity::Scalar::Mzz,
-                    layout.allocSize(HybridQuantity::Scalar::Mzz)}
-
+        , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
+        , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
+        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
+        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonDomain{source.protonDomain}
         , protonPatchGhost{source.protonPatchGhost}
         , protonLevelGhost{source.protonLevelGhost}
@@ -439,17 +307,9 @@ struct IonsBuffers
         protonDensity.copyData(source.protonDensity);
         alphaDensity.copyData(source.alphaDensity);
 
-        protonFx.copyData(source.protonFx);
-        protonFy.copyData(source.protonFy);
-        protonFz.copyData(source.protonFz);
-
-        alphaFx.copyData(source.alphaFx);
-        alphaFy.copyData(source.alphaFy);
-        alphaFz.copyData(source.alphaFz);
-
-        Vx.copyData(source.Vx);
-        Vy.copyData(source.Vy);
-        Vz.copyData(source.Vz);
+        protonF.copyData(source.protonF);
+        alphaF.copyData(source.alphaF);
+        Vi.copyData(source.Vi);
 
         protonPack.domainParticles        = &protonDomain;
         protonPack.patchGhostParticles    = &protonPatchGhost;
@@ -465,50 +325,30 @@ struct IonsBuffers
 
     void setBuffers(Ions& ions)
     {
-        ions.setBuffer("rho", &ionDensity);
-        if (!ions.sameMasses())
-            ions.setBuffer("massDensity", &ionMassDensity);
-        auto& v = ions.velocity();
-        v.setBuffer("bulkVel_x", &Vx);
-        v.setBuffer("bulkVel_y", &Vy);
-        v.setBuffer("bulkVel_z", &Vz);
-        auto& M = ions.momentumTensor();
-        M.setBuffer("momentumTensor_xx", &Mxx);
-        M.setBuffer("momentumTensor_xy", &Mxy);
-        M.setBuffer("momentumTensor_xz", &Mxz);
-        M.setBuffer("momentumTensor_yy", &Myy);
-        M.setBuffer("momentumTensor_yz", &Myz);
-        M.setBuffer("momentumTensor_zz", &Mzz);
+        {
+            auto const& [V, m, d, md] = ions.getCompileTimeResourcesUserList();
+            Vi.set_on(V);
+            M.set_on(m);
+            d.setBuffer(&ionDensity);
+            md.setBuffer(&ionMassDensity);
+        }
 
-        auto& populations = ions.getRunTimeResourcesUserList();
+        auto& pops = ions.getRunTimeResourcesUserList();
+        {
+            auto const& [F, M, d] = pops[0].getCompileTimeResourcesUserList();
+            d.setBuffer(&protonDensity);
+            protons_M.set_on(M);
+            protonF.set_on(F);
+        }
+        pops[0].setBuffer("protons", &protonPack);
 
-        populations[0].setBuffer("protons_rho", &protonDensity);
-        populations[0].flux().setBuffer("protons_flux_x", &protonFx);
-        populations[0].flux().setBuffer("protons_flux_y", &protonFy);
-        populations[0].flux().setBuffer("protons_flux_z", &protonFz);
-
-        populations[0].momentumTensor().setBuffer("protons_momentumTensor_xx", &protons_Mxx);
-        populations[0].momentumTensor().setBuffer("protons_momentumTensor_xy", &protons_Mxy);
-        populations[0].momentumTensor().setBuffer("protons_momentumTensor_xz", &protons_Mxz);
-        populations[0].momentumTensor().setBuffer("protons_momentumTensor_yy", &protons_Myy);
-        populations[0].momentumTensor().setBuffer("protons_momentumTensor_yz", &protons_Myz);
-        populations[0].momentumTensor().setBuffer("protons_momentumTensor_zz", &protons_Mzz);
-
-        populations[0].setBuffer("protons", &protonPack);
-
-        populations[1].setBuffer("alpha_rho", &alphaDensity);
-        populations[1].flux().setBuffer("alpha_flux_x", &alphaFx);
-        populations[1].flux().setBuffer("alpha_flux_y", &alphaFy);
-        populations[1].flux().setBuffer("alpha_flux_z", &alphaFz);
-
-        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_xx", &alpha_Mxx);
-        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_xy", &alpha_Mxy);
-        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_xz", &alpha_Mxz);
-        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_yy", &alpha_Myy);
-        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_yz", &alpha_Myz);
-        populations[1].momentumTensor().setBuffer("alpha_momentumTensor_zz", &alpha_Mzz);
-
-        populations[1].setBuffer("alpha", &alphaPack);
+        {
+            auto const& [F, M, d] = pops[1].getCompileTimeResourcesUserList();
+            d.setBuffer(&alphaDensity);
+            alpha_M.set_on(M);
+            alphaF.set_on(F);
+        }
+        pops[1].setBuffer("alpha", &alphaPack);
     }
 };
 
@@ -538,8 +378,9 @@ struct IonUpdaterTest : public ::testing::Test
 
 
     // data for electromagnetic fields
-    using Field    = typename PHARETypes::Field_t;
-    using VecField = typename PHARETypes::VecField_t;
+    using Field            = typename PHARETypes::Grid_t;
+    using VecField         = typename PHARETypes::VecField_t;
+    using UsableVecFieldND = UsableVecField<dim>;
 
     ElectromagBuffers<dim, interp_order> emBuffers;
     IonsBuffers<dim, interp_order> ionsBuffers;
@@ -760,9 +601,8 @@ struct IonUpdaterTest : public ::testing::Test
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 auto evolution = std::abs(newField(ix) - originalField(ix));
-                EXPECT_TRUE(
-                    evolution
-                    > 0.0); //  should check that moments are still compatible with user inputs also
+                //  should check that moments are still compatible with user inputs also
+                EXPECT_TRUE(evolution > 0.0);
                 if (evolution <= 0.0)
                     std::cout << "after update : " << newField(ix)
                               << " before update : " << originalField(ix)
@@ -771,19 +611,21 @@ struct IonUpdaterTest : public ::testing::Test
         };
 
         check(protonDensity, ionsBufferCpy.protonDensity);
-        check(protonFx, ionsBufferCpy.protonFy);
-        check(protonFy, ionsBufferCpy.protonFy);
-        check(protonFz, ionsBufferCpy.protonFz);
+
+
+        check(protonFx, ionsBufferCpy.protonF(Component::X));
+        check(protonFy, ionsBufferCpy.protonF(Component::Y));
+        check(protonFz, ionsBufferCpy.protonF(Component::Z));
 
         check(alphaDensity, ionsBufferCpy.alphaDensity);
-        check(alphaFx, ionsBufferCpy.alphaFy);
-        check(alphaFy, ionsBufferCpy.alphaFy);
-        check(alphaFz, ionsBufferCpy.alphaFz);
+        check(alphaFx, ionsBufferCpy.alphaF(Component::X));
+        check(alphaFy, ionsBufferCpy.alphaF(Component::Y));
+        check(alphaFz, ionsBufferCpy.alphaF(Component::Z));
 
         check(ions.density(), ionsBufferCpy.ionDensity);
-        check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vx);
-        check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vy);
-        check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vz);
+        check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vi(Component::X));
+        check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vi(Component::Y));
+        check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vi(Component::Z));
     }
 
 
@@ -835,7 +677,7 @@ struct IonUpdaterTest : public ::testing::Test
 using DimInterps = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
 
 
-TYPED_TEST_SUITE(IonUpdaterTest, DimInterps);
+TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
 
 
 
@@ -962,7 +804,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions, this->layout);
+    ionUpdater.updateIons(this->ions);
 
 
     auto& populations = this->ions.getRunTimeResourcesUserList();
@@ -1008,7 +850,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    this->fillIonsMomentsGhosts();
 //
-//    ionUpdater.updateIons(this->ions, this->layout);
+//    ionUpdater.updateIons(this->ions);
 //
 //    auto& populations = this->ions.getRunTimeResourcesUserList();
 //
@@ -1032,7 +874,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions, this->layout);
+    ionUpdater.updateIons(this->ions);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -1053,7 +895,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions, this->layout);
+    ionUpdater.updateIons(this->ions);
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -1071,7 +913,7 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions, this->layout);
+    ionUpdater.updateIons(this->ions);
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);

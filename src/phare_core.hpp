@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_INCLUDE_HPP
 #define PHARE_CORE_INCLUDE_HPP
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -34,9 +35,11 @@ struct PHARE_Types
     static auto constexpr interp_order = interp_order_;
 
     using Array_t          = PHARE::core::NdArrayVector<dimension>;
-    using SymTensorField_t = PHARE::core::SymTensorField<Array_t, PHARE::core::HybridQuantity>;
-    using VecField_t       = PHARE::core::VecField<Array_t, PHARE::core::HybridQuantity>;
-    using Field_t          = PHARE::core::Field<Array_t, PHARE::core::HybridQuantity::Scalar>;
+    using ArrayView_t      = PHARE::core::NdArrayView<dimension>;
+    using Grid_t           = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
+    using Field_t          = PHARE::core::Field<dimension, PHARE::core::HybridQuantity::Scalar>;
+    using VecField_t       = PHARE::core::VecField<Field_t, PHARE::core::HybridQuantity>;
+    using SymTensorField_t = PHARE::core::SymTensorField<Field_t, PHARE::core::HybridQuantity>;
     using Electromag_t     = PHARE::core::Electromag<VecField_t>;
     using YeeLayout_t      = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
     using GridLayout_t     = PHARE::core::GridLayout<YeeLayout_t>;
@@ -45,7 +48,6 @@ struct PHARE_Types
     using ParticleAoS_t   = PHARE::core::ParticleArray<dimension>;
     using ParticleArray_t = ParticleAoS_t;
     using ParticleSoA_t   = PHARE::core::ContiguousParticles<dimension>;
-
 
     using MaxwellianParticleInitializer_t
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;

@@ -86,7 +86,9 @@ namespace amr
         {
             Super::getFromRestart(restart_db);
 
-            restart_db->getVector("field_" + field.name(), field.vector());
+            assert(field.vector().size() > 0);
+            restart_db->getDoubleArray("field_" + field.name(), field.vector().data(),
+                                       field.vector().size()); // do not reallocate!
         }
 
         void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) const override
@@ -309,7 +311,7 @@ namespace amr
 
 
 
-        FieldImpl* getPointer() { return &field; }
+        auto* getPointer() { return &field; }
 
 
         static GridLayoutT const& getLayout(SAMRAI::hier::Patch const& patch, int id)

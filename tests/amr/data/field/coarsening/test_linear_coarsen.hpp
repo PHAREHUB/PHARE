@@ -5,6 +5,7 @@
 #include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "gmock/gmock.h"
@@ -54,7 +55,7 @@ struct Files
 template<std::size_t dim>
 struct EMData
 {
-    using Field_t  = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using Field_t  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldPtr = std::shared_ptr<Field_t>;
 
     std::string em_key;
@@ -90,7 +91,7 @@ struct FieldCoarsenTestData
     static constexpr double absError = 1.e-8;
 
     using GridYee_t = GridLayout<GridLayoutImplYee<dimension, interp>>;
-    using Field_t   = Field<NdArrayVector<dimension>, HybridQuantity::Scalar>;
+    using Field_t   = Grid<NdArrayVector<dimension>, HybridQuantity::Scalar>;
 
     EMData<dimension> em;
 

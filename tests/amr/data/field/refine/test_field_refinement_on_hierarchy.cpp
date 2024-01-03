@@ -20,19 +20,19 @@ struct ALinearFieldRefineTest : public ::testing::Test
     static constexpr auto refine = 2;
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using FieldND = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridND  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
 public:
     void SetUp() override
     {
         // create a BasicHierarchy with a refinement factor equal 2
-        basicHierarchy_ = std::make_shared<BasicHierarchy<GridYee, FieldND>>(refine);
+        basicHierarchy_ = std::make_shared<BasicHierarchy<GridYee, GridND>>(refine);
     }
 
     void TearDown() override { basicHierarchy_->TearDown(); }
 
 protected:
-    std::shared_ptr<BasicHierarchy<GridYee, FieldND>> basicHierarchy_;
+    std::shared_ptr<BasicHierarchy<GridYee, GridND>> basicHierarchy_;
 };
 
 
@@ -50,16 +50,15 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
     auto constexpr dim    = pair.first();
     auto constexpr interp = pair.second();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using FieldND = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
-
+    using GridYee = typename TestFixture::GridYee;
+    using GridND  = typename TestFixture::GridND;
 
     auto& basicHierarchy = this->basicHierarchy_;
     auto& hierarchy      = basicHierarchy->getHierarchy();
 
     // Value is initialized with a affine function : ax + by + cz + d
     // where a, b, c & d are given in TagStrategy::affineFill implementation
-    auto& affineFill = TagStrategy<GridYee, FieldND>::affineFill;
+    auto& affineFill = TagStrategy<GridYee, GridND>::affineFill;
 
     auto level = hierarchy.getPatchLevel(1);
 
@@ -68,7 +67,7 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
         for (auto const& variablesId : basicHierarchy->getVariables())
         {
             auto const& dataId = variablesId.second;
-            auto fieldData     = std::dynamic_pointer_cast<FieldData<GridYee, FieldND>>(
+            auto fieldData     = std::dynamic_pointer_cast<FieldData<GridYee, GridND>>(
                 patch->getPatchData(dataId));
 
             auto& layout = fieldData->gridLayout;

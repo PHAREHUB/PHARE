@@ -25,6 +25,7 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 using namespace PHARE::core;
 
@@ -223,25 +224,19 @@ public:
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using Electromag_t     = typename PHARE_TYPES::Electromag_t;
+    using UsableVecFieldND = UsableVecField<dimension>;
 
-    Electromag<VF> em;
+    Electromag_t em;
     GridLayout_t layout{{0.1}, {nx}, {0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
-
-    Field<NdArray_t, typename HybridQuantity::Scalar> bx1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> by1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> bz1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ex1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ey1d_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ez1d_;
+    UsableVecFieldND B, E;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -253,22 +248,18 @@ public:
     A1DInterpolator()
         : em{"EM"}
         , particles{grow(layout.AMRBox(), safeLayer), 1}
-        , bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
-        , by1d_{"field", HybridQuantity::Scalar::By, nx}
-        , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
-        , ex1d_{"field", HybridQuantity::Scalar::Ex, nx}
-        , ey1d_{"field", HybridQuantity::Scalar::Ey, nx}
-        , ez1d_{"field", HybridQuantity::Scalar::Ez, nx}
+        , B{"EM_B", layout, HybridQuantity::Vector::B}
+        , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
         for (auto ix = 0u; ix < nx; ++ix) // B & E are constant on their grid
         {
-            bx1d_(ix) = bx0;
-            by1d_(ix) = by0;
-            bz1d_(ix) = bz0;
+            B(Component::X)(ix) = bx0;
+            B(Component::Y)(ix) = by0;
+            B(Component::Z)(ix) = bz0;
 
-            ex1d_(ix) = ex0;
-            ey1d_(ix) = ey0;
-            ez1d_(ix) = ez0;
+            E(Component::X)(ix) = ex0;
+            E(Component::Y)(ix) = ey0;
+            E(Component::Z)(ix) = ez0;
         }
 
         for (auto& part : particles)
@@ -276,6 +267,9 @@ public:
             part.iCell[0] = 5;
             part.delta[0] = 0.32;
         }
+
+        B.set_on(em.B);
+        E.set_on(em.E);
     }
 };
 
@@ -291,13 +285,6 @@ TYPED_TEST_SUITE(A1DInterpolator, Interpolators1D);
 
 TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
 {
-    this->em.E.setBuffer("EM_E_x", &this->ex1d_);
-    this->em.E.setBuffer("EM_E_y", &this->ey1d_);
-    this->em.E.setBuffer("EM_E_z", &this->ez1d_);
-    this->em.B.setBuffer("EM_B_x", &this->bx1d_);
-    this->em.B.setBuffer("EM_B_y", &this->by1d_);
-    this->em.B.setBuffer("EM_B_z", &this->bz1d_);
-
     for (auto const& part : this->particles)
     {
         auto const [E, B]        = this->interp(part, this->em, this->layout);
@@ -310,13 +297,6 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
         EXPECT_NEAR(By, this->by0, 1e-8);
         EXPECT_NEAR(Bz, this->bz0, 1e-8);
     }
-
-    this->em.E.setBuffer("EM_E_x", nullptr);
-    this->em.E.setBuffer("EM_E_y", nullptr);
-    this->em.E.setBuffer("EM_E_z", nullptr);
-    this->em.B.setBuffer("EM_B_x", nullptr);
-    this->em.B.setBuffer("EM_B_y", nullptr);
-    this->em.B.setBuffer("EM_B_z", nullptr);
 }
 
 
@@ -331,24 +311,19 @@ public:
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayoutImpl  = GridLayoutImplYee<dimension, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayoutImpl   = GridLayoutImplYee<dimension, interp_order>;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using Electromag_t     = typename PHARE_TYPES::Electromag_t;
+    using UsableVecFieldND = UsableVecField<dimension>;
 
-    Electromag<VF> em;
+    Electromag_t em;
     GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> by_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> bz_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ex_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ey_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ez_;
+    UsableVecFieldND B, E;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -360,23 +335,19 @@ public:
     A2DInterpolator()
         : em{"EM"}
         , particles{grow(layout.AMRBox(), safeLayer), 1}
-        , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny}
-        , by_{"field", HybridQuantity::Scalar::By, nx, ny}
-        , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny}
-        , ex_{"field", HybridQuantity::Scalar::Ex, nx, ny}
-        , ey_{"field", HybridQuantity::Scalar::Ey, nx, ny}
-        , ez_{"field", HybridQuantity::Scalar::Ez, nx, ny}
+        , B{"EM_B", layout, HybridQuantity::Vector::B}
+        , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
         for (auto ix = 0u; ix < nx; ++ix)
         {
             for (auto iy = 0u; iy < ny; ++iy)
             {
-                bx_(ix, iy) = bx0;
-                by_(ix, iy) = by0;
-                bz_(ix, iy) = bz0;
-                ex_(ix, iy) = ex0;
-                ey_(ix, iy) = ey0;
-                ez_(ix, iy) = ez0;
+                B(Component::X)(ix, iy) = bx0;
+                B(Component::Y)(ix, iy) = by0;
+                B(Component::Z)(ix, iy) = bz0;
+                E(Component::X)(ix, iy) = ex0;
+                E(Component::Y)(ix, iy) = ey0;
+                E(Component::Z)(ix, iy) = ez0;
             }
         }
 
@@ -385,6 +356,9 @@ public:
             part.iCell[0] = 5;
             part.delta[0] = 0.32;
         }
+
+        B.set_on(em.B);
+        E.set_on(em.E);
     }
 };
 
@@ -400,13 +374,6 @@ TYPED_TEST_SUITE(A2DInterpolator, Interpolators2D);
 
 TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
 {
-    this->em.E.setBuffer("EM_E_x", &this->ex_);
-    this->em.E.setBuffer("EM_E_y", &this->ey_);
-    this->em.E.setBuffer("EM_E_z", &this->ez_);
-    this->em.B.setBuffer("EM_B_x", &this->bx_);
-    this->em.B.setBuffer("EM_B_y", &this->by_);
-    this->em.B.setBuffer("EM_B_z", &this->bz_);
-
     for (auto const& part : this->particles)
     {
         auto const [E, B]        = this->interp(part, this->em, this->layout);
@@ -419,13 +386,6 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
         EXPECT_NEAR(By, this->by0, 1e-8);
         EXPECT_NEAR(Bz, this->bz0, 1e-8);
     }
-
-    this->em.E.setBuffer("EM_E_x", nullptr);
-    this->em.E.setBuffer("EM_E_y", nullptr);
-    this->em.E.setBuffer("EM_E_z", nullptr);
-    this->em.B.setBuffer("EM_B_x", nullptr);
-    this->em.B.setBuffer("EM_B_y", nullptr);
-    this->em.B.setBuffer("EM_B_z", nullptr);
 }
 
 
@@ -442,24 +402,19 @@ public:
     static constexpr std::uint32_t ny = 50;
     static constexpr std::uint32_t nz = 50;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayoutImpl  = GridLayoutImplYee<dimension, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using VF              = VecField<NdArray_t, HybridQuantity>;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using Electromag_t     = typename PHARE_TYPES::Electromag_t;
+    using UsableVecFieldND = UsableVecField<dimension>;
 
-    GridLayout<GridLayoutImpl> layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
-    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
-    Electromag<VF> em;
+    Electromag_t em;
+    GridLayout_t layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> bx_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> by_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> bz_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ex_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ey_;
-    Field<NdArray_t, typename HybridQuantity::Scalar> ez_;
+    UsableVecFieldND B, E;
 
     static constexpr double ex0 = 2.25;
     static constexpr double ey0 = 2.50;
@@ -471,12 +426,8 @@ public:
     A3DInterpolator()
         : em{"EM"}
         , particles{grow(layout.AMRBox(), safeLayer), 1}
-        , bx_{"field", HybridQuantity::Scalar::Bx, nx, ny, nz}
-        , by_{"field", HybridQuantity::Scalar::By, nx, ny, nz}
-        , bz_{"field", HybridQuantity::Scalar::Bz, nx, ny, nz}
-        , ex_{"field", HybridQuantity::Scalar::Ex, nx, ny, nz}
-        , ey_{"field", HybridQuantity::Scalar::Ey, nx, ny, nz}
-        , ez_{"field", HybridQuantity::Scalar::Ez, nx, ny, nz}
+        , B{"EM_B", layout, HybridQuantity::Vector::B}
+        , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
         for (auto ix = 0u; ix < nx; ++ix)
         {
@@ -484,12 +435,12 @@ public:
             {
                 for (auto iz = 0u; iz < nz; ++iz)
                 {
-                    bx_(ix, iy, iz) = bx0;
-                    by_(ix, iy, iz) = by0;
-                    bz_(ix, iy, iz) = bz0;
-                    ex_(ix, iy, iz) = ex0;
-                    ey_(ix, iy, iz) = ey0;
-                    ez_(ix, iy, iz) = ez0;
+                    B(Component::X)(ix, iy, iz) = bx0;
+                    B(Component::Y)(ix, iy, iz) = by0;
+                    B(Component::Z)(ix, iy, iz) = bz0;
+                    E(Component::X)(ix, iy, iz) = ex0;
+                    E(Component::Y)(ix, iy, iz) = ey0;
+                    E(Component::Z)(ix, iy, iz) = ez0;
                 }
             }
         }
@@ -499,6 +450,9 @@ public:
             part.iCell[0] = 5;
             part.delta[0] = 0.32;
         }
+
+        B.set_on(em.B);
+        E.set_on(em.E);
     }
 };
 
@@ -514,14 +468,6 @@ TYPED_TEST_SUITE(A3DInterpolator, Interpolators3D);
 
 TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
 {
-    this->em.E.setBuffer("EM_E_x", &this->ex_);
-    this->em.E.setBuffer("EM_E_y", &this->ey_);
-    this->em.E.setBuffer("EM_E_z", &this->ez_);
-    this->em.B.setBuffer("EM_B_x", &this->bx_);
-    this->em.B.setBuffer("EM_B_y", &this->by_);
-    this->em.B.setBuffer("EM_B_z", &this->bz_);
-
-
     for (auto const& part : this->particles)
     {
         auto const [E, B]        = this->interp(part, this->em, this->layout);
@@ -534,14 +480,6 @@ TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
         EXPECT_NEAR(By, this->by0, 1e-8);
         EXPECT_NEAR(Bz, this->bz0, 1e-8);
     }
-
-
-    this->em.E.setBuffer("EM_E_x", nullptr);
-    this->em.E.setBuffer("EM_E_y", nullptr);
-    this->em.E.setBuffer("EM_E_z", nullptr);
-    this->em.B.setBuffer("EM_B_x", nullptr);
-    this->em.B.setBuffer("EM_B_y", nullptr);
-    this->em.B.setBuffer("EM_B_z", nullptr);
 }
 
 
@@ -559,28 +497,27 @@ class ACollectionOfParticles_1d : public ::testing::Test
     static constexpr auto dimension    = Interpolator::dimension;
     static constexpr auto interp_order = Interpolator::interp_order;
 
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using NdArray_t       = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t    = typename PHARE_TYPES::GridLayout_t;
-    using Particle_t      = typename ParticleArray_t::Particle_t;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
+    using Grid_t           = typename PHARE_TYPES::Grid_t;
+    using Particle_t       = typename ParticleArray_t::Particle_t;
+    using UsableVecFieldND = UsableVecField<dimension>;
 
 public:
     static constexpr std::uint32_t nx        = 30;
     static constexpr std::uint32_t nbrPoints = nbrPointsSupport(Interpolator::interp_order);
     static constexpr std::uint32_t numOfPart = Interpolator::interp_order + 2;
 
-    GridLayout<GridLayoutImplYee<1, Interpolator::interp_order>> layout{{0.1}, {nx}, {0.}};
+    GridLayout_t layout{{0.1}, {nx}, {0.}};
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     Particle_t part;
     ParticleArray_t particles;
 
-    Field<NdArray_t, typename HybridQuantity::Scalar> rho;
-    Field<NdArray_t, typename HybridQuantity::Scalar> vx;
-    Field<NdArray_t, typename HybridQuantity::Scalar> vy;
-    Field<NdArray_t, typename HybridQuantity::Scalar> vz;
-    VecField<NdArray_t, HybridQuantity> v;
+    Grid_t rho;
+
+    UsableVecFieldND v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
 
 
@@ -589,15 +526,8 @@ public:
         : part{}
         , particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
-        , vx{"v_x", HybridQuantity::Scalar::Vx, nx}
-        , vy{"v_y", HybridQuantity::Scalar::Vy, nx}
-        , vz{"v_z", HybridQuantity::Scalar::Vz, nx}
-        , v{"v", HybridQuantity::Vector::V}
+        , v{"v", layout, HybridQuantity::Vector::V}
     {
-        v.setBuffer("v_x", &vx);
-        v.setBuffer("v_y", &vy);
-        v.setBuffer("v_z", &vz);
-
         if constexpr (Interpolator::interp_order == 1)
         {
             part.iCell[0] = 19; // AMR index
@@ -718,10 +648,11 @@ TYPED_TEST_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d)
 
     auto idx = 20 + this->layout.nbrGhosts(QtyCentering::dual);
 
+    auto const& [vx, vy, vz] = this->v();
     EXPECT_DOUBLE_EQ(this->rho(idx), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(idx), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(idx), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(idx), 1.0);
+    EXPECT_DOUBLE_EQ(vx(idx), 2.0);
+    EXPECT_DOUBLE_EQ(vy(idx), -1.0);
+    EXPECT_DOUBLE_EQ(vz(idx), 1.0);
 }
 REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d);
 
@@ -736,25 +667,25 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     static constexpr std::size_t dim   = 2;
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
+    static constexpr auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
-    using PHARE_TYPES               = PHARE::core::PHARE_Types<dim, interp_order>;
-    using NdArray_t                 = typename PHARE_TYPES::Array_t;
-    using ParticleArray_t           = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t              = typename PHARE_TYPES::GridLayout_t;
-    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<dim, interp_order>;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
+    using Grid_t           = typename PHARE_TYPES::Grid_t;
+    using UsableVecFieldND = UsableVecField<dim>;
+
+    GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
+    ParticleArray_t particles;
+    Grid_t rho;
+    UsableVecFieldND v;
+    Interpolator interpolator;
 
     ACollectionOfParticles_2d()
         : particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
-        , vx{"v_x", HybridQuantity::Scalar::Vx, nx, ny}
-        , vy{"v_y", HybridQuantity::Scalar::Vy, nx, ny}
-        , vz{"v_z", HybridQuantity::Scalar::Vz, nx, ny}
-        , v{"v", HybridQuantity::Vector::V}
+        , v{"v", layout, HybridQuantity::Vector::V}
     {
-        v.setBuffer("v_x", &vx);
-        v.setBuffer("v_y", &vy);
-        v.setBuffer("v_z", &vz);
-
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)
             {
@@ -768,13 +699,6 @@ struct ACollectionOfParticles_2d : public ::testing::Test
             }
         interpolator(makeIndexRange(particles), rho, v, layout);
     }
-
-    GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
-
-    ParticleArray_t particles;
-    Field<NdArray_t, typename HybridQuantity::Scalar> rho, vx, vy, vz;
-    VecField<NdArray_t, HybridQuantity> v;
-    Interpolator interpolator;
 };
 TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);
 
@@ -783,11 +707,12 @@ TYPED_TEST_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d)
 {
     constexpr auto interp = TypeParam::interp_order;
 
-    auto idx = 2 + this->layout.nbrGhosts(QtyCentering::dual);
+    auto idx                 = 2 + this->layout.nbrGhosts(QtyCentering::dual);
+    auto const& [vx, vy, vz] = this->v();
     EXPECT_DOUBLE_EQ(this->rho(idx, idx), 1.0);
-    EXPECT_DOUBLE_EQ(this->vx(idx, idx), 2.0);
-    EXPECT_DOUBLE_EQ(this->vy(idx, idx), -1.0);
-    EXPECT_DOUBLE_EQ(this->vz(idx, idx), 1.0);
+    EXPECT_DOUBLE_EQ(vx(idx, idx), 2.0);
+    EXPECT_DOUBLE_EQ(vy(idx, idx), -1.0);
+    EXPECT_DOUBLE_EQ(vz(idx, idx), 1.0);
 }
 REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeight_2d);
 

@@ -255,8 +255,7 @@ public:
     HybridMessengers()
     {
         auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
-        auto resourcesManagerMHD
-            = std::make_shared<ResourcesManager<typename Phare_Types::GridLayout_t>>();
+        auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();
 
         auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid);
         auto mhdModel    = std::make_unique<MHDModelT>(resourcesManagerMHD);

@@ -5,6 +5,7 @@
 #include <memory>
 
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
@@ -16,6 +17,7 @@
 
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
 
 
@@ -34,14 +36,8 @@ struct GridLayoutMock1D
     }
 
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
 };
 
 struct GridLayoutMock2D
@@ -69,16 +65,8 @@ struct GridLayoutMock3D
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
-                                   [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
-                                 [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 };
 
 
@@ -135,40 +123,22 @@ std::vector<double> read(std::string filename)
 class Ampere1DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<1, 1>;
+    static constexpr std::size_t dim          = 1;
+    static constexpr std::size_t interp_order = 1;
+    using UsableVecFieldND                    = UsableVecField<dim>;
+    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
-
-    VecField<NdArrayVector<1>, HybridQuantity> B;
-    VecField<NdArrayVector<1>, HybridQuantity> J;
+    UsableVecFieldND B, J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
 public:
     Ampere1DTest()
         : layout{{{0.1}}, {{50}}, Point{0.}}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , B{"B", HybridQuantity::Vector::B}
-        , J{"J", HybridQuantity::Vector::J}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , J{"J", layout, HybridQuantity::Vector::J}
     {
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        J.setBuffer("J_x", &Jx);
-        J.setBuffer("J_y", &Jy);
-        J.setBuffer("J_z", &Jz);
     }
 };
 
@@ -176,40 +146,22 @@ public:
 class Ampere2DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<2, 1>;
+    static constexpr std::size_t dim          = 2;
+    static constexpr std::size_t interp_order = 1;
+    using UsableVecFieldND                    = UsableVecField<dim>;
+    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
-
-    VecField<NdArrayVector<2>, HybridQuantity> B;
-    VecField<NdArrayVector<2>, HybridQuantity> J;
+    UsableVecFieldND B, J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
 public:
     Ampere2DTest()
         : layout{{{0.1, 0.2}}, {{50, 30}}, Point{0., 0.}}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , B{"B", HybridQuantity::Vector::B}
-        , J{"J", HybridQuantity::Vector::J}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , J{"J", layout, HybridQuantity::Vector::J}
     {
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        J.setBuffer("J_x", &Jx);
-        J.setBuffer("J_y", &Jy);
-        J.setBuffer("J_z", &Jz);
     }
 };
 
@@ -217,40 +169,22 @@ public:
 class Ampere3DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<3, 1>;
+    static constexpr std::size_t dim          = 3;
+    static constexpr std::size_t interp_order = 1;
+    using UsableVecFieldND                    = UsableVecField<dim>;
+    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
 
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
-
-    VecField<NdArrayVector<3>, HybridQuantity> B;
-    VecField<NdArrayVector<3>, HybridQuantity> J;
+    UsableVecFieldND B, J;
 
     Ampere<GridLayout<GridLayoutImpl>> ampere;
 
 public:
     Ampere3DTest()
         : layout{{{0.1, 0.2, 0.3}}, {{50, 30, 40}}, Point{0., 0., 0.}}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , B{"B", HybridQuantity::Vector::B}
-        , J{"J", HybridQuantity::Vector::J}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , J{"J", layout, HybridQuantity::Vector::J}
     {
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        J.setBuffer("J_x", &Jx);
-        J.setBuffer("J_y", &Jy);
-        J.setBuffer("J_z", &Jz);
     }
 };
 
@@ -265,6 +199,9 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
 
     std::uint32_t gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
     std::uint32_t gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+
+    auto const& [Bx, By, Bz] = B();
+    auto const& [Jx, Jy, Jz] = J();
 
     for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
@@ -304,6 +241,9 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     std::uint32_t gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
     std::uint32_t gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
     std::uint32_t gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
+
+    auto const& [Bx, By, Bz] = B();
+    auto const& [Jx, Jy, Jz] = J();
 
     for (std::uint32_t ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {
@@ -401,6 +341,9 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
     std::uint32_t gei_p_Z = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Z);
     std::uint32_t gsi_d_Z = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Z);
     std::uint32_t gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+
+    auto const& [Bx, By, Bz] = B();
+    auto const& [Jx, Jy, Jz] = J();
 
     for (std::uint32_t ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {

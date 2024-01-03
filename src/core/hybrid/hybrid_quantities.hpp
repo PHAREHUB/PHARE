@@ -63,7 +63,8 @@ public:
 
         throw std::runtime_error("Error - invalid Vector");
     }
-    static constexpr std::array<Scalar, 6> componentsQuantities(Tensor qty)
+
+    NO_DISCARD static constexpr std::array<Scalar, 6> componentsQuantities(Tensor qty)
     {
         // no condition, for now there's only then momentum tensor M
         return {{Scalar::Mxx, Scalar::Mxy, Scalar::Mxz, Scalar::Myy, Scalar::Myz, Scalar::Mzz}};
