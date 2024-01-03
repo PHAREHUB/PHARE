@@ -41,4 +41,4 @@ struct VecFieldMock
 
 
 
-#endif /*PHARE_TEST_CORE_VECFIELD_TEST_H*/
+#endif /*PHARE_TEST_CORE_VECFIELD_TEST_HPP*/

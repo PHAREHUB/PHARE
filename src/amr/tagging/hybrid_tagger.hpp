@@ -90,7 +90,7 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
         auto tagsv = core::NdArrayView<HybridModel::dimension, int>(hybridModel.tags[key]->data(),
                                                                     layout.nbrCells());
         auto tagsvF
-            = core::NdArrayView<HybridModel::dimension, int, int*, false>(tags, layout.nbrCells());
+            = core::NdArrayView<HybridModel::dimension, int, false>(tags, layout.nbrCells());
         if constexpr (HybridModel::dimension == 2)
         {
             for (auto iTag_x = 0u; iTag_x < nbrCells[0]; ++iTag_x)

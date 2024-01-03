@@ -325,10 +325,8 @@ namespace core
 
 
 
-        template<typename NdArrayImpl>
-        NO_DISCARD std::uint32_t
-        physicalStartIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                           Direction direction) const
+        template<typename Field_t>
+        NO_DISCARD std::uint32_t physicalStartIndex(Field_t const& field, Direction direction) const
         {
             return physicalStartIndex(field.physicalQuantity(), direction);
         }
@@ -369,10 +367,8 @@ namespace core
 
 
 
-        template<typename NdArrayImpl>
-        NO_DISCARD std::uint32_t
-        physicalEndIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                         Direction direction) const
+        template<typename Field_t>
+        NO_DISCARD std::uint32_t physicalEndIndex(Field_t const& field, Direction direction) const
         {
             return physicalEndIndex(field.physicalQuantity(), direction);
         }
@@ -408,17 +404,16 @@ namespace core
         }
 
 
-        template<typename NdArrayImpl>
-        NO_DISCARD std::uint32_t
-        ghostStartIndex([[maybe_unused]] Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                        [[maybe_unused]] Direction direction) const
+        template<typename Field_t>
+        NO_DISCARD std::uint32_t ghostStartIndex(Field_t const& /*field*/,
+                                                 Direction /*direction*/) const
         {
             // ghostStartIndex is always the first node
             return 0;
         }
 
 
-        NO_DISCARD auto ghostStartIndex([[maybe_unused]] QtyCentering centering) const
+        NO_DISCARD auto ghostStartIndex(QtyCentering /*centering*/) const
         {
             return std::array<std::uint32_t, dimension>{};
         }
@@ -451,10 +446,8 @@ namespace core
 
 
 
-        template<typename NdArrayImpl>
-        NO_DISCARD std::uint32_t
-        ghostEndIndex(Field<NdArrayImpl, HybridQuantity::Scalar> const& field,
-                      Direction direction) const
+        template<typename Field_t>
+        NO_DISCARD std::uint32_t ghostEndIndex(Field_t const& field, Direction direction) const
         {
             return ghostEndIndex(field.physicalQuantity(), direction);
         }
@@ -471,10 +464,10 @@ namespace core
          * @brief fieldNodeCoordinates returns the coordinate of a multidimensional index
          * associated with a given Field, in physical coordinates.
          */
-        template<typename NdArrayImpl, typename... Indexes>
+        template<typename Field_t, typename... Indexes>
         NO_DISCARD Point<double, dimension>
-        fieldNodeCoordinates(const Field<NdArrayImpl, HybridQuantity::Scalar>& field,
-                             const Point<double, dimension>& origin, Indexes... index) const
+        fieldNodeCoordinates(Field_t const& field, Point<double, dimension> const& origin,
+                             Indexes... index) const
         {
             static_assert(sizeof...(Indexes) == dimension,
                           "Error dimension does not match number of arguments");
@@ -965,9 +958,8 @@ namespace core
 
         /** @brief return the centering of a given Field along a given direction
          */
-        template<typename NdArrayImpl>
-        NO_DISCARD QtyCentering
-        fieldCentering(Field<NdArrayImpl, HybridQuantity::Scalar> const& field, Direction dir) const
+        template<typename Field_t>
+        NO_DISCARD QtyCentering fieldCentering(Field_t const& field, Direction dir) const
         {
             std::uint32_t iDir = static_cast<std::uint32_t>(dir);
             std::uint32_t iQty = static_cast<std::uint32_t>(field.physicalQuantity());

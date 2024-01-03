@@ -21,7 +21,6 @@ namespace amr
         using particle_array_type = typename ResourcesUser::particle_array_type;
         using variable_type       = ParticlesVariable<particle_array_type, interp_order>;
         using patch_data_type     = ParticlesData<particle_array_type>;
-        using internal_type_ptr   = typename ResourcesUser::particle_resource_type*;
     };
 
 } // namespace amr

@@ -42,7 +42,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
 
     // SAMRAI tags int* buffer is FORTRAN ordering so we set false to the view
     bool constexpr c_ordering = false;
-    auto tagsv = core::NdArrayView<dimension, int, int*, c_ordering>(tags, layout.nbrCells());
+    auto tagsv = core::NdArrayView<dimension, int, c_ordering>(tags, layout.nbrCells());
 
     if constexpr (dimension == 1 and false)
     {

@@ -45,12 +45,24 @@ namespace amr
      */
     template<typename ResourcesUser>
     struct has_field<ResourcesUser,
-                     core::tryToInstanciate<decltype(
-                         std::declval<ResourcesUser>().getFieldNamesAndQuantities())>>
+                     core::tryToInstanciate<
+                         decltype(std::declval<ResourcesUser>().getFieldNamesAndQuantities())>>
         : std::true_type
     {
     };
 
+
+    template<typename ResourcesUser, typename Attempt = void>
+    struct is_field : std::false_type
+    {
+    };
+
+    template<typename ResourcesUser>
+    struct is_field<ResourcesUser, core::tryToInstanciate<
+                                       decltype(std::declval<ResourcesUser>().physicalQuantity())>>
+        : std::true_type
+    {
+    };
 
 
 
@@ -58,8 +70,9 @@ namespace amr
      * has particles
      */
     template<typename ResourcesUser>
-    struct has_particles<ResourcesUser, core::tryToInstanciate<decltype(
-                                            std::declval<ResourcesUser>().getParticleArrayNames())>>
+    struct has_particles<
+        ResourcesUser,
+        core::tryToInstanciate<decltype(std::declval<ResourcesUser>().getParticleArrayNames())>>
         : std::true_type
     {
     };
@@ -71,8 +84,8 @@ namespace amr
      */
     template<typename ResourcesUser>
     struct has_runtime_subresourceuser_list<
-        ResourcesUser, core::tryToInstanciate<decltype(
-                           std::declval<ResourcesUser>().getRunTimeResourcesUserList())>>
+        ResourcesUser, core::tryToInstanciate<
+                           decltype(std::declval<ResourcesUser>().getRunTimeResourcesUserList())>>
         : std::true_type
     {
     };
@@ -84,8 +97,8 @@ namespace amr
      */
     template<typename ResourcesUser>
     struct has_compiletime_subresourcesuser_list<
-        ResourcesUser, core::tryToInstanciate<decltype(
-                           std::declval<ResourcesUser>().getCompileTimeResourcesUserList())>>
+        ResourcesUser, core::tryToInstanciate<decltype(std::declval<ResourcesUser>()
+                                                           .getCompileTimeResourcesUserList())>>
         : std::true_type
     {
     };

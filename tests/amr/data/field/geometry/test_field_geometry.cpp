@@ -10,6 +10,7 @@
 
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/field_variable.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 
@@ -31,7 +32,7 @@ using namespace PHARE::amr;
 
 
 
-using Field1D = Field<NdArrayVector<1>, HybridQuantity::Scalar>;
+using Grid1D = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
 
 template<typename GridLayoutT, typename FieldImpl>
 struct FieldGeometryParam
@@ -294,9 +295,9 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
 REGISTER_TYPED_TEST_SUITE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
 
-using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 1>>, Field1D>;
-using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 2>>, Field1D>;
-using FieldGeometryTest1DOrder3 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 3>>, Field1D>;
+using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D>;
+using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 2>>, Grid1D>;
+using FieldGeometryTest1DOrder3 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 3>>, Grid1D>;
 
 using FieldGeometry1DTestList
     = ::testing::Types<FieldGeometryTest1DOrder1, FieldGeometryTest1DOrder2,

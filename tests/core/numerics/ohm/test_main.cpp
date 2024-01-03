@@ -15,6 +15,7 @@
 
 #include "phare_core.hpp"
 
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 using namespace PHARE::core;
 
@@ -65,62 +66,30 @@ struct OhmTest : public ::testing::Test
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    using GridYee  = GridLayout<GridLayoutImplYee<dim, interp>>;
-    GridYee layout = NDlayout<dim, interp>::create();
+    using GridYee          = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using UsableVecFieldND = UsableVecField<dim>;
+    using Grid_t           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    GridYee layout         = NDlayout<dim, interp>::create();
 
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> n;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vy;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Vz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> P;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Jz;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Exnew;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Eynew;
-    Field<NdArrayVector<dim>, HybridQuantity::Scalar> Eznew;
-    VecField<NdArrayVector<dim>, HybridQuantity> V;
-    VecField<NdArrayVector<dim>, HybridQuantity> B;
-    VecField<NdArrayVector<dim>, HybridQuantity> J;
-    VecField<NdArrayVector<dim>, HybridQuantity> Enew;
+    Grid_t n;
+    Grid_t P;
+    UsableVecFieldND V, B, J, Enew;
+
     Ohm<GridYee> ohm;
 
     OhmTest()
         : n{"n", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)}
-        , Vx{"Vx", HybridQuantity::Scalar::Vx, layout.allocSize(HybridQuantity::Scalar::Vx)}
-        , Vy{"Vy", HybridQuantity::Scalar::Vy, layout.allocSize(HybridQuantity::Scalar::Vy)}
-        , Vz{"Vz", HybridQuantity::Scalar::Vz, layout.allocSize(HybridQuantity::Scalar::Vz)}
         , P{"P", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Jx{"Jx", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Jy{"Jy", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Jz{"Jz", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , Exnew{"Exnew", HybridQuantity::Scalar::Ex, layout.allocSize(HybridQuantity::Scalar::Ex)}
-        , Eynew{"Eynew", HybridQuantity::Scalar::Ey, layout.allocSize(HybridQuantity::Scalar::Ey)}
-        , Eznew{"Eznew", HybridQuantity::Scalar::Ez, layout.allocSize(HybridQuantity::Scalar::Ez)}
-        , V{"V", HybridQuantity::Vector::V}
-        , B{"B", HybridQuantity::Vector::B}
-        , J{"J", HybridQuantity::Vector::J}
-        , Enew{"Enew", HybridQuantity::Vector::E}
+        , V{"V", layout, HybridQuantity::Vector::V}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , J{"J", layout, HybridQuantity::Vector::J}
+        , Enew{"Enew", layout, HybridQuantity::Vector::E}
         , ohm{createDict()}
     {
-        V.setBuffer("V_x", &Vx);
-        V.setBuffer("V_y", &Vy);
-        V.setBuffer("V_z", &Vz);
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        J.setBuffer("J_x", &Jx);
-        J.setBuffer("J_y", &Jy);
-        J.setBuffer("J_z", &Jz);
-        Enew.setBuffer("Enew_x", &Exnew);
-        Enew.setBuffer("Enew_y", &Eynew);
-        Enew.setBuffer("Enew_z", &Eznew);
+        auto const& [Bx, By, Bz]          = B();
+        auto const& [Jx, Jy, Jz]          = J();
+        auto const& [Vx, Vy, Vz]          = V();
+        auto const& [Exnew, Eynew, Eznew] = Enew();
 
         if constexpr (dim == 1)
         {
@@ -389,39 +358,42 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
     this->ohm.setLayout(layout.get());
     this->ohm(this->n, this->V, this->P, this->B, this->J, this->Enew);
 
+
+    auto const& [Exnew, Eynew, Eznew] = this->Enew();
+
     if constexpr (dim == 1)
     {
-        auto psi_X = this->layout.physicalStartIndex(this->Exnew, Direction::X);
-        auto pei_X = this->layout.physicalEndIndex(this->Exnew, Direction::X);
+        auto psi_X = this->layout.physicalStartIndex(Exnew, Direction::X);
+        auto pei_X = this->layout.physicalEndIndex(Exnew, Direction::X);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
-            EXPECT_THAT(this->Exnew(ix), ::testing::DoubleNear((expected_ohmX[ix]), 1e-12));
+            EXPECT_THAT(Exnew(ix), ::testing::DoubleNear((expected_ohmX[ix]), 1e-12));
         }
 
-        psi_X = this->layout.physicalStartIndex(this->Eynew, Direction::X);
-        pei_X = this->layout.physicalEndIndex(this->Eynew, Direction::X);
+        psi_X = this->layout.physicalStartIndex(Eynew, Direction::X);
+        pei_X = this->layout.physicalEndIndex(Eynew, Direction::X);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
-            EXPECT_THAT(this->Eynew(ix), ::testing::DoubleNear((expected_ohmY[ix]), 1e-12));
+            EXPECT_THAT(Eynew(ix), ::testing::DoubleNear((expected_ohmY[ix]), 1e-12));
         }
 
-        psi_X = this->layout.physicalStartIndex(this->Eznew, Direction::X);
-        pei_X = this->layout.physicalEndIndex(this->Eznew, Direction::X);
+        psi_X = this->layout.physicalStartIndex(Eznew, Direction::X);
+        pei_X = this->layout.physicalEndIndex(Eznew, Direction::X);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
-            EXPECT_THAT(this->Eznew(ix), ::testing::DoubleNear((expected_ohmZ[ix]), 1e-12));
+            EXPECT_THAT(Eznew(ix), ::testing::DoubleNear((expected_ohmZ[ix]), 1e-12));
         }
     }
 
     if constexpr (dim == 2)
     {
-        auto psi_X = this->layout.physicalStartIndex(this->Exnew, Direction::X);
-        auto pei_X = this->layout.physicalEndIndex(this->Exnew, Direction::X);
-        auto psi_Y = this->layout.physicalStartIndex(this->Exnew, Direction::Y);
-        auto pei_Y = this->layout.physicalEndIndex(this->Exnew, Direction::Y);
+        auto psi_X = this->layout.physicalStartIndex(Exnew, Direction::X);
+        auto pei_X = this->layout.physicalEndIndex(Exnew, Direction::X);
+        auto psi_Y = this->layout.physicalStartIndex(Exnew, Direction::Y);
+        auto pei_Y = this->layout.physicalEndIndex(Exnew, Direction::Y);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
@@ -429,15 +401,14 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
             {
                 auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ex);
                 auto index_ = ix * nPts_[1] + iy;
-                EXPECT_THAT(this->Exnew(ix, iy),
-                            ::testing::DoubleNear((expected_ohmX[index_]), 1e-12));
+                EXPECT_THAT(Exnew(ix, iy), ::testing::DoubleNear((expected_ohmX[index_]), 1e-12));
             }
         }
 
-        psi_X = this->layout.physicalStartIndex(this->Eynew, Direction::X);
-        pei_X = this->layout.physicalEndIndex(this->Eynew, Direction::X);
-        psi_Y = this->layout.physicalStartIndex(this->Eynew, Direction::Y);
-        pei_Y = this->layout.physicalEndIndex(this->Eynew, Direction::Y);
+        psi_X = this->layout.physicalStartIndex(Eynew, Direction::X);
+        pei_X = this->layout.physicalEndIndex(Eynew, Direction::X);
+        psi_Y = this->layout.physicalStartIndex(Eynew, Direction::Y);
+        pei_Y = this->layout.physicalEndIndex(Eynew, Direction::Y);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
@@ -445,15 +416,14 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
             {
                 auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ey);
                 auto index_ = ix * nPts_[1] + iy;
-                EXPECT_THAT(this->Eynew(ix, iy),
-                            ::testing::DoubleNear((expected_ohmY[index_]), 1e-12));
+                EXPECT_THAT(Eynew(ix, iy), ::testing::DoubleNear((expected_ohmY[index_]), 1e-12));
             }
         }
 
-        psi_X = this->layout.physicalStartIndex(this->Eznew, Direction::X);
-        pei_X = this->layout.physicalEndIndex(this->Eznew, Direction::X);
-        psi_Y = this->layout.physicalStartIndex(this->Eznew, Direction::Y);
-        pei_Y = this->layout.physicalEndIndex(this->Eznew, Direction::Y);
+        psi_X = this->layout.physicalStartIndex(Eznew, Direction::X);
+        pei_X = this->layout.physicalEndIndex(Eznew, Direction::X);
+        psi_Y = this->layout.physicalStartIndex(Eznew, Direction::Y);
+        pei_Y = this->layout.physicalEndIndex(Eznew, Direction::Y);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
@@ -461,20 +431,19 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
             {
                 auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ez);
                 auto index_ = ix * nPts_[1] + iy;
-                EXPECT_THAT(this->Eznew(ix, iy),
-                            ::testing::DoubleNear((expected_ohmZ[index_]), 1e-12));
+                EXPECT_THAT(Eznew(ix, iy), ::testing::DoubleNear((expected_ohmZ[index_]), 1e-12));
             }
         }
     }
 
     if constexpr (dim == 3)
     {
-        auto psi_X = this->layout.physicalStartIndex(this->Exnew, Direction::X);
-        auto pei_X = this->layout.physicalEndIndex(this->Exnew, Direction::X);
-        auto psi_Y = this->layout.physicalStartIndex(this->Exnew, Direction::Y);
-        auto pei_Y = this->layout.physicalEndIndex(this->Exnew, Direction::Y);
-        auto psi_Z = this->layout.physicalStartIndex(this->Exnew, Direction::Z);
-        auto pei_Z = this->layout.physicalEndIndex(this->Exnew, Direction::Z);
+        auto psi_X = this->layout.physicalStartIndex(Exnew, Direction::X);
+        auto pei_X = this->layout.physicalEndIndex(Exnew, Direction::X);
+        auto psi_Y = this->layout.physicalStartIndex(Exnew, Direction::Y);
+        auto pei_Y = this->layout.physicalEndIndex(Exnew, Direction::Y);
+        auto psi_Z = this->layout.physicalStartIndex(Exnew, Direction::Z);
+        auto pei_Z = this->layout.physicalEndIndex(Exnew, Direction::Z);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
@@ -484,18 +453,18 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                 {
                     auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ex);
                     auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                    EXPECT_THAT(this->Exnew(ix, iy, iz),
+                    EXPECT_THAT(Exnew(ix, iy, iz),
                                 ::testing::DoubleNear((expected_ohmX[index_]), 1e-10));
                 }
             }
         }
 
-        psi_X = this->layout.physicalStartIndex(this->Eynew, Direction::X);
-        pei_X = this->layout.physicalEndIndex(this->Eynew, Direction::X);
-        psi_Y = this->layout.physicalStartIndex(this->Eynew, Direction::Y);
-        pei_Y = this->layout.physicalEndIndex(this->Eynew, Direction::Y);
-        psi_Z = this->layout.physicalStartIndex(this->Eynew, Direction::Z);
-        pei_Z = this->layout.physicalEndIndex(this->Eynew, Direction::Z);
+        psi_X = this->layout.physicalStartIndex(Eynew, Direction::X);
+        pei_X = this->layout.physicalEndIndex(Eynew, Direction::X);
+        psi_Y = this->layout.physicalStartIndex(Eynew, Direction::Y);
+        pei_Y = this->layout.physicalEndIndex(Eynew, Direction::Y);
+        psi_Z = this->layout.physicalStartIndex(Eynew, Direction::Z);
+        pei_Z = this->layout.physicalEndIndex(Eynew, Direction::Z);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
@@ -505,18 +474,18 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                 {
                     auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ey);
                     auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                    EXPECT_THAT(this->Eynew(ix, iy, iz),
+                    EXPECT_THAT(Eynew(ix, iy, iz),
                                 ::testing::DoubleNear((expected_ohmY[index_]), 1e-10));
                 }
             }
         }
 
-        psi_X = this->layout.physicalStartIndex(this->Eznew, Direction::X);
-        pei_X = this->layout.physicalEndIndex(this->Eznew, Direction::X);
-        psi_Y = this->layout.physicalStartIndex(this->Eznew, Direction::Y);
-        pei_Y = this->layout.physicalEndIndex(this->Eznew, Direction::Y);
-        psi_Z = this->layout.physicalStartIndex(this->Eznew, Direction::Z);
-        pei_Z = this->layout.physicalEndIndex(this->Eznew, Direction::Z);
+        psi_X = this->layout.physicalStartIndex(Eznew, Direction::X);
+        pei_X = this->layout.physicalEndIndex(Eznew, Direction::X);
+        psi_Y = this->layout.physicalStartIndex(Eznew, Direction::Y);
+        pei_Y = this->layout.physicalEndIndex(Eznew, Direction::Y);
+        psi_Z = this->layout.physicalStartIndex(Eznew, Direction::Z);
+        pei_Z = this->layout.physicalEndIndex(Eznew, Direction::Z);
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
@@ -526,7 +495,7 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                 {
                     auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ez);
                     auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                    EXPECT_THAT(this->Eznew(ix, iy, iz),
+                    EXPECT_THAT(Eznew(ix, iy, iz),
                                 ::testing::DoubleNear((expected_ohmZ[index_]), 1e-10));
                 }
             }

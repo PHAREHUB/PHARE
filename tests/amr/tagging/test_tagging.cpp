@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 using namespace PHARE::amr;
 
@@ -161,7 +162,6 @@ struct TestTagger : public ::testing::Test
     using Electromag  = typename phare_types::Electromag_t;
     using Ions        = typename phare_types::Ions_t;
     using Electrons   = typename phare_types::Electrons_t;
-    using Field       = typename phare_types::Field_t;
     using GridLayoutT = GridLayout<GridLayoutImplYee<dim, interp_order>>;
 
     struct SinglePatchHybridModel
@@ -172,29 +172,21 @@ struct TestTagger : public ::testing::Test
     };
 
     GridLayoutT layout;
-    Field Bx, By, Bz;
-    Field Ex, Ey, Ez;
+
+    UsableVecField<dim> B, E;
 
     SinglePatchHybridModel model;
     std::vector<int> tags;
 
     TestTagger()
         : layout{TestGridLayout<GridLayoutT>::make(20)}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"Ex", HybridQuantity::Scalar::Ex, layout.allocSize(HybridQuantity::Scalar::Ex)}
-        , Ey{"Ey", HybridQuantity::Scalar::Ey, layout.allocSize(HybridQuantity::Scalar::Ey)}
-        , Ez{"Ez", HybridQuantity::Scalar::Ez, layout.allocSize(HybridQuantity::Scalar::Ez)}
+        , B{"EM_B", layout, HybridQuantity::Vector::B}
+        , E{"EM_E", layout, HybridQuantity::Vector::E}
         , model{createDict<dim>()}
         , tags(20 + layout.nbrGhosts(PHARE::core::QtyCentering::dual))
     {
-        model.state.electromag.E.setBuffer("EM_E_x", &Ex);
-        model.state.electromag.E.setBuffer("EM_E_y", &Ey);
-        model.state.electromag.E.setBuffer("EM_E_z", &Ez);
-        model.state.electromag.B.setBuffer("EM_B_x", &Bx);
-        model.state.electromag.B.setBuffer("EM_B_y", &By);
-        model.state.electromag.B.setBuffer("EM_B_z", &Bz);
+        B.set_on(model.state.electromag.B);
+        E.set_on(model.state.electromag.E);
         model.state.electromag.initialize(layout);
     }
 };

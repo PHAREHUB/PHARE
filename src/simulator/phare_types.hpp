@@ -18,6 +18,7 @@ struct PHARE_Types
 
     using core_types                      = PHARE::core::PHARE_Types<dimension, interp_order>;
     using Array_t                         = typename core_types::Array_t;
+    using Grid_t                          = typename core_types::Grid_t;
     using Field_t                         = typename core_types::Field_t;
     using VecField_t                      = typename core_types::VecField_t;
     using Electromag_t                    = typename core_types::Electromag_t;
