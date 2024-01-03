@@ -131,8 +131,21 @@ private:
 
 
     void saveState_(level_t& level, ModelViews_t& views);
-
     void restoreState_(level_t& level, ModelViews_t& views);
+
+
+    struct TimeSetter
+    {
+        template<typename QuantityAccessor>
+        void operator()(QuantityAccessor accessor)
+        {
+            for (auto& state : views)
+                views.model().resourcesManager->setTime(accessor(state), *state.patch, newTime);
+        }
+
+        ModelViews_t& views;
+        double newTime;
+    };
 
 
     // extend lifespan
@@ -265,25 +278,19 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_");
 
-    auto dt                = newTime - currentTime;
-    auto& resourcesManager = views.model().resourcesManager;
+    TimeSetter setTime{views, newTime};
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.faraday");
-
+        auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromag_E, views.electromagPred_B, dt);
-
-        for (auto& state : views)
-            resourcesManager->setTime(state.electromagPred.B, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.electromagPred.B; });
     }
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
-
-
-        for (auto& state : views)
-            resourcesManager->setTime(state.J, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.J; });
         fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
     }
 
@@ -293,8 +300,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
             state.electrons.update(state.layout);
         ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromagPred_B, views.J,
              views.electromagPred_E);
-        for (auto& state : views)
-            resourcesManager->setTime(state.electromagPred.E, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.electromagPred.E; });
     }
 }
 
@@ -306,23 +312,20 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_");
 
-    auto dt                = newTime - currentTime;
-    auto& resourcesManager = views.model().resourcesManager;
+    TimeSetter setTime{views, newTime};
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.faraday");
+        auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromagPred_B,
                  dt);
-
-        for (auto& state : views)
-            resourcesManager->setTime(state.electromagPred.B, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.electromagPred.B; });
     }
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
-        for (auto& state : views)
-            resourcesManager->setTime(state.J, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.J; });
         fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
     }
 
@@ -332,8 +335,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
             state.electrons.update(state.layout);
         ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromagPred_B, views.J,
              views.electromagPred_E);
-        for (auto& state : views)
-            resourcesManager->setTime(state.electromagPred.E, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.electromagPred.E; });
     }
 }
 
@@ -347,22 +349,20 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::corrector_");
 
-    auto dt                = newTime - currentTime;
-    auto levelNumber       = level.getLevelNumber();
-    auto& resourcesManager = views.model().resourcesManager;
+    auto levelNumber = level.getLevelNumber();
+    TimeSetter setTime{views, newTime};
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday");
+        auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromag_B, dt);
-        for (auto& state : views)
-            resourcesManager->setTime(state.electromag.B, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.electromag.B; });
     }
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
         ampere_(views.layouts, views.electromag_B, views.J);
-        for (auto& state : views)
-            resourcesManager->setTime(state.J, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.J; });
         fromCoarser.fillCurrentGhosts(views.model().state.J, levelNumber, newTime);
     }
 
@@ -372,8 +372,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
             state.electrons.update(state.layout);
         ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromag_B, views.J,
              views.electromag_E);
-        for (auto& state : views)
-            resourcesManager->setTime(state.electromag.E, *state.patch, newTime);
+        setTime([](auto& state) -> auto& { return state.electromag.E; });
 
         fromCoarser.fillElectricGhosts(views.model().state.electromag.E, levelNumber, newTime);
     }
@@ -438,26 +437,25 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
                                                   double const newTime, core::UpdaterMode mode)
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::moveIons_");
-
     PHARE_DEBUG_DO(_debug_log_move_ions(views);)
 
-    auto dt = newTime - currentTime;
+    TimeSetter setTime{views, newTime};
 
-    for (auto& state : views)
     {
-        ionUpdater_.updatePopulations(state.ions, state.electromagAvg, state.layout, dt, mode);
-        // this needs to be done before calling the messenger
-        views.model().resourcesManager->setTime(state.ions, *state.patch, newTime);
+        auto dt = newTime - currentTime;
+        for (auto& state : views)
+            ionUpdater_.updatePopulations(state.ions, state.electromagAvg, state.layout, dt, mode);
     }
+
+    // this needs to be done before calling the messenger
+    setTime([](auto& state) -> auto& { return state.ions; });
 
     fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
     fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
 
     for (auto& state : views)
-    {
         ionUpdater_.updateIons(state.ions);
-        // no need to update time, since it has been done before
-    }
+    // no need to update time, since it has been done before
 
     // now Ni and Vi are calculated we can fill pure ghost nodes
     // these were not completed by the deposition of patch and levelghost particles
