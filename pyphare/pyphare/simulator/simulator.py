@@ -1,3 +1,8 @@
+#
+#
+#
+
+
 import atexit
 import time as timem
 import numpy as np
@@ -61,6 +66,12 @@ class Simulator:
             import pyphare.pharein as ph
 
             startMPI()
+
+            import pyphare.cpp.validate as validate_cpp
+
+            validate_cpp.log_runtime_config()
+            validate_cpp.check_build_config_is_runtime_compatible()
+
             if self.log_to_file:
                 self._log_to_file()
             ph.populateDict()
@@ -90,6 +101,9 @@ class Simulator:
             if self.cpp_hier is None:
                 self.setup()
 
+            if self.simulation.dry_run:
+                return
+
             self.cpp_sim.initialize()
             self._auto_dump()  # first dump might be before first advance
             return self
@@ -113,6 +127,8 @@ class Simulator:
 
     def advance(self, dt=None):
         self._check_init()
+        if self.simulation.dry_run:
+            return
         if dt is None:
             dt = self.timeStep()
 
@@ -138,6 +154,8 @@ class Simulator:
         from pyphare.cpp import cpp_lib
 
         self._check_init()
+        if self.simulation.dry_run:
+            return
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()

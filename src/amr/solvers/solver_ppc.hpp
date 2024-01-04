@@ -568,7 +568,6 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
         rm.setTime(ions, *patch, newTime);
     }
 
-
     fromCoarser.fillIonGhostParticles(ions, level, newTime);
     fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
 
@@ -584,6 +583,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, Ions& ions,
     // these were not completed by the deposition of patch and levelghost particles
     fromCoarser.fillIonMomentGhosts(ions, level, newTime);
 }
+
+
 } // namespace PHARE::solver
 
 

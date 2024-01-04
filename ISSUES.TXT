@@ -1,5 +1,20 @@
 
 
+# Having Issues
+
+Please run:
+
+> ./tools/report.sh # or "python3 tools/report.py" with the correct PYTHONPATH
+
+This will build a zip archive "REPORT_INFO.zip", which you should either email to us, or
+Log an issue on github via https://github.com/PHAREHUB/PHARE/issues/new
+Outline the context of your issue, and upload the zip
+
+
+
+
+# Known Issues
+
 1. OMPI symbol resolution with python3.
     Affects: OMPI versions < 3
     Source: https://github.com/open-mpi/ompi/issues/3705
@@ -11,3 +26,4 @@
     Source: https://bitbucket.org/mpi4py/mpi4py/issues/154/attempting-to-use-an-mpi-routine-before
     Solution:
       LD_PRELOAD=/path/to/your/libmpi.so python3 $SCRIPT
+

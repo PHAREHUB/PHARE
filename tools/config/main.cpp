@@ -11,8 +11,16 @@
 #include "hdf5.h"
 constexpr static std::string_view hdf5_version = H5_VERSION;
 #else
-constexpr static std::string_view hdf5_version = "HDF5 was not found!";
+constexpr static std::string_view hdf5_version     = "HDF5 was not found!";
+constexpr static std::string_view H5_HAVE_PARALLEL = false;
 #endif
+constexpr std::string_view hdf5_is_parallel()
+{
+    if constexpr (H5_HAVE_PARALLEL)
+        return "yes";
+    return "no";
+}
+
 
 void write_string_to_file(std::string const& buff, std::string const& filename)
 {
@@ -25,6 +33,17 @@ void write_string_to_file(std::string const& buff, std::string const& filename)
 void write_hdf5_version()
 {
     write_string_to_file(std::string{hdf5_version}, "PHARE_HDF5_version.txt");
+}
+
+void write_hdf5_is_parallel()
+{
+    write_string_to_file(std::string{hdf5_is_parallel()}, "PHARE_HDF5_is_parallel.txt");
+}
+
+void write_hdf5_info()
+{
+    write_hdf5_version();
+    write_hdf5_is_parallel();
 }
 
 void config_mpi()
@@ -51,7 +70,7 @@ int main(int argc, char** argv)
     try
     {
         config_mpi();
-        write_hdf5_version();
+        write_hdf5_info();
     }
     catch (const std::exception& e)
     {
