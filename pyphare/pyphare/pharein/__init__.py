@@ -145,7 +145,6 @@ def populateDict():
 
     add_string("simulation/name", "simulation_test")
     add_int("simulation/dimension", simulation.ndim)
-    add_string("simulation/boundary_types", simulation.boundary_types[0])
 
     if simulation.smallest_patch_size is not None:
         add_vector_int(
@@ -160,16 +159,19 @@ def populateDict():
     add_int("simulation/grid/nbr_cells/x", simulation.cells[0])
     add_double("simulation/grid/meshsize/x", simulation.dl[0])
     add_double("simulation/grid/origin/x", simulation.origin[0])
+    add_string("simulation/grid/boundary_type/x", simulation.boundary_types[0])
 
     if simulation.ndim > 1:
         add_int("simulation/grid/nbr_cells/y", simulation.cells[1])
         add_double("simulation/grid/meshsize/y", simulation.dl[1])
         add_double("simulation/grid/origin/y", simulation.origin[1])
+        add_string("simulation/grid/boundary_type/y", simulation.boundary_types[1])
 
         if simulation.ndim > 2:
             add_int("simulation/grid/nbr_cells/z", simulation.cells[2])
             add_double("simulation/grid/meshsize/z", simulation.dl[2])
             add_double("simulation/grid/origin/z", simulation.origin[2])
+            add_string("simulation/grid/boundary_type/z", simulation.boundary_types[2])
 
     add_int("simulation/interp_order", simulation.interp_order)
     add_int("simulation/refined_particle_nbr", simulation.refined_particle_nbr)

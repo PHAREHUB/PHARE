@@ -135,19 +135,35 @@ public:
     static void writeAttributeDict(HighFiveFile& h5, Dict dict, std::string path)
     {
         dict.visit([&](std::string const& key, auto const& val) {
-            h5.write_attributes_per_mpi(path, key, val);
+            auto constexpr static unsupported
+                = std::is_same_v<std::decay_t<decltype(val)>, std::vector<std::string>>;
+
+            // the dict might have types that are not supported, but not actually contain
+            //  any of the types at runtime
+            if constexpr (!unsupported)
+                h5.write_attributes_per_mpi(path, key, val);
+
+            // runtime detection of unsupported types
+            if (unsupported)
+                throw std::runtime_error("Unsupported operation: Cannot write attribute: path("
+                                         + path + "), key(" + key + ")");
         });
+    }
+
+    template<typename Dict>
+    static void writeGlobalAttributeDict(HighFiveFile& h5, Dict dict, std::string path)
+    {
+        dict.visit(
+            [&](std::string const& key, auto const& val) { h5.write_attribute(path, key, val); });
     }
 
 
 
     template<typename TensorField>
-    static void writeTensorFieldAsDataset(HighFiveFile& h5, std::string path,
-                                          TensorField& tensorField)
+    static void writeTensorFieldAsDataset(HighFiveFile& h5, std::string path, TensorField& tField)
     {
         for (auto& [id, type] : core::Components::componentMap<TensorField::rank>())
-            h5.write_data_set_flat<dimension>(path + "_" + id,
-                                              &(*tensorField.getComponent(type).begin()));
+            h5.write_data_set_flat<dimension>(path + "_" + id, tField.getComponent(type).data());
     }
 
     auto& modelView() { return modelView_; }
@@ -223,6 +239,8 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     fileAttributes_["domain_box"]  = modelView_.domainBox();
     fileAttributes_["cell_width"]  = modelView_.cellWidth();
     fileAttributes_["origin"]      = modelView_.origin();
+
+    fileAttributes_["boundary_conditions"] = modelView_.boundaryConditions();
 
     for (auto* diagnostic : diagnostics)
         if (!file_flags.count(diagnostic->type + diagnostic->quantity))

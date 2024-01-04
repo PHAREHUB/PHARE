@@ -122,9 +122,9 @@ public:
     template<typename Type, typename Size>
     void create_data_set_per_mpi(std::string const& path, Size const& dataSetSize)
     {
-        auto mpi_size = core::mpi::size();
-        auto sizes    = core::mpi::collect(dataSetSize, mpi_size);
-        auto paths    = core::mpi::collect(path, mpi_size);
+        auto const mpi_size = core::mpi::size();
+        auto const sizes    = core::mpi::collect(dataSetSize, mpi_size);
+        auto const paths    = core::mpi::collect(path, mpi_size);
         for (int i = 0; i < mpi_size; i++)
         { // in the case an mpi node lacks something to write
             if (is_zero(sizes[i]) || paths[i] == "")
@@ -135,13 +135,47 @@ public:
     }
 
 
-
+    /*
+     * Write attribute on all mpi cores, considered global, always the same path/key and value
+     */
     template<typename Data>
-    void write_attribute(std::string const& path, std::string const& key, Data const& value)
+    void write_attribute(std::string const& keyPath, std::string const& key, Data const& data)
     {
-        h5file_.getGroup(path)
-            .template createAttribute<Data>(key, HighFive::DataSpace::From(value))
-            .write(value);
+        // assumes all keyPaths and values are identical, and no null patches
+        // clang-format off
+        PHARE_DEBUG_DO(
+            auto paths = core::mpi::collect(keyPath, core::mpi::size());
+            for (auto const& path : paths)
+                PHARE_LOG_LINE_STR(std::to_string(core::mpi::size()) << " " << path)
+            if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
+                throw std::runtime_error("Function does not support different paths per mpi core");
+        )
+        // clang-format on
+
+        constexpr bool data_is_vector = core::is_std_vector_v<Data>;
+
+        auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
+            if constexpr (data_is_vector)
+                node.template createAttribute<typename Data::value_type>(
+                        _key, HighFive::DataSpace::From(value))
+                    .write(value);
+            else
+                node.template createAttribute<Data>(_key, HighFive::DataSpace::From(value))
+                    .write(value);
+        };
+
+        if (h5file_.exist(keyPath)
+            && h5file_.getObjectType(keyPath) == HighFive::ObjectType::Dataset)
+        {
+            if (!h5file_.getDataSet(keyPath).hasAttribute(key))
+                doAttribute(h5file_.getDataSet(keyPath), key, data);
+        }
+        else // group
+        {
+            createGroupsToDataSet(keyPath + "/dataset");
+            if (!h5file_.getGroup(keyPath).hasAttribute(key))
+                doAttribute(h5file_.getGroup(keyPath), key, data);
+        }
     }
 
 
@@ -172,14 +206,14 @@ public:
                     .write(value);
         };
 
-        int mpi_size = core::mpi::size();
-        auto values  = [&]() {
+        int const mpi_size = core::mpi::size();
+        auto const values  = [&]() {
             if constexpr (data_is_vector)
                 return core::mpi::collect_raw(data, mpi_size);
             else
                 return core::mpi::collect(data, mpi_size);
         }();
-        auto paths = core::mpi::collect(path, mpi_size);
+        auto const paths = core::mpi::collect(path, mpi_size);
 
         for (int i = 0; i < mpi_size; i++)
         {
