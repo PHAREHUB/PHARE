@@ -20,4 +20,5 @@ tools/cmake.sh
 perf.*
 **/*.h5
 .vscode
-
+.phare*
+PHARE_REPORT.zip

@@ -2,6 +2,8 @@
 #include "python3/pybind_def.hpp"
 #include "simulator/simulator.hpp"
 
+#include "core/def/phare_config.hpp"
+
 
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
 
@@ -51,5 +53,7 @@ PYBIND11_MODULE(cpp_etc, m)
     m.def("restart_path_for_time", [](std::string path, double timestamp) {
         return PHARE::amr::Hierarchy::restartFilePathForTime(path, timestamp);
     });
+
+    m.def("phare_build_config", []() { return PHARE::build_config(); });
 }
 } // namespace PHARE::pydata

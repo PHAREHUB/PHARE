@@ -1,13 +1,14 @@
+import os
 import json
 import subprocess
-from pathlib import Path
-from dataclasses import dataclass, field
 import dataclasses
+from pathlib import Path
 
 FILE_DIR = Path(__file__).resolve().parent
 BUILD_DIR = FILE_DIR / "build"
 ROOT_DIR = FILE_DIR.parent.parent
-FILES = [f for f in BUILD_DIR.glob("PHARE_*")]
+DOT_PHARE_DIR = ROOT_DIR / ".phare"
+FILES = list(BUILD_DIR.glob("PHARE_*"))
 DEF_DIR = ROOT_DIR / "src" / "core" / "def"
 GENERATED_CONFIGS = dict(
     mpi=DEF_DIR / "_gen_mpi.hpp",
@@ -15,37 +16,66 @@ GENERATED_CONFIGS = dict(
 )
 
 
-@dataclass
+@dataclasses.dataclass
 class SystemSettings:
-    cmake_binary: str  # field(default_factory=lambda: "Couldn't parse cmake binary path")
-    cmake_version: str  # field(default_factory=lambda: "Couldn't parse cmake version")
-    hdf5_version: str  # field(default_factory=lambda: "Couldn't parse cmake hdf5 version")
-    mpi_version: str  # field(default_factory=lambda: "Couldn't parse cmake mpi version")
-    uname: str  # field(default_factory=lambda: "Couldn't parse uname")
+    cmake_binary: str
+    cmake_version: str
+    cxx_compiler: str
+    cxx_compiler_version: str
+    hdf5_version: str
+    hdf5_is_parallel: str
+    mpi_version: str
+    python_binary: str
+    python_version: str
+    uname: str
 
 
-system_cpp_ = """
+SYSTEM_CPP_ = """
 #include <string_view>
+#include <unordered_map>
 
 namespace PHARE {{
 struct SystemConfig {{
 
-    constexpr static std::string_view UNAME = R"({})";
-    constexpr static std::string_view MPI_VERSION = R"({})";
-    constexpr static std::string_view HDF5_VERSION = R"({})";
-    constexpr static std::string_view CMAKE_VERSION = R"({})";
     constexpr static std::string_view CMAKE_BINARY = R"({})";
+    constexpr static std::string_view CMAKE_VERSION = R"({})";
+    constexpr static std::string_view CXX_COMPILER = R"({})";
+    constexpr static std::string_view CXX_COMPILER_VERSION = R"({})";
+    constexpr static std::string_view HDF5_VERSION = R"({})";
+    constexpr static std::string_view HDF5_IS_PARALLEL = R"({})";
+    constexpr static std::string_view _MPI_VERSION_ = R"({})";
+    constexpr static std::string_view PYTHON_BINARY = R"({})";
+    constexpr static std::string_view PYTHON_VERSION = R"({})";
+    constexpr static std::string_view UNAME = R"({})";
 
 }};
+
+std::unordered_map<std::string, std::string> build_config(){{
+  return {{
+      {{"CMAKE_BINARY", std::string{{SystemConfig::CMAKE_BINARY}}}},
+      {{"CMAKE_VERSION", std::string{{SystemConfig::CMAKE_VERSION}}}},
+      {{"CXX_COMPILER", std::string{{SystemConfig::CXX_COMPILER}}}},
+      {{"CXX_COMPILER_VERSION", std::string{{SystemConfig::CXX_COMPILER_VERSION}}}},
+      {{"HDF5_VERSION", std::string{{SystemConfig::HDF5_VERSION}}}},
+      {{"HDF5_IS_PARALLEL", std::string{{SystemConfig::HDF5_IS_PARALLEL}}}},
+      {{"MPI_VERSION", std::string{{SystemConfig::_MPI_VERSION_}}}},
+      {{"PYTHON_BINARY", std::string{{SystemConfig::PYTHON_BINARY}}}},
+      {{"PYTHON_VERSION", std::string{{SystemConfig::PYTHON_VERSION}}}},
+      {{"UNAME", std::string{{SystemConfig::UNAME}}}}
+  }};
+}}
 
 }}
 
 """
 
 
-def exec(cmd):
-    proc = subprocess.run(cmd.split(" "), check=False, capture_output=True)
-    return (proc.stdout + proc.stderr).decode().strip()
+def subprocess_run(cmd, on_error="error message"):
+    try:
+        proc = subprocess.run(cmd.split(" "), check=True, capture_output=True)
+        return (proc.stdout + proc.stderr).decode().strip()
+    except Exception:
+        return on_error
 
 
 def file_string_or(filename, fail=None):
@@ -92,15 +122,6 @@ def cmake_version_from(cmake_cache: dict) -> str:
     return "Failed to find version in cache file"
 
 
-def cmake_binary_path_from(cmake_cache: dict) -> str:
-    """With this we should be able to guarantee future cmake
-    calls by us if needed for whatever reason"""
-    path_key = "CMAKE_COMMAND:INTERNAL"
-    if path_key in cmake_cache:
-        return cmake_cache[path_key]
-    return "Failed to find cmake binary path in cache file"
-
-
 def local_file_format(filename):
     return filename[6:-4]
 
@@ -135,30 +156,52 @@ def config_mpi_version(txtfile, h_file):
         f.write(buf)
 
 
+def try_compiler_dash_v(compiler):
+    return subprocess_run(f"{compiler} -v", "compiler does not support '-v' argument")
+
+
+def get_python_version(py3_binary):
+    return subprocess_run(
+        f"{py3_binary} -V", "python3 interpreter does not support '-V' argument"
+    )
+
+
 def gen_system_file():
     out_file = GENERATED_CONFIGS["system"]
     cmake_cache: dict = parse_cmake_cache_file()
 
     settings = SystemSettings(
-        cmake_binary=cmake_binary_path_from(cmake_cache),
+        cmake_binary=os.environ["CMAKE_COMMAND"],
         cmake_version=cmake_version_from(cmake_cache),
+        cxx_compiler=os.environ["CMAKE_CXX_COMPILER"],
+        cxx_compiler_version=try_compiler_dash_v(os.environ["CMAKE_CXX_COMPILER"]),
         hdf5_version=file_string_or("PHARE_HDF5_version.txt", "HDF5 version failed"),
+        hdf5_is_parallel=file_string_or(
+            "PHARE_HDF5_is_parallel.txt", "HDF5 is parallel check failed"
+        ),
         mpi_version=file_string_or(
             "PHARE_MPI_Get_library_version.txt", "MPI version failed"
         ),
-        uname=exec("uname -a"),
+        python_binary=os.environ["PYTHON_EXECUTABLE"],
+        python_version=get_python_version(os.environ["PYTHON_EXECUTABLE"]),
+        uname=subprocess_run("uname -a"),
     )
-    with open(ROOT_DIR/".phare_config.json", "w") as f:
+    with open(DOT_PHARE_DIR / "build_config.json", "w") as f:
         json.dump(dataclasses.asdict(settings), f)
 
     with open(out_file, "w") as f:
         f.write(
-            system_cpp_.format(
-                settings.uname,
-                settings.hdf5_version,
-                settings.mpi_version,
-                settings.cmake_version,
+            SYSTEM_CPP_.format(
                 settings.cmake_binary,
+                settings.cmake_version,
+                settings.cxx_compiler,
+                settings.cxx_compiler_version,
+                settings.hdf5_version,
+                settings.hdf5_is_parallel,
+                settings.mpi_version,
+                settings.python_binary,
+                settings.python_version,
+                settings.uname,
             )
         )
 
@@ -174,6 +217,7 @@ def config_mpi():
 
 
 def main():
+    DOT_PHARE_DIR.mkdir(exist_ok=True, parents=True)
     config_mpi()
     gen_system_file()
 
