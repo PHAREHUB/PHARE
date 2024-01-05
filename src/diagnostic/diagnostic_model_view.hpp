@@ -80,18 +80,21 @@ public:
         dict["lower"]    = grid.AMRBox().lower.toVector();
         dict["upper"]    = grid.AMRBox().upper.toVector();
         dict["mpi_rank"] = static_cast<std::size_t>(core::mpi::rank());
+        dict["patch_id"] = patchID;
         return dict;
     }
 
 
     NO_DISCARD static auto getEmptyPatchProperties()
     {
+        // should be consistent with function `getPatchProperties` above
         PatchProperties dict;
         dict["origin"]   = std::vector<double>{};
         dict["nbrCells"] = std::vector<std::uint32_t>{};
         dict["lower"]    = std::vector<int>{};
         dict["upper"]    = std::vector<int>{};
         dict["mpi_rank"] = std::size_t{0};
+        dict["patch_id"] = std::string{""};
         return dict;
     }
 
