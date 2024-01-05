@@ -120,6 +120,11 @@ def ifndef_define(var, val, buf, comment=None):
 
 
 def config_mpi_version(txtfile, h_file):
+    ...
+
+
+def config_mpi_version_old(txtfile, h_file):
+    """not used anymore, but an example"""
     with open(txtfile) as f:
         version = f.readline()
     buf = "\n"
@@ -148,7 +153,7 @@ def gen_system_file():
         ),
         uname=exec("uname -a"),
     )
-    with open(ROOT_DIR/".phare_config.json", "w") as f:
+    with open(ROOT_DIR / ".phare_config.json", "w") as f:
         json.dump(dataclasses.asdict(settings), f)
 
     with open(out_file, "w") as f:

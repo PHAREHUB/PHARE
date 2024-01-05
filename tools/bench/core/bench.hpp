@@ -35,7 +35,7 @@ template<typename Particles>
 void write_raw_to_file(Particles const& particles, std::string const& filename)
 {
     using Particle_t = typename Particles::value_type;
-    std::ofstream f{filename};
+    std::ofstream f{filename, std::ios::binary};
     f.write(reinterpret_cast<char const*>(particles.vector().data()),
             particles.size() * sizeof(Particle_t));
 }
@@ -45,7 +45,7 @@ void read_raw_from_file(Particles& particles, std::string const& filename)
 {
     using Particle_t = typename Particles::value_type;
 
-    std::ifstream f{filename};
+    std::ifstream f{filename, std::ios::binary};
 
     // Stop eating new lines in binary mode
     f.unsetf(std::ios::skipws);
