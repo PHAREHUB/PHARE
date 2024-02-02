@@ -251,9 +251,14 @@ def populateDict():
     addInitFunction(maginit_path + "y_component", fn_wrapper(modelDict["by"]))
     addInitFunction(maginit_path + "z_component", fn_wrapper(modelDict["bz"]))
 
+    serialized_sim = serialize_sim(simulation)
+
     #### adding diagnostics
+
     diag_path = "simulation/diagnostics/"
     for diag in list(simulation.diagnostics.values()):
+        diag.attributes["serialized_simulation"] = serialized_sim
+
         type_path = diag_path + diag.type + "/"
         name_path = type_path + diag.name
         add_string(name_path + "/" + "type", diag.type)
@@ -265,6 +270,7 @@ def populateDict():
         pp.add_array_as_vector(
             name_path + "/" + "compute_timestamps", diag.compute_timestamps
         )
+
         add_size_t(name_path + "/" + "n_attributes", len(diag.attributes))
         for attr_idx, attr_key in enumerate(diag.attributes):
             add_string(name_path + "/" + f"attribute_{attr_idx}_key", attr_key)
@@ -343,7 +349,7 @@ def populateDict():
                 restarts_path + "write_timestamps", restart_options["timestamps"]
             )
 
-        add_string(restarts_path + "serialized_simulation", serialize_sim(simulation))
+        add_string(restarts_path + "serialized_simulation", serialized_sim)
     #### restarts added
 
     #### adding electrons
