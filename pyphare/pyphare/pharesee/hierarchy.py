@@ -581,6 +581,7 @@ class PatchHierarchy(object):
         self.refinement_ratio = refinement_ratio
 
         self.data_files = {}
+        self._sim = None
 
         if data_files is not None:
             self.data_files.update(data_files)
@@ -607,6 +608,21 @@ class PatchHierarchy(object):
 
     def __getitem__(self, qty):
         return self.__dict__[qty]
+
+    @property
+    def sim(self):
+        if self._sim:
+            return self._sim
+
+        if "py_attrs" not in self.data_files:
+            raise ValueError("Simulation is not available for deserialization")
+
+        from ..pharein.simulation import deserialize
+
+        self._sim = deserialize(
+            self.data_files["py_attrs"].attrs["serialized_simulation"]
+        )
+        return self._sim
 
     def __call__(self, qty=None, **kwargs):
         # take slice/slab of 1/2d array from 2/3d array

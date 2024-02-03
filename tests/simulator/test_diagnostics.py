@@ -211,6 +211,9 @@ class DiagnosticsTest(unittest.TestCase):
                 )
 
                 hier = hierarchy_from(h5_filename=h5_filepath)
+
+                assert hier.sim.electrons.closure.Te == 0.12
+
                 if h5_filepath.endswith("domain.h5"):
                     particle_files += 1
                     self.assertTrue("pop_mass" in h5_file.attrs)
