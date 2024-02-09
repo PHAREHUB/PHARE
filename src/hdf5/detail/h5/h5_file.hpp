@@ -84,14 +84,17 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file() { return h5file_; }
+    NO_DISCARD HiFile& file()
+    {
+        return h5file_;
+    }
 
 
     template<typename T, std::size_t dim = 1>
     NO_DISCARD auto read_data_set_flat(std::string path) const
     {
         std::vector<T> data(H5Easy::getSize(h5file_, path));
-        h5file_.getDataSet(path).read(pointer_dim_caster<dim>(data.data()));
+        h5file_.getDataSet(path).read_raw(pointer_dim_caster<dim>(data.data()));
         return data;
     }
 
