@@ -11,6 +11,10 @@ endif() # clang
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
 
+if(NOT DEFINED PHARE_MPIRUN_POSTFIX)
+  set (PHARE_MPIRUN_POSTFIX --bind-to none)
+endif()
+
 if(PGO_GEN)
   if(PGO_USE)
     message(FATAL_ERROR "cannot generate and use pgo at the same time.")
@@ -181,17 +185,17 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   if(testMPI)
     function(add_phare_test binary directory)
-      add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ./${binary} WORKING_DIRECTORY ${directory})
+      add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ./${binary} WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary} ${directory})
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
-      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 -u ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
 
     function(add_mpi_python3_test N name file directory)
-      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
     endfunction(add_mpi_python3_test)
 
@@ -254,7 +258,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       else()
         add_test(
             NAME py3_${target}_mpi_n_${N}
-            COMMAND mpirun -n ${N} python3 -u ${file} ${CLI_ARGS}
+            COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} ${CLI_ARGS}
             WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target}_mpi_n_${N})
       endif()
@@ -295,4 +299,3 @@ function(phare_print_all_vars)
       message(STATUS "${_variableName}=${${_variableName}}")
   endforeach()
 endfunction(phare_print_all_vars)
-
