@@ -265,3 +265,11 @@ class SimulatorTest(unittest.TestCase):
             for diag_dir in self.diag_dirs:
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
+
+    def hierarchy_by_box(self, hier):
+        # comparing hierarchies by index isn't always right
+        box_hier = {i: {} for i in range(len(hier.levels()))}
+        for ilvl, patches in box_hier.items():
+            for patch in hier.level(ilvl).patches:
+                patches[str(patch.box)] = patch
+        return box_hier

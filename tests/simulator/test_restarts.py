@@ -191,22 +191,23 @@ class RestartsTest(SimulatorTest):
             )
 
             self.assertEqual(len(datahier0.levels()), len(datahier1.levels()))
+
+            # patch order by list index across hierarchies not guaranteed
+            boxhier1 = self.hierarchy_by_box(datahier1)
+
             for ilvl in range(len(datahier0.levels())):
                 self.assertEqual(
                     len(datahier0.level(ilvl).patches),
                     len(datahier1.level(ilvl).patches),
                 )
-                for patch0, patch1 in zip(
-                    datahier0.level(ilvl).patches, datahier1.level(ilvl).patches
-                ):
-                    self.assertEqual(patch0.box, patch1.box)
+                for patch0 in datahier0.level(ilvl).patches:
+                    self.assertIn(str(patch0.box), boxhier1[ilvl])
 
             self.assertGreater(len(datahier0.levels()), 0)
 
             for ilvl, lvl0 in datahier0.levels().items():
-                patch_level1 = datahier1.levels()[ilvl]
-                for p_idx, patch0 in enumerate(lvl0):
-                    patch1 = patch_level1.patches[p_idx]
+                for patch0 in lvl0:
+                    patch1 = boxhier1[ilvl][str(patch0.box)]
                     for pd_key, pd0 in patch0.patch_datas.items():
                         pd1 = patch1.patch_datas[pd_key]
                         self.assertNotEqual(id(pd0), id(pd1))
@@ -218,7 +219,16 @@ class RestartsTest(SimulatorTest):
                                     f"FAILED domain particles at time {time} {ilvl} {patch1.box} {patch0.box}"
                                 )
                         else:
-                            np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
+                            if cpp.mpi_size() == 1:
+                                np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
+                            else:
+                                # rank order for shared nodes not guaranteed
+                                np.testing.assert_allclose(
+                                    pd0.dataset[:],
+                                    pd1.dataset[:],
+                                    atol=1e-14,  # 1e-15 fails empirically
+                                    rtol=0,
+                                )
                         checks += 1
 
             n_levels, n_patches = count_levels_and_patches(run0.GetB(time))
@@ -251,7 +261,7 @@ class RestartsTest(SimulatorTest):
             # three levels has issues with refinementboxes and possibly regridding
             b0 = [[6] * ndim, [15] * ndim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
-        else:  # https://github.com/LLNL/SAMRAI/issues/199
+        elif cpp.mpi_size() == 1:  # https://github.com/LLNL/SAMRAI/issues/199
             # tagging can handle more than one timestep as it does not
             #  appear subject to regridding issues, so we make more timesteps
             #  to confirm simulations are still equivalent
