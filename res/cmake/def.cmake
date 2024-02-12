@@ -6,8 +6,16 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set (PHARE_FLAGS ${PHARE_FLAGS} )
 else() # !Clang
   # --param=min-pagesize=0    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105523
+  check_cxx_compiler_flag( --param=min-pagesize=0 CHECK_SUPPORTS_FLAG)
+  if (${CHECK_SUPPORTS_FLAG})
+    set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+  endif()
+
   # --param=evrp-mode=legacy  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
-  set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 --param=evrp-mode=legacy )
+  check_cxx_compiler_flag( --param=evrp-mode=legacy CHECK_SUPPORTS_FLAG)
+  if (${CHECK_SUPPORTS_FLAG})
+    set (PHARE_FLAGS ${PHARE_FLAGS} --param=evrp-mode=legacy )
+  endif()
 endif() # clang
 
 set (PHARE_LINK_FLAGS )
