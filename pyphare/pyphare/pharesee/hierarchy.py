@@ -619,9 +619,12 @@ class PatchHierarchy(object):
 
         from ..pharein.simulation import deserialize
 
-        self._sim = deserialize(
-            self.data_files["py_attrs"].attrs["serialized_simulation"]
-        )
+        try:
+            self._sim = deserialize(
+                self.data_files["py_attrs"].attrs["serialized_simulation"]
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to deserialize simulation from data file : {e}")
         return self._sim
 
     def __call__(self, qty=None, **kwargs):
