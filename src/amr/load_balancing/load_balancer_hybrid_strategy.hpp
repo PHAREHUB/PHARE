@@ -14,10 +14,14 @@ namespace PHARE::amr
 template<typename PHARE_T>
 class LoadBalancerHybridStrategy
 {
+    using HybridModel = typename PHARE_T::HybridModel_t;
+    using amr_types   = typename HybridModel::amr_types;
+    using level_t     = typename amr_types::level_t;
+
 public:
-    virtual void compute(SAMRAI::hier::PatchLevel& level,
-                         PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>& model)
-        = 0;
+    virtual ~LoadBalancerHybridStrategy() {}
+
+    virtual void compute(level_t& level, PHARE::solver::IPhysicalModel<amr_types>& model) = 0;
 };
 
 

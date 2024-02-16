@@ -52,24 +52,24 @@ namespace solver
             auto& hybridModel = static_cast<HybridModel&>(model);
             auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
 
-            auto& hybMessenger = dynamic_cast<HybridMessenger&>(messenger);
+            auto& hybMessenger  = dynamic_cast<HybridMessenger&>(messenger);
+            bool isRegriddingL0 = isRegridding and levelNumber == 0;
 
-            if (isRootLevel(levelNumber))
+            if (isRegridding)
             {
-                PHARE_LOG_START("hybridLevelInitializer::initialize : root level init");
-                model.initialize(level);
-                messenger.fillRootGhosts(model, level, initDataTime);
-                PHARE_LOG_STOP("hybridLevelInitializer::initialize : root level init");
+                std::cout << "regriding level " << levelNumber << "\n";
+                PHARE_LOG_START("hybridLevelInitializer::initialize : regriding block");
+                messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
+                PHARE_LOG_STOP("hybridLevelInitializer::initialize : regriding block");
             }
-
             else
             {
-                if (isRegridding)
+                if (isRootLevel(levelNumber))
                 {
-                    std::cout << "regriding level " << levelNumber << "\n";
-                    PHARE_LOG_START("hybridLevelInitializer::initialize : regriding block");
-                    messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
-                    PHARE_LOG_STOP("hybridLevelInitializer::initialize : regriding block");
+                    PHARE_LOG_START("hybridLevelInitializer::initialize : root level init");
+                    model.initialize(level);
+                    messenger.fillRootGhosts(model, level, initDataTime);
+                    PHARE_LOG_STOP("hybridLevelInitializer::initialize : root level init");
                 }
                 else
                 {
@@ -109,55 +109,59 @@ namespace solver
             // we are at a sync time across levels and that the time interpolation
             // is not needed. But is still seems to use the messenger tempoeraries like
             // NiOld etc. so prepareStep() must be called, see end of the function.
-            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
+
+            if (!isRegriddingL0)
+                hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
 
 
             // now moments are known everywhere, compute J and E
             // via Ampere and Ohm
             // this only needs to be done for the root level
             // since otherwise initLevel has done it already
-
-            if (isRootLevel(levelNumber))
-            {
-                auto& B = hybridModel.state.electromag.B;
-                auto& J = hybridModel.state.J;
-
-                for (auto& patch : level)
+            if (!isRegriddingL0)
+                if (isRootLevel(levelNumber))
                 {
-                    auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
-                    auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                    auto __     = core::SetLayout(&layout, ampere_);
-                    ampere_(B, J);
+                    auto& B = hybridModel.state.electromag.B;
+                    auto& J = hybridModel.state.J;
 
-                    hybridModel.resourcesManager->setTime(J, *patch, 0.);
+                    for (auto& patch : level)
+                    {
+                        auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
+                        auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
+                        auto __     = core::SetLayout(&layout, ampere_);
+                        ampere_(B, J);
+
+                        hybridModel.resourcesManager->setTime(J, *patch, 0.);
+                    }
+                    hybMessenger.fillCurrentGhosts(J, levelNumber, 0.);
+
+                    auto& electrons = hybridModel.state.electrons;
+                    auto& E         = hybridModel.state.electromag.E;
+
+                    for (auto& patch : level)
+                    {
+                        auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
+                        auto _
+                            = hybridModel.resourcesManager->setOnPatch(*patch, B, E, J, electrons);
+                        electrons.update(layout);
+                        auto& Ve = electrons.velocity();
+                        auto& Ne = electrons.density();
+                        auto& Pe = electrons.pressure();
+                        auto __  = core::SetLayout(&layout, ohm_);
+                        ohm_(Ne, Ve, Pe, B, J, E);
+                        hybridModel.resourcesManager->setTime(E, *patch, 0.);
+                    }
+
+                    hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
                 }
-                hybMessenger.fillCurrentGhosts(J, levelNumber, 0.);
-
-                auto& electrons = hybridModel.state.electrons;
-                auto& E         = hybridModel.state.electromag.E;
-
-                for (auto& patch : level)
-                {
-                    auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                    auto _ = hybridModel.resourcesManager->setOnPatch(*patch, B, E, J, electrons);
-                    electrons.update(layout);
-                    auto& Ve = electrons.velocity();
-                    auto& Ne = electrons.density();
-                    auto& Pe = electrons.pressure();
-                    auto __  = core::SetLayout(&layout, ohm_);
-                    ohm_(Ne, Ve, Pe, B, J, E);
-                    hybridModel.resourcesManager->setTime(E, *patch, 0.);
-                }
-
-                hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
-            }
 
             // quantities have been computed on the level,like the moments and J
             // that we later in the code need to get on level ghost nodes via
             // space and TIME interpolation. We thus need to save current values
             // in "old" messenger temporaries.
             // NOTE :  this may probably be skipped for finest level since, TBC at some point
-            hybMessenger.prepareStep(hybridModel, level, initDataTime);
+            if (!isRegriddingL0)
+                hybMessenger.prepareStep(hybridModel, level, initDataTime);
         }
     };
 } // namespace solver

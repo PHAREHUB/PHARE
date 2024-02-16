@@ -26,6 +26,7 @@ namespace core
     class Ions
     {
     public:
+        using value_type          = IonPopulation;
         using field_type          = typename IonPopulation::field_type;
         using vecfield_type       = typename IonPopulation::vecfield_type;
         using Float               = typename field_type::type;
