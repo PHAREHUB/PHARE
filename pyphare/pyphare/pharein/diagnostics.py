@@ -1,3 +1,5 @@
+import numpy as np
+
 from ..core import phare_utilities
 from . import global_vars
 
@@ -44,8 +46,6 @@ def diagnostics_checker(func):
 
     return wrapper
 
-
-import numpy as np
 
 # ------------------------------------------------------------------------------
 def validate_timestamps(clazz, key, **kwargs):
@@ -173,7 +173,6 @@ class ElectromagDiagnostics(Diagnostics):
         )
 
     def _setSubTypeAttributes(self, **kwargs):
-
         if kwargs["quantity"] not in ElectromagDiagnostics.em_quantities:
             error_msg = "Error: '{}' not a valid electromag diagnostics : " + ", ".join(
                 ElectromagDiagnostics.em_quantities
@@ -201,7 +200,6 @@ def population_in_model(population):
 
 
 class FluidDiagnostics_(Diagnostics):
-
     fluid_quantities = [
         "density",
         "mass_density",
@@ -327,7 +325,6 @@ class ParticleDiagnostics(Diagnostics):
         self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
     def space_box(self, **kwargs):
-
         if "extent" not in kwargs and self.quantity == "space_box":
             raise ValueError(
                 "Error: missing 'extent' parameter required by 'space_box' the ParticleDiagnostics type"
@@ -352,7 +349,6 @@ class ParticleDiagnostics(Diagnostics):
 
 
 class MetaDiagnostics(Diagnostics):
-
     meta_quantities = ["tags"]
     type = "info"
 

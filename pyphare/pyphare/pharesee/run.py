@@ -111,7 +111,6 @@ def _divB2D(Bx, By, xBx, yBy):
 
 
 def _compute_divB(patchdatas, **kwargs):
-
     reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
     ndim = reference_pd.box.ndim
 

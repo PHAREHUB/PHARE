@@ -160,7 +160,7 @@ class DiagnosticsTest(unittest.TestCase):
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
         py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
-        py_attrs += ["git_hash"]
+        py_attrs += ["git_hash", "serialized_simulation"]
 
         for interp in range(1, 4):
             print("test_dump_diags dim/interp:{}/{}".format(dim, interp))
@@ -203,7 +203,17 @@ class DiagnosticsTest(unittest.TestCase):
                 for py_attr in py_attrs:
                     self.assertIn(py_attr, h5_py_attrs)
 
+                assert (
+                    ph.simulation.deserialize(
+                        h5_file["py_attrs"].attrs["serialized_simulation"]
+                    ).electrons.closure.Te
+                    == 0.12
+                )
+
                 hier = hierarchy_from(h5_filename=h5_filepath)
+
+                assert hier.sim.electrons.closure.Te == 0.12
+
                 if h5_filepath.endswith("domain.h5"):
                     particle_files += 1
                     self.assertTrue("pop_mass" in h5_file.attrs)
