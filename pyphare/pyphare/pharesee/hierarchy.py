@@ -596,7 +596,7 @@ class PatchHierarchy(object):
                     for ilvl, level in levels.items():
                         patches = []
                         for patch in level.patches:
-                            patches += [Patch({qty: patch.patch_datas[qty]})]
+                            patches += [Patch({qty: patch.patch_datas[qty]}, patch.id)]
                         new_lvls[ilvl] = PatchLevel(ilvl, patches)
                     if first:
                         self.__dict__[qty] = PatchHierarchy(
@@ -1285,9 +1285,9 @@ def extract_patchdatas(hierarchies, ilvl, ipatch):
     return patch_datas
 
 
-def new_patchdatas_from(compute, patchdatas, layout, **kwargs):
+def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
     new_patch_datas = {}
-    datas = compute(patchdatas, **kwargs)
+    datas = compute(patchdatas, id=id, **kwargs)
     for data in datas:
         pd = FieldData(layout, data["name"], data["data"], centering=data["centering"])
         new_patch_datas[data["name"]] = pd
@@ -1302,7 +1302,9 @@ def new_patches_from(compute, hierarchies, ilvl, **kwargs):
         current_patch = reference_hier.patch_levels[ilvl].patches[ip]
         layout = current_patch.layout
         patch_datas = extract_patchdatas(hierarchies, ilvl, ip)
-        new_patch_datas = new_patchdatas_from(compute, patch_datas, layout, **kwargs)
+        new_patch_datas = new_patchdatas_from(
+            compute, patch_datas, layout, id=current_patch.id, **kwargs
+        )
         new_patches.append(Patch(new_patch_datas, current_patch.id))
     return new_patches
 
