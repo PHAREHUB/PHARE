@@ -101,13 +101,7 @@ class FieldData(PatchData):
 
         overlap = box * gbox
         if overlap is not None:
-            lower = self.layout.AMRToLocal(overlap.lower)
-            upper = self.layout.AMRToLocal(overlap.upper)
-
-            if box.ndim == 1:
-                return self.dataset[lower[0] : upper[0] + 1]
-            if box.ndim == 2:
-                return self.dataset[lower[0] : upper[0] + 1, lower[1] : upper[1] + 1]
+            return boxm.select(self.dataset, self.layout.AMRBoxToLocal(overlap))
         return np.array([])
 
     def __getitem__(self, box):
@@ -181,6 +175,8 @@ class FieldData(PatchData):
         if select is not None:
             return tuple(g[select] for g in mesh)
         return mesh
+
+
 
 
 class ParticleData(PatchData):
@@ -1691,6 +1687,19 @@ def hierarchy_from_sim(simulator, qty, pop=""):
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
     return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
+
+
+def hierarchy_from_box(domain_box, ghosts_nbr):
+    """
+    constructs a basic hierarchy with one patch for level 0 as the entire domain
+    """
+    layout = GridLayout(domain_box, np.asarray([0] * domain_box.ndim), [.1] * domain_box.ndim, 1)
+    pdata = PatchData(layout, "qty")
+    object.__setattr__(pdata, "ghosts_nbr", np.asarray(ghosts_nbr))
+    object.__setattr__(pdata, "ghost_box", boxm.grow(layout.box, ghosts_nbr))
+    return PatchHierarchy(
+        {0 : PatchLevel(0, [Patch({"qty": pdata})])}, domain_box
+    )
 
 
 def hierarchy_from(

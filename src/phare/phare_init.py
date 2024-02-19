@@ -17,7 +17,10 @@ ph.Simulation(
     max_nbr_levels=2,  # (default=1) max nbr of levels in the AMR hierarchy
     refinement="tagging",
     # refinement_boxes={"L0": {"B0": [(10, ), (20, )]}},
-    diag_options={"format": "phareh5", "options": {"dir": "phare_outputs"}},
+    diag_options={
+        "format": "phareh5",
+        "options": {"dir": "phare_outputs", "mode": "overwrite"},
+    },
 )
 
 

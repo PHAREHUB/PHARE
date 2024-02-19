@@ -379,7 +379,7 @@ namespace core
              * the following is only valid when dual and primal do not have the same number of
             ghosts
              * and that depends on the interp order
-             * It is commented out because ghosts are hard coded to 5 for now.
+             * It is commented out because ghosts are hard coded to 3 for now.
              *
             if constexpr (interp_order == 1 || interp_order == 2 || interp_order == 4)
                 return -1;
@@ -399,7 +399,7 @@ namespace core
              * the following is only valid when dual and primal do not have the same number of
             ghosts
              * and that depends on the interp order
-             * It is commented out because ghosts are hard coded to 5 for now.
+             * It is commented out because ghosts are hard coded to 3 for now.
              *
             if constexpr (interp_order == 1 || interp_order == 2 || interp_order == 4)
                 return 1;

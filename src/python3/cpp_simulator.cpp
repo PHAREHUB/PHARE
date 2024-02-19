@@ -24,3 +24,9 @@ PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
     declarePatchData<std::vector<double>, 3>(m, "PatchDataVectorDouble_3D");
 }
 } // namespace PHARE::pydata
+
+#if defined(PHARE_EXEC_PYBIND)
+#define PHARE_EXE_NO_MAIN 1
+#include "phare/phare.cpp"
+#undef PHARE_EXE_NO_MAIN
+#endif

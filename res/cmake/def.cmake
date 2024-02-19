@@ -287,6 +287,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
 endif()
 
+
 # useful to see what's available after importing a package
 function(phare_print_all_cmake_vars)
   get_cmake_property(_variableNames VARIABLES)
@@ -295,4 +296,3 @@ function(phare_print_all_cmake_vars)
       message(STATUS "${_variableName}=${${_variableName}}")
   endforeach()
 endfunction(phare_print_all_cmake_vars)
-

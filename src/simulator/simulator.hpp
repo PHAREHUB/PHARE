@@ -78,6 +78,7 @@ public:
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
+
     ~Simulator()
     {
         if (coutbuf != nullptr)

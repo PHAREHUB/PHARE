@@ -43,12 +43,15 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     return nullptr;
 }
 
-int main(int argc, char** argv)
+
+int naim(int argc, char** argv)
 {
-    if (std::signal(SIGINT, signal_handler) == SIG_ERR) {
+    if (std::signal(SIGINT, signal_handler) == SIG_ERR)
+    {
         throw std::runtime_error("PHARE Error: Failed to register SIGINT signal handler");
     }
-    if (std::signal(SIGABRT, signal_handler) == SIG_ERR) {
+    if (std::signal(SIGABRT, signal_handler) == SIG_ERR)
+    {
         throw std::runtime_error("PHARE Error: Failed to register SIGABRT signal handler");
     }
 
@@ -98,3 +101,11 @@ int main(int argc, char** argv)
 
     return gSignalStatus;
 }
+
+
+#if !defined(PHARE_EXE_NO_MAIN)
+int main(int argc, char** argv)
+{
+    return naim(argc, argv);
+}
+#endif
