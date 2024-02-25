@@ -1,10 +1,4 @@
-#include "tools/bench/core/bench.hpp"
-#include "tests/core/data/gridlayout/test_gridlayout.hpp"
-
-#include "core/numerics/pusher/boris.hpp"
-#include "core/numerics/ion_updater/ion_updater.hpp"
-
-using namespace PHARE;
+#include "push_bench.hpp"
 
 template<std::size_t dim, std::size_t interp>
 void push(benchmark::State& state)
@@ -16,11 +10,11 @@ void push(benchmark::State& state)
     using GridLayout_t      = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Interpolator      = PHARE::core::Interpolator<dim, interp>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
-    using Electromag_t      = core::bench::Electromag<GridLayout_t>;
+    using Electromag_t      = PHARE::core::bench::Electromag<GridLayout_t>;
     using Ions_t            = typename PHARE_Types::Ions_t;
     using ParticleArray     = typename Ions_t::particle_array_type;
     using Particle_t        = typename ParticleArray::value_type;
-    using ParticleRange     = core::IndexRange<ParticleArray>;
+    using ParticleRange     = PHARE::core::IndexRange<ParticleArray>;
 
     using BorisPusher_t = PHARE::core::BorisPusher<dim, ParticleRange, Electromag_t, Interpolator,
                                                    BoundaryCondition, GridLayout_t>;
@@ -30,8 +24,9 @@ void push(benchmark::State& state)
     Electromag_t em{layout};
 
     ParticleArray domainParticles{layout.AMRBox()};
-    domainParticles.vector() = std::vector<Particle_t>(n_parts, core::bench::particle<dim>());
-    core::bench::disperse(domainParticles, 0, cells - 1, 13337);
+    domainParticles.vector()
+        = std::vector<Particle_t>(n_parts, PHARE::core::bench::particle<dim>());
+    PHARE::core::bench::disperse(domainParticles, 0, cells - 1, 13337);
     // std::sort(domainParticles);
 
     ParticleArray tmpDomain{layout.AMRBox()};

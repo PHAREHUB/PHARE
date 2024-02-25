@@ -80,8 +80,8 @@ jobs:
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-              -DlowResourceTests=ON -DdevMode=ON \
-              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 -O2"
+              -DlowResourceTests=ON -DdevMode=ON -Dbench=ON \
+              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 -O2" -Dphare_configurator=ON
 
     - name: Build
       working-directory: ${{runner.workspace}}/build

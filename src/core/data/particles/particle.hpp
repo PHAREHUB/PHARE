@@ -74,7 +74,7 @@ struct Particle
     friend std::ostream& operator<<(std::ostream& out, Particle<dimension> const& particle);
 };
 
-template<std::size_t dim>
+template<std::size_t dim> // string rep
 std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
 {
     out << "iCell(";
