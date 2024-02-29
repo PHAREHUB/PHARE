@@ -203,7 +203,11 @@ class DiagnosticsTest(unittest.TestCase):
                 for py_attr in py_attrs:
                     self.assertIn(py_attr, h5_py_attrs)
 
-                assert (
+                h5_version = h5_file["py_attrs"].attrs["highfive_version"].split(".")
+                self.assertTrue(len(h5_version) == 3)
+                self.assertTrue(all(i.isdigit() for i in h5_version))
+
+                self.assertTrue(
                     ph.simulation.deserialize(
                         h5_file["py_attrs"].attrs["serialized_simulation"]
                     ).electrons.closure.Te
@@ -212,7 +216,7 @@ class DiagnosticsTest(unittest.TestCase):
 
                 hier = hierarchy_from(h5_filename=h5_filepath)
 
-                assert hier.sim.electrons.closure.Te == 0.12
+                self.assertTrue(hier.sim.electrons.closure.Te == 0.12)
 
                 if h5_filepath.endswith("domain.h5"):
                     particle_files += 1

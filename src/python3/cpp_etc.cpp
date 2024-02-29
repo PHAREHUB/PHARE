@@ -40,7 +40,7 @@ PYBIND11_MODULE(cpp_etc, m)
     m.def("phare_deps", []() {
         std::unordered_map<std::string, std::string> versions{{"pybind", pybind_version()},
                                                               {"samrai", samrai_version()}};
-        _PHARE_WITH_HIGHFIVE(versions["highfive"] = PHARE_TO_STR(HIGHFIVE_VERSION));
+        _PHARE_WITH_HIGHFIVE(versions["highfive"] = HIGHFIVE_VERSION_STRING);
         return versions;
     });
 
