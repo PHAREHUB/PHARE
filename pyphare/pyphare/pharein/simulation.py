@@ -611,7 +611,6 @@ def checker(func):
             "restart_options",
             "tag_buffer",
             "description",
-            "dry_run",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -678,7 +677,8 @@ def checker(func):
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
 
-        kwargs["dry_run"] = CLI_ARGS.dry_run
+        # kwargs["dry_run"] = CLI_ARGS.dry_run
+        # kwargs["write_reports"] = CLI_ARGS.reports
 
         return func(simulation_object, **kwargs)
 

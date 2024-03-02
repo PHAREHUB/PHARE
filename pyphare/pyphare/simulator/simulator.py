@@ -6,7 +6,9 @@
 import atexit
 import time as timem
 import numpy as np
+import pyphare.pharein as ph
 
+CLI_ARGS = ph.simulation.CLI_ARGS
 
 life_cycles = {}
 
@@ -36,8 +38,6 @@ def startMPI():
 
 class Simulator:
     def __init__(self, simulation, auto_dump=True, **kwargs):
-        import pyphare.pharein as ph
-
         assert isinstance(simulation, ph.Simulation)  # pylint: disable=no-member
         self.simulation = simulation
         self.cpp_hier = None  # HERE
@@ -63,13 +63,14 @@ class Simulator:
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
         try:
             from pyphare.cpp import cpp_lib
-            import pyphare.pharein as ph
 
             startMPI()
 
             import pyphare.cpp.validate as validate_cpp
 
-            validate_cpp.log_runtime_config()
+            if all([not CLI_ARGS.dry_run, CLI_ARGS.write_reports]):
+                # not necessary during testing
+                validate_cpp.log_runtime_config()
             validate_cpp.check_build_config_is_runtime_compatible()
 
             if self.log_to_file:
@@ -101,7 +102,7 @@ class Simulator:
             if self.cpp_hier is None:
                 self.setup()
 
-            if self.simulation.dry_run:
+            if CLI_ARGS.dry_run:
                 return
 
             self.cpp_sim.initialize()
@@ -127,7 +128,7 @@ class Simulator:
 
     def advance(self, dt=None):
         self._check_init()
-        if self.simulation.dry_run:
+        if CLI_ARGS.dry_run:
             return
         if dt is None:
             dt = self.timeStep()
@@ -154,7 +155,7 @@ class Simulator:
         from pyphare.cpp import cpp_lib
 
         self._check_init()
-        if self.simulation.dry_run:
+        if CLI_ARGS.dry_run:
             return
         perf = []
         end_time = self.cpp_sim.endTime()
@@ -198,8 +199,6 @@ class Simulator:
 
     def reset(self):
         if self.cpp_sim is not None:
-            import pyphare.pharein as ph
-
             ph.clearDict()
         if self.cpp_dw is not None:
             self.cpp_dw.kill()
