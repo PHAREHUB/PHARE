@@ -13,6 +13,7 @@ from pyphare.core.box import Box, Box2D
 from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import NoOverwriteDict, populate_simulation
+from tests.simulator import SimulatorTest
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {
@@ -29,12 +30,13 @@ def dup(dic):
 
 
 @ddt
-class SimulatorValidation(unittest.TestCase):
+class SimulatorValidation(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(SimulatorValidation, self).__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
+        super(SimulatorValidation, self).tearDown()
         if self.simulator is not None:
             self.simulator.reset()
 
