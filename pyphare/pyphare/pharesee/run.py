@@ -596,8 +596,7 @@ class Run:
 
         h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
         return (
-            Te
-            * ScalarField(
+            ScalarField(
                 h.patch_levels,
                 h.domain_box,
                 refinement_ratio=h.refinement_ratio,
