@@ -147,7 +147,9 @@ def _compute_to_primal(patchdatas, **kwargs):
 
     reference_name = next(iter(kwargs.values()))
     reference_pd = patchdatas[reference_name]
-    nb_ghosts = reference_pd.layout.nbrGhosts(reference_pd.layout.interp_order, 'primal')
+    nb_ghosts = reference_pd.layout.nbrGhosts(
+        reference_pd.layout.interp_order, "primal"
+    )
     ndim = reference_pd.box.ndim
 
     centerings = ["primal"] * ndim
@@ -160,58 +162,56 @@ def _compute_to_primal(patchdatas, **kwargs):
 
         ds_shape = list(ds.shape)
         for i in range(ndim):
-            if pd.centerings[i] == 'dual':
+            if pd.centerings[i] == "dual":
                 ds_shape[i] += 1
 
         ds_all_primal = np.full(ds_shape, np.nan)
         ds_ = np.zeros(ds_shape)
 
-        if pd_name in ['Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho', 'tags']:
+        if pd_name in ["Fx", "Fy", "Fz", "Vx", "Vy", "Vz", "rho", "tags"]:
             ds_all_primal = np.asarray(patchdatas[pd_name].dataset)
         elif pd_name == "Bx":
             inner, chunks = _pdd_to_ppp_domain_slicing(nb_ghosts, ndim)
             for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk]/len(chunks))
+                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
             ds_all_primal[inner] = ds_[inner]
         elif pd_name == "By":
             inner, chunks = _dpd_to_ppp_domain_slicing(nb_ghosts, ndim)
             for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk]/len(chunks))
+                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
             ds_all_primal[inner] = ds_[inner]
         elif pd_name == "Bz":
             inner, chunks = _ddp_to_ppp_domain_slicing(nb_ghosts, ndim)
             for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk]/len(chunks))
+                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
             ds_all_primal[inner] = ds_[inner]
         elif pd_name in ["Ex", "Jx"]:
             inner, chunks = _dpp_to_ppp_domain_slicing(nb_ghosts, ndim)
             for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk]/len(chunks))
+                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
             ds_all_primal[inner] = ds_[inner]
         elif pd_name in ["Ey", "Jy"]:
             inner, chunks = _pdp_to_ppp_domain_slicing(nb_ghosts, ndim)
             for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk]/len(chunks))
+                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
             ds_all_primal[inner] = ds_[inner]
         elif pd_name in ["Ez", "Jz"]:
             inner, chunks = _ppd_to_ppp_domain_slicing(nb_ghosts, ndim)
             for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk]/len(chunks))
+                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
             ds_all_primal[inner] = ds_[inner]
         else:
             raise RuntimeError("patchdata name unknown")
 
-        pd_attrs.append({"name": name,
-                         "data": ds_all_primal,
-                         "centering": centerings})
+        pd_attrs.append({"name": name, "data": ds_all_primal, "centering": centerings})
 
     return tuple(pd_attrs)
 
 
 def _inner_slices(nb_ghosts):
     inner = slice(nb_ghosts, -nb_ghosts)
-    inner_shift_left = slice(nb_ghosts-1, -nb_ghosts)
-    inner_shift_right = slice(nb_ghosts, -nb_ghosts+1)
+    inner_shift_left = slice(nb_ghosts - 1, -nb_ghosts)
+    inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1)
 
     return inner, inner_shift_left, inner_shift_right
 
@@ -225,9 +225,8 @@ def _pdd_to_ppp_domain_slicing(nb_ghosts, ndim):
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
     if ndim == 2:
-        inner_all = tuple([inner]*2)
-        return inner_all, ((inner, inner_shift_left),
-                           (inner, inner_shift_right))
+        inner_all = tuple([inner] * 2)
+        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
     else:
         raise RuntimeError("dimension not yet implemented")
 
@@ -241,9 +240,8 @@ def _dpd_to_ppp_domain_slicing(nb_ghosts, ndim):
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
     if ndim == 2:
-        inner_all = tuple([inner]*2)
-        return inner_all, ((inner_shift_left, inner),
-                           (inner_shift_right, inner))
+        inner_all = tuple([inner] * 2)
+        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
     else:
         raise RuntimeError("dimension not yet implemented")
 
@@ -257,11 +255,13 @@ def _ddp_to_ppp_domain_slicing(nb_ghosts, ndim):
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
     if ndim == 2:
-        inner_all = tuple([inner]*2)
-        return inner_all, ((inner_shift_left, inner_shift_left),
-                           (inner_shift_left, inner_shift_right),
-                           (inner_shift_right, inner_shift_left),
-                           (inner_shift_right, inner_shift_right))
+        inner_all = tuple([inner] * 2)
+        return inner_all, (
+            (inner_shift_left, inner_shift_left),
+            (inner_shift_left, inner_shift_right),
+            (inner_shift_right, inner_shift_left),
+            (inner_shift_right, inner_shift_right),
+        )
     else:
         raise RuntimeError("dimension not yet implemented")
 
@@ -275,9 +275,8 @@ def _dpp_to_ppp_domain_slicing(nb_ghosts, ndim):
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
     if ndim == 2:
-        inner_all = tuple([inner]*2)
-        return inner_all, ((inner_shift_left, inner),
-                           (inner_shift_right, inner))
+        inner_all = tuple([inner] * 2)
+        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
     else:
         raise RuntimeError("dimension not yet implemented")
 
@@ -291,9 +290,8 @@ def _pdp_to_ppp_domain_slicing(nb_ghosts, ndim):
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
     if ndim == 2:
-        inner_all = tuple([inner]*2)
-        return inner_all, ((inner, inner_shift_left),
-                           (inner, inner_shift_right))
+        inner_all = tuple([inner] * 2)
+        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
     else:
         raise RuntimeError("dimension not yet implemented")
 
@@ -307,7 +305,7 @@ def _ppd_to_ppp_domain_slicing(nb_ghosts, ndim):
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
     if ndim == 2:
-        inner_all = tuple([inner]*2)
+        inner_all = tuple([inner] * 2)
         return inner_all, ((inner, inner),)
     else:
         raise RuntimeError("dimension not yet implemented")
@@ -507,26 +505,33 @@ class Run:
         return self._get(hier, time, merged, "nearest")
 
     def GetB(self, time, merged=False, interp="nearest", all_primal=True):
+        assert not all_primal
         hier = self._get_hierarchy(time, "EM_B.h5")
         if not all_primal:
             return self._get(hier, time, merged, interp)
-        else:
-            h = compute_hier_from(_compute_to_primal, hier, x="Bx", y="By", z="Bz")
-            return VectorField(h.patch_levels, h.domain_box,
-                    refinement_ratio=h.refinement_ratio,
-                    time=time,
-                    data_files=h.data_files)
+
+        h = compute_hier_from(_compute_to_primal, hier, x="Bx", y="By", z="Bz")
+        return VectorField(
+            h.patch_levels,
+            h.domain_box,
+            refinement_ratio=h.refinement_ratio,
+            time=time,
+            data_files=h.data_files,
+        )
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True):
         hier = self._get_hierarchy(time, "EM_E.h5")
         if not all_primal:
             return self._get(hier, time, merged, interp)
-        else:
-            h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
-            return VectorField(h.patch_levels, h.domain_box,
-                               refinement_ratio=h.refinement_ratio,
-                               time=time,
-                               data_files=h.data_files)
+
+        h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
+        return VectorField(
+            h.patch_levels,
+            h.domain_box,
+            refinement_ratio=h.refinement_ratio,
+            time=time,
+            data_files=h.data_files,
+        )
 
     def GetMassDensity(self, time, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, "ions_mass_density.h5")
@@ -536,12 +541,15 @@ class Run:
         hier = self._get_hierarchy(time, "ions_density.h5")
         if not all_primal:
             return self._get(hier, time, merged, interp)
-        else:
-            h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
-            return ScalarField(h.patch_levels, h.domain_box,
-                               refinement_ratio=h.refinement_ratio,
-                               time=time,
-                               data_files=h.data_files)
+
+        h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
+        return ScalarField(
+            h.patch_levels,
+            h.domain_box,
+            refinement_ratio=h.refinement_ratio,
+            time=time,
+            data_files=h.data_files,
+        )
 
     def GetN(self, time, pop_name, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5")
@@ -584,21 +592,27 @@ class Run:
         Te = hier.sim.electrons.closure.Te
 
         if not all_primal:
-            return Te*self._get(hier, time, merged, interp)
-        else:
-            h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
-            return Te*ScalarField(h.patch_levels, h.domain_box,
-                                  refinement_ratio=h.refinement_ratio,
-                                  time=time,
-                                  data_files=h.data_files)*Te
+            return Te * self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
+        return (
+            Te
+            * ScalarField(
+                h.patch_levels,
+                h.domain_box,
+                refinement_ratio=h.refinement_ratio,
+                time=time,
+                data_files=h.data_files,
+            )
+            * Te
+        )
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True):
         B = self.GetB(time, all_primal=False)
         J = compute_hier_from(_compute_current, B)
         if not all_primal:
             return self._get(J, time, merged, interp)
-        else:
-            return compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
+        return compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
 
     def GetDivB(self, time, merged=False, interp="nearest"):
         B = self.GetB(time, all_primal=False)
@@ -683,17 +697,24 @@ class Run:
 
         return root_cell_width / fac
 
-    def GetAllAvailableQties(self, time, pops):
+    def GetAllAvailableQties(self, time, pops, all_primal=True):
+        assert not all_primal
         assert self.single_hier_for_all_quantities == True  # can't work otherwise
 
-        self.GetParticles(time, pops)
-        self.GetB(time)
-        self.GetE(time)
-        self.GetNi(time)
-        self.GetVi(time)
+        def _try(fn, *args, **kwargs):
+            try:
+                fn(*args, **kwargs)
+            except:
+                ...  # file not found
+
+        _try(self.GetParticles, time, pops)
+        _try(self.GetB, time, all_primal=all_primal)
+        _try(self.GetE, time, all_primal=all_primal)
+        _try(self.GetNi, time, all_primal=all_primal)
+        _try(self.GetVi, time)
 
         for pop in pops:
-            self.GetFlux(time, pop)
-            self.GetN(time, pop)
+            _try(self.GetFlux, time, pop)
+            _try(self.GetN, time, pop)
 
         return self.hier

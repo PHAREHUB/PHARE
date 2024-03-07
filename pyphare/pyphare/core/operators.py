@@ -1,4 +1,5 @@
 import numpy as np
+
 # from pyphare.pharesee.hierarchy import PatchLevel, Patch, FieldData
 from pyphare.pharesee.hierarchy import ScalarField, VectorField  # TensorField
 from pyphare.pharesee.hierarchy import compute_hier_from
@@ -6,41 +7,50 @@ from pyphare.pharesee.hierarchy import rename
 
 
 def _compute_dot_product(patch_datas, **kwargs):
-
     ref_name = next(iter(patch_datas.keys()))
 
-    dset = patch_datas["left_x"].dataset[:] * patch_datas["right_x"].dataset[:]\
-         + patch_datas["left_y"].dataset[:] * patch_datas["right_y"].dataset[:]\
-         + patch_datas["left_z"].dataset[:] * patch_datas["right_z"].dataset[:]
+    dset = (
+        patch_datas["left_x"].dataset[:] * patch_datas["right_x"].dataset[:]
+        + patch_datas["left_y"].dataset[:] * patch_datas["right_y"].dataset[:]
+        + patch_datas["left_z"].dataset[:] * patch_datas["right_z"].dataset[:]
+    )
 
-    return ({"name": 'scalar', "data": dset, "centering": patch_datas[ref_name].centerings},)
+    return (
+        {"name": "scalar", "data": dset, "centering": patch_datas[ref_name].centerings},
+    )
 
 
 def _compute_sqrt(patch_datas, **kwargs):
-
     ref_name = next(iter(patch_datas.keys()))
 
     dset = np.sqrt(patch_datas["scalar"].dataset[:])
 
-    return ({"name": 'scalar', "data": dset, "centering": patch_datas[ref_name].centerings},)
+    return (
+        {"name": "scalar", "data": dset, "centering": patch_datas[ref_name].centerings},
+    )
 
 
 def _compute_cross_product(patch_datas, **kwargs):
-
     ref_name = next(iter(patch_datas.keys()))
 
-    dset_x = patch_datas["left_y"].dataset[:] * patch_datas["right_z"].dataset[:]\
-           - patch_datas["left_z"].dataset[:] * patch_datas["right_y"].dataset[:]
-    dset_y = patch_datas["left_z"].dataset[:] * patch_datas["right_x"].dataset[:]\
-           - patch_datas["left_x"].dataset[:] * patch_datas["right_z"].dataset[:]
-    dset_z = patch_datas["left_x"].dataset[:] * patch_datas["right_y"].dataset[:]\
-           - patch_datas["left_y"].dataset[:] * patch_datas["right_x"].dataset[:]
+    dset_x = (
+        patch_datas["left_y"].dataset[:] * patch_datas["right_z"].dataset[:]
+        - patch_datas["left_z"].dataset[:] * patch_datas["right_y"].dataset[:]
+    )
+    dset_y = (
+        patch_datas["left_z"].dataset[:] * patch_datas["right_x"].dataset[:]
+        - patch_datas["left_x"].dataset[:] * patch_datas["right_z"].dataset[:]
+    )
+    dset_z = (
+        patch_datas["left_x"].dataset[:] * patch_datas["right_y"].dataset[:]
+        - patch_datas["left_y"].dataset[:] * patch_datas["right_x"].dataset[:]
+    )
 
     return (
-            {"name": 'x', "data": dset_x, "centering": patch_datas[ref_name].centerings},
-            {"name": 'y', "data": dset_y, "centering": patch_datas[ref_name].centerings},
-            {"name": 'z', "data": dset_z, "centering": patch_datas[ref_name].centerings},
-            )
+        {"name": "x", "data": dset_x, "centering": patch_datas[ref_name].centerings},
+        {"name": "y", "data": dset_y, "centering": patch_datas[ref_name].centerings},
+        {"name": "z", "data": dset_z, "centering": patch_datas[ref_name].centerings},
+    )
 
 
 def _compute_grad(patch_data, **kwargs):
@@ -57,20 +67,24 @@ def _compute_grad(patch_data, **kwargs):
     grad_ds = np.gradient(ds)
 
     if ndim == 2:
-        ds_x[nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts] = \
-            np.asarray(grad_ds[0][nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts])
-        ds_y[nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts] = \
-            np.asarray(grad_ds[1][nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts])
-        ds_z[nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts].fill(0.)  # TODO at 2D, gradient is null in z dir
+        ds_x[nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts] = np.asarray(
+            grad_ds[0][nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts]
+        )
+        ds_y[nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts] = np.asarray(
+            grad_ds[1][nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts]
+        )
+        ds_z[nb_ghosts:-nb_ghosts, nb_ghosts:-nb_ghosts].fill(
+            0.0
+        )  # TODO at 2D, gradient is null in z dir
 
     else:
         raise RuntimeError("dimension not yet implemented")
 
     return (
-            {"name": 'x', "data": ds_x, "centering": patch_data["scalar"].centerings},
-            {"name": 'y', "data": ds_y, "centering": patch_data["scalar"].centerings},
-            {"name": 'z', "data": ds_z, "centering": patch_data["scalar"].centerings},
-            )
+        {"name": "x", "data": ds_x, "centering": patch_data["scalar"].centerings},
+        {"name": "y", "data": ds_y, "centering": patch_data["scalar"].centerings},
+        {"name": "z", "data": ds_z, "centering": patch_data["scalar"].centerings},
+    )
 
 
 def dot(hier_left, hier_right, **kwargs):
@@ -78,8 +92,8 @@ def dot(hier_left, hier_right, **kwargs):
     names_right_kept = hier_right.get_names()
 
     if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
-        names_left = ['left_x', 'left_y', 'left_z']
-        names_right = ['right_x', 'right_y', 'right_z']
+        names_left = ["left_x", "left_y", "left_z"]
+        names_right = ["right_x", "right_y", "right_z"]
 
     else:
         raise RuntimeError("type of hierarchy not yet considered")
@@ -87,15 +101,21 @@ def dot(hier_left, hier_right, **kwargs):
     hl = rename(hier_left, names_left)
     hr = rename(hier_right, names_right)
 
-    h = compute_hier_from(_compute_dot_product, (hl, hr),)
+    h = compute_hier_from(
+        _compute_dot_product,
+        (hl, hr),
+    )
 
     hier_left = rename(hl, names_left_kept)
     hier_right = rename(hr, names_right_kept)
 
-    return ScalarField(h.patch_levels, h.domain_box,
-                       refinement_ratio=h.refinement_ratio,
-                       time=h.times()[0],
-                       data_files=h.data_files)
+    return ScalarField(
+        h.patch_levels,
+        h.domain_box,
+        refinement_ratio=h.refinement_ratio,
+        time=h.times()[0],
+        data_files=h.data_files,
+    )
 
 
 def cross(hier_left, hier_right, **kwargs):
@@ -103,8 +123,8 @@ def cross(hier_left, hier_right, **kwargs):
     names_right_kept = hier_right.get_names()
 
     if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
-        names_left = ['left_x', 'left_y', 'left_z']
-        names_right = ['right_x', 'right_y', 'right_z']
+        names_left = ["left_x", "left_y", "left_z"]
+        names_right = ["right_x", "right_y", "right_z"]
 
     else:
         raise RuntimeError("type of hierarchy not yet considered")
@@ -112,24 +132,36 @@ def cross(hier_left, hier_right, **kwargs):
     hl = rename(hier_left, names_left)
     hr = rename(hier_right, names_right)
 
-    h = compute_hier_from(_compute_cross_product, (hl, hr),)
+    h = compute_hier_from(
+        _compute_cross_product,
+        (hl, hr),
+    )
 
     hier_left = rename(hl, names_left_kept)
     hier_right = rename(hr, names_right_kept)
 
-    return VectorField(h.patch_levels, h.domain_box,
-                       refinement_ratio=h.refinement_ratio,
-                       time=h.times()[0],
-                       data_files=h.data_files)
+    return VectorField(
+        h.patch_levels,
+        h.domain_box,
+        refinement_ratio=h.refinement_ratio,
+        time=h.times()[0],
+        data_files=h.data_files,
+    )
 
 
 def sqrt(hier, **kwargs):
-    h = compute_hier_from(_compute_sqrt, hier,)
+    h = compute_hier_from(
+        _compute_sqrt,
+        hier,
+    )
 
-    return ScalarField(h.patch_levels, h.domain_box,
-                       refinement_ratio=h.refinement_ratio,
-                       time=h.times()[0],
-                       data_files=h.data_files)
+    return ScalarField(
+        h.patch_levels,
+        h.domain_box,
+        refinement_ratio=h.refinement_ratio,
+        time=h.times()[0],
+        data_files=h.data_files,
+    )
 
 
 def modulus(hier):
@@ -144,7 +176,10 @@ def grad(hier, **kwargs):
     h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)
 
     # TODO the plot of a grad displays only 1 patch if vmin and vmax are not specified... any idea why ?
-    return VectorField(h.patch_levels, h.domain_box,
-                       refinement_ratio=h.refinement_ratio,
-                       time=h.times()[0],
-                       data_files=h.data_files)
+    return VectorField(
+        h.patch_levels,
+        h.domain_box,
+        refinement_ratio=h.refinement_ratio,
+        time=h.times()[0],
+        data_files=h.data_files,
+    )
