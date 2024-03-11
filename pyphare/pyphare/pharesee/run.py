@@ -535,7 +535,14 @@ class Run:
 
     def GetMassDensity(self, time, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, "ions_mass_density.h5")
-        return self._get(hier, time, merged, interp)
+        return ScalarField(
+            hier.patch_levels,
+            hier.domain_box,
+            refinement_ratio=hier.refinement_ratio,
+            time=time,
+            data_files=hier.data_files,
+        )
+        # return self._get(hier, time, merged, interp)
 
     def GetNi(self, time, merged=False, interp="nearest", all_primal=True):
         hier = self._get_hierarchy(time, "ions_density.h5")
@@ -553,7 +560,14 @@ class Run:
 
     def GetN(self, time, pop_name, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5")
-        return self._get(hier, time, merged, interp)
+        # return self._get(hier, time, merged, interp)
+        return ScalarField(
+            hier.patch_levels,
+            hier.domain_box,
+            refinement_ratio=hier.refinement_ratio,
+            time=time,
+            data_files=hier.data_files,
+        )
 
     def GetVi(self, time, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5")
@@ -568,7 +582,14 @@ class Run:
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5")
-        return self._get(hier, time, merged, interp)
+        # return self._get(hier, time, merged, interp)
+        return VectorField(
+            hier.patch_levels,
+            hier.domain_box,
+            refinement_ratio=hier.refinement_ratio,
+            time=time,
+            data_files=hier.data_files,
+        )
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest"):
         M = self._get_hierarchy(time, f"ions_pop_{pop_name}_momentum_tensor.h5")
@@ -618,7 +639,14 @@ class Run:
         J = compute_hier_from(_compute_current, B)
         if not all_primal:
             return self._get(J, time, merged, interp)
-        return compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
+        h = compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
+        return VectorField(
+            h.patch_levels,
+            h.domain_box,
+            refinement_ratio=h.refinement_ratio,
+            time=time,
+            data_files=h.data_files,
+        )
 
     def GetDivB(self, time, merged=False, interp="nearest"):
         B = self.GetB(time, all_primal=False)
