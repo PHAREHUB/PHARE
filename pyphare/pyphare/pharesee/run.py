@@ -505,7 +505,7 @@ class Run:
         return self._get(hier, time, merged, "nearest")
 
     def GetB(self, time, merged=False, interp="nearest", all_primal=True):
-        assert not all_primal
+        # assert not all_primal
         hier = self._get_hierarchy(time, "EM_B.h5")
         if not all_primal:
             return self._get(hier, time, merged, interp)
@@ -557,7 +557,14 @@ class Run:
 
     def GetVi(self, time, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5")
-        return self._get(hier, time, merged, interp)
+        #return self._get(hier, time, merged, interp)
+        return VectorField(
+            hier.patch_levels,
+            hier.domain_box,
+            refinement_ratio=hier.refinement_ratio,
+            time=time,
+            data_files=hier.data_files,
+        )
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5")

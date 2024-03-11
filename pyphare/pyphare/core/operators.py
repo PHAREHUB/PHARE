@@ -106,8 +106,8 @@ def dot(hier_left, hier_right, **kwargs):
         (hl, hr),
     )
 
-    hier_left = rename(hl, names_left_kept)
-    hier_right = rename(hr, names_right_kept)
+    # hier_left = rename(hl, names_left_kept)
+    # hier_right = rename(hr, names_right_kept)
 
     return ScalarField(
         h.patch_levels,
@@ -137,8 +137,8 @@ def cross(hier_left, hier_right, **kwargs):
         (hl, hr),
     )
 
-    hier_left = rename(hl, names_left_kept)
-    hier_right = rename(hr, names_right_kept)
+    # hier_left = rename(hl, names_left_kept)
+    # hier_right = rename(hr, names_right_kept)
 
     return VectorField(
         h.patch_levels,
