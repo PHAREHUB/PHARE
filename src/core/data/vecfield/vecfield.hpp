@@ -17,6 +17,7 @@ namespace core
     template<typename NdArrayImpl, typename PhysicalQuantity>
     using VecField = TensorField<NdArrayImpl, PhysicalQuantity, /*rank=*/1>;
 
+
     template<typename VecField, typename = tryToInstanciate<typename VecField::field_type>>
     void average(VecField const& vf1, VecField const& vf2, VecField& Vavg)
     {
@@ -29,6 +30,8 @@ namespace core
         average(vf1.getComponent(Component::Z), vf2.getComponent(Component::Z),
                 Vavg.getComponent(Component::Z));
     }
+
+
     struct VecFieldNames
     {
         std::string vecName;

@@ -35,6 +35,7 @@ namespace core
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
+            , rho_{name_ + "_rho", HybridQuantity::Scalar::rho}
             , particleInitializerInfo_{initializer["particle_initializer"]}
         {
         }
@@ -51,14 +52,14 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return particles_ != nullptr && rho_ != nullptr && flux_.isUsable()
+            return particles_ != nullptr && rho_.isUsable() && flux_.isUsable()
                    && momentumTensor_.isUsable();
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            return particles_ == nullptr && rho_ == nullptr && flux_.isSettable()
+            return particles_ == nullptr && rho_.isSettable() && flux_.isSettable()
                    && momentumTensor_.isSettable();
         }
 
@@ -152,6 +153,11 @@ namespace core
             }
         }
 
+        NO_DISCARD ParticleArray const& levelGhostParticlesOld() const
+        {
+            return const_cast<IonPopulation*>(this)->levelGhostParticlesOld();
+        }
+
 
 
         NO_DISCARD ParticleArray& levelGhostParticlesNew()
@@ -166,13 +172,18 @@ namespace core
             }
         }
 
+        NO_DISCARD ParticleArray const& levelGhostParticlesNew() const
+        {
+            return const_cast<IonPopulation*>(this)->levelGhostParticlesNew();
+        }
+
 
 
         NO_DISCARD field_type const& density() const
         {
             if (isUsable())
             {
-                return *rho_;
+                return rho_;
             }
             else
             {
@@ -183,7 +194,7 @@ namespace core
 
         NO_DISCARD field_type& density()
         {
-            return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
+            return const_cast<field_type&>(static_cast<IonPopulation const*>(this)->density());
         }
 
 
@@ -212,13 +223,6 @@ namespace core
 
 
 
-        NO_DISCARD MomentProperties getFieldNamesAndQuantities() const
-        {
-            return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
-        }
-
-
-
         struct ParticleProperty
         {
             std::string name;
@@ -244,23 +248,9 @@ namespace core
 
 
 
-        void setBuffer(std::string const& bufferName, field_type* field)
-        {
-            if (bufferName == name_ + "_rho")
-            {
-                rho_ = field;
-            }
-            else
-            {
-                throw std::runtime_error("Error - invalid density buffer name");
-            }
-        }
-
-
-
         NO_DISCARD auto getCompileTimeResourcesUserList()
         {
-            return std::forward_as_tuple(flux_, momentumTensor_);
+            return std::forward_as_tuple(flux_, momentumTensor_, rho_);
         }
 
 
@@ -284,7 +274,7 @@ namespace core
         double mass_;
         VecField flux_;
         TensorField momentumTensor_;
-        field_type* rho_{nullptr};
+        field_type rho_;
         ParticlesPack<ParticleArray>* particles_{nullptr};
         initializer::PHAREDict const& particleInitializerInfo_;
     };

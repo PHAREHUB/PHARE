@@ -2,7 +2,7 @@
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_LAPLACIAN_HPP
 
 
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "gridlayout_base_params.hpp"
@@ -25,9 +25,9 @@ class a1DLaplacian : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
 
 public:
     a1DLaplacian()
@@ -47,9 +47,9 @@ class a2DLaplacian : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
 
 public:
     a2DLaplacian()
@@ -69,9 +69,9 @@ class a3DLaplacian : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> Jz;
 
 public:
     a3DLaplacian()

@@ -12,7 +12,7 @@
 
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -48,10 +48,10 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
     using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using FieldND    = Field<NdArrayVector<dim>, HybridQuantity::Scalar>;
-    using FieldDataT = FieldData<GridYee, FieldND>;
+    using GridND     = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using FieldDataT = FieldData<GridYee, GridND>;
 
-    FieldLinearTimeInterpolate<GridYee, FieldND> timeOp{};
+    FieldLinearTimeInterpolate<GridYee, GridND> timeOp{};
     HybridQuantity::Scalar qty{HybridQuantity::Scalar::Bx};
     SAMRAI::tbox::Dimension dimension{dim};
     static int countLocal;
@@ -104,24 +104,6 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
 
                 srcFieldOld(ix) = srcFunc(oldTime, position[dirX]);
                 srcFieldNew(ix) = srcFunc(newTime, position[dirX]);
-            }
-        }
-        if constexpr (dim == 2)
-        {
-            auto iStartX = layout.ghostStartIndex(qty, Direction::X);
-            auto iEndX   = layout.ghostEndIndex(qty, Direction::X);
-            auto iStartY = layout.ghostStartIndex(qty, Direction::Y);
-            auto iEndY   = layout.ghostEndIndex(qty, Direction::Y);
-
-            for (auto ix = iStartX; ix <= iEndX; ++ix)
-            {
-                for (auto iy = iStartY; iy <= iEndY; ++iy)
-                {
-                    auto position = layout.fieldNodeCoordinates(srcFieldOld, origin, ix, iy);
-
-                    srcFieldOld(ix, iy) = srcFunc(oldTime, position[dirX], position[dirY]);
-                    srcFieldNew(ix, iy) = srcFunc(newTime, position[dirX], position[dirY]);
-                }
             }
         }
         if constexpr (dim == 2)

@@ -37,6 +37,7 @@ public:
         layout_->evalOnBox(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
     }
 
+
 private:
     template<typename VecField, typename Field, typename... Indexes>
     void JxEq_(Field& Jx, VecField const& B, Indexes const&... ijk) const

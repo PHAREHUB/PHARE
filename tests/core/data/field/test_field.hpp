@@ -4,9 +4,10 @@
 #include <cassert>
 #include <functional>
 
+#include "core/data/ndarray/ndarray_vector.hpp"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
 
 namespace PHARE
 {
@@ -163,52 +164,31 @@ void test_fields(GridLayout const& layout, Field const& field0, T1 const& field1
 
 
 template<typename GridLayout, typename NdArrayImpl, typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout,
-          PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
-          PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field1,
+void test(
+    GridLayout const& layout,
+    PHARE::core::Field<GridLayout::dimension, PHARE::core::HybridQuantity::Scalar> const& field0,
+    PHARE::core::Field<GridLayout::dimension, PHARE::core::HybridQuantity::Scalar> const& field1,
+    FF const ff = FF{})
+{
+    test_fields(layout, field0, field1, ff);
+}
+
+
+
+template<typename GridLayout, typename Field, typename T, typename FF = PHARE::FieldNullFilter>
+void test(GridLayout const& layout, Field const& field0, std::vector<T> const& fieldV,
           FF const ff = FF{})
 {
-    test_fields(layout, field0, field1, ff);
-}
-
-
-template<typename GridLayout, typename NdArrayImpl, std::size_t dim, typename T,
-         typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout,
-          PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
-          PHARE::core::NdArrayView<dim, T> const& field1, FF const ff = FF{})
-{
-    static_assert(NdArrayImpl::dimension == dim);
-    test_fields(layout, field0, field1, ff);
-}
-
-
-template<typename GridLayout, typename NdArrayImpl, typename T,
-         typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout,
-          PHARE::core::Field<NdArrayImpl, PHARE::core::HybridQuantity::Scalar> const& field0,
-          std::vector<T> const& fieldV, FF const ff = FF{})
-{
     EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T> const field1{fieldV.data(), field0.shape()};
-    test_fields(layout, field0, field1, ff);
-}
-
-template<typename GridLayout, typename NdArrayImpl, typename Qty, typename T,
-         typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout, PHARE::core::Field<NdArrayImpl, Qty> field0,
-          std::vector<T>&& fieldV, FF const ff = FF{})
-{
-    EXPECT_EQ(field0.size(), fieldV.size());
-    core::NdArrayView<GridLayout::dimension, T> field1{fieldV, field0.shape()};
+    core::NdArrayView<GridLayout::dimension, T const> const field1{fieldV.data(), field0.shape()};
     test_fields(layout, field0, field1, ff);
 }
 
 
-template<typename GridLayout, typename NdArrayImpl0, typename NdArrayImpl1, typename Qty,
+
+template<typename GridLayout, typename Field0, typename Field1,
          typename FF = PHARE::FieldNullFilter>
-void test(GridLayout const& layout, PHARE::core::Field<NdArrayImpl0, Qty> field0,
-          PHARE::core::Field<NdArrayImpl1, Qty> field1, FF const ff = FF{})
+void test(GridLayout const& layout, Field0 const& field0, Field1 const& field1, FF const ff = FF{})
 {
     test_fields(layout, field0, field1, ff);
 }

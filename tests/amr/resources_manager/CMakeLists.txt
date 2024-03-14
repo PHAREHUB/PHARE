@@ -11,7 +11,6 @@ set(SOURCES_INC
    )
 
 set(SOURCES_CPP
-  test_resources_manager_basic_hierarchy.cpp
   test_resources_manager.cpp
    )
 

@@ -179,12 +179,6 @@ public:
         increment(dim - 1);
         return *this;
     }
-    box_iterator& operator++() const
-    {
-        increment(dim - 1);
-        return *this;
-    }
-
 
     bool operator!=(box_iterator const& other) const
     {
