@@ -249,14 +249,12 @@ class SimulatorTest(unittest.TestCase):
     def clean_up_diags_dirs(self):
         from pyphare.cpp import cpp_lib
 
-        cpp_lib().mpi_barrier()  # synchronize first
-        if cpp_lib().mpi_rank() > 0:
-            return  # only delete h5 files for rank 0
-
-        if self.success:
+        cpp_lib().mpi_barrier()
+        if cpp_lib().mpi_rank() == 0 and self.success:
             import os
             import shutil
 
             for diag_dir in self.diag_dirs:
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
+        cpp_lib().mpi_barrier()

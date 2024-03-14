@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_DEF_MPI_HPP
-#define PHARE_CORE_DEF_MPI_HPP
+#ifndef PHARE_CORE_DEF_PHARE_MPI_HPP
+#define PHARE_CORE_DEF_PHARE_MPI_HPP
 
 
 // DO NOT INCLUDE MPI MANUALLY! USE THIS FILE!
@@ -20,4 +20,4 @@ ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
 
 
 
-#endif /*PHARE_CORE_DEF_MPI_HPP*/
+#endif /*PHARE_CORE_DEF_PHARE_MPI_HPP*/
