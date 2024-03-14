@@ -33,20 +33,21 @@ struct Box
 
     Box() = default;
 
-    constexpr Box(std::array<Type, dim> _lower, std::array<Type, dim> _upper)
+    constexpr Box(std::array<Type, dim> const& _lower, std::array<Type, dim> const& _upper)
         : lower{_lower}
         , upper{_upper}
     {
     }
 
     template<typename T, std::size_t s>
-    Box(Point<T, s> _lower, Point<T, s> _upper)
+    Box(Point<T, s> const& _lower, Point<T, s> const& _upper)
         : lower{_lower}
         , upper{_upper}
     {
     }
 
-    NO_DISCARD bool operator==(Box const& box) const
+    template<typename T2>
+    NO_DISCARD bool operator==(Box<T2, dim> const& box) const
     {
         return box.lower == lower && box.upper == upper;
     }
