@@ -47,7 +47,13 @@ namespace core
 
                 auto charge = dict["charge"].template to<double>();
 
-                auto nbrPartPerCell = dict["nbr_part_per_cell"].template to<int>();
+                auto nbrPartPerCell = cppdict::get_value(dict, "nbr_part_per_cell", int{0});
+                FunctionType nbrPartPerCellFn
+                    = cppdict::get_value(dict, "nbr_part_per_cell_fn", FunctionType{nullptr});
+                if (not nbrPartPerCellFn and nbrPartPerCell == 0)
+                {
+                    throw std::runtime_error("PPC cannot be 0");
+                }
 
                 auto basisName = dict["basis"].template to<std::string>();
 
@@ -59,22 +65,25 @@ namespace core
                 if (dict.contains("init") && dict["init"].contains("seed"))
                     seed = dict["init"]["seed"].template to<std::optional<std::size_t>>();
 
+                std::array<FunctionType, 3> magneticField = {nullptr, nullptr, nullptr};
+
                 if (basisName == "cartesian")
                 {
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, seed);
+                        density, v, vth, charge, nbrPartPerCell, seed, Basis::Cartesian,
+                        magneticField, nbrPartPerCellFn);
                 }
                 else if (basisName == "magnetic")
                 {
-                    [[maybe_unused]] Basis basis = Basis::Magnetic;
-                    [[maybe_unused]] auto& bx    = dict["magnetic_x"].template to<FunctionType>();
-                    [[maybe_unused]] auto& by    = dict["magnetic_x"].template to<FunctionType>();
-                    [[maybe_unused]] auto& bz    = dict["magnetic_x"].template to<FunctionType>();
+                    magneticField[0] = dict["magnetic_x"].template to<FunctionType>();
+                    magneticField[1] = dict["magnetic_x"].template to<FunctionType>();
+                    magneticField[2] = dict["magnetic_x"].template to<FunctionType>();
 
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, seed);
+                        density, v, vth, charge, nbrPartPerCell, seed, Basis::Magnetic,
+                        magneticField, nbrPartPerCellFn);
                 }
             }
             // TODO throw?

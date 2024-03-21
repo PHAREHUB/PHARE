@@ -121,6 +121,8 @@ def check_time(**kwargs):
         and "time_step" not in kwargs
     )
 
+    start_time = kwargs.get("restart_options", {}).get("restart_time", 0)
+
     if final_and_dt:
         time_step_nbr = int(kwargs["final_time"] / kwargs["time_step"])
         time_step = kwargs["final_time"] / time_step_nbr
@@ -139,7 +141,11 @@ def check_time(**kwargs):
             + " or 'final_time' and 'time_step_nbr'"
         )
 
-    return time_step_nbr, time_step, kwargs.get("final_time", time_step * time_step_nbr)
+    return (
+        time_step_nbr,
+        time_step,
+        kwargs.get("final_time", start_time + time_step * time_step_nbr),
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -572,6 +578,16 @@ def check_clustering(**kwargs):
     return clustering
 
 
+def check_loadbalancing(**kwargs):
+    valid_keys = ["nppc", "homogeneous"]
+    loadbalancing = kwargs.get("loadbalancing", "nppc")
+    if loadbalancing not in valid_keys:
+        raise ValueError(
+            f"Error: loadbalancing type is not supported, supported types are {valid_keys}"
+        )
+    return loadbalancing
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -605,6 +621,8 @@ def checker(func):
             "restart_options",
             "tag_buffer",
             "description",
+            "loadbalancing",
+            "advanced",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -624,6 +642,8 @@ def checker(func):
         kwargs["description"] = kwargs.get("description", None)
 
         kwargs["clustering"] = check_clustering(**kwargs)
+
+        kwargs["loadbalancing"] = check_loadbalancing(**kwargs)
 
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
@@ -670,6 +690,8 @@ def checker(func):
         kwargs["resistivity"] = check_resistivity(**kwargs)
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
+
+        kwargs["advanced"] = kwargs.get("advanced", {})
 
         return func(simulation_object, **kwargs)
 
@@ -818,6 +840,7 @@ class Simulation(object):
         self.diagnostics = {}
         self.model = None
         self.electrons = None
+        self.load_balancer = None
 
         # hard coded in C++ MultiPhysicsIntegrator::getMaxFinerLevelDt
         self.nSubcycles = 4
@@ -832,9 +855,6 @@ class Simulation(object):
             for ilvl in levelNumbers
         ]
         validate_restart_options(self)
-
-    def final_time(self):
-        return self.time_step * self.time_step_nbr
 
     def simulation_domain(self):
         return [dl * n + ori for dl, n, ori in zip(self.dl, self.cells, self.origin)]

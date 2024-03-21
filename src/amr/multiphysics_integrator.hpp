@@ -30,8 +30,11 @@
 #include "amr/solvers/solver_mhd.hpp"
 #include "amr/solvers/solver_ppc.hpp"
 
+#include "core/logger.hpp"
 #include "core/utilities/algorithm.hpp"
 
+#include "load_balancing/load_balancer_manager.hpp"
+#include "load_balancing/load_balancer_estimator.hpp"
 #include "phare_core.hpp"
 
 
@@ -101,6 +104,7 @@ namespace solver
             , levelDescriptors_(dict["AMR"]["max_nbr_levels"].template to<int>())
             , simFuncs_{simFuncs}
             , dict_{dict}
+            , load_balancer_manager_{nullptr}
 
         {
             // auto mhdSolver = std::make_unique<SolverMHD<ResourcesManager>>(resourcesManager_);
@@ -296,7 +300,7 @@ namespace solver
          */
         void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                  int const levelNumber, double const initDataTime,
-                                 bool const /*canBeRefined*/, bool const /*initialTime*/,
+                                 bool const canBeRefined, bool const initialTime,
                                  std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
                                  = std::shared_ptr<SAMRAI::hier::PatchLevel>(),
                                  bool const allocateData = true) override
@@ -307,23 +311,34 @@ namespace solver
             auto& levelInitializer = getLevelInitializer(model.name());
 
             bool const isRegridding = oldLevel != nullptr;
-            auto level              = hierarchy->getPatchLevel(levelNumber);
 
-            std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
-                      << "\n";
+            PHARE_LOG_LINE_STR("init level " << levelNumber //
+                                             << " with regridding = " << isRegridding
+                                             << " with allocateData = " << allocateData
+                                             << " with canBeRefined = " << canBeRefined
+                                             << " with initialTime = " << initialTime);
+
             PHARE_LOG_START("initializeLevelData::allocate block");
             if (allocateData)
             {
-                for (auto patch : *level)
+                for (auto patch : *hierarchy->getPatchLevel(levelNumber))
                 {
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
                     messenger.allocate(*patch, initDataTime);
+                    load_balancer_manager_->allocate(*patch, initDataTime);
                 }
             }
-
             PHARE_LOG_STOP("initializeLevelData::allocate block");
-            if (isRegridding)
+
+
+            bool isRegriddingL0 = isRegridding and levelNumber == 0;
+
+            if (isRegriddingL0)
+            {
+                messenger.registerLevel(hierarchy, levelNumber);
+            }
+            else if (isRegridding)
             {
                 // regriding the current level has broken schedules for which
                 // this level is the source or destination
@@ -345,6 +360,16 @@ namespace solver
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
+
+            if (isRegriddingL0)
+            {
+                for (auto ilvl = 1; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
+                    messenger.registerLevel(hierarchy, ilvl);
+
+                solver.onRegrid();
+            }
+            else
+                load_balancer_manager_->estimate(*hierarchy->getPatchLevel(levelNumber), model);
         }
 
 
@@ -354,14 +379,25 @@ namespace solver
                                     int const coarsestLevel, int const finestLevel) override
         {
             // handle samrai restarts / schedule creation
-            //  allocation of patch datas which may not want to be saved to restart files will
-            //   likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
+            // allocation of patch datas which may not want to be saved to restart files will
+            // likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
             if (!restartInitialized_
                 and SAMRAI::tbox::RestartManager::getManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
+                {
                     messenger.registerLevel(hierarchy, ilvl);
+                    auto level = hierarchy->getPatchLevel(ilvl);
+                    for (auto& patch : *level)
+                    {
+                        auto time = dict_["restarts"]["restart_time"].template to<double>();
+                        load_balancer_manager_->allocate(*patch, time);
+                    }
+                    // if load balance on restart advance
+                    load_balancer_manager_->estimate(*hierarchy->getPatchLevel(ilvl),
+                                                     getModel_(ilvl));
+                }
                 restartInitialized_ = true;
             }
         }
@@ -465,10 +501,12 @@ namespace solver
             if (regridAdvance)
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
 
-
             auto iLevel = level->getLevelNumber();
-            std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
-                      << " from t = " << currentTime << "to t = " << newTime << "\n";
+
+            PHARE_LOG_LINE_STR("advanceLevel " << iLevel << " with dt = " << newTime - currentTime
+                                               << " from t = " << currentTime
+                                               << " to t = " << newTime);
+
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
@@ -499,6 +537,8 @@ namespace solver
             {
                 dump_(iLevel);
             }
+
+            load_balancer_manager_->estimate(*level, model);
 
             return newTime;
         }
@@ -554,6 +594,11 @@ namespace solver
         bool usingRefinedTimestepping() const override { return true; }
 
 
+        void setLoadBalancerManager(std::unique_ptr<amr::LoadBalancerManager<dimension>> lbm)
+        {
+            load_balancer_manager_ = std::move(lbm);
+        }
+
 
 
     private:
@@ -571,6 +616,7 @@ namespace solver
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
         PHARE::initializer::PHAREDict const& dict_;
+        std::unique_ptr<amr::LoadBalancerManager<dimension>> load_balancer_manager_;
 
 
         bool validLevelRange_(int coarsestLevel, int finestLevel)
@@ -581,6 +627,7 @@ namespace solver
             }
             return true;
         }
+
 
 
         bool existTaggerOnRange_(int coarsestLevel, int finestLevel)
@@ -594,7 +641,6 @@ namespace solver
             }
             return false;
         }
-
 
 
 
@@ -852,7 +898,6 @@ namespace solver
         {
             auto& descriptor = levelDescriptors_[iLevel];
             auto messenger   = messengers_[descriptor.messengerName].get();
-            auto s           = messenger->name();
 
             if (messenger)
                 return *messenger;

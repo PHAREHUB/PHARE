@@ -109,7 +109,7 @@ namespace amr
         using DefaultCoarsenOp  = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
 
     public:
-        static const std::string stratName;
+        static const inline std::string stratName    = "HybridModel-HybridModel";
         static constexpr std::size_t rootLevelNumber = 0;
 
 
@@ -190,6 +190,7 @@ namespace amr
 
             patchGhostPartRefiners_.registerLevel(hierarchy, level);
 
+
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
             // TODO this 'if' may not be OK if L0 is regrided
@@ -223,10 +224,14 @@ namespace amr
         {
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
             auto level        = hierarchy->getPatchLevel(levelNumber);
+
+            bool isRegriddingL0 = levelNumber == 0 and oldLevel;
+
             magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             patchGhostPartRefiners_.fill(levelNumber, initDataTime);
+
 
             // regriding will fill the new level wherever it has points that overlap
             // old level. This will include its level border points.
@@ -236,14 +241,18 @@ namespace amr
             // Specifically, we need all fine faces to have equal magnetic field and also
             // equal to that of the shared coarse face.
             // This means that we now need to fill ghosts and border included
-            auto& B = hybridModel.state.electromag.B;
-            auto& E = hybridModel.state.electromag.E;
-            // magSharedNodesRefiners_.fill(B, levelNumber, initDataTime);
-            magGhostsRefiners_.fill(B, levelNumber, initDataTime);
-            // elecSharedNodesRefiners_.fill(E, levelNumber, initDataTime);
-            elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
 
-            fix_magnetic_divergence_(*hierarchy, levelNumber, B);
+            if (!isRegriddingL0)
+            {
+                auto& B = hybridModel.state.electromag.B;
+                auto& E = hybridModel.state.electromag.E;
+                // magSharedNodesRefiners_.fill(B, levelNumber, initDataTime);
+                magGhostsRefiners_.fill(B, levelNumber, initDataTime);
+                // elecSharedNodesRefiners_.fill(E, levelNumber, initDataTime);
+                elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
+
+                fix_magnetic_divergence_(*hierarchy, levelNumber, B);
+            }
 
             // we now call only levelGhostParticlesOld.fill() and not .regrid()
             // regrid() would refine from next coarser in regions of level not overlaping
@@ -253,8 +262,14 @@ namespace amr
             // https://github.com/PHAREHUB/PHARE/issues/604 calling .fill() ensures that
             // levelGhostParticlesOld particles are filled exclusively from spliting next
             // coarser domain ones like when a new finest level is created.
-            lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
-            copyLevelGhostOldToPushable_(*level, model);
+
+
+            if (levelNumber != rootLevelNumber)
+            {
+                lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
+                copyLevelGhostOldToPushable_(*level, model);
+            }
+
 
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
@@ -1086,9 +1101,6 @@ namespace amr
         CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
     };
 
-    template<typename HybridModel, typename RefinementParams>
-    const std::string HybridHybridMessengerStrategy<HybridModel, RefinementParams>::stratName
-        = "HybridModel-HybridModel";
 
 } // namespace amr
 

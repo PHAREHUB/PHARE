@@ -132,7 +132,7 @@ public:
     template<typename Dict>
     static void writeAttributeDict(HighFiveFile& h5, Dict dict, std::string path)
     {
-        dict.visit([&](std::string const& key, const auto& val) {
+        dict.visit([&](std::string const& key, auto const& val) {
             h5.write_attributes_per_mpi(path, key, val);
         });
     }
