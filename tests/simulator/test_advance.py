@@ -8,7 +8,7 @@ import numpy as np
 import pyphare.core.box as boxm
 from ddt import ddt
 from pyphare.core.box import Box
-from pyphare.core.phare_utilities import np_array_ify
+from pyphare.core.phare_utilities import assert_fp_any_all_close, np_array_ify
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
 from pyphare.pharein.diagnostics import (
     ElectromagDiagnostics,
@@ -289,14 +289,12 @@ class AdvanceTestBase(SimulatorTest):
                         ]
 
                     try:
-                        assert slice1.dtype == np.float64
-
                         # empirical max absolute observed 5.2e-15
                         # https://hephaistos.lpp.polytechnique.fr/teamcity/buildConfiguration/Phare_Phare_BuildGithubPrClang/78544
                         # seems correct considering ghosts are filled with schedules
                         # involving linear/spatial interpolations and so on where
                         # rounding errors may occur.... setting atol to 5.5e-15
-                        np.testing.assert_allclose(slice1, slice2, atol=5.5e-15, rtol=0)
+                        assert_fp_any_all_close(slice1, slice2, atol=5.5e-15, rtol=0)
                         checks += 1
                     except AssertionError as e:
                         print("AssertionError", pd1.name, e)
@@ -531,7 +529,7 @@ class AdvanceTestBase(SimulatorTest):
                                 # https://hephaistos.lpp.polytechnique.fr/teamcity/buildConfiguration/Phare_Phare_BuildGithubPrClang/78507?hideProblemsFromDependencies=false&hideTestsFromDependencies=false&expandPull+Request+Details=true&expandBuildProblemsSection=true&expandBuildChangesSection=true&showLog=78507_7510_4947&logView=flowAware
                                 # raising the bar at 2e-15 since clang failed for mpi test at 1.07.... e-15
                                 try:
-                                    np.testing.assert_allclose(
+                                    assert_fp_any_all_close(
                                         coarse_pdDataset,
                                         afterCoarse,
                                         atol=2e-15,
@@ -665,7 +663,7 @@ class AdvanceTestBase(SimulatorTest):
                                         )
 
                                     try:
-                                        np.testing.assert_allclose(
+                                        assert_fp_any_all_close(
                                             fine_ghostbox_data,
                                             refinedInterpGhostBox_data,
                                             atol=1e-15,

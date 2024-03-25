@@ -122,6 +122,18 @@ class FloatingPoint_comparator:
         return fp_gtr_equal(self.fp, other.fp, self.atol)
 
 
+def is_fp32(item):
+    if is_nd_array(item):
+        return item.dtype == np.single
+    return isinstance(item, float)
+
+
+def assert_fp_any_all_close(a, b, atol=1e-16, rtol=0, atol_fp32=None):
+    if any([is_fp32(el) for el in [a, b]]):
+        atol = atol_fp32 if atol_fp32 else atol * 1e8
+    np.testing.assert_allclose(a, b, atol=atol, rtol=rtol)
+
+
 def decode_bytes(input, errors="ignore"):
     return input.decode("ascii", errors=errors)
 

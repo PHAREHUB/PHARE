@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 from ddt import ddt
 from pyphare.core.box import nDBox
+from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
 from pyphare.pharein.diagnostics import (
     ElectromagDiagnostics,
@@ -295,9 +296,9 @@ class InitializationTest(SimulatorTest):
 
                 if dim == 1:
                     # discrepancy in 1d for some reason : https://github.com/PHAREHUB/PHARE/issues/580
-                    np.testing.assert_allclose(bx, bx_fn(xbx), atol=1e-15, rtol=0)
-                    np.testing.assert_allclose(by, by_fn(xby), atol=1e-15, rtol=0)
-                    np.testing.assert_allclose(bz, bz_fn(xbz), atol=1e-15, rtol=0)
+                    assert_fp_any_all_close(bx, bx_fn(xbx), atol=1e-15, rtol=0)
+                    assert_fp_any_all_close(by, by_fn(xby), atol=1e-15, rtol=0)
+                    assert_fp_any_all_close(bz, bz_fn(xbz), atol=1e-15, rtol=0)
 
                 if dim >= 2:
                     ybx = bx_pd.y[:]
@@ -315,11 +316,11 @@ class InitializationTest(SimulatorTest):
                         a.flatten() for a in np.meshgrid(xbz, ybz, indexing="ij")
                     ]
 
-                    np.testing.assert_allclose(bx, bx_fn(xbx, ybx), atol=1e-16, rtol=0)
-                    np.testing.assert_allclose(
+                    assert_fp_any_all_close(bx, bx_fn(xbx, ybx), atol=1e-16, rtol=0)
+                    assert_fp_any_all_close(
                         by, by_fn(xby, yby).reshape(by.shape), atol=1e-16, rtol=0
                     )
-                    np.testing.assert_allclose(
+                    assert_fp_any_all_close(
                         bz, bz_fn(xbz, ybz).reshape(bz.shape), atol=1e-16, rtol=0
                     )
 
