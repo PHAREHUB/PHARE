@@ -1,13 +1,22 @@
 
-
-# Per compiler CXXFLAGS
+# PHARE only compile flags
 set (PHARE_FLAGS ${PHARE_FLAGS} )
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set (PHARE_FLAGS ${PHARE_FLAGS} )
-else() # !Clang
-  set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  # --param=min-pagesize=0    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105523
+  check_cxx_compiler_flag( --param=min-pagesize=0 CHECK_SUPPORTS_FLAG)
+  if (${CHECK_SUPPORTS_FLAG})
+    set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+  endif()
+
+  # --param=evrp-mode=legacy  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
+  check_cxx_compiler_flag( --param=evrp-mode=legacy CHECK_SUPPORTS_FLAG)
+  if (${CHECK_SUPPORTS_FLAG})
+    set (PHARE_FLAGS ${PHARE_FLAGS} --param=evrp-mode=legacy )
+  endif()
 endif() # clang
 
+# PHARE only link flags
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
 
@@ -24,10 +33,10 @@ if(PGO_USE)
   set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-use )
 endif()
 
-
+# PHARE only WERROR compile flags
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
-set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 
+set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 
 # now we see if we are running with configurator
 if (phare_configurator)
