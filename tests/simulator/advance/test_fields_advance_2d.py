@@ -62,6 +62,11 @@ class AdvanceTest(AdvanceTestBase):
         largest_patch_size, smallest_patch_size = check_patch_size(
             ndim, interp_order=interp_order, cells=[60] * ndim
         )
+        print(
+            "largest_patch_size, smallest_patch_size",
+            largest_patch_size,
+            smallest_patch_size,
+        )
         datahier = self.getHierarchy(
             ndim,
             interp_order,
@@ -85,8 +90,8 @@ class AdvanceTest(AdvanceTestBase):
             (
                 {
                     "L0": {"B0": Box2D(5, 20)},
-                    "L1": {"B0": Box2D(12, 38)},
-                    "L2": {"B0": Box2D(30, 52)},
+                    "L1": {"B0": Box2D(12, 37)},
+                    "L2": {"B0": Box2D(30, 51)},
                 }
             )
         ),

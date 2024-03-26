@@ -45,12 +45,15 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
     )
 
     def density(x, y):
+        Lx = sim.simulation_domain()[0]
         return 1.0
 
     def bx(x, y):
         return 0.1
 
     def by(x, y):
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
         return 0.2
 
     def bz(x, y):
@@ -132,6 +135,7 @@ def get_hier(path):
 from pyphare.cpp import cpp_lib
 
 from tests.simulator.test_advance import AdvanceTestBase
+
 
 cpp = cpp_lib()
 test = AdvanceTestBase(rethrow=True)  # change to False for debugging images

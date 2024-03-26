@@ -178,7 +178,7 @@ namespace core
 
     template<typename... Indexes>
     Point(Indexes... indexes)
-        -> Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
+        ->Point<typename std::tuple_element<0, std::tuple<Indexes...>>::type, sizeof...(indexes)>;
 
     template<typename Type, std::size_t dim>
     auto& operator<<(std::ostream& os, Point<Type, dim> const& p)
@@ -202,6 +202,18 @@ NO_DISCARD PHARE::core::Point<Type, dim> abs(PHARE::core::Point<Type, dim> const
     for (std::size_t i = 0; i < dim; ++i)
         postive[i] = std::abs(point[i]);
     return postive;
+}
+
+template<typename Type, std::size_t dim>
+auto to_string(PHARE::core::Point<Type, dim> const& point)
+{
+    return point.str();
+}
+
+template<typename Type, std::size_t dim>
+auto to_string(PHARE::core::Point<Type, dim>&& point)
+{
+    return point.str();
 }
 
 } // namespace std
