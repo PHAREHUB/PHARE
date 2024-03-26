@@ -52,6 +52,7 @@ PHAREDict getDict()
     dict["name"]                         = std::string{"protons"};
     dict["mass"]                         = 1.;
     dict["particle_initializer"]["name"] = std::string{"DummyParticleInitializer"};
+    dict["particle_initializer"]["charge"] = -1.;
     return dict;
 }
 
@@ -77,6 +78,13 @@ TEST_F(AnIonPopulation, hasAMass)
 TEST_F(AnIonPopulation, hasAName)
 {
     EXPECT_EQ("protons", protons.name());
+}
+
+
+
+TEST_F(AnIonPopulation, hasACharge)
+{
+    EXPECT_DOUBLE_EQ(-1., protons.charge());
 }
 
 
