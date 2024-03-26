@@ -151,13 +151,95 @@ MagneticFieldCoarsener<dim>::coarsen(Point_t const fineStartIndex, FieldT const&
     }
 }
 
+// clang-format off
+
+// clang-format on
+
 template<std::size_t dim>
 template<std::size_t D, typename FieldT>
 typename std::enable_if<D == 3, void>::type
 MagneticFieldCoarsener<dim>::coarsen(Point_t const fineStartIndex, FieldT const& fineField,
                                      FieldT& coarseField, Point_t const coarseIndex)
 {
-    throw std::runtime_error("Not Implemented yet");
+    auto& ci  = coarseIndex;
+    auto& cf  = coarseField;
+    auto& fsi = fineStartIndex;
+    auto& ff  = fineField;
+
+    using Fn     = std::function<void()>;
+    using Fn_arr = std::array<Fn, 2>;
+    using A0_arr = std::array<Fn_arr, 2>;
+
+    // X = 0 = primal
+    // Y = 1 = dual
+    std::array<A0_arr, 2> const fns{
+        A0_arr{Fn_arr{[]() { // XXX
+                          throw std::runtime_error("no magnetic field should end up here");
+                      },
+                      [&]() { // XXY
+                          double constexpr static V = .5;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) + //
+                                    ff(fsi[dirX], fsi[dirY], fsi[dirZ] + 1))
+                                   * V;
+                      }},
+               Fn_arr{[&]() { // XYX
+                          double constexpr static V = .5;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) + //
+                                    ff(fsi[dirX], fsi[dirY] + 1, fsi[dirZ]))
+                                   * V;
+                      },
+                      [&]() { // XYY
+                          double constexpr static V = .5;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) + //
+                                    ff(fsi[dirX], fsi[dirY] + 1, fsi[dirZ] + 1))
+                                   * V;
+                      }}},
+        A0_arr{Fn_arr{[&]() {
+                          // YXX
+                          double constexpr static V = .5;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) + //
+                                    ff(fsi[dirX] + 1, fsi[dirY], fsi[dirZ]))
+                                   * V;
+                      },
+                      [&]() {
+                          // YXY
+                          double constexpr static V = .5;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) + //
+                                    ff(fsi[dirX] + 1, fsi[dirY], fsi[dirZ] + 1))
+                                   * V;
+                      }},
+               Fn_arr{[&]() {
+                          // YYX
+                          double constexpr static V = .5;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) + //
+                                    ff(fsi[dirX] + 1, fsi[dirY] + 1, fsi[dirZ]))
+                                   * V;
+                      },
+                      [&]() {
+                          // YYY
+                          double constexpr static V = .125;
+
+                          cf(ci) = (ff(fsi[dirX], fsi[dirY], fsi[dirZ]) +         //
+                                    ff(fsi[dirX] + 1, fsi[dirY], fsi[dirZ]) +     //
+                                    ff(fsi[dirX], fsi[dirY] + 1, fsi[dirZ]) +     //
+                                    ff(fsi[dirX], fsi[dirY], fsi[dirZ] + 1) +     //
+                                    ff(fsi[dirX] + 1, fsi[dirY] + 1, fsi[dirZ]) + //
+                                    ff(fsi[dirX] + 1, fsi[dirY], fsi[dirZ] + 1) + //
+                                    ff(fsi[dirX], fsi[dirY] + 1, fsi[dirZ] + 1) + //
+                                    ff(fsi[dirX] + 1, fsi[dirY] + 1, fsi[dirZ] + 1))
+                                   * V;
+                      }}}};
+
+    auto cast = [](auto const& qty) {
+        return static_cast<std::underlying_type_t<core::QtyCentering>>(qty);
+    };
+    fns[cast(centering_[0])][cast(centering_[1])][cast(centering_[2])]();
 }
 
 } // namespace PHARE::amr
