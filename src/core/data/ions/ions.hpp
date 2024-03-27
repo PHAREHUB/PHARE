@@ -113,8 +113,9 @@ namespace core
                 // have to account for the field dimensionality.
 
                 auto& popDensity = pop.density();
-                std::transform(std::begin(*rho_), std::end(*rho_), std::begin(popDensity),
-                               std::begin(*rho_), std::plus<Float>{});
+                std::transform(
+                    std::begin(*rho_), std::end(*rho_), std::begin(popDensity), std::begin(*rho_),
+                    [&pop](auto const& n, auto const& pop_n) { return n + pop.charge() * pop_n; });
             }
         }
         void computeMassDensity()
@@ -128,10 +129,10 @@ namespace core
                 // have to account for the field dimensionality.
 
                 auto& popDensity = pop.density();
-                std::transform(
-                    std::begin(*massDensity_), std::end(*massDensity_), std::begin(popDensity),
-                    std::begin(*massDensity_),
-                    [&pop](auto const& n, auto const& pop_n) { return n + pop_n * pop.mass(); });
+                std::transform(std::begin(*massDensity_), std::end(*massDensity_), std::begin(popDensity),
+                            std::begin(*massDensity_), [&pop](auto const& n, auto const& pop_n) {
+                                return n + pop_n * pop.charge() * pop.mass();
+                            });
             }
         }
 
