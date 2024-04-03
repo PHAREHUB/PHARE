@@ -59,6 +59,7 @@ set( SOURCES_INC
      physical_models/physical_model.hpp
      physical_models/hybrid_model.hpp
      physical_models/mhd_model.hpp
+     physical_models/pic_model.hpp
      multiphysics_integrator.hpp
      messenger_registration.hpp
      level_initializer/level_initializer.hpp
