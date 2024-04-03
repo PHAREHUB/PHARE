@@ -605,6 +605,7 @@ def checker(func):
             "restart_options",
             "tag_buffer",
             "description",
+            "tagging_method",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -670,6 +671,8 @@ def checker(func):
         kwargs["resistivity"] = check_resistivity(**kwargs)
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
+
+        kwargs["tagging_method"] = kwargs.get("tagging_method", "default")
 
         return func(simulation_object, **kwargs)
 

@@ -258,8 +258,9 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
     multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
 
-    // hard coded for now, should get some params later from the dict
-    auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
+    auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make(
+        "HybridModel", cppdict::get_value(dict, "simulation/AMR/refinement/tagging/method",
+                                          std::string{"default"}));
     multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
 
     if (dict["simulation"].contains("restarts"))

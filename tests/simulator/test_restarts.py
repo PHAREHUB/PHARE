@@ -124,6 +124,7 @@ simArgs = dict(
     dl=0.3,
     diag_options=dict(format="phareh5", options=dict(dir=out, mode="overwrite")),
     restart_options=dict(dir=out, mode="overwrite"),
+    tagging_method="default",
 )
 
 
@@ -238,6 +239,7 @@ class RestartsTest(SimulatorTest):
             # three levels has issues with refinementboxes and possibly regridding
             b0 = [[10] * ndim, [19] * ndim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
+            # simput["tagging_method"] = "const"
 
         # if restart time exists it "loads" from restart file
         #  otherwise just saves restart files based on timestamps

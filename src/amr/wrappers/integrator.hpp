@@ -38,7 +38,7 @@ public:
 
 
     Integrator(PHARE::initializer::PHAREDict const& dict,
-               std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
+               std::shared_ptr<PHARE::amr::Hierarchy> hierarchy,
                std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
                std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
                double startTime, double endTime);
@@ -57,15 +57,14 @@ private:
 
 template<std::size_t dimension>
 std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
-getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr);
+getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr, bool isFromRestart);
 
 
 
 
 template<std::size_t _dimension>
 Integrator<_dimension>::Integrator(
-    PHARE::initializer::PHAREDict const& dict,
-    std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
+    PHARE::initializer::PHAREDict const& dict, std::shared_ptr<PHARE::amr::Hierarchy> hierarchy,
     std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
     std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy, double startTime,
     double endTime)
@@ -73,7 +72,8 @@ Integrator<_dimension>::Integrator(
     auto loadBalancer = std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
         SAMRAI::tbox::Dimension{dimension}, "LoadBalancer");
 
-    auto refineDB    = getUserRefinementBoxesDatabase<dimension>(dict["simulation"]["AMR"]);
+    auto refineDB    = getUserRefinementBoxesDatabase<dimension>(dict["simulation"]["AMR"],
+                                                              hierarchy->isFromRestart());
     auto standardTag = std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
         "StandardTagAndInitialize", tagAndInitStrategy.get(), refineDB);
 
@@ -125,15 +125,13 @@ Integrator<_dimension>::Integrator(
 
 template<std::size_t dimension>
 std::shared_ptr<SAMRAI::tbox::MemoryDatabase>
-getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
+getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr, bool isFromRestart)
 {
     auto const& refinement = amr["refinement"];
     auto maxLevelNumber    = amr["max_nbr_levels"].template to<int>();
 
-
     auto standardTagInitDB
         = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
-    standardTagInitDB->putString("tagging_method", "GRADIENT_DETECTOR");
 
     if (refinement.contains("boxes"))
     {
@@ -144,8 +142,11 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
         // at0db->putInteger("cycle", 0);
         // auto tag0db = at0db->putDatabase("tag_0");
         std::cout << "tagging method is set to REFINE_BOXES\n";
-        // standardTagInitDB->putString("tagging_method", "REFINE_BOXES");
 
+        if (isFromRestart)
+            standardTagInitDB->putString("tagging_method", "GRADIENT_DETECTOR");
+        else // restarts are special
+            standardTagInitDB->putString("tagging_method", "REFINE_BOXES");
 
         for (int levelNumber = 0; levelNumber < maxLevelNumber; ++levelNumber)
         {
@@ -191,6 +192,7 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
     }
     else if (refinement.contains("tagging"))
     {
+        standardTagInitDB->putString("tagging_method", "GRADIENT_DETECTOR");
         return standardTagInitDB;
     }
     return nullptr;

@@ -24,7 +24,6 @@ public:
 template<typename PHARE_T>
 std::unique_ptr<Tagger> TaggerFactory<PHARE_T>::make(std::string modelName, std::string methodName)
 {
-    methodName = "const";
     if (modelName == "HybridModel")
     {
         using HybridModel = typename PHARE_T::HybridModel_t;
