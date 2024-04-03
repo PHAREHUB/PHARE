@@ -117,7 +117,7 @@ simArgs = dict(
     #  have regridding in places that don't exist in the original simulation
     #   we compare the immediate next timestep of both simulations with refinement boxes, as we have seen
     #   in this way neither simulations have any regrids, so are still comparable
-    time_step_nbr=5,  # avoid regrid for refinement boxes https://github.com/LLNL/SAMRAI/issues/199
+    time_step_nbr=10,
     time_step=timestep,
     boundary_types="periodic",
     cells=200,
@@ -238,11 +238,6 @@ class RestartsTest(SimulatorTest):
             # three levels has issues with refinementboxes and possibly regridding
             b0 = [[10] * ndim, [19] * ndim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
-        else:  # https://github.com/LLNL/SAMRAI/issues/199
-            # tagging can handle more than one timestep as it does not
-            #  appear subject to regridding issues, so we make more timesteps
-            #  to confirm simulations are still equivalent
-            simput["time_step_nbr"] = 10
 
         # if restart time exists it "loads" from restart file
         #  otherwise just saves restart files based on timestamps
