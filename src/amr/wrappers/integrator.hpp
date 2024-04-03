@@ -129,19 +129,22 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
 {
     auto const& refinement = amr["refinement"];
     auto maxLevelNumber    = amr["max_nbr_levels"].template to<int>();
+
+
+    auto standardTagInitDB
+        = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
+    standardTagInitDB->putString("tagging_method", "GRADIENT_DETECTOR");
+
     if (refinement.contains("boxes"))
     {
         auto& refDict = refinement["boxes"];
-
-        std::shared_ptr<SAMRAI::tbox::MemoryDatabase> refinementBoxesDatabase
-            = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
 
         // user refinement boxes are always defined at t=0
         // auto at0db = refinementBoxesDatabase->putDatabase("at_0");
         // at0db->putInteger("cycle", 0);
         // auto tag0db = at0db->putDatabase("tag_0");
         std::cout << "tagging method is set to REFINE_BOXES\n";
-        refinementBoxesDatabase->putString("tagging_method", "REFINE_BOXES");
+        // standardTagInitDB->putString("tagging_method", "REFINE_BOXES");
 
 
         for (int levelNumber = 0; levelNumber < maxLevelNumber; ++levelNumber)
@@ -155,7 +158,7 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
                 auto samraiDim  = SAMRAI::tbox::Dimension{dimension};
                 auto nbrBoxes   = levelDict["nbr_boxes"].template to<int>();
                 auto levelDB
-                    = refinementBoxesDatabase->putDatabase("level_" + std::to_string(levelNumber));
+                    = standardTagInitDB->putDatabase("level_" + std::to_string(levelNumber));
 
                 std::vector<SAMRAI::tbox::DatabaseBox> dbBoxes;
                 for (int iBox = 0; iBox < nbrBoxes; ++iBox)
@@ -184,14 +187,11 @@ getUserRefinementBoxesDatabase(PHARE::initializer::PHAREDict const& amr)
                 levelDB->putDatabaseBoxVector("boxes", dbBoxes);
             }
         } // end loop on levels
-        return refinementBoxesDatabase;
+        return standardTagInitDB;
     }
     else if (refinement.contains("tagging"))
     {
-        std::shared_ptr<SAMRAI::tbox::MemoryDatabase> tagDB
-            = std::make_shared<SAMRAI::tbox::MemoryDatabase>("StandardTagAndInitialize");
-        tagDB->putString("tagging_method", "GRADIENT_DETECTOR");
-        return tagDB;
+        return standardTagInitDB;
     }
     return nullptr;
 }

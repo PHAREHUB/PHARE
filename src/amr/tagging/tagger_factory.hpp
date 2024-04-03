@@ -8,6 +8,7 @@
 #include "hybrid_tagger.hpp"
 #include "hybrid_tagger_strategy.hpp"
 #include "default_hybrid_tagger_strategy.hpp"
+#include "const_hybrid_tagger_strategy.hpp"
 #include "core/def.hpp"
 
 namespace PHARE::amr
@@ -23,6 +24,7 @@ public:
 template<typename PHARE_T>
 std::unique_ptr<Tagger> TaggerFactory<PHARE_T>::make(std::string modelName, std::string methodName)
 {
+    methodName = "const";
     if (modelName == "HybridModel")
     {
         using HybridModel = typename PHARE_T::HybridModel_t;
@@ -31,6 +33,11 @@ std::unique_ptr<Tagger> TaggerFactory<PHARE_T>::make(std::string modelName, std:
         if (methodName == "default")
         {
             using HTS = DefaultHybridTaggerStrategy<HybridModel>;
+            return std::make_unique<HT>(std::make_unique<HTS>());
+        }
+        else if (methodName == "const")
+        {
+            using HTS = ConstHybridTaggerStrategy<HybridModel>;
             return std::make_unique<HT>(std::make_unique<HTS>());
         }
     }
