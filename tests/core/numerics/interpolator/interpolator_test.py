@@ -34,9 +34,16 @@ def get_nodes(pos, order, centering):
     return start_index(pos, order, centering) + np.arange(order + 1)
 
 
-def main():
-    from scipy.signal import bspline
+def bspline(x, n):
+    from scipy.interpolate import BSpline
 
+    knots = np.arange(-(n + 1) / 2, (n + 3) / 2)
+    out = BSpline.basis_element(knots)(x)
+    out[(x < knots[0]) | (x > knots[-1])] = 0.0
+    return out
+
+
+def main():
     orders = [1, 2, 3]
     particle_positions = 3.0 + np.arange(0, 1.0, 0.1)
 
