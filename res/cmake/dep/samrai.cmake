@@ -1,4 +1,7 @@
 
+find_package(MPI REQUIRED COMPONENTS C)
+# some linkers (like mold) don't use default library paths
+get_filename_component(MPI_LIBRARY_PATH ${MPI_LIBRARY} DIRECTORY)
 
 find_package(SAMRAI CONFIG QUIET)
 if (NOT SAMRAI_FOUND)
@@ -32,9 +35,3 @@ else()
   message("SAMRAI HAS BEEN FOUND")
   message(${SAMRAI_INCLUDE_DIRS})
 endif()
-
-find_package(MPI REQUIRED)
-foreach(LIB ${MPI_LIBRARY})
-    get_filename_component(MPI_LIBRARY_PATH ${LIB} DIRECTORY)
-endforeach()
-message("MPI_C_LIBRARIES " ${MPI_LIBRARY_PATH})

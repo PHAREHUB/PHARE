@@ -84,9 +84,8 @@ public:
     }
 
 
-    NO_DISCARD static auto getEmptyPatchProperties()
+    NO_DISCARD static auto getEmptyPatchProperties(PatchProperties dict = {})
     {
-        PatchProperties dict;
         dict["origin"]   = std::vector<double>{};
         dict["nbrCells"] = std::vector<std::uint32_t>{};
         dict["lower"]    = std::vector<int>{};

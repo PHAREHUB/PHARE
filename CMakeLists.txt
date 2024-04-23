@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.20.1) # released April 8, 2021 - https://www.kitware.com/cmake-3-20-1-available-for-download/
 
-project(PHARE VERSION 0.1 LANGUAGES CXX)
+project(PHARE VERSION 0.1 LANGUAGES CXX C)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)

@@ -33,6 +33,13 @@ NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();
 
+inline bool is_init()
+{
+    int flag = 0;
+    MPI_Initialized(&flag);
+    return flag > 0;
+}
+
 template<typename Data>
 NO_DISCARD auto mpi_type_for()
 {

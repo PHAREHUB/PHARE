@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
-
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 
-mpl.use("Agg")
-
+import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
+from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import startMPI
 
+ph.NO_GUI()
 cpp = cpp_lib()
 startMPI()
 
 diag_outputs = "phare_outputs/test/harris/2d"
-from datetime import datetime
 
 
 def config():
@@ -25,9 +21,10 @@ def config():
         time_step_nbr=1000,
         time_step=0.001,
         # boundary_types="periodic",
-        cells=(100, 100),
+        cells=(200, 400),
         dl=(0.2, 0.2),
-        refinement_boxes={},
+        refinement="tagging",
+        max_nbr_levels=2,
         hyper_resistivity=0.001,
         resistivity=0.001,
         diag_options={
@@ -135,41 +132,18 @@ def config():
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
+    ph.InfoDiagnostics(quantity="particle_count")  # defaults all coarse time steps
 
     return sim
 
 
-def get_time(path, time, datahier=None):
-    time = "{:.10f}".format(time)
-    from pyphare.pharesee.hierarchy import hierarchy_from
-
-    datahier = hierarchy_from(h5_filename=path + "/EM_E.h5", time=time, hier=datahier)
-    datahier = hierarchy_from(h5_filename=path + "/EM_B.h5", time=time, hier=datahier)
-    return datahier
-
-
-def post_advance(new_time):
-    if cpp.mpi_rank() == 0:
-        print(f"running tests at time {new_time}")
-        from tests.simulator.test_advance import AdvanceTestBase
-
-        test = AdvanceTestBase()
-        test.base_test_overlaped_fields_are_equal(
-            get_time(diag_outputs, new_time), new_time
-        )
-        print(f"tests passed")
-
-
 def main():
-    s = Simulator(config(), post_advance=post_advance)
-    s.initialize()
-    post_advance(0)
-    s.run()
+    from tools.python3 import plotting as m_plotting
+
+    Simulator(config()).run()
+    m_plotting.plot_run_timer_data(diag_outputs, cpp.mpi_rank())
+    cpp.mpi_barrier()
 
 
 if __name__ == "__main__":

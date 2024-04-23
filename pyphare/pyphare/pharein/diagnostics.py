@@ -3,6 +3,12 @@ import numpy as np
 from ..core import phare_utilities
 from . import global_vars
 
+
+def all_timestamps(sim):
+    nbr_dump_step = int(sim.final_time / sim.time_step) + 1
+    return sim.time_step * np.arange(nbr_dump_step)
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -350,7 +356,7 @@ class ParticleDiagnostics(Diagnostics):
 
 class MetaDiagnostics(Diagnostics):
     meta_quantities = ["tags"]
-    type = "info"
+    type = "meta"
 
     def __init__(self, **kwargs):
         super(MetaDiagnostics, self).__init__(
@@ -375,5 +381,44 @@ class MetaDiagnostics(Diagnostics):
             "quantity": self.quantity,
             "write_timestamps": self.write_timestamps,
             "compute_timestamps": self.compute_timestamps,
+            "path": self.path,
+        }
+
+
+# ------------------------------------------------------------------------------
+
+
+class InfoDiagnostics(Diagnostics):
+    info_quantities = ["particle_count"]
+    type = "info"
+
+    @classmethod
+    def default_kwargs(cls, **kwargs):
+        if "write_timestamps" not in kwargs:
+            kwargs["write_timestamps"] = all_timestamps(global_vars.sim)
+        return kwargs
+
+    def __init__(self, **kwargs):
+        super(InfoDiagnostics, self).__init__(
+            InfoDiagnostics.type
+            + str(global_vars.sim.count_diagnostics(InfoDiagnostics.type)),
+            **InfoDiagnostics.default_kwargs(**kwargs),
+        )
+
+    def _setSubTypeAttributes(self, **kwargs):
+        if kwargs["quantity"] not in InfoDiagnostics.info_quantities:
+            error_msg = "Error: '{}' not a valid info diagnostics : " + ", ".join(
+                InfoDiagnostics.info_quantities
+            )
+            raise ValueError(error_msg.format(kwargs["quantity"]))
+
+        self.quantity = f"/{kwargs['quantity']}"
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "type": InfoDiagnostics.type,
+            "quantity": self.quantity,
+            "write_timestamps": self.write_timestamps,
             "path": self.path,
         }

@@ -29,6 +29,7 @@
 #include "diagnostic/detail/types/particle.hpp"
 #include "diagnostic/detail/types/fluid.hpp"
 #include "diagnostic/detail/types/meta.hpp"
+#include "diagnostic/detail/types/info.hpp"
 
 #endif
 

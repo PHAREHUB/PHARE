@@ -4,6 +4,8 @@
 
 #include "simulator/simulator.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/run_timer.hpp"
+
 
 #include <memory>
 #include <iostream>
@@ -39,6 +41,7 @@ public:
     }
     ~SamraiLifeCycle()
     {
+        core::StaticRunTimer::reset();
         SAMRAI::tbox::SAMRAIManager::shutdown();
         SAMRAI::tbox::SAMRAIManager::finalize();
         SAMRAI::tbox::SAMRAI_MPI::finalize();
@@ -46,6 +49,7 @@ public:
 
     static void reset()
     {
+        core::StaticRunTimer::reset();
         PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
         SAMRAI::tbox::SAMRAIManager::shutdown();
         SAMRAI::tbox::SAMRAIManager::startup();

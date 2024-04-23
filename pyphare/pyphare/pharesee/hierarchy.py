@@ -1,7 +1,7 @@
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ..core import box as boxm
 from ..core.box import Box
