@@ -955,8 +955,8 @@ namespace amr
                                            debug_print(B, layout, loc, ix, iy, after);)
                         }
                     } // end corner loops
-                }     // end if 2D
-            }         // end patch loop
+                } // end if 2D
+            } // end patch loop
         }
 
 
