@@ -8,16 +8,21 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  LIBRARY_PATH: /usr/local/lib/gcc/current # used by clang, needed to find libquadmath - else link error
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-12, macos-13]
+        os: [ macos-12, macos-13, macos-latest]
+        include:
+        - os: macos-12
+          dylib_path: /usr/local/lib/gcc/current
+        - os: macos-13
+          dylib_path: /usr/local/lib/gcc/current
+        - os: macos-latest
+          dylib_path: /opt/homebrew/Cellar/gcc/13.2.0/lib/gcc/current
+
 
     steps:
     - name: Build Info
@@ -73,6 +78,8 @@ jobs:
 
     - name: Configure CMake
       working-directory: ${{runner.workspace}}/build
+      env:
+        LIBRARY_PATH: ${{ matrix.dylib_path }} # used by clang, needed to find libquadmath - else link error
       run: |
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -81,8 +88,9 @@ jobs:
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
-      run: |
-        cmake --build . -j 2
+      env:
+        LIBRARY_PATH: ${{ matrix.dylib_path }} # used by clang, needed to find libquadmath - else link error
+      run: cmake --build . -j 2
 
     - name: Test
       working-directory: ${{runner.workspace}}/build
