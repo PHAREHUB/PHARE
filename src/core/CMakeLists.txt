@@ -48,14 +48,12 @@ set( SOURCES_INC
      utilities/range/range.hpp
      utilities/types.hpp
      utilities/mpi_utils.hpp
-     utilities/run_timer.hpp
    )
 
 set( SOURCES_CPP
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
      utilities/mpi_utils.cpp
-     utilities/run_timer.cpp
     )
 
 set( CORE_EXTRA_SOURCES_CPP )
