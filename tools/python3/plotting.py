@@ -4,13 +4,12 @@
 import sys
 import logging
 import argparse
-import numpy as np
 import matplotlib.pyplot as plt
 
 from pathlib import Path
 
 from pyphare.pharesee.run import Run
-import tools.python3.run_timer as rt
+import tools.python3.phloping as phloping
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -26,16 +25,16 @@ def plot_run_timer_data(diag_dir=None, rank=0):
         parser.add_argument("-d", "--dir", default=".", help="Diagnostics directory")
         diag_dir = parser.parse_args().dir
     run = Run(diag_dir, single_hier_for_all_quantities=True)
-    rtf = rt.file_parser(run, rank, Path(f".phare_times.{rank}.bin"))
+    res = phloping.file_parser(run, rank, Path(f".phare_times.{rank}.txt"))
     fig, ax = plt.subplots()
-    L0X = rtf.time_steps_for_L(0)
-    ax.plot(L0X, rtf.normalised_times_for_L(0), "b--", label="L0 times")
+    L0X = res.time_steps_for_L(0)
+    ax.plot(L0X, res.normalised_times_for_L(0), "b--", label="L0 times")
     ax.plot(
-        rtf.time_steps_for_L(1), rtf.normalised_times_for_L(1), "g:", label="L1 times"
+        res.time_steps_for_L(1), res.normalised_times_for_L(1), "g:", label="L1 times"
     )
     ax.legend()
     plt.ylabel("time in ns")
-    plt.xlabel(f"timestep {rtf.sim.time_step}")
+    plt.xlabel(f"timestep {res.sim.time_step}")
     ax.set_xticks([L0X[0], L0X[-1]])
     fig.savefig(f"run_timer.{rank}.png")
 

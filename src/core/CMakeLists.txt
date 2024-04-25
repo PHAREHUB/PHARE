@@ -48,19 +48,22 @@ set( SOURCES_INC
      utilities/range/range.hpp
      utilities/types.hpp
      utilities/mpi_utils.hpp
-     utilities/run_timer.hpp
    )
 
 set( SOURCES_CPP
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
      utilities/mpi_utils.cpp
-     utilities/run_timer.cpp
     )
+
+set( CORE_EXTRA_SOURCES_CPP )
+if (withPhlop)
+  set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp )
+endif(withPhlop)
 
 find_package(MPI)
 
-add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})
+add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES}
     PUBLIC ${PHARE_BASE_LIBS}

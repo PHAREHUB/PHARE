@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #if !defined(PHARE_LOG_LEVEL)
-#define PHARE_LOG_LEVEL 1 // 0 == off
+#define PHARE_LOG_LEVEL 0 // 0 == off
 #endif
 
 namespace PHARE

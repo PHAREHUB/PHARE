@@ -81,7 +81,7 @@ public:
                        GridLayout const& layout, ParticleSelector firstSelector,
                        ParticleSelector secondSelector) override
     {
-        PHARE_LOG_SCOPE(5, "Boris::move_no_bc");
+        PHARE_LOG_SCOPE(3, "Boris::move_no_bc");
 
         // push the particles of half a step
         // rangeIn : t=n, rangeOut : t=n+1/2

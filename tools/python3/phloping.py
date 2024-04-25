@@ -8,28 +8,16 @@ from dataclasses import dataclass, field
 from pyphare.pharesee.run import Run
 from pyphare.pharesee.hierarchy import hierarchy_from
 
-
-@dataclass
-class RunTimerNode:
-    k: int
-    t: int
-    c: list = field(default_factory=lambda: [])
+from phlop.timing.scope_timer import ScopeTimerFile as phScopeTimerFile
+from phlop.timing.scope_timer import file_parser as phfile_parser
 
 
 @dataclass
-class RunTimerFile:
+class ScopeTimerFile(phScopeTimerFile):
     run: Run
     rank: str
-    id_keys: dict = field(default_factory=lambda: {})
-    roots: list = field(default_factory=lambda: [])
     advances: list = field(default_factory=lambda: [])
     particles_per_level_per_time_step: dict = field(default_factory=lambda: {})
-
-    def fn_for(self, id):
-        return self.id_keys[id]
-
-    def __call__(self, id):
-        return self.fn_for(id)
 
     def __post_init__(self):
         self.advances = [
@@ -126,56 +114,5 @@ class RunTimerFile:
 
 
 def file_parser(run, rank, times_filepath):
-    # compressed form to reduce string usage
-
-    id_keys = {}
-    roots = []
-    curr = None
-    c_depth = 0
-    stack = {i: 0 for i in range(128)}
-    stack_size = 0
-
-    def _parent():
-        assert stack_size >= 0
-        n = roots[stack[0]]
-        for s in range(1, stack_size):
-            assert stack[s] >= 0
-            n = n.c[stack[s]]
-        return n
-
-    with open(times_filepath, "r") as file:
-        while line := file.readline():
-            line = line.rstrip()
-            if not line:
-                break
-            bits = line.split(" ")
-            id_keys[bits[0]] = bits[1]
-        while line := file.readline():
-            line = line.rstrip()  # drop new line characters
-            stripped_line = line.strip()
-            if not stripped_line:  # last line might be blank
-                continue
-            idx = len(line) - len(stripped_line)  # how many space indents from left
-            bits = stripped_line.split(" ")
-            node = RunTimerNode(*bits)
-            if idx == 0:  # is root node
-                stack[0] = len(roots)
-                roots.append(node)
-                stack_size = 0
-                c_depth = 0
-            else:  # is not root node
-                if idx > c_depth:
-                    parent = curr
-                    curr.c.append(node)
-                    stack_size += 1
-                elif idx == c_depth:
-                    parent = _parent()
-                    parent.c.append(node)
-                elif idx < c_depth:
-                    stack_size -= c_depth - idx
-                    parent = _parent()
-                    parent.c.append(node)
-                stack[stack_size] = len(parent.c) - 1
-                c_depth = idx
-            curr = node
-    return RunTimerFile(run, str(rank), id_keys, roots)
+    supe = phfile_parser(times_filepath)
+    return ScopeTimerFile(supe.id_keys, supe.roots, run, str(rank))

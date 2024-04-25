@@ -63,6 +63,10 @@ option(withIPO "Use IPO/LTO if system supported" OFF)
 option(withCaliper "Use LLNL Caliper" OFF)
 
 
+# -DwithPhlop=OFF
+option(withPhlop "Use phlop" OFF)
+
+
 # -DlowResourceTests=ON
 option(lowResourceTests "Disable heavy tests for CI (2d/3d/etc" OFF)
 
