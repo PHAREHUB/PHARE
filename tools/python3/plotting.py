@@ -28,10 +28,22 @@ def plot_run_timer_data(diag_dir=None, rank=0):
     res = phloping.file_parser(run, rank, Path(f".phare_times.{rank}.txt"))
     fig, ax = plt.subplots()
     L0X = res.time_steps_for_L(0)
-    ax.plot(L0X, res.normalised_times_for_L(0), "b--", label="L0 times")
-    ax.plot(
-        res.time_steps_for_L(1), res.normalised_times_for_L(1), "g:", label="L1 times"
-    )
+    ax.plot(L0X, res.normalised_times_for_L(0), ":", label="L0 times", color="black")
+
+    if res.n_levels() > 1:
+        ax.plot(
+            res.time_steps_for_L(1),
+            res.normalised_times_for_L(1),
+            "g:",
+            label="L1 times",
+        )
+    if res.n_levels() > 2:
+        ax.plot(
+            res.time_steps_for_L(2),
+            res.normalised_times_for_L(2),
+            "b:",
+            label="L2 times",
+        )
     ax.legend()
     plt.ylabel("time in ns")
     plt.xlabel(f"timestep {res.sim.time_step}")

@@ -12,6 +12,9 @@ from phlop.timing.scope_timer import ScopeTimerFile as phScopeTimerFile
 from phlop.timing.scope_timer import file_parser as phfile_parser
 
 
+substeps_per_finer_level = 4
+
+
 @dataclass
 class ScopeTimerFile(phScopeTimerFile):
     run: Run
@@ -23,15 +26,18 @@ class ScopeTimerFile(phScopeTimerFile):
         self.advances = [
             root for root in self.roots if self(root.k) == "Simulator::advance"
         ]
-        self.particles_per_level_per_time_step = self._particles()
+        self.pcount_hier, self.particles_per_level_per_time_step = self._particles()
 
     @property
     def sim(self):
-        if sim := self.run.GetAllAvailableQties().sim:
+        if sim := self.pcount_hier.sim:
             return sim
         raise ValueError("Simulation is None, check your diagnostics directory")
 
     def _particles(self):
+        """
+        Extract particle count per timestep per level from phlop logging
+        """
         bad_diag_error = (
             "Simulation was not configured with Particle Count info diagnostic"
         )
@@ -51,9 +57,12 @@ class ScopeTimerFile(phScopeTimerFile):
                 if pc == 0:
                     pc += 1  # avoid div by 0 for rank missing patch on level
                 particles_per_level_per_time_step[int(plk[2:])][ti] += pc
-        return particles_per_level_per_time_step
+        return pcount_hier, particles_per_level_per_time_step
 
-    def advance_times_for_L(self, i):
+    def advance_times_for_L(self, ilvl):
+        """
+        Extract time in nanoseconds for each substep found for level i
+        """
         times = []
         n_levels = self.n_levels()
         assert n_levels == len(self.particles_per_level_per_time_step), "not good"
@@ -61,56 +70,72 @@ class ScopeTimerFile(phScopeTimerFile):
             advance_levels = [
                 c for c in root.c if self(c.k) == "SolverPPC::advanceLevel"
             ]
-            if i == 0:
-                times += [advance_levels[0].t]
-            elif i == 1 and n_levels == 2:
-                times += [node.t for node in advance_levels[1:5]]
-            elif i == 1 and n_levels == 3:
-                raise RuntimeError("not finished")
+
+            Li_to = 1  # default level 0 value
+            for i in range(1, ilvl + 1):
+                Li_to += substeps_per_finer_level**i
+
+            Li_from = 0
+            for i in range(ilvl):
+                Li_from += substeps_per_finer_level**i
+
+            times += [node.t for node in advance_levels[Li_from:Li_to]]
+
         assert len(times)
         return np.asarray(times, dtype=float)
 
     def n_levels(self):
-        _0 = self.advances[0]  # all should be the same
-        s = sum(1 for c in _0.c if self(c.k) == "SolverPPC::advanceLevel")
-        substeps_per_finer_level = 4
+        """
+        Count number of logs for SolverPPC::advanceLevel per substep per level
+        This is mostly to be sure the logs match the number of levels in the diag
+        """
+        first_advance = self.advances[0]  # all should be the same
+        s = sum(1 for c in first_advance.c if self(c.k) == "SolverPPC::advanceLevel")
         if s == 1:
             return 1
         if s == 1 + substeps_per_finer_level:
             return 2
         if s == 1 + substeps_per_finer_level + substeps_per_finer_level**2:
             return 3
-        raise RuntimeError("finish for L4+")
+        raise ValueError("Add for 4 levels if needed")
 
     def time_steps_for_L(self, i):
+        """
+        Get all substep timesteps for the particlular level
+        """
         final_time = self.sim.final_time
         time_step = self.sim.time_step
         if i == 0:
             return np.arange(
                 time_step, final_time + time_step, final_time / (final_time / time_step)
             )
-        substeps_per_finer_level = 4
-        ts = time_step / substeps_per_finer_level**i
+        sub_steps = self.steps_per_coarse_timestep_for_L(i)
+        ts = time_step / sub_steps
         return np.arange(
             ts,
             final_time + ts,
-            final_time / (final_time / time_step) / substeps_per_finer_level,
+            final_time / (final_time / time_step) / sub_steps,
         )
 
+    def steps_per_coarse_timestep_for_L(self, i):
+        return substeps_per_finer_level**i
+
     def normalised_times_for_L(self, ilvl):
+        """
+        Normalise substep time against particular count for that level
+          at the most recent coarse time, no refined timesteps
+        """
         times = self.advance_times_for_L(ilvl)
         if ilvl == 0:
             return times / self.particles_per_level_per_time_step[0]
-        elif ilvl == 1:
-            norm_times = times.copy()
-            return (
-                norm_times.reshape(int(times.shape[0] / 4), 4)
-                / self.particles_per_level_per_time_step[1].reshape(
-                    self.particles_per_level_per_time_step[1].shape[0], 1
-                )
-            ).reshape(times.shape[0])
-        else:
-            raise RuntimeError("not finished")
+        substeps = self.steps_per_coarse_timestep_for_L(ilvl)
+        norm_times = times.copy()
+        return (
+            norm_times.reshape(int(times.shape[0] / substeps), substeps)
+            / self.particles_per_level_per_time_step[ilvl].reshape(
+                self.particles_per_level_per_time_step[ilvl].shape[0], 1
+            )
+        ).reshape(times.shape[0])
 
 
 def file_parser(run, rank, times_filepath):
