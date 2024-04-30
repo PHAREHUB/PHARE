@@ -166,8 +166,8 @@ class RestartsTest(SimulatorTest):
             run0 = Run(diag_dir0, single_hier_for_all_quantities=True)
             run1 = Run(diag_dir1, single_hier_for_all_quantities=True)
 
-            datahier0 = run0.GetAllAvailableQties(time, pops)
-            datahier1 = run1.GetAllAvailableQties(time, pops)
+            datahier0 = run0.GetAllAvailableQties(time, pops, all_primal=False)
+            datahier1 = run1.GetAllAvailableQties(time, pops, all_primal=False)
 
             self.assertEqual(
                 datahier0.level(0).patches[0].patch_datas.keys(),
@@ -208,7 +208,9 @@ class RestartsTest(SimulatorTest):
                             np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
                         checks += 1
 
-            n_levels, n_patches = count_levels_and_patches(run0.GetB(time))
+            n_levels, n_patches = count_levels_and_patches(
+                run0.GetB(time, all_primal=False)
+            )
             self.assertEqual(n_levels, expected_num_levels)
             self.assertGreaterEqual(n_patches, n_levels)  # at least one patch per level
             self.assertEqual(checks, n_quantities_per_patch * n_patches)
