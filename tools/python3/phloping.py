@@ -122,7 +122,7 @@ class ScopeTimerFile(phScopeTimerFile):
 
     def normalised_times_for_L(self, ilvl):
         """
-        Normalise substep time against particular count for that level
+        Normalise substep time against particle count for that level
           at the most recent coarse time, no refined timesteps
         """
         times = self.advance_times_for_L(ilvl)

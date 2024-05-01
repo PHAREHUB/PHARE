@@ -8,26 +8,26 @@
 #endif // PHARE_WITH_PHLOP
 
 #ifndef PHARE_SCOPE_TIMER
-#define PHARE_SCOPE_TIMER // nothing
-#endif                    // PHARE_SCOPE_TIMER
+#define PHARE_SCOPE_TIMER(str) // nothing
+#endif                         // PHARE_SCOPE_TIMER
 
 
 #if PHARE_LOG_LEVEL >= 1
-#define PHARE_LOG_SCOPE_1(str) PHLOP_SCOPE_TIMER(str)
+#define PHARE_LOG_SCOPE_1(str) PHARE_SCOPE_TIMER(str)
 #else
 #define PHARE_LOG_SCOPE_1(str)
 #endif // LOG_LEVEL >= 1
 
 
 #if PHARE_LOG_LEVEL >= 2
-#define PHARE_LOG_SCOPE_2(str) PHLOP_SCOPE_TIMER(str)
+#define PHARE_LOG_SCOPE_2(str) PHARE_SCOPE_TIMER(str)
 #else
 #define PHARE_LOG_SCOPE_2(str)
 #endif // LOG_LEVEL >= 2
 
 
 #if PHARE_LOG_LEVEL == 3
-#define PHARE_LOG_SCOPE_3(str) PHLOP_SCOPE_TIMER(str)
+#define PHARE_LOG_SCOPE_3(str) PHARE_SCOPE_TIMER(str)
 #else
 #define PHARE_LOG_SCOPE_3(str)
 #endif // LOG_LEVEL == 3
