@@ -1,10 +1,14 @@
 import os
-
 import numpy as np
-from pyphare.pharesee.hierarchy import compute_hier_from
-from pyphare.pharesee.hierarchy import compute_hier_from_
 
-from .hierarchy import flat_finest_field, hierarchy_from
+from .hierarchy import (
+    compute_hier_from,
+    flat_finest_field,
+    hierarchy_from,
+)
+from pyphare.logger import getLogger
+
+logger = getLogger(__name__)
 
 
 def _current1d(by, bz, xby, xbz):
@@ -458,17 +462,24 @@ class Run:
 
         return root_cell_width / fac
 
-    def GetAllAvailableQties(self, time, pops):
-        assert self.single_hier_for_all_quantities == True  # can't work otherwise
+    def GetAllAvailableQties(self, time=0, pops=[]):
+        assert self.single_hier_for_all_quantities  # can't work otherwise
 
-        self.GetParticles(time, pops)
-        self.GetB(time)
-        self.GetE(time)
-        self.GetNi(time)
-        self.GetVi(time)
+        def _try(fn, *args, **kwargs):
+            try:
+                fn(*args, **kwargs)
+            except FileNotFoundError:
+                # normal to not have a diagnostic if not requested
+                logger.debug(f"No file for function {fn.__name__}")
+
+        _try(self.GetParticles, time, pops)
+        _try(self.GetB, time)
+        _try(self.GetE, time)
+        _try(self.GetNi, time)
+        _try(self.GetVi, time)
 
         for pop in pops:
-            self.GetFlux(time, pop)
-            self.GetN(time, pop)
+            _try(self.GetFlux, time, pop)
+            _try(self.GetN, time, pop)
 
         return self.hier

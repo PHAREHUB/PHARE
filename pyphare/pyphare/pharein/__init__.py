@@ -37,12 +37,20 @@ from .diagnostics import (
     ElectromagDiagnostics,
     ParticleDiagnostics,
     MetaDiagnostics,
+    InfoDiagnostics,
 )
 from .simulation import (
     Simulation,
     serialize as serialize_sim,
     deserialize as deserialize_sim,
 )
+
+
+def NO_GUI():
+    """prevents issues when command line only and no desktop etc"""
+    import matplotlib as mpl
+
+    mpl.use("Agg")
 
 
 def getSimulation():

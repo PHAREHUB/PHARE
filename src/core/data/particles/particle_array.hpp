@@ -154,28 +154,28 @@ public:
 
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
-        PHARE_LOG_SCOPE("ParticleArray::export_particles");
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles");
         cellMap_.export_to(box, particles_, dest);
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, ParticleArray<dim>& dest, Fn&& fn) const
     {
-        PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn)");
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn)");
         cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, std::vector<Particle_t>& dest, Fn&& fn) const
     {
-        PHARE_LOG_SCOPE("ParticleArray::export_particles (box, vector, Fn)");
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (box, vector, Fn)");
         cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
     }
 
     template<typename Predicate>
     void export_particles(ParticleArray& dest, Predicate&& pred) const
     {
-        PHARE_LOG_SCOPE("ParticleArray::export_particles (Fn,vector)");
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn,vector)");
         cellMap_.export_if(particles_.data(), dest, std::forward<Predicate>(pred));
     }
 

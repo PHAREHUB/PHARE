@@ -232,7 +232,7 @@ namespace amr
          */
         void copy(SAMRAI::hier::PatchData const& source) override
         {
-            PHARE_LOG_SCOPE("ParticlesData::copy");
+            PHARE_LOG_SCOPE(3, "ParticlesData::copy");
 
             TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
@@ -269,7 +269,7 @@ namespace amr
         void copy(SAMRAI::hier::PatchData const& source,
                   SAMRAI::hier::BoxOverlap const& overlap) override
         {
-            PHARE_LOG_SCOPE("ParticlesData::copy with overlap");
+            PHARE_LOG_SCOPE(3, "ParticlesData::copy with overlap");
 
             // casts throw on failure
             auto& pSource  = dynamic_cast<ParticlesData const&>(source);
@@ -326,7 +326,7 @@ namespace amr
         void packStream(SAMRAI::tbox::MessageStream& stream,
                         SAMRAI::hier::BoxOverlap const& overlap) const override
         {
-            PHARE_LOG_SCOPE("ParticleData::packStream");
+            PHARE_LOG_SCOPE(3, "ParticleData::packStream");
 
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
@@ -366,7 +366,7 @@ namespace amr
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
                           SAMRAI::hier::BoxOverlap const& overlap) override
         {
-            PHARE_LOG_SCOPE("ParticleData::unpackStream");
+            PHARE_LOG_SCOPE(3, "ParticleData::unpackStream");
 
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
@@ -453,7 +453,7 @@ namespace amr
             auto myDomainBox         = this->getBox();
             auto& srcDomainParticles = sourceData.domainParticles;
 
-            PHARE_LOG_START("ParticleData::copy_ DomainToDomain");
+            PHARE_LOG_START(3, "ParticleData::copy_ DomainToDomain");
 
             // first copy particles that fall into our domain array
             // they can come from the source domain or patch ghost
@@ -470,7 +470,7 @@ namespace amr
                 srcDomainParticles.export_particles(destBox_p, domainParticles);
             }
 
-            PHARE_LOG_START("ParticlesData::copy_ DomainToGhosts");
+            PHARE_LOG_START(3, "ParticlesData::copy_ DomainToGhosts");
             // Now copy particles from the source domain that fall into
             // our ghost layer. The ghost layer is the result of removing the domain box
             // from the intersection box.
@@ -498,7 +498,7 @@ namespace amr
                     srcDomainParticles.export_particles(selectionBox_p, patchGhostParticles);
                 }
             }
-            PHARE_LOG_STOP("ParticlesData::copy_ DomainToGhosts");
+            PHARE_LOG_STOP(3, "ParticlesData::copy_ DomainToGhosts");
         }
 
         void copy_(SAMRAI::hier::Box const& overlapBox, ParticlesData const& sourceData,
@@ -507,7 +507,7 @@ namespace amr
             auto myDomainBox         = this->getBox();
             auto& srcDomainParticles = sourceData.domainParticles;
 
-            PHARE_LOG_START("ParticleData::copy_ (transform)");
+            PHARE_LOG_START(3, "ParticleData::copy_ (transform)");
 
             // first copy particles that fall into our domain array
             // they can come from the source domain or patch ghost
@@ -525,7 +525,7 @@ namespace amr
                 return shiftedParticle;
             };
 
-            PHARE_LOG_START("DomainToDomain (transform)");
+            PHARE_LOG_START(3, "DomainToDomain (transform)");
             if (!destBox.empty())
             {
                 // we cannot select particles from the intersectDomain box
@@ -545,11 +545,11 @@ namespace amr
                     domainParticles.reserve(new_size);
                 srcDomainParticles.export_particles(destBox_p, domainParticles, offseter);
             }
-            PHARE_LOG_STOP("DomainToDomain (transform)");
+            PHARE_LOG_STOP(3, "DomainToDomain (transform)");
 
 
 
-            PHARE_LOG_START("DomainToGhosts (transform)");
+            PHARE_LOG_START(3, "DomainToGhosts (transform)");
             // Now copy particles from the source domain and patchghost that fall into
             // our ghost layer. The ghost layer is the result of removing the domain box
             // from the intersection box.
@@ -582,8 +582,8 @@ namespace amr
                 }
             }
 
-            PHARE_LOG_STOP("DomainToGhosts (transform)");
-            PHARE_LOG_STOP("ParticleData::copy_ (transform)");
+            PHARE_LOG_STOP(3, "DomainToGhosts (transform)");
+            PHARE_LOG_STOP(3, "ParticleData::copy_ (transform)");
         }
 
 
@@ -597,7 +597,7 @@ namespace amr
          */
         std::size_t countNumberParticlesIn_(SAMRAI::pdat::CellOverlap const& overlap) const
         {
-            PHARE_LOG_SCOPE("ParticleData::countNumberParticlesIn_");
+            PHARE_LOG_SCOPE(3, "ParticleData::countNumberParticlesIn_");
             std::size_t numberParticles = 0;
 
             if (overlap.isOverlapEmpty())
@@ -631,7 +631,7 @@ namespace amr
                    SAMRAI::hier::Transformation const& transformation,
                    std::vector<Particle_t>& outBuffer) const
         {
-            PHARE_LOG_SCOPE("ParticleData::pack_");
+            PHARE_LOG_SCOPE(3, "ParticleData::pack_");
             // we want to put particles from our domain and patchghost arrays
             // that fall into the intersection box Note that the overlap boxes
             // are not in the same index space as our particles.  the

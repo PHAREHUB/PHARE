@@ -294,14 +294,14 @@ namespace amr
             // already fill the patch ghost box from the neighbor interior box.
             // so ghost nodes are already filled .
 
-            PHARE_LOG_START("hybhybmessengerStrat::initLevel : interior part fill schedule");
+            PHARE_LOG_START(3, "hybhybmessengerStrat::initLevel : interior part fill schedule");
             domainParticlesRefiners_.fill(levelNumber, initDataTime);
-            PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : interior part fill schedule");
+            PHARE_LOG_STOP(3, "hybhybmessengerStrat::initLevel : interior part fill schedule");
             // however we need to call the ghost communicator for patch ghost particles
             // since the interior schedules have a restriction to the interior of the patch.
-            PHARE_LOG_START("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
+            PHARE_LOG_START(3, "hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
             patchGhostPartRefiners_.fill(levelNumber, initDataTime);
-            PHARE_LOG_STOP("hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
+            PHARE_LOG_STOP(3, "hybhybmessengerStrat::initLevel : patch ghost part fill schedule");
 
 
             lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
@@ -324,7 +324,7 @@ namespace amr
 
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillElectricGhosts");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectricGhosts");
             elecSharedNodesRefiners_.fill(E, levelNumber, fillTime);
             elecGhostsRefiners_.fill(E, levelNumber, fillTime);
         }
@@ -334,7 +334,7 @@ namespace amr
 
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillCurrentGhosts");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillCurrentGhosts");
             currentSharedNodesRefiners_.fill(J, levelNumber, fillTime);
             currentGhostsRefiners_.fill(J, levelNumber, fillTime);
         }
@@ -350,7 +350,7 @@ namespace amr
         void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                    double const fillTime) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonGhostParticles");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonGhostParticles");
 
             for (auto patch : level)
             {
@@ -377,7 +377,7 @@ namespace amr
         void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                     double const afterPushTime) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::fillIonMomentGhosts");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
 
             auto alpha = timeInterpCoef_(afterPushTime, level.getLevelNumber());
             if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
@@ -444,7 +444,7 @@ namespace amr
                        double const currentTime, double const prevCoarserTime,
                        double const newCoarserTime) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::firstStep");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::firstStep");
 
             auto levelNumber = level.getLevelNumber();
             if (newCoarserTime < prevCoarserTime)
@@ -455,9 +455,9 @@ namespace amr
             // root level has no levelghost particles
             if (levelNumber != 0)
             {
-                PHARE_LOG_START("HybridHybridMessengerStrategy::firstStep.fill");
+                PHARE_LOG_START(3, "HybridHybridMessengerStrategy::firstStep.fill");
                 lvlGhostPartNewRefiners_.fill(levelNumber, currentTime);
-                PHARE_LOG_STOP("HybridHybridMessengerStrategy::firstStep.fill");
+                PHARE_LOG_STOP(3, "HybridHybridMessengerStrategy::firstStep.fill");
 
                 // during firstStep() coarser level and current level are at the same time
                 // so 'time' is also the beforePushCoarseTime_
@@ -479,7 +479,7 @@ namespace amr
         {
             if (level.getLevelNumber() > 0)
             {
-                PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::lastStep");
+                PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
 
                 auto& hybridModel = static_cast<HybridModel&>(model);
                 for (auto& patch : level)
@@ -535,7 +535,7 @@ namespace amr
         void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                          double currentTime) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::prepareStep");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::prepareStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -594,7 +594,7 @@ namespace amr
 
         void synchronize(SAMRAI::hier::PatchLevel& level) override
         {
-            PHARE_LOG_SCOPE("HybridHybridMessengerStrategy::synchronize");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::synchronize");
 
             auto levelNumber = level.getLevelNumber();
             std::cout << "synchronizing level " << levelNumber << "\n";

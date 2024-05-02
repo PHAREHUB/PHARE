@@ -31,6 +31,8 @@ template<typename Writer>
 class ParticlesDiagnosticWriter;
 template<typename Writer>
 class MetaDiagnosticWriter;
+template<typename Writer>
+class InfoDiagnosticWriter;
 
 
 
@@ -132,7 +134,7 @@ public:
     template<typename Dict>
     static void writeAttributeDict(HighFiveFile& h5, Dict dict, std::string path)
     {
-        dict.visit([&](std::string const& key, const auto& val) {
+        dict.visit([&](std::string const& key, auto const& val) {
             h5.write_attributes_per_mpi(path, key, val);
         });
     }
@@ -164,7 +166,8 @@ private:
     std::unordered_map<std::string, unsigned> file_flags;
 
     std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> typeWriters_{
-        {"info", make_writer<MetaDiagnosticWriter<This>>()},
+        {"info", make_writer<InfoDiagnosticWriter<This>>()},
+        {"meta", make_writer<MetaDiagnosticWriter<This>>()},
         {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
         {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
         {"particle", make_writer<ParticlesDiagnosticWriter<This>>()} //
@@ -192,6 +195,7 @@ private:
     friend class ElectromagDiagnosticWriter<This>;
     friend class ParticlesDiagnosticWriter<This>;
     friend class MetaDiagnosticWriter<This>;
+    friend class InfoDiagnosticWriter<This>;
     friend class H5TypeWriter<This>;
 
     // used by friends start

@@ -311,7 +311,7 @@ namespace solver
 
             std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
                       << "\n";
-            PHARE_LOG_START("initializeLevelData::allocate block");
+            PHARE_LOG_START(3, "initializeLevelData::allocate block");
             if (allocateData)
             {
                 for (auto patch : *level)
@@ -322,7 +322,7 @@ namespace solver
                 }
             }
 
-            PHARE_LOG_STOP("initializeLevelData::allocate block");
+            PHARE_LOG_STOP(3, "initializeLevelData::allocate block");
             if (isRegridding)
             {
                 // regriding the current level has broken schedules for which
@@ -460,7 +460,7 @@ namespace solver
                             double const currentTime, double const newTime, bool const firstStep,
                             bool const lastStep, bool const regridAdvance = false) override
         {
-            PHARE_LOG_SCOPE("Multiphys::advanceLevel");
+            PHARE_LOG_SCOPE(3, "Multiphys::advanceLevel");
 
             if (regridAdvance)
                 throw std::runtime_error("Error - regridAdvance must be False and is True");
@@ -479,7 +479,7 @@ namespace solver
 
             if (firstStep)
             {
-                PHARE_LOG_SCOPE("Multiphys::advanceLevel.firstStep");
+                PHARE_LOG_SCOPE(3, "Multiphys::advanceLevel.firstStep");
                 fromCoarser.firstStep(model, *level, hierarchy, currentTime,
                                       subcycleStartTimes_[iLevel - 1],
                                       subcycleEndTimes_[iLevel - 1]);
@@ -491,7 +491,7 @@ namespace solver
 
             if (lastStep)
             {
-                PHARE_LOG_SCOPE("Multiphys::advanceLevel.lastStep");
+                PHARE_LOG_SCOPE(3, "Multiphys::advanceLevel.lastStep");
                 fromCoarser.lastStep(model, *level);
             }
 

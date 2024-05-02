@@ -279,7 +279,7 @@ namespace core
 
             auto xyz = tuple_fixed_type<std::vector<double>, dimension>{};
 
-            for (const auto& indiceTuple : indices)
+            for (auto const& indiceTuple : indices)
                 std::apply(
                     [&](auto const&... args) {
                         emplace_back(

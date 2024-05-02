@@ -2,6 +2,8 @@
 #  TO activate caliper with PHARE
 #   1. configure cmake -DwithCaliper=ON
 #   2. export CALI_CONFIG=runtime-report
+#   or for inclusive timings per function (makes more sense IMO)
+#   3. export CALI_CONFIG=runtime-report,calc.inclusive
 ##
 
 if(DEFINED CALIPER_ROOT)

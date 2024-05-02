@@ -92,7 +92,7 @@ protected:
         DiagnosticProperties& diagnostic, HighFiveFile& file, Attributes& fileAttributes,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&
             patchAttributes,
-        std::size_t maxLevel)
+        std::size_t maxLevel, Attributes defaultPatchAttributes = {})
     {
         for (std::size_t lvl = h5Writer_.minLevel; lvl <= maxLevel; lvl++)
         {
@@ -103,8 +103,9 @@ protected:
                 h5Writer_.writeAttributeDict(file, attr,
                                              h5Writer_.getPatchPathAddTimestamp(lvl, patch));
             for (std::size_t i = patchNbr; i < maxPatches; i++)
-                h5Writer_.writeAttributeDict(file, h5Writer_.modelView().getEmptyPatchProperties(),
-                                             "");
+                h5Writer_.writeAttributeDict(
+                    file, h5Writer_.modelView().getEmptyPatchProperties(defaultPatchAttributes),
+                    "");
         }
 
         if (diagnostic.nAttributes > 0)

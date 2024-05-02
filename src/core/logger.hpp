@@ -1,6 +1,16 @@
 #ifndef PHARE_CORE_LOGGER_HPP
 #define PHARE_CORE_LOGGER_HPP
 
+#include <cstdint>
+
+#if !defined(PHARE_LOG_LEVEL)
+#define PHARE_LOG_LEVEL 0 // 0 == off
+#endif
+
+namespace PHARE
+{
+constexpr static std::uint8_t LOG_LEVEL = PHARE_LOG_LEVEL;
+}
 
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
 #define PHARE_LOG_LINE_STR(str)                                                                    \
@@ -10,23 +20,19 @@
 #endif
 #define PHARE_LOG_LINE PHARE_LOG_LINE_STR("")
 
-
-
-
 #if PHARE_WITH_CALIPER
 #include "caliper/cali.h"
 
-#define PHARE_LOG_START(str) CALI_MARK_BEGIN(str)
-#define PHARE_LOG_STOP(str) CALI_MARK_END(str)
-#define PHARE_LOG_SCOPE(str) PHARE::scope_log __phare_scope##__line__(str)
+#define PHARE_LOG_START(lvl, str) CALI_MARK_BEGIN(str)
+#define PHARE_LOG_STOP(lvl, str) CALI_MARK_END(str)
+#define PHARE_LOG_SCOPE(lvl, str) PHARE::scope_log __phare_scope##__line__(lvl, str)
 
-#else
+#else // !PHARE_WITH_CALIPER
 
-#define PHARE_LOG_START(str)
-#define PHARE_LOG_STOP(str)
-#define PHARE_LOG_SCOPE(str)
+#include "core/utilities/logger/logger_defaults.hpp"
 
-#endif
+
+#endif // PHARE_WITH_CALIPER
 
 #include <string>
 #include <utility>
@@ -35,13 +41,24 @@ namespace PHARE
 {
 struct scope_log
 {
-    scope_log(std::string&& str)
-        : key{std::move(str)}
+    scope_log(int&& i_, std::string&& str)
+        : i{i_}
+        , key{std::move(str)}
     {
-        PHARE_LOG_START(key.c_str());
+        if (i <= LOG_LEVEL)
+        {
+            PHARE_LOG_START(i, key.c_str());
+        }
     }
-    ~scope_log() { PHARE_LOG_STOP(key.c_str()); }
+    ~scope_log()
+    {
+        if (i <= LOG_LEVEL)
+        {
+            PHARE_LOG_STOP(i, key.c_str());
+        }
+    }
 
+    int i;
     std::string key;
 };
 } // namespace PHARE

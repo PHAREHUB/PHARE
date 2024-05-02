@@ -20,7 +20,7 @@ enum class Mode { LIGHT, FULL };
 template<typename DiagManager>
 void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
-    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle", "info"};
+    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle", "meta", "info"};
 
     for (auto& diagType : diagTypes)
     {
@@ -186,11 +186,16 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
             activeDiagnostics.emplace_back(&diag);
         }
     }
-    writer_->dump(activeDiagnostics, timeStamp);
 
-    for (auto const* diag : activeDiagnostics)
+    if (activeDiagnostics.size() > 0)
     {
-        nextWrite_[diag->type + diag->quantity]++;
+        PHARE_LOG_SCOPE(1, "DiagnosticsManager::dump");
+        writer_->dump(activeDiagnostics, timeStamp);
+
+        for (auto const* diag : activeDiagnostics)
+        {
+            nextWrite_[diag->type + diag->quantity]++;
+        }
     }
 
     return activeDiagnostics.size() > 0;

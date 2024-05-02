@@ -278,7 +278,7 @@ inline void CellMap<dim, cell_index_t>::erase(Array const& items, std::size_t it
 template<std::size_t dim, typename cell_index_t>
 inline auto CellMap<dim, cell_index_t>::size() const
 {
-    PHARE_LOG_SCOPE("CellMap::size()");
+    PHARE_LOG_SCOPE(3, "CellMap::size()");
     std::size_t s = 0;
     for (auto const& cell : cellIndexes_)
     {
@@ -290,7 +290,7 @@ inline auto CellMap<dim, cell_index_t>::size() const
 template<std::size_t dim, typename cell_index_t>
 inline auto CellMap<dim, cell_index_t>::size(box_t const& box) const
 {
-    PHARE_LOG_SCOPE("CellMap::size(box)");
+    PHARE_LOG_SCOPE(3, "CellMap::size(box)");
     std::size_t s = 0;
     for (auto const& cell : box)
     {

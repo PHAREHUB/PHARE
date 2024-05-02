@@ -479,7 +479,7 @@ public:
         auto const& [xFlux, yFlux, zFlux] = flux();
 
 
-        PHARE_LOG_START("ParticleToMesh::operator()");
+        PHARE_LOG_START(3, "ParticleToMesh::operator()");
 
         for (auto currPart = begin; currPart != end; ++currPart)
         {
@@ -499,7 +499,7 @@ public:
                 zFlux, *currPart, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
                 coef);
         }
-        PHARE_LOG_STOP("ParticleToMesh::operator()");
+        PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
     inline void operator()(ParticleRange&& range, Field& density, VecField& flux,
@@ -579,7 +579,7 @@ public:
         auto& weights_                       = this->primal_weights_;
         auto const& [xx, xy, xz, yy, yz, zz] = momentumTensor();
 
-        PHARE_LOG_START("ParticleToMesh::operator()");
+        PHARE_LOG_START(3, "ParticleToMesh::operator()");
 
         for (auto currPart = begin; currPart != end; ++currPart)
         {
@@ -605,7 +605,7 @@ public:
                 zz, *currPart, [](auto const& part) { return part.v[2] * part.v[2]; }, startIndex_,
                 weights_, mass);
         }
-        PHARE_LOG_STOP("ParticleToMesh::operator()");
+        PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
 };
 

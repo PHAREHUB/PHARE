@@ -154,7 +154,10 @@ void RestartsManager<Writer>::dump(double timeStamp, double timeStep)
         return; // not active
 
     if (needsWrite_(*restarts_properties_, timeStamp, timeStep))
+    {
+        PHARE_LOG_SCOPE(3, "RestartsManager::dump");
         writer_->dump(*restarts_properties_, timeStamp);
+    }
 }
 
 

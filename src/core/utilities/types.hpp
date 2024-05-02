@@ -237,6 +237,14 @@ namespace core
         return std::nullopt;
     }
 
+    NO_DISCARD inline std::string get_env(std::string const& key, std::string const& _default)
+    {
+        if (auto e = get_env(key))
+            return *e;
+        return _default;
+    }
+
+
 
 } // namespace core
 } // namespace PHARE
@@ -254,6 +262,17 @@ template<typename Container, typename Return = typename Container::value_type>
 NO_DISCARD Return sum(Container const& container, Return r = 0)
 {
     return std::accumulate(container.begin(), container.end(), r);
+}
+
+template<typename Container, typename F>
+NO_DISCARD auto sum_from(Container const& container, F fn)
+{
+    using value_type  = typename Container::value_type;
+    using return_type = std::decay_t<std::result_of_t<F const&(value_type const&)>>;
+    return_type sum   = 0;
+    for (auto const& el : container)
+        sum += fn(el);
+    return sum;
 }
 
 
@@ -300,13 +319,13 @@ NO_DISCARD auto generate(F&& f, std::vector<T>&& v)
 }
 
 template<std::size_t Idx, typename F, typename Type, std::size_t Size>
-NO_DISCARD auto constexpr generate_array__(F& f, std::array<Type, Size>& arr)
+NO_DISCARD auto constexpr generate_array__(F& f, std::array<Type, Size> const& arr)
 {
     return f(arr[Idx]);
 }
 
 template<typename Type, std::size_t Size, typename F, std::size_t... Is>
-NO_DISCARD auto constexpr generate_array_(F& f, std::array<Type, Size>& arr,
+NO_DISCARD auto constexpr generate_array_(F& f, std::array<Type, Size> const& arr,
                                           std::integer_sequence<std::size_t, Is...>)
 {
     return std::array{generate_array__<Is>(f, arr)...};

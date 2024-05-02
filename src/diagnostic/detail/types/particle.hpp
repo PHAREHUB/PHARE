@@ -16,7 +16,7 @@
 namespace PHARE::diagnostic::h5
 {
 /*
- * It is assumed thateach patch has equal number of populations
+ * It is assumed that each patch has equal number of populations
  *
  * Possible outputs
  *

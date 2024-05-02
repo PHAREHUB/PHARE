@@ -56,9 +56,14 @@ set( SOURCES_CPP
      utilities/mpi_utils.cpp
     )
 
+set( CORE_EXTRA_SOURCES_CPP )
+if (withPhlop)
+  set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp )
+endif(withPhlop)
+
 find_package(MPI)
 
-add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP})
+add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES}
     PUBLIC ${PHARE_BASE_LIBS}

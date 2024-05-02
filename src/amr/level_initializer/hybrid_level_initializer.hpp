@@ -56,10 +56,10 @@ namespace solver
 
             if (isRootLevel(levelNumber))
             {
-                PHARE_LOG_START("hybridLevelInitializer::initialize : root level init");
+                PHARE_LOG_START(3, "hybridLevelInitializer::initialize : root level init");
                 model.initialize(level);
                 messenger.fillRootGhosts(model, level, initDataTime);
-                PHARE_LOG_STOP("hybridLevelInitializer::initialize : root level init");
+                PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : root level init");
             }
 
             else
@@ -67,15 +67,15 @@ namespace solver
                 if (isRegridding)
                 {
                     std::cout << "regriding level " << levelNumber << "\n";
-                    PHARE_LOG_START("hybridLevelInitializer::initialize : regriding block");
+                    PHARE_LOG_START(3, "hybridLevelInitializer::initialize : regriding block");
                     messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
-                    PHARE_LOG_STOP("hybridLevelInitializer::initialize : regriding block");
+                    PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : regriding block");
                 }
                 else
                 {
-                    PHARE_LOG_START("hybridLevelInitializer::initialize : initlevel");
+                    PHARE_LOG_START(3, "hybridLevelInitializer::initialize : initlevel");
                     messenger.initLevel(model, level, initDataTime);
-                    PHARE_LOG_STOP("hybridLevelInitializer::initialize : initlevel");
+                    PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
                 }
             }
 

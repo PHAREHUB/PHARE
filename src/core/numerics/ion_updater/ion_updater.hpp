@@ -87,7 +87,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
                                                                  GridLayout const& layout,
                                                                  double dt, UpdaterMode mode)
 {
-    PHARE_LOG_SCOPE("IonUpdater::updatePopulations");
+    PHARE_LOG_SCOPE(3, "IonUpdater::updatePopulations");
 
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(layout.meshSize(), dt);
@@ -122,7 +122,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
                                                                        Electromag const& em,
                                                                        GridLayout const& layout)
 {
-    PHARE_LOG_SCOPE("IonUpdater::updateAndDepositDomain_");
+    PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositDomain_");
 
     auto domainBox = layout.AMRBox();
 
@@ -214,7 +214,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                                                                     Electromag const& em,
                                                                     GridLayout const& layout)
 {
-    PHARE_LOG_SCOPE("IonUpdater::updateAndDepositAll_");
+    PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositAll_");
 
     auto constexpr partGhostWidth = GridLayout::nbrParticleGhosts();
     auto domainBox                = layout.AMRBox();
