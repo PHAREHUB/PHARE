@@ -67,6 +67,11 @@ target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C
     PUBLIC ${PHARE_BASE_LIBS}
   )
 
+# skip mpicxx in compile command if not configured with configurator
+if (NOT phare_configurator)
+     target_compile_definitions(${PROJECT_NAME} PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX )
+endif(phare_configurator)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 target_include_directories(${PROJECT_NAME}  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
