@@ -10,11 +10,8 @@ options:
   -d, --dry-run  Validate but do not run simulations
 """
 
-import os
-import dataclasses
 
-# testing from python can interfere with this
-SKIP_CLI = bool(os.environ.get("PHARE_SKIP_CLI", False))
+import dataclasses
 
 
 @dataclasses.dataclass
@@ -24,9 +21,6 @@ class CliArgs:
 
 
 def parse_cli_args():
-    if SKIP_CLI:
-        return CliArgs()  # defaults
-
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -42,7 +36,7 @@ def parse_cli_args():
         "--write_reports",
         help="Write build and runtime configs to disk",
         action="store_true",
-        default=True,
+        default=False,
     )
 
     return CliArgs(**vars(parser.parse_args()))

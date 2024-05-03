@@ -36,7 +36,7 @@ set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 # now we see if we are running with configurator
 if (phare_configurator)
   execute_process(
-    COMMAND ./tools/config/cmake.sh "${CMAKE_COMMAND}" "${CMAKE_CXX_COMPILER}" "${PYTHON_EXECUTABLE}"
+    COMMAND ./tools/config/cmake.sh "${CMAKE_COMMAND}" "${CMAKE_CXX_COMPILER}" "${Python_EXECUTABLE}"
     WORKING_DIRECTORY ${PHARE_PROJECT_DIR}
     COMMAND_ERROR_IS_FATAL ANY
   )
