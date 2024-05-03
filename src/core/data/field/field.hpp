@@ -56,8 +56,6 @@ public:
         auto data = field ? field->data() : nullptr;
         if (data)
         {
-            PHARE_LOG_LINE_STR(this->name());
-            PHARE_LOG_LINE_STR(field->name());
             assert(field->name() == this->name());
             Super::setShape(field->shape());
         }
