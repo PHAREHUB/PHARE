@@ -1,8 +1,14 @@
 #ifndef PHARE_BENCH_CORE_BENCH_H
 #define PHARE_BENCH_CORE_BENCH_H
 
+#include "core/utilities/box/box.hpp"
+
 #include "phare_core.hpp"
+
 #include "benchmark/benchmark.h"
+
+#include <fstream>
+#include <iterator>
 
 
 namespace PHARE::core::bench
@@ -25,10 +31,44 @@ PHARE::core::Particle<dim> particle(int icell = 15)
             /*.v      = */ {{.00001, .00001, .00001}}};
 }
 
-template<std::size_t dim>
+template<typename Particles>
+void write_raw_to_file(Particles const& particles, std::string const& filename)
+{
+    using Particle_t = typename Particles::value_type;
+    std::ofstream f{filename};
+    f.write(reinterpret_cast<char const*>(particles.vector().data()),
+            particles.size() * sizeof(Particle_t));
+}
+
+template<typename Particles>
+void read_raw_from_file(Particles& particles, std::string const& filename)
+{
+    using Particle_t = typename Particles::value_type;
+
+    std::ifstream f{filename};
+
+    // Stop eating new lines in binary mode
+    f.unsetf(std::ios::skipws);
+
+    // get its size:
+    std::streampos fileSize;
+    f.seekg(0, std::ios::end);
+    fileSize = f.tellg();
+    f.seekg(0, std::ios::beg);
+    particles.resize(fileSize / sizeof(Particle_t));
+
+    // read the data:
+    f.read(reinterpret_cast<char*>(particles.vector().data()),
+           particles.size() * sizeof(Particle_t));
+}
+
+template<std::size_t dim, typename ParticleArray_t = PHARE::core::ParticleArray<dim>>
 auto make_particles(std::size_t n_particles)
 {
-    return PHARE::core::ParticleArray<dim>{n_particles, particle<dim>()};
+    auto particles = ParticleArray_t{Box<int, dim>{}};
+    particles.vector()
+        = std::vector<typename ParticleArray_t::value_type>(n_particles, particle<dim>());
+    return particles;
 }
 
 template<typename Particles, typename Point>
@@ -116,26 +156,61 @@ auto rho(GridLayout const& layout)
 }
 
 
-
 template<typename GridLayout>
-class Flux : public VecField<GridLayout::dimension>
+class VField : public VecField<GridLayout::dimension>
 {
 public:
     using Super = VecField<GridLayout::dimension>;
 
-    Flux(GridLayout const& layout)
-        : Super{"F", HybridQuantity::Vector::V}
-        , xyz{field("Fx", HybridQuantity::Scalar::Vx, layout),
-              field("Fy", HybridQuantity::Scalar::Vy, layout),
-              field("Fz", HybridQuantity::Scalar::Vz, layout)}
+    VField(std::string name, GridLayout const& layout)
+        : Super{name, HybridQuantity::Vector::V}
+        , name{name}
+        , xyz{field(name + "x", HybridQuantity::Scalar::Vx, layout),
+              field(name + "y", HybridQuantity::Scalar::Vy, layout),
+              field(name + "z", HybridQuantity::Scalar::Vz, layout)}
     {
-        Super::setBuffer("F_x", &xyz[0]);
-        Super::setBuffer("F_y", &xyz[1]);
-        Super::setBuffer("F_z", &xyz[2]);
+        Super::setBuffer(name + "_x", &xyz[0]);
+        Super::setBuffer(name + "_y", &xyz[1]);
+        Super::setBuffer(name + "_z", &xyz[2]);
     }
 
-private:
+    template<typename _VF_>
+    void set_on(_VF_& vf)
+    {
+        vf.setBuffer(name + "_x", &xyz[0]);
+        vf.setBuffer(name + "_y", &xyz[1]);
+        vf.setBuffer(name + "_z", &xyz[2]);
+    }
+
+protected:
+    std::string name;
     std::array<Field<GridLayout::dimension>, 3> xyz;
+};
+
+
+
+template<typename GridLayout>
+class Flux : public VField<GridLayout>
+{
+public:
+    using Super = VField<GridLayout>;
+
+    Flux(GridLayout const& layout, std::string name = "F")
+        : Super{name, layout}
+    {
+    }
+};
+
+template<typename GridLayout>
+class BulkV : public VField<GridLayout>
+{
+public:
+    using Super = VField<GridLayout>;
+
+    BulkV(GridLayout const& layout)
+        : Super{"bulkVel", layout}
+    {
+    }
 };
 
 template<typename GridLayout>
@@ -164,7 +239,41 @@ private:
     decltype(EM(*static_cast<GridLayout*>(0))) emFields;
 };
 
+
+
+template<typename Ions, typename... Args>
+auto single_pop_ions_from(Args&&... args)
+{
+    static_assert(sizeof...(args) == 5, "Expected 5 arguments");
+
+    auto const& [popName, rho, bulkV, flux, pack] = std::forward_as_tuple(args...);
+
+    initializer::PHAREDict dict;
+    dict["nbrPopulations"] = 1;
+    initializer::PHAREDict popdict;
+    popdict["name"]                 = std::string{popName};
+    popdict["mass"]                 = 1.0;
+    popdict["particle_initializer"] = initializer::PHAREDict{};
+    dict[popName]                   = popdict;
+    Ions ions{dict};
+    ions.setBuffer("rho", &rho);
+    auto& pop0 = ions.getRunTimeResourcesUserList()[0];
+    bulkV.set_on(std::get<0>(ions.getCompileTimeResourcesUserList()));
+    flux.set_on(std::get<0>(pop0.getCompileTimeResourcesUserList()));
+    ions.getRunTimeResourcesUserList()[0].setBuffer(popName, pack);
+    ions.getRunTimeResourcesUserList()[0].setBuffer(popName + "_rho", &rho);
+    ions.getRunTimeResourcesUserList()[0].density(); // throws on failure;
+
+    return ions;
+}
+
+
+
+
 } // namespace PHARE::core::bench
+
+
+
 
 namespace PHARE::core
 {
@@ -201,7 +310,7 @@ public:
     Box_t const box;
 
 private:
-    std::array<int, dim> const shape = box.shape().toArray();
+    std::array<int, dim> const shape;
 };
 } // namespace PHARE::core
 

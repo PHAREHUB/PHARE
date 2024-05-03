@@ -1,5 +1,5 @@
 
-#include "bench/core/bench.hpp"
+#include "tools/bench/core/bench.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 template<std::size_t dim, std::size_t interp>
