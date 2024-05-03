@@ -269,7 +269,7 @@ template<typename Container, typename F>
 NO_DISCARD auto sum_from(Container const& container, F fn)
 {
     using value_type  = typename Container::value_type;
-    using return_type = std::decay_t<std::result_of_t<F const&(value_type const&)>>;
+    using return_type = std::decay_t<std::invoke_result_t<F const&, value_type const&>>;
     return_type sum   = 0;
     for (auto const& el : container)
         sum += fn(el);
@@ -283,7 +283,7 @@ template<typename F>
 NO_DISCARD auto generate(F&& f, std::size_t from, std::size_t to)
 {
     assert(from <= to);
-    using value_type = std::decay_t<std::result_of_t<F&(std::size_t const&)>>;
+    using value_type = std::decay_t<std::invoke_result_t<F&, std::size_t const&>>;
     std::vector<value_type> v;
     std::size_t count = to - from;
     if (count > 0)
@@ -304,7 +304,7 @@ template<typename F, typename Container>
 NO_DISCARD auto generate(F&& f, Container const& container)
 {
     using T          = typename Container::value_type;
-    using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
+    using value_type = std::decay_t<std::invoke_result_t<F&, T&>>;
     std::vector<value_type> v1;
     if (container.size() > 0)
         v1.reserve(container.size());

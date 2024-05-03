@@ -67,7 +67,7 @@ NO_DISCARD auto mpi_type_for()
 template<typename Fn, typename... Args>
 auto all_get_from(int const& rank_, Fn&& fn, Args&&... args)
 {
-    using Data = std::decay_t<std::result_of_t<Fn&(Args & ...)>>;
+    using Data = std::decay_t<std::invoke_result_t<Fn&, Args&...>>;
 
     Data var;
     auto local_rank = rank();
