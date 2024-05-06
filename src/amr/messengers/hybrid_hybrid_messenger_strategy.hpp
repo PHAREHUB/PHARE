@@ -54,37 +54,22 @@ namespace amr
         using grid_type  = GridT;
         using field_type = typename GridT::field_type;
 
-        struct Property
-        {
-            std::string name;
-            typename PHARE::core::HybridQuantity::Scalar qty;
-        };
-
-        FieldUser(std::string fieldName, field_type* ptr,
-                  typename PHARE::core::HybridQuantity::Scalar qty)
-            : name{fieldName}
-            , f{ptr}
-            , quantity{qty}
+        FieldUser(std::string fieldName, typename PHARE::core::HybridQuantity::Scalar qty)
+            : f{fieldName, qty}
         {
         }
 
-        std::vector<Property> getFieldNamesAndQuantities() const { return {{name, quantity}}; }
-
-        void setBuffer(std::string const& /*bufferName*/, field_type* field)
-        {
-            f = field;
-        }
+        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(f); }
+        NO_DISCARD auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(f); }
 
         template<typename That>
         void copyData(That const& that)
         {
-            assert(f);
-            f->copyData(that);
+            assert(f.isUsable());
+            f.copyData(that);
         }
 
-        std::string name;
-        field_type* f{nullptr};
-        typename PHARE::core::HybridQuantity::Scalar quantity;
+        field_type f;
     };
 
 
@@ -685,7 +670,7 @@ namespace amr
                                                    fieldTimeOp_);
 
             rhoGhostsRefiners_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
-                                              NiOldUser_.name, fieldRefineOp_, fieldTimeOp_,
+                                              NiOldUser_.f.name(), fieldRefineOp_, fieldTimeOp_,
                                               info->modelIonDensity);
 
 
@@ -1005,9 +990,7 @@ namespace amr
 
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
-        FieldT* NiOld_{nullptr};
-        FieldUser<GridT> NiOldUser_{stratName + "_NiOld", NiOld_,
-                                    core::HybridQuantity::Scalar::rho};
+        FieldUser<GridT> NiOldUser_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
 
 
         //! ResourceManager shared with other objects (like the HybridModel)

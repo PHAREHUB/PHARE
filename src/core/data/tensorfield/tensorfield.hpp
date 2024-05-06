@@ -90,12 +90,26 @@ public:
 
 
 
+    NO_DISCARD auto getCompileTimeResourcesUserList()
+    {
+        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
+            return components_[i];
+        });
+    }
+    NO_DISCARD auto getCompileTimeResourcesUserList() const
+    {
+        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
+            return components_[i];
+        });
+    }
+
+
+    // TORM?
     NO_DISCARD resources_properties getFieldNamesAndQuantities() const
     {
         return makeResProp_(std::make_index_sequence<N>{});
     }
-
-
+    // TORM?
     void setBuffer(std::string const& bufferName, field_type* field)
     {
         if (auto it = nameToIndex_.find(bufferName); it != std::end(nameToIndex_))

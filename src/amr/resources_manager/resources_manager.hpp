@@ -56,7 +56,6 @@ namespace amr
      * Several kinds of ResourcesUser can register their resources to the ResourcesManager
      * and are identified by the following type traits:
      *
-     * - has_field <ResourcesUser>
      * - has_particles <ResourcesUser>
      * - has_runtime_subresourceuser_list <ResourcesUser>
      * - has_compiletime_subresourcesuser_list <ResourcesUser>
@@ -64,7 +63,6 @@ namespace amr
      *
      * for example:
      *
-     * - has_field<VecField>  is true
      * - has_compiletime_subresourcesuser_list<Electromag> is true because it holds 2 VecFields that
      * hold Field objects.
      *
@@ -132,11 +130,6 @@ namespace amr
                 registerFieldResources_<UserField_t>(obj);
             }
 
-            if constexpr (has_field<ResourcesUser>::value)
-            {
-                registerHasFieldResources_<UserField_t>(obj);
-            }
-
             if constexpr (has_particles<ResourcesUser>::value)
             {
                 registerParticleResources_<UserParticle_t<ResourcesUser>>(obj);
@@ -175,11 +168,6 @@ namespace amr
         void allocate(ResourcesUser& obj, SAMRAI::hier::Patch& patch,
                       double const allocateTime) const
         {
-            if constexpr (has_field<ResourcesUser>::value)
-            {
-                allocate_(obj, obj.getFieldNamesAndQuantities(), patch, allocateTime);
-            }
-
             if constexpr (is_field<ResourcesUser>::value)
             {
                 allocate_(obj, std::array{obj.getFieldNameAndQuantity()}, patch, allocateTime);
@@ -346,11 +334,6 @@ namespace amr
                 }
             };
 
-            if constexpr (has_field<ResourcesUser>::value)
-            {
-                do_fields(obj.getFieldNamesAndQuantities());
-            }
-
             if constexpr (is_field<ResourcesUser>::value)
             {
                 do_fields(std::array{obj.getFieldNameAndQuantity()});
@@ -442,12 +425,6 @@ namespace amr
                 setFieldResourcesInternal_(obj, UserField_t{}, patch, nullOrResourcePtr);
             }
 
-            if constexpr (has_field<ResourcesUser>::value)
-            {
-                setResourcesInternal_(obj, UserField_t{}, obj.getFieldNamesAndQuantities(), patch,
-                                      nullOrResourcePtr);
-            }
-
             if constexpr (has_particles<ResourcesUser>::value)
             {
                 setResourcesInternal_(obj, UserParticle_t<ResourcesUser>{},
@@ -498,26 +475,6 @@ namespace amr
             }
         }
 
-        template<typename ResourcesType, typename ResourcesUser>
-        void registerHasFieldResources_(ResourcesUser const& user)
-        {
-            for (auto const& properties : user.getFieldNamesAndQuantities())
-            {
-                auto const& resourcesName = properties.name;
-
-                if (nameToResourceInfo_.count(resourcesName) == 0)
-                {
-                    ResourcesInfo info;
-                    info.variable = std::make_shared<typename ResourcesType::variable_type>(
-                        resourcesName, properties.qty);
-
-                    info.id = variableDatabase_->registerVariableAndContext(
-                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
-
-                    nameToResourceInfo_.emplace(resourcesName, info);
-                }
-            }
-        }
 
         template<typename ResourcesType, typename ResourcesUser>
         void registerParticleResources_(ResourcesUser const& user)

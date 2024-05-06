@@ -178,19 +178,6 @@ public:
 
     using PressureProperties = std::vector<PressureProperty>;
 
-    // NO_DISCARD PressureProperties getFieldNamesAndQuantities() const
-    // {
-    //     return {{{"Pe", HybridQuantity::Scalar::P}}};
-    // }
-
-    // void setBuffer(std::string name, Field* field)
-    // {
-    //     if (name == "Pe")
-    //         Pe_ = field;
-    //     else
-    //         throw std::runtime_error("Error - Pe is not usable");
-    // }
-
     NO_DISCARD auto getCompileTimeResourcesUserList() const
     {
         return std::forward_as_tuple(ions_, Pe_);

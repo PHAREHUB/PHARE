@@ -11,10 +11,7 @@ namespace PHARE
 {
 namespace amr
 {
-    template<typename ResourcesUser, typename Attempt = void>
-    struct has_field : std::false_type
-    {
-    };
+
 
     template<typename ResourcesUser, typename Attempt = void>
     struct has_particles : std::false_type
@@ -40,18 +37,9 @@ namespace amr
 
 
 
-    /** \brief has_field is a traits that permit to check if a ResourcesUser
-     * has field
+    /** \brief is_field is a traits that permit to check if a ResourcesUser
+     * is a field
      */
-    template<typename ResourcesUser>
-    struct has_field<ResourcesUser,
-                     core::tryToInstanciate<
-                         decltype(std::declval<ResourcesUser>().getFieldNamesAndQuantities())>>
-        : std::true_type
-    {
-    };
-
-
     template<typename ResourcesUser, typename Attempt = void>
     struct is_field : std::false_type
     {
@@ -125,14 +113,9 @@ namespace amr
     template<typename ResourcesUser>
     void extractNames(ResourcesUser& user, std::vector<std::string>& names)
     {
-        if constexpr (has_field<ResourcesUser>::value)
+        if constexpr (is_field<ResourcesUser>::value)
         {
-            auto properties = user.getFieldNamesAndQuantities();
-
-            for (auto const& property : properties)
-            {
-                names.push_back(property.name);
-            }
+            names.push_back(user.getFieldNameAndQuantity().name);
         }
 
         if constexpr (has_particles<ResourcesUser>::value)
