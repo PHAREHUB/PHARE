@@ -531,7 +531,6 @@ namespace amr
                                         // ResourcesProperties const& resourcesProperties,
                                         SAMRAI::hier::Patch const& patch, RequestedPtr) const
         {
-            // PHARE_LOG_LINE_STR("setFieldResourcesInternal_ " << obj.name());
             std::string const& resourcesName = obj.name();
             auto const& resourceInfoIt       = nameToResourceInfo_.find(resourcesName);
 

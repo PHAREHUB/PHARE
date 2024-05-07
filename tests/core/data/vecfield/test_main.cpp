@@ -63,32 +63,32 @@ public:
 protected:
     void setBuffers()
     {
-        B1D_.setBuffer("B1D_x", &bx1d_);
-        B1D_.setBuffer("B1D_y", &by1d_);
-        B1D_.setBuffer("B1D_z", &bz1d_);
+        B1D_[0].setBuffer(&bx1d_);
+        B1D_[1].setBuffer(&by1d_);
+        B1D_[2].setBuffer(&bz1d_);
 
-        B2D_.setBuffer("B2D_x", &bx2d_);
-        B2D_.setBuffer("B2D_y", &by2d_);
-        B2D_.setBuffer("B2D_z", &bz2d_);
+        B2D_[0].setBuffer(&bx2d_);
+        B2D_[1].setBuffer(&by2d_);
+        B2D_[2].setBuffer(&bz2d_);
 
-        B3D_.setBuffer("B3D_x", &bx3d_);
-        B3D_.setBuffer("B3D_y", &by3d_);
-        B3D_.setBuffer("B3D_z", &bz3d_);
+        B3D_[0].setBuffer(&bx3d_);
+        B3D_[1].setBuffer(&by3d_);
+        B3D_[2].setBuffer(&bz3d_);
     }
 
     void unsetBuffers()
     {
-        B1D_.setBuffer("B1D_x", nullptr);
-        B1D_.setBuffer("B1D_y", nullptr);
-        B1D_.setBuffer("B1D_z", nullptr);
+        B1D_[0].setBuffer(nullptr);
+        B1D_[1].setBuffer(nullptr);
+        B1D_[2].setBuffer(nullptr);
 
-        B2D_.setBuffer("B2D_x", nullptr);
-        B2D_.setBuffer("B2D_y", nullptr);
-        B2D_.setBuffer("B2D_z", nullptr);
+        B2D_[0].setBuffer(nullptr);
+        B2D_[1].setBuffer(nullptr);
+        B2D_[2].setBuffer(nullptr);
 
-        B3D_.setBuffer("B3D_x", nullptr);
-        B3D_.setBuffer("B3D_y", nullptr);
-        B3D_.setBuffer("B3D_z", nullptr);
+        B3D_[0].setBuffer(nullptr);
+        B3D_[1].setBuffer(nullptr);
+        B3D_[2].setBuffer(nullptr);
     }
 
     static const std::uint32_t nx;
@@ -231,44 +231,6 @@ TEST_F(VecFieldTest, SizeIsOkAfterSet3D)
     this->unsetBuffers();
 }
 
-TEST_F(VecFieldTest, HasThreeBuffers1D)
-{
-    auto pairs = B1D_.getFieldNamesAndQuantities();
-    EXPECT_EQ(3, pairs.size());
-}
-
-TEST_F(VecFieldTest, HasThreeBuffers2D)
-{
-    auto pairs = B2D_.getFieldNamesAndQuantities();
-    EXPECT_EQ(3, pairs.size());
-}
-
-TEST_F(VecFieldTest, HasThreeBuffers3D)
-{
-    auto pairs = B3D_.getFieldNamesAndQuantities();
-    EXPECT_EQ(3, pairs.size());
-}
-
-
-TEST_F(VecFieldTest, ComponentNames)
-{
-    auto pairs1D = B1D_.getFieldNamesAndQuantities();
-    auto pairs2D = B2D_.getFieldNamesAndQuantities();
-    auto pairs3D = B3D_.getFieldNamesAndQuantities();
-
-    EXPECT_EQ(B1D_.name() + "_x", pairs1D[0].name);
-    EXPECT_EQ(B1D_.name() + "_y", pairs1D[1].name);
-    EXPECT_EQ(B1D_.name() + "_z", pairs1D[2].name);
-
-    EXPECT_EQ(B2D_.name() + "_x", pairs2D[0].name);
-    EXPECT_EQ(B2D_.name() + "_y", pairs2D[1].name);
-    EXPECT_EQ(B2D_.name() + "_z", pairs2D[2].name);
-
-    EXPECT_EQ(B3D_.name() + "_x", pairs3D[0].name);
-    EXPECT_EQ(B3D_.name() + "_y", pairs3D[1].name);
-    EXPECT_EQ(B3D_.name() + "_z", pairs3D[2].name);
-}
-
 
 
 
@@ -280,27 +242,6 @@ TEST_F(VecFieldTest, VecFieldsHaveBeginAndEnd)
 
 
 
-TEST_F(VecFieldTest, PhysicalQuantities)
-{
-    auto pairs1D = B1D_.getFieldNamesAndQuantities();
-    auto pairs2D = B2D_.getFieldNamesAndQuantities();
-    auto pairs3D = B3D_.getFieldNamesAndQuantities();
-
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs1D[0].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs1D[1].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs1D[2].qty);
-
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs2D[0].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs2D[1].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs2D[2].qty);
-
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs3D[0].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs3D[1].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs3D[2].qty);
-}
-
-
-
 TEST(aVecField, dataCanBeCopiedIntoAnother)
 {
     using Scalar = typename HybridQuantity::Scalar;
@@ -309,9 +250,9 @@ TEST(aVecField, dataCanBeCopiedIntoAnother)
     Grid<NdArrayVector<3>, Scalar> by1{"B1_y", Scalar::By, 2u, 3u, 4u};
     Grid<NdArrayVector<3>, Scalar> bz1{"B1_z", Scalar::Bz, 2u, 3u, 4u};
     VecField_t<3> B1{"B1", HybridQuantity::Vector::B};
-    B1.setBuffer("B1_x", &bx1);
-    B1.setBuffer("B1_y", &by1);
-    B1.setBuffer("B1_z", &bz1);
+    B1[0].setBuffer(&bx1);
+    B1[1].setBuffer(&by1);
+    B1[2].setBuffer(&bz1);
 
     bx1(1, 1, 1) = 12;
     by1(1, 1, 1) = 13;
@@ -321,9 +262,9 @@ TEST(aVecField, dataCanBeCopiedIntoAnother)
     Grid<NdArrayVector<3>, Scalar> by2{"B2_y", Scalar::By, 2u, 3u, 4u};
     Grid<NdArrayVector<3>, Scalar> bz2{"B2_z", Scalar::Bz, 2u, 3u, 4u};
     VecField_t<3> B2{"B2", HybridQuantity::Vector::B};
-    B2.setBuffer("B2_x", &bx2);
-    B2.setBuffer("B2_y", &by2);
-    B2.setBuffer("B2_z", &bz2);
+    B2[0].setBuffer(&bx2);
+    B2[1].setBuffer(&by2);
+    B2[2].setBuffer(&bz2);
 
     B2.copyData(B1);
 

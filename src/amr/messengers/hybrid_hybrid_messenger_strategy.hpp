@@ -46,34 +46,6 @@ namespace PHARE
 namespace amr
 {
 
-    // this structure is a wrapper of a field*
-    // so to serve as a ResourcesUser for the ResourcesManager
-    template<typename GridT>
-    struct FieldUser
-    {
-        using grid_type  = GridT;
-        using field_type = typename GridT::field_type;
-
-        FieldUser(std::string fieldName, typename PHARE::core::HybridQuantity::Scalar qty)
-            : f{fieldName, qty}
-        {
-        }
-
-        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(f); }
-        NO_DISCARD auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(f); }
-
-        template<typename That>
-        void copyData(That const& that)
-        {
-            assert(f.isUsable());
-            f.copyData(that);
-        }
-
-        field_type f;
-    };
-
-
-
     /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid to
      * hybrid data communications.
      */
@@ -120,7 +92,7 @@ namespace amr
             , firstLevel_{firstLevel}
         {
             resourcesManager_->registerResources(Jold_);
-            resourcesManager_->registerResources(NiOldUser_);
+            resourcesManager_->registerResources(NiOld_);
             resourcesManager_->registerResources(ViOld_);
         }
 
@@ -140,7 +112,7 @@ namespace amr
         void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
         {
             resourcesManager_->allocate(Jold_, patch, allocateTime);
-            resourcesManager_->allocate(NiOldUser_, patch, allocateTime);
+            resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
         }
 
@@ -542,10 +514,10 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Jold_, NiOldUser_, ViOld_);
+                    hybridModel.state.ions, Jold_, NiOld_, ViOld_);
 
                 resourcesManager_->setTime(Jold_, *patch, currentTime);
-                resourcesManager_->setTime(NiOldUser_, *patch, currentTime);
+                resourcesManager_->setTime(NiOld_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
 
                 auto& J  = hybridModel.state.J;
@@ -554,7 +526,7 @@ namespace amr
 
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
-                NiOldUser_.copyData(Ni);
+                NiOld_.copyData(Ni);
             }
         }
 
@@ -670,7 +642,7 @@ namespace amr
                                                    fieldTimeOp_);
 
             rhoGhostsRefiners_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
-                                              NiOldUser_.f.name(), fieldRefineOp_, fieldTimeOp_,
+                                              NiOld_.name(), fieldRefineOp_, fieldTimeOp_,
                                               info->modelIonDensity);
 
 
@@ -990,7 +962,7 @@ namespace amr
 
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
-        FieldUser<GridT> NiOldUser_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
+        FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
 
 
         //! ResourceManager shared with other objects (like the HybridModel)

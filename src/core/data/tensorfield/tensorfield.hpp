@@ -76,51 +76,19 @@ public:
     {
     }
 
-
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    struct TensorFieldProperties
-    {
-        std::string name;
-        typename PhysicalQuantity::Scalar qty;
-    };
-    using resources_properties = std::array<TensorFieldProperties, N>;
-
-
-
     NO_DISCARD auto getCompileTimeResourcesUserList()
     {
-        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
-            return components_[i];
-        });
+        return for_N<N, for_N_R_mode::forward_tuple>(
+            [&](auto i) -> auto& { return components_[i]; });
     }
     NO_DISCARD auto getCompileTimeResourcesUserList() const
     {
-        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
-            return components_[i];
-        });
-    }
-
-
-    // TORM?
-    NO_DISCARD resources_properties getFieldNamesAndQuantities() const
-    {
-        return makeResProp_(std::make_index_sequence<N>{});
-    }
-    // TORM?
-    void setBuffer(std::string const& bufferName, field_type* field)
-    {
-        if (auto it = nameToIndex_.find(bufferName); it != std::end(nameToIndex_))
-        {
-            components_[it->second].setBuffer(field);
-        }
-        else
-        {
-            throw std::runtime_error(
-                "TensorField Error - invalid component name, cannot set buffer");
-        }
+        return for_N<N, for_N_R_mode::forward_tuple>(
+            [&](auto i) -> auto& { return components_[i]; });
     }
 
 
@@ -242,15 +210,6 @@ private:
             return val;
         else if constexpr (rank == 2)
             return val - detail::tensor_field_dim_from_rank<1>();
-    }
-
-
-    template<std::size_t... Index>
-    resources_properties makeResProp_(std::index_sequence<Index...>) const
-    {
-        std::array<TensorFieldProperties, sizeof...(Index)> result;
-        ((result[Index] = TensorFieldProperties{componentNames_[Index], physQties_[Index]}), ...);
-        return result;
     }
 
 

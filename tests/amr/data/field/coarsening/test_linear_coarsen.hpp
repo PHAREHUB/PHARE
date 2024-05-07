@@ -55,16 +55,16 @@ struct Files
 template<std::size_t dim>
 struct EMData
 {
-    using Field_t  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
-    using FieldPtr = std::shared_ptr<Field_t>;
+    using Grid_t  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridPtr = std::shared_ptr<Grid_t>;
 
     std::string em_key;
 
     HybridQuantity::Scalar xQuantity, yQuantity, zQuantity;
 
-    std::array<FieldPtr, 3> fineValues{};
-    std::array<FieldPtr, 3> coarseValues{};
-    std::array<FieldPtr, 3> expectedCoarseValues{};
+    std::array<GridPtr, 3> fineValues{};
+    std::array<GridPtr, 3> coarseValues{};
+    std::array<GridPtr, 3> expectedCoarseValues{};
 
     static EMData<dim> get(std::string key)
     {
@@ -91,7 +91,7 @@ struct FieldCoarsenTestData
     static constexpr double absError = 1.e-8;
 
     using GridYee_t = GridLayout<GridLayoutImplYee<dimension, interp>>;
-    using Field_t   = Grid<NdArrayVector<dimension>, HybridQuantity::Scalar>;
+    using Grid_t    = Grid<NdArrayVector<dimension>, HybridQuantity::Scalar>;
 
     EMData<dimension> em;
 
@@ -117,7 +117,7 @@ struct FieldCoarsenTestData
     template<typename GridLayout, typename Quantity>
     auto make_field(std::string qty_key, GridLayout const& layout, Quantity const& qty)
     {
-        return std::make_shared<Field_t>(qty_key, qty, layout->allocSize(qty));
+        return std::make_shared<Grid_t>(qty_key, qty, layout->allocSize(qty));
     }
 
     auto& init()

@@ -27,15 +27,18 @@ public:
         , xyz{make_grids(Super::componentNames(), layout, qty)}
     {
         for (std::size_t i = 0; i < N_elements; ++i)
-            Super::setBuffer(Super::componentNames()[i], &xyz[i]);
+            super()[i].setBuffer(&xyz[i]);
     }
 
     void set_on(Super& tensorfield)
     {
         // used for setting on normal model tensorfields
         for (std::size_t i = 0; i < N_elements; ++i)
-            tensorfield.setBuffer(Super::componentNames()[i], &xyz[i]);
+            tensorfield[i].setBuffer(&xyz[i]);
     }
+
+    Super& super() { return *this; }
+    Super& super() const { return *this; }
 
 protected:
     template<typename ComponentNames, typename GridLayout>
