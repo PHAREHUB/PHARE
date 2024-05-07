@@ -61,15 +61,18 @@ if (withPhlop)
   set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp )
 endif(withPhlop)
 
-find_package(MPI)
-
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES}
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C
     PUBLIC ${PHARE_BASE_LIBS}
   )
+
+# skip mpicxx in compile command if not configured with configurator
+if (NOT phare_configurator)
+     target_compile_definitions(${PROJECT_NAME} PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX )
+endif(phare_configurator)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
-target_include_directories(${PROJECT_NAME}  PUBLIC ${MPI_C_INCLUDE_DIRS}
+target_include_directories(${PROJECT_NAME}  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
-

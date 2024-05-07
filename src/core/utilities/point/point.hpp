@@ -171,6 +171,7 @@ namespace core
         NO_DISCARD auto end() { return r.end(); }
         NO_DISCARD auto end() const { return r.end(); }
 
+        NO_DISCARD auto& operator*() const { return r; }
 
     private:
         std::array<Type, dim> r{};

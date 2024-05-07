@@ -1,8 +1,5 @@
 
-
-#define PHARE_HAS_HIGHFIVE 0
-
-#include "bench/core/bench.hpp"
+#include "tools/bench/core/bench.hpp"
 
 #include "amr/data/particles/particles_data.hpp"
 

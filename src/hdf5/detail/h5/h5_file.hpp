@@ -99,10 +99,10 @@ public:
 
 
     template<typename Type, typename Size>
-    void create_data_set(std::string const& path, Size const& dataSetSize)
+    auto create_data_set(std::string const& path, Size const& dataSetSize)
     {
         createGroupsToDataSet(path);
-        h5file_.createDataSet<Type>(path, HighFive::DataSpace(dataSetSize));
+        return h5file_.createDataSet<Type>(path, HighFive::DataSpace(dataSetSize));
     }
 
 

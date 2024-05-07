@@ -1,15 +1,18 @@
 
 #include "benchmark/benchmark.h"
-#define PHARE_DIAG_DOUBLES 0
+
 #include "diagnostic/detail/h5writer.hpp"
-#include "diagnostic/detail/h5_utils.hpp"
 #include "diagnostic/diagnostic_manager.hpp"
+#include "hdf5/detail/hdf5_utils.hpp"
+#include "hdf5/detail/h5/h5_file.hpp"
 
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
 
 #include "phare/phare.hpp"
+
+#include "tools/bench/core/bench.hpp"
 
 constexpr std::size_t dim = 1;
 
@@ -20,24 +23,22 @@ void do_bench(benchmark::State& state)
     using HiFile              = HighFive::File;
     using Packer              = core::ParticlePacker<dim>;
     using ContiguousParticles = core::ContiguousParticles<dim>;
-    using ParticleArray       = core::ParticleArray<dim>;
 
     auto getSize = [](auto const& value) -> std::size_t {
         using ValueType = std::decay_t<decltype(value)>;
-        if constexpr (h5::is_array_dataset<ValueType, dim>)
+        if constexpr (hdf5::is_array_dataset<ValueType, dim>)
             return value.size();
         else
             return 1u; /* not an array so value one of type ValueType*/
     };
 
     auto createDataSet_ = [&](auto& hi5, auto const& path, auto const size, auto const& value) {
-        h5::createGroupsToDataSet(hi5.file_, path);
         using ValueType = std::decay_t<decltype(value)>;
-        if constexpr (h5::is_array_dataset<ValueType, dim>)
-            return hi5.file_.template createDataSet<typename ValueType::value_type>(
+        if constexpr (hdf5::is_array_dataset<ValueType, dim>)
+            return hi5.template create_data_set<typename ValueType::value_type>(
                 path, HighFive::DataSpace(size));
         else
-            return hi5.file_.template createDataSet<ValueType>(path, HighFive::DataSpace(size));
+            return hi5.template create_data_set<ValueType>(path, HighFive::DataSpace(size));
     };
 
 
@@ -52,12 +53,13 @@ void do_bench(benchmark::State& state)
     std::string path{"/lol/"};
     while (state.KeepRunning())
     {
-        h5::HighFiveFile hi5("lol.lol", HiFile::ReadWrite | HiFile::Create | HiFile::Truncate);
-        auto d = hi5.file_.createDataSet<float>("/No", 1);
+        hdf5::h5::HighFiveFile hi5("lol.lol",
+                                   HiFile::ReadWrite | HiFile::Create | HiFile::Truncate);
+        auto d = hi5.create_data_set<float>("/No", 1);
         std::vector<decltype(d)> datasets;
 
         ContiguousParticles particles{100000};
-        ParticleArray particleArray(100000);
+        auto particleArray = PHARE::core::bench::make_particles<dim>(100000);
         Packer{particleArray}.pack(particles);
 
         std::size_t part_idx = 0;

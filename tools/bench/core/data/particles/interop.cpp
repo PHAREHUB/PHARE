@@ -1,7 +1,7 @@
 
 #include "benchmark/benchmark.h"
 
-#include "bench/core/bench.hpp"
+#include "tools/bench/core/bench.hpp"
 #include "core/data/particles/particle.hpp"
 
 constexpr std::size_t dim  = 3;

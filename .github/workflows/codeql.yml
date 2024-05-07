@@ -35,7 +35,7 @@ jobs:
 
       - name: Configure (cpp)
         if: ${{ matrix.language == 'cpp' }}
-        run: mkdir build; cd build; cmake ..
+        run: mkdir build; cd build; cmake .. -Dphare_configurator=ON
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
