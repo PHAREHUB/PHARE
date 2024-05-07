@@ -10,30 +10,6 @@ namespace PHARE::hdf5::h5
 using HiFile = HighFive::File;
 
 
-/*
-  Highfive cannot accept a single flat array into >= 2d shaped datasets
-*/
-template<std::size_t dim, typename Data>
-NO_DISCARD auto pointer_dim_caster(Data* data)
-{
-    if constexpr (dim == 1)
-        return data;
-    if constexpr (dim == 2)
-        return reinterpret_cast<Data const** const>(data);
-    if constexpr (dim == 3)
-        return reinterpret_cast<Data const*** const>(data);
-}
-template<std::size_t dim, typename Data>
-NO_DISCARD auto pointer_dim_caster(Data const* const data)
-{
-    if constexpr (dim == 1)
-        return data;
-    if constexpr (dim == 2)
-        return reinterpret_cast<Data const* const* const>(data);
-    if constexpr (dim == 3)
-        return reinterpret_cast<Data const* const* const* const>(data);
-}
-
 
 
 template<std::size_t dim, typename Data>
@@ -94,7 +70,7 @@ public:
     NO_DISCARD auto read_data_set_flat(std::string path) const
     {
         std::vector<T> data(H5Easy::getSize(h5file_, path));
-        h5file_.getDataSet(path).read_raw(pointer_dim_caster<dim>(data.data()));
+        h5file_.getDataSet(path).read_raw(data.data());
         return data;
     }
 
@@ -117,7 +93,7 @@ public:
     template<std::size_t dim = 1, typename Data>
     auto& write_data_set_flat(std::string path, Data const& data)
     {
-        h5file_.getDataSet(path).write(pointer_dim_caster<dim>(data));
+        h5file_.getDataSet(path).write_raw(data);
         return *this;
     }
 
