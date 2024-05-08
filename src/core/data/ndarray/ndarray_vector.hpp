@@ -197,7 +197,12 @@ public:
     NO_DISCARD auto end() const { return ptr_ + size(); }
     NO_DISCARD auto end() { return ptr_ + size(); }
 
-    void zero() { std::fill(begin(), end(), 0); }
+    void zero() { fill(0); }
+    auto& fill(DataType const& v)
+    {
+        std::fill(begin(), end(), v);
+        return *this;
+    }
 
     void setBuffer(pointer_type ptr) { ptr_ = ptr; }
     void setShape(std::array<std::uint32_t, dim> const nCells) { nCells_ = nCells; }

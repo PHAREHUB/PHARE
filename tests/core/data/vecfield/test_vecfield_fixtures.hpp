@@ -7,7 +7,11 @@ namespace PHARE::core
 {
 
 template<std::size_t dim>
+using VecField_t = VecField<Field_t<dim>, HybridQuantity>;
+
+template<std::size_t dim>
 using UsableVecField = UsableTensorField<dim, /*rank=*/1>;
+
 
 } // namespace PHARE::core
 

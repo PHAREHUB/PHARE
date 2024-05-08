@@ -36,12 +36,13 @@ void updater_routine(benchmark::State& state)
     using IonPop        = typename Ions::value_type;
     using ParticleArray = typename PHARE_Types::ParticleArray_t;
     using Particle_t    = typename ParticleArray::value_type;
+    using Grid_t        = typename PHARE_Types::Grid_t;
 
     GridLayout_t layout{cells};
     Electromag_t em{layout};
-    core::bench::Flux<GridLayout_t> flux{layout, "pop0_flux"};
-    core::bench::BulkV<GridLayout_t> bulkV{layout};
-    auto rho = core::bench::rho(layout);
+    UsableVecField<dim> flux{"F", layout, HybridQuantity::Vector::F};
+    Grid_t rho{"rho", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)};
+    UsableVecField<dim> bulkVel{"bulkVel", layout, HybridQuantity::Vector::V};
 
     PatchState<ParticleArray> patch_particles{layout.AMRBox()};
     patch_particles.domain_particles.vector()

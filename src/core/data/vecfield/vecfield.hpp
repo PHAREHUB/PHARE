@@ -14,8 +14,8 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename NdArrayImpl, typename PhysicalQuantity>
-    using VecField = TensorField<NdArrayImpl, PhysicalQuantity, /*rank=*/1>;
+    template<typename Field_t, typename PhysicalQuantity>
+    using VecField = TensorField<Field_t, PhysicalQuantity, /*rank=*/1>;
 
 
     template<typename VecField, typename = tryToInstanciate<typename VecField::field_type>>

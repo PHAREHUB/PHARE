@@ -11,6 +11,7 @@ void interpolate(benchmark::State& state)
     using PHARE_Types   = PHARE::core::PHARE_Types<dim, interp>;
     using GridLayout_t  = typename PHARE_Types::GridLayout_t;
     using ParticleArray = typename PHARE_Types::ParticleArray_t;
+    using Grid_t        = typename PHARE_Types::Grid_t;
 
     PHARE::core::Interpolator<dim, interp> interpolator;
     ParticleArray particles{n_parts, PHARE::core::bench::particle<dim>()};
@@ -18,7 +19,9 @@ void interpolate(benchmark::State& state)
                         PHARE::core::ConstArray<std::uint32_t, dim>(cells),
                         PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)}};
     PHARE::core::bench::Electromag<GridLayout_t> em{layout};
-    PHARE::core::bench::Flux<GridLayout_t> flux{layout};
+    UsableVecField<dim> flux{"F", layout, HybridQuantity::Vector::F};
+    Grid_t rho{"rho", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)};
+
     auto rho = PHARE::core::bench::rho(layout);
 
     PHARE::core::bench::disperse(particles, 0, cells - 1);

@@ -6,10 +6,10 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
+#include "tests/core/data/field/test_field_fixtures.hpp"
+
 namespace PHARE::core
 {
-template<std::size_t dim>
-using Field_t = Field<dim, HybridQuantity::Scalar>;
 
 /*
 A UsableTensorField is an extension of the TensorField view that owns memory for components and sets
