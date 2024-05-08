@@ -1,6 +1,7 @@
 #ifndef PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP
 
+#include "tests/core/data/field/test_field_fixtures.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
 
 namespace PHARE::core
