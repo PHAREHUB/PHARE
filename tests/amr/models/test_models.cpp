@@ -1,4 +1,5 @@
 #include "amr/types/amr_types.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"

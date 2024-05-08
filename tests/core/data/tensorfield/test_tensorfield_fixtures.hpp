@@ -1,7 +1,9 @@
 #ifndef PHARE_TEST_CORE_DATA_TEST_TENSORFIELD_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_TEST_TENSORFIELD_FIXTURES_HPP
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
 namespace PHARE::core
@@ -9,6 +11,10 @@ namespace PHARE::core
 template<std::size_t dim>
 using Field_t = Field<dim, HybridQuantity::Scalar>;
 
+/*
+A UsableTensorField is an extension of the TensorField view that owns memory for components and sets
+the view pointers. It is useful for tests to easily declare usable (== set views) tensors
+*/
 template<std::size_t dim, std::size_t rank_ = 2>
 class UsableTensorField : public TensorField<Field_t<dim>, HybridQuantity, rank_>
 {

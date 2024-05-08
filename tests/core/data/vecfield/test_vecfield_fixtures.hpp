@@ -5,19 +5,9 @@
 
 namespace PHARE::core
 {
-template<std::size_t dim>
-class UsableVecField : public UsableTensorField<dim, /*rank=*/1>
-{
-public:
-    auto static constexpr dimension = dim;
-    using Super                     = UsableTensorField<dim, /*rank=*/1>;
 
-    template<typename GridLayout>
-    UsableVecField(std::string const& name, GridLayout const& layout, HybridQuantity::Vector qty)
-        : Super{name, layout, qty}
-    {
-    }
-};
+template<std::size_t dim>
+using UsableVecField = UsableTensorField<dim, /*rank=*/1>;
 
 } // namespace PHARE::core
 

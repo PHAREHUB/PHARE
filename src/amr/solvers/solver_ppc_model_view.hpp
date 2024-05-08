@@ -19,6 +19,9 @@ void assert_equal_sizes([[maybe_unused]] Vectors const&... vectors)
     )
 }
 
+/*Faraday, Ampere, Ohm Transformers are abstraction that, from the solver viewpoint, act as Faraday,
+ * Ampere and Ohm algorithms, but take all patch views and hide the way these are processed, for
+ * instance to implement a parallelization decomposition*/
 template<typename GridLayout>
 class FaradayTransformer
 {
@@ -136,7 +139,10 @@ public:
     HybridModel_t& model_;
     std::vector<core::aggregate_adapter<PatchState_t>> states;
 
-
+    /*these vectors allow to access patch data per quantity
+       they are kept in synced with "states" so that client code (e.g. Faraday etc.)
+       can still have signatures revealing which quantities they use, and not take the states vector
+       entirely */
     std::vector<VecFieldT*> electromag_E;
     std::vector<VecFieldT*> electromag_B;
     std::vector<VecFieldT*> electromagPred_E;
