@@ -31,7 +31,6 @@ public:
         , E{"EM_E", layout, HybridQuantity::Vector::E}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
     {
-        default_em_init(*this, layout);
         _set();
     }
 

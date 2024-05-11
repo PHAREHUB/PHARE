@@ -18,14 +18,13 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename ParticleArray, typename VecField, typename TensorField, typename GridLayout>
+    template<typename ParticleArray, typename VecField, typename TensorField>
     class IonPopulation
     {
     public:
         using field_type                       = typename VecField::field_type;
         static constexpr std::size_t dimension = VecField::dimension;
         using particle_array_type              = ParticleArray;
-        using particle_resource_type           = ParticlesPack<ParticleArray>;
         using vecfield_type                    = VecField;
         using tensorfield_type                 = TensorField;
 
@@ -36,6 +35,7 @@ namespace core
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
             , rho_{name_ + "_rho", HybridQuantity::Scalar::rho}
+            , particles_{name_}
             , particleInitializerInfo_{initializer["particle_initializer"]}
         {
         }
@@ -52,14 +52,14 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return particles_ != nullptr && rho_.isUsable() && flux_.isUsable()
+            return particles_.isUsable() && rho_.isUsable() && flux_.isUsable()
                    && momentumTensor_.isUsable();
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            return particles_ == nullptr && rho_.isSettable() && flux_.isSettable()
+            return particles_.isSettable() && rho_.isSettable() && flux_.isSettable()
                    && momentumTensor_.isSettable();
         }
 
@@ -70,7 +70,7 @@ namespace core
         {
             if (isUsable())
             {
-                return particles_->domainParticles->size();
+                return particles_.domainParticles->size();
             }
             else
             {
@@ -85,7 +85,7 @@ namespace core
         {
             if (isUsable())
             {
-                return *particles_->domainParticles;
+                return *particles_.domainParticles;
             }
             else
             {
@@ -105,7 +105,7 @@ namespace core
         {
             if (isUsable())
             {
-                return *particles_->patchGhostParticles;
+                return *particles_.patchGhostParticles;
             }
             else
             {
@@ -124,7 +124,7 @@ namespace core
         {
             if (isUsable())
             {
-                return *particles_->levelGhostParticles;
+                return *particles_.levelGhostParticles;
             }
             else
             {
@@ -145,7 +145,7 @@ namespace core
         {
             if (isUsable())
             {
-                return *particles_->levelGhostParticlesOld;
+                return *particles_.levelGhostParticlesOld;
             }
             else
             {
@@ -164,7 +164,7 @@ namespace core
         {
             if (isUsable())
             {
-                return *particles_->levelGhostParticlesNew;
+                return *particles_.levelGhostParticlesNew;
             }
             else
             {
@@ -213,44 +213,10 @@ namespace core
 
 
 
-        struct MomentsProperty
+
+        NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            std::string name;
-            typename HybridQuantity::Scalar qty;
-        };
-
-        using MomentProperties = std::array<MomentsProperty, 1>;
-
-
-
-        struct ParticleProperty
-        {
-            std::string name;
-        };
-
-
-
-        using ParticleProperties = std::array<ParticleProperty, 1>;
-
-        NO_DISCARD ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
-
-
-
-
-        void setBuffer(std::string const& bufferName, ParticlesPack<ParticleArray>* pack)
-        {
-            if (bufferName == name_)
-                particles_ = pack;
-            else
-                throw std::runtime_error("Error - invalid particle resource name");
-        }
-
-
-
-
-        NO_DISCARD auto getCompileTimeResourcesUserList()
-        {
-            return std::forward_as_tuple(flux_, momentumTensor_, rho_);
+            return std::forward_as_tuple(flux_, momentumTensor_, rho_, particles_);
         }
 
 
@@ -275,7 +241,7 @@ namespace core
         VecField flux_;
         TensorField momentumTensor_;
         field_type rho_;
-        ParticlesPack<ParticleArray>* particles_{nullptr};
+        ParticlesPack<ParticleArray> particles_;
         initializer::PHAREDict const& particleInitializerInfo_;
     };
 } // namespace core

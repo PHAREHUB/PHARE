@@ -80,15 +80,17 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD auto getCompileTimeResourcesUserList()
+    NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return for_N<N, for_N_R_mode::forward_tuple>(
-            [&](auto i) -> auto& { return components_[i]; });
+        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
+            return components_[i];
+        });
     }
-    NO_DISCARD auto getCompileTimeResourcesUserList() const
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return for_N<N, for_N_R_mode::forward_tuple>(
-            [&](auto i) -> auto& { return components_[i]; });
+        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
+            return components_[i];
+        });
     }
 
 

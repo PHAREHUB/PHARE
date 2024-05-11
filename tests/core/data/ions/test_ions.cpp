@@ -41,8 +41,7 @@ protected:
     using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
     using InitFunctionT    = PHARE::initializer::InitFunction<1>;
 
-    using IonPopulation1D
-        = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D, GridYee1D>;
+    using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
     Ions<IonPopulation1D, GridYee1D> ions;
 
     PHARE::initializer::PHAREDict createIonsDict()

@@ -26,14 +26,12 @@ namespace core
     class Ions
     {
     public:
-        using value_type          = IonPopulation;
-        using field_type          = typename IonPopulation::field_type;
-        using vecfield_type       = typename IonPopulation::vecfield_type;
-        using Float               = typename field_type::type;
-        using tensorfield_type    = typename IonPopulation::tensorfield_type;
-        using particle_array_type = typename IonPopulation::particle_array_type;
-        using ParticleInitializerFactoryT
-            = ParticleInitializerFactory<particle_array_type, GridLayout>;
+        using value_type                = IonPopulation;
+        using field_type                = typename IonPopulation::field_type;
+        using vecfield_type             = typename IonPopulation::vecfield_type;
+        using Float                     = typename field_type::type;
+        using tensorfield_type          = typename IonPopulation::tensorfield_type;
+        using particle_array_type       = typename IonPopulation::particle_array_type;
         using gridlayout_type           = GridLayout;
         static constexpr auto dimension = GridLayout::dimension;
 
@@ -58,6 +56,7 @@ namespace core
 
 
         NO_DISCARD auto nbrPopulations() const { return populations_.size(); }
+        NO_DISCARD auto size() const { return nbrPopulations(); }
 
 
         NO_DISCARD field_type const& density() const
@@ -247,22 +246,13 @@ namespace core
         //-------------------------------------------------------------------------
 
 
-        struct MomentsProperty
-        {
-            std::string name;
-            typename HybridQuantity::Scalar qty;
-        };
 
-        using MomentProperties = std::vector<MomentsProperty>;
-
-
-
-        NO_DISCARD std::vector<IonPopulation>& getRunTimeResourcesUserList()
+        NO_DISCARD std::vector<IonPopulation>& getRunTimeResourcesViewList()
         {
             return populations_;
         }
 
-        NO_DISCARD auto getCompileTimeResourcesUserList()
+        NO_DISCARD auto getCompileTimeResourcesViewList()
         {
             return std::forward_as_tuple(bulkVelocity_, momentumTensor_, rho_, massDensity_);
         }
@@ -299,8 +289,8 @@ namespace core
 
 
 
-        field_type rho_;         //{nullptr};
-        field_type massDensity_; //{nullptr};
+        field_type rho_;
+        field_type massDensity_;
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
 

@@ -50,10 +50,6 @@ struct DummyParticleInitializer
 };
 
 
-struct DummyLayout
-{
-};
-
 PHAREDict getDict()
 {
     PHAREDict dict;
@@ -65,8 +61,7 @@ PHAREDict getDict()
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField, DummyTensorField, DummyLayout> protons{
-        getDict()};
+    IonPopulation<ParticleArray<1>, DummyVecField, DummyTensorField> protons{getDict()};
     virtual ~AnIonPopulation();
 };
 
@@ -119,20 +114,10 @@ TEST_F(AnIonPopulation, throwsIfOneWantsToAccessParticleBuffersWhileNotUsable)
 
 
 
-TEST_F(AnIonPopulation, isResourceUserAndHasGetParticleArrayNamesOK)
-{
-    auto bufferNames = protons.getParticleArrayNames();
-    EXPECT_EQ(1, bufferNames.size());
-    EXPECT_EQ(protons.name(), bufferNames[0].name);
-}
-
-
-
-
 TEST_F(AnIonPopulation, hasAVecFieldSubResource)
 {
     [[maybe_unused]] DummyVecField const& vf
-        = std::get<0>(protons.getCompileTimeResourcesUserList());
+        = std::get<0>(protons.getCompileTimeResourcesViewList());
 }
 
 

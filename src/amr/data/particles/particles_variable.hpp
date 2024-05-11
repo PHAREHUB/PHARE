@@ -26,7 +26,7 @@ namespace amr
                           = SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
                                                     core::ghostWidthForParticles<interp>()})
             : SAMRAI::hier::Variable{name, std::make_shared<ParticlesDataFactory<ParticleArray>>(
-                                               ghost, fineBoundaryRepresentsVariable)}
+                                               ghost, fineBoundaryRepresentsVariable, name)}
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
         {
         }

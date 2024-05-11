@@ -43,7 +43,7 @@ using GridYee1D        = GridLayout<GridImplYee1D>;
 
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray1D, GridYee1D>;
 
-using IonsPop1D    = IonPopulation<ParticleArray1D, VecField1D, SymTensorField1D, GridYee1D>;
+using IonsPop1D    = IonPopulation<ParticleArray1D, VecField1D, SymTensorField1D>;
 using Ions1D       = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D = Electromag<VecField1D>;
 using Electrons1D  = Electrons<Ions1D>;

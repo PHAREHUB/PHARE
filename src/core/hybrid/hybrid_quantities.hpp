@@ -36,7 +36,7 @@ public:
         Mzz,
         count
     };
-    enum class Vector { B, E, J, V };
+    enum class Vector { B, E, J, V, F };
     enum class Tensor { M, count };
 
     template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>

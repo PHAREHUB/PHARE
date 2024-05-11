@@ -137,11 +137,10 @@ struct ElectronsTest : public ::testing::Test
     using FieldND          = Field<dim, HybridQuantity::Scalar>;
     using VecFieldND       = VecField<FieldND, HybridQuantity>;
     using SymTensorFieldND = SymTensorField<FieldND, HybridQuantity>;
-
-    using IonPopulationND
-        = IonPopulation<ParticleArray<dim>, VecFieldND, SymTensorFieldND, GridYee>;
-    using IonsT      = Ions<IonPopulationND, GridYee>;
-    using PartPackND = ParticlesPack<typename IonPopulationND::particle_array_type>;
+    using ParticleArray_t  = ParticleArray<dim>;
+    using IonPopulationND  = IonPopulation<ParticleArray_t, VecFieldND, SymTensorFieldND>;
+    using IonsT            = Ions<IonPopulationND, GridYee>;
+    using PartPackND       = ParticlesPack<ParticleArray_t>;
     using StandardHybridElectronFluxComputerT = StandardHybridElectronFluxComputer<IonsT>;
 
 
@@ -154,9 +153,11 @@ struct ElectronsTest : public ::testing::Test
 
     GridND Nibuffer, NiProtons, Pe;
 
+    ParticleArray_t domainParticles{layout.AMRBox()};
+    PartPackND pack{"particles", &domainParticles};
+
     IonsT ions;
     Electrons<IonsT> electrons;
-    PartPackND pack{};
 
     template<typename... Args>
     auto static _ions(Args&... args)
@@ -165,20 +166,19 @@ struct ElectronsTest : public ::testing::Test
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
-            auto const& [V, m, d, md] = ions.getCompileTimeResourcesUserList();
+            auto const& [V, m, d, md] = ions.getCompileTimeResourcesViewList();
             d.setBuffer(&Nibuffer);
             Vi.set_on(V);
             M.set_on(m);
         }
-        auto& pops = ions.getRunTimeResourcesUserList();
+        auto& pops = ions.getRunTimeResourcesViewList();
         assert(pops.size() == 1);
 
-        auto const& [F, m, d] = pops[0].getCompileTimeResourcesUserList();
+        auto const& [F, m, d, poppack] = pops[0].getCompileTimeResourcesViewList();
         d.setBuffer(&NiProtons);
         Fi.set_on(F);
         protons_M.set_on(m);
-
-        pops[0].setBuffer("protons", &pack);
+        poppack.setBuffer(&pack);
         return ions;
     }
 
@@ -199,15 +199,15 @@ struct ElectronsTest : public ::testing::Test
         , ions{_ions(F, Nibuffer, NiProtons, Vi, M, protons_M, pack)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
-        auto&& emm = std::get<0>(electrons.getCompileTimeResourcesUserList());
-        auto&& fc  = std::get<0>(emm.getCompileTimeResourcesUserList());
+        auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
+        auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
 
 
-        Ve.set_on(std::get<0>(fc.getCompileTimeResourcesUserList()));
+        Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
 
-        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesUserList());
-        auto const& [_, P] = pc.getCompileTimeResourcesUserList();
+        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto const& [_, P] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
 
         auto const& [Jx, Jy, Jz]    = J();

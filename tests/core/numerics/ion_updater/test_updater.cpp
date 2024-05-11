@@ -233,8 +233,8 @@ struct IonsBuffers
     ParticleArray alphaLevelGhostOld;
     ParticleArray alphaLevelGhostNew;
 
-    ParticlesPack<ParticleArray> protonPack;
-    ParticlesPack<ParticleArray> alphaPack;
+    ParticlesPack<ParticleArray> protonPack{"protons"};
+    ParticlesPack<ParticleArray> alphaPack{"alpha"};
 
     IonsBuffers(GridLayout const& layout)
         : ionDensity{"rho", HybridQuantity::Scalar::rho,
@@ -326,29 +326,29 @@ struct IonsBuffers
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, d, md] = ions.getCompileTimeResourcesUserList();
+            auto const& [V, m, d, md] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
             M.set_on(m);
             d.setBuffer(&ionDensity);
             md.setBuffer(&ionMassDensity);
         }
 
-        auto& pops = ions.getRunTimeResourcesUserList();
+        auto& pops = ions.getRunTimeResourcesViewList();
         {
-            auto const& [F, M, d] = pops[0].getCompileTimeResourcesUserList();
+            auto const& [F, M, d, particles] = pops[0].getCompileTimeResourcesViewList();
             d.setBuffer(&protonDensity);
             protons_M.set_on(M);
             protonF.set_on(F);
+            particles.setBuffer(&protonPack);
         }
-        pops[0].setBuffer("protons", &protonPack);
 
         {
-            auto const& [F, M, d] = pops[1].getCompileTimeResourcesUserList();
+            auto const& [F, M, d, particles] = pops[1].getCompileTimeResourcesViewList();
             d.setBuffer(&alphaDensity);
             alpha_M.set_on(M);
             alphaF.set_on(F);
+            particles.setBuffer(&alphaPack);
         }
-        pops[1].setBuffer("alpha", &alphaPack);
     }
 };
 
@@ -571,7 +571,7 @@ struct IonUpdaterTest : public ::testing::Test
 
     void checkMomentsHaveEvolved(IonsBuffers<dim, interp_order> const& ionsBufferCpy)
     {
-        auto& populations = this->ions.getRunTimeResourcesUserList();
+        auto& populations = this->ions.getRunTimeResourcesViewList();
 
         auto& protonDensity = populations[0].density();
         auto& protonFx      = populations[0].flux().getComponent(Component::X);
@@ -663,7 +663,7 @@ struct IonUpdaterTest : public ::testing::Test
             }
         };
 
-        auto& populations   = this->ions.getRunTimeResourcesUserList();
+        auto& populations   = this->ions.getRunTimeResourcesViewList();
         auto& protonDensity = populations[0].density();
         auto& alphaDensity  = populations[1].density();
 
@@ -807,7 +807,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
     ionUpdater.updateIons(this->ions);
 
 
-    auto& populations = this->ions.getRunTimeResourcesUserList();
+    auto& populations = this->ions.getRunTimeResourcesViewList();
 
     auto checkIsUnTouched = [](auto const& original, auto const& cpy) {
         // no particles should have moved, so none should have left the domain
@@ -852,7 +852,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    ionUpdater.updateIons(this->ions);
 //
-//    auto& populations = this->ions.getRunTimeResourcesUserList();
+//    auto& populations = this->ions.getRunTimeResourcesViewList();
 //
 //    EXPECT_NE(ionsBufferCpy.protonDomain.size(), populations[0].domainParticles().size());
 //    EXPECT_NE(ionsBufferCpy.alphaDomain.size(), populations[1].domainParticles().size());

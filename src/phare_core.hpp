@@ -52,7 +52,7 @@ struct PHARE_Types
     using MaxwellianParticleInitializer_t
         = PHARE::core::MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
     using IonPopulation_t
-        = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, SymTensorField_t, GridLayout_t>;
+        = PHARE::core::IonPopulation<ParticleArray_t, VecField_t, SymTensorField_t>;
     using Ions_t      = PHARE::core::Ions<IonPopulation_t, GridLayout_t>;
     using Electrons_t = PHARE::core::Electrons<Ions_t>;
 

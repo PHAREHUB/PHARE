@@ -56,12 +56,12 @@ namespace core
 
         NO_DISCARD bool isSettable() const { return E.isSettable() && B.isSettable(); }
 
-        NO_DISCARD auto getCompileTimeResourcesUserList() const
+        NO_DISCARD auto getCompileTimeResourcesViewList() const
         {
             return std::forward_as_tuple(E, B);
         }
 
-        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(E, B); }
+        NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(E, B); }
 
 
         //-------------------------------------------------------------------------

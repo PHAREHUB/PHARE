@@ -59,6 +59,15 @@ public:
     {
     }
 
+    template<typename GridLayout_t>
+    Grid(std::string const& name, GridLayout_t const& layout, PhysicalQuantity qty)
+        : Super{layout.allocSize(qty)}
+        , name_{name}
+        , qty_{qty}
+        , field_{name, qty, Super::data(), Super::shape()}
+    {
+    }
+
     NO_DISCARD std::string name() const { return name_; }
 
     NO_DISCARD constexpr PhysicalQuantity physicalQuantity() const { return qty_; }

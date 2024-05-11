@@ -36,7 +36,7 @@ using Field1D          = Field<dim, HybridQuantity::Scalar>;
 using Grid1D           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 using VecField1D       = VecField<Field1D, HybridQuantity>;
 using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
-using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D, GridYee1D>;
+using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
 using Ions1D           = Ions<IonPopulation1D, GridYee1D>;
 using Electromag1D     = Electromag<VecField1D>;
 using Electrons1D      = Electrons<Ions1D>;
@@ -216,6 +216,8 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
     std::unique_ptr<BasicHierarchy> hierarchy;
     ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D> resourcesManager;
     IonPopulation1D_P pop;
+    static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
+
     auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
     hierarchy->init();

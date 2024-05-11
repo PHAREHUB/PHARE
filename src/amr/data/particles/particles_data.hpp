@@ -112,21 +112,27 @@ namespace amr
         static constexpr int ghostSafeMapLayer = 1;
 
     public:
-        ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost)
+        ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost,
+                      std::string const& name)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)
             , domainParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
             , patchGhostParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
             , levelGhostParticles{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
             , levelGhostParticlesOld{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
             , levelGhostParticlesNew{grow(phare_box_from<dim>(getGhostBox()), ghostSafeMapLayer)}
-            , pack{&domainParticles, &patchGhostParticles, &levelGhostParticles,
-                   &levelGhostParticlesOld, &levelGhostParticlesNew}
+            , pack{name,
+                   &domainParticles,
+                   &patchGhostParticles,
+                   &levelGhostParticles,
+                   &levelGhostParticlesOld,
+                   &levelGhostParticlesNew}
             , interiorLocalBox_{AMRToLocal(box, this->getGhostBox())}
+            , name_{name}
         {
         }
 
 
-
+        auto& name() const { return name_; }
 
         ParticlesData()                     = delete;
         ParticlesData(ParticlesData const&) = delete;
@@ -441,12 +447,12 @@ namespace amr
         core::ParticlesPack<ParticleArray> pack;
 
 
-
     private:
         //! interiorLocalBox_ is the box, in local index space, that goes from the first to the last
         //! cell in our patch physical domain, i.e. "from dual physical start index to dual physical
         //! end index"
         SAMRAI::hier::Box interiorLocalBox_;
+        std::string name_;
 
         void copy_(SAMRAI::hier::Box const& overlapBox, ParticlesData const& sourceData)
         {

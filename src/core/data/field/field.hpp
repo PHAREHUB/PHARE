@@ -46,6 +46,13 @@ public:
     Field& operator=(Field&& source)      = default;
     Field& operator=(Field const& source) = default;
 
+    auto& operator=(Field* src)
+    {
+        setBuffer(src);
+        return *this;
+    }
+
+
     NO_DISCARD auto& name() const { return name_; }
     NO_DISCARD auto& physicalQuantity() const { return qty_; }
 
@@ -53,26 +60,24 @@ public:
 
     void setBuffer(Field* const field)
     {
+        PHARE_LOG_LINE_STR("");
         auto data = field ? field->data() : nullptr;
         if (data)
         {
+            PHARE_LOG_LINE_STR(field->name());
             assert(field->name() == this->name());
             Super::setShape(field->shape());
         }
         Super::setBuffer(data);
+        if (data)
+        {
+            assert(isUsable());
+        }
     }
 
     bool isUsable() const { return Super::data() != nullptr; }
     bool isSettable() const { return !isUsable(); }
 
-
-    struct Properties
-    {
-        std::string name;
-        PhysicalQuantity qty;
-    };
-
-    Properties getFieldNameAndQuantity() const { return {name(), physicalQuantity()}; }
 
 private:
     std::string name_{"No Name"};

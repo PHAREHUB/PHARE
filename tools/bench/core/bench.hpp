@@ -103,33 +103,6 @@ auto make_particles(std::size_t ppc, Box disperse_in, std::optional<int> seed = 
 
 
 
-template<typename Ions, typename... Args>
-auto single_pop_ions_from(Args&&... args)
-{
-    static_assert(sizeof...(args) == 5, "Expected 5 arguments");
-
-    auto const& [popName, rho, bulkV, flux, pack] = std::forward_as_tuple(args...);
-
-    initializer::PHAREDict dict;
-    dict["nbrPopulations"] = 1;
-    initializer::PHAREDict popdict;
-    popdict["name"]                 = std::string{popName};
-    popdict["mass"]                 = 1.0;
-    popdict["particle_initializer"] = initializer::PHAREDict{};
-    dict[popName]                   = popdict;
-    Ions ions{dict};
-    ions.setBuffer("rho", &rho);
-    auto& pop0 = ions.getRunTimeResourcesUserList()[0];
-    bulkV.set_on(std::get<0>(ions.getCompileTimeResourcesUserList()));
-    flux.set_on(std::get<0>(pop0.getCompileTimeResourcesUserList()));
-    ions.getRunTimeResourcesUserList()[0].setBuffer(popName, pack);
-    ions.getRunTimeResourcesUserList()[0].setBuffer(popName + "_rho", &rho);
-    ions.getRunTimeResourcesUserList()[0].density(); // throws on failure;
-
-    return ions;
-}
-
-
 } // namespace PHARE::core::bench
 
 

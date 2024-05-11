@@ -98,9 +98,9 @@ public:
 
     NO_DISCARD bool isSettable() const { return state.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface

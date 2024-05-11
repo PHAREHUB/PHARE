@@ -44,12 +44,12 @@ public:
         return Ve_.isSettable() && ions_.isSettable() && J_.isSettable();
     }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() const
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         return std::forward_as_tuple(Ve_, ions_, J_);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList()
+    NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         return std::forward_as_tuple(Ve_, ions_, J_);
     }
@@ -178,12 +178,12 @@ public:
 
     using PressureProperties = std::vector<PressureProperty>;
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() const
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         return std::forward_as_tuple(ions_, Pe_);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(ions_, Pe_); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(ions_, Pe_); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -251,12 +251,12 @@ public:
 
     NO_DISCARD bool isSettable() const { return fluxComput_.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() const
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         return std::forward_as_tuple(fluxComput_, pressureClosure_);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList()
+    NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         return std::forward_as_tuple(fluxComput_, pressureClosure_);
     }
@@ -327,12 +327,12 @@ public:
 
     NO_DISCARD bool isSettable() const { return momentModel_.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() const
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         return std::forward_as_tuple(momentModel_);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList()
+    NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         return std::forward_as_tuple(momentModel_);
     }
