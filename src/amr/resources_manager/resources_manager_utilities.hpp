@@ -72,7 +72,7 @@ namespace amr
             if constexpr (is_field_v<ResourceView>)
                 return typename ResourceManager::UserField_t{};
             else if constexpr (is_particles_v<ResourceView>)
-                return typename ResourceManager::UserParticle_t<ResourceView>{};
+                return typename ResourceManager::template UserParticle_t<ResourceView>{};
             else
                 throw std::runtime_error("bad condition");
         }
