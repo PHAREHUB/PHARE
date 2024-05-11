@@ -11,10 +11,6 @@ endif() # clang
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
 
-if(NOT DEFINED PHARE_MPIRUN_POSTFIX)
-  set (PHARE_MPIRUN_POSTFIX -q --bind-to none)
-endif()
-
 if(PGO_GEN)
   if(PGO_USE)
     message(FATAL_ERROR "cannot generate and use pgo at the same time.")
@@ -31,7 +27,7 @@ endif()
 
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
-
+set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})
 
 # now we see if we are running with configurator
 if (phare_configurator)

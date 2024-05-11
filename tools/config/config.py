@@ -140,20 +140,31 @@ def ifndef_define(var, val, buf, comment=None):
     return buf
 
 
+def deduce_mpi_type_from(version):
+    mpi_type = "unknown"
+    if any([s in version for s in ["Open MPI", "OpenMPI"]]):
+        return "OMPI"
+    if any([s in version for s in ["MPICH"]]):
+        return "MPICH"
+    return "unknown"
+
+
 def config_mpi_version(txtfile, h_file):
     with open(txtfile) as f:
         version = f.readline()
     buf = "\n"
-    if any([s in version for s in ["Open MPI", "OpenMPI"]]):
+    mpi_type = deduce_mpi_type_from(version)
+    if mpi_type == "OMPI":
         buf = ifndef_define(
             "OMPI_SKIP_MPICXX", 1, buf, "avoids default including mpicxx"
         )
-    if any([s in version for s in ["MPICH"]]):
+    elif mpi_type == "MPICH":
         buf = ifndef_define(
             "MPICH_SKIP_MPICXX", 1, buf, "avoids default including mpicxx"
         )
     with open(h_file, "w") as f:
         f.write(buf)
+    return version
 
 
 def try_compiler_dash_v(compiler):
@@ -210,16 +221,40 @@ def config_mpi():
     h_file = GENERATED_CONFIGS["mpi"]
     create_file(h_file)
     operators = dict(MPI_Get_library_version=config_mpi_version)
+    results = {}
     for f in FILES:
         local_name = local_file_format(f.name)
         if local_name in operators:
-            operators[local_name](f, h_file)
+            results[local_name] = operators[local_name](f, h_file)
+    return results
+
+
+def write_local_cmake_file(mpi_results):
+    with open("local.cmake", "w") as file:
+        file.write(
+            """cmake_minimum_required (VERSION 3.20.1)
+project(configured_phare)
+message("")
+message("!!PHARE CONFIGURATED!!")
+message("")
+
+"""
+        )
+
+        mpi_type = deduce_mpi_type_from(mpi_results["MPI_Get_library_version"])
+        if mpi_type == "OMPI":
+            # work around for https://github.com/open-mpi/ompi/issues/10761#issuecomment-1236909802
+            file.write(
+                """set (PHARE_MPIRUN_POSTFIX "${PHARE_MPIRUN_POSTFIX} -q --bind-to none")
+                """
+            )
 
 
 def main():
     DOT_PHARE_DIR.mkdir(exist_ok=True, parents=True)
-    config_mpi()
+    mpi_results = config_mpi()
     gen_system_file()
+    write_local_cmake_file(mpi_results)
 
 
 if __name__ == "__main__":
