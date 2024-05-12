@@ -2,6 +2,7 @@
 #define PHARE_HDF5_H5FILE_HPP
 
 #include "core/def.hpp"
+#include "core/def/phare_mpi.hpp"
 #include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
 
@@ -47,6 +48,10 @@ public:
             fapl.add(HighFive::MPIOFileAccess{MPI_COMM_WORLD, MPI_INFO_NULL});
 #else
             std::cout << "WARNING: PARALLEL HDF5 not available" << std::endl;
+            if (core::mpi_size() > 1)
+            {
+                throw std::runtime_error("HDF5 NOT PARALLEL!");
+            }
 #endif
         }
         return HiFile{path, flags, fapl};

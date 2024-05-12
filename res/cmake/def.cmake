@@ -27,12 +27,12 @@ endif()
 
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
-
+set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})
 
 # now we see if we are running with configurator
 if (phare_configurator)
   execute_process(
-    COMMAND ./tools/config/cmake.sh
+    COMMAND ./tools/config/cmake.sh "${CMAKE_COMMAND}" "${CMAKE_CXX_COMPILER}" "${Python_EXECUTABLE}"
     WORKING_DIRECTORY ${PHARE_PROJECT_DIR}
     COMMAND_ERROR_IS_FATAL ANY
   )
@@ -145,6 +145,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     set_property(TEST ${binary}        PROPERTY ENVIRONMENT "PYTHONPATH=${PHARE_PYTHONPATH}")
     # ASAN detects leaks by default, even in system/third party libraries
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
+    set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_SKIP_CLI=1 )
   endfunction(set_exe_paths_)
 
   function(add_phare_test_ binary directory)
@@ -181,17 +182,17 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   if(testMPI)
     function(add_phare_test binary directory)
-      add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ./${binary} WORKING_DIRECTORY ${directory})
+      add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ./${binary} WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary} ${directory})
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
-      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} python3 -u ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
 
     function(add_mpi_python3_test N name file directory)
-      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
     endfunction(add_mpi_python3_test)
 
@@ -254,7 +255,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       else()
         add_test(
             NAME py3_${target}_mpi_n_${N}
-            COMMAND mpirun -n ${N} python3 -u ${file} ${CLI_ARGS}
+            COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} ${CLI_ARGS}
             WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target}_mpi_n_${N})
       endif()
@@ -288,11 +289,11 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 endif()
 
 # useful to see what's available after importing a package
-function(phare_print_all_cmake_vars)
+function(phare_print_all_vars)
   get_cmake_property(_variableNames VARIABLES)
   list (SORT _variableNames)
   foreach (_variableName ${_variableNames})
       message(STATUS "${_variableName}=${${_variableName}}")
   endforeach()
-endfunction(phare_print_all_cmake_vars)
+endfunction(phare_print_all_vars)
 

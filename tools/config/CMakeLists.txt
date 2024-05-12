@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 3.20.1) # released April 8, 2021 - https://www.k
 
 project(phare_configurator)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 find_package(MPI REQUIRED COMPONENTS C)
 find_package(HDF5 REQUIRED COMPONENTS C)
 

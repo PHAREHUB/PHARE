@@ -5,6 +5,12 @@ from ..core import phare_utilities
 from . import global_vars
 from ..core import box as boxm
 from ..core.box import Box
+from ..core import parse_cli_args
+
+CLI_ARGS = parse_cli_args()
+
+
+# ------------------------------------------------------------------------------
 
 
 def supported_dimensions():
@@ -670,6 +676,9 @@ def checker(func):
         kwargs["resistivity"] = check_resistivity(**kwargs)
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
+
+        # kwargs["dry_run"] = CLI_ARGS.dry_run
+        # kwargs["write_reports"] = CLI_ARGS.reports
 
         return func(simulation_object, **kwargs)
 

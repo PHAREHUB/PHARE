@@ -1,7 +1,14 @@
+#
+#
+#
+
+
 import atexit
 import time as timem
 import numpy as np
+import pyphare.pharein as ph
 
+CLI_ARGS = ph.simulation.CLI_ARGS
 
 life_cycles = {}
 
@@ -31,8 +38,6 @@ def startMPI():
 
 class Simulator:
     def __init__(self, simulation, auto_dump=True, **kwargs):
-        import pyphare.pharein as ph
-
         assert isinstance(simulation, ph.Simulation)  # pylint: disable=no-member
         self.simulation = simulation
         self.cpp_hier = None  # HERE
@@ -58,9 +63,16 @@ class Simulator:
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
         try:
             from pyphare.cpp import cpp_lib
-            import pyphare.pharein as ph
 
             startMPI()
+
+            import pyphare.cpp.validate as validate_cpp
+
+            if all([not CLI_ARGS.dry_run, CLI_ARGS.write_reports]):
+                # not necessary during testing
+                validate_cpp.log_runtime_config()
+            validate_cpp.check_build_config_is_runtime_compatible()
+
             if self.log_to_file:
                 self._log_to_file()
             ph.populateDict()
@@ -90,6 +102,9 @@ class Simulator:
             if self.cpp_hier is None:
                 self.setup()
 
+            if CLI_ARGS.dry_run:
+                return self
+
             self.cpp_sim.initialize()
             self._auto_dump()  # first dump might be before first advance
             return self
@@ -113,6 +128,8 @@ class Simulator:
 
     def advance(self, dt=None):
         self._check_init()
+        if CLI_ARGS.dry_run:
+            return self
         if dt is None:
             dt = self.timeStep()
 
@@ -138,6 +155,8 @@ class Simulator:
         from pyphare.cpp import cpp_lib
 
         self._check_init()
+        if CLI_ARGS.dry_run:
+            return self
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -180,8 +199,6 @@ class Simulator:
 
     def reset(self):
         if self.cpp_sim is not None:
-            import pyphare.pharein as ph
-
             ph.clearDict()
         if self.cpp_dw is not None:
             self.cpp_dw.kill()
