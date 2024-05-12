@@ -10,8 +10,21 @@ options:
   -d, --dry-run  Validate but do not run simulations
 """
 
-
+import sys
 import dataclasses
+
+
+def disabled_for_testing():
+    # check if any module is loaded from PHARE tests directory
+    from pathlib import Path
+
+    test_dir = Path(__file__).resolve().parent.parent.parent.parent / "tests"
+    if test_dir.exists():
+        test_dir = str(test_dir)
+        for k, mod in sys.modules.items():
+            if hasattr(mod, "__file__") and mod.__file__ and test_dir in mod.__file__:
+                return True
+    return False
 
 
 @dataclasses.dataclass
@@ -21,6 +34,10 @@ class CliArgs:
 
 
 def parse_cli_args():
+    default_off = len(sys.argv) == 1 and disabled_for_testing()
+    if default_off:
+        return CliArgs()
+
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -36,7 +53,7 @@ def parse_cli_args():
         "--write_reports",
         help="Write build and runtime configs to disk",
         action="store_true",
-        default=False,
+        default=True,
     )
 
     return CliArgs(**vars(parser.parse_args()))

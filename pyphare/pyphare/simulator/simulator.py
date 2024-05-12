@@ -103,7 +103,7 @@ class Simulator:
                 self.setup()
 
             if CLI_ARGS.dry_run:
-                return
+                return self
 
             self.cpp_sim.initialize()
             self._auto_dump()  # first dump might be before first advance
@@ -129,7 +129,7 @@ class Simulator:
     def advance(self, dt=None):
         self._check_init()
         if CLI_ARGS.dry_run:
-            return
+            return self
         if dt is None:
             dt = self.timeStep()
 
@@ -156,7 +156,7 @@ class Simulator:
 
         self._check_init()
         if CLI_ARGS.dry_run:
-            return
+            return self
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()

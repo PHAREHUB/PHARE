@@ -8,12 +8,12 @@ from zipfile import ZipFile
 
 from tools.python3 import pushd
 
-SEARCH_PATHS = [os.getcwd()] + sys.path
+SEARCH_PATHS = list(set([os.getcwd()] + sys.path))
+
 
 def find_phare_dirs():
     phare_dirs = []
     for path in SEARCH_PATHS:
-        print("path", path)
         dot_phare_dir = Path(path) / ".phare"
         if dot_phare_dir.exists():
             phare_dirs += [dot_phare_dir]
