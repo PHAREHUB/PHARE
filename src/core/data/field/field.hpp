@@ -60,30 +60,41 @@ public:
 
     void setBuffer(Field* const field)
     {
-        PHARE_LOG_LINE_STR("");
         auto data = field ? field->data() : nullptr;
         if (data)
         {
-            PHARE_LOG_LINE_STR(field->name());
             assert(field->name() == this->name());
             Super::setShape(field->shape());
         }
         Super::setBuffer(data);
-        if (data)
-        {
-            assert(isUsable());
-        }
     }
 
     bool isUsable() const { return Super::data() != nullptr; }
     bool isSettable() const { return !isUsable(); }
 
 
+    template<typename... Args>
+    NO_DISCARD auto& operator()(Args&&... args)
+    {
+        PHARE_DEBUG_DO(                                                                 //
+            if (!isUsable()) throw std::runtime_error("Field is not usable: " + name_); //
+        )
+        return super()(std::forward<Args>(args)...);
+    }
+    template<typename... Args>
+    NO_DISCARD auto& operator()(Args&&... args) const
+    {
+        return const_cast<Field&>(*this)(std::forward<Args>(args)...);
+    }
+
+
 private:
     std::string name_{"No Name"};
     PhysicalQuantity qty_;
-};
 
+    Super& super() { return *this; }
+    Super const& super() const { return *this; }
+};
 
 
 

@@ -233,8 +233,8 @@ struct IonsBuffers
     ParticleArray alphaLevelGhostOld;
     ParticleArray alphaLevelGhostNew;
 
-    ParticlesPack<ParticleArray> protonPack{"protons"};
-    ParticlesPack<ParticleArray> alphaPack{"alpha"};
+    ParticlesPack<ParticleArray> protonPack;
+    ParticlesPack<ParticleArray> alphaPack;
 
     IonsBuffers(GridLayout const& layout)
         : ionDensity{"rho", HybridQuantity::Scalar::rho,
@@ -261,17 +261,11 @@ struct IonsBuffers
         , alphaLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , alphaLevelGhostOld{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , alphaLevelGhostNew{grow(layout.AMRBox(), ghostSafeMapLayer)}
+        , protonPack{"protons",         &protonDomain,        &protonPatchGhost,
+                     &protonLevelGhost, &protonLevelGhostOld, &protonLevelGhostNew}
+        , alphaPack{"alpha",          &alphaDomain,        &alphaPatchGhost,
+                    &alphaLevelGhost, &alphaLevelGhostOld, &alphaLevelGhostNew}
     {
-        protonPack.domainParticles        = &protonDomain;
-        protonPack.patchGhostParticles    = &protonPatchGhost;
-        protonPack.levelGhostParticles    = &protonLevelGhost;
-        protonPack.levelGhostParticlesOld = &protonLevelGhostOld;
-        protonPack.levelGhostParticlesNew = &protonLevelGhostNew;
-        alphaPack.domainParticles         = &alphaDomain;
-        alphaPack.patchGhostParticles     = &alphaPatchGhost;
-        alphaPack.levelGhostParticles     = &alphaLevelGhost;
-        alphaPack.levelGhostParticlesOld  = &alphaLevelGhostOld;
-        alphaPack.levelGhostParticlesNew  = &alphaLevelGhostNew;
     }
 
 
@@ -300,6 +294,10 @@ struct IonsBuffers
         , alphaLevelGhost{source.alphaLevelGhost}
         , alphaLevelGhostOld{source.alphaLevelGhostOld}
         , alphaLevelGhostNew{source.alphaLevelGhostNew}
+        , protonPack{"protons",         &protonDomain,        &protonPatchGhost,
+                     &protonLevelGhost, &protonLevelGhostOld, &protonLevelGhostNew}
+        , alphaPack{"alpha",          &alphaDomain,        &alphaPatchGhost,
+                    &alphaLevelGhost, &alphaLevelGhostOld, &alphaLevelGhostNew}
 
     {
         ionDensity.copyData(source.ionDensity);
@@ -310,17 +308,6 @@ struct IonsBuffers
         protonF.copyData(source.protonF);
         alphaF.copyData(source.alphaF);
         Vi.copyData(source.Vi);
-
-        protonPack.domainParticles        = &protonDomain;
-        protonPack.patchGhostParticles    = &protonPatchGhost;
-        protonPack.levelGhostParticles    = &protonLevelGhost;
-        protonPack.levelGhostParticlesOld = &protonLevelGhostOld;
-        protonPack.levelGhostParticlesNew = &protonLevelGhostNew;
-        alphaPack.domainParticles         = &alphaDomain;
-        alphaPack.patchGhostParticles     = &alphaPatchGhost;
-        alphaPack.levelGhostParticles     = &alphaLevelGhost;
-        alphaPack.levelGhostParticlesOld  = &alphaLevelGhostOld;
-        alphaPack.levelGhostParticlesNew  = &alphaLevelGhostNew;
     }
 
     void setBuffers(Ions& ions)

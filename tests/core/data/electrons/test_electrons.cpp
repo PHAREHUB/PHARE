@@ -154,7 +154,9 @@ struct ElectronsTest : public ::testing::Test
     GridND Nibuffer, NiProtons, Pe;
 
     ParticleArray_t domainParticles{layout.AMRBox()};
-    PartPackND pack{"particles", &domainParticles};
+    ParticleArray_t patchGhostParticles = domainParticles;
+    ParticleArray_t levelGhostParticles = domainParticles;
+    PartPackND pack{"particles", &domainParticles, &patchGhostParticles, &levelGhostParticles};
 
     IonsT ions;
     Electrons<IonsT> electrons;

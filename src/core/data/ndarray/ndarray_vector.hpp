@@ -65,13 +65,13 @@ struct NdArrayViewer
 
     {
         if constexpr (dim == 1)
-            return data[indexes[0]];
+            return at(data, nCells, indexes[0]);
 
         else if constexpr (dim == 2)
-            return data[indexes[1] + indexes[0] * nCells[1]];
+            return at(data, nCells, indexes[0], indexes[1]);
 
         else if constexpr (dim == 3)
-            return data[indexes[2] + indexes[1] * nCells[2] + indexes[0] * nCells[1] * nCells[2]];
+            return at(data, nCells, indexes[0], indexes[1], indexes[2]);
     }
 };
 
@@ -178,7 +178,7 @@ public:
     }
 
     NO_DISCARD auto data() const { return ptr_; }
-    NO_DISCARD std::size_t size() const
+    NO_DISCARD auto size() const
     {
         return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
     }

@@ -128,7 +128,6 @@ theIons::~theIons() {}
 
 TEST_F(theIons, areAContainerOfIonPopulations)
 {
-    //
     for (auto& pop : ions)
     {
         (void)pop;
@@ -153,12 +152,12 @@ TEST_F(theIons, areSettableUponConstruction)
 
 
 
-
+#ifndef NDEBUG // no throw in release mode! JUST SEGFAULTS! :D
 TEST_F(theIons, throwIfAccessingDensityWhileNotUsable)
 {
-    EXPECT_ANY_THROW(auto& n = ions.density());
+    EXPECT_ANY_THROW(auto& n = ions.density()(0));
 }
-
+#endif
 
 
 int main(int argc, char** argv)

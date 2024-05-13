@@ -63,141 +63,30 @@ namespace core
                    && momentumTensor_.isSettable();
         }
 
+        NO_DISCARD auto& domainParticles() const { return particles_.domainParticles(); }
+        NO_DISCARD auto& domainParticles() { return particles_.domainParticles(); }
 
+        NO_DISCARD auto& patchGhostParticles() const { return particles_.patchGhostParticles(); }
+        NO_DISCARD auto& patchGhostParticles() { return particles_.patchGhostParticles(); }
 
+        NO_DISCARD auto& levelGhostParticles() const { return particles_.levelGhostParticles(); }
+        NO_DISCARD auto& levelGhostParticles() { return particles_.levelGhostParticles(); }
 
-        NO_DISCARD auto nbrParticles() const
+        NO_DISCARD auto& levelGhostParticlesOld() { return particles_.levelGhostParticlesOld(); }
+        NO_DISCARD auto& levelGhostParticlesOld() const
         {
-            if (isUsable())
-            {
-                return particles_.domainParticles->size();
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot access to particles");
-            }
+            return particles_.levelGhostParticlesOld();
+        }
+
+        NO_DISCARD auto& levelGhostParticlesNew() { return particles_.levelGhostParticlesNew(); }
+        NO_DISCARD auto& levelGhostParticlesNew() const
+        {
+            return particles_.levelGhostParticlesNew();
         }
 
 
-
-
-        NO_DISCARD auto& domainParticles() const
-        {
-            if (isUsable())
-            {
-                return *particles_.domainParticles;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD auto& domainParticles()
-        {
-            return const_cast<ParticleArray&>(
-                static_cast<IonPopulation const*>(this)->domainParticles());
-        }
-
-
-
-        NO_DISCARD auto& patchGhostParticles() const
-        {
-            if (isUsable())
-            {
-                return *particles_.patchGhostParticles;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD auto& patchGhostParticles()
-        {
-            return const_cast<ParticleArray&>(
-                static_cast<IonPopulation const*>(this)->patchGhostParticles());
-        }
-
-
-        NO_DISCARD auto& levelGhostParticles() const
-        {
-            if (isUsable())
-            {
-                return *particles_.levelGhostParticles;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD auto& levelGhostParticles()
-        {
-            return const_cast<ParticleArray&>(
-                static_cast<IonPopulation const*>(this)->levelGhostParticles());
-        }
-
-
-
-
-        NO_DISCARD ParticleArray& levelGhostParticlesOld()
-        {
-            if (isUsable())
-            {
-                return *particles_.levelGhostParticlesOld;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD ParticleArray const& levelGhostParticlesOld() const
-        {
-            return const_cast<IonPopulation*>(this)->levelGhostParticlesOld();
-        }
-
-
-
-        NO_DISCARD ParticleArray& levelGhostParticlesNew()
-        {
-            if (isUsable())
-            {
-                return *particles_.levelGhostParticlesNew;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD ParticleArray const& levelGhostParticlesNew() const
-        {
-            return const_cast<IonPopulation*>(this)->levelGhostParticlesNew();
-        }
-
-
-
-        NO_DISCARD field_type const& density() const
-        {
-            if (isUsable())
-            {
-                return rho_;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to density field");
-            }
-        }
-
-
-        NO_DISCARD field_type& density()
-        {
-            return const_cast<field_type&>(static_cast<IonPopulation const*>(this)->density());
-        }
-
-
+        NO_DISCARD field_type const& density() const { return rho_; }
+        NO_DISCARD field_type& density() { return rho_; }
 
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }

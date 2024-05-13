@@ -59,47 +59,23 @@ namespace core
         NO_DISCARD auto size() const { return nbrPopulations(); }
 
 
-        NO_DISCARD field_type const& density() const
-        {
-            if (!isUsable())
-                throw std::runtime_error("Error - cannot access density data");
-            return rho_;
-        }
-
-        NO_DISCARD field_type& density()
-        {
-            if (!isUsable())
-                throw std::runtime_error("Error - cannot access density data");
-            return rho_;
-        }
+        NO_DISCARD field_type const& density() const { return rho_; }
+        NO_DISCARD field_type& density() { return rho_; }
 
         NO_DISCARD field_type const& massDensity() const
         {
-            if (isUsable())
-                return sameMasses_ ? rho_ : massDensity_;
-            throw std::runtime_error("Error - cannot access density data");
+            return sameMasses_ ? rho_ : massDensity_;
         }
-
-
-
-        NO_DISCARD field_type& massDensity()
-        {
-            if (isUsable())
-                return sameMasses_ ? rho_ : massDensity_;
-            else
-                throw std::runtime_error("Error - cannot access density data");
-        }
+        NO_DISCARD field_type& massDensity() { return sameMasses_ ? rho_ : massDensity_; }
 
 
         NO_DISCARD vecfield_type const& velocity() const { return bulkVelocity_; }
-
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
         NO_DISCARD std::string static densityName() { return "rho"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
 
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
-
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
         void computeDensity()

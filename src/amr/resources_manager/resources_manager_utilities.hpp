@@ -65,7 +65,7 @@ namespace amr
     bool constexpr static is_resource_v = is_resource<ResourceView>::value;
 
     template<typename ResourceManager, typename ResourceView>
-    struct ResourceResolver
+    class ResourceResolver
     {
         auto constexpr static resolve_t()
         {

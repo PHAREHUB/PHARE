@@ -20,6 +20,7 @@ namespace core
     {
         static constexpr std::size_t dimension = ParticleArray::dimension;
         using particle_array_type              = ParticleArray;
+        using pointer_tuple_t                  = tuple_fixed_type<ParticleArray*, 3>;
 
         ParticlesPack(ParticlesPack const& source)            = default;
         ParticlesPack(ParticlesPack&& source)                 = default;
@@ -28,20 +29,104 @@ namespace core
 
         void setBuffer(ParticlesPack* const source)
         {
-            (*this) = source ? *source : ParticlesPack{name_};
+            (*this) = source ? *source : ParticlesPack{_name};
         }
 
-        std::string name_;
-        ParticleArray* domainParticles{nullptr};
-        ParticleArray* patchGhostParticles{nullptr};
-        ParticleArray* levelGhostParticles{nullptr};
-        ParticleArray* levelGhostParticlesOld{nullptr};
-        ParticleArray* levelGhostParticlesNew{nullptr};
+        std::string _name;
+        ParticleArray* _domainParticles{nullptr};
+        ParticleArray* _patchGhostParticles{nullptr};
+        ParticleArray* _levelGhostParticles{nullptr};
+        ParticleArray* _levelGhostParticlesOld{nullptr};
+        ParticleArray* _levelGhostParticlesNew{nullptr};
 
-        auto& name() const { return name_; }
-        NO_DISCARD bool isUsable() const { return domainParticles != nullptr; }
-        NO_DISCARD bool isSettable() const { return domainParticles == nullptr; }
+        auto& name() const { return _name; }
+
+        auto _as_tuple() const
+        {
+            return std::forward_as_tuple(_domainParticles, _patchGhostParticles,
+                                         _levelGhostParticles);
+        }
+
+        NO_DISCARD bool isUsable() const
+        {
+            auto tup = _as_tuple();
+            return for_N_all<std::tuple_size_v<pointer_tuple_t>>(
+                [&](auto i) { return std::get<i>(tup) != nullptr; });
+        }
+
+
+        NO_DISCARD bool isSettable() const
+        {
+            auto tup = _as_tuple();
+            return for_N_all<std::tuple_size_v<pointer_tuple_t>>(
+                [&](auto i) { return std::get<i>(tup) == nullptr; });
+        }
+
+
+        NO_DISCARD auto& domainParticles() const
+        {
+            if (_domainParticles)
+                return *_domainParticles;
+            throw std::runtime_error("Error - cannot provide access to domainParticles");
+        }
+        NO_DISCARD auto& domainParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<ParticlesPack const*>(this)->domainParticles());
+        }
+
+
+        NO_DISCARD auto& patchGhostParticles() const
+        {
+            if (_patchGhostParticles)
+                return *_patchGhostParticles;
+            throw std::runtime_error("Error - cannot provide access to patchGhostParticles");
+        }
+        NO_DISCARD auto& patchGhostParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<ParticlesPack const*>(this)->patchGhostParticles());
+        }
+
+
+        NO_DISCARD auto& levelGhostParticles() const
+        {
+            if (_levelGhostParticles)
+                return *_levelGhostParticles;
+            throw std::runtime_error("Error - cannot provide access to levelGhostParticles");
+        }
+        NO_DISCARD auto& levelGhostParticles()
+        {
+            return const_cast<ParticleArray&>(
+                static_cast<ParticlesPack const*>(this)->levelGhostParticles());
+        }
+
+
+        NO_DISCARD ParticleArray& levelGhostParticlesOld()
+        {
+            if (_levelGhostParticlesOld)
+                return *_levelGhostParticlesOld;
+            throw std::runtime_error("Error - cannot provide access to levelGhostParticlesOld");
+        }
+        NO_DISCARD ParticleArray const& levelGhostParticlesOld() const
+        {
+            return const_cast<ParticlesPack*>(this)->levelGhostParticlesOld();
+        }
+
+
+        NO_DISCARD ParticleArray& levelGhostParticlesNew()
+        {
+            if (_levelGhostParticlesNew)
+                return *_levelGhostParticlesNew;
+            throw std::runtime_error("Error - cannot provide access to levelGhostParticlesNew");
+        }
+        NO_DISCARD ParticleArray const& levelGhostParticlesNew() const
+        {
+            return const_cast<ParticlesPack*>(this)->levelGhostParticlesNew();
+        }
     };
+
+
 } // namespace core
 } // namespace PHARE
 
