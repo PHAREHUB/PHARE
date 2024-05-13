@@ -6,6 +6,10 @@
 #include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
 
+#include "core/utilities/types.hpp"
+#include "core/utilities/mpi_utils.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
+
 namespace PHARE::hdf5::h5
 {
 using HiFile = HighFive::File;
@@ -144,7 +148,7 @@ public:
         // assumes all keyPaths and values are identical, and no null patches
         // clang-format off
         PHARE_DEBUG_DO(
-            auto paths = core::mpi::collect(keyPath, core::mpi::size());
+            auto const paths = core::mpi::collect(keyPath, core::mpi::size());
             for (auto const& path : paths)
                 PHARE_LOG_LINE_STR(std::to_string(core::mpi::size()) << " " << path)
             if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
