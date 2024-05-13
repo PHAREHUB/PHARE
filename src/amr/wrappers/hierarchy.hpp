@@ -90,6 +90,8 @@ class Hierarchy : public HierarchyRestarter, public SAMRAI::hier::PatchHierarchy
 {
 public:
     NO_DISCARD static auto make();
+
+    NO_DISCARD auto const& boundaryConditions() const { return boundaryConditions_; }
     NO_DISCARD auto const& cellWidth() const { return cellWidth_; }
     NO_DISCARD auto const& domainBox() const { return domainBox_; }
     NO_DISCARD auto const& origin() const { return origin_; }
@@ -112,12 +114,14 @@ protected:
               std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
               std::array<int, dimension> const domainBox,
               std::array<double, dimension> const origin,
-              std::array<double, dimension> const cellWidth);
+              std::array<double, dimension> const cellWidth,
+              std::array<std::string, dimension> const boundaryConditions);
 
 private:
     std::vector<double> const cellWidth_;
     std::vector<int> const domainBox_;
     std::vector<double> const origin_;
+    std::vector<std::string> boundaryConditions_;
 };
 
 
@@ -201,13 +205,15 @@ Hierarchy::Hierarchy(initializer::PHAREDict const& dict,
                      std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
                      std::array<int, dimension> const domainBox,
                      std::array<double, dimension> const origin,
-                     std::array<double, dimension> const cellWidth)
+                     std::array<double, dimension> const cellWidth,
+                     std::array<std::string, dimension> const boundaryConditions)
     // needs to open restart database before SAMRAI::PatchHierarcy constructor
     : HierarchyRestarter{dict}
     , SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
     , cellWidth_(cellWidth.data(), cellWidth.data() + dimension)
     , domainBox_(domainBox.data(), domainBox.data() + dimension)
     , origin_(origin.data(), origin.data() + dimension)
+    , boundaryConditions_(boundaryConditions.data(), boundaryConditions.data() + dimension)
 {
 }
 
@@ -385,7 +391,6 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
 }
 
 
-
 template<std::size_t _dimension>
 DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict)
     : Hierarchy{
@@ -396,7 +401,8 @@ DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict
         patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
         shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
         parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
-        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize")}
+        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"),
+        parseDimXYZType<std::string, dimension>(dict["simulation"]["grid"], "boundary_type")}
 {
 }
 
