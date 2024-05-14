@@ -203,7 +203,7 @@ def gen_system_file():
         python_version=get_python_version(os.environ["PYTHON_EXECUTABLE"]),
         uname=subprocess_run("uname -a"),
         git_hash=subprocess_run("git log -1 --pretty=format:%H", "git log failed"),
-        git_message=subprocess_run("git log -1"),
+        git_message=subprocess_run("git log -1", "git log failed"),
     )
     with open(DOT_PHARE_DIR / "build_config.json", "w") as f:
         json.dump(dataclasses.asdict(settings), f)
