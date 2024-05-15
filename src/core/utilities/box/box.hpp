@@ -159,8 +159,8 @@ public:
     }
 
 public:
-    Point<Type, dim> operator*() { return index_; }
-
+    auto& operator*() const { return index_; }
+    auto operator->() const { return &index_; }
 
     void increment(std::size_t idim)
     {

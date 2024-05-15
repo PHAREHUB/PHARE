@@ -25,7 +25,7 @@ public:
     virtual ~LoadBalancerEstimator() = default;
 
     virtual void estimate(SAMRAI::hier::PatchLevel& level,
-                          PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>& model)
+                          solver::IPhysicalModel<amr::SAMRAI_Types>& model)
         = 0;
 
 

@@ -45,6 +45,7 @@ PYBIND11_MODULE(dictator, m)
     m.def("add_size_t", add<std::size_t>, "add_size_t");
     m.def("add_optional_size_t", add<std::optional<std::size_t>>, "add_optional_size_t");
 
+    m.def("add_bool", add<bool>, "add");
     m.def("add_int", add<int>, "add");
     m.def("add_vector_int", add<std::vector<int>>, "add");
     m.def("add_double", add<double>, "add");

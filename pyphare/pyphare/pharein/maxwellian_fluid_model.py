@@ -72,6 +72,7 @@ class MaxwellianFluidModel(object):
         vthy=None,
         vthz=None,
         init={},
+        density_cut_off=1e-16,
     ):
         """
         add a particle population to the current model
@@ -123,6 +124,7 @@ class MaxwellianFluidModel(object):
                 "vthz": vthz,
                 "nbrParticlesPerCell": nbr_part_per_cell,
                 "init": init,
+                "density_cut_off": density_cut_off,
             }
         }
 
