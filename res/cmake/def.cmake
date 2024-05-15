@@ -2,11 +2,16 @@
 
 # Per compiler CXXFLAGS
 set (PHARE_FLAGS ${PHARE_FLAGS} )
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set (PHARE_FLAGS ${PHARE_FLAGS} )
-else() # !Clang
-  set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
-endif() # clang
+# mostly for silencing spurious Werrors
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  # --param=min-pagesize=0    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105523
+  unset(CHECK_SUPPORTS_FLAG CACHE)
+  check_cxx_compiler_flag( --param=min-pagesize=0 CHECK_SUPPORTS_FLAG)
+  if (${CHECK_SUPPORTS_FLAG})
+    set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+  endif()
+  unset(CHECK_SUPPORTS_FLAG CACHE)
+endif() # compiler is GNU
 
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
