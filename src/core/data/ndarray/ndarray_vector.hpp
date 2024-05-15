@@ -214,15 +214,15 @@ private:
 
 
 template<bool c_ordering = true, typename DataType, std::size_t dim>
-auto make_array_view(DataType* data, std::array<std::uint32_t, dim> shape)
+auto make_array_view(DataType* data, std::array<std::uint32_t, dim> const& shape)
 {
-    return NdArrayView<dim, DataType, DataType const*, c_ordering>{data, shape};
+    return NdArrayView<dim, DataType, c_ordering>{data, shape};
 }
 
 template<bool c_ordering = true, typename DataType, std::size_t dim>
 auto make_array_view(DataType const* const data, std::array<std::uint32_t, dim> shape)
 {
-    return NdArrayView<dim, DataType const, DataType const* const, c_ordering>{data, shape};
+    return NdArrayView<dim, DataType const, c_ordering>{data, shape};
 }
 
 
