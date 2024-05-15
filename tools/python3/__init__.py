@@ -11,10 +11,13 @@ def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwa
     if print_cmd:
         print(f"running: {cmd}")
     try:
-        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check, **kwargs)
-    except subprocess.CalledProcessError as e: # only triggers on failure if check=True
+        return subprocess.run(
+            cmd, shell=shell, capture_output=capture_output, check=check, **kwargs
+        )
+    except subprocess.CalledProcessError as e:  # only triggers on failure if check=True
         print(f"run failed with error: {e}\n\t{e.stdout}\n\t{e.stderr} ")
         raise RuntimeError(decode_bytes(e.stderr))
+
 
 def run_mp(cmds, N_CORES=None, **kwargs):
     """
@@ -65,13 +68,46 @@ def scan_dir(path, files_only=False, dirs_only=False, drop=[]):
         if all([check(entry) for check in checks])
     ]
 
+
 import contextlib
+
+
 @contextlib.contextmanager
 def pushd(new_cwd):
     import os
+
     cwd = os.getcwd()
     os.chdir(new_cwd)
     try:
         yield
     finally:
         os.chdir(cwd)
+
+
+@contextlib.contextmanager
+def extend_env_path(paths):
+    import os
+
+    if isinstance(paths, str):
+        paths = [paths]
+    old_path = os.environ["PATH"]
+    for path in paths:
+        os.environ["PATH"] += os.pathsep + path
+    try:
+        yield
+    finally:
+        os.environ["PATH"] = old_path
+
+
+@contextlib.contextmanager
+def extend_sys_path(paths):
+    import sys
+
+    if isinstance(paths, str):
+        paths = [paths]
+    old_path = sys.path[:]
+    sys.path.extend(paths)
+    try:
+        yield
+    finally:
+        sys.path = old_path

@@ -42,13 +42,15 @@ public:
         InputFunction density, std::array<InputFunction, 3> const& bulkVelocity,
         std::array<InputFunction, 3> const& thermalVelocity, double const particleCharge,
         std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
-        Basis const basis                                = Basis::Cartesian,
-        std::array<InputFunction, 3> const magneticField = {nullptr, nullptr, nullptr})
+        Basis const basis                                 = Basis::Cartesian,
+        std::array<InputFunction, 3> const& magneticField = {nullptr, nullptr, nullptr},
+        double densityCutOff                              = 1e-5)
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}
         , magneticField_{magneticField}
         , particleCharge_{particleCharge}
+        , densityCutOff_{densityCutOff}
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
         , rngSeed_{seed}
@@ -86,6 +88,7 @@ private:
     std::array<InputFunction, 3> magneticField_;
 
     double particleCharge_;
+    double densityCutOff_ = 1e-5;
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
     std::optional<std::size_t> rngSeed_;
@@ -100,6 +103,7 @@ public:
                             FunctionArray& thermalVelocity, FunctionArray& magneticField,
                             Basis const& basis, Coords const&... coords)
         : _n{density(coords...)}
+
     {
         static_assert(sizeof...(coords) <= 3, "can only provide up to 3 coordinates");
         for (std::uint32_t i = 0; i < 3; i++)
@@ -123,7 +127,7 @@ private:
         return {v[0]->data(), v[1]->data(), v[2]->data()};
     }
 
-    std::shared_ptr<PHARE::core::Span<double>> const _n;
+    std::shared_ptr<PHARE::core::Span<double>> const _n, _ppc;
     std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> _B, _V, _Vth;
 };
 
@@ -174,11 +178,14 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
 
-    for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); flatCellIdx++)
+    for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
     {
+        if (n[flatCellIdx] < densityCutOff_)
+            continue;
+
         auto const cellWeight   = n[flatCellIdx] / nbrParticlePerCell_;
         auto const AMRCellIndex = layout.localToAMR(point(flatCellIdx, ndCellIndices));
-
+        auto const iCell        = AMRCellIndex.template toArray<int>();
         std::array<double, 3> particleVelocity;
         std::array<std::array<double, 3>, 3> basis;
 
@@ -197,8 +204,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(Particle{cellWeight, particleCharge_,
-                                            AMRCellIndex.template toArray<int>(),
+            particles.emplace_back(Particle{cellWeight, particleCharge_, iCell,
                                             deltas(deltaDistrib, randGen), particleVelocity});
         }
     }

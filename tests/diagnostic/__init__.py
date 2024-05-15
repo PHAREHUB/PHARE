@@ -20,6 +20,12 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
     if timestamps is None:
         timestamps = all_timestamps(sim)
 
+    ph.InfoDiagnostics(
+        quantity="particle_count",
+        write_timestamps=timestamps,
+        compute_timestamps=timestamps,
+    )
+
     ph.MetaDiagnostics(
         quantity="tags",
         write_timestamps=timestamps,

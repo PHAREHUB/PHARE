@@ -3,7 +3,7 @@
 #ifndef PHARE_CONCRERTE_LOAD_BALANCER_HYBRID_STRATEGY_HOMOGENEOUS_HPP
 #define PHARE_CONCRERTE_LOAD_BALANCER_HYBRID_STRATEGY_HOMOGENEOUS_HPP
 
-#include <SAMRAI/hier/PatchLevel.h>
+
 #include <SAMRAI/pdat/CellData.h>
 #include <string>
 
@@ -15,7 +15,6 @@
 
 
 
-
 namespace PHARE::amr
 {
 template<typename PHARE_T>
@@ -24,14 +23,16 @@ class ConcreteLoadBalancerHybridStrategyHomogeneous : public LoadBalancerHybridS
 public:
     using HybridModel     = typename PHARE_T::HybridModel_t;
     using gridlayout_type = typename HybridModel::gridlayout_type;
+    using amr_types       = typename HybridModel::amr_types;
+    using level_t         = typename amr_types::level_t;
+    using cell_data_t     = SAMRAI::pdat::CellData<double>;
 
     ConcreteLoadBalancerHybridStrategyHomogeneous(int const id)
         : id_{id}
     {
     }
 
-    void compute(SAMRAI::hier::PatchLevel& level,
-                 PHARE::solver::IPhysicalModel<SAMRAI_Types>& model) override;
+    void compute(level_t& level, PHARE::solver::IPhysicalModel<amr_types>& model) override;
 
 
 private:
@@ -42,29 +43,13 @@ private:
 
 template<typename PHARE_T>
 void ConcreteLoadBalancerHybridStrategyHomogeneous<PHARE_T>::compute(
-    SAMRAI::hier::PatchLevel& level, PHARE::solver::IPhysicalModel<SAMRAI_Types>& model)
+    level_t& level, PHARE::solver::IPhysicalModel<amr_types>& model)
 {
-    static auto constexpr dimension = HybridModel::dimension;
-    auto& hybridModel               = dynamic_cast<HybridModel&>(model);
-    auto& resourcesManager          = hybridModel.resourcesManager;
-    auto& ions                      = hybridModel.state.ions;
-
-    bool constexpr c_ordering = false;
-
     for (auto& patch : level)
     {
-        auto const& layout = layoutFromPatch<gridlayout_type>(*patch);
-
-        auto patch_data_lb
-            = dynamic_cast<SAMRAI::pdat::CellData<double>*>(patch->getPatchData(this->id_).get());
+        auto const& layout     = layoutFromPatch<gridlayout_type>(*patch);
+        auto patch_data_lb     = dynamic_cast<cell_data_t*>(patch->getPatchData(this->id_).get());
         auto load_balancer_val = patch_data_lb->getPointer();
-
-        const auto& box = patch->getBox();
-
-        auto lb_view = core::NdArrayView<dimension, double, double*, c_ordering>(load_balancer_val,
-                                                                                 layout.nbrCells());
-
-        auto _ = resourcesManager->setOnPatch(*patch, ions);
 
         // The view on "load_balancer_val" do not have any ghost cells, meaning that this patch
         // data lies on a box defind by the nbr of cells in the physical domain
@@ -73,64 +58,10 @@ void ConcreteLoadBalancerHybridStrategyHomogeneous<PHARE_T>::compute(
         // to get the AMRLocatStart and AMRLocalEnd.
         // Then, we build "by hand" the local index for the "lb_view" considering that the nbr
         // of ghost cell for this patch data is null.
-        auto amr_box = layout.AMRBox();
 
         // The lb_view is a CellData, meaning that it is dual as the index of an amr box
-        auto amr_start = amr_box.lower;
-        auto amr_end   = amr_box.upper;
 
-        // nbr of cells in the physical domain
-        auto nbrCells = layout.nbrCells();
-
-
-
-
-        if constexpr (dimension == 1)
-        {
-            for (auto i_loc = 0, i_amr = amr_start[0]; i_loc < nbrCells[0]; ++i_loc, ++i_amr)
-            {
-                auto amr_point{core::Point{i_amr}};
-                auto amr_index = amr_point.template toArray<int>();
-
-                lb_view(i_loc) = 1;
-            }
-        }
-
-
-
-        if constexpr (dimension == 2)
-        {
-            for (auto i_loc = 0, i_amr = amr_start[0]; i_loc < nbrCells[0]; ++i_loc, ++i_amr)
-            {
-                for (auto j_loc = 0, j_amr = amr_start[1]; j_loc < nbrCells[1]; ++j_loc, ++j_amr)
-                {
-                    auto amr_point{core::Point{i_amr, j_amr}};
-                    auto amr_index = amr_point.template toArray<int>();
-
-                    lb_view(i_loc, j_loc) = 1;
-                    std::cout << lb_view(i_loc, j_loc) << std::endl;
-                }
-            }
-        }
-
-
-        if constexpr (dimension == 3)
-        {
-            for (auto i_loc = 0, i_amr = amr_start[0]; i_loc < nbrCells[0]; ++i_loc, ++i_amr)
-            {
-                for (auto j_loc = 0, j_amr = amr_start[1]; j_loc < nbrCells[1]; ++j_loc, ++j_amr)
-                {
-                    for (auto k_loc = 0, k_amr = amr_start[2]; k_loc < nbrCells[2];
-                         ++k_loc, ++k_amr)
-                    {
-                        auto amr_point{core::Point{i_amr, j_amr, k_amr}};
-                        auto amr_index = amr_point.template toArray<int>();
-
-                        lb_view(i_loc, j_loc, k_loc) = 1;
-                    }
-                }
-            }
-        }
+        std::fill(load_balancer_val, load_balancer_val + core::product(layout.nbrCells()), 1);
     }
 }
 

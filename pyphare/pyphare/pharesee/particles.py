@@ -272,3 +272,32 @@ def _arg_sort(particles):
     if particles.ndim == 3:
         z1 = particles.iCells[:, 2] + particles.deltas[:, 2]
         return np.argsort(np.sqrt((x1**2 + y1**2 + z1**2)) / (x1 / y1 / z1))
+
+
+def single_patch_per_level_per_pop_from(hier, only_keep_L0=True):  # dragons
+    for tidx in hier.times():
+        if only_keep_L0:
+            hier.time_hier[tidx] = {0: hier.time_hier[tidx][0]}
+
+        patch_levels = hier.time_hier[tidx]
+
+        for level_idx in patch_levels.keys():
+            patch_level = patch_levels[level_idx]
+
+            patch0 = patch_level.patches[0]
+            particles = {}  # str:[]
+
+            for key in patch0.patch_datas.keys():
+                if isinstance(patch0[key].dataset, Particles):
+                    particles[key] = []
+
+            for patch in patch_level.patches:
+                for patch_data_key in patch.patch_datas.keys():
+                    particles[key] += [patch[patch_data_key].dataset]
+
+            for key in particles.keys():
+                patch0[key].dataset = aggregate(particles[key])
+
+            patch_levels[level_idx].patches = [patch0]  # just one patch
+
+    return hier

@@ -1,3 +1,4 @@
+import os
 import unittest
 from datetime import datetime
 import pyphare.pharein as ph, numpy as np
@@ -189,6 +190,55 @@ def diff_boxes(slice1, slice2, box, atol=None):
             z = z + box.lower[2]
             boxes += [Box([x, y, z], [x, y, z])]
     return boxes
+
+
+#
+#
+
+
+def caliper_func_times_json(data_dir, mpi_rank=0):
+    return f"{os.path.join(data_dir, f'func_times.{mpi_rank}.json')}"
+
+
+def caliper_recorder_cali(data_dir, mpi_rank=0):
+    return f"{os.path.join(data_dir, f'recorder.{mpi_rank}.cali')}"
+
+
+CALIPER_MODES = [
+    # "callpath:event:recorder:trace",
+    "report,event,trace,timestamp,recorder",  # light
+    "alloc,aggregate,cpuinfo,memusage,debug,env,event,loop_monitor,region_monitor,textlog,io,pthread,sysalloc,recorder,report,timestamp,statistics,spot,trace,validator,mpi,mpireport,mpiflush",  # heavy
+]
+
+
+def activate_caliper(data_dir, mode_idx=0):
+    from pyphare.cpp import cpp_lib
+
+    rank = cpp_lib().mpi_rank()
+    env = os.environ
+
+    # env["CALI_SERVICES_ENABLE"] = "event,trace,timer,report"
+    # env["CALI_REPORT_CONFIG"] = "format json"
+    # env["CALI_REPORT_FILENAME"] = "trace.json"
+
+    # env[
+    #     "CALI_CONFIG"
+    # ] = "hatchet-region-profile,topdown-counters.all,output.format=json"
+
+    # # env["CALI_CONFIG_PROFILE"] = "callstack-trace"
+    # env["CALI_SERVICES_ENABLE"] = CALIPER_MODES[mode_idx]
+
+    # env["CALI_CONFIG"] = "hatchet-region-profile"
+
+    # # env["CALI_CALLPATH_USE_NAME"] = "true"
+
+    # env["CALI_REPORT_FILENAME"] = caliper_func_times_json(data_dir, rank)
+    # env[
+    #     "CALI_REPORT_CONFIG"
+    # ] = "SELECT function,time.duration ORDER BY time.duration FORMAT json"
+    # env["CALI_RECORDER_FILENAME"] = caliper_recorder_cali(data_dir, rank)
+
+    # print("os.environ", os.environ)
 
 
 class SimulatorTest(unittest.TestCase):

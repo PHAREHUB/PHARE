@@ -105,7 +105,6 @@ protected:
         dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
             = static_cast<InitFunctionT>(vthz);
 
-
         dict["ions"]["pop1"]["particle_initializer"]["nbrPartPerCell"] = int{100};
         dict["ions"]["pop1"]["particle_initializer"]["charge"]         = -1.;
         dict["ions"]["pop1"]["particle_initializer"]["basis"]          = std::string{"Cartesian"};

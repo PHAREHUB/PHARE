@@ -2,7 +2,7 @@
 #
 #
 
-
+import datetime
 import atexit
 import time as timem
 import numpy as np
@@ -33,6 +33,28 @@ def startMPI():
         from pyphare.cpp import cpp_lib
 
         life_cycles["samrai"] = cpp_lib().SamraiLifeCycle()
+
+
+def print_rank0(*args, **kwargs):
+    from pyphare.cpp import cpp_lib
+
+    if cpp_lib().mpi_rank() == 0:
+        print(*args, **kwargs)
+
+
+def plot_timestep_time(timestep_times):
+    from pyphare.cpp import cpp_lib
+
+    if cpp_lib().mpi_rank() == 0:
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+        ax.plot(timestep_times)
+        plt.ylabel("timestep time")
+        plt.xlabel("timestep")
+        fig.savefig("timestep_times.png")
+
+    cpp_lib().mpi_barrier()
 
 
 class Simulator:
@@ -120,8 +142,7 @@ class Simulator:
         import sys
         from pyphare.cpp import cpp_lib
 
-        if cpp_lib().mpi_rank() == 0:
-            print(e)
+        print_rank0(e)
         sys.exit(1)
 
     def advance(self, dt=None):
@@ -149,7 +170,7 @@ class Simulator:
             self.timeStep(),
         )
 
-    def run(self):
+    def run(self, plot_times=False):
         from pyphare.cpp import cpp_lib
 
         self._check_init()
@@ -170,8 +191,11 @@ class Simulator:
                 out = f"t = {t:8.5f}  -  {ticktock:6.5f}sec  - total {np.sum(perf):7.4}sec"
                 print(out, end=self.print_eol)
 
-        print("mean advance time = {}".format(np.mean(perf)))
-        print("total advance time = {}".format(np.sum(perf)))
+        print_rank0(f"mean advance time = {np.mean(perf)}")
+        print_rank0(f"total advance time = {datetime.timedelta(seconds=np.sum(perf))}")
+
+        if plot_times:
+            plot_timestep_time(perf)
 
         return self.reset()
 
