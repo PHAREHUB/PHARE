@@ -22,11 +22,6 @@ namespace core
         using particle_array_type              = ParticleArray;
         using pointer_tuple_t                  = tuple_fixed_type<ParticleArray*, 3>;
 
-        ParticlesPack(ParticlesPack const& source)            = default;
-        ParticlesPack(ParticlesPack&& source)                 = default;
-        ParticlesPack& operator=(ParticlesPack&& source)      = default;
-        ParticlesPack& operator=(ParticlesPack const& source) = default;
-
         void setBuffer(ParticlesPack* const source)
         {
             (*this) = source ? *source : ParticlesPack{_name};
