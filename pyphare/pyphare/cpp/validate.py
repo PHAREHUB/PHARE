@@ -67,10 +67,19 @@ def check_build_config_is_runtime_compatible(strict=True):
             raise e
 
 
+def get_git_hash():
+    build_config: dict = cpp.build_config()
+
+    if "PHARE_CONFIG_ERROR" in build_config:
+        return "git hash not available"
+    return build_config["GIT_HASH"]
+
+
 @dataclasses.dataclass
 class RuntimeSettings:
     python_version: str
     python_binary: str
+    git_hash: str
 
 
 def try_system_binary(cli, log_to):
@@ -93,7 +102,9 @@ def log_runtime_config():
     cpp_lib = cpp.cpp_lib()
 
     settings = RuntimeSettings(
-        python_binary=sys.executable, python_version=python_version_from(sys.executable)
+        python_binary=sys.executable,
+        python_version=python_version_from(sys.executable),
+        git_hash=get_git_hash(),
     )
 
     if cpp_lib.mpi_rank() == 0:

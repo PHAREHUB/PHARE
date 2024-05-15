@@ -28,6 +28,8 @@ class SystemSettings:
     python_binary: str
     python_version: str
     uname: str
+    git_hash: str
+    git_message: str
 
 
 SYSTEM_CPP_ = """
@@ -47,6 +49,8 @@ struct SystemConfig {{
     constexpr static std::string_view PYTHON_BINARY = R"({})";
     constexpr static std::string_view PYTHON_VERSION = R"({})";
     constexpr static std::string_view UNAME = R"({})";
+    constexpr static std::string_view GIT_HASH = R"({})";
+    constexpr static std::string_view GIT_MESSAGE = R"({})";
 
 }};
 
@@ -61,7 +65,9 @@ std::unordered_map<std::string, std::string> build_config(){{
       {{"MPI_VERSION", std::string{{SystemConfig::_MPI_VERSION_}}}},
       {{"PYTHON_BINARY", std::string{{SystemConfig::PYTHON_BINARY}}}},
       {{"PYTHON_VERSION", std::string{{SystemConfig::PYTHON_VERSION}}}},
-      {{"UNAME", std::string{{SystemConfig::UNAME}}}}
+      {{"UNAME", std::string{{SystemConfig::UNAME}}}},
+      {{"GIT_HASH", std::string{{SystemConfig::GIT_HASH}}}},
+      {{"GIT_MESSAGE", std::string{{SystemConfig::GIT_MESSAGE}}}}
   }};
 }}
 
@@ -196,6 +202,8 @@ def gen_system_file():
         python_binary=os.environ["PYTHON_EXECUTABLE"],
         python_version=get_python_version(os.environ["PYTHON_EXECUTABLE"]),
         uname=subprocess_run("uname -a"),
+        git_hash=subprocess_run("git log -1 --pretty=format:%H", "git log failed"),
+        git_message=subprocess_run("git log -1", "git log failed"),
     )
     with open(DOT_PHARE_DIR / "build_config.json", "w") as f:
         json.dump(dataclasses.asdict(settings), f)
@@ -203,16 +211,7 @@ def gen_system_file():
     with open(out_file, "w") as f:
         f.write(
             SYSTEM_CPP_.format(
-                settings.cmake_binary,
-                settings.cmake_version,
-                settings.cxx_compiler,
-                settings.cxx_compiler_version,
-                settings.hdf5_version,
-                settings.hdf5_is_parallel,
-                settings.mpi_version,
-                settings.python_binary,
-                settings.python_version,
-                settings.uname,
+                *[getattr(settings, v.name) for v in dataclasses.fields(settings)]
             )
         )
 

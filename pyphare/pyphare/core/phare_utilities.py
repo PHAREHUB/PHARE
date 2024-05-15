@@ -154,19 +154,6 @@ def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=Fal
         raise RuntimeError(decode_bytes(e.stderr))
 
 
-def git_hashes(N=1):
-    return decode_bytes(
-        run_cli_cmd(f"git log -{N} --pretty=format:%h").stdout
-    ).splitlines()
-
-
-def top_git_hash():
-    hashes = git_hashes(1)
-    if len(hashes) > 0:
-        return hashes[0]
-    return "master"  # github actions fails?
-
-
 def print_trace():
     import sys, traceback
 

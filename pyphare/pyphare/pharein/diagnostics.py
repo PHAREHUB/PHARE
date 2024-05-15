@@ -93,6 +93,15 @@ def try_cpp_dep_vers():
         return {}
 
 
+def try_cpp_build_config():
+    try:
+        from pyphare import cpp
+
+        return cpp.build_config()
+    except ImportError:
+        return {}
+
+
 class Diagnostics(object):
     h5_flush_never = 0
     cpp_dep_vers = try_cpp_dep_vers()
@@ -113,7 +122,11 @@ class Diagnostics(object):
         )
 
         self.attributes = kwargs.get("attributes", {})
-        self.attributes["git_hash"] = phare_utilities.top_git_hash()
+
+        build_config = try_cpp_build_config()
+        self.attributes["git_hash"] = build_config.get(
+            "GIT_HASH", "git hash not available"
+        )
 
         for dep, dep_ver in Diagnostics.cpp_dep_vers.items():
             self.attributes[f"{dep}_version"] = dep_ver
